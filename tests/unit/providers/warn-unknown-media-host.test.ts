@@ -32,7 +32,9 @@ import {
   warnIfUnknownMediaHost,
 } from "../../../src/main/providers/warn-unknown-media-host";
 import { Rule34Provider } from "../../../src/main/providers/rule34-provider";
-import { GelbooruProvider } from "../../../src/main/providers/gelbooru-provider";
+
+/** legacy: display of stored Gelbooru posts after Gelbooru support removal */
+const LEGACY_GELBOORU_CDN_HOSTS = ["img4.gelbooru.com"] as const;
 
 const UNKNOWN_HOST = "cdn-unknown.example";
 const provider = {
@@ -93,19 +95,28 @@ describe("warnIfUnknownMediaHost", () => {
     });
   });
 
-  it("does not warn for live Rule34 and Gelbooru CDN hosts (jpg and mp4)", () => {
+  it("does not warn for live Rule34 CDN hosts (jpg and mp4)", () => {
     const rule34 = new Rule34Provider();
-    const gelbooru = new GelbooruProvider();
 
     for (const host of rule34.cdnDomains) {
       warnIfUnknownMediaHost(`https://${host}/file.jpg`, rule34);
       warnIfUnknownMediaHost(`https://${host}/file.mp4`, rule34);
     }
-    for (const host of gelbooru.cdnDomains) {
-      warnIfUnknownMediaHost(`https://${host}/file.jpg`, gelbooru);
-      warnIfUnknownMediaHost(`https://${host}/file.mp4`, gelbooru);
-    }
 
+    expect(logger.warn).not.toHaveBeenCalled();
+  });
+
+  it("does not warn for legacy Gelbooru CDN hosts when listed on a fake provider", () => {
+    // legacy: display of stored Gelbooru posts after Gelbooru support removal
+    const legacyProvider = {
+      id: "legacy-gelbooru-display",
+      allowedDomains: [...LEGACY_GELBOORU_CDN_HOSTS],
+      cdnDomains: [...LEGACY_GELBOORU_CDN_HOSTS],
+    };
+    for (const host of LEGACY_GELBOORU_CDN_HOSTS) {
+      warnIfUnknownMediaHost(`https://${host}/file.jpg`, legacyProvider);
+      warnIfUnknownMediaHost(`https://${host}/file.mp4`, legacyProvider);
+    }
     expect(logger.warn).not.toHaveBeenCalled();
   });
 
@@ -116,11 +127,11 @@ describe("warnIfUnknownMediaHost", () => {
 });
 
 describe("provider mapping wires warnIfUnknownMediaHost", () => {
-  it.each([
-    "src/main/providers/rule34-provider.ts",
-    "src/main/providers/gelbooru-provider.ts",
-  ])("%s calls warnIfUnknownMediaHost after file_url", (relativePath) => {
-    const source = readFileSync(resolve(process.cwd(), relativePath), "utf8");
+  it("rule34-provider calls warnIfUnknownMediaHost after file_url", () => {
+    const source = readFileSync(
+      resolve(process.cwd(), "src/main/providers/rule34-provider.ts"),
+      "utf8"
+    );
     expect(source).toContain("warnIfUnknownMediaHost(fileUrl, this)");
   });
 });

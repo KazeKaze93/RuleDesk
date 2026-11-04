@@ -125,7 +125,7 @@ const allPosts: Post[] = data?.pages.flatMap((page: Post[]) => page) || [];
 
 Browse **Favorites** / **Browse Source Subscriptions filter** do not use this remote helper: they call `getArtistPosts` with `isFavorited` / `sinceTracking` and pass `aiFilter` / `mediaType` / `sortOrder` into SQL so filters apply before `LIMIT`/`OFFSET`. The React Query key is `buildBrowseSearchQueryKey({ tags, source, aiFilter, mediaType, sortOrder })` (chip tags + `aiFilter`; injected AI tokens are request-only).
 
-On **Source: All**, Browse appends remote filter tags to the `searchBooru` request via `buildRemoteBooruTagListForIpc`: Rule34 AI (`hide` → exclude tokens; `only` → OR-group); Rule34 and Gelbooru media (`videos` → `video`; `images` → `-video`). Conflict with the user's own chips skips that axis and keeps worker filtering. Gelbooru AI does not inject (worker-only) until separately verified.
+On **Source: All**, Browse appends remote filter tags to the `searchBooru` request via `buildRemoteBooruTagListForIpc`: Rule34 AI (`hide` → exclude tokens; `only` → OR-group); Rule34 media (`videos` → `video`; `images` → `-video`). Conflict with the user's own chips skips that axis and keeps worker filtering.
 
 Prefer `useGalleryInfiniteScroll` + `getSearchBrowseNextPageParam` (see `src/renderer/components/pages/Browse.tsx`) instead of hand-rolling page numbers:
 
@@ -411,7 +411,7 @@ type ExtendedStats = {
   totalUnviewed: number;
   ratingCounts: { safe: number; questionable: number; explicit: number };
   mediaCounts: { images: number; videos: number };
-  providerCounts: { rule34: number; gelbooru: number };
+  providerCounts: { rule34: number; other: number };
   topArtists: Array<{ name: string; postCount: number }>;
   topTags: Array<{ tag: string; count: number }>;
   postsTimeline: Array<{ month: string; count: number }>;
@@ -885,7 +885,7 @@ await window.api.openExternal(
 
 ### `syncAll()`
 
-Initiates background synchronization of all tracked artists. `SyncService` dispatches each artist through `getProvider(artist.provider)` (**Rule34** and **Gelbooru**). This is independent of the `openExternal` / `ALLOWED_HOSTS` allowlist.
+Initiates background synchronization of all tracked artists. `SyncService` uses `getProvider(artist.provider)` for **Rule34** only. Artists with an unsupported stored provider (e.g. legacy Gelbooru) emit `SYNC.ERROR` (`<name>: Gelbooru support was removed; this artist is no longer synced`) and are skipped — no API call and no silent fallback to Rule34. This is independent of the `openExternal` / `ALLOWED_HOSTS` allowlist (Gelbooru hosts remain for opening legacy post pages).
 
 **Returns:** `Promise<boolean>`
 
@@ -1054,8 +1054,8 @@ Searches for tags using booru autocomplete API (multi-provider support).
 **Parameters:**
 
 - `query: string` - Search query string (minimum 2 characters)
-- `provider?: ProviderId` - Provider ID ("rule34" or "gelbooru"), defaults to "rule34"
-- `artistOnly?: boolean` - When `true` (Add Artist modal), return artist tags only. Gelbooru filters `SearchResults.type === "artist"` (from autocomplete2 `category`). Rule34 autocomplete.php has no category field — second-pass resolves the top 5 results by post_count via `tag_metadata` / DAPI `s=tag` (`TAG_TYPES.ARTIST`, `user` throttle priority). A newer `artistOnly` call aborts the previous Main wave (throttle waiters leave the queue). Empty list if none match (no unfiltered fallback). Browse, blacklist, and playlist autocomplete omit this flag.
+- `provider?: ProviderId` - Provider ID (`"rule34"` only), defaults to `"rule34"`
+- `artistOnly?: boolean` - When `true` (Add Artist modal), return artist tags only. Rule34 autocomplete.php has no category field — second-pass resolves the top 5 results by post_count via `tag_metadata` / DAPI `s=tag` (`TAG_TYPES.ARTIST`, `user` throttle priority). A newer `artistOnly` call aborts the previous Main wave (throttle waiters leave the queue). Empty list if none match (no unfiltered fallback). Browse, blacklist, and playlist autocomplete omit this flag.
 
 **Returns:** `Promise<SearchResults[]>`
 

@@ -238,7 +238,7 @@ describe("StatsController posts timeline units", () => {
       explicit: 1,
     });
     expect(stats.mediaCounts).toEqual({ images: 1, videos: 1 });
-    expect(stats.providerCounts).toEqual({ rule34: 1, gelbooru: 0 });
+    expect(stats.providerCounts).toEqual({ rule34: 1, other: 0 });
     expect(stats.topArtists).toEqual([{ name: "Timeline Artist", postCount: 2 }]);
     expect(stats.topTags[0]).toEqual({ tag: "alpha", count: 2 });
     expect(stats.dbSizeBytes).toBe(4096);

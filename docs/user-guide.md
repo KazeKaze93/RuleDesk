@@ -135,7 +135,7 @@ That's it! You're now ready to use RuleDesk.
 
    - **Name** - A friendly name for this artist (e.g., "My Favorite Artist")
    - **Tag** - The artist tag to track (e.g., "artist_name")
-   - **Source** - Choose which site to use (Rule34.xxx or Gelbooru)
+   - **Source** - Rule34.xxx (app is Rule34-only)
 
    Tracking is by **tag** only in the UI (uploader/query types are not offered).
 
@@ -143,7 +143,7 @@ That's it! You're now ready to use RuleDesk.
 
 The artist will appear in your tracked list. Until the first successful sync finishes, the status badge shows **Not synced yet** (not green **Synced**). While that artist is being synced (Sync All, repair, or **Sync new artist automatically**), the badge switches to **Syncing**; when that artist finishes it becomes **Synced** or **Error** (hover for the reason) without waiting for every other artist. If **Sync new artist automatically** is enabled in Settings → Sync, RuleDesk queues that sync right after you add the artist.
 
-**Tip:** Type a few letters in **Tag to Track** — suggestions are **artist tags only**. Gelbooru filters by tag category in one request. Rule34 autocomplete has no category field, so RuleDesk checks the top matches against the tag API (cached) and hides characters/series. Typing further letters cancels the previous Rule34 lookup so suggestions stay on the latest query. Browse search autocomplete is unchanged (all tag types).
+**Tip:** Type a few letters in **Tag to Track** — suggestions are **artist tags only**. Rule34 autocomplete has no category field, so RuleDesk checks the top matches against the tag API (cached) and hides characters/series. Typing further letters cancels the previous lookup so suggestions stay on the latest query. Browse search autocomplete is unchanged (all tag types).
 
 ### Synchronizing Posts
 
@@ -512,7 +512,7 @@ Settings are split into tabs:
 
 ### Account
 
-- **Provider** - Choose `rule34` or `gelbooru` (changing provider invalidates feed query caches and saves the selection)
+- **Provider** - Rule34.xxx only (provider switch removed)
 - **User ID** - Shown when the selected provider needs it
 - **API key field** - Password-style input with show/hide button
 - **Paste URL** - A tip under the fields: paste the full account page URL into either field and both User ID and API Key are filled in automatically
@@ -559,7 +559,7 @@ Open **Statistics** from the sidebar to see a quick health overview of your loca
 - **Favorites vs Others** - favorited posts vs the rest.
 - **Media and Providers**:
   - `Images` / `Videos` are post counts.
-  - `rule34 artists` / `gelbooru artists` are artist/source counts (not post counts).
+  - `rule34 artists` / `other artists` are artist/source counts (not post counts). `other` covers legacy non-Rule34 rows (e.g. Gelbooru) still in the database.
 - **Top Artists** - artists with the most posts in your local cache.
   - Technical placeholder artist `Artist 0` is excluded from this list.
 - **Top Tags** - most frequent tags across cached posts.
@@ -738,6 +738,6 @@ Now that you know the basics, explore:
 - **Advanced filtering** - Combine multiple filters for precise results
 - **Keyboard shortcuts** - Speed up your workflow
 - **Backup strategies** - Keep your data safe
-- **Multiple sources** - Track artists from different sites (Rule34.xxx, Gelbooru)
+- **Rule34 tracking** - Track artists from Rule34.xxx (legacy Gelbooru artists remain in the library but are no longer synced)
 
 **Happy browsing!** 🎨

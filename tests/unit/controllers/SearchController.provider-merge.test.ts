@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockDb } from "../../helpers/mock-db";
-import { artists, posts, settings, SETTINGS_ID } from "../../../src/main/db/schema";
+import { artists, settings, SETTINGS_ID } from "../../../src/main/db/schema";
 import { EXTERNAL_ARTIST_ID } from "@shared/constants";
 import type Database from "better-sqlite3";
 
@@ -81,6 +81,7 @@ describe("SearchController Browse merge is provider-scoped", () => {
       id: SETTINGS_ID,
       userId: "12345",
       encryptedApiKey: Buffer.from("test-api-key").toString("base64"),
+      // Stored unsupported provider must not change Browse (always rule34).
       provider: "gelbooru",
       isSafeMode: false,
       isAdultConfirmed: true,
@@ -99,23 +100,30 @@ describe("SearchController Browse merge is provider-scoped", () => {
       })
       .run();
 
-    mockDb.db
-      .insert(posts)
-      .values({
-        postId: SHARED_POST_ID,
-        artistId: EXTERNAL_ARTIST_ID,
-        provider: "rule34",
-        fileUrl: "https://api-cdn.rule34.xxx/images/12345.jpg",
-        previewUrl: "https://api-cdn.rule34.xxx/thumbnails/12345.jpg",
-        sampleUrl: "",
-        tags: "r34",
-        rating: "e",
-        mediaType: "image",
-        publishedAt: new Date(),
-        isViewed: true,
-        isFavorited: true,
-      })
-      .run();
+    // Legacy stored Gelbooru row with same postId — must not merge onto Rule34 Browse.
+    const nowSec = Math.floor(Date.now() / 1000);
+    mockDb.sqlite
+      .prepare(
+        `INSERT INTO posts (
+          post_id, artist_id, provider, file_url, preview_url, sample_url,
+          tags, rating, media_type, published_at, created_at, is_viewed, is_favorited
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(
+        SHARED_POST_ID,
+        EXTERNAL_ARTIST_ID,
+        "gelbooru",
+        "https://img4.gelbooru.com/images/12345.jpg",
+        "https://img4.gelbooru.com/thumbnails/12345.jpg",
+        "",
+        "gel",
+        "e",
+        "image",
+        nowSec,
+        nowSec,
+        1,
+        1
+      );
 
     controller = new SearchController();
     fetchPostsMock.mockReset();
@@ -127,16 +135,16 @@ describe("SearchController Browse merge is provider-scoped", () => {
     activeDb = null;
   });
 
-  it("does not merge Rule34 fav/viewed onto Gelbooru Browse results with the same postId", async () => {
+  it("does not merge legacy Gelbooru fav/viewed onto Rule34 Browse results with the same postId", async () => {
     fetchPostsMock.mockResolvedValue({
       posts: [
         {
           id: SHARED_POST_ID,
-          fileUrl: "https://img4.gelbooru.com/images/12345.jpg",
-          previewUrl: "https://img4.gelbooru.com/thumbnails/12345.jpg",
+          fileUrl: "https://api-cdn.rule34.xxx/images/12345.jpg",
+          previewUrl: "https://api-cdn.rule34.xxx/thumbnails/12345.jpg",
           sampleUrl: "",
           rating: "e",
-          tags: ["gel"],
+          tags: ["r34"],
           createdAt: new Date(),
         },
       ],
@@ -150,7 +158,7 @@ describe("SearchController Browse merge is provider-scoped", () => {
     }
 
     const result = await searchMethodUnknown.call(controller, null, {
-      tags: ["gel"],
+      tags: ["r34"],
       page: 1,
       isRandom: false,
       limit: 20,
@@ -158,8 +166,9 @@ describe("SearchController Browse merge is provider-scoped", () => {
 
     expect(result.posts).toHaveLength(1);
     expect(result.posts[0].postId).toBe(SHARED_POST_ID);
-    expect(result.posts[0].provider).toBe("gelbooru");
+    expect(result.posts[0].provider).toBe("rule34");
     expect(result.posts[0].isFavorited).toBe(false);
     expect(result.posts[0].isViewed).toBe(false);
+    expect(fetchPostsMock).toHaveBeenCalled();
   });
 });

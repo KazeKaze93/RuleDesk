@@ -16,7 +16,7 @@ import { isAbortError } from "../providers/provider-throttle";
 import type { Artist, NewPost } from "../db/schema";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import * as schema from "../db/schema";
-import { getProvider, PROVIDER_IDS, type ProviderId } from "../providers";
+import { getProvider, isProviderId, type ProviderId } from "../providers";
 import { PAGE_SIZE, type BooruPost } from "../providers/types";
 import { isVideoUrl } from "@shared/utils/media";
 import { IPC_CHANNELS } from "../ipc/channels";
@@ -847,34 +847,23 @@ export class SyncService {
       }
       this.sendEvent(IPC_CHANNELS.SYNC.ARTIST);
 
-      // DYNAMIC PROVIDER SELECTION
-      // Validate provider ID against known providers
+      // DYNAMIC PROVIDER SELECTION — no silent fallback to rule34
       const rawProviderId = artist.provider || "rule34";
-
-      // Type-safe validation without casting
-      const isValidProvider = (id: string): id is ProviderId => {
-        return PROVIDER_IDS.some((validId: ProviderId) => validId === id);
-      };
-
-      let providerId: ProviderId;
-      if (!isValidProvider(rawProviderId)) {
-        logger.error(
-          `SyncService: Invalid provider '${rawProviderId}' for artist ${artist.name} (ID: ${artist.id}). ` +
-            `Database integrity compromised. Expected one of: ${PROVIDER_IDS.join(
-              ", "
-            )}. ` +
-            `Falling back to 'rule34' to continue sync.`
+      if (!isProviderId(rawProviderId)) {
+        const skipMessage = `${artist.name}: Gelbooru support was removed; this artist is no longer synced`;
+        logger.warn(
+          `SyncService: Skipping artist ${artist.name} (ID: ${artist.id}) — unsupported provider '${rawProviderId}'`
         );
-        // Fallback to rule34 instead of throwing - don't kill entire sync process
-        providerId = "rule34";
-        this.sendEvent(
-          IPC_CHANNELS.SYNC.ERROR,
-          `${artist.name}: Invalid provider, using Rule34 fallback`
+        this.sendEvent(IPC_CHANNELS.SYNC.ERROR, skipMessage);
+        setArtistSyncStatus(
+          getDb(),
+          artist.id,
+          ARTIST_SYNC_STATUS.IDLE,
+          null
         );
-      } else {
-        providerId = rawProviderId;
+        return;
       }
-
+      const providerId: ProviderId = rawProviderId;
       const provider = getProvider(providerId);
 
       logger.info(

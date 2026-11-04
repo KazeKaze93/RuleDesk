@@ -1,11 +1,13 @@
 import React, { cloneElement, isValidElement } from "react";
+import type { StoredProviderId } from "@shared/constants";
 import { Button } from "../ui/button";
 import { AddToPlaylistModal } from "./AddToPlaylistModal";
 
 type PostRef = {
   id: number;
   postId: number;
-  provider: "rule34" | "gelbooru";
+  /** Stored post identity; may be a legacy unsupported id. */
+  provider: StoredProviderId;
 };
 
 interface QuickAddToPlaylistMenuProps {

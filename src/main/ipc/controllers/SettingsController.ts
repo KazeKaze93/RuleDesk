@@ -65,10 +65,17 @@ function mapSettingsToIpc(
     encryptedApiKey: dbSettings.encryptedApiKey,
   });
 
+  const parsedProvider = z.enum(PROVIDER_IDS).safeParse(dbSettings.provider);
+  if (!parsedProvider.success) {
+    log.warn(
+      `[SettingsController] Coercing unsupported settings.provider '${String(dbSettings.provider)}' to rule34 for IPC (DB not modified)`
+    );
+  }
+
   return {
     hasSettingsRecord,
     userId: dbSettings.userId ?? "",
-    provider: z.enum(PROVIDER_IDS).safeParse(dbSettings.provider).data ?? "rule34",
+    provider: parsedProvider.data ?? "rule34",
     // True when a key is stored; decrypt must succeed for API calls, not for gate dismissal.
     hasApiKey: hasConfiguredApiKey({
       encryptedApiKey: dbSettings.encryptedApiKey,
@@ -240,7 +247,6 @@ export class SettingsController extends BaseController {
     });
     const userId = normalized.userId;
     const apiKey = normalized.apiKey;
-    const { provider } = data;
 
     if (apiKey && !userId) {
       throw new Error(
@@ -301,10 +307,9 @@ export class SettingsController extends BaseController {
             userId !== undefined && userId.length > 0
               ? userId
               : existing.userId ?? "";
+          // SaveSettingsSchema no longer accepts provider; preserve existing (or rule34).
           const finalProvider =
-            provider !== undefined && PROVIDER_IDS.includes(provider)
-              ? provider
-              : (z.enum(PROVIDER_IDS).safeParse(existing.provider).data ?? "rule34");
+            z.enum(PROVIDER_IDS).safeParse(existing.provider).data ?? "rule34";
           // CRITICAL: Use existing.id instead of SETTINGS_ID to ensure we update the correct record
           const targetId = existing.id;
 
@@ -350,7 +355,7 @@ export class SettingsController extends BaseController {
             .values({
               id: SETTINGS_ID,
               userId: userId ?? "",
-              provider: provider ?? "rule34",
+              provider: "rule34",
               encryptedApiKey: encryptedKey ?? "",
               proxyUrl: "proxyUrl" in data ? (data.proxyUrl ?? null) : null,
               // unused by renderer, kept for downgrade safety

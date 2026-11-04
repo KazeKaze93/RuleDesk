@@ -3,7 +3,6 @@ import type { SearchResults } from "../../../src/main/providers/types";
 import {
   ARTIST_AUTOCOMPLETE_RESOLVE_LIMIT,
   applyArtistOnlyAutocompleteFilter,
-  filterGelbooruArtistTags,
   selectTopAutocompleteByPostCount,
 } from "../../../src/main/lib/filter-artist-autocomplete";
 
@@ -14,20 +13,6 @@ function tag(
 ): SearchResults {
   return { id: value, value, label, type };
 }
-
-describe("filterGelbooruArtistTags", () => {
-  it("keeps only SearchResults.type === artist", () => {
-    const results = [
-      tag("wlop", "wlop", "artist"),
-      tag("hatsune_miku", "hatsune miku", "character"),
-      tag("genshin_impact", "genshin impact", "copyright"),
-      tag("solo", "solo", "tag"),
-    ];
-    expect(filterGelbooruArtistTags(results).map((item) => item.value)).toEqual([
-      "wlop",
-    ]);
-  });
-});
 
 describe("selectTopAutocompleteByPostCount", () => {
   it("sorts by label count and caps at N=5", () => {
@@ -47,20 +32,6 @@ describe("selectTopAutocompleteByPostCount", () => {
 });
 
 describe("applyArtistOnlyAutocompleteFilter", () => {
-  it("Gelbooru: same-RT category filter, no resolve call", async () => {
-    const resolveArtistNames = vi.fn();
-    const filtered = await applyArtistOnlyAutocompleteFilter(
-      "gelbooru",
-      [
-        tag("wlop", "wlop", "artist"),
-        tag("hatsune_miku", "hatsune miku", "character"),
-      ],
-      resolveArtistNames
-    );
-    expect(filtered.map((item) => item.value)).toEqual(["wlop"]);
-    expect(resolveArtistNames).not.toHaveBeenCalled();
-  });
-
   it("Rule34: resolves only top-N and keeps artist matches", async () => {
     const resolveArtistNames = vi.fn().mockResolvedValue(["wlop"]);
     const results = [

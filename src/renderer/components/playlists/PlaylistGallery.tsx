@@ -55,6 +55,8 @@ import {
   PLAYLIST_MASONRY_THRESHOLD_PX,
   PLAYLIST_PREFETCH_ITEMS,
   POSTS_PAGE_SIZE,
+  isProviderId,
+  type ProviderId,
 } from "../../../shared/constants";
 import {
   formatManualPlaylistCountLabel,
@@ -303,13 +305,16 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
 
     // CRITICAL: Extract provider from playlist queryJson for shadow insert operations
     // Provider must match the actual source of posts to prevent 404 or invalid data
-    let provider: "rule34" | "gelbooru" | undefined = undefined;
+    // Only pass supported ProviderId; legacy unsupported ids omitted (shadow insert defaults).
+    let provider: ProviderId | undefined = undefined;
     if (playlist.isSmart && playlist.queryJson) {
       const parsedQuery = parsePlaylistQuery(
         playlist.queryJson,
         playlist.querySchemaVersion
       );
-      provider = parsedQuery?.provider;
+      if (parsedQuery?.provider && isProviderId(parsedQuery.provider)) {
+        provider = parsedQuery.provider;
+      }
     }
 
     openViewer({

@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { POSTS_PAGE_SIZE, PROVIDER_IDS, type ProviderId } from "../constants";
+import {
+  POSTS_PAGE_SIZE,
+  PROVIDER_IDS,
+  type StoredProviderId,
+} from "../constants";
 import {
   IdSchema,
   PageSchema,
@@ -305,7 +309,7 @@ export interface PlaylistExport {
   entries: Array<{
     postId: number;
     artistId?: number;
-    provider?: ProviderId;
+    provider?: StoredProviderId;
     addedAt: number;
   }>;
 }

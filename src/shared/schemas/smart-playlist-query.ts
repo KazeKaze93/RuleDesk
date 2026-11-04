@@ -7,10 +7,12 @@ export const SmartQueryTagSchema = z.object({
   type: z.enum(["include", "exclude"]),
 });
 
-// v1: current smart-playlist DSL in production
+// v1: current smart-playlist DSL in production.
+// provider is StoredProviderId (string): parse of saved query_json must not crash
+// on legacy "gelbooru"; callers reject unsupported ids with UNSUPPORTED_PROVIDER.
 export const SmartQueryV1Schema = z.object({
   tags: z.array(SmartQueryTagSchema).min(1, "At least one tag is required"),
-  provider: z.enum(["rule34", "gelbooru"]).optional().default("rule34"),
+  provider: z.string().min(1).optional().default("rule34"),
 });
 
 export type SmartQueryV1 = z.infer<typeof SmartQueryV1Schema>;

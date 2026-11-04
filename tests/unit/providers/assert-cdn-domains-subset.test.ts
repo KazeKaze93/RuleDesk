@@ -54,10 +54,7 @@ describe("assertCdnDomainsAreSubsetOfAllowed", () => {
 
   it("live registry satisfies the subset invariant", () => {
     expect(() =>
-      assertCdnDomainsAreSubsetOfAllowed([
-        getProvider("rule34"),
-        getProvider("gelbooru"),
-      ])
+      assertCdnDomainsAreSubsetOfAllowed([getProvider("rule34")])
     ).not.toThrow();
   });
 });

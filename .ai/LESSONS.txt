@@ -508,3 +508,7 @@ A report without (1)–(3) is an **incomplete task**. Do not claim a branch "lan
 ### Problem: Sync All start/progress/end duplicated across Sidebar and Updates with divergent error UX
 **Root Cause:** each surface called `window.api.syncAll` and subscribed to sync events independently
 **Invariant Rule:** one hook (`useSyncAll`) owns sync invocation + isSyncing/progress; UI surfaces call `startSync` and never `window.api.syncAll` directly.
+
+### Problem: provider switch implied multi-provider support that credentials (one set) could not back; unknown provider silently fell back to rule34 and synced another site's tag
+**Root Cause:** data model allowed mixed providers while auth/UI did not
+**Invariant Rule:** input schemas accept only supported providers; stored data with an unsupported provider is handled explicitly (coerce settings with warning, skip sync with error, typed error for queries) — never parse-crash and never silent fallback to another provider.

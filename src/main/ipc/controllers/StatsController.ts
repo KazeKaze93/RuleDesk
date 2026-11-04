@@ -197,8 +197,10 @@ export class StatsController extends BaseController {
     };
 
     const providerCounts = {
-      rule34: providerRows.find((row) => row.provider === "rule34")?.c ?? 0,
-      gelbooru: providerRows.find((row) => row.provider === "gelbooru")?.c ?? 0,
+      rule34: providerRows.find((r) => r.provider === "rule34")?.c ?? 0,
+      other: providerRows
+        .filter((r) => r.provider !== "rule34")
+        .reduce((s, r) => s + r.c, 0),
     };
 
     const topArtists = sqlite

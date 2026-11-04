@@ -9,7 +9,7 @@ export type ThemePreference = z.infer<typeof ThemePreferenceSchema>;
  * These values are based on observed API behavior and reasonable security limits.
  * 
  * NOTE: If API service changes key formats, update these constants accordingly.
- * There is no official documentation specifying exact limits for Rule34/Gelbooru API keys.
+ * There is no official documentation specifying exact limits for Rule34 API keys.
  */
 export const VALIDATION_LIMITS = {
   /**
@@ -86,7 +86,7 @@ export const SaveSettingsSchema = z.object({
   minimizeToTray: z.boolean().optional(),
   syncIntervalMinutes: z.number().int().min(0).max(1440).optional(),
   backupRetention: z.number().int().min(1).max(20).optional(),
-  provider: z.enum(PROVIDER_IDS).optional(),
+  // Provider switch removed: app is Rule34-only; field not accepted on save.
 });
 
 /**
@@ -102,6 +102,7 @@ export const SaveSettingsSchema = z.object({
 export const IpcSettingsSchema = z.object({
   hasSettingsRecord: z.boolean(),
   userId: z.string(),
+  /** Always a supported ProviderId after SettingsController load coercion. */
   provider: z.enum(PROVIDER_IDS),
   hasApiKey: z.boolean(),
   proxyUrl: z.string().url().nullable(),

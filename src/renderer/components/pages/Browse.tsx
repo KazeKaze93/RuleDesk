@@ -596,8 +596,7 @@ export const Browse = () => {
                   className="gap-2"
                 >
                   <ExternalLink className="w-4 h-4" />
-                  Open {tags[0]} on{" "}
-                  {provider === "gelbooru" ? "Gelbooru" : "Rule34.xxx"}
+                  Open {tags[0]} on Rule34.xxx
                 </Button>
               </div>
             ) : (

@@ -4,12 +4,6 @@ import { parseAutocompleteLabelCount } from "../../shared/utils/autocomplete-lab
 import type { SearchResults } from "../providers/types";
 
 /**
- * Live Gelbooru autocomplete2 `category` for artist tags.
- * Not numeric `"1"`, and not `type` (always `"tag"` — entity kind, not class).
- */
-export const GELBOORU_TAG_CATEGORY_ARTIST = "artist";
-
-/**
  * Max Rule34 DAPI tag lookups per Add-Artist autocomplete keystroke.
  * Second-pass uses user throttle + `tag_metadata` cache; 5 bounds cost
  * without resolving the full 10–20 autocomplete page.
@@ -18,12 +12,6 @@ export const ARTIST_AUTOCOMPLETE_RESOLVE_LIMIT = 5;
 
 export function normalizeAutocompleteTagName(value: string): string {
   return sanitizeProviderTagToken(value).toLowerCase().trim();
-}
-
-export function filterGelbooruArtistTags(
-  results: SearchResults[]
-): SearchResults[] {
-  return results.filter((item) => item.type === GELBOORU_TAG_CATEGORY_ARTIST);
 }
 
 export function selectTopAutocompleteByPostCount(
@@ -49,8 +37,8 @@ export function keepResolvedArtistTags(
 }
 
 /**
- * Artist-only filter for Add Artist autocomplete. Gelbooru: same-RT category.
- * Rule34: top-N by post_count, then caller-supplied resolve (DAPI / tag_metadata).
+ * Artist-only filter for Add Artist autocomplete (Rule34-only).
+ * Top-N by post_count, then caller-supplied resolve (DAPI / tag_metadata).
  * No silent fallback to unfiltered results when nothing matches.
  */
 export async function applyArtistOnlyAutocompleteFilter(
@@ -58,9 +46,6 @@ export async function applyArtistOnlyAutocompleteFilter(
   results: SearchResults[],
   resolveArtistNames: (tags: string[]) => Promise<string[]>
 ): Promise<SearchResults[]> {
-  if (providerId === "gelbooru") {
-    return filterGelbooruArtistTags(results);
-  }
   if (providerId !== "rule34") {
     return [];
   }

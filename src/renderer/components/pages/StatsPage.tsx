@@ -248,7 +248,7 @@ export const StatsPage = () => {
             <Separator />
             <div className="flex flex-wrap gap-2">
               <Badge variant="secondary">rule34 artists: {stats.providerCounts.rule34.toLocaleString()}</Badge>
-              <Badge variant="secondary">gelbooru artists: {stats.providerCounts.gelbooru.toLocaleString()}</Badge>
+              <Badge variant="secondary">other artists: {stats.providerCounts.other.toLocaleString()}</Badge>
             </div>
           </CardContent>
         </Card>

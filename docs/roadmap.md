@@ -23,7 +23,7 @@ This document reflects the current roadmap for RuleDesk `v18.x` and is aligned w
 ## ✅ Recent Fixes & Current Status (COMPLETED)
 
 - ✅ Core architecture is stable: Electron Main/Renderer separation, typed IPC, secure credential storage.
-- ✅ Multi-provider support is in production (`Rule34Provider`, `GelbooruProvider`).
+- ✅ Rule34-only API (`Rule34Provider`); Gelbooru API removed (`chore/remove-gelbooru`). Legacy Gelbooru posts still display.
 - ✅ Playlists, favorites, downloads, backup/restore, and full-screen viewer are implemented.
 - ✅ Playlists now include import/export, manual drag-and-drop reorder, and smart hybrid local+remote resolution.
 - ✅ Database is optimized for scale: WAL mode, FTS5, composite indexes, and migration workflow.
@@ -110,6 +110,14 @@ Replace CSS multi-column masonry with JS round-robin into flex columns (`item i 
 | # | Branch | PR | Status |
 |---|--------|----|--------|
 | M | `fix/masonry-row-order` | [#269](https://github.com/KazeKaze93/RuleDesk/pull/269) | ✅ merged |
+
+### Remove Gelbooru (Rule34-only)
+
+Delete Gelbooru provider/API/UI; keep schema provider columns and legacy media display; sync skips unsupported artists; settings coerce on load. Status lives only in this table.
+
+| # | Branch | PR | Status |
+|---|--------|----|--------|
+| G34 | `chore/remove-gelbooru` | [#271](https://github.com/KazeKaze93/RuleDesk/pull/271) | 🟡 open |
 
 ### Playlist gallery infinite scroll
 
@@ -434,7 +442,7 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 
 | Area | What is still open |
 |------|--------------------|
-| **Provider switch** | Dialog says "will clear all cached data", but `useCredentialsActions.changeProvider` only invalidates React Query and saves `settings.provider` — posts/artists of the old provider stay in SQLite. Needs trace: are old-provider artists/posts shown after switch. |
+| **Provider switch** | ✅ Closed in `chore/remove-gelbooru` — Gelbooru API/UI and provider switch removed; app is Rule34-only. Legacy Gelbooru artists are skipped on sync with an explicit error; stored Gelbooru posts still display. |
 | **Smart collection UX** | Header shows hybrid window Total / N+ (`resolvePlaylistPosts.total` or `getPlaylistResolveTotal` while the walk runs) + live-search subtitle + Refresh (`#265` / `feat/hybrid-snapshot-store`). Still no indication when new remote posts appear while the gallery stays open. |
 | **Smart collection total (XML)** | Needed only when the remote walk hits `HYBRID_REMOTE_MAX_PAGES_TO_SCAN` (total shown as lower bound). Rule34 JSON has no count; verify XML root `posts count` to upgrade lower-bound headers to exact. |
 | **Artist types (UI)** | Add Artist UI supports **tag** only. Schema still allows `uploader` / `query` for legacy rows; exposing those types in the UI is backlog (not shipped). |
@@ -454,7 +462,7 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 | **E2E Playwright retries** | Keep `retries: 2` (known Electron “Target closed” on this platform). Do not lower blindly. Follow-up: surface flaky vs failed in CI (Playwright already labels flaky in the report) without changing retry count. |
 | **AI tag phrases (P3)** | ✅ Closed in [#160](https://github.com/KazeKaze93/RuleDesk/pull/160). Live Rule34/Gelbooru autocomplete (2026-08-13): space queries (`ai generated`, `ai generation`, `ai generated content`) return `[]`; real tags are `_`/`-` (`ai_generated` 3.2M on Rule34, `ai-generated` on Gelbooru). Origin was speculative lists in `ad62e5b` / `9788d8f` (2026-01-15), not observed legacy data. Consecutive-token matching rejected (`generated` exists as its own tag, 698 posts). Space phrases removed from `filter-utils.ts` `aiTags` and worker `AI_TAG_PATTERNS`; `PostsController.AI_FILTER_TAGS` / `BOORU_AI_FILTER_TAGS` were already token-only. |
 
-**Providers:** new sites must implement **`ProviderThrottle`**-class behavior; Rule34 and Gelbooru already share `ProviderThrottle` — not a “gap” unless adding a **third** backend.
+**Providers:** new sites must implement **`ProviderThrottle`**-class behavior; Rule34 uses `ProviderThrottle`. Gelbooru API support was removed (`chore/remove-gelbooru`).
 
 ## 📝 Notes
 

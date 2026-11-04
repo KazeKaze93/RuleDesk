@@ -256,6 +256,7 @@ export class PostsController extends BaseController {
     // SECURITY: Always use EXTERNAL_ARTIST_ID, never trust artistId from Renderer
     // This handles external posts from Browse (artistId = EXTERNAL_ARTIST_ID)
     if (!existingPost && postData) {
+      // drizzle posts.provider enum is PROVIDER_IDS-only; KnownStoredProviderId includes legacy → parameterized sql
       existingPost = tx
         .select()
         .from(posts)
@@ -263,7 +264,7 @@ export class PostsController extends BaseController {
           and(
             eq(posts.postId, postData.postId),
             eq(posts.artistId, EXTERNAL_ARTIST_ID),
-            eq(posts.provider, postData.provider)
+            sql`${posts.provider} = ${postData.provider}`
           )
         )
         .limit(1)
@@ -835,7 +836,8 @@ export class PostsController extends BaseController {
             .where(
               and(
                 eq(posts.artistId, EXTERNAL_ARTIST_ID),
-                eq(posts.provider, postData.provider),
+                // drizzle enum PROVIDER_IDS-only; KnownStoredProviderId may be legacy gelbooru
+                sql`${posts.provider} = ${postData.provider}`,
                 eq(posts.postId, postData.postId)
               )
             )
@@ -868,11 +870,12 @@ export class PostsController extends BaseController {
             ? new Date(postData.publishedAt)
             : insertNow;
 
+          // drizzle insert enum is PROVIDER_IDS-only; KnownStoredProviderId may be legacy → parameterized sql
           tx.insert(posts)
             .values({
               postId: postData.postId,
               artistId: EXTERNAL_ARTIST_ID, // SECURITY: Always use EXTERNAL_ARTIST_ID for external posts
-              provider: postData.provider,
+              provider: sql`${postData.provider}`,
               fileUrl: postData.fileUrl,
               previewUrl: postData.previewUrl,
               sampleUrl: postData.sampleUrl ?? "",
@@ -1107,11 +1110,12 @@ export class PostsController extends BaseController {
           ? new Date(postData.publishedAt)
           : now;
 
+        // drizzle insert enum is PROVIDER_IDS-only; KnownStoredProviderId may be legacy → parameterized sql
         tx.insert(posts)
           .values({
             postId: postData.postId,
             artistId: EXTERNAL_ARTIST_ID, // SECURITY: Always use EXTERNAL_ARTIST_ID for external posts
-            provider: postData.provider,
+            provider: sql`${postData.provider}`,
             fileUrl: postData.fileUrl,
             previewUrl: postData.previewUrl,
             sampleUrl: postData.sampleUrl ?? "",

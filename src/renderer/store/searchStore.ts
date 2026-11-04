@@ -115,12 +115,10 @@ const RULE34_PROVIDER_ID = "rule34";
 
 /**
  * Exact `video` metadata tag for remote media-filter injection.
- * Live autocomplete 2026-08-14: Rule34 `video` (513788); Gelbooru `video` (105460, category metadata).
+ * Live autocomplete 2026-08-14: Rule34 `video` (513788).
  * Format subsets (`webm`, `mp4`) are not injected — they are smaller than `video`.
  */
 export const BOORU_VIDEO_FILTER_TAG = "video";
-
-const VIDEO_FILTER_PROVIDERS = new Set<string>(["rule34", "gelbooru"]);
 
 export function buildBooruTagListForIpc(
   includeTags: string[],
@@ -150,7 +148,7 @@ export type RemoteAiFilterInjection = {
   injectedTags: string[];
   /**
    * True when AI filtering was pushed into the API query.
-   * False → keep client worker AI filtering (Gelbooru, conflict, aiFilter all).
+   * False → keep client worker AI filtering (non-rule34, conflict, aiFilter all).
    */
   aiInjected: boolean;
 };
@@ -219,7 +217,7 @@ function tagListIncludesVideoToken(tags: string[]): boolean {
 
 /**
  * Build video/image tag injection for remote Browse.
- * Live-verified `video` token on Rule34 and Gelbooru.
+ * Live-verified `video` token on Rule34.
  * Skips injection on conflict with the user's own include/exclude chips
  * so the API does not return an unexplained empty page.
  */
@@ -231,7 +229,7 @@ export function buildRemoteMediaTypeTagInjection(params: {
 }): RemoteMediaTypeTagInjection {
   const { provider, mediaType, includeTags, excludeTags } = params;
 
-  if (!VIDEO_FILTER_PROVIDERS.has(provider) || mediaType === "all") {
+  if (provider !== RULE34_PROVIDER_ID || mediaType === "all") {
     return { injectedTags: [], mediaInjected: false };
   }
 

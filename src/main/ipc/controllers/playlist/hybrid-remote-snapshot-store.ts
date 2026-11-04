@@ -20,7 +20,7 @@ import type { RemoteWalkCompleteness } from "../../../../shared/playlist-resolve
 
 /** Max API pages scanned while filling a hybrid remote window after filters. */
 export const HYBRID_REMOTE_MAX_PAGES_TO_SCAN = 20;
-/** Matches provider `fetchPosts` page-size cap (Rule34/Gelbooru). */
+/** Matches provider `fetchPosts` page-size cap (Rule34). */
 export const HYBRID_REMOTE_API_PAGE_CAP = 1000;
 
 /** Row shape shared by local SQL rows and remote rows (remote rows use `id: 0`). */

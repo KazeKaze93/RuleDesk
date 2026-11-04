@@ -6,13 +6,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { normalizeTag } from "../../lib/tag-utils";
 import { AsyncAutocomplete } from "../inputs/AsyncAutocomplete";
 import type { SearchResults } from "@shared/types/providers";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
 import { Label } from "../ui/label";
 import { Button } from "../ui/button";
 import {
@@ -24,6 +17,9 @@ import {
 } from "../ui/dialog";
 import { AddArtistSchema, type AddArtistRequest } from "../../../shared/schemas/artist";
 import type { ProviderId } from "../../../shared/constants";
+
+const RULE34_PROVIDER_ID: ProviderId = "rule34";
+const RULE34_PROVIDER_LABEL = "Rule34.xxx";
 
 interface AddArtistModalProps {
   isOpen: boolean;
@@ -53,14 +49,13 @@ export function AddArtistModal({
   } = useForm<AddArtistRequest>({
     resolver: zodResolver(AddArtistSchema),
     defaultValues: {
-      provider: "rule34",
+      provider: RULE34_PROVIDER_ID,
       type: "tag",
       name: "",
       tag: "",
     },
   });
 
-  const provider = useWatch({ control, name: "provider" });
   const tag = useWatch({ control, name: "tag" });
 
   const handleClose = () => {
@@ -68,20 +63,10 @@ export function AddArtistModal({
     onClose();
   };
 
-  // Reset tag when provider changes to avoid cross-provider tag confusion
-  const handleProviderChange = (value: string) => {
-    if (value !== "rule34" && value !== "gelbooru") {
-      return;
-    }
-    setValue("provider", value);
-    setValue("tag", ""); // Clear input when switching providers
-    setValue("name", ""); // Clear name as well
-  };
-
   const onSubmit = (data: AddArtistRequest) => {
     const finalTag = normalizeTag(data.tag);
     const finalDisplayName = finalTag;
-    onAdd(finalDisplayName, finalTag, data.type, data.provider);
+    onAdd(finalDisplayName, finalTag, data.type, RULE34_PROVIDER_ID);
     handleClose();
   };
 
@@ -129,7 +114,7 @@ export function AddArtistModal({
             </Button>
           </div>
           <DialogDescription className="sr-only">
-            Add a new tracked artist or tag source from a Booru provider.
+            Add a new tracked artist or tag source from Rule34.xxx.
           </DialogDescription>
         </DialogHeader>
 
@@ -144,24 +129,10 @@ export function AddArtistModal({
           className="p-6 space-y-5"
         >
           <div className="space-y-1.5">
-            <Label htmlFor="provider-select" className="ml-1 text-xs font-medium text-muted-foreground">
+            <Label className="ml-1 text-xs font-medium text-muted-foreground">
               Provider
             </Label>
-            <Controller
-              name="provider"
-              control={control}
-              render={({ field }) => (
-                <Select value={field.value} onValueChange={handleProviderChange}>
-                  <SelectTrigger id="provider-select" className="w-full">
-                    <SelectValue placeholder="Select provider" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="rule34">Rule34.xxx</SelectItem>
-                    <SelectItem value="gelbooru">Gelbooru</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-            />
+            <p className="text-sm text-foreground ml-1">{RULE34_PROVIDER_LABEL}</p>
           </div>
 
           <div className="space-y-1.5">
@@ -175,9 +146,9 @@ export function AddArtistModal({
                     value={field.value}
                     onQueryChange={handleTagChange}
                     onSelect={handleTagSelect}
-                    placeholder={`Search on ${provider === "rule34" ? "Rule34.xxx" : "Gelbooru"}...`}
+                    placeholder={`Search on ${RULE34_PROVIDER_LABEL}...`}
                     onBlur={field.onBlur}
-                    provider={provider}
+                    provider={RULE34_PROVIDER_ID}
                     artistOnly
                   />
                 )}
@@ -189,13 +160,14 @@ export function AddArtistModal({
             <p className="text-[10px] text-muted-foreground ml-1">
               Searching artist tags on{" "}
               <span className="font-medium text-foreground">
-                {provider === "rule34" ? "Rule34.xxx" : "Gelbooru"}
+                {RULE34_PROVIDER_LABEL}
               </span>
             </p>
           </div>
 
           <input type="hidden" {...control.register("name")} />
           <input type="hidden" {...control.register("type")} />
+          <input type="hidden" {...control.register("provider")} />
 
           <Button
             type="submit"

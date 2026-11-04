@@ -11,7 +11,7 @@
 
 | Channel | Token | Args (Zod) | Idempotent | Handler | Notes |
 | --- | --- | --- | --- | --- | --- |
-| `api:search-remote-tags` | `API.SEARCH_REMOTE` | `z.tuple([ z.string().trim().min(2), z.enum(["rule34", "gelbooru"]).optional(), z.boolean().optional(), ])` | no | `ArtistsController` | `src/main/ipc/controllers/ArtistsController.ts` |
+| `api:search-remote-tags` | `API.SEARCH_REMOTE` | `z.tuple([ z.string().trim().min(2), z.enum(PROVIDER_IDS).optional(), z.boolean().optional(), ])` | no | `ArtistsController` | `src/main/ipc/controllers/ArtistsController.ts` |
 | `app:get-app-info` | `APP.GET_APP_INFO` | `[]` (no args) | no | `SystemController` | `src/main/ipc/controllers/SystemController.ts` |
 | `app:get-db-location` | `APP.GET_DB_LOCATION` | `[]` (no args) | no | `SystemController` | `src/main/ipc/controllers/SystemController.ts` |
 | `app:get-diagnostics` | `APP.GET_DIAGNOSTICS` | `[]` (no args) | no | `SystemController` | `src/main/ipc/controllers/SystemController.ts` |
@@ -46,7 +46,7 @@
 | `db:get-playlist-posts` | `DB.GET_PLAYLIST_POSTS` | `z.tuple([GetPlaylistPostsSchema])` | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
 | `db:get-playlist-resolve-total` | `DB.GET_PLAYLIST_RESOLVE_TOTAL` | `z.tuple([GetPlaylistResolveTotalSchema])` | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
 | `db:get-playlists` | `DB.GET_PLAYLISTS` | `[]` (no args) | yes | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
-| `db:get-playlists-containing-post` | `DB.GET_PLAYLISTS_CONTAINING_POST` | `z.tuple([ z.number().int(), OptionalIdSchema, z.enum(PROVIDER_IDS).optional(), ])` | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
+| `db:get-playlists-containing-post` | `DB.GET_PLAYLISTS_CONTAINING_POST` | `z.tuple([ z.number().int(), OptionalIdSchema, z.string().min(1).optional(), ])` | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
 | `db:get-posts` | `DB.GET_POSTS` | `z.tuple([GetPostsSchema])` | yes | `PostsController` | Paginated posts with filters. Always limited — see MAX page size in PostsController. |
 | `db:get-posts-count` | `DB.GET_POSTS_COUNT` | `z.tuple([GetPostsCountSchema])` | yes | `PostsController` | `src/main/ipc/controllers/PostsController.ts` |
 | `db:get-posts-count-with-filters` | `DB.GET_POSTS_COUNT_WITH_FILTERS` | `z.tuple([ GetPostsSchema.pick({ artistId: true, filters: true }), ])` | yes | `PostsController` | `src/main/ipc/controllers/PostsController.ts` |
