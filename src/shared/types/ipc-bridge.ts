@@ -9,7 +9,7 @@
 import type { Artist, Post, Playlist } from "./db";
 import type { DownloadAllResult } from "./download";
 import type { DownloadAllRequest } from "../schemas/download";
-import type { ProviderId, StoredProviderId } from "../constants";
+import type { KnownStoredProviderId, ProviderId } from "../constants";
 import type { SearchResults } from "./providers";
 import type { AddArtistRequest, DeleteArtistResult } from "../schemas/artist";
 import type {
@@ -30,6 +30,8 @@ import type {
   PlaylistResolveTotal,
   PlaylistResolveTotalValue,
   GetPlaylistResolveTotalRequest,
+  CheckPlaylistNewerPostsRequest,
+  CheckPlaylistNewerPostsResult,
   ReleasePlaylistSnapshotRequest,
   ReorderPlaylistEntriesRequest,
   GetManualPlaylistMembershipForPostsRequest,
@@ -255,13 +257,20 @@ export interface IpcBridge {
   getPlaylistResolveTotal: (
     params: GetPlaylistResolveTotalRequest
   ) => Promise<PlaylistResolveTotalValue>;
+  /**
+   * Cheap feed probe: `{ hasNewer }` when a desc hybrid snapshot exists;
+   * `null` when the probe does not apply. Provider/DB errors reject.
+   */
+  checkPlaylistNewerPosts: (
+    params: CheckPlaylistNewerPostsRequest
+  ) => Promise<CheckPlaylistNewerPostsResult>;
   releasePlaylistSnapshot: (
     params: ReleasePlaylistSnapshotRequest
   ) => Promise<void>;
   getPlaylistsContainingPost: (
     postId: number,
     externalPostId?: number,
-    provider?: StoredProviderId
+    provider?: KnownStoredProviderId
   ) => Promise<number[]>;
   getManualPlaylistMembershipForPosts: (
     data: GetManualPlaylistMembershipForPostsRequest

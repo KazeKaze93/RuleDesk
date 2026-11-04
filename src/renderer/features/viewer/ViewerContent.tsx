@@ -32,6 +32,12 @@ import {
   DropdownMenuPortal,
   DropdownMenuSubContent,
 } from "../../components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../../components/ui/tooltip";
 import { toast } from "sonner";
 import { useViewerStore, type ViewerOrigin } from "../../store/viewerStore";
 import { ErrorCode } from "@shared/types/error-codes";
@@ -41,6 +47,7 @@ import { resolveErrorMessage } from "../../utils/error-message";
 import { AddToPlaylistModal } from "../../components/playlists/AddToPlaylistModal";
 import { useViewerController } from "./hooks/useViewerController";
 import { VIEWER_OVERLAY_Z, viewerOverlayClass } from "./viewer-layers";
+import { VIEWER_UPDATED_DATE_TOOLTIP } from "./viewer-date-labels";
 import { ViewerMedia } from "./ViewerMedia";
 import { TagsDrawer } from "./TagsDrawer";
 import { getRatingMeta } from "../../lib/rating";
@@ -499,22 +506,37 @@ export const ViewerContent = ({
               } else {
                 return null;
               }
-              
+
               // Validate date is not invalid
               if (isNaN(date.getTime())) {
                 return null;
               }
-              
+
+              const formattedDate = date.toLocaleString("en-US", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              });
+
               return (
-                <span className="text-xs text-white/70">
-                  {date.toLocaleString("en-US", {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </span>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span
+                        tabIndex={0}
+                        className="cursor-help text-xs text-white/70 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        title={VIEWER_UPDATED_DATE_TOOLTIP}
+                      >
+                        {formattedDate}
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent className={viewerOverlayClass()}>
+                      {VIEWER_UPDATED_DATE_TOOLTIP}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               );
             })()}
           </div>

@@ -19,6 +19,8 @@ export const PLAYLIST_HEADER_TOTAL_LOADING_ARIA_LABEL = "Loading total";
 export const PLAYLIST_HEADER_TOTAL_PREFIX = "Total: ";
 export const PLAYLIST_HEADER_LOWER_BOUND_SUFFIX = "+ posts";
 export const PLAYLIST_HEADER_ENTRIES_SUFFIX = " entries";
+export const PLAYLIST_HEADER_NEWER_POSTS_MESSAGE = "New posts available";
+export const PLAYLIST_HEADER_NEWER_POSTS_REFRESH_LABEL = "Refresh";
 
 export type PlaylistHeaderAiFilter = "all" | "hide" | "only";
 

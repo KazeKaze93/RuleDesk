@@ -34,6 +34,7 @@
 | `booru:resolve-tags` | `API.RESOLVE_TAGS` | `z.tuple([z.array(z.string().min(1)).max(100)])` | no | `SearchController` | `src/main/ipc/controllers/SearchController.ts` |
 | `booru:search` | `API.SEARCH_POSTS` | `z.tuple([SearchPostsSchema])` | no | `SearchController` | Provider search; auth/rate_limit errors surface as typed IPC errors to Browse UI. |
 | `db:add-artist` | `DB.ADD_ARTIST` | `z.tuple([AddArtistSchema])` | no | `ArtistsController` | `src/main/ipc/controllers/ArtistsController.ts` |
+| `db:check-playlist-newer-posts` | `DB.CHECK_PLAYLIST_NEWER_POSTS` | `z.tuple([CheckPlaylistNewerPostsSchema])` | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
 | `db:clear-manual-playlist` | `DB.CLEAR_MANUAL_PLAYLIST` | schema: see source (`ClearManualPlaylistSchema`) | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
 | `db:create-backup` | `BACKUP.CREATE` | `[]` (no args) | yes | `MaintenanceController` | Consistent SQLite snapshot via VACUUM INTO into RuleDesk-Backups/ (sibling of RuleDesk-Data). Opens the backup folder in the file explorer. Retention prune follows backupRetention. |
 | `db:create-playlist` | `DB.CREATE_PLAYLIST` | `z.tuple([CreatePlaylistSchema])` | yes | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
@@ -46,7 +47,7 @@
 | `db:get-playlist-posts` | `DB.GET_PLAYLIST_POSTS` | `z.tuple([GetPlaylistPostsSchema])` | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
 | `db:get-playlist-resolve-total` | `DB.GET_PLAYLIST_RESOLVE_TOTAL` | `z.tuple([GetPlaylistResolveTotalSchema])` | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
 | `db:get-playlists` | `DB.GET_PLAYLISTS` | `[]` (no args) | yes | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
-| `db:get-playlists-containing-post` | `DB.GET_PLAYLISTS_CONTAINING_POST` | `z.tuple([ z.number().int(), OptionalIdSchema, z.string().min(1).optional(), ])` | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
+| `db:get-playlists-containing-post` | `DB.GET_PLAYLISTS_CONTAINING_POST` | `z.tuple([ z.number().int(), OptionalIdSchema, z.enum(KNOWN_STORED_PROVIDER_IDS).optional(), ])` | no | `PlaylistController` | `src/main/ipc/controllers/PlaylistController.ts` |
 | `db:get-posts` | `DB.GET_POSTS` | `z.tuple([GetPostsSchema])` | yes | `PostsController` | Paginated posts with filters. Always limited — see MAX page size in PostsController. |
 | `db:get-posts-count` | `DB.GET_POSTS_COUNT` | `z.tuple([GetPostsCountSchema])` | yes | `PostsController` | `src/main/ipc/controllers/PostsController.ts` |
 | `db:get-posts-count-with-filters` | `DB.GET_POSTS_COUNT_WITH_FILTERS` | `z.tuple([ GetPostsSchema.pick({ artistId: true, filters: true }), ])` | yes | `PostsController` | `src/main/ipc/controllers/PostsController.ts` |
@@ -109,9 +110,9 @@
 
 ## Coverage
 
-- Channels in `channels.ts`: **95**
-- Channels with at least one scanned `handle` registration: **84**
-- Handler rows extracted: **84**
+- Channels in `channels.ts`: **96**
+- Channels with at least one scanned `handle` registration: **85**
+- Handler rows extracted: **85**
 
 ## Regenerating
 

@@ -19,6 +19,7 @@ import {
   ResolvePlaylistPostsSchema,
   ReorderPlaylistEntriesSchema,
   GetPlaylistResolveTotalSchema,
+  CheckPlaylistNewerPostsSchema,
   ReleasePlaylistSnapshotSchema,
   MAX_PLAYLIST_IMPORT_ENTRIES,
   PLAYLIST_ENTRIES_WRITE_CHUNK_SIZE,
@@ -31,6 +32,8 @@ import {
   type ResolvePlaylistPostsRequest,
   type ReorderPlaylistEntriesRequest,
   type GetPlaylistResolveTotalRequest,
+  type CheckPlaylistNewerPostsRequest,
+  type CheckPlaylistNewerPostsResult,
   type ReleasePlaylistSnapshotRequest,
   type PlaylistResolveTotalValue,
   type SmartPlaylistQuery,
@@ -52,7 +55,11 @@ import { hasAiGeneratedTag } from "../../../shared/ai-tags";
 import { buildPlaylistResolveTotal } from "../../../shared/playlist-resolve-total";
 import {
   EXTERNAL_ARTIST_ID,
+  isKnownStoredProviderId,
   isProviderId,
+  KNOWN_STORED_PROVIDER_IDS,
+  NEWER_POSTS_PROBE_LIMIT,
+  type KnownStoredProviderId,
   type ProviderId,
   type StoredProviderId,
 } from "../../../shared/constants";
@@ -84,6 +91,7 @@ import type { PlaylistResolveTotal } from "../../../shared/schemas/playlist";
 import {
   HybridRemoteSnapshotStore,
   createSnapshotSupersededError,
+  passesHybridWalkContentFilters,
   type HybridPost,
   type HybridSnapshot,
 } from "./playlist/hybrid-remote-snapshot-store";
@@ -97,11 +105,12 @@ const GetPlaylistPostsArgsSchema = z.tuple([GetPlaylistPostsSchema]);
 const ReorderPlaylistEntriesArgsSchema = z.tuple([ReorderPlaylistEntriesSchema]);
 const ResolvePlaylistPostsArgsSchema = z.tuple([ResolvePlaylistPostsSchema]);
 const GetPlaylistResolveTotalArgsSchema = z.tuple([GetPlaylistResolveTotalSchema]);
+const CheckPlaylistNewerPostsArgsSchema = z.tuple([CheckPlaylistNewerPostsSchema]);
 const ReleasePlaylistSnapshotArgsSchema = z.tuple([ReleasePlaylistSnapshotSchema]);
 const GetPlaylistsContainingPostArgsSchema = z.tuple([
   z.number().int(),
   OptionalIdSchema,
-  z.string().min(1).optional(),
+  z.enum(KNOWN_STORED_PROVIDER_IDS).optional(),
 ]);
 const ImportPlaylistArgsSchema = z.tuple([]);
 
@@ -656,6 +665,12 @@ export class PlaylistController extends BaseController {
       IPC_CHANNELS.DB.GET_PLAYLIST_RESOLVE_TOTAL,
       GetPlaylistResolveTotalArgsSchema,
       (event, params) => this.getPlaylistResolveTotal(event, params)
+    );
+
+    this.handle(
+      IPC_CHANNELS.DB.CHECK_PLAYLIST_NEWER_POSTS,
+      CheckPlaylistNewerPostsArgsSchema,
+      (event, params) => this.checkPlaylistNewerPosts(event, params)
     );
 
     this.handle(
@@ -1672,15 +1687,20 @@ export class PlaylistController extends BaseController {
     _event: IpcMainInvokeEvent,
     postId: number,
     externalPostId?: number,
-    provider?: StoredProviderId
+    provider?: KnownStoredProviderId
   ): Promise<number[]> {
     try {
       const db = getDb();
 
       let result: { playlistId: number }[];
-      if (postId <= 0 && externalPostId != null && externalPostId > 0 && provider) {
+      if (
+        postId <= 0 &&
+        externalPostId != null &&
+        externalPostId > 0 &&
+        provider !== undefined &&
+        isKnownStoredProviderId(provider)
+      ) {
         // External post from Browse: (EXTERNAL_ARTIST_ID, provider, postId)
-        // drizzle posts.provider enum is PROVIDER_IDS-only; StoredProviderId may be legacy → parameterized sql
         const rows = db
           .select({ playlistId: playlistEntries.playlistId })
           .from(playlistEntries)
@@ -1689,7 +1709,7 @@ export class PlaylistController extends BaseController {
             and(
               eq(posts.postId, externalPostId),
               eq(posts.artistId, EXTERNAL_ARTIST_ID),
-              sql`${posts.provider} = ${provider}`
+              eq(posts.provider, provider)
             )
           )
           .all();
@@ -2311,6 +2331,124 @@ export class PlaylistController extends BaseController {
       return total;
     } catch (error) {
       log.error(`[PlaylistController] Failed to get playlist resolve total for ${playlistId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Cheap probe: one unbound page-0 / `NEWER_POSTS_PROBE_LIMIT` fetch, compared
+   * to the snapshot's frozen `upperBoundPostId`. Returns null when there is no
+   * applicable snapshot (missing, non-desc request, random walk). A probe post
+   * counts only when it passes the same blacklist + mediaType gate as the
+   * hybrid walk (`passesHybridWalkContentFilters`); an all-filtered head yields
+   * `{ hasNewer: false }`. Provider / credential / DB failures throw (never
+   * `{ hasNewer: false }` on error).
+   */
+  private async checkPlaylistNewerPosts(
+    _event: IpcMainInvokeEvent,
+    params: CheckPlaylistNewerPostsRequest
+  ): Promise<CheckPlaylistNewerPostsResult> {
+    const { playlistId, filters, sortOrder = "desc" } = params;
+    const smartSortOrder = sortOrder === "position" ? "desc" : sortOrder;
+    if (smartSortOrder !== "desc") {
+      return null;
+    }
+
+    try {
+      const db = getDb();
+      const playlist = db
+        .select()
+        .from(playlists)
+        .where(eq(playlists.id, playlistId))
+        .limit(1)
+        .all()[0];
+      if (!playlist) {
+        throw new Error(`Playlist ${playlistId} not found`);
+      }
+      if (
+        !playlist.isSmart ||
+        !playlist.queryJson ||
+        playlist.queryJson.trim() === ""
+      ) {
+        return null;
+      }
+
+      const snapshotKey = buildHybridSnapshotKey({
+        playlistId,
+        queryJson: playlist.queryJson,
+        querySchemaVersion: playlist.querySchemaVersion,
+        mediaType: filters?.mediaType,
+        sortOrder: smartSortOrder,
+      });
+      this.hybridSnapshots.evictIdle();
+      const snapshot = this.hybridSnapshots.get(snapshotKey);
+      if (snapshot === undefined || snapshot.isRandom) {
+        return null;
+      }
+
+      const scope = this.buildSmartPlaylistScope(
+        playlist,
+        this.buildGlobalFilterConditions(filters)
+      );
+      if (scope === null) {
+        return null;
+      }
+
+      const apiSettings = await getDecryptedApiSettings(db);
+      if (!apiSettings) {
+        throw createCodedError(
+          "Cannot check newer playlist posts: credentials missing or unavailable",
+          ErrorCode.AUTH_ERROR
+        );
+      }
+
+      const blacklistedTags = new Set(
+        getAllBlacklistedTags()
+          .map((tag) => tag.trim().toLowerCase())
+          .filter(Boolean)
+      );
+      const walkFilters = {
+        blacklistedTags,
+        mediaType: filters?.mediaType,
+      };
+
+      const provider = getProvider(scope.providerId);
+      const booruQuery = this.buildBooruQueryString(scope.query);
+      const { posts: probePosts } = await provider.fetchPosts(
+        booruQuery,
+        0,
+        {
+          userId: apiSettings.userId,
+          apiKey: apiSettings.apiKey,
+        },
+        false,
+        NEWER_POSTS_PROBE_LIMIT
+      );
+
+      // Prefer explicit freeze bound; gallery often omits upperBoundPostId on
+      // resolve, so fall back to the highest booru id already in the snapshot.
+      let upperBound = snapshot.upperBoundPostId;
+      if (upperBound === undefined) {
+        for (const remote of snapshot.remotePosts) {
+          if (upperBound === undefined || remote.postId > upperBound) {
+            upperBound = remote.postId;
+          }
+        }
+      }
+      if (upperBound === undefined) {
+        return { hasNewer: false };
+      }
+      const hasNewer = probePosts.some(
+        (post) =>
+          post.id > upperBound &&
+          passesHybridWalkContentFilters(post, walkFilters)
+      );
+      return { hasNewer };
+    } catch (error) {
+      log.error(
+        `[PlaylistController] Failed to check newer playlist posts for ${playlistId}:`,
+        error
+      );
       throw error;
     }
   }

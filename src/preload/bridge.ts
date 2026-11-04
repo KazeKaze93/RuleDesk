@@ -12,6 +12,7 @@ import type {
   GetPlaylistPostsRequest,
   ResolvePlaylistPostsRequest,
   GetPlaylistResolveTotalRequest,
+  CheckPlaylistNewerPostsRequest,
   ReleasePlaylistSnapshotRequest,
   ReorderPlaylistEntriesRequest,
   GetManualPlaylistMembershipForPostsRequest,
@@ -25,7 +26,10 @@ import type {
   UpdateStatusData,
   DownloadProgressData,
 } from "../shared/types/ipc-bridge";
-import type { ProviderId, StoredProviderId } from "../shared/constants";
+import type {
+  KnownStoredProviderId,
+  ProviderId,
+} from "../shared/constants";
 
 export type {
   IpcBridge,
@@ -304,12 +308,14 @@ const ipcBridge: IpcBridge = {
     invokeIpc(IPC_CHANNELS.DB.RESOLVE_PLAYLIST_POSTS, params),
   getPlaylistResolveTotal: (params: GetPlaylistResolveTotalRequest) =>
     invokeIpc(IPC_CHANNELS.DB.GET_PLAYLIST_RESOLVE_TOTAL, params),
+  checkPlaylistNewerPosts: (params: CheckPlaylistNewerPostsRequest) =>
+    invokeIpc(IPC_CHANNELS.DB.CHECK_PLAYLIST_NEWER_POSTS, params),
   releasePlaylistSnapshot: (params: ReleasePlaylistSnapshotRequest) =>
     invokeIpc(IPC_CHANNELS.DB.RELEASE_PLAYLIST_SNAPSHOT, params),
   getPlaylistsContainingPost: (
     postId: number,
     externalPostId?: number,
-    provider?: StoredProviderId
+    provider?: KnownStoredProviderId
   ) =>
     invokeIpc(
       IPC_CHANNELS.DB.GET_PLAYLISTS_CONTAINING_POST,

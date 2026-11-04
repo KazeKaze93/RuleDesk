@@ -118,6 +118,42 @@ function buildRemoteHybridPost(
   };
 }
 
+/** Minimal post shape for walk + newer-posts probe content filters. */
+export type HybridWalkFilterablePost = {
+  tags: ReadonlyArray<string>;
+  fileUrl: string;
+};
+
+/**
+ * Blacklist + mediaType gate shared by the hybrid walk and
+ * `checkPlaylistNewerPosts`. Does not apply upperBound / dedupe.
+ */
+export function passesHybridWalkContentFilters(
+  post: HybridWalkFilterablePost,
+  params: Pick<HybridWalkParams, "blacklistedTags" | "mediaType">
+): boolean {
+  if (
+    params.blacklistedTags.size > 0 &&
+    post.tags.some((tag) =>
+      params.blacklistedTags.has(tag.trim().toLowerCase())
+    )
+  ) {
+    return false;
+  }
+
+  if (params.mediaType) {
+    const isVideo = isVideoUrl(post.fileUrl);
+    if (params.mediaType === "videos" && !isVideo) {
+      return false;
+    }
+    if (params.mediaType === "images" && isVideo) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 /**
  * Bounded owner of hybrid smart-playlist remote walks (one active snapshot per
  * playlist, at most `MAX_HYBRID_SNAPSHOTS`, idle ones dropped after
@@ -336,23 +372,8 @@ export class HybridRemoteSnapshotStore {
             continue;
           }
 
-          if (
-            params.blacklistedTags.size > 0 &&
-            post.tags.some((tag) =>
-              params.blacklistedTags.has(tag.trim().toLowerCase())
-            )
-          ) {
+          if (!passesHybridWalkContentFilters(post, params)) {
             continue;
-          }
-
-          if (params.mediaType) {
-            const isVideo = isVideoUrl(post.fileUrl);
-            if (params.mediaType === "videos" && !isVideo) {
-              continue;
-            }
-            if (params.mediaType === "images" && isVideo) {
-              continue;
-            }
           }
 
           if (seenPostIds.has(post.id)) {

@@ -109,8 +109,8 @@ This is the sandboxed browser environment. It handles presentation.
 The application is organized into the following main sections accessible via the Sidebar:
 
 - **Updates** - View new posts from tracked artists
-- **Browse (All posts)** - Search the live booru API with chip-based tags, infinite scroll, and advanced filters; Favorites / Since tracked modes search the local cache (Since tracked on Browse only; artist galleries show All + Favorites)
-- **Favorites** - Local favorites only. There is no booru account-favorites sync path
+- **Browse (All posts)** - Search the live booru API with chip-based tags, infinite scroll, and advanced filters; Favorites / Since tracked modes search the local cache (Since tracked also on artist galleries)
+- **Favorites** - Local favorites only, with **Download all favorites**. There is no booru account-favorites sync path
 - **Playlists (Collections)** - Create and manage curated collections of posts
 - **Statistics** - Extended local metrics and distribution charts (counts, pie charts, top artists/tags, provider artist split, DB size)
 - **Tracked (Artists/Tags management)** - Manage tracked artists and tags
@@ -291,7 +291,7 @@ The application is stable and production-ready (see **`package.json`** → `vers
 - ✅ **Search Functionality:** Local artist search, remote tag search via booru autocomplete API, and direct booru search (`searchBooru` method) with tag resolution (`resolveTags`, `resolveCharacterTags`, `resolveCopyrightTags`)
 - ✅ **Sidebar Navigation:** Persistent grouped sidebar structure (Discover / Library / System) with the current shipped IA.
 - ✅ **Global Top Bar:** Search (chip-based include/exclude with OR-group tokens), syntax-help popover, `FiltersPanel` (AI, media, source), dedicated date sort control, view toggle; Sidebar owns the sync indicator
-- ✅ **Advanced Filtering:** Filter by AI-generated tags, media type (image/video), and source (Browse: all / favorites / Since tracked; artist gallery: all / favorites)
+- ✅ **Advanced Filtering:** Filter by AI-generated tags, media type (image/video), and source (Browse and artist gallery: all / favorites / Since tracked)
 - ✅ **Sorting:** Sort by date order (newest/oldest) across main feeds
 - ✅ **View Modes:** Grid (virtualized) and masonry (CSS columns) are both shipped and user-selectable.
   *Trade-off remains intentional: masonry prioritizes visual layout over full virtualization on huge feeds.*
@@ -389,7 +389,9 @@ Current priority is roadmap parity and UX polish on top of already shipped core 
 
 - ✅ **Global top bar** — `GlobalTopBar.tsx` + `FiltersPanel` (AI, media, source) and separate date sort control
 - ✅ **AI / media / source** — Backed by `searchStore` and post queries
-- ✅ **Source on Browse / artist galleries** — Favorites / Since tracked (value `subscriptions`) require a tag query on Browse when using those modes (`SourceSwitcher`); **intentional** (see [roadmap](./docs/roadmap.md#closed-by-design-not-backlog)). **Since tracked** is Browse-only; artist galleries offer All + Favorites (ArtistGallery does not pass `sinceTracking`). Source is hidden on Tracked list, Favorites, Updates, and Playlists. Local modes apply AI/media in SQL before pagination. Since tracked is `sinceTracking` (join by artist + publish date), not tag-intersection. Distinct from tag-combination subscriptions (**Closed — superseded by smart playlists (`is_smart`/`query_json`); no separate entity built (2026-09-12 backlog audit)**). Remote Source: All AI hide/only on **Rule34** is injected into the booru tag query. Remote Videos / Images inject the live-verified `video` / `-video` tag on Rule34.
+- ✅ **Source on Browse / artist galleries** — Favorites / Since tracked (value `subscriptions`) require a tag query on Browse when using those modes (`SourceSwitcher`); **intentional** (see [roadmap](./docs/roadmap.md#closed-by-design-not-backlog)). **Since tracked** is available on Browse and artist galleries (`sinceTracking` join). Source is hidden on Tracked list, Favorites, Updates, and Playlists. Local modes apply AI/media in SQL before pagination. Distinct from tag-combination subscriptions (**Closed — superseded by smart playlists**). Remote Source: All AI hide/only on **Rule34** is injected into the booru tag query. Remote Videos / Images inject the live-verified `video` / `-video` tag on Rule34.
+- ✅ **Smart collection newer-posts banner** — desc smart galleries probe for newer remote ids and offer Refresh.
+- ✅ **Viewer date label** — **Updated** with tooltip that Rule34 reports last change time, not upload time.
 - 🟡 **View modes** — Grid (`VirtuosoGrid`) vs masonry (CSS columns); different scaling behavior on huge lists
 - ✅ **FTS5** — Tag search where integrated in browse/search flows
 
@@ -403,7 +405,7 @@ Current priority is roadmap parity and UX polish on top of already shipped core 
 - ✅ **Download Handler:** Downloads run in Main Process with progress tracking
 - ✅ **Progress Events:** Real-time download progress via IPC events (`onDownloadProgress`)
 - ✅ **File Management:** Open downloaded file in folder (`openFileInFolder`)
-- ✅ **Batch download:** "Download all" flows for galleries and lists (rate-limited; see Settings for folder behavior)
+- ✅ **Batch download:** "Download all" for artist galleries, Favorites (`kind: "favorites"`), and explicit lists (rate-limited; see Settings for folder behavior)
 - ✅ **Settings:** Default download folder and duplicate/structure options in **Settings**
 
 ### C. Playlists / Collections ✅ Implemented

@@ -1549,6 +1549,24 @@ if (result.success && result.path) {
 
 ---
 
+### `downloadAll(request)`
+
+Mass-download entry. Discriminated on `kind` (`DownloadAllRequestSchema`):
+
+| `kind` | Selection |
+|--------|-----------|
+| `"artist"` | Local DB cursor for `artistId` (+ optional `filters`, including `sinceTracking`) |
+| `"favorites"` | Local DB cursor for `isFavorited = true` (+ optional `filters`) |
+| `"list"` | Explicit `{ url, filename }[]` (capped by `BATCH_DOWNLOAD_LIST_MAX_FILES`) |
+
+Artist and favorites share the same cursor contract: snapshot `{ upperBoundId: max(posts.id), total }` then chunks `id > cursor AND id <= upperBound`. Target is only the SQL condition. Favorites currently do not persist a resume queue file (in-session only).
+
+**Returns:** `Promise<DownloadAllResult>` (`downloaded`, `failed[]`, `canceled`, …). Progress via `onDownloadAllProgress`.
+
+**IPC Channel:** `files:download-all` (see `IPC_CHANNELS.FILES`)
+
+---
+
 ### `openFileInFolder(path: string)`
 
 Opens the file system folder containing the specified file and highlights the file.
@@ -1581,6 +1599,7 @@ Playlist APIs are handled by `PlaylistController` and use shared Zod schemas fro
 - `getPlaylistPosts(params)` -> Fetch static playlist posts with filters/sort. When `isRandom` is true, pass optional `seed` (and reuse it on later pages) for a stable shuffle; a new seed starts a new shuffle.
 - `resolvePlaylistPosts(params)` -> Resolve static or smart playlist posts. Returns `{ posts, total }`: `posts` is the page slice (not AI-filtered); `total` is `{ count, aiCount, kind: "exact" | "lowerBound" }` when the hybrid remote walk has finished, or `null` for manual playlists / while the walk is still running / on unknown. `aiCount` is the number of window posts matching shared `hasAiGeneratedTag` — the gallery applies AI hide/only on the client and derives the header count from `count`/`aiCount` without re-fetching. Local `isRandom` ordering uses the same optional `seed` contract as `getPlaylistPosts` / `getPosts`. Ordered smart/hybrid walks accept optional `upperBoundPostId` on page 1 (omit / page 1 for a new feed snapshot).
 - `getPlaylistResolveTotal(params)` -> Wait for the current hybrid snapshot walk for `playlistId` (+ same `filters.mediaType` / `sortOrder` as resolve) and return the non-null window total. Does not start a second walk. Missing / superseded / released snapshot → typed `ErrorCode.SNAPSHOT_SUPERSEDED`.
+- `checkPlaylistNewerPosts({ playlistId, filters?, sortOrder })` -> `{ hasNewer: boolean } | null`. One unbound `fetchPosts` (page 0, limit `NEWER_POSTS_PROBE_LIMIT`, same tags **without** `id:<=`) compared to the live hybrid snapshot upper bound (explicit `upperBoundPostId` or max remote `postId` in the snapshot). `hasNewer` is true only when a probe post with `id > upperBound` also passes the same blacklist + `mediaType` gate as the hybrid walk. Returns `null` when there is no applicable snapshot, request sort is not desc, or the snapshot is random. Provider/auth failures throw — never mapped to `{ hasNewer: false }`.
 - `releasePlaylistSnapshot({ playlistId })` -> Abort and drop the hybrid snapshot for that playlist (gallery unmount).
 - `getPlaylistsContainingPost(postId, rule34PostId?)` -> Check membership for local/external posts
 - `exportPlaylist(playlistId)` / `importPlaylist()` -> JSON transfer via native file dialogs

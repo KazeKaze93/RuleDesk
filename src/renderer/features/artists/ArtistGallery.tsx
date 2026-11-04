@@ -41,7 +41,6 @@ const {
   GridItemContainer,
   MasonryItemContainer,
   GridVirtuosoList,
-  MasonryVirtuosoList,
 } = createVirtuosoGridFactories("ArtistGallery");
 
 export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
@@ -78,6 +77,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
           aiFilter: aiFilter === "all" ? undefined : aiFilter,
           mediaType: mediaType === "all" ? undefined : mediaType,
           isFavorited: source === "favorites" ? true : undefined,
+          sinceTracking: source === "subscriptions" ? true : undefined,
         },
       });
       return count;
@@ -111,6 +111,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
           aiFilter: aiFilter === "all" ? undefined : aiFilter,
           mediaType: mediaType === "all" ? undefined : mediaType,
           isFavorited: source === "favorites" ? true : undefined,
+          sinceTracking: source === "subscriptions" ? true : undefined,
         },
       });
     },
@@ -126,8 +127,6 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
   );
 
   const listAriaBusy = isLoading || isFetchingNextPage;
-  const ListComponent = viewType === "masonry" ? MasonryVirtuosoList : GridVirtuosoList;
-  const ItemComponent = viewType === "masonry" ? MasonryItemContainer : GridItemContainer;
 
   const viewMutation = useMutation({
     mutationFn: async (postId: number) => {
@@ -235,6 +234,7 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
         aiFilter: aiFilter === "all" ? undefined : aiFilter,
         mediaType: mediaType === "all" ? undefined : mediaType,
         isFavorited: source === "favorites" ? true : undefined,
+        sinceTracking: source === "subscriptions" ? true : undefined,
       },
     }),
     [artist.id, aiFilter, mediaType, source]
@@ -398,8 +398,8 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
               endReached={handleEndReached}
               increaseViewportBy={600}
               components={{
-                List: ListComponent,
-                Item: ItemComponent,
+                List: GridVirtuosoList,
+                Item: GridItemContainer,
                 Footer: () =>
                   isFetchingNextPage ? (
                     <div className="flex col-span-full justify-center py-4 w-full">

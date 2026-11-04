@@ -87,7 +87,6 @@ const {
   GridItemContainer,
   MasonryItemContainer,
   GridVirtuosoList,
-  MasonryVirtuosoList,
 } = createVirtuosoGridFactories("Browse");
 
 // --- Main component ---
@@ -352,8 +351,6 @@ export const Browse = () => {
     : resolveErrorMessage(searchError, "Failed to load posts.");
 
   const listAriaBusy = isLoading || isFetchingNextPage || workerLoading;
-  const ListComponent = viewType === "masonry" ? MasonryVirtuosoList : GridVirtuosoList;
-  const ItemComponent = viewType === "masonry" ? MasonryItemContainer : GridItemContainer;
 
   const handleLoadMore = useCallback(async () => {
     if (hasNextPage && !isFetchingNextPage) {
@@ -640,8 +637,8 @@ export const Browse = () => {
               endReached={handleEndReached}
               increaseViewportBy={600}
               components={{
-                List: ListComponent,
-                Item: ItemComponent,
+                List: GridVirtuosoList,
+                Item: GridItemContainer,
                 Footer: () =>
                   isFetchingNextPage ? (
                     <div className="flex col-span-full justify-center py-4 w-full">

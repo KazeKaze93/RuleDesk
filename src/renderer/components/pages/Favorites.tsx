@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useEffect } from "react";
 import {
   useInfiniteQuery,
+  useQuery,
   useQueryClient,
   useMutation,
   InfiniteData,
@@ -41,8 +42,11 @@ import { getErrorCode } from "../../../shared/utils/type-guards";
 import { createVirtuosoGridFactories } from "../gallery/virtuoso-factories";
 import { GalleryLoadError } from "../gallery/GalleryLoadError";
 import { useMasonryInfiniteScroll } from "../../hooks/useMasonryInfiniteScroll";
+import { useDownloadAllFromBackend } from "../../hooks/useDownloadAll";
+import { DownloadAllButton } from "../downloads/DownloadAllButton";
 import { resolveErrorMessage } from "../../utils/error-message";
 import { POSTS_PAGE_SIZE } from "../../../shared/constants";
+import type { PostFilterRequest } from "@shared/schemas/post";
 
 const FAVORITES_EMPTY_NONE_TITLE = "No favorites yet";
 const FAVORITES_EMPTY_NONE_HINT =
@@ -52,6 +56,28 @@ const FAVORITES_EMPTY_FILTERED_TITLE =
   "No favorites match the current filters";
 const FAVORITES_EMPTY_CLEAR_FILTERS_LABEL = "Clear filters";
 const BROWSE_PATH = "/browse";
+
+/**
+ * Shared filter object for favorites mass-download and count IPC.
+ * Tags / aiFilter / mediaType must stay identical for both callers.
+ */
+const buildFavoritesMassFilters = (
+  tags: string[],
+  aiFilter: "all" | "hide" | "only",
+  mediaType: "all" | "images" | "videos"
+): PostFilterRequest => {
+  const filters: PostFilterRequest = {};
+  if (tags.length > 0) {
+    filters.tags = tags.join(" ");
+  }
+  if (aiFilter !== "all") {
+    filters.aiFilter = aiFilter;
+  }
+  if (mediaType !== "all") {
+    filters.mediaType = mediaType;
+  }
+  return filters;
+};
 
 const shouldIncludePostInFavoritesQueue = (
   post: Post,
@@ -77,7 +103,6 @@ const {
   GridItemContainer,
   MasonryItemContainer,
   GridVirtuosoList,
-  MasonryVirtuosoList,
 } = createVirtuosoGridFactories("Favorites");
 
 // --- Main component ---
@@ -218,8 +243,51 @@ export const Favorites = () => {
   );
 
   const listAriaBusy = isLoading || isFetchingNextPage;
-  const ListComponent = viewType === "masonry" ? MasonryVirtuosoList : GridVirtuosoList;
-  const ItemComponent = viewType === "masonry" ? MasonryItemContainer : GridItemContainer;
+
+  const downloadFilters = useMemo(
+    () => buildFavoritesMassFilters(tags, aiFilter, mediaType),
+    [tags, aiFilter, mediaType]
+  );
+
+  // Prefix ["posts","favorites"] so favorite toggles / bulk-remove invalidate this too.
+  const {
+    data: favoritesDownloadCount,
+    isSuccess: isFavoritesDownloadCountReady,
+  } = useQuery({
+    queryKey: ["posts", "favorites", "count", tags, aiFilter, mediaType],
+    queryFn: async () =>
+      await window.api.getPostsCountWithFilters({
+        filters: {
+          ...downloadFilters,
+          isFavorited: true,
+        },
+      }),
+    retry: false,
+  });
+
+  // N = DB count with the same filters as download kind "favorites" (not loaded pages).
+  const favoritesCountLabel = isFavoritesDownloadCountReady
+    ? favoritesDownloadCount
+    : "";
+  const favoritesDownloadTotal =
+    isFavoritesDownloadCountReady && typeof favoritesDownloadCount === "number"
+      ? favoritesDownloadCount
+      : 0;
+
+  const {
+    downloadAll,
+    cancel,
+    pause,
+    resume,
+    isDownloading: isDownloadingAll,
+    isPaused,
+    progress: downloadAllProgress,
+    lastFailures,
+    canDownload,
+  } = useDownloadAllFromBackend(
+    { kind: "favorites", filters: downloadFilters },
+    favoritesDownloadTotal
+  );
 
   const viewMutation = useMutation({
     mutationFn: async (postId: number) => {
@@ -362,28 +430,45 @@ export const Favorites = () => {
                 : undefined
             }
             actions={
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      type="button"
-                      variant={isBulkMode ? "default" : "outline"}
-                      size="icon"
-                      aria-label="Toggle bulk selection mode"
-                      onClick={() => {
-                        if (isBulkMode) {
-                          deactivateBulkMode();
-                          return;
-                        }
-                        activateBulkMode();
-                      }}
-                    >
-                      <CheckSquare className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Bulk selection</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <div className="flex items-center gap-2">
+                <DownloadAllButton
+                  onClick={() => {
+                    void downloadAll();
+                  }}
+                  onCancel={cancel}
+                  onPause={pause}
+                  onResume={resume}
+                  isDownloading={isDownloadingAll}
+                  isPaused={isPaused}
+                  progress={downloadAllProgress}
+                  canDownload={canDownload}
+                  totalLabel={favoritesCountLabel}
+                  labelMode="favorites"
+                  failures={lastFailures}
+                />
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant={isBulkMode ? "default" : "outline"}
+                        size="icon"
+                        aria-label="Toggle bulk selection mode"
+                        onClick={() => {
+                          if (isBulkMode) {
+                            deactivateBulkMode();
+                            return;
+                          }
+                          activateBulkMode();
+                        }}
+                      >
+                        <CheckSquare className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Bulk selection</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
             }
           />
         </div>
@@ -493,8 +578,8 @@ export const Favorites = () => {
               endReached={triggerLoadMore}
               increaseViewportBy={600}
               components={{
-                List: ListComponent,
-                Item: ItemComponent,
+                List: GridVirtuosoList,
+                Item: GridItemContainer,
                 Footer: () =>
                   isFetchingNextPage ? (
                     <div className="flex col-span-full justify-center py-4 w-full">

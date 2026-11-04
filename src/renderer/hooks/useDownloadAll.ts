@@ -117,9 +117,43 @@ export function useDownloadAll(posts: Post[]) {
   };
 }
 
-/** Artist Library: uncapped cursor download by posts.id (filter + snapshot). */
+/** Uncapped cursor download target: artist library or all favorites. */
+export type DownloadAllBackendTarget =
+  | { kind: "artist"; artistId: number; filters?: PostFilterRequest }
+  | { kind: "favorites"; filters?: PostFilterRequest };
+
+/**
+ * Accepts an explicit target, or a GetPostsRequest-like artist scope
+ * (ArtistGallery / useDownloadAllWithFilters compatibility).
+ */
+export type DownloadAllFromBackendInput =
+  | DownloadAllBackendTarget
+  | Pick<GetPostsRequest, "artistId" | "filters">
+  | (GetPostsRequest & { artistId?: number })
+  | null;
+
+function resolveDownloadAllBackendTarget(
+  input: DownloadAllFromBackendInput
+): DownloadAllBackendTarget | null {
+  if (!input) {
+    return null;
+  }
+  if ("kind" in input) {
+    return input;
+  }
+  if (input.artistId == null) {
+    return null;
+  }
+  return {
+    kind: "artist",
+    artistId: input.artistId,
+    filters: input.filters,
+  };
+}
+
+/** Artist Library / Favorites: uncapped cursor download by posts.id (filter + snapshot). */
 export function useDownloadAllFromBackend(
-  fetchParams: GetPostsRequest | null,
+  targetInput: DownloadAllFromBackendInput,
   totalCount: number
 ) {
   const [isDownloading, setIsDownloading] = useState(false);
@@ -137,19 +171,25 @@ export function useDownloadAllFromBackend(
   }, [isDownloading]);
 
   const downloadAll = async () => {
-    if (!fetchParams?.artistId) return;
+    const target = resolveDownloadAllBackendTarget(targetInput);
+    if (!target) return;
     setIsDownloading(true);
     setGlobalDownloading(true);
     setIsPaused(false);
     setLastFailures([]);
     setProgress({ done: 0, total: totalCount });
     try {
-      const filters: PostFilterRequest | undefined = fetchParams.filters;
-      const result = await window.api.downloadAll({
-        kind: "artist",
-        artistId: fetchParams.artistId,
-        filters,
-      });
+      const result =
+        target.kind === "artist"
+          ? await window.api.downloadAll({
+              kind: "artist",
+              artistId: target.artistId,
+              filters: target.filters,
+            })
+          : await window.api.downloadAll({
+              kind: "favorites",
+              filters: target.filters,
+            });
       setLastFailures(result.failed);
       log.info(
         `[useDownloadAllFromBackend] Done: ${result.downloaded} ok, ${result.failed.length} failed, canceled=${result.canceled}`

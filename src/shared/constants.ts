@@ -72,6 +72,17 @@ export function isProviderId(value: string): value is ProviderId {
   return false;
 }
 
+export function isKnownStoredProviderId(
+  value: string
+): value is KnownStoredProviderId {
+  for (const id of KNOWN_STORED_PROVIDER_IDS) {
+    if (id === value) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /**
  * Artist Types
  *
@@ -128,6 +139,12 @@ export const MAX_HYBRID_SNAPSHOTS = 3;
 
 /** A hybrid snapshot untouched for this long is dropped. */
 export const HYBRID_SNAPSHOT_IDLE_TTL_MS = 5 * 60 * 1000;
+
+/**
+ * Page size for `checkPlaylistNewerPosts` probe. Newest posts may be
+ * blacklisted/filtered; one request still covers a short head of the feed.
+ */
+export const NEWER_POSTS_PROBE_LIMIT = 20;
 
 /**
  * Max post ids accepted by `updates:markSeenByIds` in one IPC call.

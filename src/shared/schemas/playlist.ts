@@ -374,6 +374,33 @@ export type GetPlaylistResolveTotalRequest = z.infer<
   typeof GetPlaylistResolveTotalSchema
 >;
 
+/**
+ * Probe whether the provider feed has posts newer than the hybrid snapshot's
+ * frozen upper bound. Returns null when the probe does not apply (no snapshot,
+ * non-desc sort, random walk). `filters.mediaType` keys the snapshot and is
+ * reapplied with the blacklist via `passesHybridWalkContentFilters` on the
+ * probe page (`NEWER_POSTS_PROBE_LIMIT`).
+ */
+export const CheckPlaylistNewerPostsSchema = z.object({
+  playlistId: IdSchema,
+  filters: PostFiltersSchema.optional(),
+  sortOrder: z.enum(["asc", "desc", "position"]).optional().default("desc"),
+});
+
+export type CheckPlaylistNewerPostsRequest = z.infer<
+  typeof CheckPlaylistNewerPostsSchema
+>;
+
+export const CheckPlaylistNewerPostsResultSchema = z
+  .object({
+    hasNewer: z.boolean(),
+  })
+  .nullable();
+
+export type CheckPlaylistNewerPostsResult = z.infer<
+  typeof CheckPlaylistNewerPostsResultSchema
+>;
+
 /** Drops the hybrid snapshot held for a playlist (gallery unmount / playlist switch). */
 export const ReleasePlaylistSnapshotSchema = z.object({
   playlistId: IdSchema,

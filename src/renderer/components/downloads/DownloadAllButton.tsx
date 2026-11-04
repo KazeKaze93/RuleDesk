@@ -15,6 +15,16 @@ const ALL_IDLE_LABEL = (count: string | number): string =>
   `Download All (${count})`;
 const ALL_IDLE_HELP = (count: string | number): string =>
   `Download ${count} files`;
+const FAVORITES_IDLE_LABEL_PENDING = "Download all favorites";
+const FAVORITES_IDLE_HELP_PENDING = "Download all favorited posts";
+const FAVORITES_IDLE_LABEL = (count: string | number): string =>
+  count === ""
+    ? FAVORITES_IDLE_LABEL_PENDING
+    : `Download all favorites (${count})`;
+const FAVORITES_IDLE_HELP = (count: string | number): string =>
+  count === ""
+    ? FAVORITES_IDLE_HELP_PENDING
+    : `Download ${count} favorited posts`;
 
 export interface DownloadAllButtonProps {
   onClick: () => void;
@@ -27,9 +37,10 @@ export interface DownloadAllButtonProps {
   canDownload: boolean;
   totalLabel: string | number;
   /**
-   * Idle button label mode. Artist library uses "all"; loaded UI slices use "loaded".
+   * Idle button label mode. Artist library uses "all"; Favorites uses
+   * "favorites"; loaded UI slices use "loaded".
    */
-  labelMode?: "all" | "loaded";
+  labelMode?: "all" | "loaded" | "favorites";
   failures?: DownloadFailure[];
   size?: "default" | "sm";
   className?: string;
@@ -57,13 +68,17 @@ export const DownloadAllButton: React.FC<DownloadAllButtonProps> = ({
   const idleLabel =
     labelMode === "loaded"
       ? LOADED_IDLE_LABEL(totalLabel)
-      : ALL_IDLE_LABEL(totalLabel);
+      : labelMode === "favorites"
+        ? FAVORITES_IDLE_LABEL(totalLabel)
+        : ALL_IDLE_LABEL(totalLabel);
   const idleTitle =
     disabled && isAnyDownloadActive
       ? DOWNLOAD_IN_PROGRESS_TITLE
       : labelMode === "loaded"
         ? LOADED_IDLE_HELP(totalLabel)
-        : ALL_IDLE_HELP(totalLabel);
+        : labelMode === "favorites"
+          ? FAVORITES_IDLE_HELP(totalLabel)
+          : ALL_IDLE_HELP(totalLabel);
 
   return (
     <div className={cn("flex flex-col gap-1", className)}>

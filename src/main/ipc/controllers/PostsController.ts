@@ -69,6 +69,18 @@ import {
 
 type AppDatabase = BetterSQLite3Database<typeof schema>;
 
+/** Cursor mass-download target: artist-scoped or all favorites. */
+export type MassDownloadTarget =
+  | {
+      kind: "artist";
+      artistId: number;
+      filters?: PostFilterRequest;
+    }
+  | {
+      kind: "favorites";
+      filters?: PostFilterRequest;
+    };
+
 /**
  * IPC-safe Post type with Date fields converted to numbers (timestamps in milliseconds).
  * Required for Electron 39+ IPC serialization compatibility.
@@ -256,7 +268,6 @@ export class PostsController extends BaseController {
     // SECURITY: Always use EXTERNAL_ARTIST_ID, never trust artistId from Renderer
     // This handles external posts from Browse (artistId = EXTERNAL_ARTIST_ID)
     if (!existingPost && postData) {
-      // drizzle posts.provider enum is PROVIDER_IDS-only; KnownStoredProviderId includes legacy → parameterized sql
       existingPost = tx
         .select()
         .from(posts)
@@ -264,7 +275,7 @@ export class PostsController extends BaseController {
           and(
             eq(posts.postId, postData.postId),
             eq(posts.artistId, EXTERNAL_ARTIST_ID),
-            sql`${posts.provider} = ${postData.provider}`
+            eq(posts.provider, postData.provider)
           )
         )
         .limit(1)
@@ -479,14 +490,56 @@ export class PostsController extends BaseController {
   }
 
   /**
-   * Snapshot for artist mass-download: MAX(id) and COUNT under filters.
-   * upperBoundId freezes the walk so sync inserts with higher ids are deferred.
+   * Resolve artist scope + filters for mass-download targets.
+   * Favorites always force isFavorited=true (kind owns that gate).
    */
-  public snapshotArtistMassDownload(
-    artistId: number,
-    filters: PostFilterRequest | undefined
+  private resolveMassDownloadScope(target: MassDownloadTarget): {
+    artistId: number | undefined;
+    filters: PostFilterRequest | undefined;
+  } {
+    if (target.kind === "artist") {
+      return { artistId: target.artistId, filters: target.filters };
+    }
+    return {
+      artistId: undefined,
+      filters: {
+        ...target.filters,
+        isFavorited: true,
+      },
+    };
+  }
+
+  /**
+   * Snapshot for mass-download: MAX(id) and COUNT under target filters.
+   * upperBoundId freezes the walk so sync inserts with higher ids are deferred.
+   * When filters.sinceTracking is set, uses the same updates-feed join/scope as getPosts.
+   */
+  public snapshotMassDownload(
+    target: MassDownloadTarget
   ): { upperBoundId: number; total: number } {
     const db = getDb();
+    const { artistId, filters } = this.resolveMassDownloadScope(target);
+
+    if (filters?.sinceTracking === true) {
+      const { where, joinOn } = this.buildUpdatesFeedQueryScope(
+        artistId,
+        filters
+      );
+      const row = db
+        .select({
+          upperBoundId: max(posts.id),
+          total: count(),
+        })
+        .from(posts)
+        .innerJoin(artists, joinOn)
+        .where(where)
+        .get();
+      return {
+        upperBoundId: row?.upperBoundId ?? 0,
+        total: row?.total ?? 0,
+      };
+    }
+
     const conditions = this.buildPostFilterConditions(artistId, filters);
     const whereClause =
       conditions.length > 0 ? and(...conditions) : undefined;
@@ -498,14 +551,94 @@ export class PostsController extends BaseController {
       .from(posts)
       .where(whereClause)
       .get();
-    const upperBoundId = row?.upperBoundId ?? 0;
-    const total = row?.total ?? 0;
-    return { upperBoundId, total };
+    return {
+      upperBoundId: row?.upperBoundId ?? 0,
+      total: row?.total ?? 0,
+    };
   }
 
   /**
-   * Next chunk for artist mass-download: id > cursorId AND id <= upperBoundId, ORDER BY id ASC.
+   * Next mass-download chunk: id > cursorId AND id <= upperBoundId, ORDER BY id ASC.
+   * When filters.sinceTracking is set, uses the same updates-feed join/scope as getPosts.
    */
+  public fetchMassDownloadChunk(params: {
+    target: MassDownloadTarget;
+    cursorId: number;
+    upperBoundId: number;
+    limit?: number;
+  }): Array<DownloadQueueItem & { id: number }> {
+    const db = getDb();
+    const limit = params.limit ?? BATCH_DOWNLOAD_CHUNK_SIZE;
+    const { artistId, filters } = this.resolveMassDownloadScope(params.target);
+    const cursorConditions: SQL[] = [
+      gt(posts.id, params.cursorId),
+      lte(posts.id, params.upperBoundId),
+    ];
+
+    const rows =
+      filters?.sinceTracking === true
+        ? (() => {
+            const { where, joinOn } = this.buildUpdatesFeedQueryScope(
+              artistId,
+              filters
+            );
+            const scopedWhere = and(where, ...cursorConditions);
+            return db
+              .select({
+                id: posts.id,
+                postId: posts.postId,
+                artistId: posts.artistId,
+                fileUrl: posts.fileUrl,
+              })
+              .from(posts)
+              .innerJoin(artists, joinOn)
+              .where(scopedWhere)
+              .orderBy(asc(posts.id))
+              .limit(limit)
+              .all();
+          })()
+        : (() => {
+            const conditions = this.buildPostFilterConditions(
+              artistId,
+              filters
+            );
+            conditions.push(...cursorConditions);
+            const whereClause = and(...conditions);
+            return db
+              .select({
+                id: posts.id,
+                postId: posts.postId,
+                artistId: posts.artistId,
+                fileUrl: posts.fileUrl,
+              })
+              .from(posts)
+              .where(whereClause)
+              .orderBy(asc(posts.id))
+              .limit(limit)
+              .all();
+          })();
+
+    return rows
+      .filter((p) => p.fileUrl?.trim())
+      .map((p) => {
+        const item = postRowToDownloadItem(p);
+        return { id: p.id, ...item };
+      });
+  }
+
+  /** Artist wrapper — keeps existing tests/callers on the old names. */
+  public snapshotArtistMassDownload(
+    artistId: number,
+    filters: PostFilterRequest | undefined
+  ): { upperBoundId: number; total: number } {
+    return this.snapshotMassDownload({
+      kind: "artist",
+      artistId,
+      filters,
+    });
+  }
+
+  /** Artist wrapper — keeps existing tests/callers on the old names. */
   public fetchArtistMassDownloadChunk(params: {
     artistId: number;
     filters: PostFilterRequest | undefined;
@@ -513,33 +646,43 @@ export class PostsController extends BaseController {
     upperBoundId: number;
     limit?: number;
   }): Array<DownloadQueueItem & { id: number }> {
-    const db = getDb();
-    const limit = params.limit ?? BATCH_DOWNLOAD_CHUNK_SIZE;
-    const conditions = this.buildPostFilterConditions(
-      params.artistId,
-      params.filters
-    );
-    conditions.push(gt(posts.id, params.cursorId));
-    conditions.push(lte(posts.id, params.upperBoundId));
-    const whereClause = and(...conditions);
-    const rows = db
-      .select({
-        id: posts.id,
-        postId: posts.postId,
-        artistId: posts.artistId,
-        fileUrl: posts.fileUrl,
-      })
-      .from(posts)
-      .where(whereClause)
-      .orderBy(asc(posts.id))
-      .limit(limit)
-      .all();
-    return rows
-      .filter((p) => p.fileUrl?.trim())
-      .map((p) => {
-        const item = postRowToDownloadItem(p);
-        return { id: p.id, ...item };
-      });
+    return this.fetchMassDownloadChunk({
+      target: {
+        kind: "artist",
+        artistId: params.artistId,
+        filters: params.filters,
+      },
+      cursorId: params.cursorId,
+      upperBoundId: params.upperBoundId,
+      limit: params.limit,
+    });
+  }
+
+  /**
+   * Shared sinceTracking feed scope for getPosts / getPostsCount /
+   * getPostsCountWithFilters. Date gate lives in joinOn (publishedAt >=
+   * artists.createdAt); WHERE carries base filters + post-scope exclusion.
+   */
+  private buildUpdatesFeedQueryScope(
+    artistId: number | undefined,
+    filters: PostFilterRequest | undefined
+  ): { where: SQL; joinOn: SQL } {
+    const baseConditions = this.buildPostFilterConditions(artistId, filters);
+    const whereClause =
+      baseConditions.length > 0 ? and(...baseConditions) : undefined;
+    // Join already filters by date (sinceTracking); whereClause is optional refinement.
+    const where = whereClause
+      ? and(whereClause, buildUpdatesFeedPostScopeCondition())
+      : buildUpdatesFeedPostScopeCondition();
+    if (!where) {
+      throw new Error(
+        "[PostsController] Failed to build sinceTracking feed where clause"
+      );
+    }
+    return {
+      where,
+      joinOn: buildUpdatesFeedJoinOn(),
+    };
   }
 
   /**
@@ -563,26 +706,11 @@ export class PostsController extends BaseController {
 
       // If sinceTracking filter is enabled, we need to use join
       if (filters?.sinceTracking === true) {
-        // Build where conditions array (excluding the date filter, which goes in join)
-        // Note: artistId is optional - if not provided, returns posts from all tracked artists
-        // This is the expected behavior for global feeds like Updates
-        const baseConditions = this.buildPostFilterConditions(
+        // artistId optional: omit → all tracked artists (Updates feed).
+        const { where, joinOn } = this.buildUpdatesFeedQueryScope(
           artistId,
           filters
         );
-
-        // Combine all conditions using and()
-        // Note: whereClause can be undefined if no additional filters are provided.
-        // This is safe because the join condition already filters by date (sinceTracking),
-        // so the join itself acts as the primary filter. Additional filters in whereClause
-        // are optional refinements.
-        const whereClause =
-          baseConditions.length > 0 ? and(...baseConditions) : undefined;
-
-        // Feed scope join: sinceTracking + tracked artists (shared with badge / mark-all).
-        const finalWhereClause = whereClause
-          ? and(whereClause, buildUpdatesFeedPostScopeCondition())
-          : buildUpdatesFeedPostScopeCondition();
 
         const queryBuilder = db
           .select({
@@ -605,8 +733,8 @@ export class PostsController extends BaseController {
             viewCount: posts.viewCount,
           })
           .from(posts)
-          .innerJoin(artists, buildUpdatesFeedJoinOn())
-          .where(finalWhereClause);
+          .innerJoin(artists, joinOn)
+          .where(where);
 
         const result = isRandom
           ? queryBuilder
@@ -707,6 +835,27 @@ export class PostsController extends BaseController {
     try {
       const db = getDb();
       const { artistId, filters } = params;
+
+      if (filters?.sinceTracking === true) {
+        const { where, joinOn } = this.buildUpdatesFeedQueryScope(
+          artistId,
+          filters
+        );
+        const result = await db
+          .select({ value: count() })
+          .from(posts)
+          .innerJoin(artists, joinOn)
+          .where(where);
+
+        const total = result[0]?.value ?? 0;
+        log.info(
+          `[PostsController] Posts count: ${total} ${
+            artistId ? `for artist ${artistId}` : "(all artists)"
+          } (sinceTracking: true)`
+        );
+        return total;
+      }
+
       const baseConditions = this.buildPostFilterConditions(artistId, filters);
       const whereClause =
         baseConditions.length > 0 ? and(...baseConditions) : undefined;
@@ -742,18 +891,16 @@ export class PostsController extends BaseController {
       const { artistId, filters } = params;
 
       if (filters?.sinceTracking === true) {
-        const baseConditions = this.buildPostFilterConditions(artistId, filters);
-        const whereClause =
-          baseConditions.length > 0 ? and(...baseConditions) : undefined;
-        const finalWhereClause = whereClause
-          ? and(whereClause, buildUpdatesFeedPostScopeCondition())
-          : buildUpdatesFeedPostScopeCondition();
+        const { where, joinOn } = this.buildUpdatesFeedQueryScope(
+          artistId,
+          filters
+        );
 
         const result = await db
           .select({ value: count() })
           .from(posts)
-          .innerJoin(artists, buildUpdatesFeedJoinOn())
-          .where(finalWhereClause);
+          .innerJoin(artists, joinOn)
+          .where(where);
 
         const total = result[0]?.value ?? 0;
         log.debug(`[PostsController] Posts count with filters: ${total}`);
@@ -836,8 +983,7 @@ export class PostsController extends BaseController {
             .where(
               and(
                 eq(posts.artistId, EXTERNAL_ARTIST_ID),
-                // drizzle enum PROVIDER_IDS-only; KnownStoredProviderId may be legacy gelbooru
-                sql`${posts.provider} = ${postData.provider}`,
+                eq(posts.provider, postData.provider),
                 eq(posts.postId, postData.postId)
               )
             )
@@ -870,12 +1016,11 @@ export class PostsController extends BaseController {
             ? new Date(postData.publishedAt)
             : insertNow;
 
-          // drizzle insert enum is PROVIDER_IDS-only; KnownStoredProviderId may be legacy → parameterized sql
           tx.insert(posts)
             .values({
               postId: postData.postId,
               artistId: EXTERNAL_ARTIST_ID, // SECURITY: Always use EXTERNAL_ARTIST_ID for external posts
-              provider: sql`${postData.provider}`,
+              provider: postData.provider,
               fileUrl: postData.fileUrl,
               previewUrl: postData.previewUrl,
               sampleUrl: postData.sampleUrl ?? "",
@@ -1110,12 +1255,11 @@ export class PostsController extends BaseController {
           ? new Date(postData.publishedAt)
           : now;
 
-        // drizzle insert enum is PROVIDER_IDS-only; KnownStoredProviderId may be legacy → parameterized sql
         tx.insert(posts)
           .values({
             postId: postData.postId,
             artistId: EXTERNAL_ARTIST_ID, // SECURITY: Always use EXTERNAL_ARTIST_ID for external posts
-            provider: sql`${postData.provider}`,
+            provider: postData.provider,
             fileUrl: postData.fileUrl,
             previewUrl: postData.previewUrl,
             sampleUrl: postData.sampleUrl ?? "",

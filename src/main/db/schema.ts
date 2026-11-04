@@ -10,7 +10,7 @@ import { relations } from "drizzle-orm";
 
 import {
   ARTIST_TYPES,
-  PROVIDER_IDS,
+  KNOWN_STORED_PROVIDER_IDS,
   type ArtistType,
 } from "../../shared/constants";
 
@@ -52,7 +52,7 @@ export const artists = sqliteTable(
     name: text("name").notNull(),
     tag: text("tag").notNull(),
     // Provider ID with enum constraint
-    provider: text("provider", { enum: PROVIDER_IDS })
+    provider: text("provider", { enum: KNOWN_STORED_PROVIDER_IDS })
       .notNull()
       .default("rule34"),
     type: text("type", { enum: ARTIST_TYPES }).notNull(),
@@ -95,7 +95,7 @@ export const posts = sqliteTable(
       .notNull()
       .references(() => artists.id, { onDelete: "cascade" }),
     /** Booru provider that owns this post_id namespace. Part of post identity. */
-    provider: text("provider", { enum: PROVIDER_IDS })
+    provider: text("provider", { enum: KNOWN_STORED_PROVIDER_IDS })
       .notNull()
       .default("rule34"),
     fileUrl: text("file_url").notNull(),
@@ -157,7 +157,9 @@ export const posts = sqliteTable(
 export const settings = sqliteTable("settings", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   userId: text("user_id").default(""),
-  provider: text("provider", { enum: PROVIDER_IDS }).notNull().default("rule34"),
+  provider: text("provider", { enum: KNOWN_STORED_PROVIDER_IDS })
+    .notNull()
+    .default("rule34"),
   encryptedApiKey: text("encrypted_api_key").default(""),
   proxyUrl: text("proxy_url"),
   isSafeMode: integer("is_safe_mode", { mode: "boolean" }).default(true),
@@ -232,7 +234,7 @@ export const searchResultsCache = sqliteTable(
 export const postLookupCache = sqliteTable(
   "post_lookup_cache",
   {
-    provider: text("provider", { enum: PROVIDER_IDS }).notNull(),
+    provider: text("provider", { enum: KNOWN_STORED_PROVIDER_IDS }).notNull(),
     postId: integer("post_id").notNull(),
     status: text("status", { enum: POST_LOOKUP_CACHE_STATUSES }).notNull(),
     // Units: milliseconds since epoch. Raw SQL (maintenance DELETE) compares with Date.now()-based cutoffs.

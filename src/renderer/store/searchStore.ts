@@ -73,13 +73,11 @@ const SOURCE_OPTIONS_BROWSE = [
   "subscriptions",
 ] as const satisfies readonly SourceType[];
 
-/**
- * Artist gallery Source options. ArtistGallery passes isFavorited for Favorites but
- * does not pass sinceTracking (see ArtistGallery.tsx) — Since tracked would be dead UI.
- */
+/** Artist gallery Source options (All / Favorites / Since tracked). */
 const SOURCE_OPTIONS_ARTIST = [
   "all",
   "favorites",
+  "subscriptions",
 ] as const satisfies readonly SourceType[];
 
 const SOURCE_OPTIONS_NONE = [] as const satisfies readonly SourceType[];

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 /**
  * Default Tailwind `screens` (theme.screens not overridden in tailwind.config.js
  * for md/lg/xl — only container.screens.2xl is customized there).
- * Must stay aligned with `columns-2 md:columns-3 lg:columns-4 xl:columns-5`.
+ * Breakpoints map to column counts: base 2, md 3, lg 4, xl 5.
  */
 export const TAILWIND_BREAKPOINT_MD_PX = 768;
 export const TAILWIND_BREAKPOINT_LG_PX = 1024;
@@ -54,8 +54,8 @@ const readMasonryColumnCount = (): number => {
 };
 
 /**
- * Column count for masonry round-robin layout. Mirrors the previous
- * Tailwind `columns-2 md:columns-3 lg:columns-4 xl:columns-5` breakpoints.
+ * Column count for masonry round-robin layout.
+ * Default Tailwind md/lg/xl breakpoints → 2/3/4/5 columns.
  * SSR / missing matchMedia → base count (2).
  */
 export const useMasonryColumnCount = (): number => {
