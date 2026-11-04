@@ -3,15 +3,17 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 describe("Favorites header source contract", () => {
-  it("does not expose Download All for loaded favorites", () => {
+  it("exposes Download all favorites via backend cursor (not loaded-list mode)", () => {
     const source = readFileSync(
       resolve(process.cwd(), "src/renderer/components/pages/Favorites.tsx"),
       "utf8"
     );
 
-    expect(source).not.toContain("DownloadAllButton");
-    expect(source).not.toContain("useDownloadAll");
+    expect(source).toContain("DownloadAllButton");
+    expect(source).toContain("useDownloadAllFromBackend");
+    expect(source).toContain('labelMode="favorites"');
     expect(source).not.toContain('labelMode="loaded"');
+    expect(source).toContain('kind: "favorites"');
     expect(source).toContain('aria-label="Toggle bulk selection mode"');
   });
 });

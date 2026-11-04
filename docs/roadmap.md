@@ -48,7 +48,7 @@ The short version: the core product is shipped, now we focus on parity gaps and 
 
 - ✅ Global top bar exists and is used across core pages; global sync busy state is the Sidebar sync indicator.
 - ✅ `FiltersPanel`: AI, media, source; wired to `searchStore` and post pipelines.
-- ✅ **Browse → Source (Favorites / Since tracked):** requires at least one tag in the search box — **intentional** (`SourceSwitcher`). Panel label is **Since tracked** (internal value still `subscriptions`). Local AI/media filters run in SQL before `LIMIT`. **Since tracked** is **`sinceTracking` only** (posts published after the artist was tracked), not worker tag-intersection. Treated as **closed**; not a gap (see [Closed by design](#closed-by-design-not-backlog)). Distinct from [tag-combination subscriptions](#closed-by-design-not-backlog) (closed — superseded by smart playlists). Source options come from `getSourceOptionsForPath`: **Since tracked** only on `/browse`; `/artist/:id` shows All + Favorites only (ArtistGallery does not pass `sinceTracking`); hidden on Tracked list / Favorites / Updates / Playlists without clearing stored `filters.source`.
+- ✅ **Browse → Source (Favorites / Since tracked):** requires at least one tag in the search box — **intentional** (`SourceSwitcher`). Panel label is **Since tracked** (internal value still `subscriptions`). Local AI/media filters run in SQL before `LIMIT`. **Since tracked** is **`sinceTracking` only** (posts published after the artist was tracked), not worker tag-intersection. Treated as **closed**; not a gap (see [Closed by design](#closed-by-design-not-backlog)). Distinct from [tag-combination subscriptions](#closed-by-design-not-backlog) (closed — superseded by smart playlists). Source options come from `getSourceOptionsForPath`: **Since tracked** on `/browse` and `/artist/:id` (All + Favorites + Since tracked); hidden on Tracked list / Favorites / Updates / Playlists without clearing stored `filters.source`.
 - ✅ Search is chip-based and supports include/exclude, OR-groups, wildcard/fuzzy token forms (`*`, `~`) in query tokens.
 
 ### B. Viewer and Gallery Polish - High Priority
@@ -117,7 +117,15 @@ Delete Gelbooru provider/API/UI; keep schema provider columns and legacy media d
 
 | # | Branch | PR | Status |
 |---|--------|----|--------|
-| G34 | `chore/remove-gelbooru` | [#271](https://github.com/KazeKaze93/RuleDesk/pull/271) | 🟡 open |
+| G34 | `chore/remove-gelbooru` | [#271](https://github.com/KazeKaze93/RuleDesk/pull/271) | ✅ merged |
+
+### Post-audit UX backlog
+
+Close Since tracked on artist galleries, viewer Updated date label, smart-collection newer-posts banner, Download all favorites, drizzle `KNOWN_STORED_PROVIDER_IDS` column enums, dead masonry VirtuosoGrid wiring. Status lives only in this table.
+
+| # | Branch | PR | Status |
+|---|--------|----|--------|
+| PA | `chore/post-audit-backlog` | (open) | 🟡 open |
 
 ### Playlist gallery infinite scroll
 
@@ -443,13 +451,14 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 | Area | What is still open |
 |------|--------------------|
 | **Provider switch** | ✅ Closed in `chore/remove-gelbooru` — Gelbooru API/UI and provider switch removed; app is Rule34-only. Legacy Gelbooru artists are skipped on sync with an explicit error; stored Gelbooru posts still display. |
-| **Smart collection UX** | Header shows hybrid window Total / N+ (`resolvePlaylistPosts.total` or `getPlaylistResolveTotal` while the walk runs) + live-search subtitle + Refresh (`#265` / `feat/hybrid-snapshot-store`). Still no indication when new remote posts appear while the gallery stays open. |
-| **Smart collection total (XML)** | Needed only when the remote walk hits `HYBRID_REMOTE_MAX_PAGES_TO_SCAN` (total shown as lower bound). Rule34 JSON has no count; verify XML root `posts count` to upgrade lower-bound headers to exact. |
+| **Smart collection UX** | ✅ Closed in `chore/post-audit-backlog` — `checkPlaylistNewerPosts` + «New posts available» banner on desc smart galleries. |
+| **Smart collection total (XML)** | **Closed, won't do** — live XML root `posts count` exists (e.g. 1818 for sample tags) but is the site-wide raw count before blacklist/media/dedupe; it does not match the hybrid window. Needed only when walk hits `HYBRID_REMOTE_MAX_PAGES_TO_SCAN` (> ~20k). |
+| **Cold first hybrid API page** | **Closed, won't do** — single measured sample `[HybridSnapshotStore] API page 1 … 1264 ms` (n=1); no code change without a larger distribution. |
 | **Artist types (UI)** | Add Artist UI supports **tag** only. Schema still allows `uploader` / `query` for legacy rows; exposing those types in the UI is backlog (not shipped). |
-| **Favorites: Download all favorites (backend source)** | No IPC kind for favorites-wide download. `DownloadAllRequestSchema` is only `kind: "artist"` (DB walk by `artistId`) or `kind: "list"` (explicit URL items, used by bulk selection / Browse loaded). There is no `useDownloadAllFromBackend`-style path for Favorites. |
-| **Remove dead MasonryVirtuosoList / ListComponent ternaries** | All five galleries assign `MasonryVirtuosoList` / `MasonryItemContainer` when `viewType === "masonry"`, but the masonry branch never mounts `VirtuosoGrid` (plain `map` + `GridContainer`). Dead ternaries / unused `MasonryVirtuosoList` wiring. |
+| **Favorites: Download all favorites (backend source)** | ✅ Closed in `chore/post-audit-backlog` — `kind: "favorites"` + target-agnostic mass-download cursor. |
+| **Remove dead MasonryVirtuosoList / ListComponent ternaries** | ✅ Closed in `chore/post-audit-backlog` — VirtuosoGrid always uses grid List/Item; `MasonryVirtuosoList` removed from factories. |
 | **Shortest-column masonry** | Requires storing post `width`/`height` (DB migration + sync from booru). Current round-robin does not measure card heights. |
-| **Artist gallery: Since tracked** | Since tracked (`sinceTracking` pass-through) on `/artist/:id` — needs trace of PostsController `sinceTracking` path with `artistId` before enabling the option in `getSourceOptionsForPath`. |
+| **Artist gallery: Since tracked** | ✅ Closed in `chore/post-audit-backlog` — Source All/Favorites/Since tracked on `/artist/:id`; list+count use updates-feed join. |
 | **Filters** | Keep filter scope lean (`AI`, `Media`, `Source`) and avoid reintroducing removed panel controls without product decision (**scope is already implemented; this is a guardrail**). |
 | **Search** | Continue polish/regression coverage for chip-based syntax (`-tag`, OR groups, wildcard/fuzzy). |
 | **Navigation & layout** | **Optional** polish: tooltips, item order tuning, and small-window density improvements (see [Navigation, layout, shell](#d-navigation-layout-shell)). |

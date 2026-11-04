@@ -511,4 +511,8 @@ A report without (1)–(3) is an **incomplete task**. Do not claim a branch "lan
 
 ### Problem: provider switch implied multi-provider support that credentials (one set) could not back; unknown provider silently fell back to rule34 and synced another site's tag
 **Root Cause:** data model allowed mixed providers while auth/UI did not
-**Invariant Rule:** input schemas accept only supported providers; stored data with an unsupported provider is handled explicitly (coerce settings with warning, skip sync with error, typed error for queries) — never parse-crash and never silent fallback to another provider.
+**Invariant Rule:** input schemas accept only supported providers (`PROVIDER_IDS`); column / stored-row types use known stored ids (`KNOWN_STORED_PROVIDER_IDS`). Handle unsupported stored providers explicitly (coerce settings with warning, skip sync with error, typed error for queries) — never parse-crash and never silent fallback to another provider. Column type = stored ids; input schemas = supported ids.
+
+### Problem: mass-download cursor tied to artistId broke Favorites Download All and Since tracked joins
+**Root Cause:** snapshot/chunk SQL baked `eq(artistId)` into the cursor helpers
+**Invariant Rule:** mass-download cursor contract is target-agnostic (snapshot max `posts.id` + count; chunk `id > cursor AND id <= upperBound`); target = SQL condition only (artist / favorites / filters including `sinceTracking` join). Queue-file `kind` must match the target or resume will mis-route.

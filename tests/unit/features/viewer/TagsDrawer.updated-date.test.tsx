@@ -86,8 +86,8 @@ describe("TagsDrawer updated date label", () => {
       name: VIEWER_UPDATED_DATE_LABEL,
     });
     expect(heading.textContent).toBe(VIEWER_UPDATED_DATE_LABEL);
-    expect(heading).toHaveAttribute("title", VIEWER_UPDATED_DATE_TOOLTIP);
-    expect(heading).toHaveAttribute("tabindex", "0");
+    expect(heading.getAttribute("title")).toBe(VIEWER_UPDATED_DATE_TOOLTIP);
+    expect(heading.getAttribute("tabindex")).toBe("0");
     expect(screen.queryByText("Published")).toBeNull();
   });
 });

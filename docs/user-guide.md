@@ -182,6 +182,7 @@ Cancel and quit stop sync promptly: in-flight API requests and long rate-limit w
 - **Click on a post** to open it in full-screen viewer
 - **Use arrow keys** (← →) to navigate between posts
 - **Press Esc** to close the viewer
+- In the viewer, the date label is **Updated** (tooltip: Rule34 reports the last change time, not the upload time) — shown on the overlay and in the tags drawer
 
 **Post information:**
 
@@ -248,7 +249,7 @@ Each post card shows:
 - **Infinite scroll:** on Browse with **Source: All**, scroll down to load more posts from the booru API (50 per batch; RuleDesk continues past the API offset cap automatically). Repeating the same tags and page within **24 hours** uses a local SQLite cache (`SEARCH_RESULTS_CACHE_TTL_MS`) for successful pages and confirmed empty tagged pages (same TTL); untagged page-1 empties are not cached. Until that TTL expires, RuleDesk does not re-request the booru for that key.
 - **Select all (bulk):** available for the posts currently shown in the Browse gallery whether or not search tags are set (still selects only loaded/`displayPosts` items).
 - **API failures vs empty results:** a genuine empty search shows the “no posts” empty state; auth, rate-limit, network, or parse failures show a centered error screen with **Retry** (and **Open Settings**, which opens **Settings → Account** via `/settings?tab=account`, when credentials are invalid).
-- Browse source modes **Favorites** / **Since tracked** (internal value still `subscriptions`; SQL `isFavorited` / `sinceTracking`) query your **local cache** and still require a non-empty tag query in the Source switcher by design. **Since tracked** is available only on **Browse**. Artist galleries (`/artist/:id`) show Source **All** and **Favorites** only (the gallery does not pass `sinceTracking`). Source is hidden on the Tracked list, Favorites, Updates, and Playlists pages. AI and Media filters on those modes run in SQL before pagination. On **Source: All**, Rule34 AI hide/only and Rule34/Gelbooru Videos/Images are sent as booru tags in the live search (so pages stay full). Gelbooru still filters AI client-side after each page. **Since tracked** means posts published after you started tracking the artist, not posts whose tags happen to match a tracked artist name. Tag-combination subscriptions are **Closed — superseded by smart playlists (`is_smart`/`query_json`); no separate entity built (2026-09-12 backlog audit)** — use smart playlists for tag-combo collections.
+- Browse source modes **Favorites** / **Since tracked** (internal value still `subscriptions`; SQL `isFavorited` / `sinceTracking`) query your **local cache** and still require a non-empty tag query in the Source switcher by design. Artist galleries (`/artist/:id`) also offer Source **All**, **Favorites**, and **Since tracked** (posts with `publishedAt` on or after you started tracking that artist). Source is hidden on the Tracked list, Favorites, Updates, and Playlists pages. AI and Media filters on those modes run in SQL before pagination. On **Source: All**, Rule34 AI hide/only and Rule34/Gelbooru Videos/Images are sent as booru tags in the live search (so pages stay full). Gelbooru still filters AI client-side after each page. **Since tracked** means posts published after you started tracking the artist, not posts whose tags happen to match a tracked artist name. Tag-combination subscriptions are **Closed — superseded by smart playlists (`is_smart`/`query_json`); no separate entity built (2026-09-12 backlog audit)** — use smart playlists for tag-combo collections.
 
 ### Favorites
 
@@ -264,6 +265,7 @@ Each post card shows:
 
 1. Click **"Favorites"** in the sidebar.
 2. You'll see all your favorited posts
+3. Use **Download all favorites (N)** in the header to walk the local favorites set (same cursor mass-download as artist galleries; N is the count currently shown after filters)
 
 **Empty states:**
 
@@ -289,7 +291,7 @@ Use playlists to organize posts outside of tracked artists.
 
 **Smart collections:**
 
-Smart collections are a **live query** (local cache + booru API) — they are not a synced artist gallery, so Sync All does not “fill” them. Newest/oldest sort follows provider post id (same as the site for that query). The header shows **Smart Collection**, the subtitle **Live search · refreshed every 5 min or on Refresh**, and a **Refresh** button that reloads from page 1. Re-opening the same collection within about five minutes reuses the cached pages; after that (or on Refresh) it fetches again. The first page of a newest-first collection can appear before the remote search finishes; the header shows a brief loading indicator for the total, then **Total: N** when the remote walk exhausted the feed, **N+ posts** when it hit the scan limit (a lower bound), or no number when the total is unknown. Changing the AI filter updates the visible posts and the header count immediately without reloading the collection. The count is not the number of thumbnails currently scrolled into view.
+Smart collections are a **live query** (local cache + booru API) — they are not a synced artist gallery, so Sync All does not “fill” them. Newest/oldest sort follows provider post id (same as the site for that query). The header shows **Smart Collection**, the subtitle **Live search · refreshed every 5 min or on Refresh**, and a **Refresh** button that reloads from page 1. While a newest-first (desc) collection stays open, RuleDesk periodically probes for newer remote posts (one cheap unbound request); if any appear, a polite **New posts available** banner offers the same **Refresh**. Ascending and random sorts do not probe; manual playlists never do. Re-opening the same collection within about five minutes reuses the cached pages; after that (or on Refresh) it fetches again. The first page of a newest-first collection can appear before the remote search finishes; the header shows a brief loading indicator for the total, then **Total: N** when the remote walk exhausted the feed, **N+ posts** when it hit the scan limit (a lower bound), or no number when the total is unknown. Changing the AI filter updates the visible posts and the header count immediately without reloading the collection. The count is not the number of thumbnails currently scrolled into view.
 
 1. Open **Playlists** -> **New Playlist**
 2. Select **Smart Collection**
@@ -330,7 +332,7 @@ The download will start, and you'll see a progress indicator.
 
 - Runs in a background worker (UI stays responsive). Progress shows on the button.
 - On **Browse**, download applies only to posts already loaded in the feed (see the button tooltip). To download everything from an artist, track them under **Tracked artists**, then use Download All on that artist's gallery.
-- List downloads (Browse loaded posts / Favorites·Updates·playlist **selected** posts): at most **5000** files (`BATCH_DOWNLOAD_LIST_MAX_FILES`). If you select more, the app shows an error and does **not** start the batch (no silent truncate). Artist gallery **Download All** walks the local DB for that artist and is not limited by this list cap.
+- List downloads (Browse loaded posts / Favorites·Updates·playlist **selected** posts): at most **5000** files (`BATCH_DOWNLOAD_LIST_MAX_FILES`). If you select more, the app shows an error and does **not** start the batch (no silent truncate). Artist gallery **Download All** and Favorites **Download all favorites** walk the local DB (cursor by row id) and are not limited by this list cap.
 - Partial failures do not discard successful files. The toast shows `Downloaded X, failed Y` with reason codes (network, 403/404/429, disk, timeout). Artist gallery can expand the failed list under the button.
 - HTTP **429** pauses the whole download queue (no new files start) for max(backoff, Retry-After), then retries; after retries are exhausted the file is listed as failed.
 - Queue progress is written atomically (unique temp file + rename, with retries on Windows file locks). If the queue file cannot be updated after retries, that item is listed as a **disk** failure even if the media file already landed — resume can still skip an existing file when duplicate handling is **skip**.
@@ -345,7 +347,7 @@ The download will start, and you'll see a progress indicator.
 **Filter by source:**
 
 1. On **Browse** or an **artist gallery**, open the top bar **Filters** control (Source is hidden on Tracked list, Favorites, Updates, and Playlists)
-2. On **Browse**, choose **All** (live booru API), **Favorites** (local cache), or **Since tracked** (local cache: posts published after you started tracking the artist). On an **artist gallery**, only **All** and **Favorites** are shown
+2. On **Browse**, choose **All** (live booru API), **Favorites** (local cache), or **Since tracked** (local cache: posts published after you started tracking the artist). On an **artist gallery**, choose **All**, **Favorites**, or **Since tracked** for that artist
 3. On Browse, Favorites / Since tracked stay disabled until you enter at least one tag (tooltip explains why); the tag gate is intentional
 4. Gallery updates automatically
 

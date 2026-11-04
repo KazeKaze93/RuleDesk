@@ -60,7 +60,7 @@ Stores information about tracked artists/users.
 | `id`              | INTEGER (PK, AutoIncrement)       | Primary key                                 |
 | `name`            | TEXT (NOT NULL)                   | Artist display name                         |
 | `tag`             | TEXT (NOT NULL, UNIQUE)           | Tag or username for tracking                |
-| `provider`        | TEXT (NOT NULL, DEFAULT 'rule34') | Provider ID: "rule34" or "gelbooru"         |
+| `provider`        | TEXT (NOT NULL, DEFAULT 'rule34') | Stored provider id (`KNOWN_STORED_PROVIDER_IDS`: `rule34` + legacy `gelbooru`). Live input schemas accept `PROVIDER_IDS` (`rule34`) only. |
 | `type`            | TEXT (NOT NULL)                   | Type: "tag", "uploader", or "query"         |
 | `api_endpoint`    | TEXT (NOT NULL)                   | Base API endpoint URL                       |
 | `last_post_id`    | INTEGER (NOT NULL, DEFAULT 0)     | ID of the last seen post                    |
@@ -80,7 +80,7 @@ export const artists = sqliteTable(
     id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: true }),
     name: text("name").notNull(),
     tag: text("tag").notNull().unique(),
-    provider: text("provider", { enum: ["rule34", "gelbooru"] })
+    provider: text("provider", { enum: KNOWN_STORED_PROVIDER_IDS })
       .notNull()
       .default("rule34"),
     type: text("type", { enum: ["tag", "uploader", "query"] }).notNull(),
@@ -123,7 +123,7 @@ Caches post metadata for filtering, statistics, and download management. Support
 | `id`           | INTEGER (PK, AutoIncrement)            | Internal post ID                              |
 | `post_id`      | INTEGER (NOT NULL)                     | Post ID from external API. Comparable **only within one `provider`** — namespaces differ across Rule34 vs Gelbooru. |
 | `artist_id`    | INTEGER (FK → artists.id)              | Reference to artist                           |
-| `provider`     | TEXT (NOT NULL, DEFAULT 'rule34')     | Booru provider that owns this `post_id` namespace (`rule34` / `gelbooru`) |
+| `provider`     | TEXT (NOT NULL, DEFAULT 'rule34')     | Booru provider that owns this `post_id` namespace (`KNOWN_STORED_PROVIDER_IDS`) |
 | `file_url`     | TEXT (NOT NULL)                        | Direct URL to full-resolution media file      |
 | `preview_url`  | TEXT (NOT NULL)                        | URL to low-resolution preview (blurred)       |
 | `sample_url`   | TEXT (NOT NULL, DEFAULT '')            | URL to medium-resolution sample               |
@@ -168,7 +168,7 @@ export const posts = sqliteTable(
     artistId: integer("artist_id")
       .notNull()
       .references(() => artists.id, { onDelete: "cascade" }),
-    provider: text("provider", { enum: PROVIDER_IDS })
+    provider: text("provider", { enum: KNOWN_STORED_PROVIDER_IDS })
       .notNull()
       .default("rule34"),
     fileUrl: text("file_url").notNull(),
@@ -228,7 +228,7 @@ Stores application settings including API credentials and user preferences.
 | -------------------- | -------------------------------------- | -------------------------------------------- |
 | `id`                 | INTEGER (PK, AutoIncrement)            | Primary key                                  |
 | `user_id`            | TEXT (DEFAULT '')                      | Booru User ID (provider-specific)            |
-| `provider`           | TEXT (NOT NULL, DEFAULT 'rule34')      | Active provider ID (`rule34`, `gelbooru`)    |
+| `provider`           | TEXT (NOT NULL, DEFAULT 'rule34')      | Stored provider id (`KNOWN_STORED_PROVIDER_IDS`); settings input schema stays `PROVIDER_IDS` |
 | `encrypted_api_key`  | TEXT (DEFAULT '')                      | Encrypted API key (encrypted at rest)        |
 | `proxy_url`          | TEXT (NULL)                            | Optional proxy URL                            |
 | `is_safe_mode`       | INTEGER (BOOLEAN, DEFAULT 1)           | Safe mode flag (blur NSFW content)           |
@@ -253,7 +253,9 @@ Stores application settings including API credentials and user preferences.
 export const settings = sqliteTable("settings", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   userId: text("user_id").default(""),
-  provider: text("provider", { enum: PROVIDER_IDS }).notNull().default("rule34"),
+  provider: text("provider", { enum: KNOWN_STORED_PROVIDER_IDS })
+    .notNull()
+    .default("rule34"),
   encryptedApiKey: text("encrypted_api_key").default(""),
   proxyUrl: text("proxy_url"),
   isSafeMode: integer("is_safe_mode", { mode: "boolean" }).default(true),
@@ -349,7 +351,7 @@ Persistent TTL cache for single-post `id:${postId}` lookups (`resolvePostLookup`
 
 | Column         | Type                             | Description                                                                 |
 | -------------- | -------------------------------- | --------------------------------------------------------------------------- |
-| `provider`     | TEXT (NOT NULL, PK part)         | `rule34` or `gelbooru`                                                      |
+| `provider`     | TEXT (NOT NULL, PK part)         | `KNOWN_STORED_PROVIDER_IDS` (`rule34` / legacy `gelbooru`)                  |
 | `post_id`      | INTEGER (NOT NULL, PK part)      | Booru post ID                                                               |
 | `status`       | TEXT (NOT NULL)                  | `found` or `not_found` — never store unresolved (429/network) as absence    |
 | `resolved_at`  | INTEGER (TIMESTAMP_MS, NOT NULL) | When this outcome was written (**milliseconds**); TTL gate for `not_found`  |
