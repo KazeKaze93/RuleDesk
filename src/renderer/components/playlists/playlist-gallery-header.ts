@@ -5,12 +5,17 @@
  * + aiCount); display count depends on client aiFilter.
  */
 
+import { HYBRID_SNAPSHOT_IDLE_TTL_MS } from "../../../shared/constants";
 import type { PlaylistResolveTotal } from "../../../shared/schemas/playlist";
 
+const MS_PER_MINUTE = 60_000;
+
 export const PLAYLIST_HEADER_SMART_TYPE_LABEL = "Smart Collection";
-export const PLAYLIST_HEADER_SMART_SUBTITLE =
-  "Live search · refreshes when opened";
+export const PLAYLIST_HEADER_SMART_SUBTITLE = `Live search · refreshed every ${
+  HYBRID_SNAPSHOT_IDLE_TTL_MS / MS_PER_MINUTE
+} min or on Refresh`;
 export const PLAYLIST_HEADER_REFRESH_ARIA_LABEL = "Refresh collection";
+export const PLAYLIST_HEADER_TOTAL_LOADING_ARIA_LABEL = "Loading total";
 export const PLAYLIST_HEADER_TOTAL_PREFIX = "Total: ";
 export const PLAYLIST_HEADER_LOWER_BOUND_SUFFIX = "+ posts";
 export const PLAYLIST_HEADER_ENTRIES_SUFFIX = " entries";
@@ -43,6 +48,29 @@ export function resolveSmartPlaylistDisplayCount(
     return total.aiCount;
   }
   return total.count;
+}
+
+/**
+ * Total for a smart header: the first page's total wins; otherwise the
+ * `getPlaylistResolveTotal` result (undefined while that query is pending/failed).
+ */
+export function pickSmartPlaylistTotal(
+  firstPageTotal: PlaylistResolveTotal,
+  queriedTotal: PlaylistResolveTotal | undefined
+): PlaylistResolveTotal {
+  return firstPageTotal ?? queriedTotal ?? null;
+}
+
+/**
+ * Header shows a loading indicator only while a smart total is still expected:
+ * no total yet and neither the page query nor the total query has failed.
+ */
+export function isSmartPlaylistTotalLoading(params: {
+  isSmart: boolean;
+  total: PlaylistResolveTotal;
+  hasFailed: boolean;
+}): boolean {
+  return params.isSmart && params.total === null && !params.hasFailed;
 }
 
 /**

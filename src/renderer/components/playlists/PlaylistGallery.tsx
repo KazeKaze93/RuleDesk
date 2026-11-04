@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Loader2,
@@ -32,6 +32,7 @@ import { useViewerStore } from "../../store/viewerStore";
 import { useSearchStore } from "../../store/searchStore";
 import { PostCard } from "../../features/artists/components/PostCard";
 import { getPostCardKey } from "../../lib/postCardKey";
+import { cancelRelease, scheduleRelease } from "../../lib/deferred-release";
 import {
   Tooltip,
   TooltipContent,
@@ -50,6 +51,7 @@ import { useMasonryInfiniteScroll } from "../../hooks/useMasonryInfiniteScroll";
 import { SortablePostCard } from "./PlaylistVirtuosoComponents";
 import { resolveErrorMessage } from "../../utils/error-message";
 import {
+  HYBRID_SNAPSHOT_IDLE_TTL_MS,
   PLAYLIST_MASONRY_THRESHOLD_PX,
   PLAYLIST_PREFETCH_ITEMS,
   POSTS_PAGE_SIZE,
@@ -57,9 +59,12 @@ import {
 import {
   formatManualPlaylistCountLabel,
   formatSmartPlaylistTotalLabel,
+  isSmartPlaylistTotalLoading,
+  pickSmartPlaylistTotal,
   PLAYLIST_HEADER_REFRESH_ARIA_LABEL,
   PLAYLIST_HEADER_SMART_SUBTITLE,
   PLAYLIST_HEADER_SMART_TYPE_LABEL,
+  PLAYLIST_HEADER_TOTAL_LOADING_ARIA_LABEL,
 } from "./playlist-gallery-header";
 import type { PlaylistResolveTotal } from "../../../shared/schemas/playlist";
 
@@ -143,6 +148,7 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
     ],
     initialPageParam: 1,
     prefetchItems: PLAYLIST_PREFETCH_ITEMS,
+    staleTime: HYBRID_SNAPSHOT_IDLE_TTL_MS,
     fetchFn: async (page) => {
       return await window.api.resolvePlaylistPosts({
         playlistId: playlist.id,
@@ -171,14 +177,63 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
     return posts;
   }, [rawPosts, aiFilter]);
 
-  const smartResolveTotal: PlaylistResolveTotal =
-    playlist.isSmart && data?.pages[0] !== undefined
-      ? data.pages[0].total
-      : null;
+  const firstPage = data?.pages[0];
+  const firstPageTotal: PlaylistResolveTotal =
+    playlist.isSmart && firstPage !== undefined ? firstPage.total : null;
+  // Hybrid walk still running on page 1: wait for the snapshot total separately.
+  const {
+    data: queriedTotal,
+    isError: isTotalQueryError,
+    error: totalQueryError,
+  } = useQuery({
+    queryKey: [
+      "playlist-resolve-total",
+      playlist.id,
+      mediaType,
+      sortOrder,
+      refreshEpoch,
+    ],
+    queryFn: async () =>
+      await window.api.getPlaylistResolveTotal({
+        playlistId: playlist.id,
+        filters: Object.keys(apiFilters).length > 0 ? apiFilters : undefined,
+        sortOrder,
+      }),
+    enabled: playlist.isSmart && firstPage !== undefined && firstPageTotal === null,
+    staleTime: HYBRID_SNAPSHOT_IDLE_TTL_MS,
+    // Superseded/failed walks must not re-wait; the header just hides the total.
+    retry: false,
+  });
+  const smartResolveTotal = pickSmartPlaylistTotal(firstPageTotal, queriedTotal);
+  const isSmartTotalLoading = isSmartPlaylistTotalLoading({
+    isSmart: playlist.isSmart,
+    total: smartResolveTotal,
+    hasFailed: isError || isTotalQueryError,
+  });
   const smartTotalLabel = formatSmartPlaylistTotalLabel(
     smartResolveTotal,
     aiFilter
   );
+
+  useEffect(() => {
+    if (isTotalQueryError) {
+      log.error("[PlaylistGallery] Failed to resolve playlist total:", totalQueryError);
+    }
+  }, [isTotalQueryError, totalQueryError]);
+
+  // StrictMode double-mount must not reach main: defer release and cancel on remount.
+  useEffect(() => {
+    if (!playlist.isSmart) return;
+    const playlistId = playlist.id;
+    cancelRelease(playlistId);
+    return () => {
+      scheduleRelease(playlistId, () => {
+        window.api.releasePlaylistSnapshot({ playlistId }).catch((error: unknown) => {
+          log.error("[PlaylistGallery] Failed to release playlist snapshot:", error);
+        });
+      });
+    };
+  }, [playlist.id, playlist.isSmart]);
   const [localPosts, setLocalPosts] = useState<Post[]>([]);
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -418,9 +473,19 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {PLAYLIST_HEADER_SMART_SUBTITLE}
                   </p>
-                  {smartTotalLabel !== null && (
-                    <p className="text-sm text-muted-foreground mt-0.5">
-                      {smartTotalLabel}
+                  {(isSmartTotalLoading || smartTotalLabel !== null) && (
+                    <p
+                      className="text-sm text-muted-foreground mt-0.5"
+                      aria-live="polite"
+                    >
+                      {isSmartTotalLoading ? (
+                        <Loader2
+                          className="w-4 h-4 animate-spin"
+                          aria-label={PLAYLIST_HEADER_TOTAL_LOADING_ARIA_LABEL}
+                        />
+                      ) : (
+                        smartTotalLabel
+                      )}
                     </p>
                   )}
                 </>

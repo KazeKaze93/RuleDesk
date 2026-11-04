@@ -11,6 +11,8 @@ import type {
   RemovePostsFromPlaylistRequest,
   GetPlaylistPostsRequest,
   ResolvePlaylistPostsRequest,
+  GetPlaylistResolveTotalRequest,
+  ReleasePlaylistSnapshotRequest,
   ReorderPlaylistEntriesRequest,
   GetManualPlaylistMembershipForPostsRequest,
   SyncManualPlaylistMembershipRequest,
@@ -295,6 +297,10 @@ const ipcBridge: IpcBridge = {
     invokeIpc(IPC_CHANNELS.DB.GET_PLAYLIST_POSTS, params),
   resolvePlaylistPosts: (params: ResolvePlaylistPostsRequest) =>
     invokeIpc(IPC_CHANNELS.DB.RESOLVE_PLAYLIST_POSTS, params),
+  getPlaylistResolveTotal: (params: GetPlaylistResolveTotalRequest) =>
+    invokeIpc(IPC_CHANNELS.DB.GET_PLAYLIST_RESOLVE_TOTAL, params),
+  releasePlaylistSnapshot: (params: ReleasePlaylistSnapshotRequest) =>
+    invokeIpc(IPC_CHANNELS.DB.RELEASE_PLAYLIST_SNAPSHOT, params),
   getPlaylistsContainingPost: (
     postId: number,
     externalPostId?: number,

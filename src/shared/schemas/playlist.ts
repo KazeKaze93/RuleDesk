@@ -322,14 +322,20 @@ export type ResolvePlaylistPostsRequest = z.infer<typeof ResolvePlaylistPostsSch
  * (media/blacklist). AI is client-side; `aiCount` lets the header derive hide/only
  * without re-walking remote. `exact` / `lowerBound` / `null` — same walk rules as before.
  */
-export const PlaylistResolveTotalSchema = z
-  .object({
-    count: z.number().int().nonnegative(),
-    /** Posts in the merged window that match `hasAiGeneratedTag`. */
-    aiCount: z.number().int().nonnegative(),
-    kind: z.enum(["exact", "lowerBound"]),
-  })
-  .nullable();
+export const PlaylistResolveTotalValueSchema = z.object({
+  count: z.number().int().nonnegative(),
+  /** Posts in the merged window that match `hasAiGeneratedTag`. */
+  aiCount: z.number().int().nonnegative(),
+  kind: z.enum(["exact", "lowerBound"]),
+});
+
+/** Non-null total — the success payload of `getPlaylistResolveTotal`. */
+export type PlaylistResolveTotalValue = z.infer<
+  typeof PlaylistResolveTotalValueSchema
+>;
+
+export const PlaylistResolveTotalSchema =
+  PlaylistResolveTotalValueSchema.nullable();
 
 export type PlaylistResolveTotal = z.infer<typeof PlaylistResolveTotalSchema>;
 
@@ -337,11 +343,41 @@ export type PlaylistResolveTotal = z.infer<typeof PlaylistResolveTotalSchema>;
  * Resolve Playlist Posts Result — page slice plus optional hybrid window total.
  * `posts` stays a page; `total` is the full merged window for the current snapshot.
  * Post element typing lives on the IPC bridge (`Post[]`); Zod here gates the envelope.
+ *
+ * `total` is `null` for manual playlists, on remote-walk failure / unknown, and
+ * for smart collections while the hybrid remote walk is still running. Callers
+ * that need the total in that case fetch it via `getPlaylistResolveTotal`.
  */
 export const ResolvePlaylistPostsResultSchema = z.object({
   posts: z.array(z.unknown()),
   total: PlaylistResolveTotalSchema,
 });
+
+/**
+ * Get Playlist Resolve Total Schema
+ *
+ * Waits for the hybrid remote walk of the playlist's current snapshot and
+ * returns the window total. `filters` (media only) and `sortOrder` must match
+ * the `resolvePlaylistPosts` call that created the snapshot.
+ */
+export const GetPlaylistResolveTotalSchema = z.object({
+  playlistId: IdSchema,
+  filters: PostFiltersSchema.optional(),
+  sortOrder: z.enum(["asc", "desc", "position"]).optional().default("desc"),
+});
+
+export type GetPlaylistResolveTotalRequest = z.infer<
+  typeof GetPlaylistResolveTotalSchema
+>;
+
+/** Drops the hybrid snapshot held for a playlist (gallery unmount / playlist switch). */
+export const ReleasePlaylistSnapshotSchema = z.object({
+  playlistId: IdSchema,
+});
+
+export type ReleasePlaylistSnapshotRequest = z.infer<
+  typeof ReleasePlaylistSnapshotSchema
+>;
 
 /**
  * Parse playlist queryJson string into SmartPlaylistQuery object
