@@ -320,14 +320,6 @@ export class PostsController extends BaseController {
    * @returns Drizzle SQL condition for tag filtering using FTS5 or LIKE
    */
   /**
-   * Build WHERE conditions array for post filtering
-   * Centralized logic to avoid code duplication (DRY principle)
-   *
-   * @param artistId - Optional artist ID filter
-   * @param filters - Optional post filters (tags, isViewed, isFavorited)
-   * @returns Array of Drizzle SQL conditions for use with and()
-   */
-  /**
    * ORDER BY for getPosts feed queries.
    * Artist-scoped (artistId present): post_id only — provider-local chronology.
    * Cross-artist feeds (no artistId): published_at then post_id tiebreaker.
@@ -344,6 +336,14 @@ export class PostsController extends BaseController {
     return [direction(posts.publishedAt), direction(posts.postId)];
   }
 
+  /**
+   * Build WHERE conditions array for post filtering
+   * Centralized logic to avoid code duplication (DRY principle)
+   *
+   * @param artistId - Optional artist ID filter
+   * @param filters - Optional post filters (tags, isViewed, isFavorited)
+   * @returns Array of Drizzle SQL conditions for use with and()
+   */
   private buildPostFilterConditions(
     artistId: number | undefined,
     filters: PostFilterRequest | undefined

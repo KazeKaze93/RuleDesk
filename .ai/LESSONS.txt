@@ -224,7 +224,7 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 **Invariant Rule:** Hot paths that filter by one column and order by another need a dedicated composite index covering both — gallery now needs `(artist_id, post_id)`; cross-artist date feeds keep `(artist_id, published_at)` where that order remains. Add via `CREATE INDEX IF NOT EXISTS` migration — never rebuild the posts table for an index-only change.
 
 ### Problem: One gallery sort key for both provider-scoped and cross-provider feeds
-**Root Cause:** `post_id` namespaces differ per booru provider; sorting Favorites/Updates/playlists by bare `post_id` (or remote Browse by Rule34 `change`→`published_at`) produced wrong chronology vs site id order and unstable cross-provider mixes.
+**Root Cause:** Rule34 JSON API has no created_at; sync stored `change` (last edit time) into published_at and every list sorted by it, so edited posts jumped above newer uploads; upsert also overwrote published_at on resync. post_id namespaces differ per provider, so bare post_id is valid only inside one provider.
 **Invariant Rule:** Decide the provider filter first. Provider-scoped (artist `WHERE artist_id = ?`, remote Browse for current provider) → `ORDER BY post_id`. Cross-artist with no provider filter → `ORDER BY published_at`, then `post_id` (same direction). Do not re-sort remote Browse by `published_at`.
 
 ### Problem: Re-sync rewrote `published_at` from provider `change`

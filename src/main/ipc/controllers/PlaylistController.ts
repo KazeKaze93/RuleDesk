@@ -1982,9 +1982,8 @@ export class PlaylistController extends BaseController {
           .innerJoin(posts, eq(playlistEntries.postId, posts.id))
           .where(whereClause);
 
-        // Manual playlists mix artists/providers → no provider filter.
-        // position path unchanged; else publishedAt then postId (provider ASC secondary).
-        // cross-provider safe: post_id spaces differ per provider; published_at frozen at first-seen (see sync upsert)
+        // Manual playlist date sort = date added to playlist (addedAt), not post date.
+        // Tiebreaker: playlist_entries.post_id (PK with playlist_id), same direction.
         const result = isRandom
           ? queryBuilder
               .orderBy(...seededOrderBy(posts.id, resolveRandomSeed(seed)))
@@ -1997,10 +1996,11 @@ export class PlaylistController extends BaseController {
                   ? [asc(playlistEntries.position)]
                   : [
                       sortOrder === "asc"
-                        ? asc(posts.publishedAt)
-                        : desc(posts.publishedAt),
-                      asc(posts.provider),
-                      sortOrder === "asc" ? asc(posts.postId) : desc(posts.postId),
+                        ? asc(playlistEntries.addedAt)
+                        : desc(playlistEntries.addedAt),
+                      sortOrder === "asc"
+                        ? asc(playlistEntries.postId)
+                        : desc(playlistEntries.postId),
                     ])
               )
               .limit(limit)
