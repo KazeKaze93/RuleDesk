@@ -72,17 +72,6 @@ export function isProviderId(value: string): value is ProviderId {
   return false;
 }
 
-export function isKnownStoredProviderId(
-  value: string
-): value is KnownStoredProviderId {
-  for (const id of KNOWN_STORED_PROVIDER_IDS) {
-    if (id === value) {
-      return true;
-    }
-  }
-  return false;
-}
-
 /**
  * Artist Types
  *
