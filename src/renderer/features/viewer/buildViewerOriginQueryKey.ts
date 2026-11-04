@@ -9,7 +9,7 @@ export type ViewerOriginQueryKey =
   | readonly ["posts", "favorites", string[]]
   | readonly ["posts", number, string, string, string, string]
   | BrowseSearchQueryKey
-  | readonly ["playlist-posts", number, string, string, string];
+  | readonly ["playlist-posts", number, string, string];
 
 /**
  * Canonical viewer cache key for an origin. Must stay isomorphic with
@@ -47,11 +47,11 @@ export function buildViewerOriginQueryKey(
     case "browse":
       return buildBrowseSearchQueryKey({ tags: [] });
     case "playlist":
+      // AI is client-filtered on PlaylistGallery — not part of the infinite query key.
       return [
         "playlist-posts",
         origin.playlistId,
         origin.mediaType ?? "all",
-        origin.aiFilter ?? "all",
         origin.sortOrder ?? "desc",
       ] as const;
     default:

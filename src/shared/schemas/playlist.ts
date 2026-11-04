@@ -318,6 +318,32 @@ export interface PlaylistExport {
 export type ResolvePlaylistPostsRequest = z.infer<typeof ResolvePlaylistPostsSchema>;
 
 /**
+ * Hybrid smart-collection window total after local∪remote merge + main filters
+ * (media/blacklist). AI is client-side; `aiCount` lets the header derive hide/only
+ * without re-walking remote. `exact` / `lowerBound` / `null` — same walk rules as before.
+ */
+export const PlaylistResolveTotalSchema = z
+  .object({
+    count: z.number().int().nonnegative(),
+    /** Posts in the merged window that match `hasAiGeneratedTag`. */
+    aiCount: z.number().int().nonnegative(),
+    kind: z.enum(["exact", "lowerBound"]),
+  })
+  .nullable();
+
+export type PlaylistResolveTotal = z.infer<typeof PlaylistResolveTotalSchema>;
+
+/**
+ * Resolve Playlist Posts Result — page slice plus optional hybrid window total.
+ * `posts` stays a page; `total` is the full merged window for the current snapshot.
+ * Post element typing lives on the IPC bridge (`Post[]`); Zod here gates the envelope.
+ */
+export const ResolvePlaylistPostsResultSchema = z.object({
+  posts: z.array(z.unknown()),
+  total: PlaylistResolveTotalSchema,
+});
+
+/**
  * Parse playlist queryJson string into SmartPlaylistQuery object
  * 
  * This utility function centralizes queryJson parsing logic.

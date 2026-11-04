@@ -84,7 +84,14 @@ type PlaylistControllerInternals = {
       sortOrder?: "asc" | "desc" | "position";
       isRandom?: boolean;
     }
-  ) => Promise<Array<{ postId: number }>>;
+  ) => Promise<{
+    posts: Array<{ postId: number }>;
+    total: {
+      count: number;
+      aiCount: number;
+      kind: "exact" | "lowerBound";
+    } | null;
+  }>;
 };
 
 /**
@@ -228,7 +235,8 @@ describe("PlaylistController resolvePlaylistPosts static addedAt sort", () => {
       limit: 10,
       sortOrder: "desc",
     });
-    expect(desc.map((p) => p.postId)).toEqual([30, 20, 10]);
+    expect(desc.posts.map((p) => p.postId)).toEqual([30, 20, 10]);
+    expect(desc.total).toBeNull();
 
     const asc = await controller.resolvePlaylistPosts({} as IpcMainInvokeEvent, {
       playlistId,
@@ -236,6 +244,7 @@ describe("PlaylistController resolvePlaylistPosts static addedAt sort", () => {
       limit: 10,
       sortOrder: "asc",
     });
-    expect(asc.map((p) => p.postId)).toEqual([10, 20, 30]);
+    expect(asc.posts.map((p) => p.postId)).toEqual([10, 20, 30]);
+    expect(asc.total).toBeNull();
   });
 });

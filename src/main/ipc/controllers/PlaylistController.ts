@@ -44,6 +44,11 @@ import {
   parseSmartQuery,
 } from "../../../shared/schemas/smart-playlist-query";
 import { isVideoUrl } from "@shared/utils/media";
+import { hasAiGeneratedTag } from "../../../shared/ai-tags";
+import {
+  buildPlaylistResolveTotal,
+  type RemoteWalkCompleteness,
+} from "../../../shared/playlist-resolve-total";
 import {
   EXTERNAL_ARTIST_ID,
   PROVIDER_IDS,
@@ -73,6 +78,7 @@ import {
 } from "../../db/queries/playlists";
 import { getAllBlacklistedTags } from "../../db/queries/blacklist";
 import { buildPostsBlacklistFilterCondition } from "../../db/queries/post-tag-filter";
+import type { PlaylistResolveTotal } from "../../../shared/schemas/playlist";
 
 type UnknownRecord = Record<string, unknown>;
 const CreatePlaylistArgsSchema = z.tuple([CreatePlaylistSchema]);
@@ -208,6 +214,16 @@ const HYBRID_REMOTE_API_PAGE_CAP = 1000;
 const HYBRID_RANDOM_MATERIALIZE_CAP = 50_000;
 /** Safety-net issued `provider:postId` keys retained per ordered sequence. */
 const HYBRID_ORDERED_ISSUED_KEY_CAP = 50_000;
+
+type ResolvePlaylistPostsIpcResult = {
+  posts: IpcPost[];
+  total: PlaylistResolveTotal;
+};
+
+type RemotePlaylistWalkResult = {
+  posts: IpcPost[];
+  completeness: RemoteWalkCompleteness;
+};
 
 function hybridPostMergeKey(post: { provider: string; postId: number }): string {
   return `${post.provider}:${post.postId}`;
@@ -407,6 +423,29 @@ function mergeHybridPlaylistPage(
     remoteTaken: remoteIdx,
     mergedCount: merged.length,
   };
+}
+
+/**
+ * Full local∪remote window after identity collapse + local-prefer dedupe.
+ * Unlike mergeHybridPlaylistPage.mergedCount (ordered prefix up to page*limit),
+ * this is the complete snapshot window used for the header total (+ aiCount).
+ * Pages are not AI-filtered; aiCount is for the client header only.
+ */
+function summarizeHybridMergedWindow(
+  localPosts: IpcPost[],
+  remotePosts: IpcPost[]
+): { count: number; aiCount: number } {
+  const localUnique = collapseHybridPostsByIdentity(localPosts, preferLocalHybridRow);
+  const remoteUnique = collapseHybridPostsByIdentity(remotePosts, (a) => a);
+  const remoteOnly = dedupeHybridPostsPreferLocal(localUnique, remoteUnique);
+  const merged = [...localUnique, ...remoteOnly];
+  let aiCount = 0;
+  for (const post of merged) {
+    if (hasAiGeneratedTag(post.tags)) {
+      aiCount += 1;
+    }
+  }
+  return { count: merged.length, aiCount };
 }
 
 /**
@@ -1895,7 +1934,7 @@ export class PlaylistController extends BaseController {
   private async resolvePlaylistPosts(
     _event: IpcMainInvokeEvent,
     params: ResolvePlaylistPostsRequest
-  ): Promise<IpcPost[]> {
+  ): Promise<ResolvePlaylistPostsIpcResult> {
     const {
       playlistId,
       page,
@@ -2001,13 +2040,14 @@ export class PlaylistController extends BaseController {
           `[PlaylistController] Resolved ${result.length} posts from static playlist ${playlistId} (page ${page})`
         );
 
-        return toIpcSafe(result);
+        // Manual totals come from getPlaylists postCount (entry COUNT), not here.
+        return { posts: toIpcSafe(result), total: null };
       }
 
       // Smart playlist: parse query_json and build dynamic query
       if (!playlist.queryJson || playlist.queryJson.trim() === "") {
         log.warn(`[PlaylistController] Smart playlist ${playlistId} has no query_json, returning empty result`);
-        return [];
+        return { posts: [], total: null };
       }
       const smartSortOrder = sortOrder === "position" ? "desc" : sortOrder;
 
@@ -2047,7 +2087,7 @@ export class PlaylistController extends BaseController {
 
       if (includeConditions.length === 0 && excludeConditions.length === 0) {
         log.warn(`[PlaylistController] Smart playlist ${playlistId} has no valid tags, returning empty result`);
-        return [];
+        return { posts: [], total: null };
       }
 
       // Combine conditions for local DB query
@@ -2115,7 +2155,7 @@ export class PlaylistController extends BaseController {
 
       // Execute local DB query and remote API query concurrently.
       // Provider/creds failures must throw — never map to [] (silent empty success).
-      const [localPosts, remotePosts] = await Promise.all([
+      const [localPosts, remoteWalk] = await Promise.all([
         (async () => {
           const queryBuilder = db
             .select({
@@ -2174,6 +2214,8 @@ export class PlaylistController extends BaseController {
         ),
       ]);
 
+      const remotePosts = remoteWalk.posts;
+
       if (orderedSequenceKey !== null) {
         const snapshotBound =
           requestUpperBoundPostId ??
@@ -2191,6 +2233,7 @@ export class PlaylistController extends BaseController {
         }
       }
 
+      // Pages are not AI-filtered (client filters after flatten). aiCount is for the header.
       const { pagePosts: mergedPagePosts, localTaken, remoteTaken, mergedCount } =
         mergeHybridPlaylistPage(
           localPosts,
@@ -2230,14 +2273,26 @@ export class PlaylistController extends BaseController {
         }
       }
 
+      const windowSummary = summarizeHybridMergedWindow(localPosts, remotePosts);
+      const total = buildPlaylistResolveTotal({
+        isSmart: true,
+        remoteCompleteness: remoteWalk.completeness,
+        mergedWindowCount: windowSummary.count,
+        aiCount: windowSummary.aiCount,
+        localHitMaterializeCap: localPosts.length >= localFetchLimit,
+      });
+
       log.info(
         `[PlaylistController] Hybrid search resolved ${pagePosts.length} posts for smart playlist ${playlistId} ` +
           `(localWindow: ${localPosts.length}, remoteWindow: ${remotePosts.length}, ` +
-          `mergedPrefix: ${mergedCount}, localTaken: ${localTaken}, remoteTaken: ${remoteTaken}, ` +
+          `mergedPrefix: ${mergedCount}, mergedWindow: ${windowSummary.count}, ` +
+          `aiCount: ${windowSummary.aiCount}, ` +
+          `total: ${total === null ? "null" : `${total.kind}:${total.count}`}, ` +
+          `localTaken: ${localTaken}, remoteTaken: ${remoteTaken}, ` +
           `upperBound: ${remoteUpperBoundPostId ?? "none"}, page ${page})`
       );
 
-      return pagePosts;
+      return { posts: pagePosts, total };
     } catch (error) {
       log.error(`[PlaylistController] Failed to resolve playlist posts for ${playlistId}:`, error);
       throw error;
@@ -2261,7 +2316,7 @@ export class PlaylistController extends BaseController {
     isRandom: boolean,
     seed: number,
     upperBoundPostId?: number
-  ): Promise<IpcPost[]> {
+  ): Promise<RemotePlaylistWalkResult> {
     try {
       // Build booru query string from tags (+ optional id:<=upperBound snapshot).
       const booruQuery = this.buildBooruQueryString(query, upperBoundPostId);
@@ -2293,6 +2348,7 @@ export class PlaylistController extends BaseController {
       let apiPage = 0;
       let pagesScanned = 0;
       let rawFetchedTotal = 0;
+      let feedExhausted = false;
       const apiRequestLimit = Math.min(HYBRID_REMOTE_API_PAGE_CAP, Math.max(1, fetchLimit));
 
       while (
@@ -2372,6 +2428,7 @@ export class PlaylistController extends BaseController {
 
         // End of feed: short *API* page (not fetchLimit — random materialize uses a large cap).
         if (rawItemCount < apiRequestLimit || booruPosts.length === 0) {
+          feedExhausted = true;
           break;
         }
         apiPage += 1;
@@ -2382,13 +2439,18 @@ export class PlaylistController extends BaseController {
       );
 
       const windowPosts = filteredPosts.slice(0, fetchLimit);
+      // exact = provider feed exhausted (short API page). Otherwise scan/fetch cap → lowerBound.
+      const completeness: RemoteWalkCompleteness = feedExhausted
+        ? "exact"
+        : "lowerBound";
 
       log.info(
         `[PlaylistController] Resolved ${windowPosts.length} posts from remote API for smart playlist ${playlistId} ` +
-          `(fetchLimit ${fetchLimit}, scanned ${pagesScanned} API page(s), raw ${rawFetchedTotal})`
+          `(fetchLimit ${fetchLimit}, scanned ${pagesScanned} API page(s), raw ${rawFetchedTotal}, ` +
+          `completeness ${completeness})`
       );
 
-      return windowPosts;
+      return { posts: windowPosts, completeness };
     } catch (error) {
       log.error(`[PlaylistController] Failed to resolve remote playlist posts for ${playlistId}:`, error);
       throw error;

@@ -77,6 +77,19 @@ export const BATCH_DOWNLOAD_CHUNK_SIZE = 100;
 export const POSTS_PAGE_SIZE = 50;
 
 /**
+ * Viewer near-end prefetch for playlist queues: remaining ids before onLoadMore.
+ * ~3–4.4 s per smart page (each page refetches the full remote window); 2 pages of lead time.
+ */
+export const PLAYLIST_PREFETCH_ITEMS = 2 * POSTS_PAGE_SIZE;
+
+/**
+ * Masonry overflow-auto load-more threshold for playlist galleries (~2 viewports).
+ * Smart hybrid pages take 3–4.4 s; start fetch ~1800 px before the edge so masonry
+ * does not stall at the bottom the way grid did without rangeChanged prefetch.
+ */
+export const PLAYLIST_MASONRY_THRESHOLD_PX = 1800;
+
+/**
  * Max post ids accepted by `updates:markSeenByIds` in one IPC call.
  * Matches a generous multi-page Updates feed load (`POSTS_PAGE_SIZE`).
  */

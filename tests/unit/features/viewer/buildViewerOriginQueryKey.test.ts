@@ -72,7 +72,7 @@ describe("buildViewerOriginQueryKey", () => {
         aiFilter: "hide",
         sortOrder: "desc",
       })
-    ).toEqual(["playlist-posts", 11, "all", "hide", "desc"]);
+    ).toEqual(["playlist-posts", 11, "all", "desc"]);
   });
 
   it("matches Updates infinite query key", () => {

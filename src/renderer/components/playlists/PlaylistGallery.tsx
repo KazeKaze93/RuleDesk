@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
-  useQueryClient,
-  useInfiniteQuery,
-  type InfiniteData,
-  type QueryKey,
-} from "@tanstack/react-query";
-import { ArrowLeft, Loader2, List, Sparkles, CheckSquare } from "lucide-react";
+  ArrowLeft,
+  Loader2,
+  List,
+  Sparkles,
+  CheckSquare,
+  RefreshCw,
+} from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
 import log from "electron-log/renderer";
 import {
@@ -24,7 +26,8 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { Button } from "../ui/button";
-import type { Playlist, Post } from "@shared/types/db";
+import type { Post } from "@shared/types/db";
+import type { PlaylistWithStats } from "@shared/types/bridge";
 import { useViewerStore } from "../../store/viewerStore";
 import { useSearchStore } from "../../store/searchStore";
 import { PostCard } from "../../features/artists/components/PostCard";
@@ -42,10 +45,23 @@ import { BulkActionBar } from "../BulkActionBar/BulkActionBar";
 import { getBulkSelectId } from "../../lib/bulkSelect";
 import { createVirtuosoGridFactories } from "../gallery/virtuoso-factories";
 import { GalleryLoadError } from "../gallery/GalleryLoadError";
+import { useGalleryInfiniteScroll } from "../../hooks/useGalleryInfiniteScroll";
 import { useMasonryInfiniteScroll } from "../../hooks/useMasonryInfiniteScroll";
 import { SortablePostCard } from "./PlaylistVirtuosoComponents";
 import { resolveErrorMessage } from "../../utils/error-message";
-import { POSTS_PAGE_SIZE } from "../../../shared/constants";
+import {
+  PLAYLIST_MASONRY_THRESHOLD_PX,
+  PLAYLIST_PREFETCH_ITEMS,
+  POSTS_PAGE_SIZE,
+} from "../../../shared/constants";
+import {
+  formatManualPlaylistCountLabel,
+  formatSmartPlaylistTotalLabel,
+  PLAYLIST_HEADER_REFRESH_ARIA_LABEL,
+  PLAYLIST_HEADER_SMART_SUBTITLE,
+  PLAYLIST_HEADER_SMART_TYPE_LABEL,
+} from "./playlist-gallery-header";
+import type { PlaylistResolveTotal } from "../../../shared/schemas/playlist";
 
 const {
   GridContainer,
@@ -68,7 +84,7 @@ const shouldIncludePostInPlaylistQueue = (
 
 // Playlist Gallery Component (similar to ArtistGallery)
 interface PlaylistGalleryProps {
-  playlist: Playlist;
+  playlist: PlaylistWithStats;
   onBack: () => void;
 }
 
@@ -88,21 +104,23 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
   const aiFilter = useSearchStore((state) => state.filters.aiFilter);
   const mediaType = useSearchStore((state) => state.filters.mediaType);
   const queryClient = useQueryClient();
+  // Bump to force page-1 reload: removeQueries alone leaves keepPreviousData
+  // on the same key, so the grid would keep the scrolled pages until refetch.
+  const [refreshEpoch, setRefreshEpoch] = useState(0);
 
-  // Build filters for API call from search store state
+  // mediaType stays on main (and in queryKey). AI is client-only — toggling it must
+  // not re-walk the hybrid remote window.
   const apiFilters = useMemo(() => {
     const result: { mediaType?: "all" | "images" | "videos" } = {};
-
-    // Map mediaType filter from current search store state
     if (mediaType && mediaType !== "all") {
       result.mediaType = mediaType;
     }
-    
     return result;
   }, [mediaType]);
 
   const {
     data,
+    allPosts: rawPosts,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
@@ -111,42 +129,56 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
     isError,
     error,
     refetch,
-  } = useInfiniteQuery<Post[], Error, InfiniteData<Post[]>, QueryKey, number>({
+    handleEndReached,
+    handleRangeChanged,
+    loadMoreNow,
+    isFetching,
+  } = useGalleryInfiniteScroll({
     queryKey: [
       "playlist-posts",
       playlist.id,
       mediaType,
-      aiFilter,
       sortOrder,
+      refreshEpoch,
     ],
     initialPageParam: 1,
-    queryFn: async ({ pageParam }) => {
+    prefetchItems: PLAYLIST_PREFETCH_ITEMS,
+    fetchFn: async (page) => {
       return await window.api.resolvePlaylistPosts({
         playlistId: playlist.id,
-        page: pageParam,
+        page,
         limit: POSTS_PAGE_SIZE,
         filters: Object.keys(apiFilters).length > 0 ? apiFilters : undefined,
         sortOrder,
         isRandom: false,
       });
     },
+    flattenPage: (page) => page.posts,
+    // Raw page length before client AI filter (pagination must not shrink with AI).
     getNextPageParam: (lastPage, allPages) => {
-      if (lastPage.length < POSTS_PAGE_SIZE) return undefined;
+      if (lastPage.posts.length < POSTS_PAGE_SIZE) return undefined;
       return allPages.length + 1;
     },
   });
 
   const allPosts = useMemo(() => {
-    let posts = data?.pages.flat() ?? [];
-
+    let posts = rawPosts;
     if (aiFilter === "hide") {
       posts = posts.filter((post) => !hasAiGeneratedTag(post.tags));
     } else if (aiFilter === "only") {
       posts = posts.filter((post) => hasAiGeneratedTag(post.tags));
     }
-
     return posts;
-  }, [data, aiFilter]);
+  }, [rawPosts, aiFilter]);
+
+  const smartResolveTotal: PlaylistResolveTotal =
+    playlist.isSmart && data?.pages[0] !== undefined
+      ? data.pages[0].total
+      : null;
+  const smartTotalLabel = formatSmartPlaylistTotalLabel(
+    smartResolveTotal,
+    aiFilter
+  );
   const [localPosts, setLocalPosts] = useState<Post[]>([]);
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -180,24 +212,32 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
     [displayedPosts, selectedIds]
   );
 
-  const handleLoadMore = () => {
-    if (hasNextPage && !isFetchingNextPage) {
-      void fetchNextPage().then((result) => {
-        const newPage = result.data?.pages[result.data.pages.length - 1];
-        if (!newPage || newPage.length === 0) return;
-        const filteredIds = newPage
-          .filter((post) =>
-            shouldIncludePostInPlaylistQueue(post, {
-              aiFilter,
-            })
-          )
-          .map((post) => (post.id === 0 && post.postId ? post.postId : post.id));
-        if (filteredIds.length > 0) {
-          appendQueueIds(filteredIds);
-        }
-      });
-    }
-  };
+  // Viewer / masonry: loadMoreNow (same ref-gate as handleEndReached, no debounce)
+  // then appendQueueIds. Virtuoso grid uses handleEndReached (debounced).
+  const handleLoadMore = useCallback(() => {
+    void loadMoreNow().then((newPage) => {
+      if (!newPage || newPage.posts.length === 0) return;
+      // Main already applied AI when requested; keep client gate for queue safety.
+      const filteredIds = newPage.posts
+        .filter((post) =>
+          shouldIncludePostInPlaylistQueue(post, {
+            aiFilter,
+          })
+        )
+        .map((post) => (post.id === 0 && post.postId ? post.postId : post.id));
+      if (filteredIds.length > 0) {
+        appendQueueIds(filteredIds);
+      }
+    });
+  }, [loadMoreNow, aiFilter, appendQueueIds]);
+
+  const handleRefreshCollection = useCallback(() => {
+    // New queryKey drops infinite pages; placeholderData keeps the prior grid
+    // until page 1 arrives with a fresh hybrid snapshot total.
+    setRefreshEpoch((n) => n + 1);
+  }, []);
+
+  const isRefreshBusy = isLoading || isFetching || isFetchingNextPage;
 
   const handlePostClick = (index: number) => {
     const currentDisplayedPosts = displayedPosts;
@@ -238,7 +278,10 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
   const handleMasonryScroll = useMasonryInfiniteScroll({
     hasNextPage,
     isFetchingNextPage,
-    onLoadMore: handleLoadMore,
+    thresholdPx: PLAYLIST_MASONRY_THRESHOLD_PX,
+    onLoadMore: () => {
+      void handleLoadMore();
+    },
   });
 
   const handleRemovePost = async (postId: number) => {
@@ -339,7 +382,7 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
   );
 
   const hasLoadedPosts =
-    data?.pages.some((page) => page.length > 0) === true;
+    data?.pages.some((page) => page.posts.length > 0) === true;
   const isFatalGalleryError = isError && !hasLoadedPosts;
   const showNextPageError = isFetchNextPageError && hasLoadedPosts;
   const galleryErrorDescription = resolveErrorMessage(
@@ -367,20 +410,48 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
             )}
             <div>
               <h1 className="text-xl font-semibold">{playlist.name}</h1>
-              {playlist.isSmart && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Smart Collection
-                </p>
-              )}
-              {displayedPosts.length > 0 && (
+              {playlist.isSmart ? (
+                <>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {PLAYLIST_HEADER_SMART_TYPE_LABEL}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {PLAYLIST_HEADER_SMART_SUBTITLE}
+                  </p>
+                  {smartTotalLabel !== null && (
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      {smartTotalLabel}
+                    </p>
+                  )}
+                </>
+              ) : (
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  Total: {displayedPosts.length}
+                  {formatManualPlaylistCountLabel(playlist.postCount)}
                 </p>
               )}
             </div>
           </div>
         </div>
         <div className="flex gap-2">
+          {playlist.isSmart && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    aria-label={PLAYLIST_HEADER_REFRESH_ARIA_LABEL}
+                    disabled={isRefreshBusy}
+                    onClick={handleRefreshCollection}
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Refresh</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -490,7 +561,10 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
               className="h-full"
               aria-busy={listAriaBusy}
               totalCount={displayedPosts.length}
-              endReached={handleLoadMore}
+              endReached={handleEndReached}
+              rangeChanged={(range) =>
+                handleRangeChanged(range, displayedPosts.length)
+              }
               increaseViewportBy={600}
               components={{
                 List: ListComponent,

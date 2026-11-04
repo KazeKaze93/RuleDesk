@@ -87,7 +87,14 @@ type PlaylistControllerInternals = {
       sortOrder?: "asc" | "desc" | "position";
       isRandom?: boolean;
     }
-  ) => Promise<ResolvedPost[]>;
+  ) => Promise<{
+    posts: ResolvedPost[];
+    total: {
+      count: number;
+      aiCount: number;
+      kind: "exact" | "lowerBound";
+    } | null;
+  }>;
 };
 
 function makeRemotePost(id: number, createdAt: Date): BooruPost {
@@ -259,12 +266,16 @@ describe("PlaylistController smart playlist provider-scoped postId sort", () => 
   });
 
   it("orders hybrid smart posts by postId and scopes local rows to query.provider", async () => {
-    const desc = await controller.resolvePlaylistPosts({} as IpcMainInvokeEvent, {
-      playlistId,
-      page: 1,
-      limit: 20,
-      sortOrder: "desc",
-    });
+    const descResult = await controller.resolvePlaylistPosts(
+      {} as IpcMainInvokeEvent,
+      {
+        playlistId,
+        page: 1,
+        limit: 20,
+        sortOrder: "desc",
+      }
+    );
+    const desc = descResult.posts;
     expect(desc.map((p) => p.postId)).toEqual(EXPECTED_POST_ID_DESC);
     expect(desc.every((p) => p.provider === "rule34")).toBe(true);
     expect(desc.some((p) => p.postId === 99)).toBe(false);
@@ -273,12 +284,16 @@ describe("PlaylistController smart playlist provider-scoped postId sort", () => 
     const publishedAtDesc = [...desc].sort((a, b) => b.publishedAt - a.publishedAt);
     expect(publishedAtDesc.map((p) => p.postId)).not.toEqual(EXPECTED_POST_ID_DESC);
 
-    const asc = await controller.resolvePlaylistPosts({} as IpcMainInvokeEvent, {
-      playlistId,
-      page: 1,
-      limit: 20,
-      sortOrder: "asc",
-    });
+    const ascResult = await controller.resolvePlaylistPosts(
+      {} as IpcMainInvokeEvent,
+      {
+        playlistId,
+        page: 1,
+        limit: 20,
+        sortOrder: "asc",
+      }
+    );
+    const asc = ascResult.posts;
     expect(asc.map((p) => p.postId)).toEqual(EXPECTED_POST_ID_ASC);
     expect(asc.every((p) => p.provider === "rule34")).toBe(true);
     expect(asc.some((p) => p.postId === 99)).toBe(false);

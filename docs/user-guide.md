@@ -292,12 +292,14 @@ Use playlists to organize posts outside of tracked artists.
 
 **Smart collections:**
 
-Smart collections are a **live query** (local cache + booru API) evaluated each time you open them — they are not a synced artist gallery, so Sync All does not “fill” them. Newest/oldest sort follows provider post id (same as the site for that query). The **Total** figure in the header is how many posts are currently loaded in the gallery, not a full corpus count from the server.
+Smart collections are a **live query** (local cache + booru API) evaluated each time you open them — they are not a synced artist gallery, so Sync All does not “fill” them. Newest/oldest sort follows provider post id (same as the site for that query). The header shows **Smart Collection**, the subtitle **Live search · refreshes when opened**, and a **Refresh** button that reloads from page 1. The count is the hybrid filter window from the server: **Total: N** when the remote walk exhausted the feed, **N+ posts** when it hit the scan limit (a lower bound), or no number when the total is unknown. Changing the AI filter updates the visible posts and the header count immediately without reloading the collection. The count is not the number of thumbnails currently scrolled into view.
 
 1. Open **Playlists** -> **New Playlist**
 2. Select **Smart Collection**
 3. Add include/exclude tags
 4. Save - posts are resolved automatically from local cache and provider API
+
+**Manual playlist header count:** shows **N entries** (raw entry count). Media / AI filters may hide some of those posts in the gallery.
 
 **Reorder manual playlists:**
 

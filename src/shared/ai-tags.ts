@@ -10,3 +10,18 @@ export const AI_TAGS = [
 ] as const;
 
 export type AiTag = (typeof AI_TAGS)[number];
+
+/**
+ * Exact-token AI check for space-separated tag strings (DB / IPC posts).
+ * Same predicate main and renderer must use for smart-collection totals.
+ */
+export function hasAiGeneratedTag(tags: string | undefined | null): boolean {
+  if (!tags) return false;
+
+  const tagArray = tags
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((tag) => tag.length > 0);
+
+  return AI_TAGS.some((aiTag) => tagArray.includes(aiTag));
+}

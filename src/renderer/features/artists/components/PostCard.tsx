@@ -15,6 +15,7 @@ import { Button } from "../../../components/ui/button";
 import { MediaLoadPlaceholder } from "../../../components/gallery/MediaLoadPlaceholder";
 import { useBulkSelect } from "../../../hooks/useBulkSelect";
 import { getBulkSelectId } from "../../../lib/bulkSelect";
+import { isEventFromOwnDom } from "../../../lib/dom-event";
 import { getRatingMeta } from "../../../lib/rating";
 import {
   failedSampleUrls,
@@ -227,10 +228,7 @@ export const PostCard: React.FC<PostCardProps> = ({
       role="button"
       tabIndex={0}
       onClick={(e) => {
-        // Portal-rendered descendants (e.g. QuickAddToPlaylistMenu overlay) still
-        // bubble React synthetics to the card; ignore events whose target is not
-        // DOM-contained in the card.
-        if (!(e.target instanceof Node) || !e.currentTarget.contains(e.target)) {
+        if (!isEventFromOwnDom(e)) {
           return;
         }
         e.preventDefault();
@@ -242,13 +240,7 @@ export const PostCard: React.FC<PostCardProps> = ({
         onClick();
       }}
       onKeyDown={(event) => {
-        // Portal-rendered descendants (e.g. QuickAddToPlaylistMenu overlay) still
-        // bubble React synthetics to the card; ignore events whose target is not
-        // DOM-contained in the card.
-        if (
-          !(event.target instanceof Node) ||
-          !event.currentTarget.contains(event.target)
-        ) {
+        if (!isEventFromOwnDom(event)) {
           return;
         }
         if (event.key !== "Enter" && event.key !== " ") {
@@ -263,13 +255,7 @@ export const PostCard: React.FC<PostCardProps> = ({
         onClick();
       }}
       onPointerDown={(event) => {
-        // Portal-rendered descendants (e.g. QuickAddToPlaylistMenu overlay) still
-        // bubble React synthetics to the card; ignore events whose target is not
-        // DOM-contained in the card.
-        if (
-          !(event.target instanceof Node) ||
-          !event.currentTarget.contains(event.target)
-        ) {
+        if (!isEventFromOwnDom(event)) {
           return;
         }
         if (event.button !== 0 || isBulkMode) {
@@ -305,10 +291,7 @@ export const PostCard: React.FC<PostCardProps> = ({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onContextMenu={(e) => {
-        // Portal-rendered descendants (e.g. QuickAddToPlaylistMenu overlay) still
-        // bubble React synthetics to the card; ignore events whose target is not
-        // DOM-contained in the card.
-        if (!(e.target instanceof Node) || !e.currentTarget.contains(e.target)) {
+        if (!isEventFromOwnDom(e)) {
           return;
         }
         e.preventDefault();

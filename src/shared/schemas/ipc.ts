@@ -40,6 +40,7 @@ export const UpperBoundPostIdSchema = z.number().int().positive().optional();
 
 export const RatingSchema = z.enum(["s", "q", "e"]);
 export const MediaTypeSchema = z.enum(["all", "images", "videos"]);
+/** Playlist resolve filters — media only; AI is client-side (+ aiCount on total). */
 export const PostFiltersSchema = z.object({
   mediaType: MediaTypeSchema.optional(),
 });

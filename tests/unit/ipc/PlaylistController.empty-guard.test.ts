@@ -91,7 +91,14 @@ type PlaylistControllerInternals = {
       sortOrder?: "asc" | "desc" | "position";
       isRandom?: boolean;
     }
-  ) => Promise<Array<{ postId: number; tags: string }>>;
+  ) => Promise<{
+    posts: Array<{ postId: number; tags: string }>;
+    total: {
+      count: number;
+      aiCount: number;
+      kind: "exact" | "lowerBound";
+    } | null;
+  }>;
 };
 
 /** Plain `sql\`1 = 0\`` renders without a dialect; MATCH conditions embed columns and do not. */
@@ -285,10 +292,10 @@ describe("PlaylistController FTS empty-guard", () => {
       isRandom: false,
     });
 
-    expect(resolved).toHaveLength(3);
-    expect(resolved.map((row) => row.postId).sort((a, b) => a - b)).toEqual([
-      2001, 2002, 2003,
-    ]);
+    expect(resolved.posts).toHaveLength(3);
+    expect(
+      resolved.posts.map((row) => row.postId).sort((a, b) => a - b)
+    ).toEqual([2001, 2002, 2003]);
   });
 
   it("include/exclude stay correct while insert triggers are dropped (bulk-sync window)", async () => {
@@ -380,8 +387,8 @@ describe("PlaylistController FTS empty-guard", () => {
       limit: 50,
     });
 
-    expect(included.map((row) => row.postId)).toEqual([777]);
-    expect(excluded).toEqual([]);
+    expect(included.posts.map((row) => row.postId)).toEqual([777]);
+    expect(excluded.posts).toEqual([]);
 
     rebuildFtsIndex(sqlite);
     ensureFtsTriggers(sqlite);
@@ -397,7 +404,7 @@ describe("PlaylistController FTS empty-guard", () => {
       limit: 50,
     });
 
-    expect(includedAfterRebuild.map((row) => row.postId)).toEqual([777]);
-    expect(excludedAfterRebuild).toEqual([]);
+    expect(includedAfterRebuild.posts.map((row) => row.postId)).toEqual([777]);
+    expect(excludedAfterRebuild.posts).toEqual([]);
   });
 });
