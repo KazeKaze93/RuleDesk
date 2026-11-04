@@ -27,6 +27,7 @@ import type {
   RemovePostsFromPlaylistRequest,
   GetPlaylistPostsRequest,
   ResolvePlaylistPostsRequest,
+  PlaylistResolveTotal,
   ReorderPlaylistEntriesRequest,
   GetManualPlaylistMembershipForPostsRequest,
   SyncManualPlaylistMembershipRequest,
@@ -244,7 +245,9 @@ export interface IpcBridge {
     params: ReorderPlaylistEntriesRequest
   ) => Promise<void>;
   getPlaylistPosts: (params: GetPlaylistPostsRequest) => Promise<Post[]>;
-  resolvePlaylistPosts: (params: ResolvePlaylistPostsRequest) => Promise<Post[]>;
+  resolvePlaylistPosts: (
+    params: ResolvePlaylistPostsRequest
+  ) => Promise<{ posts: Post[]; total: PlaylistResolveTotal }>;
   getPlaylistsContainingPost: (
     postId: number,
     externalPostId?: number,

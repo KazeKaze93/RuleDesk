@@ -52,11 +52,12 @@ import { resolveErrorMessage } from "../../utils/error-message";
 import { POSTS_PAGE_SIZE } from "../../../shared/constants";
 import {
   formatManualPlaylistCountLabel,
-  formatSmartPlaylistLoadedLabel,
+  formatSmartPlaylistTotalLabel,
   PLAYLIST_HEADER_REFRESH_ARIA_LABEL,
   PLAYLIST_HEADER_SMART_SUBTITLE,
   PLAYLIST_HEADER_SMART_TYPE_LABEL,
 } from "./playlist-gallery-header";
+import type { PlaylistResolveTotal } from "../../../shared/schemas/playlist";
 
 const {
   GridContainer,
@@ -100,24 +101,29 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
   const mediaType = useSearchStore((state) => state.filters.mediaType);
   const queryClient = useQueryClient();
   // Bump to force page-1 reload: removeQueries alone leaves keepPreviousData
-  // on the same key, so "Loaded N" stays at the scrolled total.
+  // on the same key, so the grid would keep the scrolled pages until refetch.
   const [refreshEpoch, setRefreshEpoch] = useState(0);
 
-  // Build filters for API call from search store state
+  // Build filters for API call from search store state (AI counted on main).
   const apiFilters = useMemo(() => {
-    const result: { mediaType?: "all" | "images" | "videos" } = {};
+    const result: {
+      mediaType?: "all" | "images" | "videos";
+      aiFilter?: "all" | "hide" | "only";
+    } = {};
 
-    // Map mediaType filter from current search store state
     if (mediaType && mediaType !== "all") {
       result.mediaType = mediaType;
     }
-    
+    if (aiFilter && aiFilter !== "all") {
+      result.aiFilter = aiFilter;
+    }
+
     return result;
-  }, [mediaType]);
+  }, [mediaType, aiFilter]);
 
   const {
     data,
-    allPosts: rawPosts,
+    allPosts,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
@@ -149,25 +155,18 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
         isRandom: false,
       });
     },
-    // Raw page length before client AI filter (same gate as pre-migration).
+    flattenPage: (page) => page.posts,
     getNextPageParam: (lastPage, allPages) => {
-      if (lastPage.length < POSTS_PAGE_SIZE) return undefined;
+      if (lastPage.posts.length < POSTS_PAGE_SIZE) return undefined;
       return allPages.length + 1;
     },
   });
 
-  // Client AI filter after flatten — same as pre-migration (server still pages on raw size).
-  const allPosts = useMemo(() => {
-    let posts = rawPosts;
-
-    if (aiFilter === "hide") {
-      posts = posts.filter((post) => !hasAiGeneratedTag(post.tags));
-    } else if (aiFilter === "only") {
-      posts = posts.filter((post) => hasAiGeneratedTag(post.tags));
-    }
-
-    return posts;
-  }, [rawPosts, aiFilter]);
+  const smartResolveTotal: PlaylistResolveTotal =
+    playlist.isSmart && data?.pages[0] !== undefined
+      ? data.pages[0].total
+      : null;
+  const smartTotalLabel = formatSmartPlaylistTotalLabel(smartResolveTotal);
   const [localPosts, setLocalPosts] = useState<Post[]>([]);
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -205,8 +204,9 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
   // then appendQueueIds. Virtuoso grid uses handleEndReached (debounced).
   const handleLoadMore = useCallback(() => {
     void loadMoreNow().then((newPage) => {
-      if (!newPage || newPage.length === 0) return;
-      const filteredIds = newPage
+      if (!newPage || newPage.posts.length === 0) return;
+      // Main already applied AI when requested; keep client gate for queue safety.
+      const filteredIds = newPage.posts
         .filter((post) =>
           shouldIncludePostInPlaylistQueue(post, {
             aiFilter,
@@ -221,12 +221,10 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
 
   const handleRefreshCollection = useCallback(() => {
     // New queryKey drops infinite pages; placeholderData keeps the prior grid
-    // until page 1 arrives, then Loaded resets to POSTS_PAGE_SIZE.
+    // until page 1 arrives with a fresh hybrid snapshot total.
     setRefreshEpoch((n) => n + 1);
   }, []);
 
-  const filtersNarrowResults =
-    (mediaType !== undefined && mediaType !== "all") || aiFilter !== "all";
   const isRefreshBusy = isLoading || isFetching || isFetchingNextPage;
 
   const handlePostClick = (index: number) => {
@@ -371,7 +369,7 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
   );
 
   const hasLoadedPosts =
-    data?.pages.some((page) => page.length > 0) === true;
+    data?.pages.some((page) => page.posts.length > 0) === true;
   const isFatalGalleryError = isError && !hasLoadedPosts;
   const showNextPageError = isFetchNextPageError && hasLoadedPosts;
   const galleryErrorDescription = resolveErrorMessage(
@@ -407,18 +405,15 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {PLAYLIST_HEADER_SMART_SUBTITLE}
                   </p>
-                  {displayedPosts.length > 0 && (
+                  {smartTotalLabel !== null && (
                     <p className="text-sm text-muted-foreground mt-0.5">
-                      {formatSmartPlaylistLoadedLabel(displayedPosts.length)}
+                      {smartTotalLabel}
                     </p>
                   )}
                 </>
               ) : (
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  {formatManualPlaylistCountLabel({
-                    postCount: playlist.postCount,
-                    filtersNarrowResults,
-                  })}
+                  {formatManualPlaylistCountLabel(playlist.postCount)}
                 </p>
               )}
             </div>

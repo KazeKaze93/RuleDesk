@@ -86,6 +86,11 @@ function identityKey(post: { provider: string; postId: number }): string {
   return `${post.provider}:${post.postId}`;
 }
 
+type ResolvePlaylistPostsPage = {
+  posts: ResolvedPost[];
+  total: { count: number; kind: "exact" | "lowerBound" } | null;
+};
+
 type PlaylistControllerInternals = {
   setup: () => void;
   resolvePlaylistPosts: (
@@ -99,7 +104,7 @@ type PlaylistControllerInternals = {
       seed?: number;
       upperBoundPostId?: number;
     }
-  ) => Promise<ResolvedPost[]>;
+  ) => Promise<ResolvePlaylistPostsPage>;
 };
 
 function makeRemotePost(
@@ -262,16 +267,20 @@ describe("PlaylistController hybrid smart-playlist merge", () => {
   async function resolvePage(
     page: number,
     extras?: { isRandom?: boolean; seed?: number; upperBoundPostId?: number }
-  ) {
-    return controller.resolvePlaylistPosts({} as IpcMainInvokeEvent, {
-      playlistId,
-      page,
-      limit: PAGE_LIMIT,
-      sortOrder: "desc",
-      isRandom: extras?.isRandom ?? false,
-      seed: extras?.seed,
-      upperBoundPostId: extras?.upperBoundPostId,
-    });
+  ): Promise<ResolvedPost[]> {
+    const result = await controller.resolvePlaylistPosts(
+      {} as IpcMainInvokeEvent,
+      {
+        playlistId,
+        page,
+        limit: PAGE_LIMIT,
+        sortOrder: "desc",
+        isRandom: extras?.isRandom ?? false,
+        seed: extras?.seed,
+        upperBoundPostId: extras?.upperBoundPostId,
+      }
+    );
+    return result.posts;
   }
 
   it("sequential page walk yields each hybrid item exactly once", async () => {

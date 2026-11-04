@@ -69,6 +69,11 @@ vi.mock("../../../src/main/db/queries/blacklist", () => ({
 
 import { PlaylistController } from "../../../src/main/ipc/controllers/PlaylistController";
 
+type ResolvePlaylistPostsPage = {
+  posts: Array<{ postId: number; tags: string }>;
+  total: { count: number; kind: "exact" | "lowerBound" } | null;
+};
+
 type PlaylistControllerInternals = {
   setup: () => void;
   resolvePlaylistPosts: (
@@ -80,7 +85,7 @@ type PlaylistControllerInternals = {
       sortOrder?: "asc" | "desc" | "position";
       isRandom?: boolean;
     }
-  ) => Promise<Array<{ postId: number; tags: string }>>;
+  ) => Promise<ResolvePlaylistPostsPage>;
 };
 
 function makePost(id: number, tags: string[] = ["solo"]): BooruPost {
@@ -214,8 +219,58 @@ describe("PlaylistController smart remote resolve", () => {
     );
 
     expect(fetchPostsMock.mock.calls.length).toBeGreaterThanOrEqual(2);
-    expect(resolved).toHaveLength(3);
+    expect(resolved.posts).toHaveLength(3);
     // Default smart sort is publishedAt/postId desc; makePost shares one timestamp → postId desc.
-    expect(resolved.map((p) => p.postId)).toEqual([6, 5, 4]);
+    expect(resolved.posts.map((p) => p.postId)).toEqual([6, 5, 4]);
+    // Feed ended on a short API page → exact hybrid window total.
+    expect(resolved.total).toEqual({ count: 4, kind: "exact" });
+  });
+
+  it("marks total as lowerBound when remote walk hits the scan page cap", async () => {
+    // Always-full API pages → never feedExhausted; stop at HYBRID_REMOTE_MAX_PAGES_TO_SCAN.
+    fetchPostsMock.mockImplementation(
+      async (
+        _tags: string,
+        apiPage: number,
+        _settings: unknown,
+        _isRandom: boolean,
+        requestLimit: number
+      ) => {
+        const posts = Array.from({ length: requestLimit }, (_, index) =>
+          makePost(apiPage * 10_000 + index + 1, ["solo"])
+        );
+        return asResult(posts);
+      }
+    );
+
+    const resolved = await controller.resolvePlaylistPosts(
+      {} as IpcMainInvokeEvent,
+      {
+        playlistId,
+        page: 1,
+        limit: 3,
+      }
+    );
+
+    expect(resolved.total).not.toBeNull();
+    expect(resolved.total?.kind).toBe("lowerBound");
+    expect(resolved.total!.count).toBeGreaterThan(0);
+  });
+
+  it("rejects on remote error (total null is not a silent empty success)", async () => {
+    fetchPostsMock.mockRejectedValueOnce(
+      new ProviderSearchError("network", "upstream down again")
+    );
+
+    await expect(
+      controller.resolvePlaylistPosts({} as IpcMainInvokeEvent, {
+        playlistId,
+        page: 1,
+        limit: 10,
+      })
+    ).rejects.toMatchObject({
+      name: "ProviderSearchError",
+      kind: "network",
+    });
   });
 });
