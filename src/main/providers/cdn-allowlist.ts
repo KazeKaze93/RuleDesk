@@ -5,7 +5,13 @@ import { getAllProviderCdnDomains } from "./index";
  * Cached at module load — `isAllowedCdnUrl` is on the video-proxy / download hot path.
  * Host set must stay identical to the former video-proxy-server gate.
  */
-const ALLOWED_CDN_HOSTS = new Set(getAllProviderCdnDomains());
+// legacy: display of stored Gelbooru posts after Gelbooru support removal
+const LEGACY_GELBOORU_CDN_HOSTS = ["img4.gelbooru.com"] as const;
+
+const ALLOWED_CDN_HOSTS = new Set([
+  ...getAllProviderCdnDomains(),
+  ...LEGACY_GELBOORU_CDN_HOSTS,
+]);
 
 /** Zod / worker failure copy — must not list allowlist hosts. */
 export const DOWNLOAD_URL_NOT_ALLOWED_MESSAGE =

@@ -52,8 +52,9 @@ import { hasAiGeneratedTag } from "../../../shared/ai-tags";
 import { buildPlaylistResolveTotal } from "../../../shared/playlist-resolve-total";
 import {
   EXTERNAL_ARTIST_ID,
-  PROVIDER_IDS,
+  isProviderId,
   type ProviderId,
+  type StoredProviderId,
 } from "../../../shared/constants";
 import { getDb, getSqliteInstance } from "../../db/client";
 import { onDatabaseReopened } from "../../core/di/databaseRegistration";
@@ -100,7 +101,7 @@ const ReleasePlaylistSnapshotArgsSchema = z.tuple([ReleasePlaylistSnapshotSchema
 const GetPlaylistsContainingPostArgsSchema = z.tuple([
   z.number().int(),
   OptionalIdSchema,
-  z.enum(PROVIDER_IDS).optional(),
+  z.string().min(1).optional(),
 ]);
 const ImportPlaylistArgsSchema = z.tuple([]);
 
@@ -108,16 +109,8 @@ function isRecord(value: unknown): value is UnknownRecord {
   return typeof value === "object" && value !== null;
 }
 
-function isProviderId(value: unknown): value is (typeof PROVIDER_IDS)[number] {
-  if (typeof value !== "string") {
-    return false;
-  }
-  for (const id of PROVIDER_IDS) {
-    if (id === value) {
-      return true;
-    }
-  }
-  return false;
+function isStoredProviderId(value: unknown): value is StoredProviderId {
+  return typeof value === "string" && value.length > 0;
 }
 
 function isPlaylistExport(value: unknown): value is PlaylistExport {
@@ -166,7 +159,7 @@ function isPlaylistExport(value: unknown): value is PlaylistExport {
         typeof entry.artistId === "number" &&
         Number.isFinite(entry.artistId) &&
         Number.isInteger(entry.artistId) &&
-        isProviderId(entry.provider)
+        isStoredProviderId(entry.provider)
       );
     }
     // v1: artistId/provider optional (legacy files)
@@ -179,7 +172,7 @@ function isPlaylistExport(value: unknown): value is PlaylistExport {
         return false;
       }
     }
-    if (entry.provider !== undefined && !isProviderId(entry.provider)) {
+    if (entry.provider !== undefined && !isStoredProviderId(entry.provider)) {
       return false;
     }
     return true;
@@ -1679,7 +1672,7 @@ export class PlaylistController extends BaseController {
     _event: IpcMainInvokeEvent,
     postId: number,
     externalPostId?: number,
-    provider?: (typeof PROVIDER_IDS)[number]
+    provider?: StoredProviderId
   ): Promise<number[]> {
     try {
       const db = getDb();
@@ -1687,6 +1680,7 @@ export class PlaylistController extends BaseController {
       let result: { playlistId: number }[];
       if (postId <= 0 && externalPostId != null && externalPostId > 0 && provider) {
         // External post from Browse: (EXTERNAL_ARTIST_ID, provider, postId)
+        // sql equality: StoredProviderId may be legacy "gelbooru" (drizzle enum is rule34-only)
         const rows = db
           .select({ playlistId: playlistEntries.playlistId })
           .from(playlistEntries)
@@ -1695,7 +1689,7 @@ export class PlaylistController extends BaseController {
             and(
               eq(posts.postId, externalPostId),
               eq(posts.artistId, EXTERNAL_ARTIST_ID),
-              eq(posts.provider, provider)
+              sql`${posts.provider} = ${provider}`
             )
           )
           .all();
@@ -1881,7 +1875,7 @@ export class PlaylistController extends BaseController {
           id: number;
           postId: number;
           artistId: number;
-          provider: (typeof PROVIDER_IDS)[number];
+          provider: StoredProviderId;
         }> = [];
 
         for (
@@ -2421,7 +2415,15 @@ export class PlaylistController extends BaseController {
     }
 
     // Provider scope: one default for local WHERE + remote fetch.
-    const providerId: ProviderId = query.provider ?? "rule34";
+    // parseSmartQuery accepts StoredProviderId strings; reject unsupported at execute.
+    const rawProvider = query.provider ?? "rule34";
+    if (!isProviderId(rawProvider)) {
+      throw createCodedError(
+        `Unsupported provider: ${rawProvider}`,
+        ErrorCode.UNSUPPORTED_PROVIDER
+      );
+    }
+    const providerId: ProviderId = rawProvider;
     allConditions.push(eq(posts.provider, providerId));
 
     const whereClause = allConditions.length > 1 ? and(...allConditions) : allConditions[0] ?? sql`1 = 1`;

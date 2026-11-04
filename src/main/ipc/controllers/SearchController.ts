@@ -115,16 +115,11 @@ export class SearchController extends BaseController {
         return null;
       }
 
-      const providerValue = settingsRecord.provider;
-      const provider: ProviderId =
-        providerValue === "rule34" || providerValue === "gelbooru"
-          ? providerValue
-          : "rule34";
-
+      // App is Rule34-only: ignore settings.provider for API selection.
       return {
         userId: credentials.userId,
         apiKey: credentials.apiKey,
-        provider,
+        provider: "rule34",
       };
     } catch (error) {
       // Missing row / empty credentials return null above; DB/decrypt exceptions must surface.
@@ -279,7 +274,7 @@ export class SearchController extends BaseController {
           )
         );
       }
-      const providerId = settings.provider ?? "rule34";
+      const providerId: ProviderId = "rule34";
       const provider = getProvider(providerId);
       const providerSettings = {
         userId: settings.userId,

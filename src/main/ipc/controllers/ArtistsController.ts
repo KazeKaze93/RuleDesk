@@ -9,6 +9,7 @@ import { artists, settings, SETTINGS_ID, TAG_TYPES } from "../../db/schema";
 import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
 import {
   getProvider,
+  PROVIDER_IDS,
   type ProviderId,
   type SearchResults,
 } from "../../providers";
@@ -46,7 +47,7 @@ const AddArtistArgsSchema = z.tuple([AddArtistSchema]);
 const DeleteArtistArgsSchema = z.tuple([IdSchema]);
 const SearchRemoteTagsArgsSchema = z.tuple([
   z.string().trim().min(2),
-  z.enum(["rule34", "gelbooru"]).optional(),
+  z.enum(PROVIDER_IDS).optional(),
   z.boolean().optional(),
 ]);
 
@@ -78,7 +79,7 @@ type IpcArtist = {
  * - Get all artists (ordered by last checked date)
  * - Add new artist (with conflict resolution)
  * - Delete artist by ID
- * - Search remote tags via API (Rule34/Gelbooru)
+ * - Search remote tags via API (Rule34)
  */
 export class ArtistsController extends BaseController {
   /**
@@ -313,8 +314,7 @@ export class ArtistsController extends BaseController {
 
   /**
    * Search remote tags via Booru provider autocomplete API.
-   * When `artistOnly` is set (Add Artist modal), Gelbooru is filtered by
-   * `category`/`SearchResults.type === "artist"`; Rule34 runs a top-N DAPI
+   * When `artistOnly` is set (Add Artist modal), Rule34 runs a top-N DAPI
    * second-pass via `tag_metadata` + `resolveTagMetadataWave` (ARTIST, user throttle).
    */
   private async searchRemoteTags(

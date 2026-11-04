@@ -13,6 +13,7 @@
 export const ALLOWED_HOSTS = [
   "rule34.xxx",
   "www.rule34.xxx",
+  // legacy: display of stored Gelbooru posts after Gelbooru support removal
   "gelbooru.com",
   "www.gelbooru.com",
 ] as const;

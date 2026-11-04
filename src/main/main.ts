@@ -503,12 +503,24 @@ function buildCspPolicy(): string {
     `https://*.${domain}`,
     `http://*.${domain}`,
   ]);
+  // legacy: display of stored Gelbooru posts after Gelbooru support removal
+  // (img-src / media-src only — not connect-src / API)
+  const legacyGelbooruMediaDomains = ["gelbooru.com"] as const;
+  const legacyGelbooruMediaOrigins = legacyGelbooruMediaDomains.flatMap(
+    (domain) => [
+      `https://${domain}`,
+      `http://${domain}`,
+      `https://*.${domain}`,
+      `http://*.${domain}`,
+    ]
+  );
   const localVideoProxyOrigins = ["http://127.0.0.1:*", "http://localhost:*"];
   const mediaOrigins = [
     "'self'",
     "data:",
     "blob:",
     ...providerOrigins,
+    ...legacyGelbooruMediaOrigins,
     ...localVideoProxyOrigins,
   ].join(" ");
   const connectOrigins = ["'self'", ...providerOrigins];

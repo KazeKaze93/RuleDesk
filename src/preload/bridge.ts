@@ -25,6 +25,7 @@ import type {
   UpdateStatusData,
   DownloadProgressData,
 } from "../shared/types/ipc-bridge";
+import type { ProviderId, StoredProviderId } from "../shared/constants";
 
 export type {
   IpcBridge,
@@ -57,7 +58,11 @@ const ipcBridge: IpcBridge = {
     invokeIpc(IPC_CHANNELS.APP.WRITE_CLIPBOARD, text),
 
   // Search remote tags via specified provider (defaults to rule34)
-  searchRemoteTags: (query, provider = "rule34", artistOnly = false) =>
+  searchRemoteTags: (
+    query: string,
+    provider: ProviderId = "rule34",
+    artistOnly = false
+  ) =>
     invokeIpc(
       IPC_CHANNELS.API.SEARCH_REMOTE,
       query,
@@ -304,7 +309,7 @@ const ipcBridge: IpcBridge = {
   getPlaylistsContainingPost: (
     postId: number,
     externalPostId?: number,
-    provider?: "rule34" | "gelbooru"
+    provider?: StoredProviderId
   ) =>
     invokeIpc(
       IPC_CHANNELS.DB.GET_PLAYLISTS_CONTAINING_POST,

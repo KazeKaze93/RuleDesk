@@ -36,7 +36,10 @@ import {
   BATCH_DOWNLOAD_CHUNK_SIZE,
   EXTERNAL_ARTIST_ID,
   EXTERNAL_ARTIST_TAG_PREFIX,
+  isProviderId,
 } from "../../../shared/constants";
+import { ErrorCode } from "../../../shared/types/error-codes";
+import { createCodedError } from "../../../shared/utils/coded-error";
 import { AI_TAGS } from "../../../shared/ai-tags";
 import type { DownloadQueueItem } from "../../../shared/types/download";
 import { getDb, getSqliteInstance } from "../../db/client";
@@ -256,6 +259,7 @@ export class PostsController extends BaseController {
     // SECURITY: Always use EXTERNAL_ARTIST_ID, never trust artistId from Renderer
     // This handles external posts from Browse (artistId = EXTERNAL_ARTIST_ID)
     if (!existingPost && postData) {
+      // sql equality: PostData.provider is StoredProviderId (may be legacy gelbooru)
       existingPost = tx
         .select()
         .from(posts)
@@ -263,7 +267,7 @@ export class PostsController extends BaseController {
           and(
             eq(posts.postId, postData.postId),
             eq(posts.artistId, EXTERNAL_ARTIST_ID),
-            eq(posts.provider, postData.provider)
+            sql`${posts.provider} = ${postData.provider}`
           )
         )
         .limit(1)
@@ -835,7 +839,7 @@ export class PostsController extends BaseController {
             .where(
               and(
                 eq(posts.artistId, EXTERNAL_ARTIST_ID),
-                eq(posts.provider, postData.provider),
+                sql`${posts.provider} = ${postData.provider}`,
                 eq(posts.postId, postData.postId)
               )
             )
@@ -861,6 +865,13 @@ export class PostsController extends BaseController {
 
             // Unread counts derive from posts.isViewed; no artists.new_posts_count write.
             return;
+          }
+
+          if (!isProviderId(postData.provider)) {
+            throw createCodedError(
+              `Unsupported provider: ${postData.provider}`,
+              ErrorCode.UNSUPPORTED_PROVIDER
+            );
           }
 
           const insertNow = new Date();
@@ -1098,6 +1109,13 @@ export class PostsController extends BaseController {
 
           log.debug(
             `[PostsController] Created placeholder artist ${targetArtistId} for external post in transaction`
+          );
+        }
+
+        if (!isProviderId(postData.provider)) {
+          throw createCodedError(
+            `Unsupported provider: ${postData.provider}`,
+            ErrorCode.UNSUPPORTED_PROVIDER
           );
         }
 
