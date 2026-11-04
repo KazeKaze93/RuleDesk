@@ -41,7 +41,6 @@ const {
   GridItemContainer,
   MasonryItemContainer,
   GridVirtuosoList,
-  MasonryVirtuosoList,
 } = createVirtuosoGridFactories("ArtistGallery");
 
 export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
@@ -128,8 +127,6 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
   );
 
   const listAriaBusy = isLoading || isFetchingNextPage;
-  const ListComponent = viewType === "masonry" ? MasonryVirtuosoList : GridVirtuosoList;
-  const ItemComponent = viewType === "masonry" ? MasonryItemContainer : GridItemContainer;
 
   const viewMutation = useMutation({
     mutationFn: async (postId: number) => {
@@ -401,8 +398,8 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
               endReached={handleEndReached}
               increaseViewportBy={600}
               components={{
-                List: ListComponent,
-                Item: ItemComponent,
+                List: GridVirtuosoList,
+                Item: GridItemContainer,
                 Footer: () =>
                   isFetchingNextPage ? (
                     <div className="flex col-span-full justify-center py-4 w-full">

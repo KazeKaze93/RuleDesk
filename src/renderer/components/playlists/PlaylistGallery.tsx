@@ -77,7 +77,6 @@ const {
   GridItemContainer,
   MasonryItemContainer,
   GridVirtuosoList,
-  MasonryVirtuosoList,
 } = createVirtuosoGridFactories("Playlist");
 
 const shouldIncludePostInPlaylistQueue = (
@@ -488,8 +487,6 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
   );
 
   const listAriaBusy = isLoading || isFetchingNextPage;
-  const ListComponent = viewType === "masonry" ? MasonryVirtuosoList : GridVirtuosoList;
-  const ItemComponent = viewType === "masonry" ? MasonryItemContainer : GridItemContainer;
 
   return (
     <div className="flex flex-col h-full">
@@ -696,8 +693,8 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
               }
               increaseViewportBy={600}
               components={{
-                List: ListComponent,
-                Item: ItemComponent,
+                List: GridVirtuosoList,
+                Item: GridItemContainer,
                 Footer: () =>
                   isFetchingNextPage ? (
                     <div className="flex col-span-full justify-center py-4 w-full">

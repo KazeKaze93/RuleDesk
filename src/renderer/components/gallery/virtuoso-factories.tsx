@@ -110,24 +110,10 @@ export function createVirtuosoGridFactories(displayNamePrefix: string) {
   );
   GridVirtuosoList.displayName = `${displayNamePrefix}GridVirtuosoList`;
 
-  const MasonryVirtuosoList = forwardRef<HTMLDivElement, VirtuosoListProps>(
-    ({ className, "aria-busy": ariaBusy, ...props }, ref) => (
-      <GridContainer
-        {...props}
-        ref={ref}
-        className={className}
-        aria-busy={ariaBusy}
-        viewType="masonry"
-      />
-    )
-  );
-  MasonryVirtuosoList.displayName = `${displayNamePrefix}MasonryVirtuosoList`;
-
   return {
     GridContainer,
     GridItemContainer,
     MasonryItemContainer,
     GridVirtuosoList,
-    MasonryVirtuosoList,
   };
 }
