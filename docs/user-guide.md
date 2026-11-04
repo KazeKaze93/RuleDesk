@@ -337,7 +337,7 @@ The download will start, and you'll see a progress indicator.
 - HTTP **429** pauses the whole download queue (no new files start) for max(backoff, Retry-After), then retries; after retries are exhausted the file is listed as failed.
 - Queue progress is written atomically (unique temp file + rename, with retries on Windows file locks). If the queue file cannot be updated after retries, that item is listed as a **disk** failure even if the media file already landed — resume can still skip an existing file when duplicate handling is **skip**.
 - Cancel stops in-flight requests (including hung ones). Quitting the app cancels downloads and waits for any in-flight queue write before closing the database.
-- Interrupted batches can be resumed from the pending-download banner; resume skips files already completed by id (safe with parallel downloads).
+- Interrupted batches (artist **Download All**, **Download all favorites**, and list downloads) can be resumed from the pending-download banner after a restart; favorites show «Interrupted favorites download — N of M». Resume skips files already completed by id (safe with parallel downloads). Dismiss clears the pending queue.
 - Optional Settings proxy applies to mass download the same as single download.
 
 **Note:** Downloads are saved to your chosen location, not in the app's cache.

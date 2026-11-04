@@ -5,6 +5,7 @@ import type {
   DownloadQueueFileV2,
   DownloadQueueFileV3,
   DownloadQueueFileV3Artist,
+  DownloadQueueFileV3Favorites,
   DownloadQueueFileV3List,
   DownloadQueueItem,
 } from "../../shared/types/download";
@@ -12,10 +13,7 @@ import { writeFileAtomic } from "./atomic-write";
 
 const QueueItemArraySchema = z.array(DownloadAllItemSchema);
 
-const V3ArtistSchema = z.object({
-  version: z.literal(3),
-  kind: z.literal("artist"),
-  artistId: z.number().int().positive(),
+const CursorFieldsSchema = {
   filters: PostFilterSchema.optional(),
   cursorId: z.number().int().nonnegative(),
   upperBoundId: z.number().int().nonnegative(),
@@ -24,6 +22,19 @@ const V3ArtistSchema = z.object({
   folder: z.string(),
   total: z.number().int().nonnegative(),
   timestamp: z.number(),
+};
+
+const V3ArtistSchema = z.object({
+  version: z.literal(3),
+  kind: z.literal("artist"),
+  artistId: z.number().int().positive(),
+  ...CursorFieldsSchema,
+});
+
+const V3FavoritesSchema = z.object({
+  version: z.literal(3),
+  kind: z.literal("favorites"),
+  ...CursorFieldsSchema,
 });
 
 const V3ListSchema = z.object({
@@ -42,6 +53,8 @@ export type ParsedDownloadQueue =
 
 /**
  * Parse queue JSON. V2 is migrated to V3 list. Invalid → null (caller logs + drops).
+ * V3 artist / favorites / list are accepted as written; there is no silent
+ * rewrite of artist→favorites. Missing `kind` on a V3 object → null (drop).
  */
 export function parseDownloadQueueFile(raw: unknown): ParsedDownloadQueue | null {
   if (typeof raw !== "object" || raw === null) {
@@ -51,6 +64,13 @@ export function parseDownloadQueueFile(raw: unknown): ParsedDownloadQueue | null
   if ("version" in raw && raw.version === 3) {
     if ("kind" in raw && raw.kind === "artist") {
       const parsed = V3ArtistSchema.safeParse(raw);
+      if (!parsed.success) {
+        return null;
+      }
+      return { format: "v3", data: parsed.data };
+    }
+    if ("kind" in raw && raw.kind === "favorites") {
+      const parsed = V3FavoritesSchema.safeParse(raw);
       if (!parsed.success) {
         return null;
       }
@@ -129,6 +149,26 @@ export function artistQueueInitial(params: {
     version: 3,
     kind: "artist",
     artistId: params.artistId,
+    filters: params.filters,
+    cursorId: 0,
+    upperBoundId: params.upperBoundId,
+    chunkCompletedIds: [],
+    doneCount: 0,
+    folder: params.folder,
+    total: params.total,
+    timestamp: Date.now(),
+  };
+}
+
+export function favoritesQueueInitial(params: {
+  filters: DownloadQueueFileV3Favorites["filters"];
+  upperBoundId: number;
+  total: number;
+  folder: string;
+}): DownloadQueueFileV3Favorites {
+  return {
+    version: 3,
+    kind: "favorites",
     filters: params.filters,
     cursorId: 0,
     upperBoundId: params.upperBoundId,

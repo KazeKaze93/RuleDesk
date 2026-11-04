@@ -7,7 +7,7 @@
  * Do not duplicate method signatures in ambient `.d.ts` files.
  */
 import type { Artist, Post, Playlist } from "./db";
-import type { DownloadAllResult } from "./download";
+import type { DownloadAllResult, PendingDownloadInfo } from "./download";
 import type { DownloadAllRequest } from "../schemas/download";
 import type { KnownStoredProviderId, ProviderId } from "../constants";
 import type { SearchResults } from "./providers";
@@ -175,12 +175,7 @@ export interface IpcBridge {
   cancelDownloadAll: () => Promise<boolean>;
   pauseDownloadAll: () => Promise<void>;
   resumeDownloadAll: () => Promise<void>;
-  getPendingDownload: () => Promise<{
-    hasPending: boolean;
-    total: number;
-    done: number;
-    folder: string;
-  } | null>;
+  getPendingDownload: () => Promise<PendingDownloadInfo | null>;
   resumePendingDownload: () => Promise<DownloadAllResult>;
   dismissPendingDownload: () => Promise<void>;
   saveDownloadSettings: (data: {

@@ -1,4 +1,4 @@
-import type { DownloadQueueFileV3Artist } from "../../shared/types/download";
+import type { DownloadQueueFileV3Cursor } from "../../shared/types/download";
 
 export type ArtistChunkRow = {
   id: number;
@@ -6,16 +6,16 @@ export type ArtistChunkRow = {
   filename: string;
 };
 
-export type ArtistChunkPlan =
+export type ArtistChunkPlan<T extends DownloadQueueFileV3Cursor = DownloadQueueFileV3Cursor> =
   | {
       type: "advance";
-      state: DownloadQueueFileV3Artist;
+      state: T;
       lastId: number;
     }
   | {
       type: "download";
       remaining: Array<{ url: string; filename: string }>;
-      state: DownloadQueueFileV3Artist;
+      state: T;
     };
 
 /**
@@ -24,10 +24,10 @@ export type ArtistChunkPlan =
  * Otherwise run worker on rows not yet recorded — includes "file on disk but queue
  * not updated" (duplicate skip on retry).
  */
-export function planArtistChunk(
-  state: DownloadQueueFileV3Artist,
+export function planArtistChunk<T extends DownloadQueueFileV3Cursor>(
+  state: T,
   chunk: readonly ArtistChunkRow[]
-): ArtistChunkPlan | null {
+): ArtistChunkPlan<T> | null {
   if (chunk.length === 0) {
     return null;
   }
@@ -50,10 +50,10 @@ export function planArtistChunk(
 }
 
 /** Record a successful download/skip in the current chunk (after file is on disk). */
-export function applyArtistItemCompleted(
-  state: DownloadQueueFileV3Artist,
+export function applyArtistItemCompleted<T extends DownloadQueueFileV3Cursor>(
+  state: T,
   filename: string
-): DownloadQueueFileV3Artist {
+): T {
   if (state.chunkCompletedIds.includes(filename)) {
     return state;
   }
@@ -71,10 +71,10 @@ export function applyArtistItemCompleted(
  * Failed filenames are intentionally NOT in chunkCompletedIds so a future
  * full run (new queue, cursor 0) retries them.
  */
-export function advanceArtistCursor(
-  state: DownloadQueueFileV3Artist,
+export function advanceArtistCursor<T extends DownloadQueueFileV3Cursor>(
+  state: T,
   lastChunkId: number
-): DownloadQueueFileV3Artist {
+): T {
   return {
     ...state,
     cursorId: lastChunkId,

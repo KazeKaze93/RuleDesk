@@ -20,6 +20,7 @@ import {
 import { waitForAtomicWriteIdle } from "../../lib/atomic-write";
 import {
   artistQueueInitial,
+  favoritesQueueInitial,
   listQueueInitial,
   parseDownloadQueueFile,
   writeDownloadQueueAtomic,
@@ -63,9 +64,10 @@ import type {
   DownloadAllResult,
   DownloadFailure,
   DownloadQueueFileV3,
-  DownloadQueueFileV3Artist,
+  DownloadQueueFileV3Cursor,
   DownloadQueueFileV3List,
   DownloadQueueItem,
+  PendingDownloadInfo,
 } from "../../../shared/types/download";
 import { remainingDownloadItems } from "../../../shared/utils/download-failure";
 import {
@@ -343,12 +345,7 @@ export class FileController extends BaseController {
     return data.doneCount < data.total || data.cursorId < data.upperBoundId;
   }
 
-  private async getPendingDownload(): Promise<{
-    hasPending: boolean;
-    total: number;
-    done: number;
-    folder: string;
-  } | null> {
+  private async getPendingDownload(): Promise<PendingDownloadInfo | null> {
     const data = await this.readQueueFile();
     if (!data) {
       return null;
@@ -367,6 +364,7 @@ export class FileController extends BaseController {
       total: data.total,
       done,
       folder: data.folder,
+      kind: data.kind,
     };
   }
 
@@ -388,6 +386,12 @@ export class FileController extends BaseController {
       return this.downloadAllCursorFromQueue(data, {
         kind: "artist",
         artistId: data.artistId,
+        filters: data.filters,
+      });
+    }
+    if (data.kind === "favorites") {
+      return this.downloadAllCursorFromQueue(data, {
+        kind: "favorites",
         filters: data.filters,
       });
     }
@@ -647,9 +651,7 @@ export class FileController extends BaseController {
 
   /**
    * Start uncapped cursor mass-download for artist or favorites.
-   * Artist persists DownloadQueueFileV3Artist for crash resume.
-   * Favorites runs the same chunk loop; queue persistence needs kind:"favorites"
-   * in shared download-queue types (HANDOFF) — in-memory only until then.
+   * Both persist a V3 cursor queue (`kind: "artist" | "favorites"`) for crash resume.
    */
   private async downloadAllCursorTarget(
     target: MassDownloadTarget
@@ -679,35 +681,29 @@ export class FileController extends BaseController {
       return { success: true, downloaded: 0, failed: [], canceled: false };
     }
 
-    if (target.kind === "artist") {
-      const state = artistQueueInitial({
-        artistId: target.artistId,
-        filters: target.filters,
-        upperBoundId: snapshot.upperBoundId,
-        total: snapshot.total,
-        folder: folderResult.folder,
-      });
-      await this.writeQueueFile(state);
-      return this.downloadAllCursorFromQueue(state, target);
-    }
-
-    // Favorites: reuse artist cursor state helpers with a placeholder artistId.
-    // Do not persist — resume would mis-route as artist until queue kind exists.
-    const state = artistQueueInitial({
-      artistId: 1,
-      filters: target.filters,
-      upperBoundId: snapshot.upperBoundId,
-      total: snapshot.total,
-      folder: folderResult.folder,
-    });
+    const state: DownloadQueueFileV3Cursor =
+      target.kind === "artist"
+        ? artistQueueInitial({
+            artistId: target.artistId,
+            filters: target.filters,
+            upperBoundId: snapshot.upperBoundId,
+            total: snapshot.total,
+            folder: folderResult.folder,
+          })
+        : favoritesQueueInitial({
+            filters: target.filters,
+            upperBoundId: snapshot.upperBoundId,
+            total: snapshot.total,
+            folder: folderResult.folder,
+          });
+    await this.writeQueueFile(state);
     return this.downloadAllCursorFromQueue(state, target);
   }
 
   private async downloadAllCursorFromQueue(
-    initial: DownloadQueueFileV3Artist,
+    initial: DownloadQueueFileV3Cursor,
     target: MassDownloadTarget
   ): Promise<DownloadAllResult> {
-    const persistQueue = target.kind === "artist";
     const posts = this.postsController;
     const mainWindow = this.getMainWindow();
     if (!posts || !mainWindow) {
@@ -724,7 +720,7 @@ export class FileController extends BaseController {
 
     this.massDownloadActive = true;
     this.massDownloadCancelRequested = false;
-    let state: DownloadQueueFileV3Artist = { ...initial };
+    let state: DownloadQueueFileV3Cursor = { ...initial };
     let downloaded = 0;
     const failed: DownloadFailure[] = [];
     let canceled = false;
@@ -749,9 +745,7 @@ export class FileController extends BaseController {
         if (plan.type === "advance") {
           // Crash window: all items recorded, cursor not yet written — resume lands here.
           state = plan.state;
-          if (persistQueue) {
-            await this.writeQueueFile(state);
-          }
+          await this.writeQueueFile(state);
           continue;
         }
 
@@ -763,9 +757,7 @@ export class FileController extends BaseController {
           persistQueue: false,
           onItemCompleted: async (filename) => {
             const next = applyArtistItemCompleted(state, filename);
-            if (persistQueue) {
-              await this.writeQueueFile(next);
-            }
+            await this.writeQueueFile(next);
             state = next;
           },
         });
@@ -784,21 +776,17 @@ export class FileController extends BaseController {
         // Advance even when the chunk had permanent failures (404) so the walk
         // continues; a later full run (new queue) retries failed filenames.
         state = advanceArtistCursor(state, lastId);
-        if (persistQueue) {
-          await this.writeQueueFile(state);
-        }
+        await this.writeQueueFile(state);
       }
 
       if (this.massDownloadCancelRequested) {
         canceled = true;
       }
 
-      if (persistQueue) {
-        if (!canceled && failed.length === 0) {
-          await this.deleteQueueFile();
-        } else {
-          await this.writeQueueFile(state);
-        }
+      if (!canceled && failed.length === 0) {
+        await this.deleteQueueFile();
+      } else {
+        await this.writeQueueFile(state);
       }
 
       return {

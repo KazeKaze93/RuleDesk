@@ -47,11 +47,9 @@ export type DownloadQueueFileV2 = {
   timestamp: number;
 };
 
-/** Artist mass-download: cursor over posts.id, no full item list in the file. */
-export type DownloadQueueFileV3Artist = {
+/** Shared cursor fields for artist / favorites mass-download queue files. */
+type DownloadQueueFileV3CursorFields = {
   version: 3;
-  kind: "artist";
-  artistId: number;
   filters?: PostFilterRequest;
   /** Last posts.id of a fully finished chunk; 0 = start. */
   cursorId: number;
@@ -65,6 +63,20 @@ export type DownloadQueueFileV3Artist = {
   timestamp: number;
 };
 
+/** Artist mass-download: cursor over posts.id, no full item list in the file. */
+export type DownloadQueueFileV3Artist = DownloadQueueFileV3CursorFields & {
+  kind: "artist";
+  artistId: number;
+};
+
+/**
+ * Favorites mass-download: same cursor contract as artist, no artistId.
+ * Older queues without this kind are artist-only (or V2→list).
+ */
+export type DownloadQueueFileV3Favorites = DownloadQueueFileV3CursorFields & {
+  kind: "favorites";
+};
+
 /** List mass-download: explicit items + completed filenames. */
 export type DownloadQueueFileV3List = {
   version: 3;
@@ -76,8 +88,23 @@ export type DownloadQueueFileV3List = {
   timestamp: number;
 };
 
-export type DownloadQueueFileV3 =
+/** Cursor-based queue targets (artist + favorites). */
+export type DownloadQueueFileV3Cursor =
   | DownloadQueueFileV3Artist
+  | DownloadQueueFileV3Favorites;
+
+export type DownloadQueueFileV3 =
+  | DownloadQueueFileV3Cursor
   | DownloadQueueFileV3List;
 
 export type DownloadQueueFile = DownloadQueueFileV2 | DownloadQueueFileV3;
+
+/** Shape returned by `getPendingDownload` for the resume banner. */
+export type PendingDownloadInfo = {
+  hasPending: boolean;
+  total: number;
+  done: number;
+  folder: string;
+  /** Discriminator for banner copy; mirrors queue `kind`. */
+  kind: DownloadQueueFileV3["kind"];
+};
