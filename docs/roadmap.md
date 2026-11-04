@@ -95,9 +95,9 @@ Favorites empty NONE vs FILTERED; Source pathname scope + **Since tracked** labe
 |---|--------|----|--------|
 | W1 | `fix/ux-audit-wave1` | [#263](https://github.com/KazeKaze93/RuleDesk/pull/263) | ✅ merged |
 
-### UX audit wave 2 (sync feedback / Updates CTA / Select all / Download All)
+### UX audit wave 2 (sync feedback / Updates CTA / Select all)
 
-Honest Sync All progress + success/error toasts via `useSyncAll`; Updates empty CTAs (Track / Sync now); Browse Select all without tag gate; Download All (loaded) on Favorites and Updates. Status lives only in this table.
+Honest Sync All progress + success/error toasts via `useSyncAll`; Updates empty CTAs (Track / Sync now); Browse Select all without tag gate; Favorites/Updates keep bulk Download selected only (no header Download loaded). Status lives only in this table.
 
 | # | Branch | PR | Status |
 |---|--------|----|--------|
@@ -430,6 +430,7 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 | **Smart collection UX** | Header shows hybrid window Total / N+ (`resolvePlaylistPosts.total` or `getPlaylistResolveTotal` while the walk runs) + live-search subtitle + Refresh (`#265` / `feat/hybrid-snapshot-store`). Still no indication when new remote posts appear while the gallery stays open. |
 | **Smart collection total (XML)** | Needed only when the remote walk hits `HYBRID_REMOTE_MAX_PAGES_TO_SCAN` (total shown as lower bound). Rule34 JSON has no count; verify XML root `posts count` to upgrade lower-bound headers to exact. |
 | **Artist types (UI)** | Add Artist UI supports **tag** only. Schema still allows `uploader` / `query` for legacy rows; exposing those types in the UI is backlog (not shipped). |
+| **Favorites: Download all favorites (backend source)** | No IPC kind for favorites-wide download. `DownloadAllRequestSchema` is only `kind: "artist"` (DB walk by `artistId`) or `kind: "list"` (explicit URL items, used by bulk selection / Browse loaded). There is no `useDownloadAllFromBackend`-style path for Favorites. |
 | **Artist gallery: Since tracked** | Since tracked (`sinceTracking` pass-through) on `/artist/:id` — needs trace of PostsController `sinceTracking` path with `artistId` before enabling the option in `getSourceOptionsForPath`. |
 | **Filters** | Keep filter scope lean (`AI`, `Media`, `Source`) and avoid reintroducing removed panel controls without product decision (**scope is already implemented; this is a guardrail**). |
 | **Search** | Continue polish/regression coverage for chip-based syntax (`-tag`, OR groups, wildcard/fuzzy). |

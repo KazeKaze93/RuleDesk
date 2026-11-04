@@ -203,13 +203,16 @@ export const Sidebar = () => {
             >
               <div
                 className={cn(
-                  "p-2 rounded-full bg-background border shadow-sm",
+                  "shrink-0 p-2 rounded-full bg-background border shadow-sm",
                   isSyncing && "animate-spin text-primary border-primary"
                 )}
               >
                 <RefreshCw className="w-4 h-4" />
               </div>
-              <span className="min-w-0 truncate text-sm font-medium">
+              <span
+                className="min-w-0 flex-1 truncate text-sm font-medium"
+                aria-live="polite"
+              >
                 {isSyncing ? progress : "Sync now"}
               </span>
             </Button>

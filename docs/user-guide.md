@@ -262,7 +262,7 @@ Each post card shows:
 
 **View your favorites:**
 
-1. Click **"Favorites"** in the sidebar. The header **Download All** button downloads posts already loaded in the Favorites gallery (same “loaded” mode as Browse).
+1. Click **"Favorites"** in the sidebar.
 2. You'll see all your favorited posts
 
 **Empty states:**
@@ -330,7 +330,7 @@ The download will start, and you'll see a progress indicator.
 
 - Runs in a background worker (UI stays responsive). Progress shows on the button.
 - On **Browse**, download applies only to posts already loaded in the feed (see the button tooltip). To download everything from an artist, track them under **Tracked artists**, then use Download All on that artist's gallery.
-- List downloads (Browse / Favorites / Updates / playlist selection of already-loaded posts): at most **5000** files (`BATCH_DOWNLOAD_LIST_MAX_FILES`). If you select more, the app shows an error and does **not** start the batch (no silent truncate). Artist gallery **Download All** walks the local DB for that artist and is not limited by this list cap.
+- List downloads (Browse loaded posts / Favorites·Updates·playlist **selected** posts): at most **5000** files (`BATCH_DOWNLOAD_LIST_MAX_FILES`). If you select more, the app shows an error and does **not** start the batch (no silent truncate). Artist gallery **Download All** walks the local DB for that artist and is not limited by this list cap.
 - Partial failures do not discard successful files. The toast shows `Downloaded X, failed Y` with reason codes (network, 403/404/429, disk, timeout). Artist gallery can expand the failed list under the button.
 - HTTP **429** pauses the whole download queue (no new files start) for max(backoff, Retry-After), then retries; after retries are exhausted the file is listed as failed.
 - Queue progress is written atomically (unique temp file + rename, with retries on Windows file locks). If the queue file cannot be updated after retries, that item is listed as a **disk** failure even if the media file already landed — resume can still skip an existing file when duplicate handling is **skip**.
@@ -402,7 +402,7 @@ On Browse **Source: All**, Videos / Images are applied in the live API search ta
 
 Tag chips from the top bar still filter the Updates feed. When they do, a **Filtered by:** banner is shown; clear chips to restore the full feed.
 
-**Empty Updates feed:** with no tracked artists, **Track an artist** opens Tracked with the add dialog (`/tracked?add=1`, then clears the query). If artists exist but sync has never completed, **Sync now** starts the same Sync All pipeline as the sidebar. The header **Download All** downloads posts already loaded in the feed (loaded mode).
+**Empty Updates feed:** with no tracked artists, **Track an artist** opens Tracked with the add dialog (`/tracked?add=1`, then clears the query). If artists exist but sync has never completed, **Sync now** starts the same Sync All pipeline as the sidebar.
 
 ---
 

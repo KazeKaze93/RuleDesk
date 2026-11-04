@@ -53,8 +53,6 @@ import { resolveUpdatesFeedEmptyKind } from "../../lib/updates-feed-empty";
 import { resolveErrorMessage } from "../../utils/error-message";
 import { POSTS_PAGE_SIZE } from "../../../shared/constants";
 import { useSyncAll } from "../../hooks/useSyncAll";
-import { useDownloadAll } from "../../hooks/useDownloadAll";
-import { DownloadAllButton } from "../downloads/DownloadAllButton";
 
 const UPDATES_UNREAD_COUNT_QUERY_KEY = ["updates", "unreadCount"] as const;
 const UPDATES_TOTAL_UNREAD_QUERY_KEY = "totalUnreadCount";
@@ -349,19 +347,6 @@ export const Updates = () => {
       return sortOrder === "desc" ? b.postId - a.postId : a.postId - b.postId;
     });
   }, [data, sortOrder, aiFilter, mediaType]);
-
-  const {
-    downloadAll,
-    cancel: cancelLoadedDownload,
-    pause: pauseLoadedDownload,
-    resume: resumeLoadedDownload,
-    isDownloading: isDownloadingLoaded,
-    isPaused: isLoadedDownloadPaused,
-    progress: loadedDownloadProgress,
-    lastFailures: loadedDownloadFailures,
-    canDownload: canDownloadLoaded,
-    loadedCount,
-  } = useDownloadAll(allPosts);
 
   useEffect(() => {
     if (!data?.pages.length) {
@@ -662,21 +647,6 @@ export const Updates = () => {
             actions={
               activeView === FEED_VIEW ? (
                 <>
-                  <DownloadAllButton
-                    onClick={() => {
-                      void downloadAll();
-                    }}
-                    onCancel={cancelLoadedDownload}
-                    onPause={pauseLoadedDownload}
-                    onResume={resumeLoadedDownload}
-                    isDownloading={isDownloadingLoaded}
-                    isPaused={isLoadedDownloadPaused}
-                    progress={loadedDownloadProgress}
-                    canDownload={canDownloadLoaded}
-                    totalLabel={loadedCount}
-                    labelMode="loaded"
-                    failures={loadedDownloadFailures}
-                  />
                   <Button
                     variant="outline"
                     size="sm"
@@ -716,8 +686,9 @@ export const Updates = () => {
         </div>
       </div>
 
-      <div className="flex-1 min-h-0">
-        <div className="px-6 pt-4 space-y-3">
+      {/* flex-col so the feed/creators child can flex-1; without it VirtuosoGrid h-full collapses to 0 */}
+      <div className="flex flex-col flex-1 min-h-0">
+        <div className="px-6 pt-4 space-y-3 shrink-0">
           <Tabs value={activeView} onValueChange={handleViewChange}>
             <TabsList>
               <TabsTrigger value={FEED_VIEW}>Feed</TabsTrigger>
