@@ -560,14 +560,10 @@ export class SearchController extends BaseController {
         };
       });
 
-      // Sort posts by publishedAt descending (newest first) to match Rule34.xxx website order
-      // API may return posts in different order, so we sort them explicitly
-      // publishedAt is a Date object at this point (before toIpcSafe conversion)
-      enrichedPosts.sort((a, b) => {
-        const dateA = a.publishedAt instanceof Date ? a.publishedAt.getTime() : 0;
-        const dateB = b.publishedAt instanceof Date ? b.publishedAt.getTime() : 0;
-        return dateB - dateA; // Descending order (newest first)
-      });
+      // Provider-scoped Browse: order by booru post_id (site id order), not publishedAt.
+      // Rule34 publishedAt maps from `change` and diverges from id order on the site.
+      // SearchPostsSchema has no sortOrder → default newest-first = postId DESC.
+      enrichedPosts.sort((a, b) => b.postId - a.postId);
 
       // Untagged page-1 with zero API rows: return empty page (do not throw — avoids
       // poisoning React Query and transient red error banners on throttle blips).

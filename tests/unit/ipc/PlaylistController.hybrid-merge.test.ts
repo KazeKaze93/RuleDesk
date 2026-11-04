@@ -143,8 +143,8 @@ const REMOTE_FEED: BooruPost[] = [
   makeRemotePost(205, new Date("2024-01-02T00:00:00.000Z")),
 ];
 
-/** Expected desc(publishedAt) merge of local {101..104} + remote-only {201..205}. */
-const EXPECTED_DESC_ORDER = [101, 201, 102, 202, 103, 203, 104, 204, 205];
+/** Expected desc(postId) merge of local {101..104} + remote-only {201..205}. */
+const EXPECTED_DESC_ORDER = [205, 204, 203, 202, 201, 104, 103, 102, 101];
 
 describe("PlaylistController hybrid smart-playlist merge", () => {
   let mockDb: ReturnType<typeof createMockDb>;
@@ -292,8 +292,8 @@ describe("PlaylistController hybrid smart-playlist merge", () => {
     expect(seen).toEqual(EXPECTED_DESC_ORDER.map((postId) => `rule34:${postId}`));
     expect(new Set(seen).size).toBe(EXPECTED_DESC_ORDER.length);
 
-    // Overlap postId 104 is on page 3; local isViewed must win over the remote twin.
-    const pageWithOverlap = await resolvePage(3);
+    // Overlap postId 104 is on page 2 (postId desc); local isViewed must win over the remote twin.
+    const pageWithOverlap = await resolvePage(2);
     const localPreferred = pageWithOverlap.find((row) => row.postId === 104);
     expect(localPreferred?.isViewed).toBe(true);
   });
@@ -302,7 +302,7 @@ describe("PlaylistController hybrid smart-playlist merge", () => {
     const first = await resolvePage(2);
     const second = await resolvePage(2);
     expect(second.map(identityKey)).toEqual(first.map(identityKey));
-    expect(first.map((row) => row.postId)).toEqual([202, 103, 203]);
+    expect(first.map((row) => row.postId)).toEqual([202, 201, 104]);
   });
 
   it("seeded random hybrid pages are stable and cover each item once", async () => {
@@ -797,14 +797,14 @@ describe("PlaylistController hybrid smart-playlist merge", () => {
     expect(walkKeys.filter((key) => key === "rule34:19004801")).toHaveLength(1);
   });
 
-  it("ordered merge tie-breaks equal publishedAt by provider then postId", async () => {
+  it("ordered merge sorts by postId desc (provider-scoped smart collection)", async () => {
     mockDb.db.delete(posts).run();
     const artist = mockDb.db.select({ id: artists.id }).from(artists).all()[0];
     if (artist === undefined) {
       throw new Error("expected seed artist");
     }
     const TIE_TIME = new Date("2024-03-01T00:00:00.000Z");
-    // Two local rows, same publishedAt; provider tie-break is identical, so postId desc.
+    // Same publishedAt on purpose — order must follow postId, not publish time.
     mockDb.db
       .insert(posts)
       .values([
@@ -843,7 +843,6 @@ describe("PlaylistController hybrid smart-playlist merge", () => {
     );
 
     const page1 = await resolvePage(1);
-    // desc publishedAt (tied) → provider ASC (all rule34) → postId DESC
     expect(page1.map((row) => row.postId)).toEqual([6002, 6001, 5002]);
   });
 

@@ -47,6 +47,7 @@ import { isVideoUrl } from "@shared/utils/media";
 import {
   EXTERNAL_ARTIST_ID,
   PROVIDER_IDS,
+  type ProviderId,
 } from "../../../shared/constants";
 import { getDb, getSqliteInstance } from "../../db/client";
 import { onDatabaseReopened } from "../../core/di/databaseRegistration";
@@ -218,9 +219,10 @@ function hybridSeedRank(postId: number, seed: number): number {
 }
 
 /**
- * Compare two hybrid candidates. Order is (sortKey, provider, postId):
- * random uses seed rank on postId; otherwise publishedAt. Tie-breaks match
- * local SQL ORDER BY (same direction as sortOrder for time/id; provider ASC).
+ * Compare two hybrid candidates.
+ * Random: seed rank on postId, then postId ASC.
+ * Ordered: postId only (same direction as sortOrder).
+ * smart collection is provider-scoped by query.provider → order by postId, same as site
  */
 function compareHybridPlaylistPosts(
   a: IpcPost,
@@ -234,20 +236,9 @@ function compareHybridPlaylistPosts(
     if (rankDiff !== 0) {
       return rankDiff;
     }
-  } else {
-    const timeDiff = a.publishedAt - b.publishedAt;
-    if (timeDiff !== 0) {
-      return sortOrder === "asc" ? timeDiff : -timeDiff;
-    }
-  }
-  const providerDiff = a.provider.localeCompare(b.provider);
-  if (providerDiff !== 0) {
-    return providerDiff;
+    return a.postId - b.postId;
   }
   const idDiff = a.postId - b.postId;
-  if (isRandom) {
-    return idDiff;
-  }
   return sortOrder === "asc" ? idDiff : -idDiff;
 }
 
@@ -1469,6 +1460,9 @@ export class PlaylistController extends BaseController {
         .innerJoin(posts, eq(playlistEntries.postId, posts.id))
         .where(whereClause);
 
+      // Manual playlists mix artists/providers → no provider filter.
+      // position path unchanged; else publishedAt then postId (provider ASC secondary).
+      // cross-provider safe: post_id spaces differ per provider; published_at frozen at first-seen (see sync upsert)
       const result = isRandom
         ? queryBuilder
             .orderBy(...seededOrderBy(posts.id, resolveRandomSeed(seed)))
@@ -1477,11 +1471,15 @@ export class PlaylistController extends BaseController {
             .all()
         : queryBuilder
             .orderBy(
-              sortOrder === "position"
-                ? asc(playlistEntries.position)
-                : sortOrder === "asc"
-                  ? asc(posts.publishedAt)
-                  : desc(posts.publishedAt)
+              ...(sortOrder === "position"
+                ? [asc(playlistEntries.position)]
+                : [
+                    sortOrder === "asc"
+                      ? asc(posts.publishedAt)
+                      : desc(posts.publishedAt),
+                    asc(posts.provider),
+                    sortOrder === "asc" ? asc(posts.postId) : desc(posts.postId),
+                  ])
             )
             .limit(limit)
             .offset(offset)
@@ -1974,6 +1972,8 @@ export class PlaylistController extends BaseController {
           .innerJoin(posts, eq(playlistEntries.postId, posts.id))
           .where(whereClause);
 
+        // Manual playlist date sort = date added to playlist (addedAt), not post date.
+        // Tiebreaker: playlist_entries.post_id (PK with playlist_id), same direction.
         const result = isRandom
           ? queryBuilder
               .orderBy(...seededOrderBy(posts.id, resolveRandomSeed(seed)))
@@ -1982,11 +1982,16 @@ export class PlaylistController extends BaseController {
               .all()
           : queryBuilder
               .orderBy(
-                sortOrder === "position"
-                  ? asc(playlistEntries.position)
-                  : sortOrder === "asc"
-                    ? asc(playlistEntries.addedAt)
-                    : desc(playlistEntries.addedAt)
+                ...(sortOrder === "position"
+                  ? [asc(playlistEntries.position)]
+                  : [
+                      sortOrder === "asc"
+                        ? asc(playlistEntries.addedAt)
+                        : desc(playlistEntries.addedAt),
+                      sortOrder === "asc"
+                        ? asc(playlistEntries.postId)
+                        : desc(playlistEntries.postId),
+                    ])
               )
               .limit(limit)
               .offset(offset)
@@ -2073,6 +2078,10 @@ export class PlaylistController extends BaseController {
         allConditions.push(...globalConditions);
       }
 
+      // Provider scope: one default for local WHERE + remote fetch.
+      const providerId: ProviderId = query.provider ?? "rule34";
+      allConditions.push(eq(posts.provider, providerId));
+
       const whereClause = allConditions.length > 1 ? and(...allConditions) : allConditions[0] ?? sql`1 = 1`;
 
       // Local may materialize wholly in DB. Remote keeps a fixed window size (not an
@@ -2132,7 +2141,8 @@ export class PlaylistController extends BaseController {
             .where(whereClause);
 
           // Hybrid random orders by postId so the rank matches remote-only rows.
-          // Ordered: (publishedAt, provider, postId) — matches compareHybridPlaylistPosts.
+          // Ordered: postId only — smart collection is provider-scoped by
+          // query.provider → order by postId, same as site.
           const result = isRandom
             ? queryBuilder
                 .orderBy(...seededOrderBy(posts.postId, resolvedSeed))
@@ -2141,8 +2151,6 @@ export class PlaylistController extends BaseController {
                 .all()
             : queryBuilder
                 .orderBy(
-                  smartSortOrder === "asc" ? asc(posts.publishedAt) : desc(posts.publishedAt),
-                  asc(posts.provider),
                   smartSortOrder === "asc" ? asc(posts.postId) : desc(posts.postId)
                 )
                 .limit(localFetchLimit)
@@ -2156,6 +2164,7 @@ export class PlaylistController extends BaseController {
         this.resolveRemotePlaylistPosts(
           playlistId,
           query,
+          providerId,
           remoteFetchLimit,
           filters,
           smartSortOrder,
@@ -2245,6 +2254,7 @@ export class PlaylistController extends BaseController {
   private async resolveRemotePlaylistPosts(
     playlistId: number,
     query: SmartPlaylistQuery,
+    providerId: ProviderId,
     fetchLimit: number,
     filters: ResolvePlaylistPostsRequest["filters"] | undefined,
     sortOrder: "asc" | "desc",
@@ -2257,9 +2267,7 @@ export class PlaylistController extends BaseController {
       const booruQuery = this.buildBooruQueryString(query, upperBoundPostId);
       log.info(`[PlaylistController] Fetching remote posts for playlist ${playlistId} with query: "${booruQuery}"`);
 
-      // Get provider from query (defaults to rule34 if not specified)
-      // CRITICAL: Provider must match the actual source of posts to prevent 404 or invalid data
-      const providerId = query.provider ?? "rule34";
+      // providerId resolved once in resolvePlaylistPosts (query.provider ?? "rule34")
       const provider = getProvider(providerId);
       const apiSettings = await getDecryptedApiSettings(getDb());
       

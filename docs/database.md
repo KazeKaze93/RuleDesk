@@ -121,7 +121,7 @@ Caches post metadata for filtering, statistics, and download management. Support
 | Column         | Type                                   | Description                                   |
 | -------------- | -------------------------------------- | --------------------------------------------- |
 | `id`           | INTEGER (PK, AutoIncrement)            | Internal post ID                              |
-| `post_id`      | INTEGER (NOT NULL)                     | Post ID from external API                     |
+| `post_id`      | INTEGER (NOT NULL)                     | Post ID from external API. Comparable **only within one `provider`** — namespaces differ across Rule34 vs Gelbooru. |
 | `artist_id`    | INTEGER (FK → artists.id)              | Reference to artist                           |
 | `provider`     | TEXT (NOT NULL, DEFAULT 'rule34')     | Booru provider that owns this `post_id` namespace (`rule34` / `gelbooru`) |
 | `file_url`     | TEXT (NOT NULL)                        | Direct URL to full-resolution media file      |
@@ -131,7 +131,7 @@ Caches post metadata for filtering, statistics, and download management. Support
 | `rating`       | TEXT                                   | Content rating (safe, questionable, explicit) |
 | `tags`         | TEXT                                   | Space-separated tags                          |
 | `media_type`   | TEXT (NULL)                            | Media type: "image" or "video" (indexed)     |
-| `published_at` | INTEGER (NOT NULL)                     | Publication time (`mode: "timestamp"` = **seconds**) |
+| `published_at` | INTEGER (NOT NULL)                     | First-seen publication time (`mode: "timestamp"` = **seconds**). Frozen on sync upsert conflict (Rule34 `change` drifts; cross-provider feeds sort by this then `post_id`). |
 | `created_at`   | INTEGER (NOT NULL)                     | Local insert time (`mode: "timestamp"` = **seconds**) |
 | `is_viewed`    | INTEGER (BOOLEAN, NOT NULL, DEFAULT 0) | Whether post has been viewed                  |
 | `last_viewed_at` | INTEGER (NULL)                       | Last view (`mode: "timestamp"` = **seconds**) |
@@ -139,6 +139,8 @@ Caches post metadata for filtering, statistics, and download management. Support
 | `is_favorited` | INTEGER (BOOLEAN, NOT NULL, DEFAULT 0) | Whether post has been favorited               |
 
 **Unique Constraint:** `(artist_id, provider, post_id)` — post identity spans artist, provider, and remote post id. External Browse posts share `artist_id = 0` but remain distinct across providers.
+
+**Sort keys:** Provider-scoped queries (artist gallery `WHERE artist_id = ?`, remote Browse for the current provider, smart collections scoped by `query.provider`) order by `post_id`. Cross-artist feeds without a provider filter (Favorites, Updates, manual playlist date sort uses `playlist_entries.added_at`) order by `published_at` then `post_id` where applicable — never by bare `post_id` across providers.
 
 **Indexes:**
 
@@ -148,6 +150,8 @@ Caches post metadata for filtering, statistics, and download management. Support
 - `isViewedIdx` - Index on `is_viewed` for view status filtering
 - `posts_last_viewed_at_idx` - Index on `last_viewed_at` for recently viewed sorting
 - `publishedAtIdx` - Index on `published_at` for date-based sorting
+- `posts_artist_published_at_idx` - Composite `(artist_id, published_at)` for artist feeds that still order by first-seen time
+- `posts_artist_post_id_idx` - Composite `(artist_id, post_id)` for artist gallery `ORDER BY post_id`
 - `isFavoritedIdx` - Index on `is_favorited` for favorites filtering
 - `posts_media_type_idx` - Index on `media_type` for fast image/video filtering
 - `posts_artist_rating_viewed_idx` - Composite index on `(artist_id, rating, is_viewed)` for optimized multi-column filter queries
@@ -372,7 +376,7 @@ Stores playlist/collection information for curated post collections.
 | `id`          | INTEGER (PK, AutoIncrement)      | Primary key                                    |
 | `name`        | TEXT (NOT NULL)                   | Playlist display name                          |
 | `is_smart`    | INTEGER (BOOLEAN, DEFAULT 0)      | Smart playlist flag (dynamic tag-based queries) |
-| `query_json`  | TEXT (DEFAULT '')                 | JSON-encoded smart playlist query              |
+| `query_json`  | TEXT (DEFAULT '')                 | JSON-encoded smart playlist query (includes `provider`; hybrid local+remote resolve filters local rows by that provider and orders by `post_id`) |
 | `query_schema_version` | INTEGER (NOT NULL, DEFAULT 1) | Version of smart playlist query DSL for safe parsing/migrations |
 | `icon_name`   | TEXT (DEFAULT '')                 | Icon name for playlist display                 |
 | `created_at`  | INTEGER (TIMESTAMP, NOT NULL)     | Creation time (`mode: "timestamp"` = **seconds**) |

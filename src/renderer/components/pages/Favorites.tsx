@@ -184,7 +184,7 @@ export const Favorites = () => {
       });
     }
 
-    // Sort by publishedAt (date of post creation)
+    // Cross-artist favorites: no provider filter → publishedAt, then postId.
     return [...posts].sort((a, b) => {
       const dateA = a.publishedAt instanceof Date 
         ? a.publishedAt.getTime() 
@@ -196,8 +196,11 @@ export const Favorites = () => {
         : typeof b.publishedAt === "number" 
         ? b.publishedAt 
         : 0;
-      
-      return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
+
+      if (dateA !== dateB) {
+        return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
+      }
+      return sortOrder === "desc" ? b.postId - a.postId : a.postId - b.postId;
     });
   }, [data, sortOrder, aiFilter, mediaType]);
   const selectedPosts = useMemo(

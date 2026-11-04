@@ -220,8 +220,20 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 **Invariant Rule:** After every DB reopen, notify subscribers to refresh schema-existence caches. Never persist a captured DB handle across a network `await` — call `getDb()` at write time.
 
 ### Problem: Hot filter+order queries pay TEMP B-TREE because indexes cover only one side
-**Root Cause:** Artist gallery used `WHERE artist_id = ? ORDER BY published_at` with only single-column indexes, so SQLite searched by `artist_id` then built a TEMP B-TREE for the sort.
-**Invariant Rule:** Hot paths that filter by one column and order by another need a dedicated composite index covering both (e.g. `(artist_id, published_at)`). Add via `CREATE INDEX IF NOT EXISTS` migration — never rebuild the posts table for an index-only change.
+**Root Cause:** Artist gallery used `WHERE artist_id = ? ORDER BY published_at` (later `ORDER BY post_id`) with only single-column indexes, so SQLite searched by `artist_id` then built a TEMP B-TREE for the sort.
+**Invariant Rule:** Hot paths that filter by one column and order by another need a dedicated composite index covering both — gallery now needs `(artist_id, post_id)`; cross-artist date feeds keep `(artist_id, published_at)` where that order remains. Add via `CREATE INDEX IF NOT EXISTS` migration — never rebuild the posts table for an index-only change.
+
+### Problem: One gallery sort key for both provider-scoped and cross-provider feeds
+**Root Cause:** Rule34 JSON API has no created_at; sync stored `change` (last edit time) into published_at and every list sorted by it, so edited posts jumped above newer uploads; upsert also overwrote published_at on resync. post_id namespaces differ per provider, so bare post_id is valid only inside one provider.
+**Invariant Rule:** Decide the provider filter first. Provider-scoped (artist `WHERE artist_id = ?`, remote Browse for current provider) → `ORDER BY post_id`. Cross-artist with no provider filter → `ORDER BY published_at`, then `post_id` (same direction). Do not re-sort remote Browse by `published_at`. Smart collections are provider-scoped by `query.provider`; filter the local hybrid leg by it and order by `post_id` (same as the site for that query).
+
+### Problem: Closing a portal modal rendered inside a card toggled bulk mode
+**Root Cause:** React synthetic events bubble through portals along the React tree, so overlay `pointerdown` reached the card's long-press handler and `pointerup` never did.
+**Invariant Rule:** Card-level pointer/click/context handlers must ignore events whose target is not DOM-contained in the card (`currentTarget.contains(target)` after `instanceof Node`). Do not “fix” by `stopPropagation` on every modal project-wide.
+
+### Problem: Re-sync rewrote `published_at` from provider `change`
+**Root Cause:** Sync upsert `onConflictDoUpdate` set `publishedAt: excluded.published_at`, so first-seen time drifted whenever Rule34 `change` moved.
+**Invariant Rule:** On post upsert conflict, freeze `published_at` at first insert; refresh only mutable media/metadata fields (URLs, tags, rating, mediaType). Cross-provider feed sort depends on that frozen value.
 
 ### Problem: Duplicated correlated blacklist SQL rescanned `tag_blacklist` per candidate row
 **Root Cause:** The same `NOT EXISTS … FROM tag_blacklist … instr(…)` fragment lived in four Posts/Playlist call sites; each also called `getAllBlacklistedTags()` only for emptiness while SQL re-joined the table per row.

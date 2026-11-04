@@ -146,7 +146,7 @@ function bulkUpsertPosts(
           tags: sql`excluded.tags`,
           rating: sql`excluded.rating`,
           mediaType: sql`excluded.media_type`,
-          publishedAt: sql`excluded.published_at`,
+          // published_at frozen at first-seen (cross-provider sort uses it; Rule34 change drifts)
         },
       })
       .run();

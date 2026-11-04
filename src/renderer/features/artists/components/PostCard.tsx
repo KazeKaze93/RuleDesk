@@ -227,6 +227,12 @@ export const PostCard: React.FC<PostCardProps> = ({
       role="button"
       tabIndex={0}
       onClick={(e) => {
+        // Portal-rendered descendants (e.g. QuickAddToPlaylistMenu overlay) still
+        // bubble React synthetics to the card; ignore events whose target is not
+        // DOM-contained in the card.
+        if (!(e.target instanceof Node) || !e.currentTarget.contains(e.target)) {
+          return;
+        }
         e.preventDefault();
         e.stopPropagation();
         if (isBulkMode) {
@@ -236,6 +242,15 @@ export const PostCard: React.FC<PostCardProps> = ({
         onClick();
       }}
       onKeyDown={(event) => {
+        // Portal-rendered descendants (e.g. QuickAddToPlaylistMenu overlay) still
+        // bubble React synthetics to the card; ignore events whose target is not
+        // DOM-contained in the card.
+        if (
+          !(event.target instanceof Node) ||
+          !event.currentTarget.contains(event.target)
+        ) {
+          return;
+        }
         if (event.key !== "Enter" && event.key !== " ") {
           return;
         }
@@ -248,6 +263,15 @@ export const PostCard: React.FC<PostCardProps> = ({
         onClick();
       }}
       onPointerDown={(event) => {
+        // Portal-rendered descendants (e.g. QuickAddToPlaylistMenu overlay) still
+        // bubble React synthetics to the card; ignore events whose target is not
+        // DOM-contained in the card.
+        if (
+          !(event.target instanceof Node) ||
+          !event.currentTarget.contains(event.target)
+        ) {
+          return;
+        }
         if (event.button !== 0 || isBulkMode) {
           return;
         }
@@ -281,6 +305,12 @@ export const PostCard: React.FC<PostCardProps> = ({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onContextMenu={(e) => {
+        // Portal-rendered descendants (e.g. QuickAddToPlaylistMenu overlay) still
+        // bubble React synthetics to the card; ignore events whose target is not
+        // DOM-contained in the card.
+        if (!(e.target instanceof Node) || !e.currentTarget.contains(e.target)) {
+          return;
+        }
         e.preventDefault();
         e.stopPropagation();
         // Opens centered AddToPlaylist modal — no cursor-anchored trigger needed.

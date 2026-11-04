@@ -68,3 +68,30 @@ describe("data-processor worker AI_TAGS wiring", () => {
     expect(filterPostsByAi(fixture, "only", AI_TAGS)).toEqual([2, 3, 4, 5]);
   });
 });
+
+/**
+ * Mirrors data-processor.worker.ts remote Browse sort: provider-scoped → postId only.
+ * Worker helpers are not exported; keep the comparator contract here in lockstep.
+ */
+function sortByPostId(
+  posts: ReadonlyArray<{ postId: number; publishedAt: number }>,
+  sortOrder: "asc" | "desc"
+): number[] {
+  return [...posts]
+    .sort((a, b) =>
+      sortOrder === "desc" ? b.postId - a.postId : a.postId - b.postId
+    )
+    .map((post) => post.postId);
+}
+
+describe("data-processor worker remote Browse sort", () => {
+  it("orders by postId only (ignores publishedAt)", () => {
+    const fixture = [
+      { postId: 10, publishedAt: 3_000 },
+      { postId: 30, publishedAt: 1_000 },
+      { postId: 20, publishedAt: 2_000 },
+    ];
+    expect(sortByPostId(fixture, "desc")).toEqual([30, 20, 10]);
+    expect(sortByPostId(fixture, "asc")).toEqual([10, 20, 30]);
+  });
+});

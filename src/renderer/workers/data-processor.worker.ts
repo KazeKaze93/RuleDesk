@@ -84,17 +84,11 @@ function isVideoPost(fileUrl: string | undefined | null): boolean {
 }
 
 /**
- * Extract timestamp from publishedAt (handles Date, number, or undefined)
- */
-function getTimestamp(publishedAt: Date | number | null | undefined): number {
-  if (publishedAt instanceof Date) return publishedAt.getTime();
-  if (typeof publishedAt === "number") return publishedAt;
-  return 0;
-}
-
-/**
  * Filter and sort posts in a single efficient pass
  * Uses single-pass filter + sort for optimal performance
+ *
+ * Remote Browse worker path is provider-scoped (single current provider search)
+ * → sort by postId only (API chronology), not publishedAt.
  */
 function filterAndSortPosts(
   posts: WorkerPost[],
@@ -115,11 +109,9 @@ function filterAndSortPosts(
     return true;
   });
 
-  return filtered.sort((a, b) => {
-    const dateA = getTimestamp(a.publishedAt);
-    const dateB = getTimestamp(b.publishedAt);
-    return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
-  });
+  return filtered.sort((a, b) =>
+    sortOrder === "desc" ? b.postId - a.postId : a.postId - b.postId
+  );
 }
 
 // Message handler

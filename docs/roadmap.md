@@ -409,6 +409,8 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 
 | Area | What is still open |
 |------|--------------------|
+| **Provider switch** | Dialog says "will clear all cached data", but `useCredentialsActions.changeProvider` only invalidates React Query and saves `settings.provider` — posts/artists of the old provider stay in SQLite. Needs trace: are old-provider artists/posts shown after switch. |
+| **Smart collection UX** | No indication a smart collection is a live query / when new posts appear; no refresh affordance in the gallery header. |
 | **Artist types (UI)** | Add Artist UI supports **tag** only. Schema still allows `uploader` / `query` for legacy rows; exposing those types in the UI is backlog (not shipped). |
 | **Artist gallery: Since tracked** | Since tracked (`sinceTracking` pass-through) on `/artist/:id` — needs trace of PostsController `sinceTracking` path with `artistId` before enabling the option in `getSourceOptionsForPath`. |
 | **Filters** | Keep filter scope lean (`AI`, `Media`, `Source`) and avoid reintroducing removed panel controls without product decision (**scope is already implemented; this is a guardrail**). |

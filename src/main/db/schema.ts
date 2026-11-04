@@ -134,6 +134,8 @@ export const posts = sqliteTable(
       t.artistId,
       t.publishedAt
     ),
+    // Artist gallery: WHERE artist_id = ? ORDER BY post_id (avoids TEMP B-TREE)
+    artistPostIdIdx: index("posts_artist_post_id_idx").on(t.artistId, t.postId),
     isFavoritedIdx: index("isFavoritedIdx").on(t.isFavorited),
     // Composite index for common filter combination: artistId + rating + isViewed
     // Optimizes queries filtering by these columns simultaneously
