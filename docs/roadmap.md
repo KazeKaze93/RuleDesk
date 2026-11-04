@@ -101,7 +101,7 @@ Unify `PlaylistGallery` on `useGalleryInfiniteScroll` (debounce / endReached gat
 
 | # | Branch | PR | Status |
 |---|--------|----|--------|
-| G | `fix/playlist-infinite-scroll` | — | 🟡 open |
+| G | `fix/playlist-infinite-scroll` | [#265](https://github.com/KazeKaze93/RuleDesk/pull/265) | 🟡 open |
 
 ### DB review waves (P1)
 
