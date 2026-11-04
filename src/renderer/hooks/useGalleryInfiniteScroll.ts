@@ -28,6 +28,8 @@ type GalleryInfiniteScrollQueryOptions = {
  *
  * `handleEndReached` is gated by in-flight fetch / exhausted pages so a pinned
  * Virtuoso `endReached` cannot schedule overlapping `fetchNextPage` calls.
+ * `loadMoreNow` uses the same ref gate without debounce (viewer / masonry paths
+ * that must `await` the new page for `appendQueueIds`).
  */
 export function useGalleryInfiniteScroll<
   TPage,
@@ -149,6 +151,29 @@ export function useGalleryInfiniteScroll<
     scheduleLoadMore();
   }, [scheduleLoadMore]);
 
+  const loadMoreNow = useCallback(async (): Promise<TPage | undefined> => {
+    if (!hasNextPageRef.current || isFetchingNextPageRef.current) {
+      return undefined;
+    }
+    if (endReachedTimeoutRef.current) {
+      clearTimeout(endReachedTimeoutRef.current);
+      endReachedTimeoutRef.current = null;
+    }
+    // Optimistic gate: close the race before React Query flips isFetchingNextPage.
+    isFetchingNextPageRef.current = true;
+    try {
+      const result = await fetchNextPage();
+      const pages = result.data?.pages;
+      if (!pages || pages.length === 0) {
+        return undefined;
+      }
+      return pages[pages.length - 1];
+    } catch (error: unknown) {
+      isFetchingNextPageRef.current = false;
+      throw error;
+    }
+  }, [fetchNextPage]);
+
   useEffect(() => {
     return () => {
       if (endReachedTimeoutRef.current) {
@@ -188,5 +213,6 @@ export function useGalleryInfiniteScroll<
     error,
     refetch,
     handleEndReached,
+    loadMoreNow,
   };
 }

@@ -77,6 +77,12 @@ export const BATCH_DOWNLOAD_CHUNK_SIZE = 100;
 export const POSTS_PAGE_SIZE = 50;
 
 /**
+ * Viewer near-end prefetch for playlist queues: remaining ids before onLoadMore.
+ * ~3–4.4 s per smart page (each page refetches the full remote window); 2 pages of lead time.
+ */
+export const PLAYLIST_PREFETCH_ITEMS = 2 * POSTS_PAGE_SIZE;
+
+/**
  * Max post ids accepted by `updates:markSeenByIds` in one IPC call.
  * Matches a generous multi-page Updates feed load (`POSTS_PAGE_SIZE`).
  */

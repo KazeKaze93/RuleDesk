@@ -24,7 +24,10 @@ import { canonicalizePostTagsForResolve } from "./postMetadataQueryKeys";
 import { useCurrentPost } from "./hooks/useCurrentPost";
 import { PostNotFoundFallback } from "./PostNotFoundFallback";
 import { ViewerContent } from "./ViewerContent";
-import { POSTS_PAGE_SIZE } from "../../../shared/constants";
+import {
+  PLAYLIST_PREFETCH_ITEMS,
+  POSTS_PAGE_SIZE,
+} from "../../../shared/constants";
 
 const VIEWER_DIALOG_CONTENT_CLASS = cn(
   VIEWER_SHELL_Z,
@@ -131,7 +134,8 @@ export const ViewerDialog = () => {
     if (!isOpen || !queue || !queue.origin) return;
 
     const loadedCount = queue.ids.length;
-    const threshold = 5;
+    const threshold =
+      queue.origin.kind === "playlist" ? PLAYLIST_PREFETCH_ITEMS : 5;
 
     const isNearEnd = currentIndex >= loadedCount - threshold;
     const hasReachedLimit =

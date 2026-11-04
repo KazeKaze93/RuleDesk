@@ -93,7 +93,7 @@ Favorites empty NONE vs FILTERED; Source pathname scope + **Since tracked** labe
 
 | # | Branch | PR | Status |
 |---|--------|----|--------|
-| W1 | `fix/ux-audit-wave1` | [#263](https://github.com/KazeKaze93/RuleDesk/pull/263) | 🟡 open |
+| W1 | `fix/ux-audit-wave1` | [#263](https://github.com/KazeKaze93/RuleDesk/pull/263) | ✅ merged |
 
 ### Playlist gallery infinite scroll
 
@@ -418,7 +418,9 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 | Area | What is still open |
 |------|--------------------|
 | **Provider switch** | Dialog says "will clear all cached data", but `useCredentialsActions.changeProvider` only invalidates React Query and saves `settings.provider` — posts/artists of the old provider stay in SQLite. Needs trace: are old-provider artists/posts shown after switch. |
-| **Smart collection UX** | No indication a smart collection is a live query / when new posts appear; no refresh affordance in the gallery header. |
+| **Smart collection UX** | Header now shows Loaded N + live-search subtitle + Refresh (`#265`). Still no indication when new remote posts appear while the gallery stays open. |
+| **Hybrid smart collection remote window** | Every page re-fetches the full remote window (measured: 3 API pages / 2818 raw posts / ~3–4.4 s per 50-post page, playlist "liz"). Candidate fix: cache the snapshot window in main per `hybridOrderedSequences` key. |
+| **Smart collection total** | Rule34 JSON API has no count; verify XML root `posts count` before showing a real total. |
 | **Artist types (UI)** | Add Artist UI supports **tag** only. Schema still allows `uploader` / `query` for legacy rows; exposing those types in the UI is backlog (not shipped). |
 | **Artist gallery: Since tracked** | Since tracked (`sinceTracking` pass-through) on `/artist/:id` — needs trace of PostsController `sinceTracking` path with `artistId` before enabling the option in `getSourceOptionsForPath`. |
 | **Filters** | Keep filter scope lean (`AI`, `Media`, `Source`) and avoid reintroducing removed panel controls without product decision (**scope is already implemented; this is a guardrail**). |

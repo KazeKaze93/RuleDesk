@@ -500,6 +500,59 @@ describe("useGalleryInfiniteScroll", () => {
       unmount();
     });
 
+    it("loadMoreNow: overlapping calls during in-flight fetch → one network call; returns new page", async () => {
+      let resolvePage2: (() => void) | null = null;
+      const fetchFn = vi.fn(async (page: number) => {
+        if (page === 1) {
+          return makeItems(POSTS_PER_PAGE);
+        }
+        await new Promise<void>((resolve) => {
+          resolvePage2 = resolve;
+        });
+        return makeItems(POSTS_PER_PAGE, POSTS_PER_PAGE + 1);
+      });
+
+      const { result, unmount } = mountHook(queryClient, () =>
+        useGalleryInfiniteScroll({
+          queryKey: ["gallery-load-more-now"],
+          fetchFn,
+          initialPageParam: 1,
+          getNextPageParam: (lastPage, allPages) => {
+            if (lastPage.length < POSTS_PER_PAGE) return undefined;
+            return allPages.length + 1;
+          },
+        })
+      );
+
+      await waitForCondition(() => {
+        expect(result.current?.hasNextPage).toBe(true);
+        expect(result.current?.isFetchingNextPage).toBe(false);
+      });
+
+      let pageA: PostItem[] | undefined;
+      let pageB: PostItem[] | undefined;
+      await act(async () => {
+        const p1 = result.current?.loadMoreNow();
+        const p2 = result.current?.loadMoreNow();
+        expect(p1).toBeDefined();
+        expect(p2).toBeDefined();
+        await flushAct();
+        expect(fetchFn).toHaveBeenCalledTimes(2);
+        resolvePage2?.();
+        pageA = await p1;
+        pageB = await p2;
+      });
+
+      expect(pageA).toHaveLength(POSTS_PER_PAGE);
+      expect(pageA?.[0]?.id).toBe(POSTS_PER_PAGE + 1);
+      expect(pageB).toBeUndefined();
+      await waitForCondition(() => {
+        expect(result.current?.allPosts).toHaveLength(POSTS_PER_PAGE * 2);
+      });
+
+      unmount();
+    });
+
     it("playlist-shaped key: multiple handleEndReached during in-flight next page → one network call", async () => {
       // Mirrors PlaylistGallery queryKey + raw Post[] pages (AI filter is client-side after flatten).
       let resolvePage2: (() => void) | null = null;

@@ -1,6 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Loader2, List, Sparkles, CheckSquare } from "lucide-react";
+import {
+  ArrowLeft,
+  Loader2,
+  List,
+  Sparkles,
+  CheckSquare,
+  RefreshCw,
+} from "lucide-react";
 import { VirtuosoGrid } from "react-virtuoso";
 import log from "electron-log/renderer";
 import {
@@ -19,7 +26,8 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { Button } from "../ui/button";
-import type { Playlist, Post } from "@shared/types/db";
+import type { Post } from "@shared/types/db";
+import type { PlaylistWithStats } from "@shared/types/bridge";
 import { useViewerStore } from "../../store/viewerStore";
 import { useSearchStore } from "../../store/searchStore";
 import { PostCard } from "../../features/artists/components/PostCard";
@@ -42,6 +50,13 @@ import { useMasonryInfiniteScroll } from "../../hooks/useMasonryInfiniteScroll";
 import { SortablePostCard } from "./PlaylistVirtuosoComponents";
 import { resolveErrorMessage } from "../../utils/error-message";
 import { POSTS_PAGE_SIZE } from "../../../shared/constants";
+import {
+  formatManualPlaylistCountLabel,
+  formatSmartPlaylistLoadedLabel,
+  PLAYLIST_HEADER_REFRESH_ARIA_LABEL,
+  PLAYLIST_HEADER_SMART_SUBTITLE,
+  PLAYLIST_HEADER_SMART_TYPE_LABEL,
+} from "./playlist-gallery-header";
 
 const {
   GridContainer,
@@ -64,7 +79,7 @@ const shouldIncludePostInPlaylistQueue = (
 
 // Playlist Gallery Component (similar to ArtistGallery)
 interface PlaylistGalleryProps {
-  playlist: Playlist;
+  playlist: PlaylistWithStats;
   onBack: () => void;
 }
 
@@ -109,6 +124,8 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
     error,
     refetch,
     handleEndReached,
+    loadMoreNow,
+    isFetching,
   } = useGalleryInfiniteScroll({
     queryKey: [
       "playlist-posts",
@@ -180,14 +197,10 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
     [displayedPosts, selectedIds]
   );
 
-  // Viewer / masonry: gated fetchNextPage + appendQueueIds (Browse pattern).
-  // Virtuoso grid uses handleEndReached (debounce + in-flight refs) to avoid double-fetch.
+  // Viewer / masonry: loadMoreNow (same ref-gate as handleEndReached, no debounce)
+  // then appendQueueIds. Virtuoso grid uses handleEndReached (debounced).
   const handleLoadMore = useCallback(() => {
-    if (!hasNextPage || isFetchingNextPage) {
-      return;
-    }
-    void fetchNextPage().then((result) => {
-      const newPage = result.data?.pages[result.data.pages.length - 1];
+    void loadMoreNow().then((newPage) => {
       if (!newPage || newPage.length === 0) return;
       const filteredIds = newPage
         .filter((post) =>
@@ -200,13 +213,27 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
         appendQueueIds(filteredIds);
       }
     });
-  }, [
-    hasNextPage,
-    isFetchingNextPage,
-    fetchNextPage,
-    aiFilter,
-    appendQueueIds,
-  ]);
+  }, [loadMoreNow, aiFilter, appendQueueIds]);
+
+  const handleRefreshCollection = useCallback(() => {
+    const queryKey = [
+      "playlist-posts",
+      playlist.id,
+      mediaType,
+      aiFilter,
+      sortOrder,
+    ] as const;
+    void (async () => {
+      await queryClient.cancelQueries({ queryKey: [...queryKey] });
+      // removeQueries (not reset): placeholderData would otherwise keep prior pages
+      // visible as "Loaded N" while page 1 refetches.
+      queryClient.removeQueries({ queryKey: [...queryKey] });
+    })();
+  }, [queryClient, playlist.id, mediaType, aiFilter, sortOrder]);
+
+  const filtersNarrowResults =
+    (mediaType !== undefined && mediaType !== "all") || aiFilter !== "all";
+  const isRefreshBusy = isLoading || isFetching || isFetchingNextPage;
 
   const handlePostClick = (index: number) => {
     const currentDisplayedPosts = displayedPosts;
@@ -378,20 +405,51 @@ export const PlaylistGallery: React.FC<PlaylistGalleryProps> = ({ playlist, onBa
             )}
             <div>
               <h1 className="text-xl font-semibold">{playlist.name}</h1>
-              {playlist.isSmart && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Smart Collection
-                </p>
-              )}
-              {displayedPosts.length > 0 && (
+              {playlist.isSmart ? (
+                <>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {PLAYLIST_HEADER_SMART_TYPE_LABEL}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {PLAYLIST_HEADER_SMART_SUBTITLE}
+                  </p>
+                  {displayedPosts.length > 0 && (
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      {formatSmartPlaylistLoadedLabel(displayedPosts.length)}
+                    </p>
+                  )}
+                </>
+              ) : (
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  Total: {displayedPosts.length}
+                  {formatManualPlaylistCountLabel({
+                    postCount: playlist.postCount,
+                    filtersNarrowResults,
+                  })}
                 </p>
               )}
             </div>
           </div>
         </div>
         <div className="flex gap-2">
+          {playlist.isSmart && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    aria-label={PLAYLIST_HEADER_REFRESH_ARIA_LABEL}
+                    disabled={isRefreshBusy}
+                    onClick={handleRefreshCollection}
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Refresh</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
