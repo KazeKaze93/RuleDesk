@@ -101,7 +101,7 @@ Honest Sync All progress + success/error toasts via `useSyncAll`; Updates empty 
 
 | # | Branch | PR | Status |
 |---|--------|----|--------|
-| W2 | `fix/ux-audit-wave2` | [#267](https://github.com/KazeKaze93/RuleDesk/pull/267) | 🟡 open |
+| W2 | `fix/ux-audit-wave2` | [#267](https://github.com/KazeKaze93/RuleDesk/pull/267) | ✅ merged |
 
 ### Playlist gallery infinite scroll
 
