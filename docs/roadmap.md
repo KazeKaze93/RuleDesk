@@ -95,6 +95,14 @@ Favorites empty NONE vs FILTERED; Source pathname scope + **Since tracked** labe
 |---|--------|----|--------|
 | W1 | `fix/ux-audit-wave1` | [#263](https://github.com/KazeKaze93/RuleDesk/pull/263) | 🟡 open |
 
+### Playlist gallery infinite scroll
+
+Unify `PlaylistGallery` on `useGalleryInfiniteScroll` (debounce / endReached gate / `placeholderData`); extract PostCard portal bulk guard to `isEventFromOwnDom`. Status lives only in this table.
+
+| # | Branch | PR | Status |
+|---|--------|----|--------|
+| G | `fix/playlist-infinite-scroll` | — | 🟡 open |
+
 ### DB review waves (P1)
 
 Integrity / silent-error / sync-FTS / index / cache / uniqueness / blacklist batch. Status lives only in this table. Architectural lessons harvested in T10.
