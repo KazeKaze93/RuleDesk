@@ -133,7 +133,7 @@ Persist `kind: "favorites"` in `download-queue.json` and resume from `PendingDow
 
 | # | Branch | PR | Status |
 |---|--------|----|--------|
-| FR | `fix/favorites-download-resume` | (open) | 🟡 open |
+| FR | `fix/favorites-download-resume` | [#274](https://github.com/KazeKaze93/RuleDesk/pull/274) | 🟡 open |
 
 ### Playlist gallery infinite scroll
 
