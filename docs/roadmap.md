@@ -103,6 +103,14 @@ Honest Sync All progress + success/error toasts via `useSyncAll`; Updates empty 
 |---|--------|----|--------|
 | W2 | `fix/ux-audit-wave2` | [#267](https://github.com/KazeKaze93/RuleDesk/pull/267) | ✅ merged |
 
+### Masonry row-order (round-robin flex columns)
+
+Replace CSS multi-column masonry with JS round-robin into flex columns (`item i → column i mod N`, N from Tailwind md/lg/xl via `matchMedia`). Status lives only in this table.
+
+| # | Branch | PR | Status |
+|---|--------|----|--------|
+| M | `fix/masonry-row-order` | — | 🟡 open |
+
 ### Playlist gallery infinite scroll
 
 Unify `PlaylistGallery` on `useGalleryInfiniteScroll` (debounce / endReached gate / `placeholderData`); extract PostCard portal bulk guard to `isEventFromOwnDom`. Status lives only in this table.
@@ -431,6 +439,8 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 | **Smart collection total (XML)** | Needed only when the remote walk hits `HYBRID_REMOTE_MAX_PAGES_TO_SCAN` (total shown as lower bound). Rule34 JSON has no count; verify XML root `posts count` to upgrade lower-bound headers to exact. |
 | **Artist types (UI)** | Add Artist UI supports **tag** only. Schema still allows `uploader` / `query` for legacy rows; exposing those types in the UI is backlog (not shipped). |
 | **Favorites: Download all favorites (backend source)** | No IPC kind for favorites-wide download. `DownloadAllRequestSchema` is only `kind: "artist"` (DB walk by `artistId`) or `kind: "list"` (explicit URL items, used by bulk selection / Browse loaded). There is no `useDownloadAllFromBackend`-style path for Favorites. |
+| **Remove dead MasonryVirtuosoList / ListComponent ternaries** | All five galleries assign `MasonryVirtuosoList` / `MasonryItemContainer` when `viewType === "masonry"`, but the masonry branch never mounts `VirtuosoGrid` (plain `map` + `GridContainer`). Dead ternaries / unused `MasonryVirtuosoList` wiring. |
+| **Shortest-column masonry** | Requires storing post `width`/`height` (DB migration + sync from booru). Current round-robin does not measure card heights. |
 | **Artist gallery: Since tracked** | Since tracked (`sinceTracking` pass-through) on `/artist/:id` — needs trace of PostsController `sinceTracking` path with `artistId` before enabling the option in `getSourceOptionsForPath`. |
 | **Filters** | Keep filter scope lean (`AI`, `Media`, `Source`) and avoid reintroducing removed panel controls without product decision (**scope is already implemented; this is a guardrail**). |
 | **Search** | Continue polish/regression coverage for chip-based syntax (`-tag`, OR groups, wildcard/fuzzy). |

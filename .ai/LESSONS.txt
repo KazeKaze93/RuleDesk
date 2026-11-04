@@ -363,9 +363,9 @@ Invariant Rule: Run `npm run validate` before finishing and remove all unused im
 **Root Cause:** OS and third-party screen capture tools read the rendered DOM and resource URLs; CSS-hidden nodes often remain in the accessibility/layout tree with `src` intact.
 **Invariant Rule:** Panic Mode must **wipe `src` on `img`, `video`, and `source` elements** (and restore from a data attribute if needed), not rely on CSS hiding. Screenshot tools capture rendered DOM, not stylesheet intent.
 
-### Problem: CSS `break-inside-avoid` silently ignored in flex containers
-**Root Cause:** `break-inside-avoid` only works with CSS multi-column layout (`columns-N` / `column-count`). In a flex or grid container it has no effect, but browsers don't warn. Masonry implementations that mix flex + break-inside appear to "work" superficially but produce a single-column list.
-**Invariant Rule:** Masonry layouts must use CSS columns explicitly (`columns-2 md:columns-3 ...`) or a bin-packing library (e.g. `masonic`). Combining virtualization with CSS-columns masonry is incompatible; choose one.
+### Problem: CSS-columns masonry ordered posts top-to-bottom per column and reshuffled them on append
+**Root Cause:** multi-column flow is column-major and rebalances on content growth
+**Invariant Rule:** masonry is JS round-robin distribution into flex columns (item i → column i mod N, N from Tailwind breakpoints via matchMedia); no CSS columns; shortest-column needs stored post dimensions.
 
 ### Problem: Validation errors remain visible after context-changing input updates
 **Root Cause:** Error state is persisted independently from form inputs, and no reset is performed when provider/credentials change the validation context.
