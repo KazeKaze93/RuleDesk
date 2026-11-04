@@ -34,6 +34,8 @@ import {
   TooltipTrigger,
 } from "../ui/tooltip";
 import { useBulkSelect } from "../../hooks/useBulkSelect";
+import { useDownloadAll } from "../../hooks/useDownloadAll";
+import { DownloadAllButton } from "../downloads/DownloadAllButton";
 import { BulkActionBar } from "../BulkActionBar/BulkActionBar";
 import { getBulkSelectId } from "../../lib/bulkSelect";
 import { ErrorCode } from "@shared/types/error-codes";
@@ -208,6 +210,19 @@ export const Favorites = () => {
     [allPosts, selectedIds]
   );
 
+  const {
+    downloadAll,
+    cancel: cancelLoadedDownload,
+    pause: pauseLoadedDownload,
+    resume: resumeLoadedDownload,
+    isDownloading: isDownloadingLoaded,
+    isPaused: isLoadedDownloadPaused,
+    progress: loadedDownloadProgress,
+    lastFailures: loadedDownloadFailures,
+    canDownload: canDownloadLoaded,
+    loadedCount,
+  } = useDownloadAll(allPosts);
+
   const hasLoadedPosts =
     data?.pages.some((page) => page.length > 0) === true;
   const isFatalGalleryError = isError && !hasLoadedPosts;
@@ -362,7 +377,23 @@ export const Favorites = () => {
                 : undefined
             }
             actions={
-              <TooltipProvider>
+              <>
+                <DownloadAllButton
+                  onClick={() => {
+                    void downloadAll();
+                  }}
+                  onCancel={cancelLoadedDownload}
+                  onPause={pauseLoadedDownload}
+                  onResume={resumeLoadedDownload}
+                  isDownloading={isDownloadingLoaded}
+                  isPaused={isLoadedDownloadPaused}
+                  progress={loadedDownloadProgress}
+                  canDownload={canDownloadLoaded}
+                  totalLabel={loadedCount}
+                  labelMode="loaded"
+                  failures={loadedDownloadFailures}
+                />
+                <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -383,7 +414,8 @@ export const Favorites = () => {
                   </TooltipTrigger>
                   <TooltipContent>Bulk selection</TooltipContent>
                 </Tooltip>
-              </TooltipProvider>
+                </TooltipProvider>
+              </>
             }
           />
         </div>
