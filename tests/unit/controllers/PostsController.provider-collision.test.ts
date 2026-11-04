@@ -55,15 +55,30 @@ vi.mock("electron-log", () => ({
 
 const fetchPostsMock = vi.fn();
 
-vi.mock("../../../src/main/providers", () => ({
-  getProvider: vi.fn((id: string) => ({
-    id,
-    formatTag: (tag: string) => tag.trim().toLowerCase(),
-    fetchPosts: fetchPostsMock,
-    searchTags: vi.fn().mockResolvedValue([]),
-  })),
-  PROVIDER_IDS: ["rule34", "gelbooru"],
-}));
+vi.mock("../../../src/main/providers", async () => {
+  const { createCodedError } = await import(
+    "../../../src/shared/utils/coded-error"
+  );
+  const { ErrorCode } = await import("../../../src/shared/types/error-codes");
+  return {
+    getProvider: vi.fn((id: string) => {
+      if (id !== "rule34") {
+        throw createCodedError(
+          `Unsupported provider: ${id}`,
+          ErrorCode.UNSUPPORTED_PROVIDER
+        );
+      }
+      return {
+        id,
+        formatTag: (tag: string) => tag.trim().toLowerCase(),
+        fetchPosts: fetchPostsMock,
+        searchTags: vi.fn().mockResolvedValue([]),
+      };
+    }),
+    PROVIDER_IDS: ["rule34"],
+    isProviderId: (id: string) => id === "rule34",
+  };
+});
 
 vi.mock("../../../src/main/services/credentials", () => ({
   getDecryptedApiSettings: vi.fn(async () => ({
@@ -101,17 +116,16 @@ type PostsControllerInternals = {
   ) => Promise<boolean>;
   shadowInsertPost: (
     event: IpcMainInvokeEvent,
-    request: { postId: number; provider: "rule34" | "gelbooru" }
+    request: { postId: number; provider: string }
   ) => Promise<{ id: number; postId: number; provider: string }>;
 };
 
 const dummyEvent = {} as IpcMainInvokeEvent;
 const SHARED_POST_ID = 12345;
+/** Arbitrary stored provider string — identity is (provider, postId). */
+const STORED_OTHER_PROVIDER = "gelbooru";
 
-function externalPostData(
-  provider: "rule34" | "gelbooru",
-  host: string
-): PostData {
+function externalPostData(provider: string, host: string): PostData {
   return {
     postId: SHARED_POST_ID,
     artistId: EXTERNAL_ARTIST_ID,
@@ -144,7 +158,7 @@ describe("PostsController provider collision identity", () => {
     activeDb = null;
   });
 
-  it("stores Rule34 and Gelbooru external posts with the same postId as two rows", async () => {
+  it("stores Rule34 and a legacy stored-provider external posts with the same postId as two rows", async () => {
     await controller.markViewed(
       dummyEvent,
       -SHARED_POST_ID,
@@ -153,7 +167,7 @@ describe("PostsController provider collision identity", () => {
     await controller.toggleFavorite(
       dummyEvent,
       -SHARED_POST_ID,
-      externalPostData("gelbooru", "img4.gelbooru.com")
+      externalPostData(STORED_OTHER_PROVIDER, "img4.gelbooru.com")
     );
 
     const rows = mockDb.db
@@ -174,11 +188,11 @@ describe("PostsController provider collision identity", () => {
 
     expect(rows).toHaveLength(2);
     const rule34 = rows.find((r) => r.provider === "rule34");
-    const gelbooru = rows.find((r) => r.provider === "gelbooru");
+    const other = rows.find((r) => r.provider === STORED_OTHER_PROVIDER);
     expect(rule34?.isViewed).toBe(true);
     expect(rule34?.isFavorited).toBe(false);
-    expect(gelbooru?.isFavorited).toBe(true);
-    expect(gelbooru?.isViewed).toBe(false);
+    expect(other?.isFavorited).toBe(true);
+    expect(other?.isViewed).toBe(false);
   });
 
   it("favoriting one provider does not flip the sibling provider row", async () => {
@@ -190,13 +204,12 @@ describe("PostsController provider collision identity", () => {
     await controller.toggleFavorite(
       dummyEvent,
       -SHARED_POST_ID,
-      externalPostData("gelbooru", "img4.gelbooru.com")
+      externalPostData(STORED_OTHER_PROVIDER, "img4.gelbooru.com")
     );
-    // Unfavorite gelbooru only
     await controller.toggleFavorite(
       dummyEvent,
       -SHARED_POST_ID,
-      externalPostData("gelbooru", "img4.gelbooru.com")
+      externalPostData(STORED_OTHER_PROVIDER, "img4.gelbooru.com")
     );
 
     const rows = mockDb.db
@@ -214,12 +227,12 @@ describe("PostsController provider collision identity", () => {
       .all();
 
     expect(rows.find((r) => r.provider === "rule34")?.isFavorited).toBe(true);
-    expect(rows.find((r) => r.provider === "gelbooru")?.isFavorited).toBe(
-      false
-    );
+    expect(
+      rows.find((r) => r.provider === STORED_OTHER_PROVIDER)?.isFavorited
+    ).toBe(false);
   });
 
-  it("performShadowInsert for Gelbooru creates a new row when Rule34 sibling exists", async () => {
+  it("shadowInsert rejects unsupported provider while sibling rule34 row remains", async () => {
     mockDb.db
       .insert(artists)
       .values({
@@ -250,33 +263,15 @@ describe("PostsController provider collision identity", () => {
       })
       .run();
 
-    fetchPostsMock.mockResolvedValue({
-      posts: [
-        {
-          id: SHARED_POST_ID,
-          fileUrl: "https://img4.gelbooru.com/images/12345.jpg",
-          previewUrl: "https://img4.gelbooru.com/thumbnails/12345.jpg",
-          sampleUrl: "https://img4.gelbooru.com/samples/12345.jpg",
-          rating: "e",
-          tags: ["gel_only"],
-          createdAt: new Date(),
-        },
-      ],
-      rawItemCount: 1,
-      rejectedPostIds: [],
-    });
-
-    const inserted = await controller.shadowInsertPost(dummyEvent, {
-      postId: SHARED_POST_ID,
-      provider: "gelbooru",
-    });
-
-    expect(inserted.provider).toBe("gelbooru");
-    expect(inserted.postId).toBe(SHARED_POST_ID);
+    await expect(
+      controller.shadowInsertPost(dummyEvent, {
+        postId: SHARED_POST_ID,
+        provider: STORED_OTHER_PROVIDER,
+      })
+    ).rejects.toThrow(/Unsupported provider: gelbooru/);
 
     const rows = mockDb.db
       .select({
-        id: posts.id,
         provider: posts.provider,
         isFavorited: posts.isFavorited,
         tags: posts.tags,
@@ -290,13 +285,10 @@ describe("PostsController provider collision identity", () => {
       )
       .all();
 
-    expect(rows).toHaveLength(2);
-    const rule34 = rows.find((r) => r.provider === "rule34");
-    const gelbooru = rows.find((r) => r.provider === "gelbooru");
-    expect(rule34?.isFavorited).toBe(true);
-    expect(rule34?.tags).toBe("r34_only");
-    expect(gelbooru?.id).toBe(inserted.id);
-    expect(gelbooru?.isFavorited).toBe(false);
-    expect(gelbooru?.tags).toBe("gel_only");
+    expect(rows).toHaveLength(1);
+    expect(rows[0].provider).toBe("rule34");
+    expect(rows[0].isFavorited).toBe(true);
+    expect(rows[0].tags).toBe("r34_only");
+    expect(fetchPostsMock).not.toHaveBeenCalled();
   });
 });

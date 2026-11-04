@@ -36,10 +36,7 @@ import {
   BATCH_DOWNLOAD_CHUNK_SIZE,
   EXTERNAL_ARTIST_ID,
   EXTERNAL_ARTIST_TAG_PREFIX,
-  isProviderId,
 } from "../../../shared/constants";
-import { ErrorCode } from "../../../shared/types/error-codes";
-import { createCodedError } from "../../../shared/utils/coded-error";
 import { AI_TAGS } from "../../../shared/ai-tags";
 import type { DownloadQueueItem } from "../../../shared/types/download";
 import { getDb, getSqliteInstance } from "../../db/client";
@@ -867,23 +864,17 @@ export class PostsController extends BaseController {
             return;
           }
 
-          if (!isProviderId(postData.provider)) {
-            throw createCodedError(
-              `Unsupported provider: ${postData.provider}`,
-              ErrorCode.UNSUPPORTED_PROVIDER
-            );
-          }
-
           const insertNow = new Date();
           const publishedAt = postData.publishedAt
             ? new Date(postData.publishedAt)
             : insertNow;
 
+          // provider via sql: StoredProviderId may be legacy (e.g. gelbooru); drizzle enum is narrowed to PROVIDER_IDS
           tx.insert(posts)
             .values({
               postId: postData.postId,
               artistId: EXTERNAL_ARTIST_ID, // SECURITY: Always use EXTERNAL_ARTIST_ID for external posts
-              provider: postData.provider,
+              provider: sql`${postData.provider}`,
               fileUrl: postData.fileUrl,
               previewUrl: postData.previewUrl,
               sampleUrl: postData.sampleUrl ?? "",
@@ -1112,24 +1103,18 @@ export class PostsController extends BaseController {
           );
         }
 
-        if (!isProviderId(postData.provider)) {
-          throw createCodedError(
-            `Unsupported provider: ${postData.provider}`,
-            ErrorCode.UNSUPPORTED_PROVIDER
-          );
-        }
-
         // Create post with isFavorited = true (since we're adding to favorites via toggle)
         const now = new Date();
         const publishedAt = postData.publishedAt
           ? new Date(postData.publishedAt)
           : now;
 
+        // provider via sql: StoredProviderId may be legacy (e.g. gelbooru); drizzle enum is narrowed to PROVIDER_IDS
         tx.insert(posts)
           .values({
             postId: postData.postId,
             artistId: EXTERNAL_ARTIST_ID, // SECURITY: Always use EXTERNAL_ARTIST_ID for external posts
-            provider: postData.provider,
+            provider: sql`${postData.provider}`,
             fileUrl: postData.fileUrl,
             previewUrl: postData.previewUrl,
             sampleUrl: postData.sampleUrl ?? "",

@@ -222,7 +222,7 @@ describe("buildRemoteBooruTagListForIpc", () => {
     });
   });
 
-  it("appends video tag for gelbooru videos filter", () => {
+  it("does not append video tag for unsupported provider videos filter", () => {
     const result = buildRemoteBooruTagListForIpc({
       includeTags: [],
       excludeTags: [],
@@ -231,9 +231,9 @@ describe("buildRemoteBooruTagListForIpc", () => {
       mediaType: "videos",
     });
     expect(result).toEqual({
-      tags: [BOORU_VIDEO_FILTER_TAG],
+      tags: [],
       aiInjected: false,
-      mediaInjected: true,
+      mediaInjected: false,
     });
   });
 
@@ -267,10 +267,10 @@ describe("buildRemoteMediaTypeTagInjection", () => {
     ).toEqual({ injectedTags: [BOORU_VIDEO_FILTER_TAG], mediaInjected: true });
   });
 
-  it("injects -video for images filter", () => {
+  it("injects -video for rule34 images filter", () => {
     expect(
       buildRemoteMediaTypeTagInjection({
-        provider: "gelbooru",
+        provider: "rule34",
         mediaType: "images",
         includeTags: [],
         excludeTags: [],

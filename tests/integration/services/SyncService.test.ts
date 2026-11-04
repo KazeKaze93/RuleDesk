@@ -1874,4 +1874,49 @@ describe('SyncService Integration', () => {
       fetchPostsSpy.mockRestore();
     }
   });
+
+  it('skips unsupported provider artists with SYNC.ERROR and does not call the API', async () => {
+    mockDb.sqlite
+      .prepare(
+        `INSERT INTO artists (name, tag, provider, type, api_endpoint, last_post_id, new_posts_count, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(
+        'Legacy Gelbooru Artist',
+        'legacy_gel_tag',
+        'gelbooru',
+        'tag',
+        'https://gelbooru.com/index.php',
+        0,
+        0,
+        Math.floor(Date.now() / 1000)
+      );
+
+    const artist = await mockDb.db.query.artists.findFirst({
+      where: eq(artists.tag, 'legacy_gel_tag'),
+    });
+    if (!artist) {
+      throw new Error('Legacy artist setup failed');
+    }
+
+    const provider = getProvider('rule34');
+    const fetchPostsSpy = vi.spyOn(provider, 'fetchPosts');
+    const sendEventSpy = vi.spyOn(service, 'sendEvent').mockImplementation(() => undefined);
+
+    try {
+      await service.syncArtist(artist, {
+        userId: '12345',
+        apiKey: 'test-api-key-12345',
+      });
+
+      expect(fetchPostsSpy).not.toHaveBeenCalled();
+      expect(sendEventSpy).toHaveBeenCalledWith(
+        IPC_CHANNELS.SYNC.ERROR,
+        'Legacy Gelbooru Artist: Gelbooru support was removed; this artist is no longer synced'
+      );
+    } finally {
+      sendEventSpy.mockRestore();
+      fetchPostsSpy.mockRestore();
+    }
+  });
 });

@@ -31,6 +31,11 @@ vi.mock("electron", () => ({
     handle: vi.fn(),
     removeHandler: vi.fn(),
   },
+  safeStorage: {
+    isEncryptionAvailable: () => true,
+    decryptString: (buffer: Buffer) => buffer.toString("utf8"),
+    encryptString: (text: string) => Buffer.from(text),
+  },
 }));
 
 vi.mock("electron-log", () => ({
@@ -238,5 +243,28 @@ describe("SettingsController Integration", () => {
     });
     expect(updated?.minimizeToTray).toBe(false);
     expect(updated?.autoSyncOnStartup).toBe(true);
+  });
+
+  it("coerces stored gelbooru settings.provider to rule34 on load without writing DB", async () => {
+    mockDb.sqlite
+      .prepare(`UPDATE settings SET provider = ? WHERE id = ?`)
+      .run("gelbooru", SETTINGS_ID);
+
+    const getCall = vi
+      .mocked(ipcMain.handle)
+      .mock.calls.find(([channel]) => channel === IPC_CHANNELS.SETTINGS.GET);
+
+    expect(getCall).toBeDefined();
+    if (!getCall) {
+      throw new Error("SETTINGS.GET handler was not registered");
+    }
+
+    const ipcSettings = await getCall[1](undefined);
+    expect(ipcSettings.provider).toBe("rule34");
+
+    const row = await mockDb.db.query.settings.findFirst({
+      where: eq(settings.id, SETTINGS_ID),
+    });
+    expect(row?.provider).toBe("gelbooru");
   });
 });

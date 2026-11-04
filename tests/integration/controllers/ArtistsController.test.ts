@@ -132,33 +132,31 @@ describe('ArtistsController Integration', () => {
       expect(repairArtist).not.toHaveBeenCalled();
     });
 
-    it('should allow the same tag on different providers', async () => {
+    it('rejects add artist with unsupported provider via schema', async () => {
       const rule34Data: AddArtistRequest = {
         name: 'Rule34 Artist',
         tag: 'shared_tag',
         provider: 'rule34',
         type: 'tag',
       };
-      const gelbooruData: AddArtistRequest = {
-        name: 'Gelbooru Artist',
-        tag: 'shared_tag',
-        provider: 'gelbooru',
-        type: 'uploader',
-      };
-
       await controller.handleAddArtist(null, rule34Data);
-      await controller.handleAddArtist(null, gelbooruData);
+
+      await expect(
+        controller.handleAddArtist(null, {
+          name: 'Gelbooru Artist',
+          tag: 'shared_tag',
+          provider: 'gelbooru',
+          type: 'uploader',
+        } as AddArtistRequest)
+      ).rejects.toThrow();
 
       const artistsInDb = await mockDb.db
         .select()
         .from(artists)
         .where(eq(artists.tag, 'shared_tag'));
 
-      expect(artistsInDb).toHaveLength(2);
-      expect(artistsInDb.map((a) => a.provider).sort()).toEqual([
-        'gelbooru',
-        'rule34',
-      ]);
+      expect(artistsInDb).toHaveLength(1);
+      expect(artistsInDb[0].provider).toBe('rule34');
     });
 
     it('should update existing artist when provider+tag already exists', async () => {

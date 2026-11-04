@@ -52,7 +52,8 @@ vi.mock("../../../src/main/providers", () => ({
     fetchPosts: vi.fn().mockResolvedValue([]),
     searchTags: vi.fn().mockResolvedValue([]),
   })),
-  PROVIDER_IDS: ["rule34", "gelbooru"],
+  PROVIDER_IDS: ["rule34"],
+  isProviderId: (id: string) => id === "rule34",
   getAllProviderCdnDomains: vi.fn(() => ["img.rule34.xxx"]),
 }));
 
