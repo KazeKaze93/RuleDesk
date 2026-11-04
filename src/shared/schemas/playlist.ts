@@ -377,9 +377,9 @@ export type GetPlaylistResolveTotalRequest = z.infer<
 /**
  * Probe whether the provider feed has posts newer than the hybrid snapshot's
  * frozen upper bound. Returns null when the probe does not apply (no snapshot,
- * non-desc sort, random walk). `filters.mediaType` is only used for snapshot
- * key lookup — the probe itself compares the raw first post id and does not
- * re-apply blacklist / mediaType.
+ * non-desc sort, random walk). `filters.mediaType` keys the snapshot and is
+ * reapplied with the blacklist via `passesHybridWalkContentFilters` on the
+ * probe page (`NEWER_POSTS_PROBE_LIMIT`).
  */
 export const CheckPlaylistNewerPostsSchema = z.object({
   playlistId: IdSchema,

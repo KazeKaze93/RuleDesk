@@ -15,10 +15,16 @@ const ALL_IDLE_LABEL = (count: string | number): string =>
   `Download All (${count})`;
 const ALL_IDLE_HELP = (count: string | number): string =>
   `Download ${count} files`;
+const FAVORITES_IDLE_LABEL_PENDING = "Download all favorites";
+const FAVORITES_IDLE_HELP_PENDING = "Download all favorited posts";
 const FAVORITES_IDLE_LABEL = (count: string | number): string =>
-  `Download all favorites (${count})`;
+  count === ""
+    ? FAVORITES_IDLE_LABEL_PENDING
+    : `Download all favorites (${count})`;
 const FAVORITES_IDLE_HELP = (count: string | number): string =>
-  `Download ${count} favorited posts`;
+  count === ""
+    ? FAVORITES_IDLE_HELP_PENDING
+    : `Download ${count} favorited posts`;
 
 export interface DownloadAllButtonProps {
   onClick: () => void;

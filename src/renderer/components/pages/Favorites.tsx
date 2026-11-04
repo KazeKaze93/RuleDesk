@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useEffect } from "react";
 import {
   useInfiniteQuery,
+  useQuery,
   useQueryClient,
   useMutation,
   InfiniteData,
@@ -55,6 +56,28 @@ const FAVORITES_EMPTY_FILTERED_TITLE =
   "No favorites match the current filters";
 const FAVORITES_EMPTY_CLEAR_FILTERS_LABEL = "Clear filters";
 const BROWSE_PATH = "/browse";
+
+/**
+ * Shared filter object for favorites mass-download and count IPC.
+ * Tags / aiFilter / mediaType must stay identical for both callers.
+ */
+const buildFavoritesMassFilters = (
+  tags: string[],
+  aiFilter: "all" | "hide" | "only",
+  mediaType: "all" | "images" | "videos"
+): PostFilterRequest => {
+  const filters: PostFilterRequest = {};
+  if (tags.length > 0) {
+    filters.tags = tags.join(" ");
+  }
+  if (aiFilter !== "all") {
+    filters.aiFilter = aiFilter;
+  }
+  if (mediaType !== "all") {
+    filters.mediaType = mediaType;
+  }
+  return filters;
+};
 
 const shouldIncludePostInFavoritesQueue = (
   post: Post,
@@ -221,22 +244,35 @@ export const Favorites = () => {
 
   const listAriaBusy = isLoading || isFetchingNextPage;
 
-  const downloadFilters = useMemo((): PostFilterRequest => {
-    const filters: PostFilterRequest = {};
-    if (tags.length > 0) {
-      filters.tags = tags.join(" ");
-    }
-    if (aiFilter !== "all") {
-      filters.aiFilter = aiFilter;
-    }
-    if (mediaType !== "all") {
-      filters.mediaType = mediaType;
-    }
-    return filters;
-  }, [tags, aiFilter, mediaType]);
+  const downloadFilters = useMemo(
+    () => buildFavoritesMassFilters(tags, aiFilter, mediaType),
+    [tags, aiFilter, mediaType]
+  );
 
-  // N = header counter already on this page (loaded + client-filtered favorites).
-  const favoritesCountLabel = allPosts.length;
+  // Prefix ["posts","favorites"] so favorite toggles / bulk-remove invalidate this too.
+  const {
+    data: favoritesDownloadCount,
+    isSuccess: isFavoritesDownloadCountReady,
+  } = useQuery({
+    queryKey: ["posts", "favorites", "count", tags, aiFilter, mediaType],
+    queryFn: async () =>
+      await window.api.getPostsCountWithFilters({
+        filters: {
+          ...downloadFilters,
+          isFavorited: true,
+        },
+      }),
+    retry: false,
+  });
+
+  // N = DB count with the same filters as download kind "favorites" (not loaded pages).
+  const favoritesCountLabel = isFavoritesDownloadCountReady
+    ? favoritesDownloadCount
+    : "";
+  const favoritesDownloadTotal =
+    isFavoritesDownloadCountReady && typeof favoritesDownloadCount === "number"
+      ? favoritesDownloadCount
+      : 0;
 
   const {
     downloadAll,
@@ -250,7 +286,7 @@ export const Favorites = () => {
     canDownload,
   } = useDownloadAllFromBackend(
     { kind: "favorites", filters: downloadFilters },
-    favoritesCountLabel
+    favoritesDownloadTotal
   );
 
   const viewMutation = useMutation({

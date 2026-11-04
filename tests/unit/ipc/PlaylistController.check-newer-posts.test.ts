@@ -11,10 +11,14 @@ import type Database from "better-sqlite3";
 import type { IpcMainInvokeEvent } from "electron";
 import { resetDatabaseReopenedListenersForTests } from "../../../src/main/core/di/databaseRegistration";
 import type { BooruPost, FetchPostsResult } from "../../../src/main/providers/types";
+import { NEWER_POSTS_PROBE_LIMIT } from "../../../src/shared/constants";
 
 let activeSqlite: Database.Database | null = null;
 let activeDb: ReturnType<typeof createMockDb>["db"] | null = null;
 const fetchPostsMock = vi.fn();
+const getAllBlacklistedTagsMock = vi.hoisted(() =>
+  vi.fn((): string[] => [])
+);
 
 vi.mock("../../../src/main/db/client", () => ({
   getSqliteInstance: () => {
@@ -70,15 +74,17 @@ vi.mock("../../../src/main/providers", () => ({
 }));
 
 vi.mock("../../../src/main/db/queries/blacklist", () => ({
-  getAllBlacklistedTags: () => [],
+  getAllBlacklistedTags: () => getAllBlacklistedTagsMock(),
 }));
 
 import { PlaylistController } from "../../../src/main/ipc/controllers/PlaylistController";
 
 const PROBE_TAG = "newer_posts_probe_tag";
+const BLACKLISTED_TAG = "blocked_probe_tag";
 const PAGE_LIMIT = 50;
 const UPPER_BOUND = 1_000;
 const NEWER_ID = 1_001;
+const NEWER_ID_B = 1_002;
 const SAME_OR_OLDER_ID = 999;
 
 type PlaylistControllerInternals = {
@@ -93,6 +99,7 @@ type PlaylistControllerInternals = {
       isRandom?: boolean;
       seed?: number;
       upperBoundPostId?: number;
+      filters?: { mediaType?: "all" | "images" | "videos" };
     }
   ) => Promise<{ posts: unknown[]; total: unknown }>;
   checkPlaylistNewerPosts: (
@@ -100,6 +107,7 @@ type PlaylistControllerInternals = {
     params: {
       playlistId: number;
       sortOrder?: "asc" | "desc" | "position";
+      filters?: { mediaType?: "all" | "images" | "videos" };
     }
   ) => Promise<{ hasNewer: boolean } | null>;
   releasePlaylistSnapshot: (
@@ -108,13 +116,16 @@ type PlaylistControllerInternals = {
   ) => Promise<void>;
 };
 
-function makeRemotePost(id: number): BooruPost {
+function makeRemotePost(
+  id: number,
+  overrides: Partial<Pick<BooruPost, "tags" | "fileUrl">> = {}
+): BooruPost {
   return {
     id,
-    fileUrl: `https://cdn.example.com/${id}.jpg`,
+    fileUrl: overrides.fileUrl ?? `https://cdn.example.com/${id}.jpg`,
     previewUrl: `https://cdn.example.com/${id}-p.jpg`,
     sampleUrl: `https://cdn.example.com/${id}-s.jpg`,
-    tags: [PROBE_TAG],
+    tags: overrides.tags ?? [PROBE_TAG],
     rating: "s",
     score: 0,
     source: "",
@@ -144,6 +155,8 @@ describe("PlaylistController checkPlaylistNewerPosts", () => {
     activeSqlite = mockDb.sqlite;
     activeDb = mockDb.db;
     fetchPostsMock.mockReset();
+    getAllBlacklistedTagsMock.mockReset();
+    getAllBlacklistedTagsMock.mockReturnValue([]);
 
     await mockDb.db.insert(settings).values({
       id: SETTINGS_ID,
@@ -224,7 +237,9 @@ describe("PlaylistController checkPlaylistNewerPosts", () => {
     activeDb = null;
   });
 
-  async function startDescSnapshot(): Promise<void> {
+  async function startDescSnapshot(
+    filters?: { mediaType?: "all" | "images" | "videos" }
+  ): Promise<void> {
     fetchPostsMock.mockResolvedValueOnce(
       asResult([makeRemotePost(UPPER_BOUND)])
     );
@@ -235,6 +250,7 @@ describe("PlaylistController checkPlaylistNewerPosts", () => {
       sortOrder: "desc",
       isRandom: false,
       upperBoundPostId: UPPER_BOUND,
+      filters,
     });
   }
 
@@ -253,7 +269,7 @@ describe("PlaylistController checkPlaylistNewerPosts", () => {
     const probeCall = fetchPostsMock.mock.calls[walkCalls];
     expect(probeCall?.[0]).not.toContain("id:<=");
     expect(probeCall?.[1]).toBe(0);
-    expect(probeCall?.[4]).toBe(1);
+    expect(probeCall?.[4]).toBe(NEWER_POSTS_PROBE_LIMIT);
   });
 
   it("returns hasNewer:false when the unbound probe id is not above the upperBound", async () => {
@@ -286,6 +302,68 @@ describe("PlaylistController checkPlaylistNewerPosts", () => {
     const walkCalls = fetchPostsMock.mock.calls.length;
 
     fetchPostsMock.mockResolvedValueOnce(asResult([makeRemotePost(NEWER_ID)]));
+    const result = await controller.checkPlaylistNewerPosts(event, {
+      playlistId,
+      sortOrder: "desc",
+    });
+
+    expect(result).toEqual({ hasNewer: true });
+    expect(fetchPostsMock).toHaveBeenCalledTimes(walkCalls + 1);
+  });
+
+  it("returns hasNewer:false when the only newer probe post is blacklisted", async () => {
+    getAllBlacklistedTagsMock.mockReturnValue([BLACKLISTED_TAG]);
+    await startDescSnapshot();
+    const walkCalls = fetchPostsMock.mock.calls.length;
+
+    fetchPostsMock.mockResolvedValueOnce(
+      asResult([
+        makeRemotePost(NEWER_ID, { tags: [PROBE_TAG, BLACKLISTED_TAG] }),
+      ])
+    );
+    const result = await controller.checkPlaylistNewerPosts(event, {
+      playlistId,
+      sortOrder: "desc",
+    });
+
+    expect(result).toEqual({ hasNewer: false });
+    expect(fetchPostsMock).toHaveBeenCalledTimes(walkCalls + 1);
+  });
+
+  it("returns hasNewer:false when the only newer probe post fails mediaType", async () => {
+    await startDescSnapshot({ mediaType: "images" });
+    const walkCalls = fetchPostsMock.mock.calls.length;
+
+    fetchPostsMock.mockResolvedValueOnce(
+      asResult([
+        makeRemotePost(NEWER_ID, {
+          fileUrl: `https://cdn.example.com/${NEWER_ID}.mp4`,
+        }),
+      ])
+    );
+    const result = await controller.checkPlaylistNewerPosts(event, {
+      playlistId,
+      sortOrder: "desc",
+      filters: { mediaType: "images" },
+    });
+
+    expect(result).toEqual({ hasNewer: false });
+    expect(fetchPostsMock).toHaveBeenCalledTimes(walkCalls + 1);
+  });
+
+  it("returns hasNewer:true when one of two newer probe posts passes filters", async () => {
+    getAllBlacklistedTagsMock.mockReturnValue([BLACKLISTED_TAG]);
+    await startDescSnapshot();
+    const walkCalls = fetchPostsMock.mock.calls.length;
+
+    fetchPostsMock.mockResolvedValueOnce(
+      asResult([
+        makeRemotePost(NEWER_ID_B, {
+          tags: [PROBE_TAG, BLACKLISTED_TAG],
+        }),
+        makeRemotePost(NEWER_ID),
+      ])
+    );
     const result = await controller.checkPlaylistNewerPosts(event, {
       playlistId,
       sortOrder: "desc",

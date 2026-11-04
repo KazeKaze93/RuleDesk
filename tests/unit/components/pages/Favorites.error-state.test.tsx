@@ -59,6 +59,13 @@ vi.mock("@tanstack/react-query", async () => {
   return {
     ...actual,
     useInfiniteQuery: () => useInfiniteQueryMock(),
+    useQuery: () => ({
+      data: 0,
+      isSuccess: true,
+      isError: false,
+      error: null,
+      isLoading: false,
+    }),
     useMutation: () => ({
       mutate: vi.fn(),
       isPending: false,

@@ -265,7 +265,7 @@ Each post card shows:
 
 1. Click **"Favorites"** in the sidebar.
 2. You'll see all your favorited posts
-3. Use **Download all favorites (N)** in the header to walk the local favorites set (same cursor mass-download as artist galleries; N is the count currently shown after filters)
+3. Use **Download all favorites (N)** in the header to walk the local favorites set (same cursor mass-download as artist galleries; N is the full DB count for the active filters, not only loaded pages)
 
 **Empty states:**
 

@@ -141,6 +141,12 @@ export const MAX_HYBRID_SNAPSHOTS = 3;
 export const HYBRID_SNAPSHOT_IDLE_TTL_MS = 5 * 60 * 1000;
 
 /**
+ * Page size for `checkPlaylistNewerPosts` probe. Newest posts may be
+ * blacklisted/filtered; one request still covers a short head of the feed.
+ */
+export const NEWER_POSTS_PROBE_LIMIT = 20;
+
+/**
  * Max post ids accepted by `updates:markSeenByIds` in one IPC call.
  * Matches a generous multi-page Updates feed load (`POSTS_PAGE_SIZE`).
  */

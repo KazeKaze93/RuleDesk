@@ -456,6 +456,7 @@ Items explicitly scheduled for product/engineering (beyond small bugs).
 | **Cold first hybrid API page** | **Closed, won't do** — single measured sample `[HybridSnapshotStore] API page 1 … 1264 ms` (n=1); no code change without a larger distribution. |
 | **Artist types (UI)** | Add Artist UI supports **tag** only. Schema still allows `uploader` / `query` for legacy rows; exposing those types in the UI is backlog (not shipped). |
 | **Favorites: Download all favorites (backend source)** | ✅ Closed in `chore/post-audit-backlog` — `kind: "favorites"` + target-agnostic mass-download cursor. |
+| **Favorites mass download: resume after app restart** | Queue-file `kind` for favorites; `PendingDownloadBanner` supports artist only today — crash mid-favorites download cannot resume from disk. |
 | **Remove dead MasonryVirtuosoList / ListComponent ternaries** | ✅ Closed in `chore/post-audit-backlog` — VirtuosoGrid always uses grid List/Item; `MasonryVirtuosoList` removed from factories. |
 | **Shortest-column masonry** | Requires storing post `width`/`height` (DB migration + sync from booru). Current round-robin does not measure card heights. |
 | **Artist gallery: Since tracked** | ✅ Closed in `chore/post-audit-backlog` — Source All/Favorites/Since tracked on `/artist/:id`; list+count use updates-feed join. |

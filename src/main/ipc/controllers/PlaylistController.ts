@@ -58,6 +58,7 @@ import {
   isKnownStoredProviderId,
   isProviderId,
   KNOWN_STORED_PROVIDER_IDS,
+  NEWER_POSTS_PROBE_LIMIT,
   type KnownStoredProviderId,
   type ProviderId,
   type StoredProviderId,
@@ -90,6 +91,7 @@ import type { PlaylistResolveTotal } from "../../../shared/schemas/playlist";
 import {
   HybridRemoteSnapshotStore,
   createSnapshotSupersededError,
+  passesHybridWalkContentFilters,
   type HybridPost,
   type HybridSnapshot,
 } from "./playlist/hybrid-remote-snapshot-store";
@@ -2334,11 +2336,13 @@ export class PlaylistController extends BaseController {
   }
 
   /**
-   * Cheap probe: one unbound page-0 / limit-1 fetch, compared to the snapshot's
-   * frozen `upperBoundPostId`. Returns null when there is no applicable snapshot
-   * (missing, non-desc request, random walk). Blacklist / mediaType are NOT
-   * reapplied on the probe — a filtered-away newer id still signals refresh.
-   * Provider / credential / DB failures throw (never `{ hasNewer: false }`).
+   * Cheap probe: one unbound page-0 / `NEWER_POSTS_PROBE_LIMIT` fetch, compared
+   * to the snapshot's frozen `upperBoundPostId`. Returns null when there is no
+   * applicable snapshot (missing, non-desc request, random walk). A probe post
+   * counts only when it passes the same blacklist + mediaType gate as the
+   * hybrid walk (`passesHybridWalkContentFilters`); an all-filtered head yields
+   * `{ hasNewer: false }`. Provider / credential / DB failures throw (never
+   * `{ hasNewer: false }` on error).
    */
   private async checkPlaylistNewerPosts(
     _event: IpcMainInvokeEvent,
@@ -2398,6 +2402,16 @@ export class PlaylistController extends BaseController {
         );
       }
 
+      const blacklistedTags = new Set(
+        getAllBlacklistedTags()
+          .map((tag) => tag.trim().toLowerCase())
+          .filter(Boolean)
+      );
+      const walkFilters = {
+        blacklistedTags,
+        mediaType: filters?.mediaType,
+      };
+
       const provider = getProvider(scope.providerId);
       const booruQuery = this.buildBooruQueryString(scope.query);
       const { posts: probePosts } = await provider.fetchPosts(
@@ -2408,7 +2422,7 @@ export class PlaylistController extends BaseController {
           apiKey: apiSettings.apiKey,
         },
         false,
-        1
+        NEWER_POSTS_PROBE_LIMIT
       );
 
       // Prefer explicit freeze bound; gallery often omits upperBoundPostId on
@@ -2421,11 +2435,14 @@ export class PlaylistController extends BaseController {
           }
         }
       }
-      const firstId = probePosts[0]?.id;
-      const hasNewer =
-        firstId !== undefined &&
-        upperBound !== undefined &&
-        firstId > upperBound;
+      if (upperBound === undefined) {
+        return { hasNewer: false };
+      }
+      const hasNewer = probePosts.some(
+        (post) =>
+          post.id > upperBound &&
+          passesHybridWalkContentFilters(post, walkFilters)
+      );
       return { hasNewer };
     } catch (error) {
       log.error(
