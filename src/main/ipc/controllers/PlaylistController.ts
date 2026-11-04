@@ -221,6 +221,7 @@ function hybridSeedRank(postId: number, seed: number): number {
  * Compare two hybrid candidates. Order is (sortKey, provider, postId):
  * random uses seed rank on postId; otherwise publishedAt. Tie-breaks match
  * local SQL ORDER BY (same direction as sortOrder for time/id; provider ASC).
+ * cross-provider safe: post_id spaces differ per provider; published_at frozen at first-seen (see sync upsert)
  */
 function compareHybridPlaylistPosts(
   a: IpcPost,
@@ -1469,6 +1470,9 @@ export class PlaylistController extends BaseController {
         .innerJoin(posts, eq(playlistEntries.postId, posts.id))
         .where(whereClause);
 
+      // Manual playlists mix artists/providers → no provider filter.
+      // position path unchanged; else publishedAt then postId (provider ASC secondary).
+      // cross-provider safe: post_id spaces differ per provider; published_at frozen at first-seen (see sync upsert)
       const result = isRandom
         ? queryBuilder
             .orderBy(...seededOrderBy(posts.id, resolveRandomSeed(seed)))
@@ -1477,11 +1481,15 @@ export class PlaylistController extends BaseController {
             .all()
         : queryBuilder
             .orderBy(
-              sortOrder === "position"
-                ? asc(playlistEntries.position)
-                : sortOrder === "asc"
-                  ? asc(posts.publishedAt)
-                  : desc(posts.publishedAt)
+              ...(sortOrder === "position"
+                ? [asc(playlistEntries.position)]
+                : [
+                    sortOrder === "asc"
+                      ? asc(posts.publishedAt)
+                      : desc(posts.publishedAt),
+                    asc(posts.provider),
+                    sortOrder === "asc" ? asc(posts.postId) : desc(posts.postId),
+                  ])
             )
             .limit(limit)
             .offset(offset)
@@ -1974,6 +1982,9 @@ export class PlaylistController extends BaseController {
           .innerJoin(posts, eq(playlistEntries.postId, posts.id))
           .where(whereClause);
 
+        // Manual playlists mix artists/providers → no provider filter.
+        // position path unchanged; else publishedAt then postId (provider ASC secondary).
+        // cross-provider safe: post_id spaces differ per provider; published_at frozen at first-seen (see sync upsert)
         const result = isRandom
           ? queryBuilder
               .orderBy(...seededOrderBy(posts.id, resolveRandomSeed(seed)))
@@ -1982,11 +1993,15 @@ export class PlaylistController extends BaseController {
               .all()
           : queryBuilder
               .orderBy(
-                sortOrder === "position"
-                  ? asc(playlistEntries.position)
-                  : sortOrder === "asc"
-                    ? asc(playlistEntries.addedAt)
-                    : desc(playlistEntries.addedAt)
+                ...(sortOrder === "position"
+                  ? [asc(playlistEntries.position)]
+                  : [
+                      sortOrder === "asc"
+                        ? asc(posts.publishedAt)
+                        : desc(posts.publishedAt),
+                      asc(posts.provider),
+                      sortOrder === "asc" ? asc(posts.postId) : desc(posts.postId),
+                    ])
               )
               .limit(limit)
               .offset(offset)
@@ -2133,6 +2148,7 @@ export class PlaylistController extends BaseController {
 
           // Hybrid random orders by postId so the rank matches remote-only rows.
           // Ordered: (publishedAt, provider, postId) — matches compareHybridPlaylistPosts.
+          // cross-provider safe: post_id spaces differ per provider; published_at frozen at first-seen (see sync upsert)
           const result = isRandom
             ? queryBuilder
                 .orderBy(...seededOrderBy(posts.postId, resolvedSeed))
