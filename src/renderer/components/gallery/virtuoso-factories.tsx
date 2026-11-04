@@ -1,4 +1,4 @@
-import React, { Children, forwardRef, useMemo } from "react";
+import React, { Children, forwardRef } from "react";
 import { cn } from "../../lib/utils";
 import { useMasonryColumnCount } from "../../hooks/useMasonryColumnCount";
 
@@ -36,26 +36,20 @@ export function createVirtuosoGridFactories(displayNamePrefix: string) {
     ({ className, viewType = "grid", children, ...props }, ref) => {
       const columnCount = useMasonryColumnCount();
 
-      const masonryColumns = useMemo(() => {
-        if (viewType !== "masonry") {
-          return null;
-        }
+      if (viewType === "masonry") {
         const items = Children.toArray(children);
-        const columns: React.ReactNode[][] = Array.from(
+        const masonryColumns: React.ReactNode[][] = Array.from(
           { length: columnCount },
           () => []
         );
         for (let index = 0; index < items.length; index += 1) {
-          const column = columns[index % columnCount];
+          const column = masonryColumns[index % columnCount];
           if (column === undefined) {
             continue;
           }
           column.push(items[index]);
         }
-        return columns;
-      }, [children, columnCount, viewType]);
 
-      if (viewType === "masonry" && masonryColumns !== null) {
         return (
           <div
             ref={ref}
