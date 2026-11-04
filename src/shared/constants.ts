@@ -39,15 +39,43 @@ export const PROVIDER_IDS = ["rule34"] as const;
 export type ProviderId = (typeof PROVIDER_IDS)[number];
 
 /**
+ * Legacy provider ids that may still appear on stored rows / IPC post identity
+ * after Gelbooru support removal. Not accepted for new API/provider selection.
+ */
+export const LEGACY_PROVIDER_IDS = ["gelbooru"] as const;
+
+/**
+ * Supported + known-legacy providers allowed on IPC PostData identity
+ * (favorite / viewed for saved posts). Arbitrary strings are rejected.
+ */
+export const KNOWN_STORED_PROVIDER_IDS = [
+  ...PROVIDER_IDS,
+  ...LEGACY_PROVIDER_IDS,
+] as const;
+export type KnownStoredProviderId = (typeof KNOWN_STORED_PROVIDER_IDS)[number];
+
+/**
  * Provider value as stored in SQLite (artists.provider, posts.provider,
  * settings.provider, smart query_json). May be a legacy unsupported id
  * (e.g. "gelbooru") after Gelbooru support removal — never silent-fallback;
  * handle explicitly at the read/sync/query boundary.
+ * Prefer KnownStoredProviderId for IPC inputs that must not accept arbitrary strings.
  */
 export type StoredProviderId = string;
 
 export function isProviderId(value: string): value is ProviderId {
   for (const id of PROVIDER_IDS) {
+    if (id === value) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export function isKnownStoredProviderId(
+  value: string
+): value is KnownStoredProviderId {
+  for (const id of KNOWN_STORED_PROVIDER_IDS) {
     if (id === value) {
       return true;
     }

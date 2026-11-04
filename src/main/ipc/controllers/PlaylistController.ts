@@ -1680,7 +1680,7 @@ export class PlaylistController extends BaseController {
       let result: { playlistId: number }[];
       if (postId <= 0 && externalPostId != null && externalPostId > 0 && provider) {
         // External post from Browse: (EXTERNAL_ARTIST_ID, provider, postId)
-        // sql equality: StoredProviderId may be legacy "gelbooru" (drizzle enum is rule34-only)
+        // drizzle posts.provider enum is PROVIDER_IDS-only; StoredProviderId may be legacy → parameterized sql
         const rows = db
           .select({ playlistId: playlistEntries.playlistId })
           .from(playlistEntries)

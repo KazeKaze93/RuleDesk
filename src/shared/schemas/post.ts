@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { POSTS_PAGE_SIZE } from "../constants";
+import { KNOWN_STORED_PROVIDER_IDS, POSTS_PAGE_SIZE } from "../constants";
 import {
   IdSchema,
   OptionalArtistScopeIdSchema,
@@ -19,12 +19,13 @@ import {
  * This schema defines the structure for optional post data that can be passed
  * to markPostAsViewed and togglePostFavorite IPC methods for external posts.
  * `provider` is required: post identity is (artistId, provider, postId).
+ * IPC-only (PostActionArgsSchema); not used to parse arbitrary DB rows.
+ * Allowed: supported + known legacy (`KNOWN_STORED_PROVIDER_IDS`).
  */
 export const PostDataSchema = z.object({
   postId: IdSchema,
   artistId: z.number().int().nonnegative(),
-  /** Stored identity: may be a legacy unsupported provider on saved posts. */
-  provider: z.string().min(1),
+  provider: z.enum(KNOWN_STORED_PROVIDER_IDS),
   fileUrl: z.string().min(1).url(),
   previewUrl: z.string().min(1).url(),
   sampleUrl: z.string().optional(),

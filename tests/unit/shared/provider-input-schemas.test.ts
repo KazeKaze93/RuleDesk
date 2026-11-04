@@ -4,6 +4,14 @@ import { SaveSettingsSchema } from "../../../src/shared/schemas/settings";
 import { SmartPlaylistQuerySchema } from "../../../src/shared/schemas/playlist";
 import { ShadowInsertRequestSchema } from "../../../src/shared/schemas/shadow-insert";
 import { parseSmartQuery } from "../../../src/shared/schemas/smart-playlist-query";
+import { PostDataSchema } from "../../../src/shared/schemas/post";
+
+const postActionPostDataBase = {
+  postId: 42,
+  artistId: 0,
+  fileUrl: "https://api-cdn.rule34.xxx/images/42.jpg",
+  previewUrl: "https://api-cdn.rule34.xxx/thumbnails/42.jpg",
+} as const;
 
 describe("provider input schemas (Rule34-only)", () => {
   it("rejects gelbooru on AddArtistSchema", () => {
@@ -59,5 +67,37 @@ describe("provider input schemas (Rule34-only)", () => {
     );
     expect(parsed).not.toBeNull();
     expect(parsed?.provider).toBe("gelbooru");
+  });
+
+  it("PostDataSchema (PostActionArgs) accepts rule34 and gelbooru", () => {
+    expect(
+      PostDataSchema.safeParse({
+        ...postActionPostDataBase,
+        provider: "rule34",
+      }).success
+    ).toBe(true);
+    expect(
+      PostDataSchema.safeParse({
+        ...postActionPostDataBase,
+        provider: "gelbooru",
+        fileUrl: "https://img4.gelbooru.com/images/42.jpg",
+        previewUrl: "https://img4.gelbooru.com/thumbnails/42.jpg",
+      }).success
+    ).toBe(true);
+  });
+
+  it("PostDataSchema (PostActionArgs) rejects unknown and empty provider", () => {
+    expect(
+      PostDataSchema.safeParse({
+        ...postActionPostDataBase,
+        provider: "foo",
+      }).success
+    ).toBe(false);
+    expect(
+      PostDataSchema.safeParse({
+        ...postActionPostDataBase,
+        provider: "",
+      }).success
+    ).toBe(false);
   });
 });
