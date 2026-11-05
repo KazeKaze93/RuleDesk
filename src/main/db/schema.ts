@@ -166,9 +166,11 @@ export const settings = sqliteTable("settings", {
   isAdultConfirmed: integer("is_adult_confirmed", { mode: "boolean" }).default(
     false
   ),
+  // legacy: unused since age gate removal
   isAdultVerified: integer("is_adult_verified", { mode: "boolean" })
     .default(false)
     .notNull(),
+  // legacy: unused since age gate removal
   // Units: unix Seconds in SQLite; Drizzle mode "timestamp" ↔ Date. Raw SQL must use Seconds.
   tosAcceptedAt: integer("tos_accepted_at", { mode: "timestamp" }),
   downloadFolder: text("download_folder"),
