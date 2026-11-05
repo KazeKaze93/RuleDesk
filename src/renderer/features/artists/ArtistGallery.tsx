@@ -245,8 +245,6 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
     pause,
     resume,
     isDownloading: isDownloadingAll,
-    isPaused,
-    progress: downloadAllProgress,
     lastFailures,
     canDownload,
   } = useDownloadAllFromBackend(fetchParams, totalPosts);
@@ -275,8 +273,6 @@ export const ArtistGallery: React.FC<ArtistGalleryProps> = ({
         onPause={pause}
         onResume={resume}
         isDownloading={isDownloadingAll}
-        isPaused={isPaused}
-        progress={downloadAllProgress}
         canDownload={canDownload}
         totalLabel={totalPosts}
         failures={lastFailures}

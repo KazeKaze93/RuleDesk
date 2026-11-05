@@ -280,8 +280,6 @@ export const Favorites = () => {
     pause,
     resume,
     isDownloading: isDownloadingAll,
-    isPaused,
-    progress: downloadAllProgress,
     lastFailures,
     canDownload,
   } = useDownloadAllFromBackend(
@@ -439,8 +437,6 @@ export const Favorites = () => {
                   onPause={pause}
                   onResume={resume}
                   isDownloading={isDownloadingAll}
-                  isPaused={isPaused}
-                  progress={downloadAllProgress}
                   canDownload={canDownload}
                   totalLabel={favoritesCountLabel}
                   labelMode="favorites"

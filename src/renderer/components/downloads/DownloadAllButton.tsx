@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import type { DownloadFailure } from "@shared/types/download";
 import { downloadFailureCodeLabel } from "@shared/utils/download-failure";
 import { useDownloadStore } from "../../store/downloadStore";
+import { Progress } from "../ui/progress";
 
 const DOWNLOAD_IN_PROGRESS_TITLE = "Download in progress";
 const LOADED_IDLE_LABEL = (count: string | number): string =>
@@ -25,6 +26,7 @@ const FAVORITES_IDLE_HELP = (count: string | number): string =>
   count === ""
     ? FAVORITES_IDLE_HELP_PENDING
     : `Download ${count} favorited posts`;
+const PROGRESS_MAX_PERCENT = 100;
 
 export interface DownloadAllButtonProps {
   onClick: () => void;
@@ -32,8 +34,6 @@ export interface DownloadAllButtonProps {
   onPause?: () => void;
   onResume?: () => void;
   isDownloading: boolean;
-  isPaused?: boolean;
-  progress: { done: number; total: number };
   canDownload: boolean;
   totalLabel: string | number;
   /**
@@ -52,8 +52,6 @@ export const DownloadAllButton: React.FC<DownloadAllButtonProps> = ({
   onPause,
   onResume,
   isDownloading,
-  isPaused = false,
-  progress,
   canDownload,
   totalLabel,
   labelMode = "all",
@@ -62,8 +60,13 @@ export const DownloadAllButton: React.FC<DownloadAllButtonProps> = ({
   className,
 }) => {
   const isAnyDownloadActive = useDownloadStore((s) => s.isDownloading);
+  const isPaused = useDownloadStore((s) => s.isPaused);
+  const progress = useDownloadStore((s) => s.progress);
   const [failuresOpen, setFailuresOpen] = useState(false);
-  const pct = progress.total > 0 ? Math.round((progress.done * 100) / progress.total) : 0;
+  const pct =
+    progress.total > 0
+      ? Math.round((progress.done * PROGRESS_MAX_PERCENT) / progress.total)
+      : 0;
   const disabled = !canDownload || (isAnyDownloadActive && !isDownloading);
   const idleLabel =
     labelMode === "loaded"
@@ -103,30 +106,23 @@ export const DownloadAllButton: React.FC<DownloadAllButtonProps> = ({
                 size={size}
                 className="relative overflow-hidden pr-16"
                 disabled
+                aria-busy
+                aria-label={`Downloading ${progress.done} of ${progress.total}`}
               >
-                <div className="absolute inset-0">
-                  <svg
-                    className="h-full w-full"
-                    viewBox="0 0 100 1"
-                    preserveAspectRatio="none"
-                    aria-hidden
-                  >
-                    <rect
-                      x={0}
-                      y={0}
-                      width={pct}
-                      height={1}
-                      className="fill-primary/20"
-                    />
-                  </svg>
+                <div className="absolute inset-0" aria-hidden>
+                  <Progress
+                    value={pct}
+                    max={PROGRESS_MAX_PERCENT}
+                    className="h-full rounded-none border-0"
+                  />
                 </div>
                 <span className="relative flex items-center gap-2">
                   {isPaused ? (
-                    <Pause className="w-4 h-4" />
+                    <Pause className="w-4 h-4" aria-hidden />
                   ) : (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
                   )}
-                  <span className="text-xs">
+                  <span className="text-xs" aria-live="polite">
                     {progress.done}/{progress.total}
                   </span>
                 </span>
@@ -139,11 +135,12 @@ export const DownloadAllButton: React.FC<DownloadAllButtonProps> = ({
                 className="h-9 w-9"
                 onClick={isPaused ? onResume : onPause}
                 title={isPaused ? "Resume" : "Pause"}
+                aria-label={isPaused ? "Resume download" : "Pause download"}
               >
                 {isPaused ? (
-                  <Play className="w-4 h-4" />
+                  <Play className="w-4 h-4" aria-hidden />
                 ) : (
-                  <Pause className="w-4 h-4" />
+                  <Pause className="w-4 h-4" aria-hidden />
                 )}
               </Button>
             )}
@@ -154,30 +151,21 @@ export const DownloadAllButton: React.FC<DownloadAllButtonProps> = ({
                 className="h-9 w-9 text-destructive hover:text-destructive"
                 onClick={onCancel}
                 title="Cancel"
+                aria-label="Cancel download"
               >
-                <Square className="w-4 h-4" />
+                <Square className="w-4 h-4" aria-hidden />
               </Button>
             )}
           </>
         )}
       </div>
       {isDownloading && progress.total > 0 && (
-        <div className="h-1 w-full max-w-[200px] rounded-full bg-muted overflow-hidden">
-          <svg
-            className="block h-1 w-full"
-            viewBox="0 0 100 1"
-            preserveAspectRatio="none"
-            aria-hidden
-          >
-            <rect
-              x={0}
-              y={0}
-              width={pct}
-              height={1}
-              className="fill-primary"
-            />
-          </svg>
-        </div>
+        <Progress
+          value={pct}
+          max={PROGRESS_MAX_PERCENT}
+          className="h-1 max-w-[200px]"
+          aria-hidden
+        />
       )}
       {!isDownloading && failures.length > 0 && (
         <div className="max-w-md text-xs text-destructive">

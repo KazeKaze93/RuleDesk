@@ -5,6 +5,7 @@ import { releaseRadixModalLock } from "@/lib/radix-modal-lock";
 import { useViewerStore } from "@/store/viewerStore";
 import { clearSafeModeWhenPanicButtonHidden } from "@/store/safeModeStore";
 import { useArtistsSyncInvalidation } from "@/hooks/useArtistsSyncInvalidation";
+import { useSubscribeDownloadAllProgress } from "@/hooks/useSubscribeDownloadAllProgress";
 import { cn } from "@/lib/utils";
 import { Sidebar } from "./Sidebar";
 import { GlobalTopBar } from "./GlobalTopBar";
@@ -58,6 +59,7 @@ export const AppLayout = () => {
   const showPanicButton = settings?.showPanicButton === true;
 
   useArtistsSyncInvalidation(queryClient);
+  useSubscribeDownloadAllProgress();
 
   // Only after settings resolve: hidden panic button must not leave persisted blur
   // with no exit UI. Skip while `settings` is still loading (`null`/`undefined`).

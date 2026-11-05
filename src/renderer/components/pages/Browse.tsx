@@ -318,8 +318,6 @@ export const Browse = () => {
     pause: pauseLoadedDownload,
     resume: resumeLoadedDownload,
     isDownloading: isDownloadingLoaded,
-    isPaused: isLoadedDownloadPaused,
-    progress: loadedDownloadProgress,
     lastFailures: loadedDownloadFailures,
     canDownload: canDownloadLoaded,
     loadedCount,
@@ -328,8 +326,6 @@ export const Browse = () => {
   const {
     canShowAction: canShowTrackAndDownload,
     phase: trackAndDownloadPhase,
-    isPaused: isTrackAndDownloadPaused,
-    progress: trackAndDownloadProgress,
     trackAndDownload,
     cancel: cancelTrackAndDownload,
     pause: pauseTrackAndDownload,
@@ -462,8 +458,6 @@ export const Browse = () => {
                 onPause={pauseLoadedDownload}
                 onResume={resumeLoadedDownload}
                 isDownloading={isDownloadingLoaded}
-                isPaused={isLoadedDownloadPaused}
-                progress={loadedDownloadProgress}
                 canDownload={canDownloadLoaded}
                 totalLabel={loadedCount}
                 labelMode="loaded"
@@ -478,8 +472,6 @@ export const Browse = () => {
                   onPause={pauseTrackAndDownload}
                   onResume={resumeTrackAndDownload}
                   phase={trackAndDownloadPhase}
-                  isPaused={isTrackAndDownloadPaused}
-                  progress={trackAndDownloadProgress}
                 />
               ) : null}
               <TooltipProvider>
