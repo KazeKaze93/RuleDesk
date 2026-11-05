@@ -141,7 +141,7 @@ Settings 5 tabs + legacy deeplinks, viewer Open in browser, Log Out → Account,
 
 | # | Branch | PR | Status |
 |---|--------|----|--------|
-| UP | `feat/ux-product-polish` | (open) | 🟡 open |
+| UP | `feat/ux-product-polish` | [#276](https://github.com/KazeKaze93/RuleDesk/pull/276) | 🟡 open |
 
 **Release notes (draft):** Settings collapsed to five tabs (legacy deeplinks remapped); viewer **Open in browser** toolbar button; Log Out moved to Account; Panic/Safe Mode button off by default (Settings → General); right-click hints on tags/playlist control; Add Artist toast **Open gallery**; Browse Sort disabled-state tooltip; AgeGate removed — content notice on the account screen and README.
 
