@@ -166,6 +166,8 @@ const ipcBridge: IpcBridge = {
     invokeIpc(IPC_CHANNELS.SETTINGS.SAVE_DOWNLOAD_SETTINGS, data),
   openFileInFolder: (path: string) =>
     invokeIpc(IPC_CHANNELS.FILES.OPEN_FOLDER, path),
+  openDownloadFolder: () =>
+    invokeIpc(IPC_CHANNELS.FILES.OPEN_DOWNLOAD_FOLDER),
 
   selectDownloadFolder: () =>
     invokeIpc(IPC_CHANNELS.FILES.SELECT_DOWNLOAD_FOLDER),
