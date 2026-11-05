@@ -205,6 +205,16 @@ function isRequestAbortError(error: unknown): boolean {
   return axios.isAxiosError(error) && error.code === "ERR_CANCELED";
 }
 
+/**
+ * Yield one event-loop turn after a sync batch transaction commits so IPC
+ * and cancel handlers can run before the next page fetch (macrotask queue).
+ */
+async function yieldAfterSyncBatchCommit(): Promise<void> {
+  await new Promise<void>((resolve) => {
+    setImmediate(resolve);
+  });
+}
+
 async function sleepInterruptible(
   ms: number,
   signal: AbortSignal,
@@ -1086,6 +1096,9 @@ export class SyncService {
             logger.debug(
               `SyncService: ${artist.name} - Committed batch of ${insertedInBatch} new posts`
             );
+
+            await yieldAfterSyncBatchCommit();
+            this.throwIfCancelled(artist.id);
           }
 
           // End-of-feed from raw page size (before Zod/XML filtering), not validated length
