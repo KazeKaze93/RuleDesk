@@ -37,6 +37,15 @@ import { DownloadRateLimitGate } from "./download-rate-limit-gate";
 export const DOWNLOAD_PROGRESS_COMPLETE_PERCENT = 100;
 
 /**
+ * Failure message when classify maps an abort-like error but the batch was not
+ * user-canceled (`aborted === false`). Code stays CANCELLED (abort-shaped;
+ * UI already understands that code); membership in `failed` + this message is
+ * what distinguishes it from a real user cancel.
+ */
+export const UNEXPECTED_DOWNLOAD_ABORT_MESSAGE =
+  "Download aborted unexpectedly without a user cancel request";
+
+/**
  * Whether to post an onDownloadProgress update for this item.
  * Dedupes unchanged rounded percents; always allows completion (>= 100).
  */
@@ -48,6 +57,39 @@ export function shouldPostDownloadProgress(
     lastSentPercent !== percent ||
     percent >= DOWNLOAD_PROGRESS_COMPLETE_PERCENT
   );
+}
+
+/**
+ * How to treat a CANCELLED classification from `classifyDownloadFailure`.
+ * User cancel must not enter `failed`; unexpected abort must be recorded.
+ */
+export function outcomeForCancelledDownload(
+  aborted: boolean
+): "user-cancel" | "unexpected-abort" {
+  return aborted ? "user-cancel" : "unexpected-abort";
+}
+
+/** Stable failure payload for unexpected abort (code remains CANCELLED). */
+export function unexpectedAbortFailure(): ReturnType<
+  typeof classifyDownloadFailure
+> {
+  return {
+    code: "CANCELLED",
+    message: UNEXPECTED_DOWNLOAD_ABORT_MESSAGE,
+  };
+}
+
+/**
+ * Batch accounting: every item ends as completed, failed, or user-canceled.
+ * `canceledCount` includes in-flight cancels plus never-started queue leftovers.
+ */
+export function downloadBatchAccountsFor(
+  downloaded: number,
+  failedCount: number,
+  canceledCount: number,
+  itemCount: number
+): boolean {
+  return downloaded + failedCount + canceledCount === itemCount;
 }
 
 interface WorkerData {
@@ -98,6 +140,12 @@ type WorkerOutboundMessage =
       downloaded: number;
       failed: DownloadFailure[];
       canceled: boolean;
+      /**
+       * Items that ended as user-cancel (in-flight abort returns + leftover
+       * queue items never started). Not present in `failed` or `completedIds`.
+       * Main can verify: downloaded + failed.length + canceledCount === items.length.
+       */
+      canceledCount: number;
       completedIds: string[];
     }
   | { type: "error"; error: string };
@@ -212,12 +260,18 @@ async function runWorker(): Promise<void> {
   let downloaded = 0;
   const failed: DownloadFailure[] = [];
   const completedIds: string[] = [];
+  /** Filenames that exited runOne as user-cancel (not failed, not completed). */
+  const userCanceledIds = new Set<string>();
 
   const ITEM_PERSIST_ACK_TIMEOUT_MS = 10_000;
 
+  const noteUserCanceled = (item: { filename: string }): void => {
+    userCanceledIds.add(item.filename);
+  };
+
   const markCompleted = async (
     item: { url: string; filename: string }
-  ): Promise<void> => {
+  ): Promise<boolean> => {
     const filename = item.filename;
     // File is already on disk. Notify Main, then wait for queue ack (Main owns persistence).
     try {
@@ -244,15 +298,17 @@ async function runWorker(): Promise<void> {
       });
       completedIds.push(filename);
       downloaded++;
+      return true;
     } catch (error: unknown) {
       if (aborted) {
-        return;
+        return false;
       }
       const classified = classifyDownloadFailure(error);
       recordFailure(item, {
         code: "DISK",
         message: classified.message || "Queue persist failed",
       });
+      return false;
     }
   };
 
@@ -280,11 +336,17 @@ async function runWorker(): Promise<void> {
   };
 
   const runOne = async (item: { url: string; filename: string }): Promise<void> => {
-    if (aborted) return;
+    if (aborted) {
+      noteUserCanceled(item);
+      return;
+    }
     while (paused && !aborted) {
       await delay(200);
     }
-    if (aborted) return;
+    if (aborted) {
+      noteUserCanceled(item);
+      return;
+    }
 
     /** Last progress percent posted for this item (local to this download). */
     let lastSentPercent: number | undefined;
@@ -297,7 +359,10 @@ async function runWorker(): Promise<void> {
       try {
         await mkdir(dir, { recursive: true });
       } catch (err) {
-        if (aborted) return;
+        if (aborted) {
+          noteUserCanceled(item);
+          return;
+        }
         recordFailure(item, classifyDownloadFailure(err));
         return;
       }
@@ -311,7 +376,13 @@ async function runWorker(): Promise<void> {
       /* file doesn't exist */
     }
     if (fileExists && duplicateFileBehavior === "skip") {
-      await markCompleted(item);
+      const completed = await markCompleted(item);
+      if (!completed) {
+        if (aborted) {
+          noteUserCanceled(item);
+        }
+        return;
+      }
       lastSentPercent = DOWNLOAD_PROGRESS_COMPLETE_PERCENT;
       post({
         type: "progress",
@@ -408,7 +479,13 @@ async function runWorker(): Promise<void> {
           signal: abortController.signal,
         });
         clearIdleTimer();
-        await markCompleted(item);
+        const completed = await markCompleted(item);
+        if (!completed) {
+          if (aborted) {
+            noteUserCanceled(item);
+          }
+          return;
+        }
         lastSentPercent = DOWNLOAD_PROGRESS_COMPLETE_PERCENT;
         post({
           type: "progress",
@@ -423,6 +500,7 @@ async function runWorker(): Promise<void> {
         await unlinkIfExists(filePath);
 
         if (aborted && !idleTimedOut) {
+          noteUserCanceled(item);
           return;
         }
 
@@ -448,6 +526,11 @@ async function runWorker(): Promise<void> {
         }
 
         if (classified.code === "CANCELLED") {
+          if (outcomeForCancelledDownload(aborted) === "user-cancel") {
+            noteUserCanceled(item);
+            return;
+          }
+          recordFailure(item, unexpectedAbortFailure());
           return;
         }
         recordFailure(item, classified);
@@ -456,6 +539,11 @@ async function runWorker(): Promise<void> {
         clearIdleTimer();
         activeControllers.delete(abortController);
       }
+    }
+
+    // Exited the download loop because `aborted` flipped (e.g. during 429 wait).
+    if (aborted) {
+      noteUserCanceled(item);
     }
   };
 
@@ -485,12 +573,15 @@ async function runWorker(): Promise<void> {
   await Promise.all(workers);
 
   const canceled = aborted;
+  // Never-started leftovers still in the queue count as user-cancel for accounting.
+  const canceledCount = userCanceledIds.size + (canceled ? queue.length : 0);
   post({
     type: "complete",
     success: failed.length === 0 && !canceled,
     downloaded,
     failed,
     canceled,
+    canceledCount,
     completedIds: [...completedIds],
   });
 }
