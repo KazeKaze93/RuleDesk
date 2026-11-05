@@ -143,9 +143,11 @@ Settings 5 tabs + legacy deeplinks, viewer Open in browser, Log Out → Account,
 |---|--------|----|--------|
 | UP | `feat/ux-product-polish` | [#276](https://github.com/KazeKaze93/RuleDesk/pull/276) | 🟡 open |
 
-**Release notes (draft):** Settings collapsed to five tabs (legacy deeplinks remapped); viewer **Open in browser** toolbar button; Log Out moved to Account; Panic/Safe Mode button off by default (Settings → General); right-click hints on tags/playlist control; Add Artist toast **Open gallery**; Browse Sort disabled-state tooltip; AgeGate removed — content notice on the account screen and README.
+**Release notes (draft):** Settings collapsed to five tabs (legacy deeplinks remapped); viewer **Open in browser** toolbar button; Log Out moved to Account; Panic/Safe Mode button off by default (Settings → General); Safe Mode is available only while the panic button is enabled — turning the button off also turns Safe Mode off; right-click hints on tags/playlist control; Add Artist toast **Open gallery**; Browse Sort disabled-state tooltip; AgeGate removed — content notice on the account screen and README.
 
 **Follow-up fix:** Browse `search_results_cache` persists only Rule34 cursor pages (`beforePostId`); head/offset always fetch so the live feed head is not frozen for 7 days.
+
+**Follow-up fix:** Safe Mode is available only while the panic button is enabled; turning the button off also turns Safe Mode off (clears persisted `safeModeStore` blur).
 
 ### Playlist gallery infinite scroll
 

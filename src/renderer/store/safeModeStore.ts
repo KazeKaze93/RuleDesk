@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import log from "electron-log/renderer";
 
 interface SafeModeState {
   safeMode: boolean;
@@ -58,6 +59,27 @@ export const useSafeModeStore = create<SafeModeState>()(
     }
   )
 );
+
+/**
+ * When Show panic button is off there is no UI to exit blur. Call only with a
+ * loaded settings value (`undefined` = settings still loading — no-op).
+ * `setSafeMode(false)` also clears panicMode.
+ */
+export function clearSafeModeWhenPanicButtonHidden(
+  showPanicButton: boolean | undefined
+): void {
+  if (showPanicButton === undefined || showPanicButton === true) {
+    return;
+  }
+  const { safeMode, panicMode, setSafeMode } = useSafeModeStore.getState();
+  if (!safeMode && !panicMode) {
+    return;
+  }
+  setSafeMode(false);
+  log.info(
+    "[SafeMode] Cleared because Show panic button is off (no UI to exit blur)"
+  );
+}
 
 /**
  * Helper function to get effective blur amount

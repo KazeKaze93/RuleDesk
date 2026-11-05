@@ -441,7 +441,7 @@ The **top bar** appears on content pages and provides:
 
 ### Safe Mode
 
-Safe Mode (blur sensitive ratings on cards and in the viewer) is available only when **Settings → General → Show panic button** is on. The floating control then toggles panic/safe blur (`safeModeStore` → `PostCard` / `ViewerMedia`). With the setting off, that button is hidden and there is no other UI path to enable Safe Mode.
+Safe Mode (blur sensitive ratings on cards and in the viewer) is available only while the panic button is enabled; turning the button off also turns Safe Mode off. The floating control toggles panic/safe blur (`safeModeStore` → `PostCard` / `ViewerMedia`).
 
 ### Keyboard Shortcuts
 
@@ -481,7 +481,7 @@ Deep links: `/settings` opens **General**. Current ids: `general`, `data`, `acco
 - **Downloads / tray / proxy** - Duplicate behavior; folder structure; minimize to tray; optional proxy
 - **Sync** - Sync new artist automatically; sync interval (Disabled / 15 / 30 / 60 / 120). **Sync now** remains in the sidebar (not in Settings)
 - **Appearance** - Card border / grid
-- **Show panic button** - Off by default. When enabled, the floating Safe Mode button appears; when disabled, Safe Mode has no UI entry
+- **Show panic button** - Off by default. When enabled, the floating Safe Mode button appears; turning it off also turns Safe Mode off (no stuck blur without an exit control)
 
 ### Data
 

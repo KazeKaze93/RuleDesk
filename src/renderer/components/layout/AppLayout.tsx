@@ -3,6 +3,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { releaseRadixModalLock } from "@/lib/radix-modal-lock";
 import { useViewerStore } from "@/store/viewerStore";
+import { clearSafeModeWhenPanicButtonHidden } from "@/store/safeModeStore";
 import { useArtistsSyncInvalidation } from "@/hooks/useArtistsSyncInvalidation";
 import { cn } from "@/lib/utils";
 import { Sidebar } from "./Sidebar";
@@ -57,6 +58,15 @@ export const AppLayout = () => {
   const showPanicButton = settings?.showPanicButton === true;
 
   useArtistsSyncInvalidation(queryClient);
+
+  // Only after settings resolve: hidden panic button must not leave persisted blur
+  // with no exit UI. Skip while `settings` is still loading (`null`/`undefined`).
+  useEffect(() => {
+    if (settings == null) {
+      return;
+    }
+    clearSafeModeWhenPanicButtonHidden(settings.showPanicButton);
+  }, [settings]);
 
   useEffect(() => {
     releaseRadixModalLock();
