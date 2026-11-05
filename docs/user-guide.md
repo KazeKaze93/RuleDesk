@@ -478,7 +478,7 @@ Deep links: `/settings` opens **General**. Current ids: `general`, `data`, `acco
 ### General
 
 - **Setup** - Sync on startup; Theme
-- **Downloads / tray / proxy** - **Default download folder** (shows the real path; **Open folder** opens it in the file manager; **Choose Folder** / **Reset to Default**); duplicate behavior; folder structure; minimize to tray; optional proxy. Mass downloads write to the same folder shown here.
+- **Downloads / tray / proxy** - **Default download folder** (shows the real path; **Open folder** opens it in the file manager; **Choose Folder** / **Reset to Default**). If a saved folder is missing or inaccessible, Settings warns and downloads still go to the default path until you choose another folder or reset. Duplicate behavior; folder structure; minimize to tray; optional proxy. Mass downloads write to the same folder shown here.
 - **Sync** - Sync new artist automatically; sync interval (Disabled / 15 / 30 / 60 / 120). **Sync now** remains in the sidebar (not in Settings)
 - **Appearance** - Card border / grid
 - **Show panic button** - Off by default. When enabled, the floating Safe Mode button appears; turning it off also turns Safe Mode off (no stuck blur without an exit control)

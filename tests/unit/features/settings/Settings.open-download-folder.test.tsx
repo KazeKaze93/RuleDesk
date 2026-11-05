@@ -88,8 +88,10 @@ describe("Settings open download folder", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getDownloadFolder.mockResolvedValue({
-      path: "C:\\Users\\me\\Downloads\\BooruClient",
+      path: "C:/Users/me/Downloads/BooruClient",
+      configuredPath: null,
       isDefault: true,
+      usingFallback: false,
     });
     openDownloadFolder.mockResolvedValue({ ok: true });
     getSettings.mockResolvedValue({});
@@ -122,7 +124,7 @@ describe("Settings open download folder", () => {
     });
     await waitFor(() => {
       expect(screen.getByTestId("download-folder-path").textContent).toContain(
-        "C:\\Users\\me\\Downloads\\BooruClient"
+        "C:/Users/me/Downloads/BooruClient"
       );
     });
 
@@ -154,19 +156,23 @@ describe("Settings open download folder", () => {
   it("refreshes the path after Reset to Default", async () => {
     getDownloadFolder
       .mockResolvedValueOnce({
-        path: "D:\\Custom",
+        path: "D:/Custom",
+        configuredPath: "D:/Custom",
         isDefault: false,
+        usingFallback: false,
       })
       .mockResolvedValueOnce({
-        path: "C:\\Users\\me\\Downloads\\BooruClient",
+        path: "C:/Users/me/Downloads/BooruClient",
+        configuredPath: null,
         isDefault: true,
+        usingFallback: false,
       });
 
     render(<Settings />);
 
     await waitFor(() => {
       expect(screen.getByTestId("download-folder-path").textContent).toContain(
-        "D:\\Custom"
+        "D:/Custom"
       );
     });
 
@@ -176,8 +182,26 @@ describe("Settings open download folder", () => {
     });
     await waitFor(() => {
       const text = screen.getByTestId("download-folder-path").textContent ?? "";
-      expect(text).toContain("C:\\Users\\me\\Downloads\\BooruClient");
+      expect(text).toContain("C:/Users/me/Downloads/BooruClient");
       expect(text).toContain("(default)");
     });
+  });
+
+  it("shows read-error text when getDownloadFolder rejects", async () => {
+    getDownloadFolder.mockRejectedValue(new Error("ipc down"));
+    render(<Settings />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("download-folder-path").textContent).toContain(
+        "Could not read the download folder"
+      );
+    });
+    expect(screen.getByTestId("download-folder-path").textContent).not.toContain(
+      "Loading…"
+    );
+    expect(screen.getByTestId("download-folder-path").textContent).not.toContain(
+      "(default)"
+    );
+    expect(log.error).toHaveBeenCalled();
   });
 });

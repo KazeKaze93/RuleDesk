@@ -66,11 +66,14 @@ export type OpenDownloadFolderResult = z.infer<
 
 /**
  * Resolved mass-download root (`getDownloadRoot`) plus whether settings
- * still use the built-in default (no custom folder saved).
+ * still use the built-in default, and whether an inaccessible saved folder
+ * forced a silent fallback to the default path.
  */
 export const GetDownloadFolderResultSchema = z.object({
   path: z.string().min(1),
+  configuredPath: z.string().min(1).nullable(),
   isDefault: z.boolean(),
+  usingFallback: z.boolean(),
 });
 
 export type GetDownloadFolderResult = z.infer<

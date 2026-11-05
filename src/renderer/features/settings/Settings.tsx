@@ -6,7 +6,11 @@ import { toast } from "sonner";
 import { Settings as SettingsIcon } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { PageHeader } from "../../components/layout/PageHeader";
-import { SettingsGeneralTab, SettingsSetupSection } from "./SettingsGeneralTab";
+import {
+  SettingsGeneralTab,
+  SettingsSetupSection,
+  type DownloadFolderLoadState,
+} from "./SettingsGeneralTab";
 import { SettingsSyncTab } from "./SettingsSyncTab";
 import { SettingsAppearanceTab } from "./SettingsAppearanceTab";
 import { SettingsDataTab } from "./SettingsDataTab";
@@ -70,10 +74,16 @@ export const Settings = () => {
   const [restoreStatus, setRestoreStatus] = useState<
     "idle" | "success" | "error"
   >("idle");
+  const [downloadFolderLoadState, setDownloadFolderLoadState] =
+    useState<DownloadFolderLoadState>("loading");
   const [downloadFolderPath, setDownloadFolderPath] = useState<string | null>(
     null
   );
-  const [downloadFolderIsDefault, setDownloadFolderIsDefault] = useState(true);
+  const [downloadFolderConfiguredPath, setDownloadFolderConfiguredPath] =
+    useState<string | null>(null);
+  const [downloadFolderIsDefault, setDownloadFolderIsDefault] = useState(false);
+  const [downloadFolderUsingFallback, setDownloadFolderUsingFallback] =
+    useState(false);
   const [downloadFolderStatus, setDownloadFolderStatus] = useState<
     "idle" | "success" | "error"
   >("idle");
@@ -127,12 +137,21 @@ export const Settings = () => {
   });
 
   const refreshDownloadFolderInfo = async (): Promise<void> => {
+    setDownloadFolderLoadState("loading");
     try {
       const info = await window.api.getDownloadFolder();
       setDownloadFolderPath(info.path);
+      setDownloadFolderConfiguredPath(info.configuredPath);
       setDownloadFolderIsDefault(info.isDefault);
+      setDownloadFolderUsingFallback(info.usingFallback);
+      setDownloadFolderLoadState("loaded");
     } catch (error: unknown) {
       log.error(`${SETTINGS_LOG_PREFIX} Failed to load download folder:`, error);
+      setDownloadFolderPath(null);
+      setDownloadFolderConfiguredPath(null);
+      setDownloadFolderIsDefault(false);
+      setDownloadFolderUsingFallback(false);
+      setDownloadFolderLoadState("error");
     }
   };
 
@@ -565,8 +584,11 @@ export const Settings = () => {
               }}
             />
             <SettingsGeneralTab
+              downloadFolderLoadState={downloadFolderLoadState}
               downloadFolderPath={downloadFolderPath}
+              downloadFolderConfiguredPath={downloadFolderConfiguredPath}
               downloadFolderIsDefault={downloadFolderIsDefault}
+              downloadFolderUsingFallback={downloadFolderUsingFallback}
               downloadFolderStatus={downloadFolderStatus}
               duplicateFileBehavior={duplicateFileBehavior}
               downloadFolderStructure={downloadFolderStructure}

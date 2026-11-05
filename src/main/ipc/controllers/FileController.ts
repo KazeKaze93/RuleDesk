@@ -500,9 +500,12 @@ export class FileController extends BaseController {
   }
 
   /**
-   * Custom folder from settings, or null when the built-in default applies.
+   * Resolve the mass-download root once (single DB read).
+   * Batch downloads and Settings share this; inaccessible saved folders still
+   * fall back to DEFAULT_DOWNLOAD_ROOT (visible via usingFallback).
    */
-  private getConfiguredDownloadFolder(): string | null {
+  private async resolveDownloadFolder(): Promise<GetDownloadFolderResult> {
+    let configuredPath: string | null = null;
     try {
       const db = getDb();
       const row = db
@@ -513,12 +516,38 @@ export class FileController extends BaseController {
         .get();
       const folder = row?.downloadFolder?.trim();
       if (folder !== undefined && folder.length > 0) {
-        return folder;
+        configuredPath = folder;
       }
     } catch (e) {
       log.warn("[FileController] Failed to read download folder from settings:", e);
     }
-    return null;
+
+    if (configuredPath !== null) {
+      try {
+        await access(configuredPath);
+        return GetDownloadFolderResultSchema.parse({
+          path: configuredPath,
+          configuredPath,
+          isDefault: false,
+          usingFallback: false,
+        });
+      } catch {
+        /* folder doesn't exist or inaccessible — fall back to default */
+        return GetDownloadFolderResultSchema.parse({
+          path: DEFAULT_DOWNLOAD_ROOT,
+          configuredPath,
+          isDefault: false,
+          usingFallback: true,
+        });
+      }
+    }
+
+    return GetDownloadFolderResultSchema.parse({
+      path: DEFAULT_DOWNLOAD_ROOT,
+      configuredPath: null,
+      isDefault: true,
+      usingFallback: false,
+    });
   }
 
   /**
@@ -526,27 +555,15 @@ export class FileController extends BaseController {
    * Same path mass-download and open-download-folder use.
    */
   private async getDownloadRoot(): Promise<string> {
-    const folder = this.getConfiguredDownloadFolder();
-    if (folder !== null) {
-      try {
-        await access(folder);
-        return folder;
-      } catch {
-        /* folder doesn't exist or inaccessible — fall back to default */
-      }
-    }
-    return DEFAULT_DOWNLOAD_ROOT;
+    const resolved = await this.resolveDownloadFolder();
+    return resolved.path;
   }
 
   /**
    * Resolved download root for Settings UI (`path` matches batch downloads).
    */
   private async getDownloadFolderInfo(): Promise<GetDownloadFolderResult> {
-    const path = await this.getDownloadRoot();
-    return GetDownloadFolderResultSchema.parse({
-      path,
-      isDefault: this.getConfiguredDownloadFolder() === null,
-    });
+    return this.resolveDownloadFolder();
   }
 
   /**

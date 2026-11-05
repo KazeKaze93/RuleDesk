@@ -11,6 +11,7 @@ import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Checkbox } from "../../components/ui/checkbox";
 import { Switch } from "../../components/ui/switch";
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import {
   Select,
   SelectContent,
@@ -103,13 +104,24 @@ const SHOW_PANIC_BUTTON_DESCRIPTION =
   "Show a floating button that instantly blurs previews (Safe Mode).";
 const DOWNLOAD_FOLDER_LABEL = "Default download folder";
 const DOWNLOAD_FOLDER_DEFAULT_BADGE = "(default)";
-const DOWNLOAD_FOLDER_PATH_FALLBACK = "Loading…";
+const DOWNLOAD_FOLDER_LOADING_TEXT = "Loading…";
+const DOWNLOAD_FOLDER_READ_ERROR_TEXT = "Could not read the download folder";
+const DOWNLOAD_FOLDER_FALLBACK_TITLE = "Saved folder unavailable";
 const CHOOSE_FOLDER_LABEL = "Choose Folder";
 const RESET_FOLDER_LABEL = "Reset to Default";
 const OPEN_FOLDER_LABEL = "Open folder";
 const FOLDER_UPDATED_LABEL = "Updated";
 const FOLDER_UPDATE_FAILED_LABEL = "Update failed";
 const FOLDER_STATUS_REGION_LABEL = "Download folder update status";
+
+export type DownloadFolderLoadState = "loading" | "loaded" | "error";
+
+function formatDownloadFolderFallbackMessage(
+  configuredPath: string,
+  activePath: string
+): string {
+  return `Saved folder ${configuredPath} is unavailable. Downloads go to ${activePath}.`;
+}
 const SYNC_ON_STARTUP_LABEL = "Sync on startup";
 const SYNC_ON_STARTUP_DESCRIPTION =
   "Automatically run sync when the application opens.";
@@ -141,8 +153,11 @@ const parseThemePreference = (value: string): ThemePreference | null => {
 };
 
 export interface SettingsDownloadFolderFieldsProps {
+  downloadFolderLoadState: DownloadFolderLoadState;
   downloadFolderPath: string | null;
+  downloadFolderConfiguredPath: string | null;
   downloadFolderIsDefault: boolean;
+  downloadFolderUsingFallback: boolean;
   downloadFolderStatus: "idle" | "success" | "error";
   onSelectDownloadFolder: () => void;
   onResetDownloadFolder: () => void;
@@ -150,14 +165,31 @@ export interface SettingsDownloadFolderFieldsProps {
 }
 
 export const SettingsDownloadFolderFields = ({
+  downloadFolderLoadState,
   downloadFolderPath,
+  downloadFolderConfiguredPath,
   downloadFolderIsDefault,
+  downloadFolderUsingFallback,
   downloadFolderStatus,
   onSelectDownloadFolder,
   onResetDownloadFolder,
   onOpenDownloadFolder,
 }: SettingsDownloadFolderFieldsProps) => {
-  const pathText = downloadFolderPath ?? DOWNLOAD_FOLDER_PATH_FALLBACK;
+  const pathText =
+    downloadFolderLoadState === "loading"
+      ? DOWNLOAD_FOLDER_LOADING_TEXT
+      : downloadFolderLoadState === "error"
+        ? DOWNLOAD_FOLDER_READ_ERROR_TEXT
+        : (downloadFolderPath ?? DOWNLOAD_FOLDER_READ_ERROR_TEXT);
+  const showDefaultBadge =
+    downloadFolderLoadState === "loaded" && downloadFolderIsDefault;
+  const showResetButton =
+    downloadFolderLoadState === "loaded" && !downloadFolderIsDefault;
+  const showFallbackWarning =
+    downloadFolderLoadState === "loaded" &&
+    downloadFolderUsingFallback &&
+    downloadFolderConfiguredPath !== null &&
+    downloadFolderPath !== null;
   const statusAnnouncement =
     downloadFolderStatus === "success"
       ? FOLDER_UPDATED_LABEL
@@ -174,12 +206,23 @@ export const SettingsDownloadFolderFields = ({
         data-testid="download-folder-path"
       >
         <span>{pathText}</span>
-        {downloadFolderIsDefault ? (
+        {showDefaultBadge ? (
           <span className="ml-2 text-muted-foreground">
             {DOWNLOAD_FOLDER_DEFAULT_BADGE}
           </span>
         ) : null}
       </p>
+      {showFallbackWarning ? (
+        <Alert data-testid="download-folder-fallback-alert">
+          <AlertTitle>{DOWNLOAD_FOLDER_FALLBACK_TITLE}</AlertTitle>
+          <AlertDescription>
+            {formatDownloadFolderFallbackMessage(
+              downloadFolderConfiguredPath,
+              downloadFolderPath
+            )}
+          </AlertDescription>
+        </Alert>
+      ) : null}
       <section className="flex flex-wrap gap-2">
         <Button
           type="button"
@@ -195,11 +238,12 @@ export const SettingsDownloadFolderFields = ({
           size="sm"
           onClick={onOpenDownloadFolder}
           aria-label={OPEN_FOLDER_LABEL}
+          disabled={downloadFolderLoadState !== "loaded"}
         >
           <FolderOpen className="size-4" aria-hidden="true" />
           {OPEN_FOLDER_LABEL}
         </Button>
-        {!downloadFolderIsDefault ? (
+        {showResetButton ? (
           <Button
             type="button"
             variant="ghost"
@@ -412,8 +456,11 @@ export const SettingsDangerZone = () => {
 };
 
 interface SettingsGeneralTabProps {
+  downloadFolderLoadState: DownloadFolderLoadState;
   downloadFolderPath: string | null;
+  downloadFolderConfiguredPath: string | null;
   downloadFolderIsDefault: boolean;
+  downloadFolderUsingFallback: boolean;
   downloadFolderStatus: "idle" | "success" | "error";
   duplicateFileBehavior: "skip" | "overwrite";
   downloadFolderStructure: "flat" | "{artist_id}";
@@ -434,8 +481,11 @@ interface SettingsGeneralTabProps {
 }
 
 export const SettingsGeneralTab = ({
+  downloadFolderLoadState,
   downloadFolderPath,
+  downloadFolderConfiguredPath,
   downloadFolderIsDefault,
+  downloadFolderUsingFallback,
   downloadFolderStatus,
   duplicateFileBehavior,
   downloadFolderStructure,
@@ -520,8 +570,11 @@ export const SettingsGeneralTab = ({
       </CardHeader>
       <CardContent className="space-y-4">
         <SettingsDownloadFolderFields
+          downloadFolderLoadState={downloadFolderLoadState}
           downloadFolderPath={downloadFolderPath}
+          downloadFolderConfiguredPath={downloadFolderConfiguredPath}
           downloadFolderIsDefault={downloadFolderIsDefault}
+          downloadFolderUsingFallback={downloadFolderUsingFallback}
           downloadFolderStatus={downloadFolderStatus}
           onSelectDownloadFolder={onSelectDownloadFolder}
           onResetDownloadFolder={onResetDownloadFolder}
