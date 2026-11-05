@@ -32,18 +32,12 @@ function postToDownloadItem(p: Post): { url: string; filename: string } | null {
 /** Download from loaded posts (Favorites, Updates, Browse, Playlists) — list, not full remote crawl. */
 export function useDownloadAll(posts: Post[]) {
   const [isDownloading, setIsDownloading] = useState(false);
-  const setGlobalDownloading = useDownloadStore((s) => s.setDownloading);
-  const [isPaused, setIsPaused] = useState(false);
-  const [progress, setProgress] = useState({ done: 0, total: 0 });
+  const startDownload = useDownloadStore((s) => s.startDownload);
+  const resetDownload = useDownloadStore((s) => s.resetDownload);
+  const setPaused = useDownloadStore((s) => s.setPaused);
+  const isPaused = useDownloadStore((s) => s.isPaused);
+  const progress = useDownloadStore((s) => s.progress);
   const [lastFailures, setLastFailures] = useState<DownloadFailure[]>([]);
-
-  useEffect(() => {
-    if (!isDownloading) return;
-    const unsub = window.api.onDownloadAllProgress((data) => {
-      setProgress({ done: data.done, total: data.total });
-    });
-    return () => unsub();
-  }, [isDownloading]);
 
   const downloadAll = async () => {
     const items = posts
@@ -54,10 +48,8 @@ export function useDownloadAll(posts: Post[]) {
       return;
     }
     setIsDownloading(true);
-    setGlobalDownloading(true);
-    setIsPaused(false);
+    startDownload({ total: items.length });
     setLastFailures([]);
-    setProgress({ done: 0, total: items.length });
     try {
       const result = await window.api.downloadAll({ kind: "list", items });
       setLastFailures(result.failed);
@@ -76,9 +68,7 @@ export function useDownloadAll(posts: Post[]) {
       });
     } finally {
       setIsDownloading(false);
-      setGlobalDownloading(false);
-      setIsPaused(false);
-      setProgress({ done: 0, total: 0 });
+      resetDownload();
     }
   };
 
@@ -92,14 +82,14 @@ export function useDownloadAll(posts: Post[]) {
     void window.api.pauseDownloadAll().catch((error: unknown) => {
       log.error("[useDownloadAll] pauseDownloadAll failed:", error);
     });
-    setIsPaused(true);
+    setPaused(true);
   };
 
   const resume = () => {
     void window.api.resumeDownloadAll().catch((error: unknown) => {
       log.error("[useDownloadAll] resumeDownloadAll failed:", error);
     });
-    setIsPaused(false);
+    setPaused(false);
   };
 
   return {
@@ -157,27 +147,19 @@ export function useDownloadAllFromBackend(
   totalCount: number
 ) {
   const [isDownloading, setIsDownloading] = useState(false);
-  const setGlobalDownloading = useDownloadStore((s) => s.setDownloading);
-  const [isPaused, setIsPaused] = useState(false);
-  const [progress, setProgress] = useState({ done: 0, total: 0 });
+  const startDownload = useDownloadStore((s) => s.startDownload);
+  const resetDownload = useDownloadStore((s) => s.resetDownload);
+  const setPaused = useDownloadStore((s) => s.setPaused);
+  const isPaused = useDownloadStore((s) => s.isPaused);
+  const progress = useDownloadStore((s) => s.progress);
   const [lastFailures, setLastFailures] = useState<DownloadFailure[]>([]);
-
-  useEffect(() => {
-    if (!isDownloading) return;
-    const unsub = window.api.onDownloadAllProgress((data) => {
-      setProgress({ done: data.done, total: data.total });
-    });
-    return () => unsub();
-  }, [isDownloading]);
 
   const downloadAll = async () => {
     const target = resolveDownloadAllBackendTarget(targetInput);
     if (!target) return;
     setIsDownloading(true);
-    setGlobalDownloading(true);
-    setIsPaused(false);
+    startDownload({ total: totalCount });
     setLastFailures([]);
-    setProgress({ done: 0, total: totalCount });
     try {
       const result =
         target.kind === "artist"
@@ -206,9 +188,7 @@ export function useDownloadAllFromBackend(
       });
     } finally {
       setIsDownloading(false);
-      setGlobalDownloading(false);
-      setIsPaused(false);
-      setProgress({ done: 0, total: 0 });
+      resetDownload();
     }
   };
 
@@ -221,13 +201,13 @@ export function useDownloadAllFromBackend(
     void window.api.pauseDownloadAll().catch((error: unknown) => {
       log.error("[useDownloadAllFromBackend] pauseDownloadAll failed:", error);
     });
-    setIsPaused(true);
+    setPaused(true);
   };
   const resume = () => {
     void window.api.resumeDownloadAll().catch((error: unknown) => {
       log.error("[useDownloadAllFromBackend] resumeDownloadAll failed:", error);
     });
-    setIsPaused(false);
+    setPaused(false);
   };
 
   return {

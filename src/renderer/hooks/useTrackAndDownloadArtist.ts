@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import log from "electron-log/renderer";
 import { toast } from "sonner";
@@ -24,12 +24,14 @@ export function useTrackAndDownloadArtist(
   provider: ProviderId
 ) {
   const queryClient = useQueryClient();
-  const setGlobalDownloading = useDownloadStore((s) => s.setDownloading);
+  const startDownload = useDownloadStore((s) => s.startDownload);
+  const resetDownload = useDownloadStore((s) => s.resetDownload);
+  const setPaused = useDownloadStore((s) => s.setPaused);
   const isAnyDownloadActive = useDownloadStore((s) => s.isDownloading);
+  const isPaused = useDownloadStore((s) => s.isPaused);
+  const progress = useDownloadStore((s) => s.progress);
 
   const [phase, setPhase] = useState<TrackAndDownloadPhase>("idle");
-  const [isPaused, setIsPaused] = useState(false);
-  const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [lastFailures, setLastFailures] = useState<DownloadFailure[]>([]);
 
   const candidateTag = getTrackAndDownloadCandidateTag(includeTags);
@@ -60,16 +62,6 @@ export function useTrackAndDownloadArtist(
 
   const isRunning = phase !== "idle";
 
-  useEffect(() => {
-    if (phase !== "downloading") {
-      return;
-    }
-    const unsub = window.api.onDownloadAllProgress((data) => {
-      setProgress({ done: data.done, total: data.total });
-    });
-    return () => unsub();
-  }, [phase]);
-
   const trackAndDownload = useCallback(async () => {
     if (candidateTag === null || !isArtistTag || isRunning) {
       return;
@@ -80,9 +72,7 @@ export function useTrackAndDownloadArtist(
     }
 
     setPhase("syncing");
-    setIsPaused(false);
     setLastFailures([]);
-    setProgress({ done: 0, total: 0 });
 
     try {
       const ensured = await ensureArtistTrackedAndSynced({
@@ -111,8 +101,7 @@ export function useTrackAndDownloadArtist(
       }
 
       setPhase("downloading");
-      setGlobalDownloading(true);
-      setProgress({ done: 0, total: 0 });
+      startDownload();
 
       try {
         const result = await window.api.downloadAll({
@@ -134,9 +123,7 @@ export function useTrackAndDownloadArtist(
           error: resolveErrorMessage(error, "Download failed"),
         });
       } finally {
-        setGlobalDownloading(false);
-        setIsPaused(false);
-        setProgress({ done: 0, total: 0 });
+        resetDownload();
         setPhase("idle");
       }
     } catch (error: unknown) {
@@ -144,7 +131,7 @@ export function useTrackAndDownloadArtist(
       toast.error(
         resolveErrorMessage(error, "Failed to track and download artist")
       );
-      setGlobalDownloading(false);
+      resetDownload();
       setPhase("idle");
     }
   }, [
@@ -154,7 +141,8 @@ export function useTrackAndDownloadArtist(
     isAnyDownloadActive,
     provider,
     queryClient,
-    setGlobalDownloading,
+    startDownload,
+    resetDownload,
   ]);
 
   const cancel = useCallback(() => {
@@ -170,15 +158,15 @@ export function useTrackAndDownloadArtist(
     void window.api.pauseDownloadAll().catch((error: unknown) => {
       log.error("[useTrackAndDownloadArtist] pauseDownloadAll failed:", error);
     });
-    setIsPaused(true);
-  }, []);
+    setPaused(true);
+  }, [setPaused]);
 
   const resume = useCallback(() => {
     void window.api.resumeDownloadAll().catch((error: unknown) => {
       log.error("[useTrackAndDownloadArtist] resumeDownloadAll failed:", error);
     });
-    setIsPaused(false);
-  }, []);
+    setPaused(false);
+  }, [setPaused]);
 
   return {
     canShowAction,

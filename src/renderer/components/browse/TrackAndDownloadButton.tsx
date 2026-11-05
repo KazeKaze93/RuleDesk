@@ -13,8 +13,10 @@ import {
   TRACK_AND_DOWNLOAD_ARIA_LABEL,
   TRACK_AND_DOWNLOAD_LABEL,
 } from "../../lib/browse-track-download";
+import { Progress } from "../ui/progress";
 
 const SYNCING_LABEL = "Syncing…";
+const PROGRESS_MAX_PERCENT = 100;
 
 export type TrackAndDownloadButtonProps = {
   onClick: () => void;
@@ -22,8 +24,6 @@ export type TrackAndDownloadButtonProps = {
   onPause?: () => void;
   onResume?: () => void;
   phase: TrackAndDownloadPhase;
-  isPaused?: boolean;
-  progress: { done: number; total: number };
 };
 
 export function TrackAndDownloadButton({
@@ -32,16 +32,16 @@ export function TrackAndDownloadButton({
   onPause,
   onResume,
   phase,
-  isPaused = false,
-  progress,
 }: TrackAndDownloadButtonProps) {
   const isAnyDownloadActive = useDownloadStore((s) => s.isDownloading);
+  const isPaused = useDownloadStore((s) => s.isPaused);
+  const progress = useDownloadStore((s) => s.progress);
   const isSyncing = phase === "syncing";
   const isDownloading = phase === "downloading";
   const isBusy = isSyncing || isDownloading;
   const pct =
     progress.total > 0
-      ? Math.round((progress.done * 100) / progress.total)
+      ? Math.round((progress.done * PROGRESS_MAX_PERCENT) / progress.total)
       : 0;
   const idleDisabled = isAnyDownloadActive && !isDownloading;
 
@@ -84,19 +84,11 @@ export function TrackAndDownloadButton({
         >
           {isDownloading && progress.total > 0 ? (
             <div className="absolute inset-0" aria-hidden>
-              <svg
-                className="h-full w-full"
-                viewBox="0 0 100 1"
-                preserveAspectRatio="none"
-              >
-                <rect
-                  x={0}
-                  y={0}
-                  width={pct}
-                  height={1}
-                  className="fill-primary/20"
-                />
-              </svg>
+              <Progress
+                value={pct}
+                max={PROGRESS_MAX_PERCENT}
+                className="h-full rounded-none border-0"
+              />
             </div>
           ) : null}
           <span className="relative flex items-center gap-2">
@@ -107,7 +99,7 @@ export function TrackAndDownloadButton({
             ) : (
               <Download className="w-4 h-4" aria-hidden />
             )}
-            <span className="text-xs">
+            <span className="text-xs" aria-live="polite">
               {isSyncing
                 ? SYNCING_LABEL
                 : `${progress.done}/${progress.total}`}
@@ -146,22 +138,12 @@ export function TrackAndDownloadButton({
         ) : null}
       </div>
       {isDownloading && progress.total > 0 ? (
-        <div className="h-1 w-full max-w-[200px] rounded-full bg-muted overflow-hidden">
-          <svg
-            className="block h-1 w-full"
-            viewBox="0 0 100 1"
-            preserveAspectRatio="none"
-            aria-hidden
-          >
-            <rect
-              x={0}
-              y={0}
-              width={pct}
-              height={1}
-              className="fill-primary"
-            />
-          </svg>
-        </div>
+        <Progress
+          value={pct}
+          max={PROGRESS_MAX_PERCENT}
+          className="h-1 max-w-[200px]"
+          aria-hidden
+        />
       ) : null}
     </div>
   );

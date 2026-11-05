@@ -40,7 +40,8 @@ const checkPending = async (): Promise<PendingBannerState | null> => {
 
 export const PendingDownloadBanner: React.FC = () => {
   const isDownloading = useDownloadStore((s) => s.isDownloading);
-  const setDownloading = useDownloadStore((s) => s.setDownloading);
+  const startDownload = useDownloadStore((s) => s.startDownload);
+  const resetDownload = useDownloadStore((s) => s.resetDownload);
   const [pending, setPending] = useState<PendingBannerState | null>(null);
 
   useEffect(() => {
@@ -52,7 +53,11 @@ export const PendingDownloadBanner: React.FC = () => {
   }, []);
 
   const handleResume = async () => {
-    setDownloading(true);
+    if (pending) {
+      startDownload({ done: pending.done, total: pending.total });
+    } else {
+      startDownload();
+    }
     setPending(null);
     try {
       const result = await window.api.resumePendingDownload();
@@ -66,7 +71,7 @@ export const PendingDownloadBanner: React.FC = () => {
         error: error instanceof Error ? error.message : String(error),
       });
     } finally {
-      setDownloading(false);
+      resetDownload();
       void checkPending().then(setPending);
     }
   };

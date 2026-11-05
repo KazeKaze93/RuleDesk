@@ -17,6 +17,7 @@ import { cn } from "../../lib/utils";
 import { releaseRadixModalLock } from "../../lib/radix-modal-lock";
 import { formatRelativeTime } from "../../lib/formatRelativeTime";
 import { useSyncAll } from "../../hooks/useSyncAll";
+import { GlobalDownloadIndicator } from "../downloads/GlobalDownloadIndicator";
 
 const NAV_ITEM_BASE_CLASS =
   "flex items-center gap-3 rounded-md px-3 py-3 text-sm font-medium transition-colors [@media(max-height:700px)]:py-2.5 [@media(max-height:599px)]:py-2";
@@ -164,6 +165,7 @@ export const Sidebar = () => {
           </nav>
 
           <div className="relative z-10 p-4 space-y-2 border-t bg-muted/20 shrink-0 [@media(max-height:700px)]:p-3">
+            <GlobalDownloadIndicator />
             <Button
               type="button"
               variant="ghost"

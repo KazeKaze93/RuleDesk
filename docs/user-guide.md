@@ -328,7 +328,7 @@ The download will start, and you'll see a progress indicator.
 
 **Mass download (Download All / selected posts):**
 
-- Runs in a background worker (UI stays responsive). Progress shows on the button.
+- Runs in a background worker (UI stays responsive). Progress shows on the button and in a persistent sidebar indicator (count, bar, pause/resume, cancel) that stays visible if you navigate away. The indicator disappears when the batch finishes; the result toast is unchanged.
 - On **Browse**, download applies only to posts already loaded in the feed (see the button tooltip). To download everything from an artist, track them under **Tracked artists**, then use Download All on that artist's gallery.
 - List downloads (Browse loaded posts / Favorites·Updates·playlist **selected** posts): at most **5000** files (`BATCH_DOWNLOAD_LIST_MAX_FILES`). If you select more, the app shows an error and does **not** start the batch (no silent truncate). Artist gallery **Download All** and Favorites **Download all favorites** walk the local DB (cursor by row id) and are not limited by this list cap.
 - Partial failures do not discard successful files. The toast shows `Downloaded X, failed Y` with reason codes (network, 403/404/429, disk, timeout, unexpected cancel). A batch that finishes with zero saved and zero failed (and was not canceled) is treated as an error, not success. Success and failure toasts include **Show folder** to open the current download directory. Artist gallery can expand the failed list under the button.
