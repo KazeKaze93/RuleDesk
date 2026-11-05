@@ -29,14 +29,19 @@ const {
   };
 });
 
-type WorkerCompletePayload = {
-  type: "complete";
-  success: boolean;
-  downloaded: number;
-  failed: unknown[];
-  canceled: boolean;
-  canceledCount?: number;
-};
+type WorkerCompletePayload =
+  | {
+      type: "complete";
+      success: boolean;
+      downloaded: number;
+      failed: unknown[];
+      canceled: boolean;
+      canceledCount?: number;
+    }
+  | {
+      type: "error";
+      error: string;
+    };
 
 vi.mock("electron", () => ({
   app: {
@@ -113,6 +118,7 @@ vi.mock("../../../src/main/db/client", () => ({
 
 vi.mock("../../../src/main/providers/cdn-allowlist", () => ({
   isAllowedCdnUrl: () => true,
+  getAllowedCdnDomains: () => ["img.rule34.xxx"],
   DOWNLOAD_URL_NOT_ALLOWED_MESSAGE: "Download URL is not allowed.",
 }));
 
@@ -311,6 +317,28 @@ describe("FileController mass download silent-zero + open folder", () => {
     expect(result.success).toBe(false);
     expect(result.failed).toHaveLength(1);
     expect(result.error).toBeUndefined();
+  });
+
+  it("preserves worker failSetup error instead of replacing with accounting mismatch", async () => {
+    const workerError = "Cannot find module 'electron'";
+    nextCompletePayloadRef.current = {
+      type: "error",
+      error: workerError,
+    };
+
+    const result = await controller.downloadAll({
+      kind: "list",
+      items: [LIST_ITEM],
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.downloaded).toBe(0);
+    expect(result.failed).toEqual([]);
+    expect(result.canceled).toBe(false);
+    expect(result.error).toContain(workerError);
+    expect(result.error).toContain(
+      "Mass download accounting mismatch: downloaded=0, failed=0, canceledCount=0, expected=1"
+    );
   });
 
   it("openDownloadFolder returns typed error when shell.openPath fails", async () => {

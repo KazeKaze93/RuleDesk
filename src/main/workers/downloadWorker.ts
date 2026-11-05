@@ -29,9 +29,9 @@ import {
 } from "@shared/utils/download-failure";
 import {
   DOWNLOAD_URL_NOT_ALLOWED_MESSAGE,
-  assertCdnUrlAllowedForRedirect,
-  isAllowedCdnUrl,
-} from "../providers/cdn-allowlist";
+  assertCdnUrlAllowedForRedirectOnHosts,
+  isUrlAllowedOnCdnHosts,
+} from "@shared/utils/cdn-url-allowlist";
 import { DownloadRateLimitGate } from "./download-rate-limit-gate";
 
 /** Percent scale / completion threshold for download progress posts. */
@@ -71,13 +71,18 @@ interface WorkerData {
   /** Proxy URL string; worker builds its own agent. */
   proxyUrl: string | null;
   /**
+   * CDN hostnames computed by Main (`getAllowedCdnDomains`). Worker must not
+   * import the provider registry / electron-log.
+   */
+  allowedCdnDomains: readonly string[];
+  /**
    * Legacy flag. Worker never writes queue.json (Main uses writeFileAtomic).
    * Always treated as Main-owned ack path; `true` is ignored.
    */
   persistQueue?: boolean;
   /**
    * Test-only: skip CDN allowlist for the *initial* URL only (local HTTP loopback suites).
-   * Redirect hops always run `assertCdnUrlAllowedForRedirect` regardless of this flag.
+   * Redirect hops always run host checks regardless of this flag.
    * Production Main must never set this.
    */
   bypassCdnAllowlist?: boolean;
@@ -162,11 +167,13 @@ async function runWorker(): Promise<void> {
     duplicateFileBehavior,
     downloadFolderStructure,
     proxyUrl,
+    allowedCdnDomains,
     bypassCdnAllowlist = false,
   // boundary: worker message — workerData payload after trust/Zod
   // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion, no-restricted-syntax -- boundary: worker message
   } = workerData as WorkerData;
 
+  const allowedCdnHosts = new Set(allowedCdnDomains);
   let aborted = false;
   let paused = false;
   const activeControllers = new Set<AbortController>();
@@ -363,7 +370,10 @@ async function runWorker(): Promise<void> {
       return;
     }
 
-    if (!bypassCdnAllowlist && !isAllowedCdnUrl(item.url)) {
+    if (
+      !bypassCdnAllowlist &&
+      !isUrlAllowedOnCdnHosts(item.url, allowedCdnHosts)
+    ) {
       recordFailure(item, {
         code: "NETWORK",
         message: DOWNLOAD_URL_NOT_ALLOWED_MESSAGE,
@@ -406,7 +416,7 @@ async function runWorker(): Promise<void> {
           },
           // Always enforce CDN allowlist on redirect hops (ignore bypassCdnAllowlist).
           beforeRedirect: (options) => {
-            assertCdnUrlAllowedForRedirect(options);
+            assertCdnUrlAllowedForRedirectOnHosts(options, allowedCdnHosts);
           },
           onDownloadProgress: (ev: AxiosProgressEvent) => {
             if (aborted) {

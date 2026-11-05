@@ -78,6 +78,7 @@ import {
 } from "../../../shared/utils/download-failure";
 import {
   DOWNLOAD_URL_NOT_ALLOWED_MESSAGE,
+  getAllowedCdnDomains,
   isAllowedCdnUrl,
 } from "../../providers/cdn-allowlist";
 
@@ -304,15 +305,21 @@ export class FileController extends BaseController {
     ) {
       return result;
     }
+    const mismatch = formatBatchAccountingMismatchError({
+      downloaded: result.downloaded,
+      failedCount: result.failed.length,
+      canceledCount,
+      expectedItemCount,
+    });
+    const priorError =
+      typeof result.error === "string" && result.error.trim().length > 0
+        ? result.error.trim()
+        : undefined;
     return {
       ...result,
       success: false,
-      error: formatBatchAccountingMismatchError({
-        downloaded: result.downloaded,
-        failedCount: result.failed.length,
-        canceledCount,
-        expectedItemCount,
-      }),
+      error:
+        priorError !== undefined ? `${priorError}; ${mismatch}` : mismatch,
     };
   }
 
@@ -799,6 +806,8 @@ export class FileController extends BaseController {
     let canceled = false;
     let attemptedItemCount = 0;
     let canceledCount = 0;
+    let workerBatchOk = true;
+    let workerError: string | undefined;
 
     try {
       while (!this.massDownloadCancelRequested) {
@@ -841,8 +850,26 @@ export class FileController extends BaseController {
         downloaded += chunkResult.downloaded;
         failed.push(...chunkResult.failed);
         canceledCount += parseCanceledCount(chunkResult.canceledCount);
+        if (chunkResult.success === false) {
+          workerBatchOk = false;
+          if (
+            typeof chunkResult.error === "string" &&
+            chunkResult.error.trim().length > 0
+          ) {
+            workerError = chunkResult.error.trim();
+          }
+        }
         if (!shouldAdvanceArtistCursorAfterChunk(chunkResult.canceled)) {
           canceled = true;
+          break;
+        }
+        // Worker setup/runtime failure with no progress — stop the artist walk.
+        if (
+          chunkResult.success === false &&
+          chunkResult.downloaded === 0 &&
+          chunkResult.failed.length === 0 &&
+          !chunkResult.canceled
+        ) {
           break;
         }
 
@@ -870,11 +897,12 @@ export class FileController extends BaseController {
       // not per-chunk — a per-chunk guard error would be dropped when aggregating.
       const result = this.applyBatchAccountingGuard(
         {
-          success: failed.length === 0 && !canceled,
+          success: workerBatchOk && failed.length === 0 && !canceled,
           downloaded,
           failed,
           canceled,
           canceledCount,
+          ...(workerError !== undefined ? { error: workerError } : {}),
         },
         attemptedItemCount
       );
@@ -978,6 +1006,7 @@ export class FileController extends BaseController {
       const result = this.applyBatchAccountingGuard(
         {
           success:
+            workerResult.success !== false &&
             workerResult.failed.length === 0 &&
             !workerResult.canceled &&
             !this.massDownloadCancelRequested,
@@ -1062,6 +1091,7 @@ export class FileController extends BaseController {
             queueFilePath: this.getQueueFilePath(),
             proxyUrl,
             persistQueue: params.persistQueue,
+            allowedCdnDomains: getAllowedCdnDomains(),
           },
         });
         this.downloadWorker = worker;
