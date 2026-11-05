@@ -4,10 +4,10 @@ import log from "electron-log/renderer";
 import { Settings as SettingsIcon } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { PageHeader } from "../../components/layout/PageHeader";
-import { SettingsGeneralTab } from "./SettingsGeneralTab";
+import { SettingsGeneralTab, SettingsSetupSection } from "./SettingsGeneralTab";
 import { SettingsSyncTab } from "./SettingsSyncTab";
 import { SettingsAppearanceTab } from "./SettingsAppearanceTab";
-import { SettingsBackupTab } from "./SettingsBackupTab";
+import { SettingsDataTab } from "./SettingsDataTab";
 import { SettingsAccountTab } from "./SettingsAccountTab";
 import { SettingsBlacklistTab } from "./SettingsBlacklistTab";
 import { SettingsHelpTab } from "./SettingsHelpTab";
@@ -19,6 +19,14 @@ import {
   parseSettingsTab,
   type SettingsTab,
 } from "../../lib/settings-tab";
+
+const TAB_GENERAL_LABEL = "General";
+const TAB_ACCOUNT_LABEL = "Account";
+const TAB_BLACKLIST_LABEL = "Blacklist";
+const TAB_DATA_LABEL = "Data";
+const TAB_HELP_LABEL = "Help";
+const PAGE_TITLE = "Settings";
+const PAGE_DESCRIPTION = "Manage application preferences in focused sections.";
 
 const STATUS_FEEDBACK_TIMEOUT_MS = 5000;
 type StatusTimerKey =
@@ -451,87 +459,94 @@ export const Settings = () => {
   return (
     <section className="container max-w-4xl space-y-6 py-8">
       <PageHeader
-        title="Settings"
-        description="Manage application preferences in focused sections."
+        title={PAGE_TITLE}
+        description={PAGE_DESCRIPTION}
         icon={SettingsIcon}
       />
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
         <TabsList className="flex w-full flex-wrap justify-start gap-1">
-          <TabsTrigger value={SETTINGS_TAB.GENERAL}>General</TabsTrigger>
-          <TabsTrigger value={SETTINGS_TAB.SYNC}>Sync</TabsTrigger>
-          <TabsTrigger value={SETTINGS_TAB.APPEARANCE}>Appearance</TabsTrigger>
-          <TabsTrigger value={SETTINGS_TAB.BACKUP}>Backup</TabsTrigger>
-          <TabsTrigger value={SETTINGS_TAB.ACCOUNT}>Account</TabsTrigger>
-          <TabsTrigger value={SETTINGS_TAB.BLACKLIST}>Blacklist</TabsTrigger>
-          <TabsTrigger value={SETTINGS_TAB.HELP}>Help</TabsTrigger>
+          <TabsTrigger value={SETTINGS_TAB.GENERAL}>{TAB_GENERAL_LABEL}</TabsTrigger>
+          <TabsTrigger value={SETTINGS_TAB.DATA}>{TAB_DATA_LABEL}</TabsTrigger>
+          <TabsTrigger value={SETTINGS_TAB.ACCOUNT}>{TAB_ACCOUNT_LABEL}</TabsTrigger>
+          <TabsTrigger value={SETTINGS_TAB.BLACKLIST}>{TAB_BLACKLIST_LABEL}</TabsTrigger>
+          <TabsTrigger value={SETTINGS_TAB.HELP}>{TAB_HELP_LABEL}</TabsTrigger>
         </TabsList>
 
         <TabsContent value={SETTINGS_TAB.GENERAL}>
-          <SettingsGeneralTab
-            downloadFolder={downloadFolder}
-            downloadFolderStatus={downloadFolderStatus}
-            duplicateFileBehavior={duplicateFileBehavior}
-            downloadFolderStructure={downloadFolderStructure}
-            proxyUrl={proxyUrl}
-            proxyStatus={proxyStatus}
-            onSelectDownloadFolder={() => {
-              void handleSelectDownloadFolder();
-            }}
-            onResetDownloadFolder={() => {
-              void handleResetDownloadFolder();
-            }}
-            onDuplicateFileBehaviorChange={(value) => {
-              void handleDuplicateFileBehaviorChange(value);
-            }}
-            onDownloadFolderStructureChange={(value) => {
-              void handleDownloadFolderStructureChange(value);
-            }}
-            onProxyUrlChange={(value) => {
-              setProxyUrl(value.length > 0 ? value : null);
-            }}
-            onProxyBlur={() => {
-              void handleSaveProxy(false);
-            }}
-            onSaveProxy={() => {
-              void handleSaveProxy(true);
-            }}
-            minimizeToTray={minimizeToTray}
-            onMinimizeToTrayChange={(checked) => {
-              void handleMinimizeToTrayChange(checked);
-            }}
-          />
+          <div className="space-y-4">
+            <SettingsSetupSection
+              downloadFolder={downloadFolder}
+              downloadFolderStatus={downloadFolderStatus}
+              autoSyncOnStartup={autoSyncOnStartup}
+              theme={theme}
+              isThemeSaving={isThemeSaving}
+              onSelectDownloadFolder={() => {
+                void handleSelectDownloadFolder();
+              }}
+              onResetDownloadFolder={() => {
+                void handleResetDownloadFolder();
+              }}
+              onAutoSyncChange={(checked) => {
+                void handleAutoSyncOnStartupChange(checked);
+              }}
+              onThemeChange={(value) => {
+                setTheme(value);
+              }}
+            />
+            <SettingsGeneralTab
+              duplicateFileBehavior={duplicateFileBehavior}
+              downloadFolderStructure={downloadFolderStructure}
+              proxyUrl={proxyUrl}
+              proxyStatus={proxyStatus}
+              onDuplicateFileBehaviorChange={(value) => {
+                void handleDuplicateFileBehaviorChange(value);
+              }}
+              onDownloadFolderStructureChange={(value) => {
+                void handleDownloadFolderStructureChange(value);
+              }}
+              onProxyUrlChange={(value) => {
+                setProxyUrl(value.length > 0 ? value : null);
+              }}
+              onProxyBlur={() => {
+                void handleSaveProxy(false);
+              }}
+              onSaveProxy={() => {
+                void handleSaveProxy(true);
+              }}
+              minimizeToTray={minimizeToTray}
+              onMinimizeToTrayChange={(checked) => {
+                void handleMinimizeToTrayChange(checked);
+              }}
+            />
+            <SettingsSyncTab
+              autoSyncOnStartup={autoSyncOnStartup}
+              autoSyncOnArtistAdd={autoSyncOnArtistAdd}
+              syncIntervalMinutes={syncIntervalMinutes}
+              showStartupSync={false}
+              onAutoSyncChange={(checked) => {
+                void handleAutoSyncOnStartupChange(checked);
+              }}
+              onAutoSyncOnArtistAddChange={(checked) => {
+                void handleAutoSyncOnArtistAddChange(checked);
+              }}
+              onSyncIntervalChange={(value) => {
+                void handleSyncIntervalChange(value);
+              }}
+            />
+            <SettingsAppearanceTab
+              theme={theme}
+              isThemeSaving={isThemeSaving}
+              showTheme={false}
+              onThemeChange={(value) => {
+                setTheme(value);
+              }}
+            />
+          </div>
         </TabsContent>
 
-        <TabsContent value={SETTINGS_TAB.SYNC}>
-          <SettingsSyncTab
-            autoSyncOnStartup={autoSyncOnStartup}
-            autoSyncOnArtistAdd={autoSyncOnArtistAdd}
-            syncIntervalMinutes={syncIntervalMinutes}
-            onAutoSyncChange={(checked) => {
-              void handleAutoSyncOnStartupChange(checked);
-            }}
-            onAutoSyncOnArtistAddChange={(checked) => {
-              void handleAutoSyncOnArtistAddChange(checked);
-            }}
-            onSyncIntervalChange={(value) => {
-              void handleSyncIntervalChange(value);
-            }}
-          />
-        </TabsContent>
-
-        <TabsContent value={SETTINGS_TAB.APPEARANCE}>
-          <SettingsAppearanceTab
-            theme={theme}
-            isThemeSaving={isThemeSaving}
-            onThemeChange={(value) => {
-              setTheme(value);
-            }}
-          />
-        </TabsContent>
-
-        <TabsContent value={SETTINGS_TAB.BACKUP}>
-          <SettingsBackupTab
+        <TabsContent value={SETTINGS_TAB.DATA}>
+          <SettingsDataTab
             databaseLocation={databaseLocation}
             isBackingUp={isBackingUp}
             isRestoring={isRestoring}

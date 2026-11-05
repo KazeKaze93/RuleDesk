@@ -4,22 +4,25 @@ import {
   SETTINGS_PATH,
   SETTINGS_TAB,
   SETTINGS_TAB_QUERY_PARAM,
+  SETTINGS_TABS,
   parseSettingsTab,
 } from "@/lib/settings-tab";
 
 describe("parseSettingsTab", () => {
-  it("returns the matching tab for every valid id", () => {
+  it("returns the matching tab for every current id", () => {
     expect(parseSettingsTab(SETTINGS_TAB.GENERAL)).toBe(SETTINGS_TAB.GENERAL);
-    expect(parseSettingsTab(SETTINGS_TAB.SYNC)).toBe(SETTINGS_TAB.SYNC);
-    expect(parseSettingsTab(SETTINGS_TAB.APPEARANCE)).toBe(
-      SETTINGS_TAB.APPEARANCE
-    );
-    expect(parseSettingsTab(SETTINGS_TAB.BACKUP)).toBe(SETTINGS_TAB.BACKUP);
     expect(parseSettingsTab(SETTINGS_TAB.ACCOUNT)).toBe(SETTINGS_TAB.ACCOUNT);
     expect(parseSettingsTab(SETTINGS_TAB.BLACKLIST)).toBe(
       SETTINGS_TAB.BLACKLIST
     );
+    expect(parseSettingsTab(SETTINGS_TAB.DATA)).toBe(SETTINGS_TAB.DATA);
     expect(parseSettingsTab(SETTINGS_TAB.HELP)).toBe(SETTINGS_TAB.HELP);
+  });
+
+  it("maps legacy tab ids to their merged tabs", () => {
+    expect(parseSettingsTab("sync")).toBe(SETTINGS_TAB.GENERAL);
+    expect(parseSettingsTab("appearance")).toBe(SETTINGS_TAB.GENERAL);
+    expect(parseSettingsTab("backup")).toBe(SETTINGS_TAB.DATA);
   });
 
   it("falls back to general for garbage values", () => {
@@ -31,6 +34,18 @@ describe("parseSettingsTab", () => {
 
   it("falls back to general for null", () => {
     expect(parseSettingsTab(null)).toBe(SETTINGS_TAB.GENERAL);
+  });
+});
+
+describe("SETTINGS_TABS", () => {
+  it("exposes exactly five current tab ids", () => {
+    expect(SETTINGS_TABS).toEqual([
+      SETTINGS_TAB.GENERAL,
+      SETTINGS_TAB.DATA,
+      SETTINGS_TAB.ACCOUNT,
+      SETTINGS_TAB.BLACKLIST,
+      SETTINGS_TAB.HELP,
+    ]);
   });
 });
 
