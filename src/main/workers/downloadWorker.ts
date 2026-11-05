@@ -25,6 +25,7 @@ import {
   classifyDownloadFailure,
   isRetryableDownloadFailure,
   parseRetryAfterMs,
+  unexpectedAbortFailure,
 } from "@shared/utils/download-failure";
 import {
   DOWNLOAD_URL_NOT_ALLOWED_MESSAGE,
@@ -35,15 +36,6 @@ import { DownloadRateLimitGate } from "./download-rate-limit-gate";
 
 /** Percent scale / completion threshold for download progress posts. */
 export const DOWNLOAD_PROGRESS_COMPLETE_PERCENT = 100;
-
-/**
- * Failure message when classify maps an abort-like error but the batch was not
- * user-canceled (`aborted === false`). Code stays CANCELLED (abort-shaped;
- * UI already understands that code); membership in `failed` + this message is
- * what distinguishes it from a real user cancel.
- */
-export const UNEXPECTED_DOWNLOAD_ABORT_MESSAGE =
-  "Download aborted unexpectedly without a user cancel request";
 
 /**
  * Whether to post an onDownloadProgress update for this item.
@@ -67,29 +59,6 @@ export function outcomeForCancelledDownload(
   aborted: boolean
 ): "user-cancel" | "unexpected-abort" {
   return aborted ? "user-cancel" : "unexpected-abort";
-}
-
-/** Stable failure payload for unexpected abort (code remains CANCELLED). */
-export function unexpectedAbortFailure(): ReturnType<
-  typeof classifyDownloadFailure
-> {
-  return {
-    code: "CANCELLED",
-    message: UNEXPECTED_DOWNLOAD_ABORT_MESSAGE,
-  };
-}
-
-/**
- * Batch accounting: every item ends as completed, failed, or user-canceled.
- * `canceledCount` includes in-flight cancels plus never-started queue leftovers.
- */
-export function downloadBatchAccountsFor(
-  downloaded: number,
-  failedCount: number,
-  canceledCount: number,
-  itemCount: number
-): boolean {
-  return downloaded + failedCount + canceledCount === itemCount;
 }
 
 interface WorkerData {
@@ -530,7 +499,7 @@ async function runWorker(): Promise<void> {
             noteUserCanceled(item);
             return;
           }
-          recordFailure(item, unexpectedAbortFailure());
+          recordFailure(item, unexpectedAbortFailure(classified, err));
           return;
         }
         recordFailure(item, classified);

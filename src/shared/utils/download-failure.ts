@@ -96,6 +96,84 @@ export type ClassifiedDownloadFailure = {
 };
 
 /**
+ * Prefix for unexpected abort-shaped failures when the batch was not user-canceled.
+ * Full message appends the original classifier/error details for Main/UI diagnostics.
+ */
+export const UNEXPECTED_DOWNLOAD_ABORT_PREFIX =
+  "Unexpected download abort";
+
+/**
+ * Batch accounting: every item ends as completed, failed, or user-canceled.
+ * Shared by Main and the download worker (Main must not import from the worker file).
+ */
+export function accountsForBatch(
+  downloaded: number,
+  failedCount: number,
+  canceledCount: number,
+  itemCount: number
+): boolean {
+  return downloaded + failedCount + canceledCount === itemCount;
+}
+
+/** Error text when accounting does not match and the batch was not user-canceled. */
+export function formatBatchAccountingMismatchError(params: {
+  downloaded: number;
+  failedCount: number;
+  canceledCount: number;
+  expectedItemCount: number;
+}): string {
+  return (
+    `Mass download accounting mismatch: downloaded=${params.downloaded}, ` +
+    `failed=${params.failedCount}, canceledCount=${params.canceledCount}, ` +
+    `expected=${params.expectedItemCount}`
+  );
+}
+
+function readErrorName(err: unknown): string | undefined {
+  if (typeof err !== "object" || err === null) {
+    return undefined;
+  }
+  if (!("name" in err)) {
+    return undefined;
+  }
+  return typeof err.name === "string" && err.name.length > 0
+    ? err.name
+    : undefined;
+}
+
+/**
+ * CANCELLED failure for abort-shaped errors when `aborted === false`.
+ * Keeps code CANCELLED; message preserves original cause for Main logs / UI.
+ */
+export function unexpectedAbortFailure(
+  classified: ClassifiedDownloadFailure,
+  err: unknown
+): ClassifiedDownloadFailure {
+  const originalMessage =
+    classified.message.trim().length > 0
+      ? classified.message.trim()
+      : messageOf(err).trim() || "unknown cause";
+  const name = readErrorName(err);
+  const errno = readErrnoCode(err);
+  const detailParts: string[] = [];
+  if (name !== undefined) {
+    detailParts.push(name);
+  }
+  if (errno !== undefined) {
+    detailParts.push(errno);
+  }
+  const detailSuffix =
+    detailParts.length > 0 ? ` (${detailParts.join(", ")})` : "";
+  return {
+    code: "CANCELLED",
+    message: `${UNEXPECTED_DOWNLOAD_ABORT_PREFIX}: ${originalMessage}${detailSuffix}`,
+    ...(classified.httpStatus !== undefined
+      ? { httpStatus: classified.httpStatus }
+      : {}),
+  };
+}
+
+/**
  * Maps thrown download errors to stable failure codes for UI + logging.
  * Pure: no I/O. Used by the download worker and unit tests.
  */

@@ -1,28 +1,28 @@
 import { describe, expect, it } from "vitest";
-import { classifyDownloadFailure } from "../../../src/shared/utils/download-failure";
 import {
-  downloadBatchAccountsFor,
-  outcomeForCancelledDownload,
+  accountsForBatch,
+  classifyDownloadFailure,
   unexpectedAbortFailure,
-  UNEXPECTED_DOWNLOAD_ABORT_MESSAGE,
-} from "../../../src/main/workers/downloadWorker";
+  UNEXPECTED_DOWNLOAD_ABORT_PREFIX,
+} from "../../../src/shared/utils/download-failure";
+import { outcomeForCancelledDownload } from "../../../src/main/workers/downloadWorker";
 
 describe("downloadWorker silent-cancel / unexpected abort", () => {
-  it("abort-like error without user cancel → entry in failed (CANCELLED)", () => {
-    const classified = classifyDownloadFailure({
-      name: "AbortError",
-      message: "The operation was aborted.",
-    });
+  it("abort-like error without user cancel → entry in failed (CANCELLED) with cause", () => {
+    const err = new DOMException("The operation was aborted.", "AbortError");
+    const classified = classifyDownloadFailure(err);
     expect(classified.code).toBe("CANCELLED");
     expect(outcomeForCancelledDownload(false)).toBe("unexpected-abort");
 
-    const failure = unexpectedAbortFailure();
+    const failure = unexpectedAbortFailure(classified, err);
     expect(failure.code).toBe("CANCELLED");
-    expect(failure.message).toBe(UNEXPECTED_DOWNLOAD_ABORT_MESSAGE);
+    expect(failure.message).toContain(UNEXPECTED_DOWNLOAD_ABORT_PREFIX);
+    expect(failure.message).toContain("The operation was aborted.");
+    expect(failure.message).toContain("AbortError");
 
     const failed = [failure];
     expect(failed.some((f) => f.code === "CANCELLED")).toBe(true);
-    expect(downloadBatchAccountsFor(0, failed.length, 0, 1)).toBe(true);
+    expect(accountsForBatch(0, failed.length, 0, 1)).toBe(true);
   });
 
   it("user cancel → canceled, not in failed", () => {
@@ -31,45 +31,41 @@ describe("downloadWorker silent-cancel / unexpected abort", () => {
     const failed: Array<{ code: string }> = [];
     const canceledCount = 1;
     expect(failed).toHaveLength(0);
-    expect(downloadBatchAccountsFor(0, failed.length, canceledCount, 1)).toBe(
-      true
-    );
+    expect(accountsForBatch(0, failed.length, canceledCount, 1)).toBe(true);
   });
 
   it("completed + failed + canceledCount === items.length for covered scenarios", () => {
     const itemCount = 5;
-    // 2 completed, 1 unexpected abort in failed, 2 user-canceled
+    const err = new DOMException("aborted mid-flight", "AbortError");
     const downloaded = 2;
-    const failed = [unexpectedAbortFailure()];
+    const failed = [unexpectedAbortFailure(classifyDownloadFailure(err), err)];
     const canceledCount = 2;
     expect(
-      downloadBatchAccountsFor(
-        downloaded,
-        failed.length,
-        canceledCount,
-        itemCount
-      )
+      accountsForBatch(downloaded, failed.length, canceledCount, itemCount)
     ).toBe(true);
 
-    // Pure user-cancel of whole batch
-    expect(downloadBatchAccountsFor(0, 0, 5, 5)).toBe(true);
-
-    // All success
-    expect(downloadBatchAccountsFor(5, 0, 0, 5)).toBe(true);
-
-    // Mismatch is false
-    expect(downloadBatchAccountsFor(1, 0, 0, 5)).toBe(false);
+    expect(accountsForBatch(0, 0, 5, 5)).toBe(true);
+    expect(accountsForBatch(5, 0, 0, 5)).toBe(true);
+    expect(accountsForBatch(1, 0, 0, 5)).toBe(false);
   });
 
   it("CanceledError / ERR_CANCELED without aborted flag map to unexpected-abort path", () => {
+    const canceledErr = Object.assign(new Error("canceled"), {
+      name: "CanceledError",
+    });
+    expect(classifyDownloadFailure(canceledErr).code).toBe("CANCELLED");
     expect(
-      classifyDownloadFailure({ name: "CanceledError", message: "canceled" })
-        .code
-    ).toBe("CANCELLED");
-    expect(
-      classifyDownloadFailure({ code: "ERR_CANCELED", message: "canceled" }).code
+      classifyDownloadFailure(
+        Object.assign(new Error("canceled"), { code: "ERR_CANCELED" })
+      ).code
     ).toBe("CANCELLED");
     expect(outcomeForCancelledDownload(false)).toBe("unexpected-abort");
-    expect(unexpectedAbortFailure().code).toBe("CANCELLED");
+
+    const classified = classifyDownloadFailure(canceledErr);
+    const failure = unexpectedAbortFailure(classified, canceledErr);
+    expect(failure.code).toBe("CANCELLED");
+    expect(failure.message).toContain(UNEXPECTED_DOWNLOAD_ABORT_PREFIX);
+    expect(failure.message).toContain("canceled");
+    expect(failure.message).toContain("CanceledError");
   });
 });

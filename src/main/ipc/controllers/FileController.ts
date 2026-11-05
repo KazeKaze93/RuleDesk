@@ -71,7 +71,11 @@ import type {
   DownloadQueueItem,
   PendingDownloadInfo,
 } from "../../../shared/types/download";
-import { remainingDownloadItems } from "../../../shared/utils/download-failure";
+import {
+  accountsForBatch,
+  formatBatchAccountingMismatchError,
+  remainingDownloadItems,
+} from "../../../shared/utils/download-failure";
 import {
   DOWNLOAD_URL_NOT_ALLOWED_MESSAGE,
   isAllowedCdnUrl,
@@ -81,9 +85,6 @@ const DEFAULT_DOWNLOAD_ROOT = path.join(app.getPath("downloads"), "BooruClient")
 const DOWNLOAD_QUEUE_FILE = "download-queue.json";
 const DOWNLOAD_QUEUE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const MASS_DOWNLOAD_LOG_PREFIX = "[FileController] Mass download";
-/** Non-empty batch returned 0 downloaded + 0 failed without cancel (silent-zero class). */
-const SILENT_ZERO_ERROR =
-  "Mass download finished without processing any items (0 downloaded, 0 failed, not canceled).";
 const OPEN_DOWNLOAD_FOLDER_FAILED_MESSAGE =
   "Could not open the download folder.";
 
@@ -280,27 +281,39 @@ export class FileController extends BaseController {
   }
 
   /**
-   * Non-empty batch that reports 0 downloaded + 0 failed without cancel is a
-   * silent-zero failure (not a successful empty run).
-   * CANCELLED rows inside `failed` do not count as a clean cancel — only
-   * `result.canceled === true` does.
+   * When the batch was not user-canceled, every item must account as
+   * downloaded, failed, or canceledCount. Full silent-zero (0/0/0) is the
+   * same mismatch. CANCELLED rows in `failed` are not a clean cancel —
+   * only `result.canceled === true` skips this check.
    */
-  private applySilentZeroGuard(
+  private applyBatchAccountingGuard(
     result: MassDownloadBatchResult,
     expectedItemCount: number
   ): MassDownloadBatchResult {
-    if (
-      expectedItemCount > 0 &&
-      result.downloaded + result.failed.length === 0 &&
-      !result.canceled
-    ) {
-      return {
-        ...result,
-        success: false,
-        error: result.error ?? SILENT_ZERO_ERROR,
-      };
+    if (result.canceled) {
+      return result;
     }
-    return result;
+    const canceledCount = parseCanceledCount(result.canceledCount);
+    if (
+      accountsForBatch(
+        result.downloaded,
+        result.failed.length,
+        canceledCount,
+        expectedItemCount
+      )
+    ) {
+      return result;
+    }
+    return {
+      ...result,
+      success: false,
+      error: formatBatchAccountingMismatchError({
+        downloaded: result.downloaded,
+        failedCount: result.failed.length,
+        canceledCount,
+        expectedItemCount,
+      }),
+    };
   }
 
   /**
@@ -853,7 +866,9 @@ export class FileController extends BaseController {
         await this.writeQueueFile(state);
       }
 
-      const result = this.applySilentZeroGuard(
+      // Artist path: reconcile on the aggregate of all chunks (attemptedItemCount),
+      // not per-chunk — a per-chunk guard error would be dropped when aggregating.
+      const result = this.applyBatchAccountingGuard(
         {
           success: failed.length === 0 && !canceled,
           downloaded,
@@ -960,7 +975,7 @@ export class FileController extends BaseController {
         await this.writeQueueFile(state);
       }
 
-      const result = this.applySilentZeroGuard(
+      const result = this.applyBatchAccountingGuard(
         {
           success:
             workerResult.failed.length === 0 &&
@@ -1151,18 +1166,15 @@ export class FileController extends BaseController {
               const canceled = msg.canceled ?? false;
               // P1 complete payload; default 0 when absent (older workers / partial mocks).
               const canceledCount = parseCanceledCount(msg.canceledCount);
-              this.settleBatch(
-                this.applySilentZeroGuard(
-                  {
-                    success: msg.success ?? false,
-                    downloaded,
-                    failed,
-                    canceled,
-                    canceledCount,
-                  },
-                  params.items.length
-                )
-              );
+              // Do not apply accounting guard here: artist path aggregates chunks
+              // and reconciles once on attemptedItemCount; list path guards at return.
+              this.settleBatch({
+                success: msg.success ?? false,
+                downloaded,
+                failed,
+                canceled,
+                canceledCount,
+              });
               return;
             }
 

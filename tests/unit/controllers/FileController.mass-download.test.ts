@@ -175,7 +175,7 @@ describe("FileController mass download silent-zero + open folder", () => {
     controller = new FileController() as unknown as FileControllerInternals;
   });
 
-  it("forces success false when non-empty list ends 0/0/not-canceled", async () => {
+  it("forces success false when non-empty list ends 0/0/0/not-canceled", async () => {
     const result = await controller.downloadAll({
       kind: "list",
       items: [LIST_ITEM],
@@ -185,7 +185,56 @@ describe("FileController mass download silent-zero + open folder", () => {
     expect(result.downloaded).toBe(0);
     expect(result.failed).toEqual([]);
     expect(result.canceled).toBe(false);
-    expect(result.error).toMatch(/without processing any items/i);
+    expect(result.error).toBe(
+      "Mass download accounting mismatch: downloaded=0, failed=0, canceledCount=0, expected=1"
+    );
+  });
+
+  it("forces success false on partial accounting loss (30/0/0 of 50)", async () => {
+    const items = Array.from({ length: 50 }, (_, i) => ({
+      url: `https://img.rule34.xxx/images/1/item-${i}.jpg`,
+      filename: `item-${i}.jpg`,
+    }));
+    nextCompletePayloadRef.current = {
+      type: "complete",
+      success: true,
+      downloaded: 30,
+      failed: [],
+      canceled: false,
+      canceledCount: 0,
+    };
+
+    const result = await controller.downloadAll({
+      kind: "list",
+      items,
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.downloaded).toBe(30);
+    expect(result.failed).toEqual([]);
+    expect(result.canceled).toBe(false);
+    expect(result.error).toBe(
+      "Mass download accounting mismatch: downloaded=30, failed=0, canceledCount=0, expected=50"
+    );
+  });
+
+  it("keeps success when downloaded + failed + canceledCount matches items", async () => {
+    nextCompletePayloadRef.current = {
+      type: "complete",
+      success: true,
+      downloaded: 1,
+      failed: [],
+      canceled: false,
+      canceledCount: 0,
+    };
+
+    const result = await controller.downloadAll({
+      kind: "list",
+      items: [LIST_ITEM],
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.error).toBeUndefined();
   });
 
   it("logs mass-download start and end for a list batch", async () => {
