@@ -8,8 +8,10 @@ const {
   unlinkMock,
   writeFileAtomicMock,
   openPathMock,
+  accessMock,
   logInfoMock,
   nextCompletePayloadRef,
+  settingsRowRef,
 } = vi.hoisted(() => {
   const payload = {
     type: "complete" as const,
@@ -24,8 +26,12 @@ const {
     unlinkMock: vi.fn(),
     writeFileAtomicMock: vi.fn(),
     openPathMock: vi.fn(),
+    accessMock: vi.fn().mockResolvedValue(undefined),
     logInfoMock: vi.fn(),
     nextCompletePayloadRef: { current: payload },
+    settingsRowRef: {
+      current: undefined as { downloadFolder?: string | null } | undefined,
+    },
   };
 });
 
@@ -87,7 +93,7 @@ vi.mock("electron-log", () => ({
 }));
 
 vi.mock("fs/promises", () => ({
-  access: vi.fn().mockResolvedValue(undefined),
+  access: (...args: unknown[]) => accessMock(...args),
   mkdir: vi.fn().mockResolvedValue(undefined),
   readFile: (...args: unknown[]) => readFileMock(...args),
   writeFile: vi.fn().mockResolvedValue(undefined),
@@ -107,7 +113,7 @@ vi.mock("../../../src/main/db/client", () => ({
       from: () => ({
         where: () => ({
           limit: () => ({
-            get: () => undefined,
+            get: () => settingsRowRef.current,
           }),
         }),
       }),
@@ -147,6 +153,13 @@ import { FileController } from "../../../src/main/ipc/controllers/FileController
 type FileControllerInternals = {
   downloadAll: (request: DownloadAllRequest) => Promise<DownloadAllResult>;
   openDownloadFolder: () => Promise<OpenDownloadFolderResult>;
+  getDownloadFolderInfo: () => Promise<{
+    path: string;
+    configuredPath: string | null;
+    isDefault: boolean;
+    usingFallback: boolean;
+  }>;
+  getDownloadRoot: () => Promise<string>;
 };
 
 const LIST_ITEM = {
@@ -162,7 +175,10 @@ describe("FileController mass download silent-zero + open folder", () => {
     unlinkMock.mockReset();
     writeFileAtomicMock.mockReset();
     openPathMock.mockReset();
+    accessMock.mockReset();
+    accessMock.mockResolvedValue(undefined);
     logInfoMock.mockReset();
+    settingsRowRef.current = undefined;
     readFileMock.mockRejectedValue(
       Object.assign(new Error("ENOENT"), { code: "ENOENT" })
     );
@@ -359,5 +375,35 @@ describe("FileController mass download silent-zero + open folder", () => {
     const result = await controller.openDownloadFolder();
 
     expect(result).toEqual({ ok: true });
+  });
+
+  it("getDownloadFolderInfo returns the same path mass-download uses", async () => {
+    const info = await controller.getDownloadFolderInfo();
+    const root = await controller.getDownloadRoot();
+
+    expect(info.path).toBe(root);
+    expect(info.isDefault).toBe(true);
+    expect(info.configuredPath).toBeNull();
+    expect(info.usingFallback).toBe(false);
+    expect(info.path.replace(/\\/g, "/")).toMatch(/BooruClient$/);
+  });
+
+  it("marks usingFallback when the saved folder is inaccessible", async () => {
+    const unavailable = "D:\\missing-downloads";
+    settingsRowRef.current = { downloadFolder: unavailable };
+    accessMock.mockImplementation(async (target: unknown) => {
+      if (String(target) === unavailable) {
+        throw Object.assign(new Error("ENOENT"), { code: "ENOENT" });
+      }
+    });
+
+    const info = await controller.getDownloadFolderInfo();
+    const root = await controller.getDownloadRoot();
+
+    expect(info.path).toBe(root);
+    expect(info.path.replace(/\\/g, "/")).toMatch(/BooruClient$/);
+    expect(info.configuredPath).toBe(unavailable);
+    expect(info.isDefault).toBe(false);
+    expect(info.usingFallback).toBe(true);
   });
 });

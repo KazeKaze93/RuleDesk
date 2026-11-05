@@ -58,8 +58,10 @@ import { BATCH_DOWNLOAD_CHUNK_SIZE } from "../../../shared/constants";
 import { isErrnoException } from "../../../shared/utils/type-guards";
 import {
   DownloadAllRequestSchema,
+  GetDownloadFolderResultSchema,
   OpenDownloadFolderResultSchema,
   type DownloadAllRequest,
+  type GetDownloadFolderResult,
   type OpenDownloadFolderResult,
 } from "../../../shared/schemas/download";
 import type {
@@ -498,9 +500,12 @@ export class FileController extends BaseController {
   }
 
   /**
-   * Get download root folder from settings (or default)
+   * Resolve the mass-download root once (single DB read).
+   * Batch downloads and Settings share this; inaccessible saved folders still
+   * fall back to DEFAULT_DOWNLOAD_ROOT (visible via usingFallback).
    */
-  private async getDownloadRoot(): Promise<string> {
+  private async resolveDownloadFolder(): Promise<GetDownloadFolderResult> {
+    let configuredPath: string | null = null;
     try {
       const db = getDb();
       const row = db
@@ -510,18 +515,55 @@ export class FileController extends BaseController {
         .limit(1)
         .get();
       const folder = row?.downloadFolder?.trim();
-      if (folder) {
-        try {
-          await access(folder);
-          return folder;
-        } catch {
-          /* folder doesn't exist or inaccessible */
-        }
+      if (folder !== undefined && folder.length > 0) {
+        configuredPath = folder;
       }
     } catch (e) {
-      log.warn("[FileController] Failed to get download folder from settings:", e);
+      log.warn("[FileController] Failed to read download folder from settings:", e);
     }
-    return DEFAULT_DOWNLOAD_ROOT;
+
+    if (configuredPath !== null) {
+      try {
+        await access(configuredPath);
+        return GetDownloadFolderResultSchema.parse({
+          path: configuredPath,
+          configuredPath,
+          isDefault: false,
+          usingFallback: false,
+        });
+      } catch {
+        /* folder doesn't exist or inaccessible — fall back to default */
+        return GetDownloadFolderResultSchema.parse({
+          path: DEFAULT_DOWNLOAD_ROOT,
+          configuredPath,
+          isDefault: false,
+          usingFallback: true,
+        });
+      }
+    }
+
+    return GetDownloadFolderResultSchema.parse({
+      path: DEFAULT_DOWNLOAD_ROOT,
+      configuredPath: null,
+      isDefault: true,
+      usingFallback: false,
+    });
+  }
+
+  /**
+   * Get download root folder from settings (or default).
+   * Same path mass-download and open-download-folder use.
+   */
+  private async getDownloadRoot(): Promise<string> {
+    const resolved = await this.resolveDownloadFolder();
+    return resolved.path;
+  }
+
+  /**
+   * Resolved download root for Settings UI (`path` matches batch downloads).
+   */
+  private async getDownloadFolderInfo(): Promise<GetDownloadFolderResult> {
+    return this.resolveDownloadFolder();
   }
 
   /**
@@ -562,6 +604,11 @@ export class FileController extends BaseController {
       IPC_CHANNELS.FILES.OPEN_DOWNLOAD_FOLDER,
       EmptyArgsSchema,
       () => this.openDownloadFolder()
+    );
+    this.handle(
+      IPC_CHANNELS.FILES.GET_DOWNLOAD_FOLDER,
+      EmptyArgsSchema,
+      () => this.getDownloadFolderInfo()
     );
     this.handle(
       IPC_CHANNELS.FILES.DOWNLOAD_ALL,

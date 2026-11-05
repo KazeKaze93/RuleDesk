@@ -109,6 +109,8 @@ export const IPC_CHANNELS = {
     OPEN_FOLDER: "files:open-folder",
     /** Opens the configured mass-download root folder (not a specific file). */
     OPEN_DOWNLOAD_FOLDER: "files:open-download-folder",
+    /** Resolved download root path + whether settings still use the built-in default. */
+    GET_DOWNLOAD_FOLDER: "files:get-download-folder",
     DOWNLOAD_PROGRESS: "files:download-progress",
     DOWNLOAD_ALL_PROGRESS: "files:download-all-progress",
     PENDING_DOWNLOAD_STATE_CHANGED: "files:pending-download-state-changed",

@@ -4,12 +4,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import log from "electron-log/renderer";
+import { FolderOpen } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card";
 import { Label } from "../../components/ui/label";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Checkbox } from "../../components/ui/checkbox";
 import { Switch } from "../../components/ui/switch";
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import {
   Select,
   SelectContent,
@@ -94,18 +96,32 @@ const OS_PLATFORM_DARWIN = "darwin";
 
 const SETUP_SECTION_TITLE = "Setup";
 const SETUP_SECTION_DESCRIPTION =
-  "One-time preferences: download folder, sync on startup, and theme.";
+  "One-time preferences: sync on startup and theme.";
 const GENERAL_SECTION_TITLE = "General";
 const GENERAL_SECTION_DESCRIPTION = "Default download and connection preferences.";
 const SHOW_PANIC_BUTTON_LABEL = "Show panic button";
 const SHOW_PANIC_BUTTON_DESCRIPTION =
   "Show a floating button that instantly blurs previews (Safe Mode).";
 const DOWNLOAD_FOLDER_LABEL = "Default download folder";
-const DOWNLOAD_FOLDER_DEFAULT_TEXT = "Default (Downloads/BooruClient)";
+const DOWNLOAD_FOLDER_DEFAULT_BADGE = "(default)";
+const DOWNLOAD_FOLDER_LOADING_TEXT = "Loading…";
+const DOWNLOAD_FOLDER_READ_ERROR_TEXT = "Could not read the download folder";
+const DOWNLOAD_FOLDER_FALLBACK_TITLE = "Saved folder unavailable";
 const CHOOSE_FOLDER_LABEL = "Choose Folder";
 const RESET_FOLDER_LABEL = "Reset to Default";
+const OPEN_FOLDER_LABEL = "Open folder";
 const FOLDER_UPDATED_LABEL = "Updated";
 const FOLDER_UPDATE_FAILED_LABEL = "Update failed";
+const FOLDER_STATUS_REGION_LABEL = "Download folder update status";
+
+export type DownloadFolderLoadState = "loading" | "loaded" | "error";
+
+function formatDownloadFolderFallbackMessage(
+  configuredPath: string,
+  activePath: string
+): string {
+  return `Saved folder ${configuredPath} is unavailable. Downloads go to ${activePath}.`;
+}
 const SYNC_ON_STARTUP_LABEL = "Sync on startup";
 const SYNC_ON_STARTUP_DESCRIPTION =
   "Automatically run sync when the application opens.";
@@ -136,65 +152,138 @@ const parseThemePreference = (value: string): ThemePreference | null => {
   return null;
 };
 
-interface SettingsDownloadFolderFieldsProps {
-  downloadFolder: string | null;
+export interface SettingsDownloadFolderFieldsProps {
+  downloadFolderLoadState: DownloadFolderLoadState;
+  downloadFolderPath: string | null;
+  downloadFolderConfiguredPath: string | null;
+  downloadFolderIsDefault: boolean;
+  downloadFolderUsingFallback: boolean;
   downloadFolderStatus: "idle" | "success" | "error";
   onSelectDownloadFolder: () => void;
   onResetDownloadFolder: () => void;
+  onOpenDownloadFolder: () => void;
 }
 
-const SettingsDownloadFolderFields = ({
-  downloadFolder,
+export const SettingsDownloadFolderFields = ({
+  downloadFolderLoadState,
+  downloadFolderPath,
+  downloadFolderConfiguredPath,
+  downloadFolderIsDefault,
+  downloadFolderUsingFallback,
   downloadFolderStatus,
   onSelectDownloadFolder,
   onResetDownloadFolder,
+  onOpenDownloadFolder,
 }: SettingsDownloadFolderFieldsProps) => {
+  const pathText =
+    downloadFolderLoadState === "loading"
+      ? DOWNLOAD_FOLDER_LOADING_TEXT
+      : downloadFolderLoadState === "error"
+        ? DOWNLOAD_FOLDER_READ_ERROR_TEXT
+        : (downloadFolderPath ?? DOWNLOAD_FOLDER_READ_ERROR_TEXT);
+  const showDefaultBadge =
+    downloadFolderLoadState === "loaded" && downloadFolderIsDefault;
+  const showResetButton =
+    downloadFolderLoadState === "loaded" && !downloadFolderIsDefault;
+  const showFallbackWarning =
+    downloadFolderLoadState === "loaded" &&
+    downloadFolderUsingFallback &&
+    downloadFolderConfiguredPath !== null &&
+    downloadFolderPath !== null;
+  const statusAnnouncement =
+    downloadFolderStatus === "success"
+      ? FOLDER_UPDATED_LABEL
+      : downloadFolderStatus === "error"
+        ? FOLDER_UPDATE_FAILED_LABEL
+        : "";
+
   return (
-    <section className="space-y-3">
-      <Label>{DOWNLOAD_FOLDER_LABEL}</Label>
-      <p className="break-all text-sm text-muted-foreground">
-        {downloadFolder ?? DOWNLOAD_FOLDER_DEFAULT_TEXT}
+    <section className="space-y-3" aria-labelledby="download-folder-label">
+      <Label id="download-folder-label">{DOWNLOAD_FOLDER_LABEL}</Label>
+      <p
+        className="break-all text-sm text-muted-foreground"
+        aria-live="polite"
+        data-testid="download-folder-path"
+      >
+        <span>{pathText}</span>
+        {showDefaultBadge ? (
+          <span className="ml-2 text-muted-foreground">
+            {DOWNLOAD_FOLDER_DEFAULT_BADGE}
+          </span>
+        ) : null}
       </p>
+      {showFallbackWarning ? (
+        <Alert data-testid="download-folder-fallback-alert">
+          <AlertTitle>{DOWNLOAD_FOLDER_FALLBACK_TITLE}</AlertTitle>
+          <AlertDescription>
+            {formatDownloadFolderFallbackMessage(
+              downloadFolderConfiguredPath,
+              downloadFolderPath
+            )}
+          </AlertDescription>
+        </Alert>
+      ) : null}
       <section className="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" size="sm" onClick={onSelectDownloadFolder}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={onSelectDownloadFolder}
+        >
           {CHOOSE_FOLDER_LABEL}
         </Button>
-        {downloadFolder ? (
-          <Button type="button" variant="ghost" size="sm" onClick={onResetDownloadFolder}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={onOpenDownloadFolder}
+          aria-label={OPEN_FOLDER_LABEL}
+          disabled={downloadFolderLoadState !== "loaded"}
+        >
+          <FolderOpen className="size-4" aria-hidden="true" />
+          {OPEN_FOLDER_LABEL}
+        </Button>
+        {showResetButton ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onResetDownloadFolder}
+          >
             {RESET_FOLDER_LABEL}
           </Button>
         ) : null}
-        {downloadFolderStatus === "success" ? (
-          <Badge variant="success">{FOLDER_UPDATED_LABEL}</Badge>
-        ) : null}
-        {downloadFolderStatus === "error" ? (
-          <Badge variant="destructive">{FOLDER_UPDATE_FAILED_LABEL}</Badge>
-        ) : null}
+        <section
+          className="flex items-center gap-2"
+          aria-live="polite"
+          aria-atomic="true"
+          aria-label={FOLDER_STATUS_REGION_LABEL}
+        >
+          {downloadFolderStatus === "success" ? (
+            <Badge variant="success">{FOLDER_UPDATED_LABEL}</Badge>
+          ) : null}
+          {downloadFolderStatus === "error" ? (
+            <Badge variant="destructive">{FOLDER_UPDATE_FAILED_LABEL}</Badge>
+          ) : null}
+          <span className="sr-only">{statusAnnouncement}</span>
+        </section>
       </section>
     </section>
   );
 };
 
 interface SettingsSetupSectionProps {
-  downloadFolder: string | null;
-  downloadFolderStatus: "idle" | "success" | "error";
   autoSyncOnStartup: boolean;
   theme: ThemePreference;
   isThemeSaving: boolean;
-  onSelectDownloadFolder: () => void;
-  onResetDownloadFolder: () => void;
   onAutoSyncChange: (checked: boolean) => void;
   onThemeChange: (value: ThemePreference) => void;
 }
 
 export const SettingsSetupSection = ({
-  downloadFolder,
-  downloadFolderStatus,
   autoSyncOnStartup,
   theme,
   isThemeSaving,
-  onSelectDownloadFolder,
-  onResetDownloadFolder,
   onAutoSyncChange,
   onThemeChange,
 }: SettingsSetupSectionProps) => {
@@ -213,15 +302,6 @@ export const SettingsSetupSection = ({
         <CardDescription>{SETUP_SECTION_DESCRIPTION}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <SettingsDownloadFolderFields
-          downloadFolder={downloadFolder}
-          downloadFolderStatus={downloadFolderStatus}
-          onSelectDownloadFolder={onSelectDownloadFolder}
-          onResetDownloadFolder={onResetDownloadFolder}
-        />
-
-        <Separator />
-
         <section className="flex items-start justify-between gap-4 rounded-md border p-4">
           <section className="space-y-1">
             <Label htmlFor="setup-auto-sync-on-startup">{SYNC_ON_STARTUP_LABEL}</Label>
@@ -376,12 +456,21 @@ export const SettingsDangerZone = () => {
 };
 
 interface SettingsGeneralTabProps {
+  downloadFolderLoadState: DownloadFolderLoadState;
+  downloadFolderPath: string | null;
+  downloadFolderConfiguredPath: string | null;
+  downloadFolderIsDefault: boolean;
+  downloadFolderUsingFallback: boolean;
+  downloadFolderStatus: "idle" | "success" | "error";
   duplicateFileBehavior: "skip" | "overwrite";
   downloadFolderStructure: "flat" | "{artist_id}";
   proxyUrl: string | null;
   proxyStatus: "idle" | "success" | "error";
   minimizeToTray: boolean;
   showPanicButton: boolean;
+  onSelectDownloadFolder: () => void;
+  onResetDownloadFolder: () => void;
+  onOpenDownloadFolder: () => void;
   onDuplicateFileBehaviorChange: (value: "skip" | "overwrite") => void;
   onDownloadFolderStructureChange: (value: "flat" | "{artist_id}") => void;
   onProxyUrlChange: (value: string) => void;
@@ -392,12 +481,21 @@ interface SettingsGeneralTabProps {
 }
 
 export const SettingsGeneralTab = ({
+  downloadFolderLoadState,
+  downloadFolderPath,
+  downloadFolderConfiguredPath,
+  downloadFolderIsDefault,
+  downloadFolderUsingFallback,
+  downloadFolderStatus,
   duplicateFileBehavior,
   downloadFolderStructure,
   proxyUrl,
   proxyStatus,
   minimizeToTray,
   showPanicButton,
+  onSelectDownloadFolder,
+  onResetDownloadFolder,
+  onOpenDownloadFolder,
   onDuplicateFileBehaviorChange,
   onDownloadFolderStructureChange,
   onProxyUrlChange,
@@ -471,6 +569,20 @@ export const SettingsGeneralTab = ({
         <CardDescription>{GENERAL_SECTION_DESCRIPTION}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        <SettingsDownloadFolderFields
+          downloadFolderLoadState={downloadFolderLoadState}
+          downloadFolderPath={downloadFolderPath}
+          downloadFolderConfiguredPath={downloadFolderConfiguredPath}
+          downloadFolderIsDefault={downloadFolderIsDefault}
+          downloadFolderUsingFallback={downloadFolderUsingFallback}
+          downloadFolderStatus={downloadFolderStatus}
+          onSelectDownloadFolder={onSelectDownloadFolder}
+          onResetDownloadFolder={onResetDownloadFolder}
+          onOpenDownloadFolder={onOpenDownloadFolder}
+        />
+
+        <Separator />
+
         <section className="space-y-2">
           <Label htmlFor="duplicate-file-behavior">When file already exists</Label>
           <Select value={duplicateFileBehavior} onValueChange={onDuplicateFileBehaviorChange}>
