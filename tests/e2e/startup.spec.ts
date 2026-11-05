@@ -10,7 +10,9 @@ import { waitForAppReady } from "./utils/app-ready";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const AGE_GATE_CHECKBOX = "#age-confirm";
+const ACCOUNT_GATE_HEADING = /sign in to ruledesk/i;
+const ACCOUNT_GATE_CONTENT_WARNING =
+  /RuleDesk displays sexually explicit content from Rule34\. Use only if you are an adult\./i;
 
 function createUserDataDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), "ruledesk-startup-"));
@@ -89,7 +91,7 @@ async function getFirstWindowPage(
 }
 
 test.describe("Application Startup", () => {
-  test("fresh profile opens Age Gate as the first rendered UI", async () => {
+  test("fresh profile opens AccountGate with content notice as the first rendered UI", async () => {
     const userDataDir = createUserDataDir();
     const app = await launchApp(userDataDir);
 
@@ -100,8 +102,14 @@ test.describe("Application Startup", () => {
       const title = await window.title();
       expect(title).toContain("RuleDesk");
 
-      await expect(window.locator(AGE_GATE_CHECKBOX)).toBeVisible({
+      await expect(
+        window.getByRole("heading", { name: ACCOUNT_GATE_HEADING })
+      ).toBeVisible({ timeout: 15000 });
+      await expect(window.getByText(ACCOUNT_GATE_CONTENT_WARNING)).toBeVisible({
         timeout: 15000,
+      });
+      await expect(window.locator("#age-confirm")).not.toBeVisible({
+        timeout: 5000,
       });
 
       await window.screenshot({ path: "test-results/startup.png" });

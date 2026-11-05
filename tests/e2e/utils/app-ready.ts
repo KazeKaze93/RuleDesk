@@ -12,11 +12,10 @@ export async function waitForAppReady(page: Page, timeout: number = 30000): Prom
   // Wait for DOM to be ready
   await page.waitForLoadState('domcontentloaded', { timeout });
   
-  // Wait for root element or Age Gate checkbox to appear (indicates React has rendered)
+  // Wait for root element or AccountGate fields to appear (indicates React has rendered)
   // Try multiple selectors to handle different app states
   const selectors = [
     '#root',           // Main React root
-    '#age-confirm',   // Age Gate checkbox (first launch)
     '#user-id',       // Account gate user id field
     '#api-key',       // Account gate API key field
     '[data-testid="app"]', // If we add test IDs

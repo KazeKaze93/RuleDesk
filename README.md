@@ -36,6 +36,10 @@ This project is **unofficial** and **not affiliated** with any external website 
 - **API Risk (Polling):** The Core Services are implemented with strict **Exponential Backoff** and **Rate Limiting** to minimize the risk of IP/key bans due to abusive polling behavior.
 - **Security Posture:** The application is configured with mandatory Electron security hardening (Context Isolation, Preload Scripts) to prevent any potential Remote Code Execution (RCE) via the renderer process.
 
+### Content notice
+
+RuleDesk displays sexually explicit content from Rule34. Use only if you are an adult. The app requires your own Rule34 account and API key (entered at first launch on the account screen).
+
 ---
 
 ## ✨ Features
@@ -174,7 +178,7 @@ Post cards in gallery views include informative overlays:
 
 ### ✅ Auto-sync on startup
 
-When enabled in **Settings → Sync**, the app starts a full **Sync All** after the main window is ready (if no sync is already running). Progress uses the same sync pipeline as manual sync.
+When enabled in **Settings → General** (Sync section), the app starts a full **Sync All** after the main window is ready (if no sync is already running). Progress uses the same sync pipeline as manual sync.
 
 Optional **Sync new artist automatically** (off by default) queues `repairArtist` for each newly added artist via the same exclusive sync mutex — it does not block the add-artist IPC response.
 
@@ -182,7 +186,7 @@ Each artist row stores `syncStatus` (`idle` / `syncing` / `error`) and `lastErro
 
 ### ✅ Periodic background sync
 
-**Settings → Sync → Sync interval** controls how often a background full sync runs (Disabled, 15 / 30 / 60 / 120 minutes). The main process enforces a **minimum interval of 5 minutes** (`MIN_INTERVAL_MINUTES` in `SyncScheduler`); values below that are treated as disabled. Rate limiting and backoff in `SyncService` / `ProviderThrottle` apply to scheduled runs as well as manual ones.
+**Settings → General → Sync interval** controls how often a background full sync runs (Disabled, 15 / 30 / 60 / 120 minutes). The main process enforces a **minimum interval of 5 minutes** (`MIN_INTERVAL_MINUTES` in `SyncScheduler`); values below that are treated as disabled. Rate limiting and backoff in `SyncService` / `ProviderThrottle` apply to scheduled runs as well as manual ones.
 
 ### Maintenance note
 
@@ -190,41 +194,24 @@ A lightweight **maintenance scheduler** runs `PRAGMA wal_checkpoint(PASSIVE)` an
 
 ## ⚙️ Settings
 
-Settings are organized into tabs for faster scanning and lower cognitive load:
+Five tabs: **General** (Setup + Sync + Appearance sections), **Data** (backup/maintenance + Danger zone), **Account**, **Blacklist**, **Help**. Legacy `?tab=sync|appearance` open General; `?tab=backup` opens Data.
 
 ### General
 
-- **Default download folder** - Choose or reset destination folder
-- **Duplicate behavior** - `skip` or `overwrite` for existing files
-- **Folder structure** - `flat` or `{artist_id}` subfolder mode
-- **Proxy URL** - Optional HTTP/HTTPS proxy for outbound requests/downloads
-- **Danger zone — Delete all data** - Confirmed wipe of everything under `RuleDesk-Data` (database, `video-cache/`, logs, Electron cache), then quit. Does **not** delete the separate media download folder or DB backups under `RuleDesk-Backups`. Prefer this over uninstall alone (uninstall leaves `RuleDesk-Data` and backups).
+- **Setup** - Download folder, sync on startup, theme
+- **Downloads / tray / proxy** - Duplicate behavior, folder structure, minimize to tray, optional proxy
+- **Sync** - Sync new artist automatically; sync interval (15 / 30 / 60 / 120 minutes or disabled)
+- **Appearance** - Card border / grid density
+- **Show panic button** - Off by default; when on, shows the Safe Mode floating button (blur previews). With the setting off, Safe Mode has no UI entry.
 
-### Sync
+### Data
 
-- **Sync on startup** - Toggle automatic sync when app opens
-- **Sync new artist automatically** - Queue sync for an artist right after it is added (off by default)
-- **Sync interval** - Disabled, 15 / 30 / 60 / 120 minutes
-- **Sync now** - Manual trigger in the sidebar (`useSyncAll`) with live progress label and `Last sync` relative time
-
-### Appearance
-
-- **Theme** - `System`, `Light`, `Dark`
+- **Create / restore backup**, integrity check, orphaned-data report, auto-backup schedule, retention, VACUUM
+- **Danger zone — Delete all data** (last) - Confirmed wipe of `RuleDesk-Data`, then quit. Does not delete the media download folder or `RuleDesk-Backups`.
 
 ### Blacklist
 
 - **Tag blacklist** - Hide posts containing listed tags from Browse and local galleries. Maximum **100** tags
-
-### Backup
-
-- **Create backup** - Manual timestamped backup (written to `RuleDesk-Backups`)
-- **Restore backup** - Restore from backup file (dialog defaults to `RuleDesk-Backups`) and reload app. A backup made by a **newer** app version fails with an error and rolls back — update the app first, then restore
-- **Integrity check** - Verify the database is not corrupted
-- **Orphaned data check** - Read-only report of posts/playlist entries/search-index rows without parents (Settings → Database Maintenance); no automatic cleanup
-- **Auto-backup schedule** - `Never` / `Daily` / `Weekly` (checked on app startup and every hour while the app stays open; default **Daily** for new installs and for upgrades that still had Never with the opt-in prompt never seen). **Daily** = when 24 hours have passed since the last automatic backup; **Weekly** = when 7 days have passed
-- **Automatic backup rotation** - Keep the last N **manual** backups and the last N **automatic** backups independently (configurable in Settings, range 1–20). The two sets are not summed into one pool
-- **Optional storage cap** - Advanced deployments may set an environment variable to cap total **manual** backup size in addition to keep-last-N (see [Development Setup](#-development-setup) and [architecture](./docs/architecture.md))
-- **Database maintenance (VACUUM)** - Last run timestamp/status/error, manual run button, and schedule (`manual` / `weekly` / `monthly`)
 
 ### Account
 
@@ -232,6 +219,7 @@ Settings are organized into tabs for faster scanning and lower cognitive load:
 - **User ID** - Required for Rule34 authenticated requests
 - **API key update** - Password-style input with show/hide toggle
 - **Paste URL** - Paste the full account page URL into either field; User ID and API Key are extracted automatically
+- **Log Out** - Clears credentials (confirm dialog); lives here, not next to Sync now in the sidebar
 - **Key status badge** - Configured / Not configured
 
 ### Feedback timing
@@ -267,12 +255,12 @@ The application is stable and production-ready (see **`package.json`** → `vers
 
 - ✅ **Secure Storage:** API credentials encrypted using Electron's `safeStorage` API via **`SecureStorage` only** (no parallel crypto helpers). Credentials encrypted at rest; decryption only in Main Process
 - ✅ **Database Backup/Restore:** Manual backup and restore with integrity checks; configurable retention
-- ✅ **Wipe all data:** Settings → General → Danger zone deletes `RuleDesk-Data` contents and quits
+- ✅ **Wipe all data:** Settings → Data → Danger zone deletes `RuleDesk-Data` contents and quits
 - ✅ **Input Validation:** Zod validation per IPC handler via `BaseController` (collapse for idempotent; spacing for mutate)
 - ✅ **Context Isolation:** Enabled globally with sandbox mode for maximum security
 - ✅ **CSP (Content Security Policy):** Strict CSP in production, relaxed for development (HMR support)
 - ✅ **User Data Path:** Packaged and dev builds use `%LOCALAPPDATA%/RuleDesk-Data` on Windows (not a folder next to the executable)
-- ✅ **Age Gate:** Age gate component implemented with legal confirmation (`confirmLegal` method)
+- ✅ **Account gate + content notice:** First launch shows Rule34 API credentials with an adult-content notice (no separate AgeGate; `confirmLegal` left as unused IPC stub)
 
 ### Data Integrity & Sync
 
@@ -302,10 +290,10 @@ The application is stable and production-ready (see **`package.json`** → `vers
 - ✅ **Favorites System:** Complete implementation with `isFavorited` database field, toggle functionality, and keyboard shortcuts
 - ✅ **Backup Controls:** UI component for creating and restoring database backups with integrity checks
 - ✅ **Credential Verification:** Verify API credentials before saving and during sync operations
-- ✅ **Age Gate Component:** Fully implemented with legal confirmation (`AgeGate.tsx` component and `confirmLegal` IPC method)
+- ✅ **Content notice:** Account sign-in screen and README (AgeGate removed; `is_adult_verified` / `tos_accepted_at` kept as legacy unused columns)
 - ✅ **Content Security Policy:** Strict CSP for Rule34.xxx plus legacy Gelbooru media hosts for stored posts
 - ✅ **Rule34 CDN host fallback:** Viewer retries Rule34 media across alternate hosts when a host fails
-- ✅ **Safe Mode / NSFW blur:** When Safe Mode is enabled, gallery cards and the full-screen viewer apply configurable blur to sensitive ratings (`PostCard`, `ViewerMedia`, `safeModeStore`)
+- ✅ **Safe Mode / NSFW blur:** Optional floating Panic button (Settings → General → Show panic button, off by default); when enabled, blur applies on cards and in the viewer (`PostCard`, `ViewerMedia`, `safeModeStore`)
 
 ---
 
@@ -318,11 +306,10 @@ The application is stable and production-ready (see **`package.json`** → `vers
    - Visit https://rule34.xxx/index.php?page=account&s=options
    - Copy your **User ID** and **API Key** from the API Access section
 
-2. **Age Gate and account:**
+2. **Account sign-in:**
 
    - Launch the application
-   - Confirm legal age / ToS in the mandatory Age Gate
-   - If no API key is stored, enter User ID + API Key and click **Save API Key** (or paste the account page URL into either field). There is no Skip; the main shell loads only after credentials are configured
+   - Read the content notice on the account screen, then enter User ID + API Key and click **Save API Key** (or paste the account page URL into either field). There is no Skip and no separate 18+ screen; the main shell loads only after credentials are configured
    - Credentials can be updated later in Settings → Account
 
 3. **Add Artists:**

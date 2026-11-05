@@ -1,7 +1,6 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { POST_CARD_PLAYLIST_RIGHT_CLICK_HINT } from "@/features/artists/components/PostCard";
 
 const POST_CARD_SOURCE = readFileSync(
   resolve(
@@ -11,10 +10,12 @@ const POST_CARD_SOURCE = readFileSync(
   "utf8"
 );
 
+const PLAYLIST_HINT_COPY = "Right-click a post to add it to a playlist";
+
 describe("PostCard playlist hover hint contract", () => {
   it("exposes right-click playlist discoverability copy", () => {
-    expect(POST_CARD_PLAYLIST_RIGHT_CLICK_HINT).toBe(
-      "Right-click a post to add it to a playlist"
+    expect(POST_CARD_SOURCE).toContain(
+      `export const POST_CARD_PLAYLIST_RIGHT_CLICK_HINT =\n  "${PLAYLIST_HINT_COPY}"`
     );
   });
 

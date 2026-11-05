@@ -76,9 +76,7 @@ Clone the repo, run `npm install`, then `npm run dev`. See [README — Developme
 
 ## First Launch
 
-When you first open RuleDesk, **Age Gate** (`AgeGate.tsx`) must be completed before any content loads: confirm you are an adult and accept the Terms. That calls `confirmLegal` and stores `isAdultVerified` / `tosAcceptedAt`.
-
-If no API key is configured (`hasApiKey` is false), **AccountGate** in `App.tsx` is shown next. It renders **Settings → Account** (`SettingsAccountTab`): enter User ID and API Key (or paste the account page URL into either field) and click **Save API Key**. There is no Skip — without credentials the main app does not load. You can change credentials later in Settings → Account.
+If no API key is configured (`hasApiKey` is false), **AccountGate** in `App.tsx` is shown immediately. It shows a content notice («RuleDesk displays sexually explicit content from Rule34. Use only if you are an adult.») and **Settings → Account** fields: enter User ID and API Key (or paste the account page URL into either field) and click **Save API Key**. There is no separate age-gate screen and no Skip — without credentials the main app does not load. You can change credentials later in Settings → Account.
 
 ### What are API Credentials?
 
@@ -141,7 +139,7 @@ That's it! You're now ready to use RuleDesk.
 
 4. Click **"Add"**
 
-The artist will appear in your tracked list. Until the first successful sync finishes, the status badge shows **Not synced yet** (not green **Synced**). While that artist is being synced (Sync All, repair, or **Sync new artist automatically**), the badge switches to **Syncing**; when that artist finishes it becomes **Synced** or **Error** (hover for the reason) without waiting for every other artist. If **Sync new artist automatically** is enabled in Settings → Sync, RuleDesk queues that sync right after you add the artist.
+The artist will appear in your tracked list. Until the first successful sync finishes, the status badge shows **Not synced yet** (not green **Synced**). While that artist is being synced (Sync All, repair, or **Sync new artist automatically**), the badge switches to **Syncing**; when that artist finishes it becomes **Synced** or **Error** (hover for the reason) without waiting for every other artist. If **Sync new artist automatically** is enabled in Settings → General, RuleDesk queues that sync right after you add the artist. After a successful add, toast **Open gallery** jumps straight to that artist's gallery.
 
 **Tip:** Type a few letters in **Tag to Track** — suggestions are **artist tags only**. Rule34 autocomplete has no category field, so RuleDesk checks the top matches against the tag API (cached) and hides characters/series. Typing further letters cancels the previous lookup so suggestions stay on the latest query. Browse search autocomplete is unchanged (all tag types).
 
@@ -368,6 +366,7 @@ On Browse **Source: All**, Videos / Images are applied in the live API search ta
 
 1. Use the dedicated **sort** button in the top bar (outside Filters)
 2. Click to toggle between newest-first and oldest-first where sorting is available (artist gallery, remote Browse, and smart collections follow provider post id; Favorites / Updates follow first-seen publish time with post id as a stable tiebreaker; manual playlists sort by date added)
+3. On Browse with no tags, Sort stays disabled; hover the control for the “add a tag first” tooltip
 
 **Filter by tags:**
 
@@ -442,12 +441,13 @@ The **top bar** appears on content pages and provides:
 
 ### Safe Mode
 
-Use the **Safe Mode** control in the app shell (`PanicButton`) to blur sensitive ratings on gallery cards and in the full-screen viewer. Blur amount and panic state live in `safeModeStore` and apply in `PostCard` / `ViewerMedia`.
+Safe Mode (blur sensitive ratings on cards and in the viewer) is available only when **Settings → General → Show panic button** is on. The floating control then toggles panic/safe blur (`safeModeStore` → `PostCard` / `ViewerMedia`). With the setting off, that button is hidden and there is no other UI path to enable Safe Mode.
 
 ### Keyboard Shortcuts
 
 **In the viewer:**
 
+- **Open in browser** - Toolbar button opens the post on the source site (same action as the former menu-only control)
 - **Esc** - Close viewer
 - **← / →** - Previous/Next post
 - **F** - Toggle favorite
@@ -465,61 +465,33 @@ Use the **Safe Mode** control in the app shell (`PanicButton`) to blur sensitive
 
 Access Settings by clicking **"Settings"** in the sidebar.
 
-Deep links: `/settings` opens **General**. `/settings?tab=<id>` opens a specific tab (`general`, `sync`, `appearance`, `backup`, `account`, `blacklist`, `help`). Unknown or missing `tab` falls back to General. Changing tabs updates the query with history replace (Back does not replay each tab). Credential error CTAs (**Open Settings**) use `/settings?tab=account` (HashRouter: `#/settings?tab=account`).
+| Was (≤19.1) | Now |
+|-------------|-----|
+| General | **General** (Setup + General + Sync + Appearance sections) |
+| Sync | folded into **General** |
+| Appearance | folded into **General** |
+| Backup | **Data** (backup/maintenance + Danger zone last) |
+| Account / Blacklist / Help | unchanged names |
 
-Settings are split into tabs:
-
-### Help
-
-- **Versions** — application, Electron, Chromium, Node, and OS (from Main; not from the renderer process)
-- **Open logs folder** — opens the folder that contains `app.log` (under `RuleDesk-Data/logs`)
-- **Copy diagnostics** — copies versions, OS, the redacted log path, and a redacted **tail** of `app.log` (~32 KiB, fitted under GitHub’s issue size limit) to the clipboard for bug reports. Historical log lines are re-redacted when read, so old paths/credentials should not appear in the paste
+Deep links: `/settings` opens **General**. Current ids: `general`, `data`, `account`, `blacklist`, `help`. Legacy `?tab=sync|appearance` → General; `?tab=backup` → Data. Unknown/missing `tab` → General. Credential CTAs use `/settings?tab=account`.
 
 ### General
 
-- **Default download folder** - Choose a folder or reset to default
-- **When file already exists** - Choose `Skip` or `Overwrite`
-- **Folder structure** - `Flat` or `By artist`
-- **Minimize to tray on close** - When on (default), closing the window hides the app to the system tray. When off, closing the window quits the application (Windows/Linux). Change applies immediately without restart. On macOS the control is shown disabled: closing the window always hides the app (Dock convention) and never quits.
-- **Proxy URL** - Optional HTTP/HTTPS proxy for requests/downloads
-- **Danger zone** - **Delete all data…** (checkbox + confirm). Closes the DB, stops the video proxy, deletes the contents of `RuleDesk-Data`, and quits. Media downloads outside `RuleDesk-Data` and DB backups under `RuleDesk-Backups` are not removed.
+- **Setup** - Download folder; Sync on startup; Theme
+- **Downloads / tray / proxy** - Duplicate behavior; folder structure; minimize to tray; optional proxy
+- **Sync** - Sync new artist automatically; sync interval (Disabled / 15 / 30 / 60 / 120). **Sync now** remains in the sidebar (not in Settings)
+- **Appearance** - Card border / grid
+- **Show panic button** - Off by default. When enabled, the floating Safe Mode button appears; when disabled, Safe Mode has no UI entry
 
-### Sync
+### Data
 
-- **Sync on startup** - Run sync automatically when app starts
-- **Sync new artist automatically** - After adding an artist, queue a sync for that artist (off by default; uses the same exclusive sync queue as Repair)
-- **Sync interval** - Disabled, 15 / 30 / 60 / 120 minutes
-- **Sync now** - Manual sync trigger in the sidebar
-- **Last sync status** - Relative timestamp under the sidebar sync button from the latest successful artist sync (`never` until at least one tracked artist has completed sync; survives app restart)
+- **Backup / restore / integrity / orphans / auto-backup / retention / VACUUM** (former Backup tab)
+- **Danger zone** (last) - **Delete all data…** — same wipe behavior as before (now under Data, not General)
 
-### Appearance
+### Blacklist / Help / Account
 
-- **Theme** - `System`, `Light`, `Dark`
-
-### Blacklist
-
-- **Tag blacklist** - Hide posts that contain specific tags from Browse and local galleries
-- Maximum **100** tags
-- Tags are stored locally; pagination still uses the raw API batch size before filtering
-
-### Backup
-
-- **Create Backup** - Save a timestamped consistent snapshot of your database under `RuleDesk-Backups`
-- **Restore Backup** - Restore from a backup file (dialog opens in `RuleDesk-Backups`; app reloads after success)
-- **Check Integrity** - Verify database is not corrupted
-- **Orphaned data check** - Read-only report of posts/playlist entries/FTS rows without parents (no automatic cleanup)
-- **Auto-backup** - Choose `Never`, `Daily`, or `Weekly` (checked on app startup and every hour while the app stays open). Default is Daily (including upgrades that still had Never and had never answered the opt-in prompt). If you previously dismissed that prompt and kept Never, RuleDesk leaves your choice alone. You can change the schedule anytime under Settings → Backup. **Daily** = when 24 hours have passed since the last automatic backup; **Weekly** = when 7 days have passed.
-- **Retention** - Keep the last `N` **manual** backups and the last `N` **automatic** backups independently (`backupRetention`, range `1..20`). The two file sets are counted separately and are not summed into one pool
-- **Database Maintenance (VACUUM)** - See last VACUUM run status/time, run VACUUM manually, and choose maintenance schedule (`Manual`, `Weekly`, `Monthly`)
-
-### Account
-
-- **Provider** - Rule34.xxx only (provider switch removed)
-- **User ID** - Shown when the selected provider needs it
-- **API key field** - Password-style input with show/hide button
-- **Paste URL** - A tip under the fields: paste the full account page URL into either field and both User ID and API Key are filled in automatically
-- **API key status** - `Configured` / `Not configured` badge
-- **Save API key** - Update credentials from Settings
+- Blacklist and Help unchanged
+- **Account** - credentials fields as before, plus **Log Out** (confirm dialog; clears API credentials). Log Out is not in the sidebar next to Sync now
 
 **Important:** API key is encrypted with OS-level security and bound to the current user on the current machine. If you move to another computer or another Windows account, the key cannot be decrypted and must be entered again in **Settings -> Account**.
 
@@ -529,13 +501,13 @@ Settings are split into tabs:
 
 **How to create a backup:**
 
-1. Go to **Settings** → **Backup**
+1. Go to **Settings** → **Data**
 2. Click **Create Backup**
 3. A timestamped backup file is created under `RuleDesk-Backups` (the folder opens in Explorer/Finder)
 
 **How to restore a backup:**
 
-1. Go to **Settings** → **Backup**
+1. Go to **Settings** → **Data**
 2. Click **Restore Backup**
 3. Select a backup file (dialog defaults to `RuleDesk-Backups`)
 4. Confirm restore
@@ -645,11 +617,11 @@ Open **Statistics** from the sidebar to see a quick health overview of your loca
 
 **Solutions:**
 
-1. Check database location and status in **Settings → Backup**
+1. Check database location and status in **Settings → Data**
 2. Reduce the number of tracked artists
 3. Use filters to reduce the number of visible posts
-4. Run **Check Integrity** in **Settings → Backup**
-5. Run **Run VACUUM now** in **Settings → Backup** (Database Maintenance section)
+4. Run **Check Integrity** in **Settings → Data**
+5. Run **Run VACUUM now** in **Settings → Data** (Database Maintenance section)
 
 ### Can't download files
 
@@ -690,7 +662,7 @@ The application redirects `userData` to a neutral `RuleDesk-Data` directory. Dev
 
 **Note:** Data is not stored next to `RuleDesk.exe`. You can move or replace the app folder freely; local database, logs, and settings stay under `RuleDesk-Data` until you delete that directory. Timestamped DB backups live in the sibling `RuleDesk-Backups` folder (survives Danger-zone wipe and typical cache cleaners).
 
-**Delete all data (in-app):** Settings → General → **Danger zone** → **Delete all data…**. Confirm with the checkbox, then confirm. The app closes the database, stops the video proxy, deletes everything inside `RuleDesk-Data` (database + WAL/SHM, `video-cache/`, logs, `backup-settings.json`, download queue, Electron cache files), and quits. Your separate media download folder and DB backups under `RuleDesk-Backups` are not deleted. After restart you go through the age gate / onboarding again. Prefer this over uninstalling the `.exe` alone — uninstall does not remove `RuleDesk-Data` or `RuleDesk-Backups`.
+**Delete all data (in-app):** Settings → Data → **Danger zone** → **Delete all data…**. Confirm with the checkbox, then confirm. The app closes the database, stops the video proxy, deletes everything inside `RuleDesk-Data` (database + WAL/SHM, `video-cache/`, logs, `backup-settings.json`, download queue, Electron cache files), and quits. Your separate media download folder and DB backups under `RuleDesk-Backups` are not deleted. After restart you see the account sign-in screen again. Prefer this over uninstalling the `.exe` alone — uninstall does not remove `RuleDesk-Data` or `RuleDesk-Backups`.
 
 **Legacy (pre-relocate builds):** `%APPDATA%\RuleDesk\` or `%LOCALAPPDATA%\.rdcache\` may still contain old `logs/`, `backup-settings.json`, or `data.bin`. New builds copy light files into `RuleDesk-Data` and move `data.bin` on first launch when targets are missing. Leftover backup files under those old locations are moved into `RuleDesk-Backups` on a deferred startup migrate. Do not run a pre-relocate binary after upgrading — it will not see `RuleDesk-Data` and may create an empty DB under `.rdcache`.
 

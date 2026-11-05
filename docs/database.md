@@ -231,10 +231,11 @@ Stores application settings including API credentials and user preferences.
 | `provider`           | TEXT (NOT NULL, DEFAULT 'rule34')      | Stored provider id (`KNOWN_STORED_PROVIDER_IDS`); settings input schema stays `PROVIDER_IDS` |
 | `encrypted_api_key`  | TEXT (DEFAULT '')                      | Encrypted API key (encrypted at rest)        |
 | `proxy_url`          | TEXT (NULL)                            | Optional proxy URL                            |
-| `is_safe_mode`       | INTEGER (BOOLEAN, DEFAULT 1)           | Safe mode flag (blur NSFW content)           |
-| `is_adult_confirmed` | INTEGER (BOOLEAN, DEFAULT 0)           | Adult confirmation flag (18+ confirmation)   |
-| `is_adult_verified`  | INTEGER (BOOLEAN, DEFAULT 0, NOT NULL) | Adult verification flag (legal confirmation) |
-| `tos_accepted_at`    | INTEGER (TIMESTAMP, NULL)              | ToS acceptance (`mode: "timestamp"` = **seconds**; IPC exposes ms) |
+| `is_safe_mode`       | INTEGER (BOOLEAN, DEFAULT 1)           | Legacy schema column (UI Safe Mode uses renderer store + panic button) |
+| `is_adult_confirmed` | INTEGER (BOOLEAN, DEFAULT 0)           | **Legacy unused** since age-gate removal (column kept) |
+| `is_adult_verified`  | INTEGER (BOOLEAN, DEFAULT 0, NOT NULL) | **Legacy unused** since age-gate removal (column kept) |
+| `tos_accepted_at`    | INTEGER (TIMESTAMP, NULL)              | **Legacy unused** since age-gate removal (`mode: "timestamp"` = **seconds**) |
+| `show_panic_button`  | INTEGER (BOOLEAN, NOT NULL, DEFAULT 0) | When true, mount floating Panic/Safe Mode button (migration `0043_add_show_panic_button`) |
 | `download_folder`    | TEXT (NULL)                            | Default download folder                       |
 | `duplicate_file_behavior` | TEXT (DEFAULT 'skip')            | Duplicate file behavior                       |
 | `download_folder_structure` | TEXT (DEFAULT 'flat')          | Download folder structure                     |
@@ -282,6 +283,10 @@ export const settings = sqliteTable("settings", {
   lastVacuumAt: integer("last_vacuum_at"),
   lastVacuumStatus: text("last_vacuum_status"),
   lastVacuumError: text("last_vacuum_error"),
+  // legacy: unused since age gate removal — isAdultConfirmed / isAdultVerified / tosAcceptedAt
+  showPanicButton: integer("show_panic_button", { mode: "boolean" })
+    .default(false)
+    .notNull(),
 });
 ```
 
@@ -823,7 +828,7 @@ Special tags `0000_blue_lorna_dane`, `0010_add_fts5_cache_invalidation`, and `00
 - Implemented in `src/main/db/legacy-database-migrate.ts`. Before any rename: open the legacy file, `PRAGMA wal_checkpoint(TRUNCATE)`, close — so committed WAL data lives in the main file.
 - Move via `rename`; on `EXDEV` (cross-volume): `copyFile` → verify same size → only then `unlink` source.
 - Checkpoint failure: leave legacy files untouched and return `{ migrated: false, blockedLegacyPath }`. `client.ts` **throws** before `new Database(dbPath)` so an empty schema is never created on the new path (that empty-but-migrated file would pass `databaseLooksInitialized` and permanently orphan the legacy DB on the next launch). The error propagates to `main.ts`, which shows the fatal `dialog.showErrorBox` (sole dialog site).
-- Recovery if an empty initialized stub already exists and a legacy file is still on disk: confirm the legacy path is reachable (`exists` + `access`), then remove the stub and retry the move. "Empty" means **no user content**: zero `artists`, zero `playlists`, and `settings` still at schema defaults (in particular `tos_accepted_at` null and adult flags false — AgeGate writes these before any artist exists). If the new DB already has any of that user state **and** legacy remains, return `blockedLegacyPath` instead of deleting or overwriting — startup stops with a clear message.
+- Recovery if an empty initialized stub already exists and a legacy file is still on disk: confirm the legacy path is reachable (`exists` + `access`), then remove the stub and retry the move. "Empty" means **no user content**: zero `artists`, zero `playlists`, and `settings` still at schema defaults (in particular `tos_accepted_at` null and adult flags false — historical AgeGate used to write these before any artist existed; columns are legacy unused now). If the new DB already has any of that user state **and** legacy remains, return `blockedLegacyPath` instead of deleting or overwriting — startup stops with a clear message.
 
 **Manual execution:**
 

@@ -1,5 +1,7 @@
 // @vitest-environment happy-dom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   OPEN_IN_BROWSER_ARIA_LABEL,
@@ -7,9 +9,13 @@ import {
 } from "@/features/viewer/ViewerContent";
 import { makePost } from "../../components/PostCard/makePost";
 
-const MORE_OPTIONS_ARIA_LABEL = "More options";
 const OPEN_POST_PAGE_MENU_LABEL = "Open post page";
 const REVEAL_IN_FOLDER_MENU_LABEL = "Reveal in folder";
+
+const VIEWER_CONTENT_SOURCE = readFileSync(
+  resolve(process.cwd(), "src/renderer/features/viewer/ViewerContent.tsx"),
+  "utf8"
+);
 
 vi.mock("electron-log/renderer", () => ({
   default: {
@@ -78,19 +84,18 @@ describe("ViewerContent open-in-browser toolbar button", () => {
     cleanup();
   });
 
-  it("shows Open in browser on the toolbar and not in More options", () => {
+  it("shows Open in browser on the toolbar", () => {
     renderViewerContent();
 
     expect(
       screen.getByRole("button", { name: OPEN_IN_BROWSER_ARIA_LABEL })
     ).toBeTruthy();
+  });
 
-    fireEvent.click(
-      screen.getByRole("button", { name: MORE_OPTIONS_ARIA_LABEL })
-    );
-
-    expect(screen.getByText(REVEAL_IN_FOLDER_MENU_LABEL)).toBeTruthy();
-    expect(screen.queryByText(OPEN_IN_BROWSER_ARIA_LABEL)).toBeNull();
-    expect(screen.queryByText(OPEN_POST_PAGE_MENU_LABEL)).toBeNull();
+  it("keeps Reveal in folder in More options and drops Open post page from source", () => {
+    expect(VIEWER_CONTENT_SOURCE).toContain(REVEAL_IN_FOLDER_MENU_LABEL);
+    expect(VIEWER_CONTENT_SOURCE).toContain("OPEN_IN_BROWSER_ARIA_LABEL");
+    expect(VIEWER_CONTENT_SOURCE).toContain("handleOpenExternal");
+    expect(VIEWER_CONTENT_SOURCE).not.toContain(OPEN_POST_PAGE_MENU_LABEL);
   });
 });

@@ -456,9 +456,9 @@ type IpcSettings = {
   hasApiKey: boolean; // ← Boolean flag, NOT the actual key
   proxyUrl: string | null;
   isSafeMode: boolean;
-  isAdultConfirmed: boolean;
-  isAdultVerified: boolean;
-  tosAcceptedAt: number | null;
+  isAdultConfirmed: boolean; // legacy unused since age-gate removal
+  isAdultVerified: boolean; // legacy unused since age-gate removal
+  tosAcceptedAt: number | null; // legacy unused since age-gate removal
   downloadFolder: string | null;
   duplicateFileBehavior: "skip" | "overwrite";
   downloadFolderStructure: "flat" | "{artist_id}";
@@ -468,6 +468,7 @@ type IpcSettings = {
   minimizeToTray: boolean;
   syncIntervalMinutes: number;
   backupRetention: number;
+  showPanicButton: boolean; // when true, mount floating Panic/Safe Mode button
 };
 ```
 
@@ -489,27 +490,16 @@ if (settings) {
 **Real-world usage in React component:**
 
 ```typescript
-// In App.tsx — Age Gate first, then AccountGate if no API key
+// In App.tsx — AccountGate when hasApiKey is false (content notice + credentials)
 import type { IpcSettings } from "../../../shared/schemas/settings";
-import { AgeGate } from "@/components/onboarding/AgeGate";
 
 const { data: settings } = useQuery<IpcSettings | null>({
   queryKey: ["settings"],
   queryFn: () => window.api.getSettings(),
 });
 
-const legalConfirmed =
-  settings?.isAdultVerified === true && settings.tosAcceptedAt !== null;
-if (!legalConfirmed) {
-  return (
-    <AgeGate
-      onComplete={(updated) => queryClient.setQueryData(["settings"], updated)}
-    />
-  );
-}
-
-if (!settings.hasApiKey) {
-  // AccountGate in App.tsx renders SettingsAccountTab (saveSettings)
+if (!settings?.hasApiKey) {
+  // AccountGate in App.tsx: Alert content notice + SettingsAccountTab (saveSettings)
   return <AccountGate />;
 }
 
@@ -607,38 +597,9 @@ const onSubmit = async (data: CredsFormValues) => {
 
 ### `confirmLegal()`
 
-Confirms legal age verification and terms of service acceptance. Updates the `isAdultVerified` and `tosAcceptedAt` fields in settings.
-
-**When to use:** During onboarding flow when user confirms they are 18+ and accepts terms of service.
-
-**Typical scenario:** User sees age gate dialog → clicks "I am 18+" → `confirmLegal` is called → settings updated with verification timestamp → user proceeds to main app.
-
-**Why this method:** Separates legal confirmation from credential saving. This ensures legal compliance is tracked separately from API credentials.
+**Legacy unused** after age-gate removal. IPC channel and handler still exist and still set `isAdultVerified` / `tosAcceptedAt`, but the renderer no longer calls this — AccountGate shows a content notice only (no checkbox / confirm). Columns remain in `settings` as legacy unused.
 
 **Returns:** `Promise<IpcSettings>`
-
-**Example:**
-
-```typescript
-const settings = await window.api.confirmLegal();
-if (settings.isAdultVerified) {
-  console.log("Legal confirmation completed");
-}
-```
-
-**Real-world usage in React component:**
-
-```typescript
-// In AgeGate.tsx component
-const handleConfirm = async () => {
-  try {
-    const settings = await window.api.confirmLegal();
-    onComplete(settings);
-  } catch (error) {
-    log.error("Failed to confirm legal:", error);
-  }
-};
-```
 
 **IPC Channel:** `settings:confirm-legal`
 

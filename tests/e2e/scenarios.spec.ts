@@ -38,7 +38,7 @@ test.describe('User Journeys', () => {
       page = await waitForWindow(app, timeout);
     }
 
-    // Perform Onboarding (Age Gate + Real Auth)
+    // Perform Onboarding (AccountGate + Real Auth)
     await completeOnboarding(page);
   });
 

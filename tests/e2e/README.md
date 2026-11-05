@@ -48,7 +48,7 @@ E2E is **not** on GitHub Actions; run locally (or in your own runner) with Playw
 
 Without these, tests that require real credentials fail with an explicit error.
 
-**Onboarding selectors:** Age Gate uses `#age-confirm` / `#tos-accept`. Account credentials are saved in E2E via `window.api.saveSettings` (IPC) with trimmed `TEST_USER_ID` / `TEST_API_KEY`, then the page reloads. In `NODE_ENV=test`, main process uses a reversible test credential encoding when Linux headless has no OS keychain (`safeStorage` unavailable).
+**Onboarding selectors:** Fresh profiles show AccountGate (`Sign in to RuleDesk` + content notice; `#user-id` / `#api-key`). There is no AgeGate. Account credentials are saved in E2E via `window.api.saveSettings` (IPC) with trimmed `TEST_USER_ID` / `TEST_API_KEY`, then the page reloads. In `NODE_ENV=test`, main process uses a reversible test credential encoding when Linux headless has no OS keychain (`safeStorage` unavailable).
 
 Tagged releases (`v*`) are packaged by [`.github/workflows/release.yml`](../../.github/workflows/release.yml) (Windows zip + Linux AppImage) without waiting on E2E — quality stays on local `pre-push`. See [docs/development.md](../../docs/development.md).
 

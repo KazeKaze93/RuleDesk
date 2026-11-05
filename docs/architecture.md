@@ -503,7 +503,7 @@ const posts = await db.query.posts.findMany({
 
    - `ArtistsController.ts` - Artist management operations
    - `PostsController.ts` - Post-related operations. Shadow-insert `id:${postId}` fetch is cache-first via `resolvePostLookup` (`post_lookup_cache` not_found TTL). Mark-viewed / favorite with supplied `postData` does not hit that cache.
-   - `SettingsController.ts` - Settings management (including `confirmLegal` for age gate)
+   - `SettingsController.ts` - Settings management (`confirmLegal` IPC remains as unused stub after age-gate removal)
    - `AuthController.ts` - Authentication and credential verification
    - `MaintenanceController.ts` - Database backup/restore, VACUUM, and read-only orphan detection
    - `ViewerController.ts` - Viewer-related operations
@@ -729,19 +729,15 @@ const posts = await db.query.posts.findMany({
      - **AddArtistModal.tsx** - Modal for adding new artists
      - **DeleteArtistDialog.tsx** - Confirmation dialog for artist deletion
      - **UpdateNotification.tsx** - Update notification component
-     - **AgeGate.tsx** - Age gate (`src/renderer/components/onboarding/AgeGate.tsx`)
-
   - **Settings (`src/renderer/features/settings/`):**
 
-    - **Settings.tsx** - Tab container and settings orchestration
-    - **SettingsGeneralTab.tsx** - Downloads, proxy, and Danger zone (`wipeAllData`)
+    - **Settings.tsx** - Five-tab container (`general` / `data` / `account` / `blacklist` / `help`) with legacy `?tab=` map
+    - **SettingsGeneralTab.tsx** - Setup, downloads/tray/proxy, Sync, Appearance, Show panic button
     - **SettingsHelpTab.tsx** - App/runtime versions, open logs folder, copy redacted diagnostics
-    - **SettingsSyncTab.tsx** - Startup/interval sync (manual Sync All remains in the sidebar)
-    - **SettingsAppearanceTab.tsx** - Theme selection (`System` / `Light` / `Dark`)
     - **SettingsBlacklistTab.tsx** - Tag blacklist management
-    - **SettingsBackupTab.tsx** - Backup, restore, integrity check, retention, and maintenance section
+    - **SettingsDataTab.tsx** - Backup, restore, integrity check, retention, maintenance, and Danger zone
     - **DatabaseMaintenanceCard.tsx** - User-visible VACUUM status, schedule, and manual run
-    - **SettingsAccountTab.tsx** - API key input, visibility toggle, `hasApiKey` status, paste-URL hint under credentials fields
+    - **SettingsAccountTab.tsx** - API key input, visibility toggle, `hasApiKey` status, paste-URL hint, Log Out
 
    - **Inputs:**
 
@@ -1671,8 +1667,8 @@ src/
 │   │   │   ├── AddArtistModal.tsx
 │   │   │   ├── DeleteArtistDialog.tsx
 │   │   │   └── UpdateNotification.tsx
-│   │   ├── onboarding/            # Age gate
-│   │   │   └── AgeGate.tsx
+│   │   ├── onboarding/            # Auto-backup opt-in prompt
+│   │   │   └── AutoBackupOptInPrompt.tsx
 │   │   ├── inputs/                # Input components
 │   │   │   └── AsyncAutocomplete.tsx
 │   │   ├── layout/                 # Layout components
@@ -1800,7 +1796,7 @@ Maintainer identifiers relocated from user-facing README sections (Features, Pro
 | Favorites storage | Local SQLite `isFavorited` (no booru account-favorites sync) |
 | Statistics | Route `/stats`; IPC `getExtendedStats`; placeholder `Artist 0` excluded from Top Artists |
 | Blacklist cap | `MAX_BLACKLIST_TAGS` (100) |
-| Account gate | `AgeGate.tsx`; AccountGate / `SettingsAccountTab` in `App.tsx`; `hasApiKey` contract |
+| Account gate | AccountGate + content notice / `SettingsAccountTab` in `App.tsx`; `hasApiKey` contract |
 | Multi-provider | `IBooruProvider` (`Rule34Provider`, `GelbooruProvider`) |
 | IPC bridge file | `src/preload/bridge.ts` (built to `out/preload/bridge.cjs`); contract `src/shared/types/ipc-bridge.ts` — **not** `src/main/bridge.ts` |
 | Auto-updater | `electron-updater` checks and notifies; opens GitHub release page — manual zip/AppImage install (no seamless in-app install) |
@@ -1983,7 +1979,7 @@ Based on a comprehensive technical audit, here's the current implementation stat
 ### Shipped (formerly listed under Missing / Planned)
 
 - **Safe Mode / NSFW Filter:** blur logic and safe mode state in gallery/viewer (`safeModeStore`, `PanicButton`, `PostCard`, `ViewerMedia`)
-- **Age Gate:** `src/renderer/components/onboarding/AgeGate.tsx` and `confirmLegal` IPC method
+- **Content notice:** AccountGate alert in `App.tsx` (AgeGate removed; `confirmLegal` IPC left as unused stub)
 - **User Data Path:** Neutral `RuleDesk-Data` via `bootstrap-user-data.ts` (not next to the executable); DB backups in sibling `RuleDesk-Backups/`
 - **Anti-Bot Measures:** Shared `ProviderThrottle` (~1200ms + jitter) and shared `USER_AGENT` across current providers. One throttle instance per provider host serializes Sync/Browse/autocomplete (`user` priority) ahead of tag-resolve (`background`). A single host 429 gate (`notifyRateLimited`) is written by any consumer and checked by every `wait()` — local rate-limit copies are forbidden.
 - **DB Optimization (FTS5):** FTS5 virtual table `posts_fts` implemented with `unicode61` tokenizer for fast tag searching
