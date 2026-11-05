@@ -147,6 +147,8 @@ import { FileController } from "../../../src/main/ipc/controllers/FileController
 type FileControllerInternals = {
   downloadAll: (request: DownloadAllRequest) => Promise<DownloadAllResult>;
   openDownloadFolder: () => Promise<OpenDownloadFolderResult>;
+  getDownloadFolderInfo: () => Promise<{ path: string; isDefault: boolean }>;
+  getDownloadRoot: () => Promise<string>;
 };
 
 const LIST_ITEM = {
@@ -359,5 +361,14 @@ describe("FileController mass download silent-zero + open folder", () => {
     const result = await controller.openDownloadFolder();
 
     expect(result).toEqual({ ok: true });
+  });
+
+  it("getDownloadFolderInfo returns the same path mass-download uses", async () => {
+    const info = await controller.getDownloadFolderInfo();
+    const root = await controller.getDownloadRoot();
+
+    expect(info.path).toBe(root);
+    expect(info.isDefault).toBe(true);
+    expect(info.path.replace(/\\/g, "/")).toMatch(/BooruClient$/);
   });
 });

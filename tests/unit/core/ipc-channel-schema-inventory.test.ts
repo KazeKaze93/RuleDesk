@@ -161,6 +161,6 @@ describe("IPC channel Zod schema inventory", () => {
     expect(missingSchema).toEqual([]);
 
     // Stable inventory size: bump intentionally when adding a handle() registration.
-    expect(inventory.size).toBe(86);
+    expect(inventory.size).toBe(87);
   });
 });

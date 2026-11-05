@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import log from "electron-log/renderer";
+import { toast } from "sonner";
 import { Settings as SettingsIcon } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { PageHeader } from "../../components/layout/PageHeader";
@@ -31,6 +32,9 @@ const TAB_DATA_LABEL = "Data";
 const TAB_HELP_LABEL = "Help";
 const PAGE_TITLE = "Settings";
 const PAGE_DESCRIPTION = "Manage application preferences in focused sections.";
+const OPEN_DOWNLOAD_FOLDER_FAILED_TOAST =
+  "Could not open the download folder.";
+const SETTINGS_LOG_PREFIX = "[Settings]";
 
 const STATUS_FEEDBACK_TIMEOUT_MS = 5000;
 type StatusTimerKey =
@@ -66,7 +70,10 @@ export const Settings = () => {
   const [restoreStatus, setRestoreStatus] = useState<
     "idle" | "success" | "error"
   >("idle");
-  const [downloadFolder, setDownloadFolder] = useState<string | null>(null);
+  const [downloadFolderPath, setDownloadFolderPath] = useState<string | null>(
+    null
+  );
+  const [downloadFolderIsDefault, setDownloadFolderIsDefault] = useState(true);
   const [downloadFolderStatus, setDownloadFolderStatus] = useState<
     "idle" | "success" | "error"
   >("idle");
@@ -119,12 +126,21 @@ export const Settings = () => {
     logSaveFailure: "[Settings] Failed to save API key:",
   });
 
+  const refreshDownloadFolderInfo = async (): Promise<void> => {
+    try {
+      const info = await window.api.getDownloadFolder();
+      setDownloadFolderPath(info.path);
+      setDownloadFolderIsDefault(info.isDefault);
+    } catch (error: unknown) {
+      log.error(`${SETTINGS_LOG_PREFIX} Failed to load download folder:`, error);
+    }
+  };
+
   useEffect(() => {
     const timersRef = statusTimersRef.current;
     void window.api
       .getSettings()
       .then((s) => {
-        if (s?.downloadFolder) setDownloadFolder(s.downloadFolder);
         if (s?.duplicateFileBehavior) setDuplicateFileBehavior(s.duplicateFileBehavior);
         if (s?.downloadFolderStructure) setDownloadFolderStructure(s.downloadFolderStructure);
         if (s?.autoSyncOnStartup !== undefined) {
@@ -150,15 +166,19 @@ export const Settings = () => {
         setUserId(s?.userId ?? "");
       })
       .catch((error: unknown) => {
-        log.error("[Settings] Failed to load settings:", error);
+        log.error(`${SETTINGS_LOG_PREFIX} Failed to load settings:`, error);
       });
+    void refreshDownloadFolderInfo();
     void window.api
       .getDatabaseLocation()
       .then((location) => {
         setDatabaseLocation(location);
       })
       .catch((error: unknown) => {
-        log.error("[Settings] Failed to load database location:", error);
+        log.error(
+          `${SETTINGS_LOG_PREFIX} Failed to load database location:`,
+          error
+        );
       });
     window.api
       .getBackupSchedule()
@@ -206,18 +226,24 @@ export const Settings = () => {
       if (path) {
         const ok = await window.api.saveDownloadFolder(path);
         if (ok) {
-          setDownloadFolder(path);
+          await refreshDownloadFolderInfo();
           setDownloadFolderStatus("success");
-          scheduleStatusReset("download-folder", () => setDownloadFolderStatus("idle"));
+          scheduleStatusReset("download-folder", () =>
+            setDownloadFolderStatus("idle")
+          );
         } else {
           setDownloadFolderStatus("error");
-          scheduleStatusReset("download-folder", () => setDownloadFolderStatus("idle"));
+          scheduleStatusReset("download-folder", () =>
+            setDownloadFolderStatus("idle")
+          );
         }
       }
     } catch (err) {
-      log.error("[Settings] Failed to set download folder:", err);
+      log.error(`${SETTINGS_LOG_PREFIX} Failed to set download folder:`, err);
       setDownloadFolderStatus("error");
-      scheduleStatusReset("download-folder", () => setDownloadFolderStatus("idle"));
+      scheduleStatusReset("download-folder", () =>
+        setDownloadFolderStatus("idle")
+      );
     }
   };
 
@@ -225,14 +251,34 @@ export const Settings = () => {
     try {
       const ok = await window.api.saveDownloadFolder(null);
       if (ok) {
-        setDownloadFolder(null);
+        await refreshDownloadFolderInfo();
         setDownloadFolderStatus("success");
-        scheduleStatusReset("download-folder", () => setDownloadFolderStatus("idle"));
+        scheduleStatusReset("download-folder", () =>
+          setDownloadFolderStatus("idle")
+        );
       }
     } catch (err) {
-      log.error("[Settings] Failed to reset download folder:", err);
+      log.error(`${SETTINGS_LOG_PREFIX} Failed to reset download folder:`, err);
       setDownloadFolderStatus("error");
-      scheduleStatusReset("download-folder", () => setDownloadFolderStatus("idle"));
+      scheduleStatusReset("download-folder", () =>
+        setDownloadFolderStatus("idle")
+      );
+    }
+  };
+
+  const handleOpenDownloadFolder = async (): Promise<void> => {
+    try {
+      const result = await window.api.openDownloadFolder();
+      if (!result.ok) {
+        log.error(
+          `${SETTINGS_LOG_PREFIX} openDownloadFolder failed:`,
+          result.error
+        );
+        toast.error(OPEN_DOWNLOAD_FOLDER_FAILED_TOAST);
+      }
+    } catch (error: unknown) {
+      log.error(`${SETTINGS_LOG_PREFIX} openDownloadFolder threw:`, error);
+      toast.error(OPEN_DOWNLOAD_FOLDER_FAILED_TOAST);
     }
   };
 
@@ -508,17 +554,9 @@ export const Settings = () => {
         <TabsContent value={SETTINGS_TAB.GENERAL}>
           <div className="space-y-4">
             <SettingsSetupSection
-              downloadFolder={downloadFolder}
-              downloadFolderStatus={downloadFolderStatus}
               autoSyncOnStartup={autoSyncOnStartup}
               theme={theme}
               isThemeSaving={isThemeSaving}
-              onSelectDownloadFolder={() => {
-                void handleSelectDownloadFolder();
-              }}
-              onResetDownloadFolder={() => {
-                void handleResetDownloadFolder();
-              }}
               onAutoSyncChange={(checked) => {
                 void handleAutoSyncOnStartupChange(checked);
               }}
@@ -527,10 +565,22 @@ export const Settings = () => {
               }}
             />
             <SettingsGeneralTab
+              downloadFolderPath={downloadFolderPath}
+              downloadFolderIsDefault={downloadFolderIsDefault}
+              downloadFolderStatus={downloadFolderStatus}
               duplicateFileBehavior={duplicateFileBehavior}
               downloadFolderStructure={downloadFolderStructure}
               proxyUrl={proxyUrl}
               proxyStatus={proxyStatus}
+              onSelectDownloadFolder={() => {
+                void handleSelectDownloadFolder();
+              }}
+              onResetDownloadFolder={() => {
+                void handleResetDownloadFolder();
+              }}
+              onOpenDownloadFolder={() => {
+                void handleOpenDownloadFolder();
+              }}
               onDuplicateFileBehaviorChange={(value) => {
                 void handleDuplicateFileBehaviorChange(value);
               }}

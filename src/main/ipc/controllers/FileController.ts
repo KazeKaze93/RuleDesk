@@ -58,8 +58,10 @@ import { BATCH_DOWNLOAD_CHUNK_SIZE } from "../../../shared/constants";
 import { isErrnoException } from "../../../shared/utils/type-guards";
 import {
   DownloadAllRequestSchema,
+  GetDownloadFolderResultSchema,
   OpenDownloadFolderResultSchema,
   type DownloadAllRequest,
+  type GetDownloadFolderResult,
   type OpenDownloadFolderResult,
 } from "../../../shared/schemas/download";
 import type {
@@ -498,9 +500,9 @@ export class FileController extends BaseController {
   }
 
   /**
-   * Get download root folder from settings (or default)
+   * Custom folder from settings, or null when the built-in default applies.
    */
-  private async getDownloadRoot(): Promise<string> {
+  private getConfiguredDownloadFolder(): string | null {
     try {
       const db = getDb();
       const row = db
@@ -510,18 +512,41 @@ export class FileController extends BaseController {
         .limit(1)
         .get();
       const folder = row?.downloadFolder?.trim();
-      if (folder) {
-        try {
-          await access(folder);
-          return folder;
-        } catch {
-          /* folder doesn't exist or inaccessible */
-        }
+      if (folder !== undefined && folder.length > 0) {
+        return folder;
       }
     } catch (e) {
-      log.warn("[FileController] Failed to get download folder from settings:", e);
+      log.warn("[FileController] Failed to read download folder from settings:", e);
+    }
+    return null;
+  }
+
+  /**
+   * Get download root folder from settings (or default).
+   * Same path mass-download and open-download-folder use.
+   */
+  private async getDownloadRoot(): Promise<string> {
+    const folder = this.getConfiguredDownloadFolder();
+    if (folder !== null) {
+      try {
+        await access(folder);
+        return folder;
+      } catch {
+        /* folder doesn't exist or inaccessible — fall back to default */
+      }
     }
     return DEFAULT_DOWNLOAD_ROOT;
+  }
+
+  /**
+   * Resolved download root for Settings UI (`path` matches batch downloads).
+   */
+  private async getDownloadFolderInfo(): Promise<GetDownloadFolderResult> {
+    const path = await this.getDownloadRoot();
+    return GetDownloadFolderResultSchema.parse({
+      path,
+      isDefault: this.getConfiguredDownloadFolder() === null,
+    });
   }
 
   /**
@@ -562,6 +587,11 @@ export class FileController extends BaseController {
       IPC_CHANNELS.FILES.OPEN_DOWNLOAD_FOLDER,
       EmptyArgsSchema,
       () => this.openDownloadFolder()
+    );
+    this.handle(
+      IPC_CHANNELS.FILES.GET_DOWNLOAD_FOLDER,
+      EmptyArgsSchema,
+      () => this.getDownloadFolderInfo()
     );
     this.handle(
       IPC_CHANNELS.FILES.DOWNLOAD_ALL,

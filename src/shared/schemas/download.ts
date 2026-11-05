@@ -63,3 +63,16 @@ export const OpenDownloadFolderResultSchema = z.discriminatedUnion("ok", [
 export type OpenDownloadFolderResult = z.infer<
   typeof OpenDownloadFolderResultSchema
 >;
+
+/**
+ * Resolved mass-download root (`getDownloadRoot`) plus whether settings
+ * still use the built-in default (no custom folder saved).
+ */
+export const GetDownloadFolderResultSchema = z.object({
+  path: z.string().min(1),
+  isDefault: z.boolean(),
+});
+
+export type GetDownloadFolderResult = z.infer<
+  typeof GetDownloadFolderResultSchema
+>;
