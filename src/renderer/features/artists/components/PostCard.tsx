@@ -12,6 +12,12 @@ import { useVideoProxyUrl } from "../../../lib/hooks/useVideoProxyUrl";
 import { QuickAddToPlaylistMenu } from "../../../components/playlists/QuickAddToPlaylistMenu";
 import { Checkbox } from "../../../components/ui/checkbox";
 import { Button } from "../../../components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../../../components/ui/tooltip";
 import { MediaLoadPlaceholder } from "../../../components/gallery/MediaLoadPlaceholder";
 import { useBulkSelect } from "../../../hooks/useBulkSelect";
 import { getBulkSelectId } from "../../../lib/bulkSelect";
@@ -24,6 +30,11 @@ import {
 
 const LONG_PRESS_DELAY_MS = 300;
 const POINTER_MOVE_CANCEL_PX = 5;
+const PLAYLIST_HINT_TOOLTIP_DELAY_MS = 200;
+
+/** Hover hint on the playlist control — right-click on the card adds to a playlist. */
+export const POST_CARD_PLAYLIST_RIGHT_CLICK_HINT =
+  "Right-click a post to add it to a playlist";
 
 type PostCardContext = "browse" | "favorites" | "updates" | "playlist";
 
@@ -440,31 +451,39 @@ export const PostCard: React.FC<PostCardProps> = ({
         }}
       >
         {context !== "playlist" && (
-          <QuickAddToPlaylistMenu
-            post={{ id: post.id, postId: post.postId, provider: post.provider }}
-            open={isPlaylistMenuOpen}
-            onOpenChange={setIsPlaylistMenuOpen}
-            trigger={
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-auto w-auto min-h-0 min-w-0 rounded-full bg-background/50 p-1.5 backdrop-blur-sm hover:bg-background/70"
-                aria-label="Add to playlist"
-                title="Add to playlist"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-              >
-                <List className="w-3 h-3 text-foreground" />
-              </Button>
-            }
-          />
+          <TooltipProvider delayDuration={PLAYLIST_HINT_TOOLTIP_DELAY_MS}>
+            <Tooltip>
+              <QuickAddToPlaylistMenu
+                post={{ id: post.id, postId: post.postId, provider: post.provider }}
+                open={isPlaylistMenuOpen}
+                onOpenChange={setIsPlaylistMenuOpen}
+                trigger={
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-auto w-auto min-h-0 min-w-0 rounded-full bg-background/50 p-1.5 backdrop-blur-sm hover:bg-background/70"
+                      aria-label="Add to playlist"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                    >
+                      <List className="w-3 h-3 text-foreground" />
+                    </Button>
+                  </TooltipTrigger>
+                }
+              />
+              <TooltipContent side="left" className="pointer-events-none">
+                {POST_CARD_PLAYLIST_RIGHT_CLICK_HINT}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         )}
         {onRemoveFromPlaylist && (
           <Button
