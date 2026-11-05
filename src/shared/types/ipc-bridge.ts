@@ -8,7 +8,10 @@
  */
 import type { Artist, Post, Playlist } from "./db";
 import type { DownloadAllResult, PendingDownloadInfo } from "./download";
-import type { DownloadAllRequest } from "../schemas/download";
+import type {
+  DownloadAllRequest,
+  OpenDownloadFolderResult,
+} from "../schemas/download";
 import type { KnownStoredProviderId, ProviderId } from "../constants";
 import type { SearchResults } from "./providers";
 import type { AddArtistRequest, DeleteArtistResult } from "../schemas/artist";
@@ -183,6 +186,8 @@ export interface IpcBridge {
     downloadFolderStructure?: "flat" | "{artist_id}";
   }) => Promise<boolean>;
   openFileInFolder: (path: string) => Promise<boolean>;
+  /** Opens the configured mass-download root folder in the OS file manager. */
+  openDownloadFolder: () => Promise<OpenDownloadFolderResult>;
   selectDownloadFolder: () => Promise<string | null>;
 
   onDownloadProgress: (callback: DownloadProgressCallback) => () => void;

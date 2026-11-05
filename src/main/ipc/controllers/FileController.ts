@@ -58,7 +58,9 @@ import { BATCH_DOWNLOAD_CHUNK_SIZE } from "../../../shared/constants";
 import { isErrnoException } from "../../../shared/utils/type-guards";
 import {
   DownloadAllRequestSchema,
+  OpenDownloadFolderResultSchema,
   type DownloadAllRequest,
+  type OpenDownloadFolderResult,
 } from "../../../shared/schemas/download";
 import type {
   DownloadAllResult,
@@ -69,20 +71,42 @@ import type {
   DownloadQueueItem,
   PendingDownloadInfo,
 } from "../../../shared/types/download";
-import { remainingDownloadItems } from "../../../shared/utils/download-failure";
+import {
+  accountsForBatch,
+  formatBatchAccountingMismatchError,
+  remainingDownloadItems,
+} from "../../../shared/utils/download-failure";
 import {
   DOWNLOAD_URL_NOT_ALLOWED_MESSAGE,
+  getAllowedCdnDomains,
   isAllowedCdnUrl,
 } from "../../providers/cdn-allowlist";
 
 const DEFAULT_DOWNLOAD_ROOT = path.join(app.getPath("downloads"), "BooruClient");
 const DOWNLOAD_QUEUE_FILE = "download-queue.json";
 const DOWNLOAD_QUEUE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+const MASS_DOWNLOAD_LOG_PREFIX = "[FileController] Mass download";
+const OPEN_DOWNLOAD_FOLDER_FAILED_MESSAGE =
+  "Could not open the download folder.";
+
+/**
+ * Worker batch result may carry optional `canceledCount` (P1 complete payload).
+ * Absent → treat as 0. Not part of the renderer DownloadAllResult contract yet.
+ */
+type MassDownloadBatchResult = DownloadAllResult & {
+  canceledCount?: number;
+};
 
 // Maximum filename length to prevent filesystem errors
 // Most filesystems (Windows, Linux, macOS) limit filenames to 255 characters
 // We use 200 to account for path length and extensions
 const MAX_FILENAME_LENGTH = 200;
+
+function parseCanceledCount(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0
+    ? Math.floor(value)
+    : 0;
+}
 
 const DownloadFileSchema = z.object({
   url: z
@@ -141,7 +165,7 @@ export class FileController extends BaseController {
   private activeDownloads = new Map<string, AbortController>();
   private downloadWorker: Worker | null = null;
   private batchIdleWaiters: Array<() => void> = [];
-  private batchFinish: ((result: DownloadAllResult) => void) | null = null;
+  private batchFinish: ((result: MassDownloadBatchResult) => void) | null = null;
   private postsController: PostsController | null = null;
   /** True while artist/list mass-download orchestration is running (incl. between chunks). */
   private massDownloadActive = false;
@@ -246,7 +270,7 @@ export class FileController extends BaseController {
     return { timedOut };
   }
 
-  private settleBatch(result: DownloadAllResult): void {
+  private settleBatch(result: MassDownloadBatchResult): void {
     if (!this.batchFinish) {
       return;
     }
@@ -255,6 +279,48 @@ export class FileController extends BaseController {
     this.downloadWorker = null;
     this.resolveBatchIdleWaiters();
     finish(result);
+  }
+
+  /**
+   * When the batch was not user-canceled, every item must account as
+   * downloaded, failed, or canceledCount. Full silent-zero (0/0/0) is the
+   * same mismatch. CANCELLED rows in `failed` are not a clean cancel —
+   * only `result.canceled === true` skips this check.
+   */
+  private applyBatchAccountingGuard(
+    result: MassDownloadBatchResult,
+    expectedItemCount: number
+  ): MassDownloadBatchResult {
+    if (result.canceled) {
+      return result;
+    }
+    const canceledCount = parseCanceledCount(result.canceledCount);
+    if (
+      accountsForBatch(
+        result.downloaded,
+        result.failed.length,
+        canceledCount,
+        expectedItemCount
+      )
+    ) {
+      return result;
+    }
+    const mismatch = formatBatchAccountingMismatchError({
+      downloaded: result.downloaded,
+      failedCount: result.failed.length,
+      canceledCount,
+      expectedItemCount,
+    });
+    const priorError =
+      typeof result.error === "string" && result.error.trim().length > 0
+        ? result.error.trim()
+        : undefined;
+    return {
+      ...result,
+      success: false,
+      error:
+        priorError !== undefined ? `${priorError}; ${mismatch}` : mismatch,
+    };
   }
 
   /**
@@ -493,6 +559,11 @@ export class FileController extends BaseController {
       (event) => this.selectDownloadFolder(event)
     );
     this.handle(
+      IPC_CHANNELS.FILES.OPEN_DOWNLOAD_FOLDER,
+      EmptyArgsSchema,
+      () => this.openDownloadFolder()
+    );
+    this.handle(
       IPC_CHANNELS.FILES.DOWNLOAD_ALL,
       DownloadAllArgsSchema,
       (_event, request) => this.downloadAll(request)
@@ -718,12 +789,25 @@ export class FileController extends BaseController {
       };
     }
 
+    const { duplicateFileBehavior } = this.getDownloadSettings();
+    const startedAt = Date.now();
+    log.info(`${MASS_DOWNLOAD_LOG_PREFIX} start`, {
+      kind: initial.kind,
+      total: initial.total,
+      folder: initial.folder,
+      duplicateFileBehavior,
+    });
+
     this.massDownloadActive = true;
     this.massDownloadCancelRequested = false;
     let state: DownloadQueueFileV3Cursor = { ...initial };
     let downloaded = 0;
     const failed: DownloadFailure[] = [];
     let canceled = false;
+    let attemptedItemCount = 0;
+    let canceledCount = 0;
+    let workerBatchOk = true;
+    let workerError: string | undefined;
 
     try {
       while (!this.massDownloadCancelRequested) {
@@ -749,6 +833,7 @@ export class FileController extends BaseController {
           continue;
         }
 
+        attemptedItemCount += plan.remaining.length;
         const chunkResult = await this.runWorkerBatch({
           items: plan.remaining,
           folder: state.folder,
@@ -764,8 +849,27 @@ export class FileController extends BaseController {
 
         downloaded += chunkResult.downloaded;
         failed.push(...chunkResult.failed);
+        canceledCount += parseCanceledCount(chunkResult.canceledCount);
+        if (chunkResult.success === false) {
+          workerBatchOk = false;
+          if (
+            typeof chunkResult.error === "string" &&
+            chunkResult.error.trim().length > 0
+          ) {
+            workerError = chunkResult.error.trim();
+          }
+        }
         if (!shouldAdvanceArtistCursorAfterChunk(chunkResult.canceled)) {
           canceled = true;
+          break;
+        }
+        // Worker setup/runtime failure with no progress — stop the artist walk.
+        if (
+          chunkResult.success === false &&
+          chunkResult.downloaded === 0 &&
+          chunkResult.failed.length === 0 &&
+          !chunkResult.canceled
+        ) {
           break;
         }
 
@@ -789,12 +893,27 @@ export class FileController extends BaseController {
         await this.writeQueueFile(state);
       }
 
-      return {
-        success: failed.length === 0 && !canceled,
-        downloaded,
-        failed,
-        canceled,
-      };
+      // Artist path: reconcile on the aggregate of all chunks (attemptedItemCount),
+      // not per-chunk — a per-chunk guard error would be dropped when aggregating.
+      const result = this.applyBatchAccountingGuard(
+        {
+          success: workerBatchOk && failed.length === 0 && !canceled,
+          downloaded,
+          failed,
+          canceled,
+          canceledCount,
+          ...(workerError !== undefined ? { error: workerError } : {}),
+        },
+        attemptedItemCount
+      );
+      log.info(`${MASS_DOWNLOAD_LOG_PREFIX} end`, {
+        downloaded: result.downloaded,
+        failed: result.failed.length,
+        canceled: result.canceled,
+        canceledCount: result.canceledCount ?? 0,
+        durationMs: Date.now() - startedAt,
+      });
+      return result;
     } finally {
       this.massDownloadActive = false;
       this.massDownloadCancelRequested = false;
@@ -842,10 +961,19 @@ export class FileController extends BaseController {
       await this.writeQueueFile(state);
     }
 
+    const { duplicateFileBehavior } = this.getDownloadSettings();
+    const startedAt = Date.now();
+    log.info(`${MASS_DOWNLOAD_LOG_PREFIX} start`, {
+      kind: "list",
+      itemCount: items.length,
+      folder: state.folder,
+      duplicateFileBehavior,
+    });
+
     this.massDownloadActive = true;
     this.massDownloadCancelRequested = false;
     try {
-      const result = await this.runWorkerBatch({
+      const workerResult = await this.runWorkerBatch({
         items,
         folder: state.folder,
         progressDoneBase: state.completedIds.length,
@@ -866,8 +994,8 @@ export class FileController extends BaseController {
       });
 
       if (
-        !result.canceled &&
-        result.failed.length === 0 &&
+        !workerResult.canceled &&
+        workerResult.failed.length === 0 &&
         !this.massDownloadCancelRequested
       ) {
         await this.deleteQueueFile();
@@ -875,15 +1003,29 @@ export class FileController extends BaseController {
         await this.writeQueueFile(state);
       }
 
-      return {
-        success:
-          result.failed.length === 0 &&
-          !result.canceled &&
-          !this.massDownloadCancelRequested,
+      const result = this.applyBatchAccountingGuard(
+        {
+          success:
+            workerResult.success !== false &&
+            workerResult.failed.length === 0 &&
+            !workerResult.canceled &&
+            !this.massDownloadCancelRequested,
+          downloaded: workerResult.downloaded,
+          failed: workerResult.failed,
+          canceled: workerResult.canceled || this.massDownloadCancelRequested,
+          error: workerResult.error,
+          canceledCount: parseCanceledCount(workerResult.canceledCount),
+        },
+        items.length
+      );
+      log.info(`${MASS_DOWNLOAD_LOG_PREFIX} end`, {
         downloaded: result.downloaded,
-        failed: result.failed,
-        canceled: result.canceled || this.massDownloadCancelRequested,
-      };
+        failed: result.failed.length,
+        canceled: result.canceled,
+        canceledCount: result.canceledCount ?? 0,
+        durationMs: Date.now() - startedAt,
+      });
+      return result;
     } finally {
       this.massDownloadActive = false;
       this.massDownloadCancelRequested = false;
@@ -902,7 +1044,7 @@ export class FileController extends BaseController {
     progressTotal: number;
     persistQueue: boolean;
     onItemCompleted?: (filename: string) => void | Promise<void>;
-  }): Promise<DownloadAllResult> {
+  }): Promise<MassDownloadBatchResult> {
     const mainWindow = this.getMainWindow();
     if (!mainWindow) {
       return Promise.resolve({
@@ -949,6 +1091,7 @@ export class FileController extends BaseController {
             queueFilePath: this.getQueueFilePath(),
             proxyUrl,
             persistQueue: params.persistQueue,
+            allowedCdnDomains: getAllowedCdnDomains(),
           },
         });
         this.downloadWorker = worker;
@@ -965,6 +1108,8 @@ export class FileController extends BaseController {
             downloaded?: number;
             failed?: unknown;
             canceled?: boolean;
+            /** Optional (P1): count of items aborted mid-batch; logged when present. */
+            canceledCount?: number;
             error?: string;
             itemId?: string;
             code?: string;
@@ -1047,11 +1192,18 @@ export class FileController extends BaseController {
               const failed: DownloadFailure[] = failedParse.success
                 ? failedParse.data
                 : [];
+              const downloaded = msg.downloaded ?? 0;
+              const canceled = msg.canceled ?? false;
+              // P1 complete payload; default 0 when absent (older workers / partial mocks).
+              const canceledCount = parseCanceledCount(msg.canceledCount);
+              // Do not apply accounting guard here: artist path aggregates chunks
+              // and reconciles once on attemptedItemCount; list path guards at return.
               this.settleBatch({
                 success: msg.success ?? false,
-                downloaded: msg.downloaded ?? 0,
+                downloaded,
                 failed,
-                canceled: msg.canceled ?? false,
+                canceled,
+                canceledCount,
               });
               return;
             }
@@ -1252,6 +1404,41 @@ export class FileController extends BaseController {
         error: error instanceof Error ? error.message : String(error),
       };
     }
+  }
+
+  /**
+   * Open the configured mass-download root folder in the OS file manager.
+   * Returns a typed envelope — never throws custom Error fields across IPC.
+   */
+  private async openDownloadFolder(): Promise<OpenDownloadFolderResult> {
+    const folder = await this.getDownloadRoot();
+    try {
+      await access(folder);
+    } catch {
+      try {
+        await mkdir(folder, { recursive: true });
+      } catch (error: unknown) {
+        log.error(
+          "[FileController] Failed to ensure download folder before open:",
+          error
+        );
+        return OpenDownloadFolderResultSchema.parse({
+          ok: false,
+          error: OPEN_DOWNLOAD_FOLDER_FAILED_MESSAGE,
+        });
+      }
+    }
+
+    // shell.openPath returns "" on success and an error string on failure (does not throw).
+    const openError = await shell.openPath(folder);
+    if (openError.length > 0) {
+      log.error(`[FileController] shell.openPath failed: ${openError}`);
+      return OpenDownloadFolderResultSchema.parse({
+        ok: false,
+        error: OPEN_DOWNLOAD_FOLDER_FAILED_MESSAGE,
+      });
+    }
+    return OpenDownloadFolderResultSchema.parse({ ok: true });
   }
 
   /**

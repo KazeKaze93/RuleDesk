@@ -107,6 +107,8 @@ export const IPC_CHANNELS = {
     RESUME_PENDING_DOWNLOAD: "files:resume-pending-download",
     DISMISS_PENDING_DOWNLOAD: "files:dismiss-pending-download",
     OPEN_FOLDER: "files:open-folder",
+    /** Opens the configured mass-download root folder (not a specific file). */
+    OPEN_DOWNLOAD_FOLDER: "files:open-download-folder",
     DOWNLOAD_PROGRESS: "files:download-progress",
     DOWNLOAD_ALL_PROGRESS: "files:download-all-progress",
     PENDING_DOWNLOAD_STATE_CHANGED: "files:pending-download-state-changed",

@@ -25,12 +25,13 @@ import {
   classifyDownloadFailure,
   isRetryableDownloadFailure,
   parseRetryAfterMs,
+  unexpectedAbortFailure,
 } from "@shared/utils/download-failure";
 import {
   DOWNLOAD_URL_NOT_ALLOWED_MESSAGE,
-  assertCdnUrlAllowedForRedirect,
-  isAllowedCdnUrl,
-} from "../providers/cdn-allowlist";
+  assertCdnUrlAllowedForRedirectOnHosts,
+  isUrlAllowedOnCdnHosts,
+} from "@shared/utils/cdn-url-allowlist";
 import { DownloadRateLimitGate } from "./download-rate-limit-gate";
 
 /** Percent scale / completion threshold for download progress posts. */
@@ -50,6 +51,16 @@ export function shouldPostDownloadProgress(
   );
 }
 
+/**
+ * How to treat a CANCELLED classification from `classifyDownloadFailure`.
+ * User cancel must not enter `failed`; unexpected abort must be recorded.
+ */
+export function outcomeForCancelledDownload(
+  aborted: boolean
+): "user-cancel" | "unexpected-abort" {
+  return aborted ? "user-cancel" : "unexpected-abort";
+}
+
 interface WorkerData {
   items: Array<{ url: string; filename: string }>;
   folder: string;
@@ -60,13 +71,18 @@ interface WorkerData {
   /** Proxy URL string; worker builds its own agent. */
   proxyUrl: string | null;
   /**
+   * CDN hostnames computed by Main (`getAllowedCdnDomains`). Worker must not
+   * import the provider registry / electron-log.
+   */
+  allowedCdnDomains: readonly string[];
+  /**
    * Legacy flag. Worker never writes queue.json (Main uses writeFileAtomic).
    * Always treated as Main-owned ack path; `true` is ignored.
    */
   persistQueue?: boolean;
   /**
    * Test-only: skip CDN allowlist for the *initial* URL only (local HTTP loopback suites).
-   * Redirect hops always run `assertCdnUrlAllowedForRedirect` regardless of this flag.
+   * Redirect hops always run host checks regardless of this flag.
    * Production Main must never set this.
    */
   bypassCdnAllowlist?: boolean;
@@ -98,6 +114,12 @@ type WorkerOutboundMessage =
       downloaded: number;
       failed: DownloadFailure[];
       canceled: boolean;
+      /**
+       * Items that ended as user-cancel (in-flight abort returns + leftover
+       * queue items never started). Not present in `failed` or `completedIds`.
+       * Main can verify: downloaded + failed.length + canceledCount === items.length.
+       */
+      canceledCount: number;
       completedIds: string[];
     }
   | { type: "error"; error: string };
@@ -145,11 +167,13 @@ async function runWorker(): Promise<void> {
     duplicateFileBehavior,
     downloadFolderStructure,
     proxyUrl,
+    allowedCdnDomains,
     bypassCdnAllowlist = false,
   // boundary: worker message — workerData payload after trust/Zod
   // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion, no-restricted-syntax -- boundary: worker message
   } = workerData as WorkerData;
 
+  const allowedCdnHosts = new Set(allowedCdnDomains);
   let aborted = false;
   let paused = false;
   const activeControllers = new Set<AbortController>();
@@ -212,12 +236,18 @@ async function runWorker(): Promise<void> {
   let downloaded = 0;
   const failed: DownloadFailure[] = [];
   const completedIds: string[] = [];
+  /** Filenames that exited runOne as user-cancel (not failed, not completed). */
+  const userCanceledIds = new Set<string>();
 
   const ITEM_PERSIST_ACK_TIMEOUT_MS = 10_000;
 
+  const noteUserCanceled = (item: { filename: string }): void => {
+    userCanceledIds.add(item.filename);
+  };
+
   const markCompleted = async (
     item: { url: string; filename: string }
-  ): Promise<void> => {
+  ): Promise<boolean> => {
     const filename = item.filename;
     // File is already on disk. Notify Main, then wait for queue ack (Main owns persistence).
     try {
@@ -244,15 +274,17 @@ async function runWorker(): Promise<void> {
       });
       completedIds.push(filename);
       downloaded++;
+      return true;
     } catch (error: unknown) {
       if (aborted) {
-        return;
+        return false;
       }
       const classified = classifyDownloadFailure(error);
       recordFailure(item, {
         code: "DISK",
         message: classified.message || "Queue persist failed",
       });
+      return false;
     }
   };
 
@@ -280,11 +312,17 @@ async function runWorker(): Promise<void> {
   };
 
   const runOne = async (item: { url: string; filename: string }): Promise<void> => {
-    if (aborted) return;
+    if (aborted) {
+      noteUserCanceled(item);
+      return;
+    }
     while (paused && !aborted) {
       await delay(200);
     }
-    if (aborted) return;
+    if (aborted) {
+      noteUserCanceled(item);
+      return;
+    }
 
     /** Last progress percent posted for this item (local to this download). */
     let lastSentPercent: number | undefined;
@@ -297,7 +335,10 @@ async function runWorker(): Promise<void> {
       try {
         await mkdir(dir, { recursive: true });
       } catch (err) {
-        if (aborted) return;
+        if (aborted) {
+          noteUserCanceled(item);
+          return;
+        }
         recordFailure(item, classifyDownloadFailure(err));
         return;
       }
@@ -311,7 +352,13 @@ async function runWorker(): Promise<void> {
       /* file doesn't exist */
     }
     if (fileExists && duplicateFileBehavior === "skip") {
-      await markCompleted(item);
+      const completed = await markCompleted(item);
+      if (!completed) {
+        if (aborted) {
+          noteUserCanceled(item);
+        }
+        return;
+      }
       lastSentPercent = DOWNLOAD_PROGRESS_COMPLETE_PERCENT;
       post({
         type: "progress",
@@ -323,7 +370,10 @@ async function runWorker(): Promise<void> {
       return;
     }
 
-    if (!bypassCdnAllowlist && !isAllowedCdnUrl(item.url)) {
+    if (
+      !bypassCdnAllowlist &&
+      !isUrlAllowedOnCdnHosts(item.url, allowedCdnHosts)
+    ) {
       recordFailure(item, {
         code: "NETWORK",
         message: DOWNLOAD_URL_NOT_ALLOWED_MESSAGE,
@@ -366,7 +416,7 @@ async function runWorker(): Promise<void> {
           },
           // Always enforce CDN allowlist on redirect hops (ignore bypassCdnAllowlist).
           beforeRedirect: (options) => {
-            assertCdnUrlAllowedForRedirect(options);
+            assertCdnUrlAllowedForRedirectOnHosts(options, allowedCdnHosts);
           },
           onDownloadProgress: (ev: AxiosProgressEvent) => {
             if (aborted) {
@@ -408,7 +458,13 @@ async function runWorker(): Promise<void> {
           signal: abortController.signal,
         });
         clearIdleTimer();
-        await markCompleted(item);
+        const completed = await markCompleted(item);
+        if (!completed) {
+          if (aborted) {
+            noteUserCanceled(item);
+          }
+          return;
+        }
         lastSentPercent = DOWNLOAD_PROGRESS_COMPLETE_PERCENT;
         post({
           type: "progress",
@@ -423,6 +479,7 @@ async function runWorker(): Promise<void> {
         await unlinkIfExists(filePath);
 
         if (aborted && !idleTimedOut) {
+          noteUserCanceled(item);
           return;
         }
 
@@ -448,6 +505,11 @@ async function runWorker(): Promise<void> {
         }
 
         if (classified.code === "CANCELLED") {
+          if (outcomeForCancelledDownload(aborted) === "user-cancel") {
+            noteUserCanceled(item);
+            return;
+          }
+          recordFailure(item, unexpectedAbortFailure(classified, err));
           return;
         }
         recordFailure(item, classified);
@@ -456,6 +518,11 @@ async function runWorker(): Promise<void> {
         clearIdleTimer();
         activeControllers.delete(abortController);
       }
+    }
+
+    // Exited the download loop because `aborted` flipped (e.g. during 429 wait).
+    if (aborted) {
+      noteUserCanceled(item);
     }
   };
 
@@ -485,12 +552,15 @@ async function runWorker(): Promise<void> {
   await Promise.all(workers);
 
   const canceled = aborted;
+  // Never-started leftovers still in the queue count as user-cancel for accounting.
+  const canceledCount = userCanceledIds.size + (canceled ? queue.length : 0);
   post({
     type: "complete",
     success: failed.length === 0 && !canceled,
     downloaded,
     failed,
     canceled,
+    canceledCount,
     completedIds: [...completedIds],
   });
 }

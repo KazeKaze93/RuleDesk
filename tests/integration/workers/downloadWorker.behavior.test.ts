@@ -79,6 +79,9 @@ function runWorkerBatch(params: {
         proxyUrl: null,
         persistQueue,
         bypassCdnAllowlist,
+        // Empty list is fine when bypassCdnAllowlist skips the initial URL;
+        // redirect hops still reject unknown hosts.
+        allowedCdnDomains: [] as const,
       },
     });
     params.onWorker?.(worker);

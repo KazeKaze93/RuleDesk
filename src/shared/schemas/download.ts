@@ -47,3 +47,19 @@ export const DownloadAllRequestSchema = z.discriminatedUnion("kind", [
 
 export type DownloadAllRequest = z.infer<typeof DownloadAllRequestSchema>;
 export type DownloadAllItem = z.infer<typeof DownloadAllItemSchema>;
+
+/**
+ * Result of opening the mass-download root via `shell.openPath`
+ * (error is a string in the envelope, not thrown across IPC).
+ */
+export const OpenDownloadFolderResultSchema = z.discriminatedUnion("ok", [
+  z.object({ ok: z.literal(true) }),
+  z.object({
+    ok: z.literal(false),
+    error: z.string().min(1),
+  }),
+]);
+
+export type OpenDownloadFolderResult = z.infer<
+  typeof OpenDownloadFolderResultSchema
+>;

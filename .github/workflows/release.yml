@@ -29,13 +29,13 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            dist_script: dist:win
+            builder_args: --win zip
             artifact_name: release-windows
             artifact_path: release/RuleDesk-*-win.zip
             install_fuse: false
             rebuild_electron_native: false
           - os: ubuntu-latest
-            dist_script: dist:linux
+            builder_args: --linux AppImage
             artifact_name: release-linux
             artifact_path: release/*.AppImage
             install_fuse: true
@@ -81,8 +81,14 @@ jobs:
         if: matrix.rebuild_electron_native
         run: npm run db:rebuild
 
+      - name: Build
+        run: npm run build
+
+      - name: Check worker bundles (no electron / electron-log)
+        run: npm run check:worker-bundles
+
       - name: Package
-        run: npm run ${{ matrix.dist_script }}
+        run: npx electron-builder ${{ matrix.builder_args }} --publish never
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
