@@ -6,9 +6,9 @@ export const SEARCH_RESULTS_CACHE_NOT_FOUND_TTL_MS = 24 * 60 * 60 * 1000;
 
 /**
  * SQLite TTL for successful (`found`) Browse search page rows.
- * Much larger than `SEARCH_RESULTS_CACHE_NOT_FOUND_TTL_MS` — empty pages are
- * cheap to re-confirm, while a found payload is reusable across a longer session
- * window. Bound growth with row + payload-byte caps below.
+ * Only Rule34 **cursor** pages (`beforePostId` / `id:<X`) are written — the head
+ * of the feed changes constantly and is never persisted under this TTL.
+ * Bound growth with row + payload-byte caps below.
  */
 export const SEARCH_RESULTS_CACHE_FOUND_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -17,10 +17,10 @@ export const SEARCH_RESULTS_CACHE_FOUND_TTL_MS = 7 * 24 * 60 * 60 * 1000;
  * Infinite Browse scroll mints one row per unique `beforePostId` (and per
  * query-shape key); TTL alone cannot bound growth during a long day.
  *
- * 2000 ≈ headroom for ~40 distinct query shapes × ~50 pages (or one marathon
- * ~2000-page cursor) without touching short sessions (tens of pages). Eviction
- * runs on the MaintenanceScheduler tick after TTL cleanup — intra-day overshoot
- * until the next tick is accepted (same class as other maintenance work).
+ * 2000 ≈ headroom for ~40 distinct query shapes × ~50 cursor pages (or one
+ * marathon ~2000-page cursor) without touching short sessions. Eviction runs on
+ * the MaintenanceScheduler tick after TTL cleanup — intra-day overshoot until
+ * the next tick is accepted (same class as other maintenance work).
  */
 export const MAX_SEARCH_RESULTS_CACHE_ROWS = 2000;
 

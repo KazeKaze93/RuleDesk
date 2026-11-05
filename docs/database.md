@@ -323,7 +323,7 @@ Maintenance: `deleteExpiredTagMetadata` then `enforceTagMetadataRowCap` (`MAX_TA
 
 ### Table: `search_results_cache`
 
-Persistent TTL cache for Browse `searchBooru` API pages (`SearchController.search`). One row per canonical cache key. Does **not** replace `tag_metadata`.
+Persistent TTL cache for Browse `searchBooru` **cursor** pages only (`SearchController.search` when `beforePostId` is set). Head-of-feed and offset pages never read or write this table. One row per canonical cache key. Does **not** replace `tag_metadata`.
 
 | Column                    | Type                             | Description                                                                 |
 | ------------------------- | -------------------------------- | --------------------------------------------------------------------------- |
@@ -335,11 +335,10 @@ Persistent TTL cache for Browse `searchBooru` API pages (`SearchController.searc
 
 **Semantics:**
 
-- `found` — successful API page with at least one post; payload parsed only through the versioned resolver (`parseSearchResultsCachePayload`). TTL `SEARCH_RESULTS_CACHE_FOUND_TTL_MS` (7 days — much larger than not_found).
-- `not_found` — confirmed empty API page after alias/user:/artist-strip fallbacks (tagged queries). TTL `SEARCH_RESULTS_CACHE_NOT_FOUND_TTL_MS` (24 hours). Empty is **not** stored as `found`.
+- Written only for Rule34 cursor pages (`useCursorPagination` / `beforePostId`). Head and offset pages always fetch the provider (renderer React Query still dedups short opens).
+- `found` — successful cursor page with at least one post; payload parsed only through the versioned resolver (`parseSearchResultsCachePayload`). TTL `SEARCH_RESULTS_CACHE_FOUND_TTL_MS` (7 days — much larger than not_found).
+- `not_found` — confirmed empty cursor page after alias/user:/artist-strip fallbacks. TTL `SEARCH_RESULTS_CACHE_NOT_FOUND_TTL_MS` (24 hours). Empty is **not** stored as `found`.
 - Unresolved failures (429/network/parse) are **not** written.
-- Untagged page 1 returning zero rows is **not** persisted (same throttle-blip case as the empty-page UI path).
-- Untagged page 2+ returning zero rows **is** persisted as `not_found` (real end-of-feed; repeat scroll must not re-hit the API).
 - `isRandom` searches bypass the cache (read and write).
 - Blacklist filtering and local viewed/favorited merge run **after** a cache hit, so they stay live.
 - Key dimensions are only values that `SearchController.search()` actually varies: provider, formatted API `tags` (AI/media injection already inlined), page, limit, cursor. Browse `sortOrder` / removed local `rating` / `source` / `aiFilter` / `mediaType` flags are **not** in the SQLite key — they are not IPC arguments. Changing injected tags (AI hide / `video`) yields a different `tags` string and therefore a different key.

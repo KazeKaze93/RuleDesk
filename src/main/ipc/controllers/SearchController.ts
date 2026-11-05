@@ -247,8 +247,10 @@ export class SearchController extends BaseController {
 
   /**
    * Search posts via external Booru API.
-   * Cache-first: SQLite `search_results_cache` (TTL) before provider.fetchPosts.
-   * Confirmed empty tagged pages persist as not_found; 429/network are unresolved (not written).
+   * Persistent SQLite `search_results_cache` only for Rule34 cursor pages
+   * (`useCursorPagination` / beforePostId). Head and offset pages always hit the
+   * provider (renderer React Query still dedups short-lived repeats).
+   * Confirmed empty cursor pages persist as not_found; 429/network are unresolved.
    * `isRandom` bypasses the cache. IPC signature unchanged.
    *
    * @param _event - IPC event (unused)
@@ -460,7 +462,10 @@ export class SearchController extends BaseController {
       };
 
       let booruPosts: BooruPost[];
-      if (isRandom) {
+      if (isRandom || !useCursorPagination) {
+        // Head of the feed changes constantly; only cursor pages (id < X) are
+        // stable enough for the long TTL; renderer React Query (5 min) dedups
+        // repeat opens. Offset pages also skip persistent cache.
         booruPosts = await fetchFromProvider();
       } else {
         const cacheKey = buildSearchResultsCacheKey({
@@ -468,11 +473,11 @@ export class SearchController extends BaseController {
           tags: tagsString,
           page: apiPage,
           limit,
-          beforePostId: useCursorPagination ? beforePostId : undefined,
+          beforePostId,
         });
-        // Untagged page 1 empty can be a throttle blip — do not persist as not_found.
-        // Untagged page 2+ empty is a real end-of-feed — persist so repeat scroll skips HTTP.
-        const persistEmpty = !(page === 1 && safeInputTags.length === 0);
+        // Cursor pages: empty after alias fallbacks is a confirmed end for that
+        // window — persist as not_found. (Head/offset never reach this branch.)
+        const persistEmpty = true;
         booruPosts = await resolveCachedSearchPage(
           cacheKey,
           fetchFromProvider,

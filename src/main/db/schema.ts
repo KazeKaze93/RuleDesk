@@ -163,6 +163,7 @@ export const settings = sqliteTable("settings", {
   encryptedApiKey: text("encrypted_api_key").default(""),
   proxyUrl: text("proxy_url"),
   isSafeMode: integer("is_safe_mode", { mode: "boolean" }).default(true),
+  // legacy: unused since age gate removal
   isAdultConfirmed: integer("is_adult_confirmed", { mode: "boolean" }).default(
     false
   ),
