@@ -35,7 +35,15 @@ export class MaintenanceScheduler {
   }
 
   public start(): void {
+    if (this.startupTimer !== null || this.dailyTimer !== null) {
+      log.debug(
+        "[MaintenanceScheduler] start() ignored — timers already active"
+      );
+      return;
+    }
+
     this.startupTimer = setTimeout(() => {
+      this.startupTimer = null;
       this.runMaintenance("startup");
       this.dailyTimer = setInterval(() => {
         this.runMaintenance("scheduled");

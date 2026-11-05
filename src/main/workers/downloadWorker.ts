@@ -4,7 +4,7 @@
  * Runs batch downloads off the Main process to avoid blocking the UI.
  * Does NOT use electron-log — post structured failures to Main for logging/redaction.
  */
-import { parentPort, workerData } from "worker_threads";
+import { isMainThread, parentPort, workerData } from "worker_threads";
 import path from "path";
 import fs from "fs";
 import { access, mkdir, unlink } from "fs/promises";
@@ -32,6 +32,23 @@ import {
   isAllowedCdnUrl,
 } from "../providers/cdn-allowlist";
 import { DownloadRateLimitGate } from "./download-rate-limit-gate";
+
+/** Percent scale / completion threshold for download progress posts. */
+export const DOWNLOAD_PROGRESS_COMPLETE_PERCENT = 100;
+
+/**
+ * Whether to post an onDownloadProgress update for this item.
+ * Dedupes unchanged rounded percents; always allows completion (>= 100).
+ */
+export function shouldPostDownloadProgress(
+  percent: number,
+  lastSentPercent: number | undefined
+): boolean {
+  return (
+    lastSentPercent !== percent ||
+    percent >= DOWNLOAD_PROGRESS_COMPLETE_PERCENT
+  );
+}
 
 interface WorkerData {
   items: Array<{ url: string; filename: string }>;
@@ -269,6 +286,9 @@ async function runWorker(): Promise<void> {
     }
     if (aborted) return;
 
+    /** Last progress percent posted for this item (local to this download). */
+    let lastSentPercent: number | undefined;
+
     const filePath = getFilePath(folder, item.filename, downloadFolderStructure);
     const dir = path.dirname(filePath);
     try {
@@ -292,10 +312,11 @@ async function runWorker(): Promise<void> {
     }
     if (fileExists && duplicateFileBehavior === "skip") {
       await markCompleted(item);
+      lastSentPercent = DOWNLOAD_PROGRESS_COMPLETE_PERCENT;
       post({
         type: "progress",
         id: item.filename,
-        percent: 100,
+        percent: DOWNLOAD_PROGRESS_COMPLETE_PERCENT,
         done: completedIds.length,
         total: items.length,
       });
@@ -354,12 +375,20 @@ async function runWorker(): Promise<void> {
             }
             armIdleTimer();
             if (ev.total) {
-              const pct = Math.round((ev.loaded * 100) / ev.total);
+              const pct = Math.round(
+                (ev.loaded * DOWNLOAD_PROGRESS_COMPLETE_PERCENT) / ev.total
+              );
+              if (!shouldPostDownloadProgress(pct, lastSentPercent)) {
+                return;
+              }
+              lastSentPercent = pct;
               post({
                 type: "progress",
                 id: item.filename,
                 percent: pct,
-                done: completedIds.length + (pct >= 100 ? 1 : 0),
+                done:
+                  completedIds.length +
+                  (pct >= DOWNLOAD_PROGRESS_COMPLETE_PERCENT ? 1 : 0),
                 total: items.length,
               });
             }
@@ -380,10 +409,11 @@ async function runWorker(): Promise<void> {
         });
         clearIdleTimer();
         await markCompleted(item);
+        lastSentPercent = DOWNLOAD_PROGRESS_COMPLETE_PERCENT;
         post({
           type: "progress",
           id: item.filename,
-          percent: 100,
+          percent: DOWNLOAD_PROGRESS_COMPLETE_PERCENT,
           done: completedIds.length,
           total: items.length,
         });
@@ -465,9 +495,12 @@ async function runWorker(): Promise<void> {
   });
 }
 
-runWorker().catch((err: unknown) => {
-  parentPort?.postMessage({
-    type: "error",
-    error: err instanceof Error ? err.message : String(err),
+// Skip auto-start when imported from unit tests (main thread).
+if (!isMainThread) {
+  runWorker().catch((err: unknown) => {
+    parentPort?.postMessage({
+      type: "error",
+      error: err instanceof Error ? err.message : String(err),
+    });
   });
-});
+}

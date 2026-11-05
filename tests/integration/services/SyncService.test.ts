@@ -612,6 +612,96 @@ describe('SyncService Integration', () => {
     }
   });
 
+  it('should yield the event loop between batch commits', async () => {
+    const artist = await mockDb.db.query.artists.findFirst({
+      where: eq(artists.tag, 'artist_name'),
+    });
+
+    if (!artist) {
+      throw new Error('Artist setup failed');
+    }
+
+    const settingsRecord = await mockDb.db.query.settings.findFirst({
+      where: eq(settings.id, SETTINGS_ID),
+    });
+
+    if (!settingsRecord) {
+      throw new Error('Settings setup failed');
+    }
+
+    const { safeStorage } = await import('electron');
+    const apiKey = safeStorage.isEncryptionAvailable() && settingsRecord.encryptedApiKey
+      ? safeStorage.decryptString(Buffer.from(settingsRecord.encryptedApiKey, 'base64'))
+      : settingsRecord.encryptedApiKey || '';
+
+    const createPage = (startId: number): BooruPost[] =>
+      Array.from({ length: 100 }, (_, index) => {
+        const id = startId + index;
+        return {
+          id,
+          fileUrl: `https://cdn.example.com/${id}.jpg`,
+          previewUrl: `https://cdn.example.com/${id}-preview.jpg`,
+          sampleUrl: `https://cdn.example.com/${id}-sample.jpg`,
+          tags: ['artist_name', `tag_${id}`],
+          rating: 's',
+          score: 0,
+          source: '',
+          width: 1000,
+          height: 1000,
+          createdAt: new Date('2025-01-01T00:00:00.000Z'),
+        };
+      });
+
+    let eventLoopTaskRan = false;
+    let sawYieldBeforeSecondBatchFetch = false;
+    setImmediate(() => {
+      eventLoopTaskRan = true;
+    });
+
+    const provider = getProvider('rule34');
+    // 10 full pages → two mid-batch commits (5 pages each); empty page ends pagination
+    const fetchPostsSpy = vi.spyOn(provider, 'fetchPosts').mockImplementation(
+      async (_tags, page) => {
+        if (page === 5) {
+          // First fetch after the first batch commit — macrotask must have run
+          sawYieldBeforeSecondBatchFetch = eventLoopTaskRan;
+        }
+        if (page >= 0 && page <= 9) {
+          return asFetchResult(createPage(page * 100 + 1));
+        }
+        return asFetchResult([]);
+      }
+    );
+
+    try {
+      await service.syncArtist(artist, {
+        userId: settingsRecord.userId || '',
+        apiKey,
+      });
+
+      expect(sawYieldBeforeSecondBatchFetch).toBe(true);
+      expect(eventLoopTaskRan).toBe(true);
+
+      const savedPosts = await mockDb.db
+        .select()
+        .from(posts)
+        .where(eq(posts.artistId, artist.id));
+
+      expect(savedPosts).toHaveLength(1000);
+
+      const updatedArtist = await mockDb.db.query.artists.findFirst({
+        where: eq(artists.id, artist.id),
+      });
+
+      expect(updatedArtist?.lastPostId).toBe(1000);
+      expect(updatedArtist?.lastSyncIncomplete).toBe(false);
+      expect(updatedArtist?.lastChecked).not.toBeNull();
+      expect(updatedArtist?.syncStatus).toBe('idle');
+    } finally {
+      fetchPostsSpy.mockRestore();
+    }
+  });
+
   it('should resume and complete pagination after a mid-run failure without skipping pages', async () => {
     const artist = await mockDb.db.query.artists.findFirst({
       where: eq(artists.tag, 'artist_name'),

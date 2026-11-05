@@ -135,8 +135,21 @@ container.register(DI_TOKENS.SYNC_SCHEDULER, syncScheduler);
 
 /** Bound for awaited VideoProxyServer.stop during quit (stop() already caps close at 1s). */
 const VIDEO_PROXY_STOP_SHUTDOWN_MS = 2_000;
+/** Delay before sync scheduler / tray / maintenance scheduler start on cold boot. */
+const DEFERRED_SCHEDULER_STARTUP_MS = 1_500;
+
+/** Handle for the deferred scheduler startup timeout; cleared on before-quit. */
+let deferredSchedulerStartupTimer: ReturnType<typeof setTimeout> | null = null;
+
+function clearDeferredSchedulerStartupTimer(): void {
+  if (deferredSchedulerStartupTimer !== null) {
+    clearTimeout(deferredSchedulerStartupTimer);
+    deferredSchedulerStartupTimer = null;
+  }
+}
 
 function stopBackgroundServicesAndCloseDb(): void {
+  clearDeferredSchedulerStartupTimer();
   void videoProxyServer.stop();
   syncScheduler.stop();
   maintenanceScheduler.stop();
@@ -211,6 +224,8 @@ app.on("before-quit", (event) => {
   // Mark quit before any drain/closeDatabase so window "close" never hide-to-trays
   // or reads settings after the DB is closed (Tray Quit + minimize-to-tray on).
   setQuitRequested();
+  // Do not start schedulers/tray after quit has begun (timer may still be pending).
+  clearDeferredSchedulerStartupTimer();
   if (isShuttingDown) {
     return;
   }
@@ -467,7 +482,15 @@ function scheduleDeferredStartupTasks(window: BrowserWindow): void {
     })();
   }, 2000);
 
-  setTimeout(() => {
+  deferredSchedulerStartupTimer = setTimeout(() => {
+    deferredSchedulerStartupTimer = null;
+    // Race: timer fired after clear missed it, or quit started mid-callback.
+    if (isQuitRequested() || isShuttingDown) {
+      logger.debug(
+        "[Main] Deferred startup skipped — shutdown already in progress"
+      );
+      return;
+    }
     try {
       const db = getDb();
       const currentSettings = db
@@ -484,7 +507,7 @@ function scheduleDeferredStartupTasks(window: BrowserWindow): void {
     } catch (error) {
       logger.error("[Main] Failed deferred startup tasks:", error);
     }
-  }, 1500);
+  }, DEFERRED_SCHEDULER_STARTUP_MS);
 }
 
 /**
