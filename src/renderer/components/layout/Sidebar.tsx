@@ -7,21 +7,16 @@ import {
   Heart,
   Settings,
   RefreshCw,
-  LogOut,
   List,
   BarChart2,
 } from "lucide-react";
-import log from "electron-log/renderer";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "../../lib/utils";
 import { releaseRadixModalLock } from "../../lib/radix-modal-lock";
 import { formatRelativeTime } from "../../lib/formatRelativeTime";
-import { resolveErrorMessage } from "../../utils/error-message";
-import { useSearchStore } from "../../store/searchStore";
 import { useSyncAll } from "../../hooks/useSyncAll";
-import { ConfirmActionDialog } from "../dialogs/ConfirmActionDialog";
 
 const NAV_ITEM_BASE_CLASS =
   "flex items-center gap-3 rounded-md px-3 py-3 text-sm font-medium transition-colors [@media(max-height:700px)]:py-2.5 [@media(max-height:599px)]:py-2";
@@ -62,7 +57,6 @@ const isNavRouteActive = (pathname: string, to: string): boolean => {
 
 export const Sidebar = () => {
   const location = useLocation();
-  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const [relativeTimeTick, setRelativeTimeTick] = useState(0);
   const queryClient = useQueryClient();
   const { isSyncing, progress, startSync } = useSyncAll({
@@ -85,8 +79,6 @@ export const Sidebar = () => {
     queryFn: () => window.api.getUpdatesLastSyncAt(),
     staleTime: Infinity,
   });
-  const clearTagChips = useSearchStore((state) => state.clearTagChips);
-  const resetFilters = useSearchStore((state) => state.resetFilters);
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
@@ -102,23 +94,6 @@ export const Sidebar = () => {
       ? "Last sync: never"
       : `Last sync: ${formatRelativeTime(lastSyncTimestamp)}`;
   }, [lastSyncTimestamp, relativeTimeTick]);
-
-  const handleLogoutConfirm = async () => {
-    try {
-      await window.api.logout();
-      clearTagChips();
-      resetFilters();
-      queryClient.clear();
-      await queryClient.invalidateQueries({ queryKey: ["settings"] });
-      window.location.reload();
-    } catch (error: unknown) {
-      log.error("[Sidebar] Failed to logout:", error);
-      // ConfirmActionDialog surfaces toast.error from the thrown error.
-      throw error instanceof Error
-        ? error
-        : new Error(resolveErrorMessage(error, "Failed to log out. Please try again."));
-    }
-  };
 
   const navItemClassName = (isActive: boolean) =>
     cn(
@@ -219,30 +194,10 @@ export const Sidebar = () => {
             <p className="pl-1 text-xs text-muted-foreground" aria-live="polite">
               {lastSyncText}
             </p>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setLogoutDialogOpen(true)}
-              className="flex h-auto w-full justify-start gap-3 p-2 -ml-1 text-left text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-              title="Log out"
-            >
-              <LogOut className="w-4 h-4" />
-              <span className="text-sm font-medium">Log Out</span>
-            </Button>
           </div>
         </div>
       </aside>
       <div className="w-56 shrink-0" aria-hidden="true" />
-      <ConfirmActionDialog
-        open={logoutDialogOpen}
-        onOpenChange={setLogoutDialogOpen}
-        title="Log out?"
-        description="Are you sure you want to log out? You will need to enter your API credentials again."
-        confirmLabel="Log out"
-        cancelLabel="Cancel"
-        variant="destructive"
-        onConfirm={handleLogoutConfirm}
-      />
     </>
   );
 };
