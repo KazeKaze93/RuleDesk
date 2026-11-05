@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import log from "electron-log/renderer";
 import { Settings as SettingsIcon } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
@@ -13,12 +14,15 @@ import { SettingsBlacklistTab } from "./SettingsBlacklistTab";
 import { SettingsHelpTab } from "./SettingsHelpTab";
 import { useTheme } from "../../hooks/useTheme";
 import { useCredentialsActions } from "../../hooks/useCredentialsActions";
+import type { IpcSettings } from "../../../shared/schemas/settings";
 import {
   SETTINGS_TAB,
   SETTINGS_TAB_QUERY_PARAM,
   parseSettingsTab,
   type SettingsTab,
 } from "../../lib/settings-tab";
+
+const SETTINGS_QUERY_KEY = ["settings"] as const;
 
 const TAB_GENERAL_LABEL = "General";
 const TAB_ACCOUNT_LABEL = "Account";
@@ -39,6 +43,7 @@ type StatusTimerKey =
 type AutoBackupInterval = "never" | "daily" | "weekly";
 
 export const Settings = () => {
+  const queryClient = useQueryClient();
   const { theme, setTheme, isSaving: isThemeSaving } = useTheme();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = parseSettingsTab(searchParams.get(SETTINGS_TAB_QUERY_PARAM));
@@ -75,6 +80,7 @@ export const Settings = () => {
   const [autoSyncOnStartup, setAutoSyncOnStartup] = useState(false);
   const [autoSyncOnArtistAdd, setAutoSyncOnArtistAdd] = useState(false);
   const [minimizeToTray, setMinimizeToTray] = useState(true);
+  const [showPanicButton, setShowPanicButton] = useState(false);
   const [syncIntervalMinutes, setSyncIntervalMinutes] = useState("0");
   const [backupRetention, setBackupRetention] = useState("5");
   const [autoBackupInterval, setAutoBackupInterval] = useState<AutoBackupInterval>("never");
@@ -129,6 +135,9 @@ export const Settings = () => {
         }
         if (s?.minimizeToTray !== undefined) {
           setMinimizeToTray(s.minimizeToTray);
+        }
+        if (s?.showPanicButton !== undefined) {
+          setShowPanicButton(s.showPanicButton);
         }
         if (s?.syncIntervalMinutes !== undefined) {
           setSyncIntervalMinutes(String(s.syncIntervalMinutes));
@@ -376,6 +385,29 @@ export const Settings = () => {
     }
   };
 
+  const handleShowPanicButtonChange = async (checked: boolean): Promise<void> => {
+    const previousValue = showPanicButton;
+    setShowPanicButton(checked);
+    queryClient.setQueryData<IpcSettings>(SETTINGS_QUERY_KEY, (current) => {
+      if (!current) {
+        return current;
+      }
+      return { ...current, showPanicButton: checked };
+    });
+    try {
+      await window.api.saveSettings({ showPanicButton: checked });
+    } catch (error) {
+      log.error("[Settings] Failed to save show panic button:", error);
+      setShowPanicButton(previousValue);
+      queryClient.setQueryData<IpcSettings>(SETTINGS_QUERY_KEY, (current) => {
+        if (!current) {
+          return current;
+        }
+        return { ...current, showPanicButton: previousValue };
+      });
+    }
+  };
+
   const handleSyncIntervalChange = async (value: string): Promise<void> => {
     const previousValue = syncIntervalMinutes;
     setSyncIntervalMinutes(value);
@@ -515,8 +547,12 @@ export const Settings = () => {
                 void handleSaveProxy(true);
               }}
               minimizeToTray={minimizeToTray}
+              showPanicButton={showPanicButton}
               onMinimizeToTrayChange={(checked) => {
                 void handleMinimizeToTrayChange(checked);
+              }}
+              onShowPanicButtonChange={(checked) => {
+                void handleShowPanicButtonChange(checked);
               }}
             />
             <SettingsSyncTab

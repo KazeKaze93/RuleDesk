@@ -245,6 +245,35 @@ describe("SettingsController Integration", () => {
     expect(updated?.autoSyncOnStartup).toBe(true);
   });
 
+  it("defaults showPanicButton to false and updates on explicit save", async () => {
+    const getCall = vi
+      .mocked(ipcMain.handle)
+      .mock.calls.find(([channel]) => channel === IPC_CHANNELS.SETTINGS.GET);
+    const saveCall = vi
+      .mocked(ipcMain.handle)
+      .mock.calls.find(([channel]) => channel === IPC_CHANNELS.SETTINGS.SAVE);
+
+    expect(getCall).toBeDefined();
+    expect(saveCall).toBeDefined();
+    if (!getCall || !saveCall) {
+      throw new Error("SETTINGS handlers were not registered");
+    }
+
+    const loaded = await getCall[1](undefined);
+    expect(loaded.showPanicButton).toBe(false);
+
+    const invokeSave = saveCall[1];
+    await invokeSave(undefined, { showPanicButton: true });
+
+    const updated = await mockDb.db.query.settings.findFirst({
+      where: eq(settings.id, SETTINGS_ID),
+    });
+    expect(updated?.showPanicButton).toBe(true);
+
+    const reloaded = await getCall[1](undefined);
+    expect(reloaded.showPanicButton).toBe(true);
+  });
+
   it("coerces stored gelbooru settings.provider to rule34 on load without writing DB", async () => {
     mockDb.sqlite
       .prepare(`UPDATE settings SET provider = ? WHERE id = ?`)

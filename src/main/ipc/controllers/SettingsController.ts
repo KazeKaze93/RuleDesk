@@ -116,6 +116,7 @@ function mapSettingsToIpc(
       dbSettings.minimizeToTray === null
         ? true
         : !!dbSettings.minimizeToTray,
+    showPanicButton: !!dbSettings.showPanicButton,
     syncIntervalMinutes: dbSettings.syncIntervalMinutes ?? 0,
     backupRetention: dbSettings.backupRetention ?? 5,
   };
@@ -321,6 +322,8 @@ export class SettingsController extends BaseController {
             data.autoSyncOnArtistAdd ?? existing.autoSyncOnArtistAdd ?? false;
           const finalMinimizeToTray =
             data.minimizeToTray ?? existing.minimizeToTray ?? true;
+          const finalShowPanicButton =
+            data.showPanicButton ?? existing.showPanicButton ?? false;
           const finalSyncIntervalMinutes =
             data.syncIntervalMinutes ?? existing.syncIntervalMinutes ?? 0;
           const finalBackupRetention =
@@ -344,6 +347,7 @@ export class SettingsController extends BaseController {
               autoSyncOnStartup: finalAutoSyncOnStartup,
               autoSyncOnArtistAdd: finalAutoSyncOnArtistAdd,
               minimizeToTray: finalMinimizeToTray,
+              showPanicButton: finalShowPanicButton,
               syncIntervalMinutes: finalSyncIntervalMinutes,
               backupRetention: finalBackupRetention,
             })
@@ -367,6 +371,7 @@ export class SettingsController extends BaseController {
               autoSyncOnStartup: data.autoSyncOnStartup ?? false,
               autoSyncOnArtistAdd: data.autoSyncOnArtistAdd ?? false,
               minimizeToTray: data.minimizeToTray ?? true,
+              showPanicButton: data.showPanicButton ?? false,
               syncIntervalMinutes: data.syncIntervalMinutes ?? 0,
               backupRetention: data.backupRetention ?? 5,
             })

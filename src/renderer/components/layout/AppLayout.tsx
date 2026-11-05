@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { releaseRadixModalLock } from "@/lib/radix-modal-lock";
 import { useViewerStore } from "@/store/viewerStore";
 import { useArtistsSyncInvalidation } from "@/hooks/useArtistsSyncInvalidation";
@@ -12,6 +12,8 @@ import { ViewerDialog } from "@/features/viewer/ViewerDialog";
 import { PendingDownloadBanner } from "../downloads/PendingDownloadBanner";
 import { CredentialsErrorToast } from "../dialogs/CredentialsErrorToast";
 import { SyncErrorAggregator } from "../dialogs/SyncErrorAggregator";
+
+const SETTINGS_QUERY_KEY = ["settings"] as const;
 
 /** Outer content padding contract for routes under AppLayout. */
 type ContentVariant = "padded" | "flush";
@@ -47,6 +49,12 @@ export const AppLayout = () => {
   const queryClient = useQueryClient();
   const location = useLocation();
   const contentVariant = resolveContentVariant(location.pathname);
+  const { data: settings } = useQuery({
+    queryKey: SETTINGS_QUERY_KEY,
+    queryFn: () => window.api.getSettings(),
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+  const showPanicButton = settings?.showPanicButton === true;
 
   useArtistsSyncInvalidation(queryClient);
 
@@ -86,7 +94,7 @@ export const AppLayout = () => {
       <ViewerDialog />
       <CredentialsErrorToast />
       <SyncErrorAggregator />
-      <PanicButton />
+      {showPanicButton ? <PanicButton /> : null}
     </div>
   );
 };

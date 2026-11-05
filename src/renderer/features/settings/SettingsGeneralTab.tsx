@@ -47,6 +47,12 @@ const MinimizeToTrayFormSchema = z.object({
 
 type MinimizeToTrayFormValues = z.infer<typeof MinimizeToTrayFormSchema>;
 
+const ShowPanicButtonFormSchema = z.object({
+  showPanicButton: z.boolean(),
+});
+
+type ShowPanicButtonFormValues = z.infer<typeof ShowPanicButtonFormSchema>;
+
 const PROXY_URL_INVALID_MESSAGE = "Please enter a valid HTTP/HTTPS URL.";
 
 const ProxyFormSchema = z.object({
@@ -91,6 +97,9 @@ const SETUP_SECTION_DESCRIPTION =
   "One-time preferences: download folder, sync on startup, and theme.";
 const GENERAL_SECTION_TITLE = "General";
 const GENERAL_SECTION_DESCRIPTION = "Default download and connection preferences.";
+const SHOW_PANIC_BUTTON_LABEL = "Show panic button";
+const SHOW_PANIC_BUTTON_DESCRIPTION =
+  "Show a floating button that instantly blurs previews (Safe Mode).";
 const DOWNLOAD_FOLDER_LABEL = "Default download folder";
 const DOWNLOAD_FOLDER_DEFAULT_TEXT = "Default (Downloads/BooruClient)";
 const CHOOSE_FOLDER_LABEL = "Choose Folder";
@@ -372,12 +381,14 @@ interface SettingsGeneralTabProps {
   proxyUrl: string | null;
   proxyStatus: "idle" | "success" | "error";
   minimizeToTray: boolean;
+  showPanicButton: boolean;
   onDuplicateFileBehaviorChange: (value: "skip" | "overwrite") => void;
   onDownloadFolderStructureChange: (value: "flat" | "{artist_id}") => void;
   onProxyUrlChange: (value: string) => void;
   onProxyBlur: () => void;
   onSaveProxy: () => void;
   onMinimizeToTrayChange: (checked: boolean) => void;
+  onShowPanicButtonChange: (checked: boolean) => void;
 }
 
 export const SettingsGeneralTab = ({
@@ -386,18 +397,28 @@ export const SettingsGeneralTab = ({
   proxyUrl,
   proxyStatus,
   minimizeToTray,
+  showPanicButton,
   onDuplicateFileBehaviorChange,
   onDownloadFolderStructureChange,
   onProxyUrlChange,
   onProxyBlur,
   onSaveProxy,
   onMinimizeToTrayChange,
+  onShowPanicButtonChange,
 }: SettingsGeneralTabProps) => {
   const [isDarwin, setIsDarwin] = useState(false);
 
   const { control, reset } = useForm<MinimizeToTrayFormValues>({
     resolver: zodResolver(MinimizeToTrayFormSchema),
     defaultValues: { minimizeToTray },
+  });
+
+  const {
+    control: panicControl,
+    reset: resetPanicForm,
+  } = useForm<ShowPanicButtonFormValues>({
+    resolver: zodResolver(ShowPanicButtonFormSchema),
+    defaultValues: { showPanicButton },
   });
 
   const proxyForm = useForm<ProxyFormValues>({
@@ -411,6 +432,10 @@ export const SettingsGeneralTab = ({
   useEffect(() => {
     reset({ minimizeToTray });
   }, [minimizeToTray, reset]);
+
+  useEffect(() => {
+    resetPanicForm({ showPanicButton });
+  }, [showPanicButton, resetPanicForm]);
 
   useEffect(() => {
     resetProxyForm({ proxyUrl: proxyUrl ?? "" });
@@ -506,6 +531,30 @@ export const SettingsGeneralTab = ({
                     ? "Minimize to tray on close (not applicable on macOS)"
                     : "Minimize to tray on close"
                 }
+              />
+            )}
+          />
+        </section>
+
+        <Separator />
+
+        <section className="flex items-start justify-between gap-4 rounded-md border p-4">
+          <section className="space-y-1">
+            <Label htmlFor="show-panic-button">{SHOW_PANIC_BUTTON_LABEL}</Label>
+            <p className="text-sm text-muted-foreground">{SHOW_PANIC_BUTTON_DESCRIPTION}</p>
+          </section>
+          <Controller
+            name="showPanicButton"
+            control={panicControl}
+            render={({ field }) => (
+              <Switch
+                id="show-panic-button"
+                checked={field.value}
+                onCheckedChange={(checked) => {
+                  field.onChange(checked);
+                  onShowPanicButtonChange(checked);
+                }}
+                aria-label={SHOW_PANIC_BUTTON_LABEL}
               />
             )}
           />

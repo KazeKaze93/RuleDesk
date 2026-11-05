@@ -187,6 +187,10 @@ export const settings = sqliteTable("settings", {
   minimizeToTray: integer("minimize_to_tray", { mode: "boolean" })
     .default(true)
     .notNull(),
+  /** When true, floating panic / Safe Mode button is shown. Default false. */
+  showPanicButton: integer("show_panic_button", { mode: "boolean" })
+    .default(false)
+    .notNull(),
   syncIntervalMinutes: integer("sync_interval_minutes").default(0).notNull(),
   backupRetention: integer("backup_retention").default(5).notNull(),
   vacuumSchedule: text("vacuum_schedule").default("manual"),
