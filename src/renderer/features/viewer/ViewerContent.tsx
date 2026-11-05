@@ -53,6 +53,9 @@ import { TagsDrawer } from "./TagsDrawer";
 import { getRatingMeta } from "../../lib/rating";
 
 const VIEWER_ANNOUNCE_CLEAR_MS = 3000;
+export const OPEN_IN_BROWSER_ARIA_LABEL = "Open in browser";
+const OPEN_IN_BROWSER_TITLE = "Open in browser";
+const MORE_OPTIONS_ARIA_LABEL = "More options";
 
 export const ViewerContent = ({
   post,
@@ -333,14 +336,27 @@ export const ViewerContent = ({
             )}
           </Button>
 
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              ctrl.handleOpenExternal(ctrl.postPageUrl);
+            }}
+            className="text-white rounded-full hover:bg-white/10"
+            aria-label={OPEN_IN_BROWSER_ARIA_LABEL}
+            title={OPEN_IN_BROWSER_TITLE}
+          >
+            <ExternalLink className="w-5 h-5" />
+          </Button>
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
                 className="text-white rounded-full hover:bg-white/10"
-                aria-label="More options"
-                title="More options"
+                aria-label={MORE_OPTIONS_ARIA_LABEL}
+                title={MORE_OPTIONS_ARIA_LABEL}
               >
                 <MoreHorizontal className="w-5 h-5" />
               </Button>
@@ -411,14 +427,6 @@ export const ViewerContent = ({
               <DropdownMenuSeparator />
 
               <DropdownMenuLabel>Open</DropdownMenuLabel>
-              <DropdownMenuItem
-                onClick={() => {
-                  ctrl.handleOpenExternal(ctrl.postPageUrl);
-                }}
-              >
-                <ExternalLink className="mr-2 w-4 h-4" />
-                Open post page
-              </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => {
                   void ctrl.openFolder().catch((error: unknown) => {
