@@ -172,7 +172,6 @@ describe("FileController mass download silent-zero + open folder", () => {
       canceledCount: 0,
     };
     // boundary: test seam for private downloadAll / openDownloadFolder
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion, no-restricted-syntax -- boundary: test seam
     controller = new FileController() as unknown as FileControllerInternals;
   });
 

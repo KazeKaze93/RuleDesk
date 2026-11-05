@@ -72,6 +72,7 @@
 | `files:download-all-progress` | `FILES.DOWNLOAD_ALL_PROGRESS` | — | — | — | _No `handle` registration found (event channel or registered outside scanned paths)._ |
 | `files:download-progress` | `FILES.DOWNLOAD_PROGRESS` | — | — | — | _No `handle` registration found (event channel or registered outside scanned paths)._ |
 | `files:get-pending-download` | `FILES.GET_PENDING_DOWNLOAD` | `[]` (no args) | yes | `FileController` | `src/main/ipc/controllers/FileController.ts` |
+| `files:open-download-folder` | `FILES.OPEN_DOWNLOAD_FOLDER` | `z.tuple([])` | no | `FileController` | `src/main/ipc/controllers/FileController.ts` |
 | `files:open-folder` | `FILES.OPEN_FOLDER` | `OpenFolderSchema` | no | `FileController` | `src/main/ipc/controllers/FileController.ts` |
 | `files:pause-download-all` | `FILES.PAUSE_DOWNLOAD_ALL` | `[]` (no args) | yes | `FileController` | `src/main/ipc/controllers/FileController.ts` |
 | `files:pending-download-state-changed` | `FILES.PENDING_DOWNLOAD_STATE_CHANGED` | — | — | — | _No `handle` registration found (event channel or registered outside scanned paths)._ |
@@ -110,9 +111,9 @@
 
 ## Coverage
 
-- Channels in `channels.ts`: **96**
-- Channels with at least one scanned `handle` registration: **85**
-- Handler rows extracted: **85**
+- Channels in `channels.ts`: **97**
+- Channels with at least one scanned `handle` registration: **86**
+- Handler rows extracted: **86**
 
 ## Regenerating
 
