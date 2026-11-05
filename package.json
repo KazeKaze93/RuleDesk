@@ -188,7 +188,12 @@
       "!**/.cursor/**",
       "!**/repomix.config.json",
       "!**/.cursorrules",
-      "!**/repomix-output.*"
+      "!**/repomix-output.*",
+      "!**/node_modules/better-sqlite3/deps/**",
+      "!**/node_modules/better-sqlite3/src/**",
+      "!**/node_modules/better-sqlite3/binding.gyp",
+      "!**/node_modules/better-sqlite3/build/**/*.{obj,lib,pdb,iobj,ipdb}",
+      "!**/node_modules/better-sqlite3/build/**/test_extension.node"
     ],
     "extraFiles": [],
     "extraResources": [
@@ -232,7 +237,7 @@
       "ru"
     ],
     "asarUnpack": [
-      "**/node_modules/better-sqlite3/build/**/*.node"
+      "**/node_modules/better-sqlite3/**"
     ]
   }
 }

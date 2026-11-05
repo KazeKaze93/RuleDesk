@@ -36,7 +36,7 @@ Artifacts (electron-builder `directories.output` = `release`):
 
 Native `better-sqlite3` is rebuilt on each runner (`postinstall` / `electron-builder install-app-deps`; Linux also runs `npm run db:rebuild` before package, matching the former release job).
 
-Packaging size knobs in `package.json` `build`: `electronLanguages` keeps only the listed Chromium locale packs (currently `en-US`, `ru`); `asarUnpack` unpacks only the better-sqlite3 `.node` under `build/` (not `deps/` sources). Renderer-only packages must live in `devDependencies` — electron-vite already bundles them into `out/renderer`, and listing them under `dependencies` only inflates the packaged `node_modules` tree.
+Packaging size knobs in `package.json` `build`: `electronLanguages` keeps only the listed Chromium locale packs (currently `en-US`, `ru`). `build.files` excludes better-sqlite3 `deps/` / `src/` / build intermediates (compile sources unused at runtime); with `smartUnpack` (default on), electron-builder still unpacks the whole remaining better-sqlite3 package into `app.asar.unpacked` because it contains a `.node` — `asarUnpack` mirrors that. Renderer-only packages must live in `devDependencies` — electron-vite already bundles them into `out/renderer`, and listing them under `dependencies` only inflates the packaged `node_modules` tree.
 
 ### Release flow (PR + tag)
 
