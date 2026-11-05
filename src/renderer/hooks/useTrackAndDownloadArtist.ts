@@ -26,7 +26,9 @@ export function useTrackAndDownloadArtist(
   const queryClient = useQueryClient();
   const startDownload = useDownloadStore((s) => s.startDownload);
   const resetDownload = useDownloadStore((s) => s.resetDownload);
-  const setPaused = useDownloadStore((s) => s.setPaused);
+  const pauseDownload = useDownloadStore((s) => s.pauseDownload);
+  const resumeDownload = useDownloadStore((s) => s.resumeDownload);
+  const cancelDownload = useDownloadStore((s) => s.cancelDownload);
   const isAnyDownloadActive = useDownloadStore((s) => s.isDownloading);
   const isPaused = useDownloadStore((s) => s.isPaused);
   const progress = useDownloadStore((s) => s.progress);
@@ -146,27 +148,16 @@ export function useTrackAndDownloadArtist(
   ]);
 
   const cancel = useCallback(() => {
-    void window.api.cancelDownloadAll().catch((error: unknown) => {
-      log.error(
-        "[useTrackAndDownloadArtist] cancelDownloadAll failed:",
-        error
-      );
-    });
-  }, []);
+    cancelDownload();
+  }, [cancelDownload]);
 
   const pause = useCallback(() => {
-    void window.api.pauseDownloadAll().catch((error: unknown) => {
-      log.error("[useTrackAndDownloadArtist] pauseDownloadAll failed:", error);
-    });
-    setPaused(true);
-  }, [setPaused]);
+    pauseDownload();
+  }, [pauseDownload]);
 
   const resume = useCallback(() => {
-    void window.api.resumeDownloadAll().catch((error: unknown) => {
-      log.error("[useTrackAndDownloadArtist] resumeDownloadAll failed:", error);
-    });
-    setPaused(false);
-  }, [setPaused]);
+    resumeDownload();
+  }, [resumeDownload]);
 
   return {
     canShowAction,

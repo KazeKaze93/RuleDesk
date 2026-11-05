@@ -1,4 +1,3 @@
-import log from "electron-log/renderer";
 import { Download, Pause, Play, Square } from "lucide-react";
 import { Button } from "../ui/button";
 import { Progress } from "../ui/progress";
@@ -28,37 +27,9 @@ export function GlobalDownloadIndicator() {
   const isDownloading = useDownloadStore((s) => s.isDownloading);
   const isPaused = useDownloadStore((s) => s.isPaused);
   const progress = useDownloadStore((s) => s.progress);
-  const setPaused = useDownloadStore((s) => s.setPaused);
-
-  const handlePause = () => {
-    void window.api
-      .pauseDownloadAll()
-      .then(() => {
-        setPaused(true);
-      })
-      .catch((error: unknown) => {
-        log.error("[GlobalDownloadIndicator] pauseDownloadAll failed:", error);
-        setPaused(false);
-      });
-  };
-
-  const handleResume = () => {
-    void window.api
-      .resumeDownloadAll()
-      .then(() => {
-        setPaused(false);
-      })
-      .catch((error: unknown) => {
-        log.error("[GlobalDownloadIndicator] resumeDownloadAll failed:", error);
-        setPaused(true);
-      });
-  };
-
-  const handleCancel = () => {
-    void window.api.cancelDownloadAll().catch((error: unknown) => {
-      log.error("[GlobalDownloadIndicator] cancelDownloadAll failed:", error);
-    });
-  };
+  const pauseDownload = useDownloadStore((s) => s.pauseDownload);
+  const resumeDownload = useDownloadStore((s) => s.resumeDownload);
+  const cancelDownload = useDownloadStore((s) => s.cancelDownload);
 
   if (!isDownloading) {
     return null;
@@ -92,7 +63,7 @@ export function GlobalDownloadIndicator() {
             variant="ghost"
             size="icon"
             className="h-8 w-8"
-            onClick={isPaused ? handleResume : handlePause}
+            onClick={isPaused ? resumeDownload : pauseDownload}
             aria-label={isPaused ? RESUME_ARIA_LABEL : PAUSE_ARIA_LABEL}
             title={isPaused ? RESUME_TITLE : PAUSE_TITLE}
           >
@@ -107,7 +78,7 @@ export function GlobalDownloadIndicator() {
             variant="ghost"
             size="icon"
             className="h-8 w-8 text-destructive hover:text-destructive"
-            onClick={handleCancel}
+            onClick={cancelDownload}
             aria-label={CANCEL_ARIA_LABEL}
             title={CANCEL_TITLE}
           >
