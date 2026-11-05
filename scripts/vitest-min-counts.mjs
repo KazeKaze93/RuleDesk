@@ -1,10 +1,10 @@
 /** Pinned Vitest floors — raise when suites grow; never lower without an intentional cull. */
 
 /** Main suite (excludes isolated paths in vitest.config.ts). */
-export const MIN_MAIN_TESTS = 530;
+export const MIN_MAIN_TESTS = 533;
 
 /** Isolated suite (vitest.isolated.config.ts): happy-dom + video-proxy. */
-export const MIN_ISOLATED_TESTS = 149;
+export const MIN_ISOLATED_TESTS = 151;
 
 /** Combined floor across main + isolated runs. */
 export const MIN_TESTS = MIN_MAIN_TESTS + MIN_ISOLATED_TESTS;

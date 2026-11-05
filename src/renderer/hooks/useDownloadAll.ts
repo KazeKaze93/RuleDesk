@@ -34,7 +34,9 @@ export function useDownloadAll(posts: Post[]) {
   const [isDownloading, setIsDownloading] = useState(false);
   const startDownload = useDownloadStore((s) => s.startDownload);
   const resetDownload = useDownloadStore((s) => s.resetDownload);
-  const setPaused = useDownloadStore((s) => s.setPaused);
+  const pauseDownload = useDownloadStore((s) => s.pauseDownload);
+  const resumeDownload = useDownloadStore((s) => s.resumeDownload);
+  const cancelDownload = useDownloadStore((s) => s.cancelDownload);
   const isPaused = useDownloadStore((s) => s.isPaused);
   const progress = useDownloadStore((s) => s.progress);
   const [lastFailures, setLastFailures] = useState<DownloadFailure[]>([]);
@@ -73,23 +75,15 @@ export function useDownloadAll(posts: Post[]) {
   };
 
   const cancel = () => {
-    void window.api.cancelDownloadAll().catch((error: unknown) => {
-      log.error("[useDownloadAll] cancelDownloadAll failed:", error);
-    });
+    cancelDownload();
   };
 
   const pause = () => {
-    void window.api.pauseDownloadAll().catch((error: unknown) => {
-      log.error("[useDownloadAll] pauseDownloadAll failed:", error);
-    });
-    setPaused(true);
+    pauseDownload();
   };
 
   const resume = () => {
-    void window.api.resumeDownloadAll().catch((error: unknown) => {
-      log.error("[useDownloadAll] resumeDownloadAll failed:", error);
-    });
-    setPaused(false);
+    resumeDownload();
   };
 
   return {
@@ -149,7 +143,9 @@ export function useDownloadAllFromBackend(
   const [isDownloading, setIsDownloading] = useState(false);
   const startDownload = useDownloadStore((s) => s.startDownload);
   const resetDownload = useDownloadStore((s) => s.resetDownload);
-  const setPaused = useDownloadStore((s) => s.setPaused);
+  const pauseDownload = useDownloadStore((s) => s.pauseDownload);
+  const resumeDownload = useDownloadStore((s) => s.resumeDownload);
+  const cancelDownload = useDownloadStore((s) => s.cancelDownload);
   const isPaused = useDownloadStore((s) => s.isPaused);
   const progress = useDownloadStore((s) => s.progress);
   const [lastFailures, setLastFailures] = useState<DownloadFailure[]>([]);
@@ -193,21 +189,13 @@ export function useDownloadAllFromBackend(
   };
 
   const cancel = () => {
-    void window.api.cancelDownloadAll().catch((error: unknown) => {
-      log.error("[useDownloadAllFromBackend] cancelDownloadAll failed:", error);
-    });
+    cancelDownload();
   };
   const pause = () => {
-    void window.api.pauseDownloadAll().catch((error: unknown) => {
-      log.error("[useDownloadAllFromBackend] pauseDownloadAll failed:", error);
-    });
-    setPaused(true);
+    pauseDownload();
   };
   const resume = () => {
-    void window.api.resumeDownloadAll().catch((error: unknown) => {
-      log.error("[useDownloadAllFromBackend] resumeDownloadAll failed:", error);
-    });
-    setPaused(false);
+    resumeDownload();
   };
 
   return {

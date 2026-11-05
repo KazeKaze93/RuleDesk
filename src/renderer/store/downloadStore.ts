@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import log from "electron-log/renderer";
 
 export type DownloadProgress = {
   done: number;
@@ -11,6 +12,7 @@ export type StartDownloadOptions = {
 };
 
 const EMPTY_PROGRESS: DownloadProgress = { done: 0, total: 0 };
+const LOG_PREFIX = "[downloadStore]";
 
 /** Global mass-download state — progress, pause, and active flag for UI + mutual exclusion. */
 interface DownloadState {
@@ -21,7 +23,6 @@ interface DownloadState {
   startDownload: (options?: StartDownloadOptions) => void;
   /** Apply IPC progress while a batch is active; ignored when idle. */
   setProgress: (done: number, total: number) => void;
-  setPaused: (paused: boolean) => void;
   /** Clear active/paused/progress after a batch ends. */
   resetDownload: () => void;
   /**
@@ -29,6 +30,12 @@ interface DownloadState {
    * (PendingDownloadBanner, BulkActionBar). Prefer startDownload/resetDownload.
    */
   setDownloading: (value: boolean) => void;
+  /** Pause via IPC; sets isPaused only after success. */
+  pauseDownload: () => void;
+  /** Resume via IPC; clears isPaused only after success. */
+  resumeDownload: () => void;
+  /** Cancel via IPC; does not flip isPaused on its own. */
+  cancelDownload: () => void;
 }
 
 export const useDownloadStore = create<DownloadState>((set) => ({
@@ -48,7 +55,6 @@ export const useDownloadStore = create<DownloadState>((set) => ({
     set((state) =>
       state.isDownloading ? { progress: { done, total } } : state
     ),
-  setPaused: (paused) => set({ isPaused: paused }),
   resetDownload: () =>
     set({
       isDownloading: false,
@@ -68,6 +74,31 @@ export const useDownloadStore = create<DownloadState>((set) => ({
       isDownloading: false,
       isPaused: false,
       progress: EMPTY_PROGRESS,
+    });
+  },
+  pauseDownload: () => {
+    void window.api
+      .pauseDownloadAll()
+      .then(() => {
+        set({ isPaused: true });
+      })
+      .catch((error: unknown) => {
+        log.error(`${LOG_PREFIX} pauseDownloadAll failed:`, error);
+      });
+  },
+  resumeDownload: () => {
+    void window.api
+      .resumeDownloadAll()
+      .then(() => {
+        set({ isPaused: false });
+      })
+      .catch((error: unknown) => {
+        log.error(`${LOG_PREFIX} resumeDownloadAll failed:`, error);
+      });
+  },
+  cancelDownload: () => {
+    void window.api.cancelDownloadAll().catch((error: unknown) => {
+      log.error(`${LOG_PREFIX} cancelDownloadAll failed:`, error);
     });
   },
 }));
