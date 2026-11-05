@@ -30,6 +30,10 @@ import {
   TooltipTrigger,
 } from "../../components/ui/tooltip";
 import { Copy, Loader2 } from "lucide-react";
+import {
+  TAG_EXCLUDE_INTERACTION_TOOLTIP,
+  TAG_INCLUDE_INTERACTION_TOOLTIP,
+} from "../../components/inputs/TagChip";
 import { useSearchStore } from "../../store/searchStore";
 import { useViewerStore, type ViewerOrigin } from "../../store/viewerStore";
 import { cn } from "../../lib/utils";
@@ -46,6 +50,7 @@ import {
 
 const VIEWER_TAG_HINT_SEEN_KEY = "hasSeenTagHint";
 const RESOLVE_TAGS_BATCH_SIZE = 100;
+const TAG_ACTION_TOOLTIP_DELAY_MS = 200;
 const RESOLVED_TAG_VALUE_ROW_CLASS =
   "flex h-5 items-center text-sm text-muted-foreground";
 
@@ -382,35 +387,40 @@ export const TagsDrawer = ({
     colorClassName: string,
     wrapperClassName: string
   ) => {
+    const tooltipText = isTagExcluded(tag)
+      ? TAG_EXCLUDE_INTERACTION_TOOLTIP
+      : TAG_INCLUDE_INTERACTION_TOOLTIP;
+
     return (
-      <Button
-        key={tag}
-        type="button"
-        variant={variant}
-        onClick={() => handleTagInclude(tag)}
-        onContextMenu={(event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          handleTagExclude(tag);
-        }}
-        className={cn(
-          wrapperClassName,
-          colorClassName,
-          isTagIncluded(tag) && "ring-1 ring-success bg-success/10",
-          isTagExcluded(tag) &&
-            "ring-1 ring-destructive bg-destructive/10 line-through opacity-60"
-        )}
-        title={
-          isTagExcluded(tag)
-            ? "Excluded (right-click to toggle)"
-            : isTagIncluded(tag)
-              ? "Included (right-click to exclude)"
-              : "Click to include, right-click to exclude"
-        }
-        aria-pressed={isTagIncluded(tag) || isTagExcluded(tag)}
-      >
-        {tag}
-      </Button>
+      <Tooltip key={tag}>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant={variant}
+            onClick={() => handleTagInclude(tag)}
+            onContextMenu={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              handleTagExclude(tag);
+            }}
+            className={cn(
+              wrapperClassName,
+              colorClassName,
+              isTagIncluded(tag) && "ring-1 ring-success bg-success/10",
+              isTagExcluded(tag) &&
+                "ring-1 ring-destructive bg-destructive/10 line-through opacity-60"
+            )}
+            aria-pressed={isTagIncluded(tag) || isTagExcluded(tag)}
+          >
+            {tag}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent
+          className={cn("pointer-events-none", viewerOverlayClass())}
+        >
+          {tooltipText}
+        </TooltipContent>
+      </Tooltip>
     );
   };
 
@@ -453,13 +463,13 @@ export const TagsDrawer = ({
         </SheetHeader>
         {showTagHintForCurrentOpen ? (
           <p className="px-1 pb-2 text-xs text-muted-foreground">
-            Click to include · Right-click to exclude
+            {TAG_INCLUDE_INTERACTION_TOOLTIP}
           </p>
         ) : null}
-        <div className="mt-6 space-y-4">
-          {post.publishedAt && (
-            <div>
-              <TooltipProvider>
+        <TooltipProvider delayDuration={TAG_ACTION_TOOLTIP_DELAY_MS}>
+          <div className="mt-6 space-y-4">
+            {post.publishedAt && (
+              <div>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <h3
@@ -474,130 +484,110 @@ export const TagsDrawer = ({
                     {VIEWER_UPDATED_DATE_TOOLTIP}
                   </TooltipContent>
                 </Tooltip>
-              </TooltipProvider>
-              <p className="text-sm text-muted-foreground">
-                {(() => {
-                  let date: Date;
-                  if (post.publishedAt instanceof Date) {
-                    date = post.publishedAt;
-                  } else if (typeof post.publishedAt === "number") {
-                    date = new Date(post.publishedAt);
-                  } else if (typeof post.publishedAt === "string") {
-                    date = new Date(post.publishedAt);
-                  } else {
-                    return "Unknown";
-                  }
-                  if (isNaN(date.getTime())) return "Unknown";
-                  return date.toLocaleString("en-US", {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  });
-                })()}
-              </p>
-            </div>
-          )}
-          <ResolvedTagField
-            title="Copyright"
-            tags={copyrightTags}
-            isResolving={isResolvingCopyrightTags}
-            isError={isCopyrightResolveError}
-            errorLabel={resolveErrorMessage(
-              copyrightResolveError,
-              "Failed to resolve copyright tags"
-            )}
-            emptyLabel="No copyright detected"
-            loadingLabel="Resolving copyright"
-            renderTag={(tag) =>
-              renderTagActionButton(
-                tag,
-                "link",
-                "text-primary hover:underline",
-                "h-auto min-h-0 w-full justify-start p-0 text-sm"
-              )
-            }
-          />
-          <ResolvedTagField
-            title="Character"
-            tags={characterTags}
-            isResolving={isResolvingCharacterTags}
-            isError={isCharacterResolveError}
-            errorLabel={resolveErrorMessage(
-              characterResolveError,
-              "Failed to resolve character tags"
-            )}
-            emptyLabel="No character detected"
-            loadingLabel="Resolving character"
-            renderTag={(tag) =>
-              renderTagActionButton(
-                tag,
-                "link",
-                "text-success hover:underline",
-                "h-auto min-h-0 w-full justify-start p-0 text-sm"
-              )
-            }
-          />
-          <ResolvedTagField
-            title="Artist"
-            tags={artistTags}
-            isResolving={isResolvingArtistTags}
-            isError={isArtistResolveError}
-            errorLabel={resolveErrorMessage(
-              artistResolveError,
-              "Failed to resolve artist tags"
-            )}
-            emptyLabel="No artist detected"
-            loadingLabel="Resolving artist"
-            renderTag={(tag) =>
-              renderTagActionButton(
-                tag,
-                "link",
-                "text-destructive hover:underline",
-                "h-auto min-h-0 w-full justify-start p-0 text-sm"
-              )
-            }
-          />
-          {/* General Tags Section */}
-          <div>
-            <h3 className="mb-2 text-sm font-semibold">
-              Tags ({generalTags.length})
-            </h3>
-            <div className="max-h-[400px] overflow-y-auto rounded-md border pr-2 [scrollbar-gutter:stable]">
-              <div>
-                {generalTags.map((tag) => (
-                  <Button
-                    type="button"
-                    key={tag}
-                    variant="ghost"
-                    onClick={() => handleTagInclude(tag)}
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      handleTagExclude(tag);
-                    }}
-                    className={cn(
-                      "h-auto min-h-0 w-full justify-start rounded-none px-3 py-2 text-sm text-left font-normal border-b last:border-b-0 hover:bg-muted/50",
-                      isTagIncluded(tag) && "ring-1 ring-success bg-success/10",
-                      isTagExcluded(tag) &&
-                        "ring-1 ring-destructive bg-destructive/10 line-through opacity-60"
-                    )}
-                    title={
-                      isTagExcluded(tag)
-                        ? "Excluded (right-click to toggle)"
-                        : isTagIncluded(tag)
-                          ? "Included (right-click to exclude)"
-                          : "Click to include, right-click to exclude"
+                <p className="text-sm text-muted-foreground">
+                  {(() => {
+                    let date: Date;
+                    if (post.publishedAt instanceof Date) {
+                      date = post.publishedAt;
+                    } else if (typeof post.publishedAt === "number") {
+                      date = new Date(post.publishedAt);
+                    } else if (typeof post.publishedAt === "string") {
+                      date = new Date(post.publishedAt);
+                    } else {
+                      return "Unknown";
                     }
-                    aria-pressed={isTagIncluded(tag) || isTagExcluded(tag)}
-                  >
-                    {tag}
-                  </Button>
-                ))}
+                    if (isNaN(date.getTime())) return "Unknown";
+                    return date.toLocaleString("en-US", {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    });
+                  })()}
+                </p>
+              </div>
+            )}
+            <ResolvedTagField
+              title="Copyright"
+              tags={copyrightTags}
+              isResolving={isResolvingCopyrightTags}
+              isError={isCopyrightResolveError}
+              errorLabel={resolveErrorMessage(
+                copyrightResolveError,
+                "Failed to resolve copyright tags"
+              )}
+              emptyLabel="No copyright detected"
+              loadingLabel="Resolving copyright"
+              renderTag={(tag) =>
+                renderTagActionButton(
+                  tag,
+                  "link",
+                  "text-primary hover:underline",
+                  "h-auto min-h-0 w-full justify-start p-0 text-sm"
+                )
+              }
+            />
+            <ResolvedTagField
+              title="Character"
+              tags={characterTags}
+              isResolving={isResolvingCharacterTags}
+              isError={isCharacterResolveError}
+              errorLabel={resolveErrorMessage(
+                characterResolveError,
+                "Failed to resolve character tags"
+              )}
+              emptyLabel="No character detected"
+              loadingLabel="Resolving character"
+              renderTag={(tag) =>
+                renderTagActionButton(
+                  tag,
+                  "link",
+                  "text-success hover:underline",
+                  "h-auto min-h-0 w-full justify-start p-0 text-sm"
+                )
+              }
+            />
+            <ResolvedTagField
+              title="Artist"
+              tags={artistTags}
+              isResolving={isResolvingArtistTags}
+              isError={isArtistResolveError}
+              errorLabel={resolveErrorMessage(
+                artistResolveError,
+                "Failed to resolve artist tags"
+              )}
+              emptyLabel="No artist detected"
+              loadingLabel="Resolving artist"
+              renderTag={(tag) =>
+                renderTagActionButton(
+                  tag,
+                  "link",
+                  "text-destructive hover:underline",
+                  "h-auto min-h-0 w-full justify-start p-0 text-sm"
+                )
+              }
+            />
+            {/* General Tags Section */}
+            <div>
+              <h3 className="mb-2 text-sm font-semibold">
+                Tags ({generalTags.length})
+              </h3>
+              <div className="max-h-[400px] overflow-y-auto rounded-md border pr-2 [scrollbar-gutter:stable]">
+                <div>
+                  {generalTags.map((tag) =>
+                    renderTagActionButton(
+                      tag,
+                      "ghost",
+                      "",
+                      "h-auto min-h-0 w-full justify-start rounded-none px-3 py-2 text-sm text-left font-normal border-b last:border-b-0 hover:bg-muted/50"
+                    )
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </TooltipProvider>
       </SheetContent>
     </Sheet>
   );

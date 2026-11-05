@@ -16,7 +16,7 @@ const DISMISS_LABEL = "Not now";
 
 /**
  * One-shot, dismissible opt-in for auto-backup on existing installs that still
- * have `autoBackupInterval === "never"`. Unlike AgeGate, this does not block
+ * have `autoBackupInterval === "never"`. Unlike AccountGate, this does not block
  * the rest of the app (`modal={false}`).
  */
 export const AutoBackupOptInPrompt: React.FC = () => {
@@ -86,7 +86,7 @@ export const AutoBackupOptInPrompt: React.FC = () => {
           <DialogDescription id="auto-backup-opt-in-desc">
             RuleDesk can create a consistent daily snapshot of your database so a
             cache wipe or disk glitch does not erase your library. You can change
-            this later in Settings → Backup.
+            this later in Settings → Data.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="gap-2 sm:gap-0">

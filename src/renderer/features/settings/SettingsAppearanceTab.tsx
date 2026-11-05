@@ -7,9 +7,22 @@ import { useAppearanceStore, type CardBorderStyle } from "../../store/appearance
 
 type ThemePreference = "system" | "light" | "dark";
 
+const APPEARANCE_SECTION_TITLE = "Appearance";
+const APPEARANCE_SECTION_DESCRIPTION = "Choose the visual theme for RuleDesk.";
+const THEME_LABEL = "Theme";
+const THEME_SYSTEM_LABEL = "System";
+const THEME_LIGHT_LABEL = "Light";
+const THEME_DARK_LABEL = "Dark";
+const CARD_BORDER_LABEL = "Card border style";
+const CARD_BORDER_ROUNDED_ARIA = "Rounded border style";
+const CARD_BORDER_SHARP_ARIA = "Sharp border style";
+const GRID_LABEL = "Grid";
+
 interface SettingsAppearanceTabProps {
   theme: ThemePreference;
   isThemeSaving: boolean;
+  /** When false, omit theme radios (shown in Setup section instead). Default true. */
+  showTheme?: boolean;
   onThemeChange: (value: ThemePreference) => void;
 }
 
@@ -17,9 +30,17 @@ const isCardBorderStyle = (value: string): value is CardBorderStyle => {
   return value === "rounded" || value === "sharp";
 };
 
+const parseThemePreference = (value: string): ThemePreference | null => {
+  if (value === "system" || value === "light" || value === "dark") {
+    return value;
+  }
+  return null;
+};
+
 export const SettingsAppearanceTab = ({
   theme,
   isThemeSaving,
+  showTheme = true,
   onThemeChange,
 }: SettingsAppearanceTabProps) => {
   const cardBorderStyle = useAppearanceStore((state) => state.cardBorderStyle);
@@ -54,51 +75,63 @@ export const SettingsAppearanceTab = ({
     }
   };
 
+  const handleThemeChange = (value: string): void => {
+    const next = parseThemePreference(value);
+    if (next === null) {
+      return;
+    }
+    onThemeChange(next);
+  };
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Appearance</CardTitle>
-        <CardDescription>Choose the visual theme for RuleDesk.</CardDescription>
+        <CardTitle>{APPEARANCE_SECTION_TITLE}</CardTitle>
+        <CardDescription>{APPEARANCE_SECTION_DESCRIPTION}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
-        <section className="space-y-2">
-          <Label>Theme</Label>
-          <RadioGroup
-            value={theme}
-            onValueChange={onThemeChange}
-            disabled={isThemeSaving}
-            className="space-y-2"
-          >
-            <Label htmlFor="theme-system" className="flex items-center gap-2 font-normal">
-              <RadioGroupItem value="system" id="theme-system" />
-              System
-            </Label>
-            <Label htmlFor="theme-light" className="flex items-center gap-2 font-normal">
-              <RadioGroupItem value="light" id="theme-light" />
-              Light
-            </Label>
-            <Label htmlFor="theme-dark" className="flex items-center gap-2 font-normal">
-              <RadioGroupItem value="dark" id="theme-dark" />
-              Dark
-            </Label>
-          </RadioGroup>
-        </section>
+        {showTheme ? (
+          <>
+            <section className="space-y-2">
+              <Label>{THEME_LABEL}</Label>
+              <RadioGroup
+                value={theme}
+                onValueChange={handleThemeChange}
+                disabled={isThemeSaving}
+                className="space-y-2"
+              >
+                <Label htmlFor="theme-system" className="flex items-center gap-2 font-normal">
+                  <RadioGroupItem value="system" id="theme-system" />
+                  {THEME_SYSTEM_LABEL}
+                </Label>
+                <Label htmlFor="theme-light" className="flex items-center gap-2 font-normal">
+                  <RadioGroupItem value="light" id="theme-light" />
+                  {THEME_LIGHT_LABEL}
+                </Label>
+                <Label htmlFor="theme-dark" className="flex items-center gap-2 font-normal">
+                  <RadioGroupItem value="dark" id="theme-dark" />
+                  {THEME_DARK_LABEL}
+                </Label>
+              </RadioGroup>
+            </section>
 
-        <Separator />
+            <Separator />
+          </>
+        ) : null}
 
         <section className="space-y-4">
           <div className="space-y-2">
-            <Label>Card border style</Label>
+            <Label>{CARD_BORDER_LABEL}</Label>
             <ToggleGroup
               type="single"
               value={cardBorderStyle}
               onValueChange={handleCardBorderStyleChange}
               className="justify-start"
             >
-              <ToggleGroupItem value="rounded" aria-label="Rounded border style">
+              <ToggleGroupItem value="rounded" aria-label={CARD_BORDER_ROUNDED_ARIA}>
                 Rounded
               </ToggleGroupItem>
-              <ToggleGroupItem value="sharp" aria-label="Sharp border style">
+              <ToggleGroupItem value="sharp" aria-label={CARD_BORDER_SHARP_ARIA}>
                 Sharp
               </ToggleGroupItem>
             </ToggleGroup>
@@ -108,7 +141,7 @@ export const SettingsAppearanceTab = ({
         <Separator />
 
         <section className="space-y-2">
-          <Label>Grid</Label>
+          <Label>{GRID_LABEL}</Label>
           <RadioGroup
             value={String(gridColumns)}
             onValueChange={handleGridColumnsChange}

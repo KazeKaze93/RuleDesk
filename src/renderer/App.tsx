@@ -1,12 +1,10 @@
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import log from "electron-log/renderer";
 import { Loader2 } from "lucide-react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 import { AppLayout as Layout } from "./components/layout/AppLayout";
 import { Settings } from "./features/settings/Settings";
-import { AgeGate } from "@/components/onboarding/AgeGate";
 import { AutoBackupOptInPrompt } from "@/components/onboarding/AutoBackupOptInPrompt";
 import { Tracked } from "./features/artists/Tracked";
 import { ArtistDetails } from "./features/artists/ArtistDetails";
@@ -23,6 +21,10 @@ import { RENDERER_WINDOW_EVENTS } from "@shared/constants";
 import { SettingsAccountTab } from "./features/settings/SettingsAccountTab";
 import { useSearchStore } from "./store/searchStore";
 import { Button } from "./components/ui/button";
+import { Alert, AlertDescription } from "./components/ui/alert";
+
+const ACCOUNT_GATE_CONTENT_WARNING =
+  "RuleDesk displays sexually explicit content from Rule34. Use only if you are an adult.";
 
 const NotFoundPage = () => {
   const navigate = useNavigate();
@@ -76,6 +78,9 @@ const AccountGate = ({
             Add your Rule34.xxx API key to continue to the full app experience.
           </p>
         </div>
+        <Alert>
+          <AlertDescription>{ACCOUNT_GATE_CONTENT_WARNING}</AlertDescription>
+        </Alert>
         <SettingsAccountTab
           userId={userId}
           apiKey={apiKey}
@@ -98,7 +103,6 @@ const AccountGate = ({
 function App() {
   useTheme();
   useApplyAppearance();
-  const queryClient = useQueryClient();
   const clearTagChips = useSearchStore((state) => state.clearTagChips);
   const resetFilters = useSearchStore((state) => state.resetFilters);
   const [forceAccountGate, setForceAccountGate] = useState(false);
@@ -186,22 +190,6 @@ function App() {
           Retry
         </Button>
       </div>
-    );
-  }
-
-  // Age Gate: must be confirmed before any content loads
-  const legalConfirmed = settings.isAdultVerified === true && settings.tosAcceptedAt !== null;
-  if (!legalConfirmed) {
-    return (
-      <AgeGate
-        onComplete={(updatedSettings) => {
-          if (!updatedSettings || typeof updatedSettings.hasApiKey !== "boolean") {
-            log.error("[App] Invalid settings from confirmLegal:", updatedSettings);
-            return;
-          }
-          queryClient.setQueryData(["settings"], updatedSettings);
-        }}
-      />
     );
   }
 

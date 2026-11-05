@@ -35,6 +35,9 @@ const NO_MATCH_MESSAGE = "No artists match";
 const ERROR_TITLE = "Could not load artists";
 const RETRY_LABEL = "Retry";
 const ADD_FAILED_TOAST = "Failed to add artist";
+const ADD_SUCCESS_TOAST = "Artist added";
+const OPEN_GALLERY_LABEL = "Open gallery";
+const ARTIST_ROUTE_PREFIX = "/artist/";
 
 export const Tracked = () => {
   const navigate = useNavigate();
@@ -57,6 +60,14 @@ export const Tracked = () => {
     queryFn: () => window.api.getTrackedArtists(),
   });
 
+  const navigateToArtistGallery = (artistId: number) => {
+    void Promise.resolve(navigate(`${ARTIST_ROUTE_PREFIX}${artistId}`)).catch(
+      (navError: unknown) => {
+        log.error("[Tracked] Navigation to artist failed:", navError);
+      }
+    );
+  };
+
   const handleAddArtist = async (
     name: string,
     tag: string,
@@ -64,7 +75,7 @@ export const Tracked = () => {
     provider: ProviderId
   ) => {
     try {
-      await window.api.addArtist({
+      const added = await window.api.addArtist({
         name,
         tag,
         type,
@@ -77,6 +88,21 @@ export const Tracked = () => {
           log.error("[Tracked] Failed to invalidate artists:", invalidateError);
         });
       setIsAddModalOpen(false);
+
+      if (added?.id == null) {
+        toast.success(ADD_SUCCESS_TOAST);
+        return;
+      }
+
+      const artistId = added.id;
+      toast.success(ADD_SUCCESS_TOAST, {
+        action: {
+          label: OPEN_GALLERY_LABEL,
+          onClick: () => {
+            navigateToArtistGallery(artistId);
+          },
+        },
+      });
     } catch (err: unknown) {
       log.error("[Tracked] Failed to add artist:", err);
       toast.error(resolveErrorMessage(err, ADD_FAILED_TOAST));
@@ -84,11 +110,7 @@ export const Tracked = () => {
   };
 
   const handleSelectArtist = (artist: TrackedArtist) => {
-    void Promise.resolve(navigate(`/artist/${artist.id}`)).catch(
-      (navError: unknown) => {
-        log.error("[Tracked] Navigation to artist failed:", navError);
-      }
-    );
+    navigateToArtistGallery(artist.id);
   };
 
   const openAddModal = (trigger: HTMLElement) => {

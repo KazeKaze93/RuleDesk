@@ -1,8 +1,9 @@
 import { useEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { releaseRadixModalLock } from "@/lib/radix-modal-lock";
 import { useViewerStore } from "@/store/viewerStore";
+import { clearSafeModeWhenPanicButtonHidden } from "@/store/safeModeStore";
 import { useArtistsSyncInvalidation } from "@/hooks/useArtistsSyncInvalidation";
 import { cn } from "@/lib/utils";
 import { Sidebar } from "./Sidebar";
@@ -12,6 +13,8 @@ import { ViewerDialog } from "@/features/viewer/ViewerDialog";
 import { PendingDownloadBanner } from "../downloads/PendingDownloadBanner";
 import { CredentialsErrorToast } from "../dialogs/CredentialsErrorToast";
 import { SyncErrorAggregator } from "../dialogs/SyncErrorAggregator";
+
+const SETTINGS_QUERY_KEY = ["settings"] as const;
 
 /** Outer content padding contract for routes under AppLayout. */
 type ContentVariant = "padded" | "flush";
@@ -47,8 +50,23 @@ export const AppLayout = () => {
   const queryClient = useQueryClient();
   const location = useLocation();
   const contentVariant = resolveContentVariant(location.pathname);
+  const { data: settings } = useQuery({
+    queryKey: SETTINGS_QUERY_KEY,
+    queryFn: () => window.api.getSettings(),
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+  const showPanicButton = settings?.showPanicButton === true;
 
   useArtistsSyncInvalidation(queryClient);
+
+  // Only after settings resolve: hidden panic button must not leave persisted blur
+  // with no exit UI. Skip while `settings` is still loading (`null`/`undefined`).
+  useEffect(() => {
+    if (settings == null) {
+      return;
+    }
+    clearSafeModeWhenPanicButtonHidden(settings.showPanicButton);
+  }, [settings]);
 
   useEffect(() => {
     releaseRadixModalLock();
@@ -86,7 +104,7 @@ export const AppLayout = () => {
       <ViewerDialog />
       <CredentialsErrorToast />
       <SyncErrorAggregator />
-      <PanicButton />
+      {showPanicButton ? <PanicButton /> : null}
     </div>
   );
 };

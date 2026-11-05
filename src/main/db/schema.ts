@@ -163,12 +163,15 @@ export const settings = sqliteTable("settings", {
   encryptedApiKey: text("encrypted_api_key").default(""),
   proxyUrl: text("proxy_url"),
   isSafeMode: integer("is_safe_mode", { mode: "boolean" }).default(true),
+  // legacy: unused since age gate removal
   isAdultConfirmed: integer("is_adult_confirmed", { mode: "boolean" }).default(
     false
   ),
+  // legacy: unused since age gate removal
   isAdultVerified: integer("is_adult_verified", { mode: "boolean" })
     .default(false)
     .notNull(),
+  // legacy: unused since age gate removal
   // Units: unix Seconds in SQLite; Drizzle mode "timestamp" ↔ Date. Raw SQL must use Seconds.
   tosAcceptedAt: integer("tos_accepted_at", { mode: "timestamp" }),
   downloadFolder: text("download_folder"),
@@ -184,6 +187,10 @@ export const settings = sqliteTable("settings", {
   /** When true, window close hides to tray; when false, close quits (win/linux). Default true = legacy. */
   minimizeToTray: integer("minimize_to_tray", { mode: "boolean" })
     .default(true)
+    .notNull(),
+  /** When true, floating panic / Safe Mode button is shown. Default false. */
+  showPanicButton: integer("show_panic_button", { mode: "boolean" })
+    .default(false)
     .notNull(),
   syncIntervalMinutes: integer("sync_interval_minutes").default(0).notNull(),
   backupRetention: integer("backup_retention").default(5).notNull(),

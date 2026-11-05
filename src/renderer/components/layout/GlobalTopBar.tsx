@@ -16,6 +16,12 @@ import {
   PopoverTrigger,
 } from "../ui/popover";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../ui/tooltip";
+import {
   buildApiQueryString,
   getSourceOptionsForPath,
   getTopBarChrome,
@@ -25,6 +31,11 @@ import {
 import { TagAutocomplete } from "../inputs/TagAutocomplete";
 import { FiltersPanel } from "./FiltersPanel";
 import { cn } from "../../lib/utils";
+
+const DISABLED_SORT_TOOLTIP =
+  "Sorting is available after you enter a tag";
+const SORT_BY_DATE_NEWEST_LABEL = "Sort by date (newest first)";
+const SORT_BY_DATE_OLDEST_LABEL = "Sort by date (oldest first)";
 
 interface SyntaxRow {
   syntax: string;
@@ -159,6 +170,10 @@ export const GlobalTopBar = () => {
   };
 
   const SortIcon = sortOrder === "desc" ? ArrowDownNarrowWide : ArrowUpNarrowWide;
+  const sortDirectionLabel =
+    sortOrder === "desc"
+      ? SORT_BY_DATE_NEWEST_LABEL
+      : SORT_BY_DATE_OLDEST_LABEL;
 
   const hasAnyChrome =
     chrome.showSearch ||
@@ -227,28 +242,41 @@ export const GlobalTopBar = () => {
 
       <div className="flex gap-2 items-center">
         {chrome.showSort ? (
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={handleSortToggle}
-            disabled={!isSortEnabled}
-            className={cn(
-              "h-9 w-9",
-              !isSortEnabled && "opacity-50 cursor-not-allowed"
-            )}
-            aria-label={
-              isSortEnabled
-                ? `Sort by date (${sortOrder === "desc" ? "newest first" : "oldest first"})`
-                : "Sorting not available"
-            }
-            title={
-              isSortEnabled
-                ? `Sort by date (${sortOrder === "desc" ? "newest first" : "oldest first"})`
-                : "Sorting not available"
-            }
-          >
-            <SortIcon className="w-4 h-4" />
-          </Button>
+          isSortEnabled ? (
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleSortToggle}
+              className="h-9 w-9"
+              aria-label={sortDirectionLabel}
+              title={sortDirectionLabel}
+            >
+              <SortIcon className="w-4 h-4" />
+            </Button>
+          ) : (
+            // Disabled buttons do not receive pointer/focus events; wrap so the
+            // tooltip still works on hover and keyboard focus.
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex" tabIndex={0}>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      disabled
+                      className="h-9 w-9 opacity-50 cursor-not-allowed"
+                      aria-label={DISABLED_SORT_TOOLTIP}
+                    >
+                      <SortIcon className="w-4 h-4" />
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  {DISABLED_SORT_TOOLTIP}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )
         ) : null}
 
         {chrome.showFilters ? (

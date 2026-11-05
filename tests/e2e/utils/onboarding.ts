@@ -1,8 +1,9 @@
 import { Page, expect } from '@playwright/test';
 import { waitForAppReady } from './app-ready';
 
-const AGE_GATE_CHECKBOX = '#age-confirm';
 const ACCOUNT_GATE_HEADING = /sign in to ruledesk/i;
+const ACCOUNT_GATE_CONTENT_WARNING =
+  /RuleDesk displays sexually explicit content from Rule34\. Use only if you are an adult\./i;
 const MAIN_APP_ARTISTS_LINK = /^artists$/i;
 
 function readTestCredentials(): { userId: string; apiKey: string } {
@@ -19,42 +20,6 @@ function readTestCredentials(): { userId: string; apiKey: string } {
   }
 
   return { userId, apiKey };
-}
-
-async function acceptAgeGateIfVisible(page: Page): Promise<void> {
-  const ageCheckbox = page.locator(AGE_GATE_CHECKBOX);
-  const isAgeGateVisible = await ageCheckbox.isVisible({ timeout: 5000 }).catch(() => false);
-
-  if (!isAgeGateVisible) {
-    return;
-  }
-
-  console.log('[E2E] Age Gate detected. Accepting...');
-
-  if (page.isClosed()) {
-    throw new Error('[E2E] Page closed during Age Gate handling');
-  }
-
-  await ageCheckbox.check({ timeout: 5000 });
-
-  const tosCheckbox = page.locator('#tos-accept');
-  await tosCheckbox.check({ timeout: 5000 });
-
-  const confirmButton = page.getByRole('button', { name: /enter ruledesk/i });
-  await expect(confirmButton).toBeEnabled({ timeout: 5000 });
-
-  if (page.isClosed()) {
-    throw new Error('[E2E] Page closed before clicking Age Gate confirm button');
-  }
-
-  await confirmButton.click();
-  await expect(ageCheckbox).not.toBeVisible({ timeout: 10000 });
-
-  if (page.isClosed()) {
-    throw new Error('[E2E] Page closed after Age Gate submission');
-  }
-
-  await page.waitForTimeout(1000);
 }
 
 async function waitForMainAppShell(page: Page): Promise<void> {
@@ -124,7 +89,6 @@ async function completeAccountGateIfVisible(page: Page): Promise<void> {
   await page.reload({ waitUntil: 'domcontentloaded' });
   await waitForAppReady(page, 30000);
 
-  await acceptAgeGateIfVisible(page);
   await waitForMainAppShell(page);
 }
 
@@ -141,7 +105,7 @@ async function navigateToArtistsPage(page: Page): Promise<void> {
 }
 
 /**
- * Completes the onboarding flow (Age Gate + API credentials)
+ * Completes the onboarding flow (AccountGate credentials when needed)
  */
 export async function completeOnboarding(page: Page): Promise<void> {
   if (page.isClosed()) {
@@ -149,7 +113,6 @@ export async function completeOnboarding(page: Page): Promise<void> {
   }
 
   await waitForAppReady(page, 30000);
-  await acceptAgeGateIfVisible(page);
   await completeAccountGateIfVisible(page);
   await navigateToArtistsPage(page);
 
@@ -165,8 +128,8 @@ export async function isAccountGateVisible(page: Page): Promise<boolean> {
   );
 }
 
-export async function isAgeGateVisible(page: Page): Promise<boolean> {
-  return page.locator(AGE_GATE_CHECKBOX).isVisible({ timeout: 2000 }).catch(() => false);
+export async function isAccountGateContentWarningVisible(page: Page): Promise<boolean> {
+  return page.getByText(ACCOUNT_GATE_CONTENT_WARNING).isVisible({ timeout: 2000 }).catch(() => false);
 }
 
 export async function isMainAppShellVisible(page: Page): Promise<boolean> {

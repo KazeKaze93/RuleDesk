@@ -303,7 +303,7 @@ Manual database backup and restore functionality. Backups are timestamped consis
 
 ### Orphan detection
 
-Read-only report of posts without a parent artist, playlist entries without a post, FTS index rows without a post, and ghost artist ids. Settings → Backup → Database Maintenance → **Check for orphaned data**. IPC: `maintenance:detect-orphans` / `detectOrphans`. No automatic cleanup.
+Read-only report of posts without a parent artist, playlist entries without a post, FTS index rows without a post, and ghost artist ids. Settings → Data → Database Maintenance → **Check for orphaned data**. IPC: `maintenance:detect-orphans` / `detectOrphans`. No automatic cleanup.
 
 **Related:** [Known issue: orphaned rows](./database.md#known-issue-orphaned-rows-detection-only-cleanup-pending)
 

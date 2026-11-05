@@ -1,0 +1,1 @@
+ALTER TABLE settings ADD COLUMN show_panic_button INTEGER NOT NULL DEFAULT 0;

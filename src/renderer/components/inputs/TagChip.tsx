@@ -11,6 +11,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../ui/tooltip";
 import { cn } from "../../lib/utils";
 import { invalidateAllPostQueries } from "../../utils/react-query-cache";
 import { resolveErrorMessage } from "../../utils/error-message";
@@ -25,6 +31,16 @@ export interface TagChipProps {
   onEdit: () => void;
 }
 
+/** Discoverability copy for include-state tag actions (chip / drawer). */
+export const TAG_INCLUDE_INTERACTION_TOOLTIP =
+  "Click to include · Right-click to exclude";
+
+/** Discoverability copy for exclude-state tag actions (chip / drawer). */
+export const TAG_EXCLUDE_INTERACTION_TOOLTIP =
+  "Click to exclude · Right-click to include";
+
+const TOOLTIP_DELAY_MS = 200;
+
 const labelForAria = (variant: TagChipVariant, text: string): string => {
   if (variant === "exclude") {
     return `Exclude tag: ${text}. Right-click to mark as include.`;
@@ -32,11 +48,11 @@ const labelForAria = (variant: TagChipVariant, text: string): string => {
   return `Include tag: ${text}. Right-click to mark as exclude.`;
 };
 
-const titleForHint = (variant: TagChipVariant, text: string): string => {
+const tooltipForVariant = (variant: TagChipVariant): string => {
   if (variant === "exclude") {
-    return `${text} — right-click to include`;
+    return TAG_EXCLUDE_INTERACTION_TOOLTIP;
   }
-  return `${text} — right-click to exclude`;
+  return TAG_INCLUDE_INTERACTION_TOOLTIP;
 };
 
 /**
@@ -109,52 +125,60 @@ export function TagChip({
         }
       }}
     >
-      <div
-        className="inline-flex max-w-full items-center gap-0.5 whitespace-nowrap"
-        onContextMenu={(event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          setMenuPosition({ x: event.clientX, y: event.clientY });
-          setMenuOpen(true);
-        }}
-      >
-        <Badge
-          variant="outline"
-          className={cn(
-            "h-7 min-w-0 max-w-[14rem] flex-1 flex-row items-center justify-start gap-0 px-2 py-0 text-left text-xs font-normal sm:max-w-xs",
-            variant === "include" && "ring-2 ring-success/40",
-            variant === "exclude" && "ring-2 ring-destructive/50"
-          )}
-          aria-label={labelForAria(variant, tag)}
-          title={titleForHint(variant, tag)}
-          onClick={(e) => {
-            e.stopPropagation();
-            onEdit();
-          }}
-        >
-          {variant === "exclude" ? (
-            <span className="shrink-0 pr-0.5 text-destructive" aria-hidden="true">
-              -
-            </span>
-          ) : null}
-          <span className="min-w-0 flex-1 truncate text-left" dir="auto">
-            {tag}
-          </span>
-        </Badge>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="h-5 w-5 shrink-0 rounded-sm p-0"
-          onClick={(e) => {
-            e.stopPropagation();
-            onRemove();
-          }}
-          aria-label={`Remove tag ${tag}`}
-        >
-          <X className="h-3 w-3" aria-hidden="true" />
-        </Button>
-      </div>
+      <TooltipProvider delayDuration={TOOLTIP_DELAY_MS}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div
+              className="inline-flex max-w-full items-center gap-0.5 whitespace-nowrap"
+              onContextMenu={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                setMenuPosition({ x: event.clientX, y: event.clientY });
+                setMenuOpen(true);
+              }}
+            >
+              <Badge
+                variant="outline"
+                className={cn(
+                  "h-7 min-w-0 max-w-[14rem] flex-1 flex-row items-center justify-start gap-0 px-2 py-0 text-left text-xs font-normal sm:max-w-xs",
+                  variant === "include" && "ring-2 ring-success/40",
+                  variant === "exclude" && "ring-2 ring-destructive/50"
+                )}
+                aria-label={labelForAria(variant, tag)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit();
+                }}
+              >
+                {variant === "exclude" ? (
+                  <span className="shrink-0 pr-0.5 text-destructive" aria-hidden="true">
+                    -
+                  </span>
+                ) : null}
+                <span className="min-w-0 flex-1 truncate text-left" dir="auto">
+                  {tag}
+                </span>
+              </Badge>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-5 w-5 shrink-0 rounded-sm p-0"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRemove();
+                }}
+                aria-label={`Remove tag ${tag}`}
+              >
+                <X className="h-3 w-3" aria-hidden="true" />
+              </Button>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent className="pointer-events-none">
+            {tooltipForVariant(variant)}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
       <DropdownMenuTrigger asChild>
         <span
           ref={menuAnchorRef}

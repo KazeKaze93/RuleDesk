@@ -59,7 +59,7 @@ Welcome to the RuleDesk documentation. This index provides a structured navigati
 
 #### Setup & First Launch
 - [README.md - Quick Start](../README.md#-quick-start) - Launch checklist
-- [User Guide - First Launch](./user-guide.md#first-launch) - Age Gate and account
+- [User Guide - First Launch](./user-guide.md#first-launch) - Account sign-in and content notice
 - [README.md - Settings](../README.md#-settings) - Core configuration
 
 #### Daily Usage

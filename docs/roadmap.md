@@ -133,7 +133,21 @@ Persist `kind: "favorites"` in `download-queue.json` and resume from `PendingDow
 
 | # | Branch | PR | Status |
 |---|--------|----|--------|
-| FR | `fix/favorites-download-resume` | [#274](https://github.com/KazeKaze93/RuleDesk/pull/274) | 🟡 open |
+| FR | `fix/favorites-download-resume` | [#274](https://github.com/KazeKaze93/RuleDesk/pull/274) | ✅ merged |
+
+### UX product polish
+
+Settings 5 tabs + legacy deeplinks, viewer Open in browser, Log Out → Account, gated Panic button, right-click hints, Add Artist Open gallery toast, Browse Sort tooltip, AgeGate → account content notice. Status lives only in this table.
+
+| # | Branch | PR | Status |
+|---|--------|----|--------|
+| UP | `feat/ux-product-polish` | [#276](https://github.com/KazeKaze93/RuleDesk/pull/276) | 🟡 open |
+
+**Release notes (draft):** Settings collapsed to five tabs (legacy deeplinks remapped); viewer **Open in browser** toolbar button; Log Out moved to Account; Panic/Safe Mode button off by default (Settings → General); Safe Mode is available only while the panic button is enabled — turning the button off also turns Safe Mode off; right-click hints on tags/playlist control; Add Artist toast **Open gallery**; Browse Sort disabled-state tooltip; AgeGate removed — content notice on the account screen and README.
+
+**Follow-up fix:** Browse `search_results_cache` persists only Rule34 cursor pages (`beforePostId`); head/offset always fetch so the live feed head is not frozen for 7 days.
+
+**Follow-up fix:** Safe Mode is available only while the panic button is enabled; turning the button off also turns Safe Mode off (clears persisted `safeModeStore` blur).
 
 ### Playlist gallery infinite scroll
 
@@ -300,6 +314,9 @@ Whether mutating-handler throttle in `BaseController` is still necessary after c
 
 - ✅ Filter panel is aligned to **AI/media/source** scope.
 - ✅ Settings tabbed IA shipped (General / Sync / Appearance / Backup / Account / Blacklist), including Danger-zone wipe.
+- ✅ **Settings 5-tab polish** (`feat/ux-product-polish`) — General absorbs Sync+Appearance; Backup+Danger → Data; legacy `?tab=` map.
+- ✅ **AgeGate ToS** — closed: age gate removed; content notice on account screen + README (`is_adult_*` / `tos_accepted_at` legacy unused).
+- ✅ Panic/Safe Mode button gated behind Settings (default off / hidden).
 - Gallery/viewer: edge-case polish; core **TagsDrawer** and **PostCard** progressive loading are shipped.
 - Updates feed QoL largely shipped (Creators tab, mark all read); further polish as needed.
 
@@ -364,7 +381,7 @@ Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one 
 | `fix/gelbooru-transport-failure-silent-swallow` | ✅ merged | [#157](https://github.com/KazeKaze93/RuleDesk/pull/157) — Gelbooru `fetchPosts` throws `ProviderSearchError("network"|"parse")` instead of `[]`; SearchController heuristics stay on genuine empty API pages only. |
 | `fix/p1-test-suite-false-confidence` | ✅ merged | [#156](https://github.com/KazeKaze93/RuleDesk/pull/156) — P1-1..P1-4: property/e2e/hook tests that could not fail on real regressions. P1-5 Gelbooru transport `[]` vs Rule34 throw — prod silent-failure, **not** fixed in this branch. |
 | `fix/p2-test-suite-reliability` | ✅ merged | [#158](https://github.com/KazeKaze93/RuleDesk/pull/158) — Duplicate mock-db helper removed; component tests import real UI + RTL; throttle uses fake timers. E2E rebuild-skip / retries and Artist/Playlist GridContainer copies — recorded in [Backlog](#backlog-not-implemented-yet), not in this branch. |
-| `chore/p3-test-suite-hygiene` | ✅ merged | [#159](https://github.com/KazeKaze93/RuleDesk/pull/159) — Coverage docs as file inventory (no stale case totals); filter-utils space-phrase tests rewritten as token-exact; startup.spec asserts Age Gate on a fresh profile. Dead space-containing `aiTags` in `hasAiGeneratedTag` (filter-utils **and** Browse worker) — closed in [#160](https://github.com/KazeKaze93/RuleDesk/pull/160). |
+| `chore/p3-test-suite-hygiene` | ✅ merged | [#159](https://github.com/KazeKaze93/RuleDesk/pull/159) — Coverage docs as file inventory (no stale case totals); filter-utils space-phrase tests rewritten as token-exact; startup.spec asserts AccountGate on a fresh profile (AgeGate later removed). Dead space-containing `aiTags` in `hasAiGeneratedTag` (filter-utils **and** Browse worker) — closed in [#160](https://github.com/KazeKaze93/RuleDesk/pull/160). |
 | `chore/remove-dead-ai-tag-phrases` | ✅ merged | [#160](https://github.com/KazeKaze93/RuleDesk/pull/160) — Removed unreachable `"ai generated"` / `"ai generation"` / `"ai generated content"` from `filter-utils.ts` and Browse worker. Live Rule34/Gelbooru autocomplete: space queries return `[]`; `_`/`-` tokens are real. Consecutive-token matching rejected (false positives on independent `generated`). |
 | `fix/masonry-consolidate-virtuoso-item-classes` | ✅ merged | [#161](https://github.com/KazeKaze93/RuleDesk/pull/161) — Single `createVirtuosoGridFactories` for all five galleries; masonry items `w-full mb-4 break-inside-avoid`. Shared `useMasonryInfiniteScroll`. Removed Virtuoso tail-f (`atBottomStateChange` + length effect) from Browse — downward pagination is `endReached` only. |
 | `fix/viewer-hasnextpage-predicate-off-by-boundary` | ✅ merged | [#162](https://github.com/KazeKaze93/RuleDesk/pull/162) — Playlist/Artist `openViewer` `hasNextPage` is the react-query flag, not `displayedCount < pages*50` / `allPosts.length < totalCount`. Browse already passed the flag. |
@@ -374,7 +391,7 @@ Both P0 rows (#1–#2) are closed — the full v17 audit pack landed (after one 
 | `chore/cdn-domain-runtime-guards` | ✅ merged | [#166](https://github.com/KazeKaze93/RuleDesk/pull/166) — Startup throw if `cdnDomains ⊈ allowedDomains`. Fetch-time `log.warn` once per hostname when `file_url` host is missing from `allowedDomains`, or is video and missing from `cdnDomains`. `RULE34_IMAGE_HOSTS` accepts `api-cdn-mp4.rule34.xxx` (not a rewrite target). |
 | `chore/split-viewer-dialog` | ✅ merged | [#153](https://github.com/KazeKaze93/RuleDesk/pull/153) — Mechanical split: `ViewerDialog` shell + `ViewerContent` / `ViewerMedia` / `TagsDrawer` / `PostNotFoundFallback`; `buildViewerOriginQueryKey` consolidation |
 | `chore/split-playlists-page` | ✅ merged | [#152](https://github.com/KazeKaze93/RuleDesk/pull/152) — Mechanical split: `PlaylistsPage` list/CRUD; `PlaylistGallery` + virtuoso wrappers under `components/playlists/` |
-| `chore/remove-dead-onboarding-component` | ✅ merged | [#145](https://github.com/KazeKaze93/RuleDesk/pull/145) — Removed `Onboarding.tsx`; first launch is Age Gate → AccountGate / `SettingsAccountTab` (no Skip) |
+| `chore/remove-dead-onboarding-component` | ✅ merged | [#145](https://github.com/KazeKaze93/RuleDesk/pull/145) — Removed `Onboarding.tsx`; first launch later became AccountGate only (AgeGate removed in `feat/ux-product-polish`) |
 
 - Shadow-insert cache-miss path (`PostNotFoundFallback`) is not live-tested after the ViewerDialog split — check when a natural case appears (remote playlist post absent from RQ cache); do not force a synthetic miss.
 | `fix/artist-autocomplete-throttle-cancellation` | ✅ merged | [#151](https://github.com/KazeKaze93/RuleDesk/pull/151) — Add Artist second-pass: `user` throttle + Main abort of superseded waves; intervals unchanged |

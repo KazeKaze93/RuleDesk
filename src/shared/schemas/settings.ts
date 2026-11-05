@@ -84,6 +84,7 @@ export const SaveSettingsSchema = z.object({
   autoSyncOnStartup: z.boolean().optional(),
   autoSyncOnArtistAdd: z.boolean().optional(),
   minimizeToTray: z.boolean().optional(),
+  showPanicButton: z.boolean().optional(),
   syncIntervalMinutes: z.number().int().min(0).max(1440).optional(),
   backupRetention: z.number().int().min(1).max(20).optional(),
   // Provider switch removed: app is Rule34-only; field not accepted on save.
@@ -116,6 +117,7 @@ export const IpcSettingsSchema = z.object({
   autoSyncOnStartup: z.boolean(),
   autoSyncOnArtistAdd: z.boolean(),
   minimizeToTray: z.boolean(),
+  showPanicButton: z.boolean(),
   syncIntervalMinutes: z.number().int().min(0),
   backupRetention: z.number().int().min(1).max(20).default(5),
 });
@@ -143,6 +145,7 @@ export const DEFAULT_IPC_SETTINGS: IpcSettings = {
   autoSyncOnStartup: false,
   autoSyncOnArtistAdd: false,
   minimizeToTray: true,
+  showPanicButton: false,
   syncIntervalMinutes: 0,
   backupRetention: 5,
 };

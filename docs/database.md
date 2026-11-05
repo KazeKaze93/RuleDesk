@@ -231,10 +231,11 @@ Stores application settings including API credentials and user preferences.
 | `provider`           | TEXT (NOT NULL, DEFAULT 'rule34')      | Stored provider id (`KNOWN_STORED_PROVIDER_IDS`); settings input schema stays `PROVIDER_IDS` |
 | `encrypted_api_key`  | TEXT (DEFAULT '')                      | Encrypted API key (encrypted at rest)        |
 | `proxy_url`          | TEXT (NULL)                            | Optional proxy URL                            |
-| `is_safe_mode`       | INTEGER (BOOLEAN, DEFAULT 1)           | Safe mode flag (blur NSFW content)           |
-| `is_adult_confirmed` | INTEGER (BOOLEAN, DEFAULT 0)           | Adult confirmation flag (18+ confirmation)   |
-| `is_adult_verified`  | INTEGER (BOOLEAN, DEFAULT 0, NOT NULL) | Adult verification flag (legal confirmation) |
-| `tos_accepted_at`    | INTEGER (TIMESTAMP, NULL)              | ToS acceptance (`mode: "timestamp"` = **seconds**; IPC exposes ms) |
+| `is_safe_mode`       | INTEGER (BOOLEAN, DEFAULT 1)           | Legacy schema column (UI Safe Mode uses renderer store + panic button) |
+| `is_adult_confirmed` | INTEGER (BOOLEAN, DEFAULT 0)           | **Legacy unused** since age-gate removal (column kept) |
+| `is_adult_verified`  | INTEGER (BOOLEAN, DEFAULT 0, NOT NULL) | **Legacy unused** since age-gate removal (column kept) |
+| `tos_accepted_at`    | INTEGER (TIMESTAMP, NULL)              | **Legacy unused** since age-gate removal (`mode: "timestamp"` = **seconds**) |
+| `show_panic_button`  | INTEGER (BOOLEAN, NOT NULL, DEFAULT 0) | When true, mount floating Panic/Safe Mode button (migration `0043_add_show_panic_button`) |
 | `download_folder`    | TEXT (NULL)                            | Default download folder                       |
 | `duplicate_file_behavior` | TEXT (DEFAULT 'skip')            | Duplicate file behavior                       |
 | `download_folder_structure` | TEXT (DEFAULT 'flat')          | Download folder structure                     |
@@ -282,6 +283,10 @@ export const settings = sqliteTable("settings", {
   lastVacuumAt: integer("last_vacuum_at"),
   lastVacuumStatus: text("last_vacuum_status"),
   lastVacuumError: text("last_vacuum_error"),
+  // legacy: unused since age gate removal — isAdultConfirmed / isAdultVerified / tosAcceptedAt
+  showPanicButton: integer("show_panic_button", { mode: "boolean" })
+    .default(false)
+    .notNull(),
 });
 ```
 
@@ -318,7 +323,7 @@ Maintenance: `deleteExpiredTagMetadata` then `enforceTagMetadataRowCap` (`MAX_TA
 
 ### Table: `search_results_cache`
 
-Persistent TTL cache for Browse `searchBooru` API pages (`SearchController.search`). One row per canonical cache key. Does **not** replace `tag_metadata`.
+Persistent TTL cache for Browse `searchBooru` **cursor** pages only (`SearchController.search` when `beforePostId` is set). Head-of-feed and offset pages never read or write this table. One row per canonical cache key. Does **not** replace `tag_metadata`.
 
 | Column                    | Type                             | Description                                                                 |
 | ------------------------- | -------------------------------- | --------------------------------------------------------------------------- |
@@ -330,11 +335,10 @@ Persistent TTL cache for Browse `searchBooru` API pages (`SearchController.searc
 
 **Semantics:**
 
-- `found` — successful API page with at least one post; payload parsed only through the versioned resolver (`parseSearchResultsCachePayload`). TTL `SEARCH_RESULTS_CACHE_FOUND_TTL_MS` (7 days — much larger than not_found).
-- `not_found` — confirmed empty API page after alias/user:/artist-strip fallbacks (tagged queries). TTL `SEARCH_RESULTS_CACHE_NOT_FOUND_TTL_MS` (24 hours). Empty is **not** stored as `found`.
+- Written only for Rule34 cursor pages (`useCursorPagination` / `beforePostId`). Head and offset pages always fetch the provider (renderer React Query still dedups short opens).
+- `found` — successful cursor page with at least one post; payload parsed only through the versioned resolver (`parseSearchResultsCachePayload`). TTL `SEARCH_RESULTS_CACHE_FOUND_TTL_MS` (7 days — much larger than not_found).
+- `not_found` — confirmed empty cursor page after alias/user:/artist-strip fallbacks. TTL `SEARCH_RESULTS_CACHE_NOT_FOUND_TTL_MS` (24 hours). Empty is **not** stored as `found`.
 - Unresolved failures (429/network/parse) are **not** written.
-- Untagged page 1 returning zero rows is **not** persisted (same throttle-blip case as the empty-page UI path).
-- Untagged page 2+ returning zero rows **is** persisted as `not_found` (real end-of-feed; repeat scroll must not re-hit the API).
 - `isRandom` searches bypass the cache (read and write).
 - Blacklist filtering and local viewed/favorited merge run **after** a cache hit, so they stay live.
 - Key dimensions are only values that `SearchController.search()` actually varies: provider, formatted API `tags` (AI/media injection already inlined), page, limit, cursor. Browse `sortOrder` / removed local `rating` / `source` / `aiFilter` / `mediaType` flags are **not** in the SQLite key — they are not IPC arguments. Changing injected tags (AI hide / `video`) yields a different `tags` string and therefore a different key.
@@ -823,7 +827,7 @@ Special tags `0000_blue_lorna_dane`, `0010_add_fts5_cache_invalidation`, and `00
 - Implemented in `src/main/db/legacy-database-migrate.ts`. Before any rename: open the legacy file, `PRAGMA wal_checkpoint(TRUNCATE)`, close — so committed WAL data lives in the main file.
 - Move via `rename`; on `EXDEV` (cross-volume): `copyFile` → verify same size → only then `unlink` source.
 - Checkpoint failure: leave legacy files untouched and return `{ migrated: false, blockedLegacyPath }`. `client.ts` **throws** before `new Database(dbPath)` so an empty schema is never created on the new path (that empty-but-migrated file would pass `databaseLooksInitialized` and permanently orphan the legacy DB on the next launch). The error propagates to `main.ts`, which shows the fatal `dialog.showErrorBox` (sole dialog site).
-- Recovery if an empty initialized stub already exists and a legacy file is still on disk: confirm the legacy path is reachable (`exists` + `access`), then remove the stub and retry the move. "Empty" means **no user content**: zero `artists`, zero `playlists`, and `settings` still at schema defaults (in particular `tos_accepted_at` null and adult flags false — AgeGate writes these before any artist exists). If the new DB already has any of that user state **and** legacy remains, return `blockedLegacyPath` instead of deleting or overwriting — startup stops with a clear message.
+- Recovery if an empty initialized stub already exists and a legacy file is still on disk: confirm the legacy path is reachable (`exists` + `access`), then remove the stub and retry the move. "Empty" means **no user content**: zero `artists`, zero `playlists`, and `settings` still at schema defaults (in particular `tos_accepted_at` null and adult flags false — historical AgeGate used to write these before any artist existed; columns are legacy unused now). If the new DB already has any of that user state **and** legacy remains, return `blockedLegacyPath` instead of deleting or overwriting — startup stops with a clear message.
 
 **Manual execution:**
 

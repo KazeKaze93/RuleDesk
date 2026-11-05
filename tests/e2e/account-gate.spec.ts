@@ -10,7 +10,9 @@ import { waitForAppReady } from './utils/app-ready';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const AGE_GATE_CHECKBOX = '#age-confirm';
+const ACCOUNT_GATE_HEADING = /sign in to ruledesk/i;
+const ACCOUNT_GATE_CONTENT_WARNING =
+  /RuleDesk displays sexually explicit content from Rule34\. Use only if you are an adult\./i;
 
 async function launchAppWithUserData(userDataDir: string) {
   const mainEntry = path.resolve(__dirname, '../../out/main/main.cjs');
@@ -65,7 +67,7 @@ async function getFirstWindowPage(app: Awaited<ReturnType<typeof launchAppWithUs
 }
 
 function createUserDataDir(): string {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'ruledesk-agegate-persistence-'));
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'ruledesk-account-gate-'));
 }
 
 function removeUserDataDir(userDataDir: string): void {
@@ -79,8 +81,8 @@ function removeUserDataDir(userDataDir: string): void {
   }
 }
 
-test.describe('Age Gate Persistence', () => {
-  test('should show Age Gate on first launch', async () => {
+test.describe('Account Gate', () => {
+  test('fresh profile shows AccountGate with content notice and no AgeGate', async () => {
     const userDataDir = createUserDataDir();
     const app = await launchAppWithUserData(userDataDir);
 
@@ -88,14 +90,21 @@ test.describe('Age Gate Persistence', () => {
       const page = await getFirstWindowPage(app);
       await waitForAppReady(page, 30000);
 
-      await expect(page.locator(AGE_GATE_CHECKBOX)).toBeVisible({ timeout: 10000 });
+      await expect(
+        page.getByRole('heading', { name: ACCOUNT_GATE_HEADING })
+      ).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText(ACCOUNT_GATE_CONTENT_WARNING)).toBeVisible({
+        timeout: 10000,
+      });
+      await expect(page.locator('#age-confirm')).not.toBeVisible({ timeout: 5000 });
+      await expect(page.locator('#tos-accept')).not.toBeVisible({ timeout: 5000 });
     } finally {
       await app.close();
       removeUserDataDir(userDataDir);
     }
   });
 
-  test('should NOT show Age Gate on second launch after confirmation', async () => {
+  test('second launch without credentials still shows AccountGate', async () => {
     const userDataDir = createUserDataDir();
 
     try {
@@ -105,17 +114,9 @@ test.describe('Age Gate Persistence', () => {
         const page = await getFirstWindowPage(app);
         await waitForAppReady(page, 30000);
 
-        const ageCheckbox = page.locator(AGE_GATE_CHECKBOX);
-        await expect(ageCheckbox).toBeVisible({ timeout: 10000 });
-
-        await ageCheckbox.check();
-        await page.locator('#tos-accept').check();
-
-        const confirmButton = page.getByRole('button', { name: /enter ruledesk/i });
-        await expect(confirmButton).toBeEnabled({ timeout: 3000 });
-        await confirmButton.click();
-
-        await expect(ageCheckbox).not.toBeVisible({ timeout: 10000 });
+        await expect(
+          page.getByRole('heading', { name: ACCOUNT_GATE_HEADING })
+        ).toBeVisible({ timeout: 10000 });
       } finally {
         await app.close();
         await new Promise(resolve => setTimeout(resolve, 2000));
@@ -127,10 +128,13 @@ test.describe('Age Gate Persistence', () => {
         const page = await getFirstWindowPage(app);
         await waitForAppReady(page, 30000);
 
-        await expect(page.locator(AGE_GATE_CHECKBOX)).not.toBeVisible({ timeout: 15000 });
         await expect(
-          page.getByRole('heading', { name: /sign in to ruledesk/i })
+          page.getByRole('heading', { name: ACCOUNT_GATE_HEADING })
         ).toBeVisible({ timeout: 15000 });
+        await expect(page.getByText(ACCOUNT_GATE_CONTENT_WARNING)).toBeVisible({
+          timeout: 15000,
+        });
+        await expect(page.locator('#age-confirm')).not.toBeVisible({ timeout: 5000 });
       } finally {
         await app.close();
       }

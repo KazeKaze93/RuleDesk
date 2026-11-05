@@ -9,10 +9,22 @@ import {
   SelectValue,
 } from "../../components/ui/select";
 
+const SYNC_SECTION_TITLE = "Sync";
+const SYNC_SECTION_DESCRIPTION = "Automatic behavior and on-demand synchronization.";
+const SYNC_ON_STARTUP_LABEL = "Sync on startup";
+const SYNC_ON_STARTUP_DESCRIPTION =
+  "Automatically run sync when the application opens.";
+const SYNC_ON_ARTIST_ADD_LABEL = "Sync new artist automatically";
+const SYNC_ON_ARTIST_ADD_DESCRIPTION =
+  "Automatically sync a new artist right after adding it.";
+const SYNC_INTERVAL_LABEL = "Sync interval";
+
 interface SettingsSyncTabProps {
   autoSyncOnStartup: boolean;
   autoSyncOnArtistAdd: boolean;
   syncIntervalMinutes: string;
+  /** When false, omit sync-on-startup (shown in Setup section instead). Default true. */
+  showStartupSync?: boolean;
   onAutoSyncChange: (checked: boolean) => void;
   onAutoSyncOnArtistAddChange: (checked: boolean) => void;
   onSyncIntervalChange: (value: string) => void;
@@ -22,6 +34,7 @@ export const SettingsSyncTab = ({
   autoSyncOnStartup,
   autoSyncOnArtistAdd,
   syncIntervalMinutes,
+  showStartupSync = true,
   onAutoSyncChange,
   onAutoSyncOnArtistAddChange,
   onSyncIntervalChange,
@@ -29,30 +42,28 @@ export const SettingsSyncTab = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Sync</CardTitle>
-        <CardDescription>Automatic behavior and on-demand synchronization.</CardDescription>
+        <CardTitle>{SYNC_SECTION_TITLE}</CardTitle>
+        <CardDescription>{SYNC_SECTION_DESCRIPTION}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <section className="flex items-start justify-between gap-4 rounded-md border p-4">
-          <section className="space-y-1">
-            <Label htmlFor="auto-sync-on-startup">Sync on startup</Label>
-            <p className="text-sm text-muted-foreground">
-              Automatically run sync when the application opens.
-            </p>
+        {showStartupSync ? (
+          <section className="flex items-start justify-between gap-4 rounded-md border p-4">
+            <section className="space-y-1">
+              <Label htmlFor="auto-sync-on-startup">{SYNC_ON_STARTUP_LABEL}</Label>
+              <p className="text-sm text-muted-foreground">{SYNC_ON_STARTUP_DESCRIPTION}</p>
+            </section>
+            <Switch
+              id="auto-sync-on-startup"
+              checked={autoSyncOnStartup}
+              onCheckedChange={onAutoSyncChange}
+            />
           </section>
-          <Switch
-            id="auto-sync-on-startup"
-            checked={autoSyncOnStartup}
-            onCheckedChange={onAutoSyncChange}
-          />
-        </section>
+        ) : null}
 
         <section className="flex items-start justify-between gap-4 rounded-md border p-4">
           <section className="space-y-1">
-            <Label htmlFor="auto-sync-on-artist-add">Sync new artist automatically</Label>
-            <p className="text-sm text-muted-foreground">
-              Automatically sync a new artist right after adding it.
-            </p>
+            <Label htmlFor="auto-sync-on-artist-add">{SYNC_ON_ARTIST_ADD_LABEL}</Label>
+            <p className="text-sm text-muted-foreground">{SYNC_ON_ARTIST_ADD_DESCRIPTION}</p>
           </section>
           <Switch
             id="auto-sync-on-artist-add"
@@ -62,7 +73,7 @@ export const SettingsSyncTab = ({
         </section>
 
         <section className="space-y-2 rounded-md border p-4">
-          <Label htmlFor="sync-interval">Sync interval</Label>
+          <Label htmlFor="sync-interval">{SYNC_INTERVAL_LABEL}</Label>
           <Select value={syncIntervalMinutes} onValueChange={onSyncIntervalChange}>
             <SelectTrigger id="sync-interval">
               <SelectValue />

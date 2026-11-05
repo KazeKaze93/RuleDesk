@@ -503,7 +503,7 @@ const posts = await db.query.posts.findMany({
 
    - `ArtistsController.ts` - Artist management operations
    - `PostsController.ts` - Post-related operations. Shadow-insert `id:${postId}` fetch is cache-first via `resolvePostLookup` (`post_lookup_cache` not_found TTL). Mark-viewed / favorite with supplied `postData` does not hit that cache.
-   - `SettingsController.ts` - Settings management (including `confirmLegal` for age gate)
+   - `SettingsController.ts` - Settings management (`confirmLegal` IPC remains as unused stub after age-gate removal)
    - `AuthController.ts` - Authentication and credential verification
    - `MaintenanceController.ts` - Database backup/restore, VACUUM, and read-only orphan detection
    - `ViewerController.ts` - Viewer-related operations
@@ -647,7 +647,7 @@ const posts = await db.query.posts.findMany({
 
 12. **Browse** (`src/renderer/components/pages/Browse.tsx`, `SearchController.search`, `src/renderer/utils/react-query-cache.ts`)
 
-   - **Remote gallery (Source: All):** live booru search via IPC `searchBooru`. Main is cache-first: `search_results_cache` (found TTL `SEARCH_RESULTS_CACHE_FOUND_TTL_MS` / not_found TTL `SEARCH_RESULTS_CACHE_NOT_FOUND_TTL_MS`, plus row + payload-byte caps) before `provider.fetchPosts`. Hits skip HTTP; confirmed empty tagged pages persist as `not_found`; untagged page 1 empty is not persisted; untagged page 2+ empty is `not_found`. 429/network are unresolved (not written). `isRandom` bypasses the cache. Blacklist + local viewed/favorited still apply on hits. Grid infinite scroll: `useGalleryInfiniteScroll` + `VirtuosoGrid.endReached` only (no `atBottomStateChange`). Masonry infinite scroll: `useMasonryInfiniteScroll` (overflow-auto).
+   - **Remote gallery (Source: All):** live booru search via IPC `searchBooru`. Persistent `search_results_cache` applies only to Rule34 **cursor** pages (`beforePostId`); head/offset always fetch. Cursor hits use found TTL `SEARCH_RESULTS_CACHE_FOUND_TTL_MS` / not_found TTL `SEARCH_RESULTS_CACHE_NOT_FOUND_TTL_MS` (plus row + payload-byte caps). 429/network are unresolved (not written). `isRandom` bypasses the cache. Blacklist + local viewed/favorited still apply on hits. Grid infinite scroll: `useGalleryInfiniteScroll` + `VirtuosoGrid.endReached` only (no `atBottomStateChange`). Masonry infinite scroll: `useMasonryInfiniteScroll` (overflow-auto).
    - **Rule34 deep pagination:** offset pages 1–4 (`RULE34_MAX_OFFSET_PAGES`), then cursor via meta-tag `id:<postId>` (`beforePostId` / `nextBeforePostId`); `getSearchBrowseNextPageParam()` drives React Query `pageParam`.
    - **Local source modes:** Favorites / Browse Source Subscriptions filter query cached DB posts via `getArtistPosts` (page + `LIMIT`/`OFFSET`). `aiFilter` / `mediaType` / `sortOrder` are passed into SQL (`buildPostFilterConditions`) so filtering happens **before** pagination — same pattern as `ArtistGallery`. Favorites maps to `isFavorited`; Browse Source Subscriptions filter maps to `sinceTracking` (join `posts.artistId` + `publishedAt >= artists.createdAt`). Worker-side tag-intersection against tracked artist tags is **not** used. Distinct from tag-combination subscriptions (**Closed — superseded by smart playlists (`is_smart`/`query_json`); no separate entity built (2026-09-12 backlog audit)**).
    - **Remote AI filter (Rule34):** Browse injects verified AI tag tokens into the `searchBooru` tags array (`buildRemoteBooruTagListForIpc` / `buildRemoteAiFilterTagInjection` in `searchStore.ts`): `hide` → `-ai_generated -ai-generated -ai_generation -ai-generated_content`; `only` → OR-group `( ai_generated ~ … )`. Injection is **Rule34-only**. Defensive skip when the user's include/exclude chips already conflict with the filter (avoids API empty-page AND of `tag -tag`); then the worker AI path remains the fallback. **Gelbooru** (and any non-Rule34 provider) never injects AI — worker AI filtering only (live Gelbooru AI tag injection not verified).
@@ -729,19 +729,15 @@ const posts = await db.query.posts.findMany({
      - **AddArtistModal.tsx** - Modal for adding new artists
      - **DeleteArtistDialog.tsx** - Confirmation dialog for artist deletion
      - **UpdateNotification.tsx** - Update notification component
-     - **AgeGate.tsx** - Age gate (`src/renderer/components/onboarding/AgeGate.tsx`)
-
   - **Settings (`src/renderer/features/settings/`):**
 
-    - **Settings.tsx** - Tab container and settings orchestration
-    - **SettingsGeneralTab.tsx** - Downloads, proxy, and Danger zone (`wipeAllData`)
+    - **Settings.tsx** - Five-tab container (`general` / `data` / `account` / `blacklist` / `help`) with legacy `?tab=` map
+    - **SettingsGeneralTab.tsx** - Setup, downloads/tray/proxy, Sync, Appearance, Show panic button
     - **SettingsHelpTab.tsx** - App/runtime versions, open logs folder, copy redacted diagnostics
-    - **SettingsSyncTab.tsx** - Startup/interval sync (manual Sync All remains in the sidebar)
-    - **SettingsAppearanceTab.tsx** - Theme selection (`System` / `Light` / `Dark`)
     - **SettingsBlacklistTab.tsx** - Tag blacklist management
-    - **SettingsBackupTab.tsx** - Backup, restore, integrity check, retention, and maintenance section
+    - **SettingsDataTab.tsx** - Backup, restore, integrity check, retention, maintenance, and Danger zone
     - **DatabaseMaintenanceCard.tsx** - User-visible VACUUM status, schedule, and manual run
-    - **SettingsAccountTab.tsx** - API key input, visibility toggle, `hasApiKey` status, paste-URL hint under credentials fields
+    - **SettingsAccountTab.tsx** - API key input, visibility toggle, `hasApiKey` status, paste-URL hint, Log Out
 
    - **Inputs:**
 
@@ -1381,7 +1377,7 @@ External API calls are abstracted through the **Provider Pattern** (`src/main/pr
    - **Page size:** 50 posts per request (configurable `limit`, max 100)
    - **Rule34 offset cap:** pages 1–4 via `pid`; page 5+ via meta-tag cursor `id:<postId>` with `pid=0`
    - **Response metadata:** `hasMore`, `apiFetchedCount`, `nextBeforePostId` for infinite scroll (blacklist applied after fetch)
-   - **Persistent cache:** SQLite `search_results_cache` is consulted before `provider.fetchPosts`. Cache key is provider + formatted API tags + page + limit + cursor (AI/media isolation is the injected tags string). Payload JSON is versioned (`payload_schema_version`); unknown versions are misses. Untagged page 1 empty is not persisted; untagged page 2+ empty is `not_found`. Found TTL 7d / not_found TTL 24h; maintenance also enforces row + payload-byte caps via `deleteExpiredSearchResultsCache`, `enforceSearchResultsCacheRowCap`, `enforceSearchResultsCachePayloadByteCap`.
+   - **Persistent cache:** SQLite `search_results_cache` is consulted only for Rule34 cursor pages (`beforePostId`) before `provider.fetchPosts`. Head/offset pages never read or write this table. Cache key is provider + formatted API tags + page + limit + cursor (AI/media isolation is the injected tags string). Payload JSON is versioned (`payload_schema_version`); unknown versions are misses. Found TTL 7d / not_found TTL 24h; maintenance also enforces row + payload-byte caps via `deleteExpiredSearchResultsCache`, `enforceSearchResultsCacheRowCap`, `enforceSearchResultsCachePayloadByteCap`.
 
 ### Download Flow
 
@@ -1671,8 +1667,8 @@ src/
 │   │   │   ├── AddArtistModal.tsx
 │   │   │   ├── DeleteArtistDialog.tsx
 │   │   │   └── UpdateNotification.tsx
-│   │   ├── onboarding/            # Age gate
-│   │   │   └── AgeGate.tsx
+│   │   ├── onboarding/            # Auto-backup opt-in prompt
+│   │   │   └── AutoBackupOptInPrompt.tsx
 │   │   ├── inputs/                # Input components
 │   │   │   └── AsyncAutocomplete.tsx
 │   │   ├── layout/                 # Layout components
@@ -1800,7 +1796,7 @@ Maintainer identifiers relocated from user-facing README sections (Features, Pro
 | Favorites storage | Local SQLite `isFavorited` (no booru account-favorites sync) |
 | Statistics | Route `/stats`; IPC `getExtendedStats`; placeholder `Artist 0` excluded from Top Artists |
 | Blacklist cap | `MAX_BLACKLIST_TAGS` (100) |
-| Account gate | `AgeGate.tsx`; AccountGate / `SettingsAccountTab` in `App.tsx`; `hasApiKey` contract |
+| Account gate | AccountGate + content notice / `SettingsAccountTab` in `App.tsx`; `hasApiKey` contract |
 | Multi-provider | `IBooruProvider` (`Rule34Provider`, `GelbooruProvider`) |
 | IPC bridge file | `src/preload/bridge.ts` (built to `out/preload/bridge.cjs`); contract `src/shared/types/ipc-bridge.ts` — **not** `src/main/bridge.ts` |
 | Auto-updater | `electron-updater` checks and notifies; opens GitHub release page — manual zip/AppImage install (no seamless in-app install) |
@@ -1983,7 +1979,7 @@ Based on a comprehensive technical audit, here's the current implementation stat
 ### Shipped (formerly listed under Missing / Planned)
 
 - **Safe Mode / NSFW Filter:** blur logic and safe mode state in gallery/viewer (`safeModeStore`, `PanicButton`, `PostCard`, `ViewerMedia`)
-- **Age Gate:** `src/renderer/components/onboarding/AgeGate.tsx` and `confirmLegal` IPC method
+- **Content notice:** AccountGate alert in `App.tsx` (AgeGate removed; `confirmLegal` IPC left as unused stub)
 - **User Data Path:** Neutral `RuleDesk-Data` via `bootstrap-user-data.ts` (not next to the executable); DB backups in sibling `RuleDesk-Backups/`
 - **Anti-Bot Measures:** Shared `ProviderThrottle` (~1200ms + jitter) and shared `USER_AGENT` across current providers. One throttle instance per provider host serializes Sync/Browse/autocomplete (`user` priority) ahead of tag-resolve (`background`). A single host 429 gate (`notifyRateLimited`) is written by any consumer and checked by every `wait()` — local rate-limit copies are forbidden.
 - **DB Optimization (FTS5):** FTS5 virtual table `posts_fts` implemented with `unicode61` tokenizer for fast tag searching
