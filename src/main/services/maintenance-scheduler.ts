@@ -135,14 +135,12 @@ export class MaintenanceScheduler {
           const videoProxy = this.videoProxyServer;
           if (videoProxy !== null) {
             setImmediate(() => {
-              try {
-                videoProxy.evictCache();
-              } catch (error) {
+              void videoProxy.evictCache().catch((error: unknown) => {
                 log.error(
                   "[MaintenanceScheduler] Video cache eviction failed:",
                   error
                 );
-              }
+              });
             });
           }
 

@@ -342,7 +342,7 @@ describe("VideoProxyServer cache integrity", () => {
     );
   });
 
-  it("evictCache removes aged orphan tmp files and keeps bins under the soft cap", () => {
+  it("evictCache removes aged orphan tmp files and keeps bins under the soft cap", async () => {
     const now = Date.now();
     fs.writeFileSync(path.join(cacheDir, "a.bin"), Buffer.alloc(100, 1));
     const orphan = path.join(cacheDir, "dead.bin.tmp-orphan");
@@ -350,13 +350,13 @@ describe("VideoProxyServer cache integrity", () => {
     const old = now - VIDEO_CACHE_SWEEP_ORPHAN_TMP_AGE_MS - 1000;
     fs.utimesSync(orphan, old / 1000, old / 1000);
 
-    proxy.evictCache();
+    await proxy.evictCache();
     expect(fs.existsSync(orphan)).toBe(false);
     expect(fs.existsSync(path.join(cacheDir, "a.bin"))).toBe(true);
   });
 
-  it("evictCache drops least-recently-accessed bins, not oldest mtime", () => {
-    const originalStat = fs.statSync.bind(fs);
+  it("evictCache drops least-recently-accessed bins, not oldest mtime", async () => {
+    const originalStat = fs.promises.stat.bind(fs.promises);
 
     const recentlyPlayed = path.join(cacheDir, "old-played.bin");
     const freshJunk = path.join(cacheDir, "fresh-junk.bin");
@@ -375,26 +375,21 @@ describe("VideoProxyServer cache integrity", () => {
     fs.utimesSync(other, midAccess / 1000, midAccess / 1000);
 
     const huge = Math.floor(VIDEO_CACHE_MAX_BYTES / 2) + 10;
-    vi.spyOn(fs, "statSync").mockImplementation(((
-      p: fs.PathLike,
-      options?: fs.StatSyncOptions,
-    ) => {
-      const st = originalStat(p, options);
+    vi.spyOn(fs.promises, "stat").mockImplementation(async (p, options) => {
+      const st = await originalStat(p, options);
       if (
         typeof p === "string" &&
         p.endsWith(".bin") &&
         !p.includes(".tmp-") &&
-        st &&
-        typeof st === "object" &&
-        "isFile" in st
+        st.isFile()
       ) {
         // boundary: vitest mock overlays size on real Stats for eviction overflow simulation
         Object.defineProperty(st, "size", { value: huge, configurable: true });
       }
       return st;
-    }) as typeof fs.statSync);
+    });
 
-    proxy.evictCache();
+    await proxy.evictCache();
 
     const left = fs
       .readdirSync(cacheDir)
@@ -402,10 +397,10 @@ describe("VideoProxyServer cache integrity", () => {
     expect(left.includes("old-played.bin")).toBe(true);
     expect(left.includes("fresh-junk.bin")).toBe(false);
 
-    vi.mocked(fs.statSync).mockRestore();
+    vi.mocked(fs.promises.stat).mockRestore();
   });
 
-  it("evictCache does not unlink a bin with an open reader", () => {
+  it("evictCache does not unlink a bin with an open reader", async () => {
     const openPath = path.join(cacheDir, "open-reader.bin");
     fs.writeFileSync(openPath, Buffer.alloc(64 * 1024, 1));
 
@@ -430,37 +425,170 @@ describe("VideoProxyServer cache integrity", () => {
         (Date.now() - 10_000) / 1000
       );
 
-      const originalStat = fs.statSync.bind(fs);
+      const originalStat = fs.promises.stat.bind(fs.promises);
       const huge = VIDEO_CACHE_MAX_BYTES + 10;
       vi.mocked(log.warn).mockClear();
-      vi.spyOn(fs, "statSync").mockImplementation(((
-        p: fs.PathLike,
-        options?: fs.StatSyncOptions,
-      ) => {
-        const st = originalStat(p, options);
+      vi.spyOn(fs.promises, "stat").mockImplementation(async (p, options) => {
+        const st = await originalStat(p, options);
         if (
           typeof p === "string" &&
           p.endsWith(".bin") &&
           !p.includes(".tmp-") &&
-          st &&
-          typeof st === "object" &&
-          "isFile" in st
+          st.isFile()
         ) {
           // boundary: vitest mock overlays size on real Stats for eviction overflow simulation
           Object.defineProperty(st, "size", { value: huge, configurable: true });
         }
         return st;
-      }) as typeof fs.statSync);
+      });
 
-      proxy.evictCache();
+      await proxy.evictCache();
 
       expect(fs.existsSync(openPath)).toBe(true);
       expect(vi.mocked(log.warn)).toHaveBeenCalledWith(
         expect.stringContaining("Cache still over cap after eviction"),
       );
     } finally {
-      vi.mocked(fs.statSync).mockRestore();
+      vi.mocked(fs.promises.stat).mockRestore();
       releasePin();
+    }
+  });
+
+  it("evictCache is single-flight (one pass for concurrent callers)", async () => {
+    const readdirSpy = vi.spyOn(fs.promises, "readdir");
+    const first = proxy.evictCache();
+    const second = proxy.evictCache();
+    expect(first).toBe(second);
+    await Promise.all([first, second]);
+    // One pass = orphan readdir + bins readdir
+    expect(readdirSpy).toHaveBeenCalledTimes(2);
+    readdirSpy.mockRestore();
+  });
+
+  it("evictCache re-checks live readers before unlink after snapshot", async () => {
+    const first = path.join(cacheDir, "first.bin");
+    const victim = path.join(cacheDir, "victim.bin");
+    const last = path.join(cacheDir, "last.bin");
+    fs.writeFileSync(first, "f");
+    fs.writeFileSync(victim, "v");
+    fs.writeFileSync(last, "l");
+    // Deterministic toEvict order via atime (oldest first), not readdir order.
+    const firstAccess = Date.now() - 30_000;
+    const victimAccess = Date.now() - 20_000;
+    const lastAccess = Date.now() - 1_000;
+    fs.utimesSync(first, firstAccess / 1000, firstAccess / 1000);
+    fs.utimesSync(victim, victimAccess / 1000, victimAccess / 1000);
+    fs.utimesSync(last, lastAccess / 1000, lastAccess / 1000);
+
+    const originalStat = fs.promises.stat.bind(fs.promises);
+    const originalUnlink = fs.promises.unlink.bind(fs.promises);
+    const huge = VIDEO_CACHE_MAX_BYTES + 10;
+    let releasePin: (() => void) | null = null;
+    vi.spyOn(fs.promises, "stat").mockImplementation(async (p, options) => {
+      const st = await originalStat(p, options);
+      if (
+        typeof p === "string" &&
+        p.endsWith(".bin") &&
+        !p.includes(".tmp-") &&
+        st.isFile()
+      ) {
+        // boundary: vitest mock overlays size on real Stats for eviction overflow simulation
+        Object.defineProperty(st, "size", { value: huge, configurable: true });
+      }
+      return st;
+    });
+    vi.mocked(log.info).mockClear();
+    vi.spyOn(fs.promises, "unlink").mockImplementation(async (p) => {
+      if (typeof p === "string" && p === first && releasePin === null) {
+        releasePin = proxy.pinReaderForTest(victim);
+      }
+      return originalUnlink(p);
+    });
+
+    try {
+      await proxy.evictCache();
+      expect(fs.existsSync(first)).toBe(false);
+      expect(fs.existsSync(victim)).toBe(true);
+      expect(vi.mocked(log.info)).toHaveBeenCalledWith(
+        expect.stringContaining("Skipped open reader during eviction"),
+      );
+    } finally {
+      vi.mocked(fs.promises.unlink).mockRestore();
+      vi.mocked(fs.promises.stat).mockRestore();
+      releasePin?.();
+    }
+  });
+
+  it("evictCache after stop() does not readdir", async () => {
+    const readdirSpy = vi.spyOn(fs.promises, "readdir");
+    await proxy.stop();
+    readdirSpy.mockClear();
+    await proxy.evictCache();
+    expect(readdirSpy).not.toHaveBeenCalled();
+    readdirSpy.mockRestore();
+  });
+
+  it("evictCache after stop()+start() runs a full pass again", async () => {
+    await proxy.stop();
+    await proxy.start();
+    const readdirSpy = vi.spyOn(fs.promises, "readdir");
+    await proxy.evictCache();
+    expect(readdirSpy).toHaveBeenCalledTimes(2);
+    readdirSpy.mockRestore();
+  });
+
+  it("stop() cancels in-flight eviction and awaits its completion", async () => {
+    const keep = path.join(cacheDir, "keep.bin");
+    const drop = path.join(cacheDir, "drop.bin");
+    fs.writeFileSync(keep, "k");
+    fs.writeFileSync(drop, "d");
+    fs.utimesSync(keep, (Date.now() - 1_000) / 1000, (Date.now() - 1_000) / 1000);
+    fs.utimesSync(drop, (Date.now() - 30_000) / 1000, (Date.now() - 30_000) / 1000);
+
+    const originalStat = fs.promises.stat.bind(fs.promises);
+    const huge = VIDEO_CACHE_MAX_BYTES + 10;
+    let releaseStat: (() => void) | null = null;
+    const statGate = new Promise<void>((resolve) => {
+      releaseStat = resolve;
+    });
+    let gatedOnce = false;
+    vi.spyOn(fs.promises, "stat").mockImplementation(async (p, options) => {
+      if (!gatedOnce && typeof p === "string" && p.endsWith("drop.bin")) {
+        gatedOnce = true;
+        await statGate;
+      }
+      const st = await originalStat(p, options);
+      if (
+        typeof p === "string" &&
+        p.endsWith(".bin") &&
+        !p.includes(".tmp-") &&
+        st.isFile()
+      ) {
+        // boundary: vitest mock overlays size on real Stats for eviction overflow simulation
+        Object.defineProperty(st, "size", { value: huge, configurable: true });
+      }
+      return st;
+    });
+    const unlinkSpy = vi.spyOn(fs.promises, "unlink");
+
+    try {
+      const eviction = proxy.evictCache();
+      await vi.waitFor(() => {
+        expect(gatedOnce).toBe(true);
+      });
+      const stopPromise = proxy.stop();
+      releaseStat?.();
+      await Promise.all([eviction, stopPromise]);
+      expect(fs.existsSync(drop)).toBe(true);
+      expect(fs.existsSync(keep)).toBe(true);
+      expect(
+        unlinkSpy.mock.calls.some(
+          (args) => typeof args[0] === "string" && args[0].endsWith(".bin") && !String(args[0]).includes(".tmp-"),
+        ),
+      ).toBe(false);
+    } finally {
+      unlinkSpy.mockRestore();
+      vi.mocked(fs.promises.stat).mockRestore();
     }
   });
 });

@@ -12,7 +12,6 @@ import { tryParseHttpsUrlHostname } from "../../shared/utils/url-host";
 import { isAllowedCdnUrl } from "../providers/cdn-allowlist";
 import {
   USER_AGENT,
-  VIDEO_CACHE_EVICT_AFTER_START_MS,
   VIDEO_CACHE_MAX_BYTES,
   VIDEO_CACHE_SWEEP_ORPHAN_TMP_AGE_MS,
 } from "../config/constants";
@@ -110,16 +109,16 @@ export class VideoProxyServer {
   private server: http.Server | null = null;
   private port = 0;
   private readonly cacheDir: string;
-  /** false in unit tests (explicit cache dir) — avoids a 15s timer holding Vitest open. */
-  private readonly enableDeferredEviction: boolean;
-  private startEvictTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly openReaderCounts = new Map<string, number>();
+  private evictionInFlight: Promise<void> | null = null;
+  private evictionCancelled = false;
+  /** True until first successful listen; set again in stop() so post-stop eviction is a no-op. */
+  private stopped = true;
 
   /**
    * @param cacheDirOverride - optional cache directory (unit tests); production uses userData/video-cache
    */
   constructor(cacheDirOverride?: string) {
-    this.enableDeferredEviction = cacheDirOverride === undefined;
     this.cacheDir =
       cacheDirOverride ?? path.join(app.getPath("userData"), "video-cache");
   }
@@ -162,23 +161,22 @@ export class VideoProxyServer {
           reject(err);
           return;
         }
+        this.stopped = false;
         log.info(`[VideoProxy] Started on port ${this.port}`);
-        if (this.enableDeferredEviction) {
-          this.scheduleDeferredEviction();
-        }
         resolve(this.port);
       });
     });
   }
 
   async stop(): Promise<void> {
-    if (this.startEvictTimer !== null) {
-      clearTimeout(this.startEvictTimer);
-      this.startEvictTimer = null;
-    }
+    this.stopped = true;
+    this.evictionCancelled = true;
     const srv = this.server;
     this.server = null;
     this.port = 0;
+    if (this.evictionInFlight !== null) {
+      await this.evictionInFlight;
+    }
     if (!srv) {
       log.info("[VideoProxy] Stopped");
       return;
@@ -206,11 +204,31 @@ export class VideoProxyServer {
    * Delete orphaned tmp writers older than orphan-age, then drop least-recently
    * accessed *.bin files until total size is within VIDEO_CACHE_MAX_BYTES.
    * Files with an open reader are skipped (active viewer).
+   * Single-flight: concurrent callers share one pass. Never rejects.
    */
-  evictCache(): void {
+  evictCache(): Promise<void> {
+    if (this.stopped) {
+      log.debug("[VideoProxy] evictCache skipped: proxy stopped");
+      return Promise.resolve();
+    }
+    if (this.evictionInFlight !== null) {
+      return this.evictionInFlight;
+    }
+    this.evictionCancelled = false;
+    this.evictionInFlight = this.runEviction()
+      .catch((err: unknown) => {
+        log.error("[VideoProxy] Eviction failed", err);
+      })
+      .finally(() => {
+        this.evictionInFlight = null;
+      });
+    return this.evictionInFlight;
+  }
+
+  private async runEviction(): Promise<void> {
     let names: string[];
     try {
-      names = fs.readdirSync(this.cacheDir);
+      names = await fs.promises.readdir(this.cacheDir);
     } catch (err) {
       log.error("[VideoProxy] evictCache: readdir failed", err);
       return;
@@ -219,17 +237,26 @@ export class VideoProxyServer {
     const now = Date.now();
 
     for (const name of names) {
+      if (this.evictionCancelled) {
+        return;
+      }
       if (!name.includes(`${CACHE_BIN_SUFFIX}${CACHE_TMP_MARKER}`)) {
         continue;
       }
       const fullPath = path.join(this.cacheDir, name);
       try {
-        const st = fs.statSync(fullPath);
+        const st = await fs.promises.stat(fullPath);
+        if (this.evictionCancelled) {
+          return;
+        }
         if (!st.isFile()) {
           continue;
         }
         if (now - st.mtimeMs >= VIDEO_CACHE_SWEEP_ORPHAN_TMP_AGE_MS) {
-          fs.unlinkSync(fullPath);
+          if (this.evictionCancelled) {
+            return;
+          }
+          await fs.promises.unlink(fullPath);
           log.info(`[VideoProxy] Removed orphan tmp: ${name}`);
         }
       } catch (err) {
@@ -237,9 +264,13 @@ export class VideoProxyServer {
       }
     }
 
+    if (this.evictionCancelled) {
+      return;
+    }
+
     let binNames: string[];
     try {
-      binNames = fs.readdirSync(this.cacheDir);
+      binNames = await fs.promises.readdir(this.cacheDir);
     } catch (err) {
       log.error("[VideoProxy] evictCache: readdir (bins) failed", err);
       return;
@@ -247,12 +278,18 @@ export class VideoProxyServer {
 
     const bins: { fullPath: string; size: number; lastAccessedMs: number }[] = [];
     for (const name of binNames) {
+      if (this.evictionCancelled) {
+        return;
+      }
       if (!name.endsWith(CACHE_BIN_SUFFIX) || name.includes(CACHE_TMP_MARKER)) {
         continue;
       }
       const fullPath = path.join(this.cacheDir, name);
       try {
-        const st = fs.statSync(fullPath);
+        const st = await fs.promises.stat(fullPath);
+        if (this.evictionCancelled) {
+          return;
+        }
         if (!st.isFile()) {
           continue;
         }
@@ -266,6 +303,10 @@ export class VideoProxyServer {
       }
     }
 
+    if (this.evictionCancelled) {
+      return;
+    }
+
     const skipPaths = new Set(this.openReaderCounts.keys());
     const toEvict = selectMediaCacheFilesToEvict(
       bins,
@@ -275,8 +316,17 @@ export class VideoProxyServer {
 
     let remainingBytes = bins.reduce((sum, b) => sum + b.size, 0);
     for (const file of toEvict) {
+      if (this.evictionCancelled) {
+        return;
+      }
+      if (this.openReaderCounts.has(file.fullPath)) {
+        log.info(
+          `[VideoProxy] Skipped open reader during eviction (${file.size} bytes)`,
+        );
+        continue;
+      }
       try {
-        fs.unlinkSync(file.fullPath);
+        await fs.promises.unlink(file.fullPath);
         remainingBytes -= file.size;
         log.info(
           `[VideoProxy] Evicted cache file (${file.size} bytes); remaining≈${remainingBytes}`,
@@ -322,20 +372,6 @@ export class VideoProxyServer {
     } catch (err) {
       log.error("[VideoProxy] failed to bump cache atime", err);
     }
-  }
-
-  private scheduleDeferredEviction(): void {
-    if (this.startEvictTimer !== null) {
-      clearTimeout(this.startEvictTimer);
-    }
-    this.startEvictTimer = setTimeout(() => {
-      this.startEvictTimer = null;
-      try {
-        this.evictCache();
-      } catch (err) {
-        log.error("[VideoProxy] Deferred eviction failed", err);
-      }
-    }, VIDEO_CACHE_EVICT_AFTER_START_MS);
   }
 
   private handleRequest(req: http.IncomingMessage, res: http.ServerResponse): void {
