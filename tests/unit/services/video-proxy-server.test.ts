@@ -466,18 +466,23 @@ describe("VideoProxyServer cache integrity", () => {
   });
 
   it("evictCache re-checks live readers before unlink after snapshot", async () => {
+    const first = path.join(cacheDir, "first.bin");
     const victim = path.join(cacheDir, "victim.bin");
-    const other = path.join(cacheDir, "other.bin");
+    const last = path.join(cacheDir, "last.bin");
+    fs.writeFileSync(first, "f");
     fs.writeFileSync(victim, "v");
-    fs.writeFileSync(other, "o");
-    const oldAccess = Date.now() - 30_000;
-    const midAccess = Date.now() - 10_000;
-    fs.utimesSync(victim, oldAccess / 1000, oldAccess / 1000);
-    fs.utimesSync(other, midAccess / 1000, midAccess / 1000);
+    fs.writeFileSync(last, "l");
+    // Deterministic toEvict order via atime (oldest first), not readdir order.
+    const firstAccess = Date.now() - 30_000;
+    const victimAccess = Date.now() - 20_000;
+    const lastAccess = Date.now() - 1_000;
+    fs.utimesSync(first, firstAccess / 1000, firstAccess / 1000);
+    fs.utimesSync(victim, victimAccess / 1000, victimAccess / 1000);
+    fs.utimesSync(last, lastAccess / 1000, lastAccess / 1000);
 
     const originalStat = fs.promises.stat.bind(fs.promises);
+    const originalUnlink = fs.promises.unlink.bind(fs.promises);
     const huge = VIDEO_CACHE_MAX_BYTES + 10;
-    let pinned = false;
     let releasePin: (() => void) | null = null;
     vi.spyOn(fs.promises, "stat").mockImplementation(async (p, options) => {
       const st = await originalStat(p, options);
@@ -489,22 +494,47 @@ describe("VideoProxyServer cache integrity", () => {
       ) {
         // boundary: vitest mock overlays size on real Stats for eviction overflow simulation
         Object.defineProperty(st, "size", { value: huge, configurable: true });
-        if (!pinned && p === other) {
-          pinned = true;
-          releasePin = proxy.pinReaderForTest(victim);
-        }
       }
       return st;
+    });
+    vi.mocked(log.info).mockClear();
+    vi.spyOn(fs.promises, "unlink").mockImplementation(async (p) => {
+      if (typeof p === "string" && p === first && releasePin === null) {
+        releasePin = proxy.pinReaderForTest(victim);
+      }
+      return originalUnlink(p);
     });
 
     try {
       await proxy.evictCache();
+      expect(fs.existsSync(first)).toBe(false);
       expect(fs.existsSync(victim)).toBe(true);
-      expect(fs.existsSync(other)).toBe(false);
+      expect(vi.mocked(log.info)).toHaveBeenCalledWith(
+        expect.stringContaining("Skipped open reader during eviction"),
+      );
     } finally {
+      vi.mocked(fs.promises.unlink).mockRestore();
       vi.mocked(fs.promises.stat).mockRestore();
       releasePin?.();
     }
+  });
+
+  it("evictCache after stop() does not readdir", async () => {
+    const readdirSpy = vi.spyOn(fs.promises, "readdir");
+    await proxy.stop();
+    readdirSpy.mockClear();
+    await proxy.evictCache();
+    expect(readdirSpy).not.toHaveBeenCalled();
+    readdirSpy.mockRestore();
+  });
+
+  it("evictCache after stop()+start() runs a full pass again", async () => {
+    await proxy.stop();
+    await proxy.start();
+    const readdirSpy = vi.spyOn(fs.promises, "readdir");
+    await proxy.evictCache();
+    expect(readdirSpy).toHaveBeenCalledTimes(2);
+    readdirSpy.mockRestore();
   });
 
   it("stop() cancels in-flight eviction and awaits its completion", async () => {

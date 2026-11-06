@@ -112,6 +112,8 @@ export class VideoProxyServer {
   private readonly openReaderCounts = new Map<string, number>();
   private evictionInFlight: Promise<void> | null = null;
   private evictionCancelled = false;
+  /** True until first successful listen; set again in stop() so post-stop eviction is a no-op. */
+  private stopped = true;
 
   /**
    * @param cacheDirOverride - optional cache directory (unit tests); production uses userData/video-cache
@@ -159,6 +161,7 @@ export class VideoProxyServer {
           reject(err);
           return;
         }
+        this.stopped = false;
         log.info(`[VideoProxy] Started on port ${this.port}`);
         resolve(this.port);
       });
@@ -166,13 +169,14 @@ export class VideoProxyServer {
   }
 
   async stop(): Promise<void> {
+    this.stopped = true;
     this.evictionCancelled = true;
-    if (this.evictionInFlight !== null) {
-      await this.evictionInFlight;
-    }
     const srv = this.server;
     this.server = null;
     this.port = 0;
+    if (this.evictionInFlight !== null) {
+      await this.evictionInFlight;
+    }
     if (!srv) {
       log.info("[VideoProxy] Stopped");
       return;
@@ -203,6 +207,10 @@ export class VideoProxyServer {
    * Single-flight: concurrent callers share one pass. Never rejects.
    */
   evictCache(): Promise<void> {
+    if (this.stopped) {
+      log.debug("[VideoProxy] evictCache skipped: proxy stopped");
+      return Promise.resolve();
+    }
     if (this.evictionInFlight !== null) {
       return this.evictionInFlight;
     }
