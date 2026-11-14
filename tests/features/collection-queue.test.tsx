@@ -317,12 +317,12 @@ describe("collection queue strip", () => {
     return { previous, next };
   }
 
-  function stubAssign(): ReturnType<typeof vi.fn> {
+  function stubReplace(): ReturnType<typeof vi.fn> {
     const assign = vi.fn();
     vi.stubGlobal("location", {
       ...window.location,
       hash: window.location.hash,
-      assign,
+      replace: assign,
     });
     return assign;
   }
@@ -355,7 +355,7 @@ describe("collection queue strip", () => {
     const siteHandler = vi.fn();
     previous.addEventListener("click", siteHandler);
     next.addEventListener("click", siteHandler);
-    const assign = stubAssign();
+    const assign = stubReplace();
     mountQueue(current);
 
     const nextEvent = clickLink(next);
@@ -371,13 +371,30 @@ describe("collection queue strip", () => {
     expect(assign).toHaveBeenCalledTimes(2);
   });
 
+  it("replaces the history entry from the strip arrows", () => {
+    const collectionId = seedOrder([POST_FIRST, POST_MIDDLE, POST_LAST]);
+    const hash = queueHash(collectionId);
+    openPost(POST_MIDDLE, hash);
+    const replace = stubReplace();
+    mountQueue(POST_MIDDLE);
+    const next = step(LABEL_NEXT);
+    if (next === null) {
+      throw new Error("next missing");
+    }
+
+    expect(clickLink(next).defaultPrevented).toBe(true);
+    expect(replace).toHaveBeenCalledWith(postHref(POST_LAST, hash));
+    expect(clickLink(next, { ctrlKey: true }).defaultPrevented).toBe(false);
+    expect(replace).toHaveBeenCalledTimes(1);
+  });
+
   it("blocks the site link at the end of the collection and leaves it alone outside one", () => {
     const collectionId = seedOrder([POST_FIRST, POST_MIDDLE]);
     openPost(POST_MIDDLE, queueHash(collectionId));
     const { next } = installSiteSearchLinks();
     const siteHandler = vi.fn();
     next.addEventListener("click", siteHandler);
-    const assign = stubAssign();
+    const assign = stubReplace();
     const host = mountQueue(POST_MIDDLE);
 
     expect(clickLink(next).defaultPrevented).toBe(true);

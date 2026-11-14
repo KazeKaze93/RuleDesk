@@ -18,6 +18,10 @@ Local build: `npm install` then `npm run build` → `dist/ruledesk-web.user.js`.
 
 Measured on Tampermonkey 5.5.1: with Dynamic, native page flash on load is typically 0/5 vs ~5/5 with UserScripts API; pages also open faster. Prefer Dynamic for RuleDesk Web.
 
+### 0.16.2 notes
+
+- **Collection queue:** stepping between posts of a collection replaces the history entry, so browser Back returns to the collection page instead of the previous post
+
 ### 0.16.1 notes
 
 - **Collection queue:** on a post opened from a collection, the site's own "< previous / next >" links step through the collection (shuffled order included) instead of the last search. At either end they do nothing

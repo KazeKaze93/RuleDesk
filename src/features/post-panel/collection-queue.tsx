@@ -186,6 +186,14 @@ function readQueue(postId: number | null, hash: string): QueueView | null {
   };
 }
 
+/**
+ * Steps inside a collection replace the history entry, so the browser Back
+ * button returns to the collection page instead of the previous post.
+ */
+function goToQueuePost(href: string): void {
+  window.location.replace(href);
+}
+
 function QueueStep(props: {
   readonly label: string;
   readonly glyph: string;
@@ -199,8 +207,20 @@ function QueueStep(props: {
       </button>
     );
   }
+  const href = props.href;
   return (
-    <a className={className} href={props.href} aria-label={props.label}>
+    <a
+      className={className}
+      href={href}
+      aria-label={props.label}
+      onClick={(event) => {
+        if (!isPlainPrimaryClick(event)) {
+          return;
+        }
+        event.preventDefault();
+        goToQueuePost(href);
+      }}
+    >
       {props.glyph}
     </a>
   );
@@ -267,7 +287,7 @@ function useSiteStepLinks(
       event.preventDefault();
       event.stopImmediatePropagation();
       if (step.href !== null) {
-        window.location.assign(step.href);
+        goToQueuePost(step.href);
       }
     };
     document.addEventListener(EVENT_CLICK, onClick, true);
