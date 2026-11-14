@@ -53,7 +53,7 @@ const FEATURE_CSS = [
   "  padding: 0;",
   "}",
   `body.${BODY_FEATURE_CLASS} button.${TOGGLE_CLASS}:focus-visible {`,
-  "  outline: 2px solid #8ab4f8;",
+  "  outline: 2px solid var(--rdw-accent);",
   "  outline-offset: 2px;",
   "}",
 ].join("\n");
@@ -201,5 +201,7 @@ export const tagGroupsFeature: Feature = {
   pages: [...FEATURE_PAGES],
   defaultEnabled: true,
   css: FEATURE_CSS,
+  // Turning the setting off and on again returns to General and Meta collapsed.
+  resetStateOnToggle: true,
   mount: mountTagGroups,
 };

@@ -36,6 +36,7 @@ import {
   Segmented,
   Select,
 } from "../ui/kit";
+import { SAVE_SEARCH_CLASS, SaveSearchLink } from "./save-search";
 import { featureBodyClass, type Feature, type FeatureContext } from "./types";
 
 const FEATURE_ID = "search-tools";
@@ -73,6 +74,7 @@ const ROW_SORT_CLASS = "rdw-search-tools-row-sort";
 const FOOT_CLASS = "rdw-search-tools-foot";
 const HINT_CLASS = "rdw-search-tools-hint";
 const RESET_CLASS = "rdw-search-tools-reset";
+const FOOT_LINKS_CLASS = "rdw-search-tools-foot-links";
 
 const TOKEN_SPLIT_RE = /\s+/;
 const MULTI_SPACE_RE = /\s+/g;
@@ -222,10 +224,26 @@ const FEATURE_CSS = [
   "  font-size: 12px;",
   "  color: var(--rdw-muted);",
   "}",
-  `body.${BODY_CLASS} .${RESET_CLASS} {`,
+  `body.${BODY_CLASS} .${FOOT_LINKS_CLASS} {`,
+  "  display: flex;",
+  "  flex: 0 0 auto;",
+  "  flex-direction: column;",
+  "  align-items: flex-end;",
+  "  gap: 2px;",
+  "}",
+  `body.${BODY_CLASS} .${RESET_CLASS},`,
+  `body.${BODY_CLASS} .${SAVE_SEARCH_CLASS} {`,
   "  padding: 0;",
   "  min-height: auto;",
   "  height: auto;",
+  "  white-space: nowrap;",
+  "}",
+  `body.${BODY_CLASS} .${SAVE_SEARCH_CLASS} {`,
+  "  color: var(--rdw-muted);",
+  "  font-weight: 400;",
+  "}",
+  `body.${BODY_CLASS} .${SAVE_SEARCH_CLASS}:hover {`,
+  "  color: var(--rdw-accent);",
   "}",
 ].join("\n");
 
@@ -1257,14 +1275,17 @@ function SearchToolsPanel(props: SearchToolsPanelProps): JSX.Element {
 
         <div className={FOOT_CLASS}>
           <span className={HINT_CLASS}>{FOOT_HINT}</span>
-          <Button
-            variant="ghost"
-            size="s"
-            className={RESET_CLASS}
-            onClick={onReset}
-          >
-            {RESET_LABEL}
-          </Button>
+          <div className={FOOT_LINKS_CLASS}>
+            <Button
+              variant="ghost"
+              size="s"
+              className={RESET_CLASS}
+              onClick={onReset}
+            >
+              {RESET_LABEL}
+            </Button>
+            <SaveSearchLink />
+          </div>
         </div>
       </Card>
     </>

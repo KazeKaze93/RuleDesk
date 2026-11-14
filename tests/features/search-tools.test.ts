@@ -543,7 +543,11 @@ describe("searchToolsFeature", () => {
     expect(warnSpy).toHaveBeenCalled();
   });
 
-  it("has no Save search or Collections controls", () => {
+  it("has no Save search link without tags in the page address, and no Collections control", () => {
+    vi.stubGlobal("location", {
+      ...window.location,
+      search: "?page=post&s=list",
+    });
     buildSearchForm("fox");
     mountFeature();
     const root = document.getElementById(ROOT_ID);
@@ -552,6 +556,20 @@ describe("searchToolsFeature", () => {
     expect(root?.textContent).toContain(FOOT_HINT);
     expect(root?.textContent).not.toContain("Applies instantly");
     expect(root?.querySelector(`.${CHIPS_CLASS}`)).not.toBeNull();
+  });
+
+  it("shows a quiet Save search link under Reset search when the page has tags", () => {
+    vi.stubGlobal("location", {
+      ...window.location,
+      search: "?page=post&s=list&tags=fox",
+    });
+    buildSearchForm("fox");
+    mountFeature();
+    const links = document.querySelector(`#${ROOT_ID} .rdw-search-tools-foot-links`);
+    const labels = Array.from(links?.querySelectorAll("button") ?? []).map(
+      (button) => button.textContent,
+    );
+    expect(labels).toEqual(["Reset search", "Save search"]);
   });
 
   it("omits the Tags section when there are no chips", () => {

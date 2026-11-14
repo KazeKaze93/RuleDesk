@@ -63,8 +63,6 @@ const LABEL_ORIGINAL = "Original";
 const LABEL_VOTE = "Vote";
 const LABEL_ICAME = "I came";
 const ARIA_PANEL_TABS = "Post details";
-const WARN_ICAME_COUNT =
-  "post-actions: I came counter — нужна разметка";
 
 const ICON_SIZE = 14;
 const ORIGINAL_ICON_SIZE = 14;
@@ -148,12 +146,6 @@ export function PostPanel(props: PostPanelProps): JSX.Element {
       setScoreText(text.length > 0 ? text : TEXT_SCORE_UNKNOWN);
     });
   }, [props.postId]);
-
-  useEffect(() => {
-    if (iCame !== null && iCame.count === null) {
-      log.warn(WARN_ICAME_COUNT);
-    }
-  }, [iCame]);
 
   const onFavClick = useCallback(async (): Promise<void> => {
     if (props.postId === null || favPending) {

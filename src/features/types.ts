@@ -46,5 +46,7 @@ export type Feature = {
   choice?: FeatureChoice;
   /** Optional hint under the settings Switch (e.g. video-preview bandwidth note). */
   settingsCaption?: string;
+  /** Forget the saved feature state whenever its settings Switch is flipped. */
+  resetStateOnToggle?: boolean;
   mount: (ctx: FeatureContext) => void;
 };

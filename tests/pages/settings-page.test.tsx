@@ -18,7 +18,12 @@ import {
   VIDEO_SIZE_FIT_WIDTH,
   VIDEO_SIZE_ORIGINAL,
 } from "../../src/storage/schema";
-import { clearStorageCache } from "../../src/storage/store";
+import { tagGroupsFeature } from "../../src/features/tag-groups";
+import {
+  clearStorageCache,
+  getFeatureState,
+  setFeatureState,
+} from "../../src/storage/store";
 
 const APPEARANCE_ROW_CLASS = "rdw-appearance__row";
 const WHEEL_COPY_RE = /wheel/i;
@@ -73,6 +78,31 @@ describe("SettingsPage flat rows", () => {
     );
     expect(appearanceOwn).toBeGreaterThanOrEqual(0);
     expect(flatIndex).toBeGreaterThan(appearanceOwn);
+  });
+
+  it("forgets collapsed tag groups when the Collapse tags switch is flipped", () => {
+    const reload = vi.fn();
+    vi.stubGlobal("location", { ...window.location, reload });
+    setFeatureState("tag-groups", { collapsed: ["Artist"] });
+    setFeatureState("other-feature", { keep: true });
+
+    let root: HTMLElement | undefined;
+    act(() => {
+      root = createSettingsPage();
+      document.body.append(root);
+    });
+    const toggle = root?.querySelector(`#${FEATURE_CHECKBOX_ID_PREFIX}tag-groups`);
+    if (!(toggle instanceof HTMLElement)) {
+      throw new Error("tag groups switch missing");
+    }
+    expect(tagGroupsFeature.resetStateOnToggle).toBe(true);
+    act(() => {
+      toggle.click();
+    });
+
+    expect(getFeatureState("tag-groups")).toBeUndefined();
+    expect(getFeatureState("other-feature")).toEqual({ keep: true });
+    expect(reload).toHaveBeenCalledTimes(1);
   });
 
   it("shows Video player size choice and caption without wheel volume UI", () => {

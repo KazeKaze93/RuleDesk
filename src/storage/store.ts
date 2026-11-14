@@ -927,6 +927,27 @@ export function setFeatureEnabled(id: string, enabled: boolean): void {
   save(data);
 }
 
+/** Drops a feature's saved state so its defaults apply on the next mount. */
+export function clearFeatureState(id: string): void {
+  const data = load();
+  const settings = currentSettings(data);
+  const current = settings.featureState;
+  if (current === undefined || !(id in current)) {
+    return;
+  }
+  const featureState: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(current)) {
+    if (key !== id) {
+      featureState[key] = value;
+    }
+  }
+  data.settings = {
+    ...settings,
+    featureState,
+  };
+  save(data);
+}
+
 export function getFeatureChoiceValue(id: string): string | undefined {
   return load().settings?.featureChoice?.[id];
 }

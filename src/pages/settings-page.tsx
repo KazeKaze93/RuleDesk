@@ -16,6 +16,7 @@ import {
   getTweaksEnabled,
   getUpdatesGroupSize,
   setFeatureChoiceValue,
+  clearFeatureState,
   setFeatureEnabled,
   setGridFavButtonsEnabled,
   setPlaylistChunkSize,
@@ -81,6 +82,9 @@ function FeatureModules(): JSX.Element {
                   checked={isFeatureEnabled(feature.id)}
                   onChange={(checked) => {
                     setFeatureEnabled(feature.id, checked);
+                    if (feature.resetStateOnToggle === true) {
+                      clearFeatureState(feature.id);
+                    }
                     if (feature.cssOnly === true) {
                       applyCssOnlyFeatureEnabled(feature.id, checked);
                       refresh();

@@ -841,7 +841,7 @@ describe("postActionsFeature", () => {
     expect(vote?.closest(`.${CLASS_CARD}`)).toBeNull();
   });
 
-  it("renders I came without a count badge and warns when counter markup is missing", async () => {
+  it("renders I came without a count badge and stays quiet about the missing counter", async () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     buildPostDom({ includeICame: true });
     postActionsFeature.mount(makeCtx());
@@ -849,12 +849,11 @@ describe("postActionsFeature", () => {
     expect(button?.textContent).toContain(TEXT_ICAME);
     expect(button?.querySelector("svg")).not.toBeNull();
     await vi.waitFor(() => {
-      expect(
-        warnSpy.mock.calls.some((call) =>
-          String(call[0]).includes("нужна разметка"),
-        ),
-      ).toBe(true);
+      expect(document.querySelector(`.${CLASS_ICAME}`)).not.toBeNull();
     });
+    expect(
+      warnSpy.mock.calls.some((call) => String(call[0]).includes("I came")),
+    ).toBe(false);
     warnSpy.mockRestore();
   });
 

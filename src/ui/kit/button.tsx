@@ -15,6 +15,8 @@ export type ButtonProps = {
   readonly onClick?: MouseEventHandler<HTMLButtonElement>;
   readonly className?: string;
   readonly "aria-label"?: string;
+  /** Native tooltip. */
+  readonly title?: string;
 };
 
 export const BUTTON_CSS = `
@@ -107,6 +109,7 @@ export function Button(props: ButtonProps): JSX.Element {
         disabled={disabled}
         aria-busy={loading ? true : undefined}
         aria-label={props["aria-label"]}
+        title={props.title}
         onClick={props.onClick}
       >
         {loading ? <span className="rdw-btn__spinner" aria-hidden="true" /> : null}

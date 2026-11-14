@@ -709,6 +709,18 @@ function mountDynamicBar(tagsParam: string, search: string): void {
   );
 }
 
+/**
+ * Draws (or redraws) the dynamic collection bar for a results page, e.g. right
+ * after the current search was saved. Does nothing while the feature is off.
+ */
+export function refreshDynamicBar(search: string): void {
+  if (!document.body.classList.contains(BODY_CLASS)) {
+    return;
+  }
+  removeDynamicBar(document);
+  mountDynamicBar(readTagsParam(search), search);
+}
+
 function mountPlaylistBar(ctx: FeatureContext): void {
   removeExistingBar(document);
   removeDynamicBar(document);
