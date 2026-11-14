@@ -32,12 +32,6 @@ import {
   updateDynamicQuery,
 } from "../storage/store";
 import { Button, Dialog, type DialogFieldValues } from "../ui/kit";
-import {
-  IconOriginalOrder,
-  IconPencil,
-  IconShuffle,
-  IconTrash,
-} from "../ui/kit/icons";
 import { QueryField } from "../ui/query-field";
 import { featureBodyClass, type Feature, type FeatureContext } from "./types";
 
@@ -80,7 +74,9 @@ const DIALOG_ONLY_NAME = "name" as const;
 const DIALOG_ONLY_QUERY = "query" as const;
 const BAR_BUTTON_VARIANT = "secondary" as const;
 const BAR_BUTTON_SIZE = "s" as const;
-const ICON_GLYPH_PX = 16;
+/** Same heading size and button gap as the custom collection page. */
+const NAME_FONT_PX = 18;
+const ACTIONS_GAP_PX = 8;
 
 type DynamicDialogKind =
   | typeof DIALOG_NONE
@@ -100,10 +96,6 @@ body.${BODY_CLASS} .${ROOT_CLASS} {
   gap: 0.35rem;
   max-width: 100%;
   margin: 0.5rem 0;
-  padding: 0.5rem 0.65rem;
-  border: 1px solid var(--rdw-border);
-  border-radius: var(--rdw-radius-l);
-  background: var(--rdw-surface);
   color: var(--rdw-text);
   box-sizing: border-box;
 }
@@ -117,7 +109,8 @@ body.${BODY_CLASS} .${TITLE_CLASS} {
   line-height: 1.3;
 }
 body.${BODY_CLASS} .${NAME_CLASS} {
-  font-weight: 600;
+  font-size: ${String(NAME_FONT_PX)}px;
+  font-weight: 700;
 }
 body.${BODY_CLASS} .${COUNT_CLASS} {
   opacity: 0.85;
@@ -153,7 +146,7 @@ body.${BODY_CLASS} .${ACTIONS_CLASS} {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.35rem;
+  gap: ${String(ACTIONS_GAP_PX)}px;
   max-width: 100%;
 }
 `.trim();
@@ -510,7 +503,6 @@ function DynamicCollectionBar(props: DynamicBarProps): JSX.Element {
           size: BAR_BUTTON_SIZE,
           onClick: onShuffle,
         },
-        h(IconShuffle, { size: ICON_GLYPH_PX }),
         TEXT_SHUFFLE,
       ),
       shuffled
@@ -521,7 +513,6 @@ function DynamicCollectionBar(props: DynamicBarProps): JSX.Element {
               size: BAR_BUTTON_SIZE,
               onClick: onOriginalOrder,
             },
-            h(IconOriginalOrder, { size: ICON_GLYPH_PX }),
             TEXT_ORIGINAL_ORDER,
           )
         : null,
@@ -534,7 +525,6 @@ function DynamicCollectionBar(props: DynamicBarProps): JSX.Element {
             openFields(DIALOG_EDIT_QUERY);
           },
         },
-        h(IconPencil, { size: ICON_GLYPH_PX }),
         TEXT_EDIT_QUERY,
       ),
       h(
@@ -551,13 +541,12 @@ function DynamicCollectionBar(props: DynamicBarProps): JSX.Element {
       h(
         Button,
         {
-          variant: BAR_BUTTON_VARIANT,
+          variant: DIALOG_TONE_DANGER,
           size: BAR_BUTTON_SIZE,
           onClick: () => {
             setDialog(DIALOG_DELETE);
           },
         },
-        h(IconTrash, { size: ICON_GLYPH_PX }),
         UI_TEXT.delete,
       ),
     ),

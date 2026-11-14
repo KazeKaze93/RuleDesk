@@ -19,6 +19,7 @@ import {
 import { log } from "../log";
 import { normalizeArtistTag, parseTags } from "../search/query";
 import { readArtistsMirror, writeArtistsMirror } from "./artists-mirror";
+import { removeCoverMirror, writeCoverMirror } from "./cover-mirror";
 import {
   addFav,
   addFavs,
@@ -287,6 +288,7 @@ export function deleteCollection(id: string): boolean {
   if (next.length === data.collections.length) {
     return false;
   }
+  removeCoverMirror(id);
   data.collections = next;
   save(data);
   return true;
@@ -726,10 +728,16 @@ export function setDynamicCover(
   if (cover.length === 0) {
     return false;
   }
-  const cached = load().collections.find((item) => item.id === collectionId);
+  const known = load().collections;
+  const cached = known.find((item) => item.id === collectionId);
   if (cached === undefined || isPlaylist(cached)) {
     return false;
   }
+  writeCoverMirror(
+    collectionId,
+    cover,
+    known.map((item) => item.id),
+  );
   if (sameStrings(cached.cover ?? [], cover)) {
     return false;
   }
@@ -773,6 +781,7 @@ export function updateDynamicQuery(
   if (target.query !== trimmedQuery) {
     // The old cover shows posts of the old query.
     delete target.cover;
+    removeCoverMirror(collectionId);
   }
   target.query = trimmedQuery;
   target.tags = parseTags(trimmedQuery);

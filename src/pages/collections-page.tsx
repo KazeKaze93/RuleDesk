@@ -1,21 +1,23 @@
 import type { ComponentChildren, JSX } from "preact";
 import { render as preactRender } from "preact";
-import { useCallback, useState } from "preact/hooks";
+import { useCallback, useEffect, useState } from "preact/hooks";
 
 import {
   COLLECTION_KIND_POSTS,
   COLLECTION_KIND_SEARCH,
   UI_TEXT,
 } from "../config/constants";
-import { buildSearchUrl, serialize } from "../search/query";
+import { buildSearchUrl } from "../search/query";
 import {
   resolveCollectionKind,
   type Collection,
 } from "../storage/schema";
+import { readCoverMirror } from "../storage/cover-mirror";
 import {
   createDynamicCollection,
   createPlaylist,
   load,
+  reloadFromStorage,
 } from "../storage/store";
 import {
   Button,
@@ -28,6 +30,8 @@ import {
 import { IconPlus } from "../ui/kit/icons";
 import { QueryField } from "../ui/query-field";
 import { collectionDetailHash } from "./constants";
+
+const EVENT_PAGESHOW = "pageshow";
 
 const PAGE_CLASS = "rdw-collections-page";
 const HEADER_CLASS = "rdw-collections-header";
@@ -306,13 +310,6 @@ function filterAfterCreate(kind: NewKind, filter: ListFilter): ListFilter {
   return filter;
 }
 
-function dynamicQueryText(collection: Collection): string {
-  if (collection.query !== undefined) {
-    return collection.query;
-  }
-  return serialize(collection.tags);
-}
-
 /** Cover uses insertion order (`postIds`), not shuffled display order. */
 function coverPostIds(collection: Collection): readonly (number | null)[] {
   const ids = collection.postIds ?? [];
@@ -346,8 +343,6 @@ function CardLink(props: {
   readonly kind: string;
   readonly badge: string;
   readonly meta: string;
-  /** Native tooltip, e.g. the query of a saved search. */
-  readonly title?: string;
   readonly children: ComponentChildren;
 }): JSX.Element {
   return (
@@ -357,7 +352,6 @@ function CardLink(props: {
       aria-label={cardAriaLabel(props.collection.name, props.badge, props.meta)}
       data-collection-id={props.collection.id}
       data-collection-kind={props.kind}
-      {...(props.title === undefined ? {} : { title: props.title })}
     >
       {props.children}
       <span className={META_ROW_CLASS}>
@@ -437,7 +431,8 @@ function CustomCard(props: { readonly collection: Collection }): JSX.Element {
 }
 
 function DynamicCard(props: { readonly collection: Collection }): JSX.Element {
-  const cover = props.collection.cover ?? [];
+  const cover =
+    readCoverMirror(props.collection.id) ?? props.collection.cover ?? [];
   const slots: (string | null)[] = [];
   for (let index = 0; index < COVER_SLOT_COUNT; index += 1) {
     slots.push(cover[index] ?? null);
@@ -449,7 +444,6 @@ function DynamicCard(props: { readonly collection: Collection }): JSX.Element {
       kind={COLLECTION_KIND_SEARCH}
       badge={BADGE_DYNAMIC}
       meta={SAVED_SEARCH_CAPTION}
-      title={dynamicQueryText(props.collection)}
     >
       <Cover collectionId={props.collection.id} urls={slots} />
     </CardLink>
@@ -554,6 +548,18 @@ export function CollectionsPage(): JSX.Element {
     setFormError("");
     setNameDraft("");
     setQueryDraft("");
+  }, []);
+
+  useEffect(() => {
+    // Back from a results page restores this page as it was: read the data again.
+    const onPageShow = (): void => {
+      reloadFromStorage();
+      setRevision((value) => value + 1);
+    };
+    window.addEventListener(EVENT_PAGESHOW, onPageShow);
+    return (): void => {
+      window.removeEventListener(EVENT_PAGESHOW, onPageShow);
+    };
   }, []);
 
   const collections = load().collections;

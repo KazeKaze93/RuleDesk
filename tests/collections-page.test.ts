@@ -17,6 +17,11 @@ import {
 } from "../src/pages/collections-page";
 import { collectionDetailHash } from "../src/pages/constants";
 import { buildSearchUrl } from "../src/search/query";
+import {
+  clearCoverMirror,
+  readCoverMirror,
+  writeCoverMirror,
+} from "../src/storage/cover-mirror";
 import { createDefaultStorage } from "../src/storage/schema";
 import {
   addPostToCollection,
@@ -25,8 +30,10 @@ import {
   createPlaylist,
   getCollectionOrder,
   load,
+  deleteCollection,
   save,
   setDynamicCover,
+  updateDynamicQuery,
 } from "../src/storage/store";
 
 const memory = new Map<string, unknown>();
@@ -141,6 +148,7 @@ function source(relative: string): string {
 describe("createCollectionsPage", () => {
   beforeEach(() => {
     installGmMocks();
+    clearCoverMirror();
     document.body.replaceChildren();
     save(createDefaultStorage());
   });
@@ -259,7 +267,7 @@ describe("createCollectionsPage", () => {
     expect(card.querySelector("img")).toBeNull();
   });
 
-  it("shows a dynamic card with an empty cover, no tag chips, and the query as a tooltip", () => {
+  it("shows a dynamic card with an empty cover, no tag chips, and no tooltip", () => {
     createDynamicCollection("Grouped", "( cat ~ dog ) bird");
     const root = mount();
     const card = cardByName(root, "Grouped");
@@ -275,7 +283,7 @@ describe("createCollectionsPage", () => {
     expect(card.textContent).toContain("saved search");
     expect(card.querySelector(".rdw-chip")).toBeNull();
     expect(card.textContent).not.toContain("bird");
-    expect(card.getAttribute("title")).toBe("( cat ~ dog ) bird");
+    expect(card.hasAttribute("title")).toBe(false);
     expect(card.querySelectorAll(".rdw-collection-cover-empty")).toHaveLength(4);
     expect(card.querySelector("img")).toBeNull();
   });
@@ -303,7 +311,7 @@ describe("createCollectionsPage", () => {
     ).toBeNull();
   });
 
-  it("uses serialize(tags) for the tooltip when an older dynamic row has no query", () => {
+  it("opens the stored tags of an older dynamic row that has no query", () => {
     const data = load();
     data.collections.push({
       id: "legacy-search",
@@ -317,31 +325,45 @@ describe("createCollectionsPage", () => {
 
     const root = mount();
     const card = cardByName(root, "Legacy");
-    expect(card.getAttribute("title")).toBe("cat -dog");
     const stored = load().collections.find((item) => item.id === "legacy-search");
     if (stored === undefined) {
       throw new Error("expected legacy collection");
     }
     expect(card.getAttribute("href")).toBe(buildSearchUrl(stored.tags));
+    expect(card.hasAttribute("title")).toBe(false);
   });
 
-  it("prefers a stored query over tags for the tooltip and still opens tags", () => {
-    const data = load();
-    data.collections.push({
-      id: "queried",
-      name: "Queried",
-      tags: [{ tag: "other", type: TAG_TYPE_INCLUDE }],
-      kind: COLLECTION_KIND_SEARCH,
-      query: "keep",
+  it("shows a cover saved on another page after the browser restores this one", () => {
+    const created = createDynamicCollection("Birds", "bird");
+    let mounted: HTMLElement | null = null;
+    act(() => {
+      mounted = mount();
     });
-    save(data);
+    const root: HTMLElement = mounted ?? document.body;
+    expect(cardByName(root, "Birds").querySelector("img")).toBeNull();
 
-    const root = mount();
-    const card = cardByName(root, "Queried");
-    expect(card.getAttribute("title")).toBe("keep");
-    expect(card.getAttribute("href")).toBe(
-      buildSearchUrl([{ tag: "other", type: TAG_TYPE_INCLUDE }]),
-    );
+    // A results page in the same tab stored the cover; this page still has old data.
+    writeCoverMirror(created.id, [THUMB_1, THUMB_2], [created.id]);
+    act(() => {
+      window.dispatchEvent(new Event("pageshow"));
+    });
+
+    const cells = cardByName(root, "Birds").querySelectorAll("[data-cover-index]");
+    expect(cells[0]?.querySelector("img")?.getAttribute("src")).toBe(THUMB_1);
+    expect(cells[1]?.querySelector("img")?.getAttribute("src")).toBe(THUMB_2);
+  });
+
+  it("forgets the mirrored cover when the query changes or the collection is deleted", () => {
+    const first = createDynamicCollection("Birds", "bird");
+    const second = createDynamicCollection("Cats", "cat");
+    setDynamicCover(first.id, [THUMB_1]);
+    setDynamicCover(second.id, [THUMB_2]);
+    expect(readCoverMirror(first.id)).toEqual([THUMB_1]);
+
+    updateDynamicQuery(first.id, "owl");
+    expect(readCoverMirror(first.id)).toBeNull();
+    deleteCollection(second.id);
+    expect(readCoverMirror(second.id)).toBeNull();
   });
 
   it("filters by kind and by name", () => {
@@ -443,7 +465,6 @@ describe("createCollectionsPage", () => {
     expect(stored.kind).toBe(COLLECTION_KIND_SEARCH);
     expect(stored.query).toBe("( cat ~ dog ) tail");
     const card = cardByName(root, "Birds");
-    expect(card.getAttribute("title")).toBe("( cat ~ dog ) tail");
     expect(card.getAttribute("href")).toBe(buildSearchUrl(stored.tags));
   });
 

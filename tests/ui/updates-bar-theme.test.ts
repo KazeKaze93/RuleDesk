@@ -16,8 +16,14 @@ describe("collection bar theme", () => {
   it("takes every colour from theme tokens", () => {
     const css = playlistBarFeature.css ?? "";
     expect(css).not.toMatch(HEX_COLOR);
-    expect(css).toContain("background: var(--rdw-surface)");
     expect(css).toContain("color: var(--rdw-text)");
+  });
+
+  it("is not drawn as a boxed panel", () => {
+    const root = (playlistBarFeature.css ?? "").split("}")[0] ?? "";
+    expect(root).not.toMatch(/\bbackground\s*:/);
+    expect(root).not.toMatch(/\bborder(-radius)?\s*:/);
+    expect(root).not.toMatch(/\bpadding\s*:/);
   });
 });
 
