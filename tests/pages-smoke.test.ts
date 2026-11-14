@@ -17,7 +17,6 @@ import { clearStorageCache, save } from "../src/storage/store";
 import { createBlacklistSection } from "../src/pages/blacklist-section";
 import {
   createCollectionsPage,
-  resetCollectionsPageState,
 } from "../src/pages/collections-page";
 import { createSettingsPage } from "../src/pages/settings-page";
 
@@ -67,13 +66,11 @@ describe("own pages smoke", () => {
   beforeEach(() => {
     installGmMocks();
     save(createDefaultStorage());
-    resetCollectionsPageState();
     mountHeader();
   });
 
   afterEach(() => {
     hideRdwPage();
-    resetCollectionsPageState();
     document.body.replaceChildren();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();

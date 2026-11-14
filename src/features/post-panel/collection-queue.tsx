@@ -9,13 +9,13 @@ import {
   SEARCH_PATH,
   SEARCH_SECTION_VIEW,
 } from "../../config/constants";
-import { RDW_HASH_COLLECTIONS } from "../../pages/constants";
+import {
+  collectionDetailHash,
+  RDW_COLLECTION_QUEUE_HASH_PREFIX,
+} from "../../pages/constants";
 import { SITE_SELECTORS } from "../../site/selectors";
 import { getCollectionOrder, listPlaylists } from "../../storage/store";
 import { KIT_FOCUS_CSS, KIT_MIN_TARGET_PX } from "../../ui/kit/shared";
-
-/** Queue context on a post page: `#rdw-c=<collectionId>`. */
-export const COLLECTION_QUEUE_HASH_PREFIX = "#rdw-c=";
 
 export const CLASS_STRIP = "rdw-post-panel-collection-queue";
 export const CLASS_NAME = "rdw-post-panel-collection-queue-name";
@@ -105,14 +105,18 @@ type QueueView = {
 };
 
 export function readCollectionQueueId(hash: string): string | null {
-  if (!hash.startsWith(COLLECTION_QUEUE_HASH_PREFIX)) {
+  if (!hash.startsWith(RDW_COLLECTION_QUEUE_HASH_PREFIX)) {
     return null;
   }
-  const id = hash.slice(COLLECTION_QUEUE_HASH_PREFIX.length).trim();
-  if (id.length === 0) {
+  const raw = hash.slice(RDW_COLLECTION_QUEUE_HASH_PREFIX.length).trim();
+  if (raw.length === 0) {
     return null;
   }
-  return id;
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
 }
 
 function readLocationHash(): string {
@@ -179,7 +183,7 @@ function readQueue(postId: number | null, hash: string): QueueView | null {
   const position = index + POSITION_BASE;
   return {
     name,
-    collectionHref: `${RDW_HASH_COLLECTIONS}/${collectionId}`,
+    collectionHref: collectionDetailHash(collectionId),
     positionLabel: `${String(position)}${POSITION_SEPARATOR}${String(order.length)}`,
     previousHref: hrefAt(order, index - 1, hash),
     nextHref: hrefAt(order, index + 1, hash),

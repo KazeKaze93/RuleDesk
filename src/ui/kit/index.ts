@@ -19,6 +19,7 @@ export {
   type DialogConfirmProps,
   type DialogConfirmTone,
   type DialogContentProps,
+  type DialogFieldKey,
   type DialogFieldValues,
   type DialogFieldsProps,
   type DialogProps,

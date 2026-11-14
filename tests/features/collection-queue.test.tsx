@@ -146,6 +146,8 @@ describe("collection queue strip", () => {
 
   it("reads only the #rdw-c= collection id", () => {
     expect(readCollectionQueueId("#rdw-c=abc")).toBe("abc");
+    expect(readCollectionQueueId("#rdw-c=a%20b")).toBe("a b");
+    expect(readCollectionQueueId("#rdw-c=%E0%A4%A")).toBe("%E0%A4%A");
     expect(readCollectionQueueId("#rdw-c=")).toBeNull();
     expect(readCollectionQueueId("#rdw-c=   ")).toBeNull();
     expect(readCollectionQueueId("#rdw/collections/abc")).toBeNull();

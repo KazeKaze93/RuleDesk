@@ -462,6 +462,9 @@ describe("dynamic collection bar", () => {
     if (!(queryInput instanceof HTMLInputElement)) {
       return;
     }
+    expect(
+      document.querySelector(`input[aria-label="${UI_TEXT.nameLabel}"]`),
+    ).toBeNull();
     setInputValue(queryInput, "  bird  ");
     const saveButton = findButton(document.body, UI_TEXT.save);
     expect(saveButton).not.toBeNull();
@@ -497,6 +500,9 @@ describe("dynamic collection bar", () => {
     if (!(nameInput instanceof HTMLInputElement)) {
       return;
     }
+    expect(
+      document.querySelector(`input[aria-label="${TEXT_QUERY_LABEL}"]`),
+    ).toBeNull();
     setInputValue(nameInput, "  Owls  ");
     const saveButton = findButton(document.body, UI_TEXT.save);
     expect(saveButton).not.toBeNull();

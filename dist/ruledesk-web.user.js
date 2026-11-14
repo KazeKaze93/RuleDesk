@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RuleDesk Web
 // @namespace    https://github.com/kazekaze93/ruledesk-web
-// @version      0.16.2
+// @version      0.16.3
 // @description  Collections, playlists, favorites, artist updates, and page tweaks for rule34.xxx
 // @downloadURL  https://raw.githubusercontent.com/KazeKaze93/ruledesk-web/main/dist/ruledesk-web.user.js
 // @updateURL    https://raw.githubusercontent.com/KazeKaze93/ruledesk-web/main/dist/ruledesk-web.user.js
@@ -4739,6 +4739,8 @@ function TextField(props) {
 }
 var DIALOG_VARIANT_CONFIRM$1 = "confirm";
 var DIALOG_VARIANT_FIELDS$1 = "fields";
+var DIALOG_FIELD_NAME = "name";
+var DIALOG_FIELD_QUERY = "query";
 var DEFAULT_NAME_LABEL = "Name";
 var DEFAULT_QUERY_LABEL = "Query";
 var DEFAULT_CONFIRM_TONE = "primary";
@@ -4855,7 +4857,7 @@ function renderDialogBody(props) {
 				props.onSubmit();
 			},
 			children: [
-				/* @__PURE__ */ a(TextField, {
+				props.only !== DIALOG_FIELD_QUERY ? /* @__PURE__ */ a(TextField, {
 					label: nameLabel,
 					value: props.fields.name,
 					onChange: (name) => {
@@ -4864,8 +4866,8 @@ function renderDialogBody(props) {
 							query: props.fields.query
 						});
 					}
-				}),
-				/* @__PURE__ */ a(TextField, {
+				}) : null,
+				props.only !== DIALOG_FIELD_NAME ? /* @__PURE__ */ a(TextField, {
 					label: queryLabel,
 					value: props.fields.query,
 					onChange: (query) => {
@@ -4874,7 +4876,7 @@ function renderDialogBody(props) {
 							query
 						});
 					}
-				}),
+				}) : null,
 				/* @__PURE__ */ a("div", {
 					className: "rdw-dialog__actions",
 					children: [/* @__PURE__ */ a(Button, {
@@ -10806,6 +10808,8 @@ var DIALOG_DELETE = "delete";
 var DIALOG_VARIANT_FIELDS = "fields";
 var DIALOG_VARIANT_CONFIRM = "confirm";
 var DIALOG_TONE_DANGER = "danger";
+var DIALOG_ONLY_NAME = "name";
+var DIALOG_ONLY_QUERY = "query";
 var BAR_BUTTON_VARIANT = "secondary";
 var BAR_BUTTON_SIZE = "s";
 var ICON_GLYPH_PX = 16;
@@ -11068,8 +11072,6 @@ function DynamicCollectionBar(props) {
 		if (fields.query.trim().length === 0) return;
 		const updated = updateDynamicQuery(props.collectionId, fields.query);
 		if (updated === null) return;
-		const trimmedName = fields.name.trim();
-		if (trimmedName.length > 0 && trimmedName !== updated.name) renameCollection(props.collectionId, trimmedName);
 		const nextQuery = updated.query ?? serialize(updated.tags);
 		setQuery(nextQuery);
 		navigateToQuery(nextQuery);
@@ -11080,15 +11082,6 @@ function DynamicCollectionBar(props) {
 		const renamed = renameCollection(props.collectionId, trimmedName);
 		if (renamed === null) return;
 		setName(renamed.name);
-		const nextQuery = fields.query.trim();
-		if (nextQuery.length > 0 && nextQuery !== query.trim()) {
-			const updated = updateDynamicQuery(props.collectionId, nextQuery);
-			if (updated === null) return;
-			const savedQuery = updated.query ?? serialize(updated.tags);
-			setQuery(savedQuery);
-			navigateToQuery(savedQuery);
-			return;
-		}
 		closeDialog();
 	}
 	function onConfirmDelete() {
@@ -11141,7 +11134,8 @@ function DynamicCollectionBar(props) {
 		submitLabel: UI_TEXT.save,
 		cancelLabel: UI_TEXT.cancel,
 		nameLabel: UI_TEXT.nameLabel,
-		queryLabel: TEXT_QUERY_LABEL
+		queryLabel: TEXT_QUERY_LABEL,
+		only: dialog === DIALOG_RENAME ? DIALOG_ONLY_NAME : DIALOG_ONLY_QUERY
 	}) : null, dialog === DIALOG_DELETE ? k$1(Dialog, {
 		variant: DIALOG_VARIANT_CONFIRM,
 		open: true,
@@ -11749,9 +11743,13 @@ button.${CLASS_NAV}:disabled {
 `;
 function readCollectionQueueId(hash) {
 	if (!hash.startsWith("#rdw-c=")) return null;
-	const id = hash.slice(7).trim();
-	if (id.length === 0) return null;
-	return id;
+	const raw = hash.slice(RDW_COLLECTION_QUEUE_HASH_PREFIX.length).trim();
+	if (raw.length === 0) return null;
+	try {
+		return decodeURIComponent(raw);
+	} catch {
+		return raw;
+	}
 }
 function readLocationHash() {
 	return window.location.hash;
@@ -11786,7 +11784,7 @@ function readQueue(postId, hash) {
 	const position = index + POSITION_BASE;
 	return {
 		name,
-		collectionHref: `${RDW_HASH_COLLECTIONS}/${collectionId}`,
+		collectionHref: collectionDetailHash(collectionId),
 		positionLabel: `${String(position)}${POSITION_SEPARATOR}${String(order.length)}`,
 		previousHref: hrefAt(order, index - 1, hash),
 		nextHref: hrefAt(order, index + 1, hash)
@@ -14725,12 +14723,12 @@ bootEarly();
 whenDomReady(() => {
 	applyLayoutBeforePaint();
 	scheduleAfterFirstPaint(() => {
-		module.import('./app-Bz7XI6an-CuesF9v3.js').then(({ startApp }) => {
+		module.import('./app-B4k6ys2x-Cd9pE_Gq.js').then(({ startApp }) => {
 			startApp();
 		});
 	});
 });})}}));
-System.register("./app-Bz7XI6an-CuesF9v3.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var yieldToMain,detectPageKind,mountCards,syncFavoritesPage,runFeaturesYielding,getAppearance,applyAppearanceTheme,ensureDocumentStyles,SITE_SELECTORS,log,SITE_ORIGIN,SEARCH_PARAM_TAGS,normalizeArtistTag,CSS_CLASS,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,HEADER_SELECTOR,RDW_OWN_PAGE_CLASS,MENU_ITEM_ID,parseRdwHash,getSyncState,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,runFavoritesSync,UI_TEXT,Q$1,RDW_PAGE_ROOT_ID,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,resolveFavoritesUserId,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,rdwPageHash,createFavoritesSyncTabId,APPEARANCE_BACKGROUND_KEY,readArtistsMirror,listArtistTags,writeArtistsMirror,reloadFromStorage,save,CURRENT_PAGE_CLASS,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,a,applyTokenProperties,resolveAppearancePalette,isCollectionDetailPage,menuRouteForPage,getSiteSkinCss,$$1,PANEL_UI_CLASS,TOKEN_VAR,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,SITE_LIGHT_C_BG,SITE_LIGHT_C_BG_ALT,SITE_DARK_C_BG,SITE_DARK_C_BORDER,APPEARANCE_BACKGROUND_TOO_LARGE;return{setters:[function(module){yieldToMain=module.y;detectPageKind=module.d;mountCards=module.m;syncFavoritesPage=module.s;runFeaturesYielding=module.r;getAppearance=module.g;applyAppearanceTheme=module.a;ensureDocumentStyles=module.e;SITE_SELECTORS=module.S;log=module.l;SITE_ORIGIN=module.b;SEARCH_PARAM_TAGS=module.c;normalizeArtistTag=module.n;CSS_CLASS=module.C;ensureStyleElement=module.f;RDW_OWN_PAGE_STYLE_ID=module.R;buildOwnPageCss=module.h;HEADER_SELECTOR=module.H;RDW_OWN_PAGE_CLASS=module.i;MENU_ITEM_ID=module.M;parseRdwHash=module.p;getSyncState=module.j;readFavoritesSyncMode=module.k;FAVORITES_SYNC_MODE_FULL=module.F;runFavoritesSync=module.o;UI_TEXT=module.U;Q$1=module.Q;RDW_PAGE_ROOT_ID=module.q;NAVBAR_SELECTOR=module.N;FEED_MENU_ITEM_ID=module.t;RDW_HASH_COLLECTIONS=module.u;MENU_LABEL=module.v;RDW_HASH_FOLLOWING=module.w;resolveFavoritesUserId=module.x;MY_FAVORITES_CONTAINER_ID=module.z;RDW_HASH_SETTINGS=module.A;rdwPageHash=module.B;createFavoritesSyncTabId=module.D;APPEARANCE_BACKGROUND_KEY=module.E;readArtistsMirror=module.G;listArtistTags=module.I;writeArtistsMirror=module.J;reloadFromStorage=module.K;save=module.L;CURRENT_PAGE_CLASS=module.O;setSyncState=module.P;SEARCH_PARAM_PAGE=module.T;FAVORITES_PAGE=module.V;FAVORITES_SECTION_VIEW=module.W;SEARCH_PATH=module.X;a=module.Y;applyTokenProperties=module.Z;resolveAppearancePalette=module._;isCollectionDetailPage=module.$;menuRouteForPage=module.a0;getSiteSkinCss=module.a1;$$1=module.a2;PANEL_UI_CLASS=module.a3;TOKEN_VAR=module.a4;RDW_THEME_ATTR=module.a5;APPEARANCE_THEME_SITE=module.a6;APPEARANCE_THEME_SITE_DARK=module.a7;SITE_LIGHT_C_BG=module.a8;SITE_LIGHT_C_BG_ALT=module.a9;SITE_DARK_C_BG=module.aa;SITE_DARK_C_BORDER=module.ab;APPEARANCE_BACKGROUND_TOO_LARGE=module.ac;}],execute:(function(){exports({i:navigateToRdwRoute,n:loadBackground,r:saveBackground,startApp:startApp,t:clearBackground});/** Matches host.tsx page title class (owned there; styled here for site polish). */
+System.register("./app-B4k6ys2x-Cd9pE_Gq.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var yieldToMain,detectPageKind,mountCards,syncFavoritesPage,runFeaturesYielding,getAppearance,applyAppearanceTheme,ensureDocumentStyles,SITE_SELECTORS,log,SITE_ORIGIN,SEARCH_PARAM_TAGS,normalizeArtistTag,CSS_CLASS,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,HEADER_SELECTOR,RDW_OWN_PAGE_CLASS,MENU_ITEM_ID,parseRdwHash,getSyncState,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,runFavoritesSync,UI_TEXT,Q$1,RDW_PAGE_ROOT_ID,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,resolveFavoritesUserId,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,rdwPageHash,createFavoritesSyncTabId,APPEARANCE_BACKGROUND_KEY,readArtistsMirror,listArtistTags,writeArtistsMirror,reloadFromStorage,save,CURRENT_PAGE_CLASS,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,a,applyTokenProperties,resolveAppearancePalette,isCollectionDetailPage,menuRouteForPage,getSiteSkinCss,$$1,PANEL_UI_CLASS,TOKEN_VAR,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,SITE_LIGHT_C_BG,SITE_LIGHT_C_BG_ALT,SITE_DARK_C_BG,SITE_DARK_C_BORDER,APPEARANCE_BACKGROUND_TOO_LARGE;return{setters:[function(module){yieldToMain=module.y;detectPageKind=module.d;mountCards=module.m;syncFavoritesPage=module.s;runFeaturesYielding=module.r;getAppearance=module.g;applyAppearanceTheme=module.a;ensureDocumentStyles=module.e;SITE_SELECTORS=module.S;log=module.l;SITE_ORIGIN=module.b;SEARCH_PARAM_TAGS=module.c;normalizeArtistTag=module.n;CSS_CLASS=module.C;ensureStyleElement=module.f;RDW_OWN_PAGE_STYLE_ID=module.R;buildOwnPageCss=module.h;HEADER_SELECTOR=module.H;RDW_OWN_PAGE_CLASS=module.i;MENU_ITEM_ID=module.M;parseRdwHash=module.p;getSyncState=module.j;readFavoritesSyncMode=module.k;FAVORITES_SYNC_MODE_FULL=module.F;runFavoritesSync=module.o;UI_TEXT=module.U;Q$1=module.Q;RDW_PAGE_ROOT_ID=module.q;NAVBAR_SELECTOR=module.N;FEED_MENU_ITEM_ID=module.t;RDW_HASH_COLLECTIONS=module.u;MENU_LABEL=module.v;RDW_HASH_FOLLOWING=module.w;resolveFavoritesUserId=module.x;MY_FAVORITES_CONTAINER_ID=module.z;RDW_HASH_SETTINGS=module.A;rdwPageHash=module.B;createFavoritesSyncTabId=module.D;APPEARANCE_BACKGROUND_KEY=module.E;readArtistsMirror=module.G;listArtistTags=module.I;writeArtistsMirror=module.J;reloadFromStorage=module.K;save=module.L;CURRENT_PAGE_CLASS=module.O;setSyncState=module.P;SEARCH_PARAM_PAGE=module.T;FAVORITES_PAGE=module.V;FAVORITES_SECTION_VIEW=module.W;SEARCH_PATH=module.X;a=module.Y;applyTokenProperties=module.Z;resolveAppearancePalette=module._;isCollectionDetailPage=module.$;menuRouteForPage=module.a0;getSiteSkinCss=module.a1;$$1=module.a2;PANEL_UI_CLASS=module.a3;TOKEN_VAR=module.a4;RDW_THEME_ATTR=module.a5;APPEARANCE_THEME_SITE=module.a6;APPEARANCE_THEME_SITE_DARK=module.a7;SITE_LIGHT_C_BG=module.a8;SITE_LIGHT_C_BG_ALT=module.a9;SITE_DARK_C_BG=module.aa;SITE_DARK_C_BORDER=module.ab;APPEARANCE_BACKGROUND_TOO_LARGE=module.ac;}],execute:(function(){exports({i:navigateToRdwRoute,n:loadBackground,r:saveBackground,startApp:startApp,t:clearBackground});/** Matches host.tsx page title class (owned there; styled here for site polish). */
 var PAGE_TITLE_CLASS$1 = "rdw-page-title";
 /** Matches kit SectionLabel class. */
 var SECTION_LABEL_CLASS = "rdw-section-label";
@@ -15020,28 +15018,28 @@ var collectionsFactory = null;
 var followingFactory = null;
 function getSettingsFactory() {
 	if (settingsFactory === null) settingsFactory = async () => {
-		const mod = await module.import('./settings-page-PGlKTUtC-DJRJ0TnP.js');
+		const mod = await module.import('./settings-page-usC1_X8d-L4FJ3aeK.js');
 		return /* @__PURE__ */ a(mod.SettingsPage, {});
 	};
 	return settingsFactory;
 }
 function getCollectionsFactory() {
 	if (collectionsFactory === null) collectionsFactory = async () => {
-		const mod = await module.import('./collections-page-Bzxwp80F-DXPmlSqj.js');
+		const mod = await module.import('./collections-page-zcLrqvDg-xbS4kd_I.js');
 		return /* @__PURE__ */ a(mod.CollectionsPage, {});
 	};
 	return collectionsFactory;
 }
 function getFollowingFactory() {
 	if (followingFactory === null) followingFactory = async () => {
-		const mod = await module.import('./following-page-dsuPK5T0-BLr-yztN.js');
+		const mod = await module.import('./following-page-DYCKTOey-BCvpGeNw.js');
 		return /* @__PURE__ */ a(mod.FollowingPage, {});
 	};
 	return followingFactory;
 }
 function collectionDetailFactory(collectionId) {
 	return async () => {
-		const mod = await module.import('./collection-detail-page-BLaZ1o3v-B40z6Nt6.js');
+		const mod = await module.import('./collection-detail-page-DW-RttR--G4enq4zJ.js');
 		return /* @__PURE__ */ a(mod.CollectionDetailPage, { collectionId }, collectionId);
 	};
 }
@@ -15743,7 +15741,7 @@ async function startApp() {
 	await yieldToMain();
 	maybeResumeFavoritesSync();
 }})}}));
-System.register("./settings-page-PGlKTUtC-DJRJ0TnP.js", ['./___monkey.entry.js','./app-Bz7XI6an-CuesF9v3.js','./autocomplete-C_YP9Bea-BhQ9wpRW.js'],(function(exports){'use strict';var d,a,PANEL_UI_CLASS,Card,SectionLabel,Switch,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,NumberField,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,setGridFavButtonsVisible,P$1,T,A,getAppearance,applyAppearanceTheme,getSiteSkinCss,APPEARANCE_THEME_CUSTOM,KIT_FOCUS_CSS,Select,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,$$1,Segmented,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,TextField,Button,clampBackgroundDim,FEATURES,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,setFeatureEnabled,applyCssOnlyFeatureEnabled,isFeatureEnabled,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,applyCssOnlyFeatureChoice,getFeatureChoice,b,readSiteBlacklist,Chip,AutocompleteField,ProgressBar,createDefaultCustomTheme,AppearanceThemeSchema,prepareBackgroundImageFile,writeSiteBlacklist,runFavoritesSync,log,FAVORITES_SYNC_PAGE_PAUSE_MS,load,createDefaultStorage,clearStorageCache,clearFavsCache,getSyncState,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,setAppearance,loadFavSet,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,gridDensityFeature,FAVORITES_SYNC_MODE_INCREMENTAL,FAVORITES_SYNC_MODE_FULL,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureChoiceValue,getScreenPixelSize,loadBackground,clearBackground,saveBackground,createAutocompleteQuerier;return{setters:[function(module){d=module.ad;a=module.Y;PANEL_UI_CLASS=module.a3;Card=module.ae;SectionLabel=module.af;Switch=module.ag;UI_TEXT=module.U;TWEAKS_SWITCH_ID=module.ah;setTweaksEnabled=module.ai;NumberField=module.aj;UPDATES_GROUP_SIZE_ID=module.ak;setUpdatesGroupSize=module.al;getUpdatesGroupSize=module.am;PLAYLIST_CHUNK_SIZE_ID=module.an;setPlaylistChunkSize=module.ao;getPlaylistChunkSize=module.ap;GRID_FAV_CHECKBOX_ID=module.aq;setGridFavButtonsEnabled=module.ar;setGridFavButtonsVisible=module.as;P$1=module.at;T=module.au;A=module.av;getAppearance=module.g;applyAppearanceTheme=module.a;getSiteSkinCss=module.a1;APPEARANCE_THEME_CUSTOM=module.aw;KIT_FOCUS_CSS=module.ax;Select=module.ay;APPEARANCE_THEME_SITE=module.a6;APPEARANCE_THEME_SITE_DARK=module.a7;APPEARANCE_THEME_LIGHT=module.az;APPEARANCE_THEME_DARK=module.aA;$$1=module.a2;Segmented=module.aB;APPEARANCE_CUSTOM_BASE_LIGHT=module.aC;APPEARANCE_CUSTOM_BASE_DARK=module.aD;TextField=module.aE;Button=module.aF;clampBackgroundDim=module.aG;FEATURES=module.aH;featurePanelLabel=module.aI;FEATURE_CHECKBOX_ID_PREFIX=module.aJ;setFeatureEnabled=module.aK;applyCssOnlyFeatureEnabled=module.aL;isFeatureEnabled=module.aM;FEATURE_CHOICE_ID_PREFIX=module.aN;setFeatureChoiceValue=module.aO;applyCssOnlyFeatureChoice=module.aP;getFeatureChoice=module.aQ;b=module.aR;readSiteBlacklist=module.aS;Chip=module.aT;AutocompleteField=module.aU;ProgressBar=module.aV;createDefaultCustomTheme=module.aW;AppearanceThemeSchema=module.aX;prepareBackgroundImageFile=module.aY;writeSiteBlacklist=module.aZ;runFavoritesSync=module.o;log=module.l;FAVORITES_SYNC_PAGE_PAUSE_MS=module.a_;load=module.a$;createDefaultStorage=module.b0;clearStorageCache=module.b1;clearFavsCache=module.b2;getSyncState=module.j;object=module.b3;StorageSchema=module.b4;optional=module.b5;string=module.b6;FavsSchema=module.b7;literal=module.b8;IMPORT_SCHEMA_ERROR_PREFIX=module.b9;stripLegacyPanelWindowSize=module.ba;save=module.L;migrateMarksFavToFavs=module.bb;FAVS_STORAGE_KEY=module.bc;createDefaultFavs=module.bd;parseFavsStrict=module.be;setAppearance=module.bf;loadFavSet=module.bg;STORAGE_BACKUP_KEY=module.bh;extractFavIdsFromMarks=module.bi;gridDensityFeature=module.bj;FAVORITES_SYNC_MODE_INCREMENTAL=module.bk;FAVORITES_SYNC_MODE_FULL=module.F;getTweaksEnabled=module.bl;getGridFavButtonsEnabled=module.bm;getFeatureChoiceValue=module.bn;getScreenPixelSize=module.bo;},function(module){loadBackground=module.n;clearBackground=module.t;saveBackground=module.r;},function(module){createAutocompleteQuerier=module.c;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
+System.register("./settings-page-usC1_X8d-L4FJ3aeK.js", ['./___monkey.entry.js','./app-B4k6ys2x-Cd9pE_Gq.js','./autocomplete-Bxblzpew-BhQ9wpRW.js'],(function(exports){'use strict';var d,a,PANEL_UI_CLASS,Card,SectionLabel,Switch,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,NumberField,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,setGridFavButtonsVisible,P$1,T,A,getAppearance,applyAppearanceTheme,getSiteSkinCss,APPEARANCE_THEME_CUSTOM,KIT_FOCUS_CSS,Select,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,$$1,Segmented,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,TextField,Button,clampBackgroundDim,FEATURES,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,setFeatureEnabled,applyCssOnlyFeatureEnabled,isFeatureEnabled,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,applyCssOnlyFeatureChoice,getFeatureChoice,b,readSiteBlacklist,Chip,AutocompleteField,ProgressBar,createDefaultCustomTheme,AppearanceThemeSchema,prepareBackgroundImageFile,writeSiteBlacklist,runFavoritesSync,log,FAVORITES_SYNC_PAGE_PAUSE_MS,load,createDefaultStorage,clearStorageCache,clearFavsCache,getSyncState,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,setAppearance,loadFavSet,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,gridDensityFeature,FAVORITES_SYNC_MODE_INCREMENTAL,FAVORITES_SYNC_MODE_FULL,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureChoiceValue,getScreenPixelSize,loadBackground,clearBackground,saveBackground,createAutocompleteQuerier;return{setters:[function(module){d=module.ad;a=module.Y;PANEL_UI_CLASS=module.a3;Card=module.ae;SectionLabel=module.af;Switch=module.ag;UI_TEXT=module.U;TWEAKS_SWITCH_ID=module.ah;setTweaksEnabled=module.ai;NumberField=module.aj;UPDATES_GROUP_SIZE_ID=module.ak;setUpdatesGroupSize=module.al;getUpdatesGroupSize=module.am;PLAYLIST_CHUNK_SIZE_ID=module.an;setPlaylistChunkSize=module.ao;getPlaylistChunkSize=module.ap;GRID_FAV_CHECKBOX_ID=module.aq;setGridFavButtonsEnabled=module.ar;setGridFavButtonsVisible=module.as;P$1=module.at;T=module.au;A=module.av;getAppearance=module.g;applyAppearanceTheme=module.a;getSiteSkinCss=module.a1;APPEARANCE_THEME_CUSTOM=module.aw;KIT_FOCUS_CSS=module.ax;Select=module.ay;APPEARANCE_THEME_SITE=module.a6;APPEARANCE_THEME_SITE_DARK=module.a7;APPEARANCE_THEME_LIGHT=module.az;APPEARANCE_THEME_DARK=module.aA;$$1=module.a2;Segmented=module.aB;APPEARANCE_CUSTOM_BASE_LIGHT=module.aC;APPEARANCE_CUSTOM_BASE_DARK=module.aD;TextField=module.aE;Button=module.aF;clampBackgroundDim=module.aG;FEATURES=module.aH;featurePanelLabel=module.aI;FEATURE_CHECKBOX_ID_PREFIX=module.aJ;setFeatureEnabled=module.aK;applyCssOnlyFeatureEnabled=module.aL;isFeatureEnabled=module.aM;FEATURE_CHOICE_ID_PREFIX=module.aN;setFeatureChoiceValue=module.aO;applyCssOnlyFeatureChoice=module.aP;getFeatureChoice=module.aQ;b=module.aR;readSiteBlacklist=module.aS;Chip=module.aT;AutocompleteField=module.aU;ProgressBar=module.aV;createDefaultCustomTheme=module.aW;AppearanceThemeSchema=module.aX;prepareBackgroundImageFile=module.aY;writeSiteBlacklist=module.aZ;runFavoritesSync=module.o;log=module.l;FAVORITES_SYNC_PAGE_PAUSE_MS=module.a_;load=module.a$;createDefaultStorage=module.b0;clearStorageCache=module.b1;clearFavsCache=module.b2;getSyncState=module.j;object=module.b3;StorageSchema=module.b4;optional=module.b5;string=module.b6;FavsSchema=module.b7;literal=module.b8;IMPORT_SCHEMA_ERROR_PREFIX=module.b9;stripLegacyPanelWindowSize=module.ba;save=module.L;migrateMarksFavToFavs=module.bb;FAVS_STORAGE_KEY=module.bc;createDefaultFavs=module.bd;parseFavsStrict=module.be;setAppearance=module.bf;loadFavSet=module.bg;STORAGE_BACKUP_KEY=module.bh;extractFavIdsFromMarks=module.bi;gridDensityFeature=module.bj;FAVORITES_SYNC_MODE_INCREMENTAL=module.bk;FAVORITES_SYNC_MODE_FULL=module.F;getTweaksEnabled=module.bl;getGridFavButtonsEnabled=module.bm;getFeatureChoiceValue=module.bn;getScreenPixelSize=module.bo;},function(module){loadBackground=module.n;clearBackground=module.t;saveBackground=module.r;},function(module){createAutocompleteQuerier=module.c;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
 var THEME_OPTIONS = [
 	{
 		value: APPEARANCE_THEME_SITE,
@@ -17136,7 +17134,7 @@ function SettingsPage() {
 		]
 	});
 }})}}));
-System.register("./collections-page-Bzxwp80F-DXPmlSqj.js", ['./___monkey.entry.js'],(function(exports){'use strict';var d,b,load,a,Segmented,TextField,Button,IconPlus,EmptyState,resolveCollectionKind,UI_TEXT,Dialog,createDynamicCollection,createPlaylist,COLLECTION_KIND_POSTS,collectionDetailHash,COLLECTION_KIND_SEARCH,Chip,buildSearchUrl,serialize;return{setters:[function(module){d=module.ad;b=module.aR;load=module.a$;a=module.Y;Segmented=module.aB;TextField=module.aE;Button=module.aF;IconPlus=module.bp;EmptyState=module.bq;resolveCollectionKind=module.br;UI_TEXT=module.U;Dialog=module.bs;createDynamicCollection=module.bt;createPlaylist=module.bu;COLLECTION_KIND_POSTS=module.bv;collectionDetailHash=module.bw;COLLECTION_KIND_SEARCH=module.bx;Chip=module.aT;buildSearchUrl=module.by;serialize=module.bz;}],execute:(function(){exports("CollectionsPage",CollectionsPage);var PAGE_CLASS = "rdw-collections-page";
+System.register("./collections-page-zcLrqvDg-xbS4kd_I.js", ['./___monkey.entry.js'],(function(exports){'use strict';var d,b,load,a,Segmented,TextField,Button,IconPlus,EmptyState,resolveCollectionKind,UI_TEXT,Dialog,createDynamicCollection,createPlaylist,COLLECTION_KIND_POSTS,collectionDetailHash,COLLECTION_KIND_SEARCH,Chip,buildSearchUrl,serialize;return{setters:[function(module){d=module.ad;b=module.aR;load=module.a$;a=module.Y;Segmented=module.aB;TextField=module.aE;Button=module.aF;IconPlus=module.bp;EmptyState=module.bq;resolveCollectionKind=module.br;UI_TEXT=module.U;Dialog=module.bs;createDynamicCollection=module.bt;createPlaylist=module.bu;COLLECTION_KIND_POSTS=module.bv;collectionDetailHash=module.bw;COLLECTION_KIND_SEARCH=module.bx;Chip=module.aT;buildSearchUrl=module.by;serialize=module.bz;}],execute:(function(){exports("CollectionsPage",CollectionsPage);var PAGE_CLASS = "rdw-collections-page";
 var HEADER_CLASS = "rdw-collections-header";
 var TOOLBAR_CLASS = "rdw-collections-toolbar";
 var FILTER_FIELD_CLASS = "rdw-collections-filter";
@@ -17491,6 +17489,19 @@ function CardLink(props) {
 		]
 	});
 }
+/** Cover thumb. A thumb that fails to load leaves the empty cell. */
+function CoverThumb(props) {
+	const [failedUrl, setFailedUrl] = d(null);
+	if (failedUrl === props.url) return /* @__PURE__ */ a("span", { className: COVER_EMPTY_CLASS });
+	return /* @__PURE__ */ a("img", {
+		className: COVER_IMAGE_CLASS,
+		src: props.url,
+		alt: "",
+		onError: () => {
+			setFailedUrl(props.url);
+		}
+	});
+}
 function CustomCard(props) {
 	const meta = postsLabel(props.collection.postIds?.length ?? 0);
 	const slots = coverPostIds(props.collection);
@@ -17508,11 +17519,7 @@ function CustomCard(props) {
 					className: COVER_CELL_CLASS,
 					"data-cover-index": String(index),
 					"data-post-id": postId === null ? "" : String(postId),
-					children: url !== null ? /* @__PURE__ */ a("img", {
-						className: COVER_IMAGE_CLASS,
-						src: url,
-						alt: ""
-					}) : /* @__PURE__ */ a("span", { className: COVER_EMPTY_CLASS })
+					children: url !== null ? /* @__PURE__ */ a(CoverThumb, { url }) : /* @__PURE__ */ a("span", { className: COVER_EMPTY_CLASS })
 				}, `${props.collection.id}-${String(index)}`);
 			})
 		})
@@ -17711,7 +17718,7 @@ function CollectionsPage() {
 		]
 	});
 }})}}));
-System.register("./following-page-dsuPK5T0-BLr-yztN.js", ['./___monkey.entry.js','./autocomplete-C_YP9Bea-BhQ9wpRW.js'],(function(exports){'use strict';var d,T,A,getSeenPostId,a,Card,PANEL_UI_CLASS,UI_TEXT,$$1,EmptyState,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,Button,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,TextField,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,UNFOLLOWED_PREFIX,UNFOLLOW_UNDO_LABEL,buildSearchUrl,TAG_TYPE_INCLUDE,IconButton,IconX,AutocompleteField,normalizeArtistTag,isFollowingArtist,addArtist,log,removeArtist,UNFOLLOW_UNDO_MS,load,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST;return{setters:[function(module){d=module.ad;T=module.au;A=module.av;getSeenPostId=module.bA;a=module.Y;Card=module.ae;PANEL_UI_CLASS=module.a3;UI_TEXT=module.U;$$1=module.a2;EmptyState=module.bq;ARTISTS_EMPTY_HINT=module.bB;ARTISTS_EMPTY_TITLE=module.bC;Button=module.aF;SEARCH_PATH=module.X;SEARCH_PARAM_PAGE=module.T;SEARCH_PAGE=module.bD;SEARCH_SECTION=module.bE;TextField=module.aE;ARTIST_FILTER_LABEL=module.bF;ARTIST_FILTER_ID=module.bG;UNFOLLOWED_PREFIX=module.bH;UNFOLLOW_UNDO_LABEL=module.bI;buildSearchUrl=module.by;TAG_TYPE_INCLUDE=module.bJ;IconButton=module.bK;IconX=module.bL;AutocompleteField=module.aU;normalizeArtistTag=module.n;isFollowingArtist=module.bM;addArtist=module.bN;log=module.l;removeArtist=module.bO;UNFOLLOW_UNDO_MS=module.bP;load=module.a$;},function(module){createAutocompleteQuerier=module.c;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.A;}],execute:(function(){exports("FollowingPage",FollowingPage);var ADD_FORM_CLASS = "rdw-following-add";
+System.register("./following-page-DYCKTOey-BCvpGeNw.js", ['./___monkey.entry.js','./autocomplete-Bxblzpew-BhQ9wpRW.js'],(function(exports){'use strict';var d,T,A,getSeenPostId,a,Card,PANEL_UI_CLASS,UI_TEXT,$$1,EmptyState,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,Button,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,TextField,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,UNFOLLOWED_PREFIX,UNFOLLOW_UNDO_LABEL,buildSearchUrl,TAG_TYPE_INCLUDE,IconButton,IconX,AutocompleteField,normalizeArtistTag,isFollowingArtist,addArtist,log,removeArtist,UNFOLLOW_UNDO_MS,load,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST;return{setters:[function(module){d=module.ad;T=module.au;A=module.av;getSeenPostId=module.bA;a=module.Y;Card=module.ae;PANEL_UI_CLASS=module.a3;UI_TEXT=module.U;$$1=module.a2;EmptyState=module.bq;ARTISTS_EMPTY_HINT=module.bB;ARTISTS_EMPTY_TITLE=module.bC;Button=module.aF;SEARCH_PATH=module.X;SEARCH_PARAM_PAGE=module.T;SEARCH_PAGE=module.bD;SEARCH_SECTION=module.bE;TextField=module.aE;ARTIST_FILTER_LABEL=module.bF;ARTIST_FILTER_ID=module.bG;UNFOLLOWED_PREFIX=module.bH;UNFOLLOW_UNDO_LABEL=module.bI;buildSearchUrl=module.by;TAG_TYPE_INCLUDE=module.bJ;IconButton=module.bK;IconX=module.bL;AutocompleteField=module.aU;normalizeArtistTag=module.n;isFollowingArtist=module.bM;addArtist=module.bN;log=module.l;removeArtist=module.bO;UNFOLLOW_UNDO_MS=module.bP;load=module.a$;},function(module){createAutocompleteQuerier=module.c;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.A;}],execute:(function(){exports("FollowingPage",FollowingPage);var ADD_FORM_CLASS = "rdw-following-add";
 var ADD_INPUT_ID = "rdw-following-add-tag";
 var OPEN_POSTS_LABEL = "Open Posts";
 var OPEN_POSTS_HREF = `${SEARCH_PATH}?${SEARCH_PARAM_PAGE}=${SEARCH_PAGE}&s=${SEARCH_SECTION}`;
@@ -17946,7 +17953,7 @@ function FollowingPage() {
 		})
 	})] });
 }})}}));
-System.register("./autocomplete-C_YP9Bea-BhQ9wpRW.js", ['./___monkey.entry.js'],(function(exports){'use strict';var FETCH_CREDENTIALS,log,SITE_ORIGIN,array,object,optional,nullable,string;return{setters:[function(module){FETCH_CREDENTIALS=module.bQ;log=module.l;SITE_ORIGIN=module.b;array=module.bR;object=module.b3;optional=module.b5;nullable=module.bS;string=module.b6;}],execute:(function(){exports("c",createAutocompleteQuerier);var AUTOCOMPLETE_PATH = "/public/autocomplete.php";
+System.register("./autocomplete-Bxblzpew-BhQ9wpRW.js", ['./___monkey.entry.js'],(function(exports){'use strict';var FETCH_CREDENTIALS,log,SITE_ORIGIN,array,object,optional,nullable,string;return{setters:[function(module){FETCH_CREDENTIALS=module.bQ;log=module.l;SITE_ORIGIN=module.b;array=module.bR;object=module.b3;optional=module.b5;nullable=module.bS;string=module.b6;}],execute:(function(){exports("c",createAutocompleteQuerier);var AUTOCOMPLETE_PATH = "/public/autocomplete.php";
 var AUTOCOMPLETE_TAG_TYPE_ARTIST = exports("A","artist");
 var HTTP_TOO_MANY_REQUESTS = 429;
 var ABORT_ERROR_NAME = "AbortError";
@@ -18074,7 +18081,7 @@ function createAutocompleteQuerier(options = {}) {
 		cancel
 	};
 }})}}));
-System.register("./collection-detail-page-BLaZ1o3v-B40z6Nt6.js", ['./___monkey.entry.js','./app-Bz7XI6an-CuesF9v3.js'],(function(exports){'use strict';var d,T,w$1,b,a,$$1,Button,UI_TEXT,shuffleCollection,resetCollectionOrder,EmptyState,Dialog,TextField,Toast,getCollectionOrder,listPlaylists,RDW_HASH_COLLECTIONS,removePostsFromCollection,renameCollection,deleteCollection,RDW_ROUTE_COLLECTIONS,restorePosts,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION_VIEW,SEARCH_PATH,collectionQueueHash,navigateToRdwRoute;return{setters:[function(module){d=module.ad;T=module.au;w$1=module.bT;b=module.aR;a=module.Y;$$1=module.a2;Button=module.aF;UI_TEXT=module.U;shuffleCollection=module.bU;resetCollectionOrder=module.bV;EmptyState=module.bq;Dialog=module.bs;TextField=module.aE;Toast=module.bW;getCollectionOrder=module.bX;listPlaylists=module.bY;RDW_HASH_COLLECTIONS=module.u;removePostsFromCollection=module.bZ;renameCollection=module.b_;deleteCollection=module.b$;RDW_ROUTE_COLLECTIONS=module.c0;restorePosts=module.c1;SEARCH_PARAM_PAGE=module.T;SEARCH_PAGE=module.bD;SEARCH_SECTION_VIEW=module.c2;SEARCH_PATH=module.X;collectionQueueHash=module.c3;},function(module){navigateToRdwRoute=module.i;}],execute:(function(){exports("CollectionDetailPage",CollectionDetailPage);var CELL_SIZE_PX = 200;
+System.register("./collection-detail-page-DW-RttR--G4enq4zJ.js", ['./___monkey.entry.js','./app-B4k6ys2x-Cd9pE_Gq.js'],(function(exports){'use strict';var d,T,w$1,b,a,$$1,Button,UI_TEXT,shuffleCollection,resetCollectionOrder,EmptyState,Dialog,TextField,Toast,getCollectionOrder,listPlaylists,RDW_HASH_COLLECTIONS,removePostsFromCollection,renameCollection,deleteCollection,RDW_ROUTE_COLLECTIONS,restorePosts,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION_VIEW,SEARCH_PATH,collectionQueueHash,navigateToRdwRoute;return{setters:[function(module){d=module.ad;T=module.au;w$1=module.bT;b=module.aR;a=module.Y;$$1=module.a2;Button=module.aF;UI_TEXT=module.U;shuffleCollection=module.bU;resetCollectionOrder=module.bV;EmptyState=module.bq;Dialog=module.bs;TextField=module.aE;Toast=module.bW;getCollectionOrder=module.bX;listPlaylists=module.bY;RDW_HASH_COLLECTIONS=module.u;removePostsFromCollection=module.bZ;renameCollection=module.b_;deleteCollection=module.b$;RDW_ROUTE_COLLECTIONS=module.c0;restorePosts=module.c1;SEARCH_PARAM_PAGE=module.T;SEARCH_PAGE=module.bD;SEARCH_SECTION_VIEW=module.c2;SEARCH_PATH=module.X;collectionQueueHash=module.c3;},function(module){navigateToRdwRoute=module.i;}],execute:(function(){exports("CollectionDetailPage",CollectionDetailPage);var CELL_SIZE_PX = 200;
 var GRID_GAP_PX = 4;
 var SECTION_GAP_PX = 12;
 var ACTIONS_GAP_PX = 8;

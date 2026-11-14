@@ -9,11 +9,17 @@ const DIALOG_VARIANT_CONTENT = "content";
 const DIALOG_VARIANT_CONFIRM = "confirm";
 const DIALOG_VARIANT_FIELDS = "fields";
 
+const DIALOG_FIELD_NAME = "name";
+const DIALOG_FIELD_QUERY = "query";
+
 const DEFAULT_NAME_LABEL = "Name";
 const DEFAULT_QUERY_LABEL = "Query";
 const DEFAULT_CONFIRM_TONE = "primary";
 
 export type DialogConfirmTone = typeof DEFAULT_CONFIRM_TONE | "danger";
+
+/** One field of the fields dialog. */
+export type DialogFieldKey = typeof DIALOG_FIELD_NAME | typeof DIALOG_FIELD_QUERY;
 
 export type DialogFieldValues = {
   readonly name: string;
@@ -53,6 +59,8 @@ export type DialogFieldsProps = DialogShellProps & {
   readonly cancelLabel: string;
   readonly nameLabel?: string;
   readonly queryLabel?: string;
+  /** Show just this field. Both fields are shown when omitted. */
+  readonly only?: DialogFieldKey;
 };
 
 export type DialogProps =
@@ -190,20 +198,24 @@ function renderDialogBody(props: DialogProps): JSX.Element | null {
           props.onSubmit();
         }}
       >
-        <TextField
-          label={nameLabel}
-          value={props.fields.name}
-          onChange={(name) => {
-            props.onFieldsChange({ name, query: props.fields.query });
-          }}
-        />
-        <TextField
-          label={queryLabel}
-          value={props.fields.query}
-          onChange={(query) => {
-            props.onFieldsChange({ name: props.fields.name, query });
-          }}
-        />
+        {props.only !== DIALOG_FIELD_QUERY ? (
+          <TextField
+            label={nameLabel}
+            value={props.fields.name}
+            onChange={(name) => {
+              props.onFieldsChange({ name, query: props.fields.query });
+            }}
+          />
+        ) : null}
+        {props.only !== DIALOG_FIELD_NAME ? (
+          <TextField
+            label={queryLabel}
+            value={props.fields.query}
+            onChange={(query) => {
+              props.onFieldsChange({ name: props.fields.name, query });
+            }}
+          />
+        ) : null}
         <div className="rdw-dialog__actions">
           <Button variant="secondary" size="s" type="button" onClick={props.onClose}>
             {props.cancelLabel}

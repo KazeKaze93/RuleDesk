@@ -14,7 +14,6 @@ import {
 import {
   COLLECTIONS_PAGE_CSS,
   createCollectionsPage,
-  resetCollectionsPageState,
 } from "../src/pages/collections-page";
 import { collectionDetailHash } from "../src/pages/constants";
 import { buildSearchUrl } from "../src/search/query";
@@ -141,13 +140,11 @@ function source(relative: string): string {
 describe("createCollectionsPage", () => {
   beforeEach(() => {
     installGmMocks();
-    resetCollectionsPageState();
     document.body.replaceChildren();
     save(createDefaultStorage());
   });
 
   afterEach(() => {
-    resetCollectionsPageState();
     document.body.replaceChildren();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
@@ -238,6 +235,18 @@ describe("createCollectionsPage", () => {
     expect(cells[2]?.querySelector(".rdw-collection-cover-empty")).not.toBeNull();
     expect(cells[3]?.querySelector("img")?.getAttribute("src")).toBe(THUMB_4);
     expect(card.querySelector(`[data-post-id="5"]`)).toBeNull();
+
+    const broken = cells[0]?.querySelector("img");
+    if (!(broken instanceof HTMLImageElement)) {
+      throw new Error("expected cover image");
+    }
+    act(() => {
+      broken.dispatchEvent(new Event("error"));
+    });
+    const after = card.querySelectorAll("[data-cover-index]");
+    expect(after[0]?.querySelector("img")).toBeNull();
+    expect(after[0]?.querySelector(".rdw-collection-cover-empty")).not.toBeNull();
+    expect(after[1]?.querySelector("img")?.getAttribute("src")).toBe(THUMB_2);
   });
 
   it("shows an empty 2x2 cover and a post count for a new custom collection", () => {

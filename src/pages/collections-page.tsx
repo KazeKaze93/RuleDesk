@@ -254,11 +254,6 @@ export const COLLECTIONS_PAGE_CSS = `
 }
 `.trim();
 
-/** Mounted state lives on the Preact tree; a new mount starts clean. */
-export function resetCollectionsPageState(): void {
-  return;
-}
-
 function isListFilter(value: string): value is ListFilter {
   return (
     value === FILTER_ALL || value === FILTER_CUSTOM || value === FILTER_DYNAMIC
@@ -473,6 +468,24 @@ function CardLink(props: {
   );
 }
 
+/** Cover thumb. A thumb that fails to load leaves the empty cell. */
+function CoverThumb(props: { readonly url: string }): JSX.Element {
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  if (failedUrl === props.url) {
+    return <span className={COVER_EMPTY_CLASS} />;
+  }
+  return (
+    <img
+      className={COVER_IMAGE_CLASS}
+      src={props.url}
+      alt=""
+      onError={() => {
+        setFailedUrl(props.url);
+      }}
+    />
+  );
+}
+
 function CustomCard(props: { readonly collection: Collection }): JSX.Element {
   const count = props.collection.postIds?.length ?? 0;
   const meta = postsLabel(count);
@@ -496,7 +509,7 @@ function CustomCard(props: { readonly collection: Collection }): JSX.Element {
               data-post-id={postId === null ? "" : String(postId)}
             >
               {url !== null ? (
-                <img className={COVER_IMAGE_CLASS} src={url} alt="" />
+                <CoverThumb url={url} />
               ) : (
                 <span className={COVER_EMPTY_CLASS} />
               )}

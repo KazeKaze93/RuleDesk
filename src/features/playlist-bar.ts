@@ -69,6 +69,8 @@ const DIALOG_DELETE = "delete";
 const DIALOG_VARIANT_FIELDS = "fields" as const;
 const DIALOG_VARIANT_CONFIRM = "confirm" as const;
 const DIALOG_TONE_DANGER = "danger" as const;
+const DIALOG_ONLY_NAME = "name" as const;
+const DIALOG_ONLY_QUERY = "query" as const;
 const BAR_BUTTON_VARIANT = "secondary" as const;
 const BAR_BUTTON_SIZE = "s" as const;
 const ICON_GLYPH_PX = 16;
@@ -446,10 +448,6 @@ function DynamicCollectionBar(props: DynamicBarProps): JSX.Element {
     if (updated === null) {
       return;
     }
-    const trimmedName = fields.name.trim();
-    if (trimmedName.length > 0 && trimmedName !== updated.name) {
-      renameCollection(props.collectionId, trimmedName);
-    }
     const nextQuery = updated.query ?? serialize(updated.tags);
     setQuery(nextQuery);
     navigateToQuery(nextQuery);
@@ -465,17 +463,6 @@ function DynamicCollectionBar(props: DynamicBarProps): JSX.Element {
       return;
     }
     setName(renamed.name);
-    const nextQuery = fields.query.trim();
-    if (nextQuery.length > 0 && nextQuery !== query.trim()) {
-      const updated = updateDynamicQuery(props.collectionId, nextQuery);
-      if (updated === null) {
-        return;
-      }
-      const savedQuery = updated.query ?? serialize(updated.tags);
-      setQuery(savedQuery);
-      navigateToQuery(savedQuery);
-      return;
-    }
     closeDialog();
   }
 
@@ -579,6 +566,7 @@ function DynamicCollectionBar(props: DynamicBarProps): JSX.Element {
           cancelLabel: UI_TEXT.cancel,
           nameLabel: UI_TEXT.nameLabel,
           queryLabel: TEXT_QUERY_LABEL,
+          only: dialog === DIALOG_RENAME ? DIALOG_ONLY_NAME : DIALOG_ONLY_QUERY,
         })
       : null,
     dialog === DIALOG_DELETE
