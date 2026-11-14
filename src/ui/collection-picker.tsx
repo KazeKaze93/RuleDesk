@@ -1,7 +1,7 @@
 import type { JSX } from "preact";
 import { useState } from "preact/hooks";
 
-import { isPlaylist, type Collection } from "../storage/schema";
+import type { Collection } from "../storage/schema";
 import {
   addPostToCollection,
   createPlaylist,
@@ -32,7 +32,7 @@ export const COLLECTION_PICKER_TEXT = {
   empty: "No collections yet",
   noMatch: "No matching collections",
   togglePrefix: "Toggle collection",
-  nameTaken: "A dynamic collection already has this name.",
+  nameTaken: "A collection with this name already exists.",
   list: "Custom collections",
 } as const;
 
@@ -175,8 +175,8 @@ function addPost(
 /**
  * Custom collections of one post: a checkbox row per collection with its post
  * count, and a "name + Create" row. Used by the post panel and the grid "+" menu.
- * A new name that matches an existing custom collection adds the post to it;
- * a name held by a dynamic collection is refused, as on the Collections page.
+ * A new name that any collection already has (custom or dynamic, ignoring
+ * case) is refused, as on the Collections page.
  */
 export function CollectionPicker(props: CollectionPickerProps): JSX.Element {
   const [filter, setFilter] = useState("");
@@ -212,15 +212,14 @@ export function CollectionPicker(props: CollectionPickerProps): JSX.Element {
     if (name.length === 0) {
       return;
     }
-    const sameName = load().collections.filter(
+    const taken = load().collections.some(
       (item) => foldName(item.name) === foldName(name),
     );
-    const existing = sameName.find((item) => isPlaylist(item));
-    if (existing === undefined && sameName.length > 0) {
+    if (taken) {
       setError(COLLECTION_PICKER_TEXT.nameTaken);
       return;
     }
-    const target = existing ?? createPlaylist(name);
+    const target = createPlaylist(name);
     addPost(target.id, props.postId, props.readThumbUrl);
     setNewName("");
     changed();

@@ -18,6 +18,10 @@ Local build: `npm install` then `npm run build` → `dist/ruledesk-web.user.js`.
 
 Measured on Tampermonkey 5.5.1: with Dynamic, native page flash on load is typically 0/5 vs ~5/5 with UserScripts API; pages also open faster. Prefer Dynamic for RuleDesk Web.
 
+### 0.17.2 notes
+
+- **Add to collection:** Create refuses any name that already exists, custom or dynamic (it used to add the post to the custom collection of that name). To add a post to an existing collection, tick its row
+
 ### 0.17.1 notes
 
 - **Add to collection:** a new name that a dynamic collection already has is refused with a message, the same rule as on the Collections page

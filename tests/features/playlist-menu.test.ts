@@ -312,39 +312,34 @@ describe("playlistMenuFeature", () => {
     expect(firstItem()?.getAttribute("aria-checked")).toBe("true");
   });
 
-  it("adds to the existing collection when the new name matches one", () => {
-    const existing = createPlaylist("Watch later");
-    const thumb = buildThumb("21");
-    document.body.append(thumb);
-    playlistMenuFeature.mount(makeCtx("list", "?page=post&s=list"));
-
-    addButton(thumb).click();
-    createFromMenu("watch LATER");
-
-    expect(listPlaylists()).toHaveLength(1);
-    expect(playlistsContaining(21).map((entry) => entry.id)).toEqual([existing.id]);
-  });
-
-  it("refuses a name that a dynamic collection already has", () => {
+  it("refuses a name that a custom or dynamic collection already has", () => {
+    const custom = createPlaylist("Watch later");
     createDynamicCollection("Saved", "cat");
     const thumb = buildThumb("22");
     document.body.append(thumb);
     playlistMenuFeature.mount(makeCtx("list", "?page=post&s=list"));
 
     addButton(thumb).click();
-    createFromMenu("saved");
+    const alertText = (): string | null =>
+      openMenus()[0]?.querySelector('[role="alert"]')?.textContent ?? null;
 
-    expect(listPlaylists()).toHaveLength(0);
+    createFromMenu("watch LATER");
+    expect(listPlaylists().map((item) => item.id)).toEqual([custom.id]);
     expect(playlistsContaining(22)).toEqual([]);
-    expect(openMenus()[0]?.querySelector('[role="alert"]')?.textContent).toBe(
-      "A dynamic collection already has this name.",
-    );
-    const input = openMenus()[0]?.querySelector("input");
-    expect(input?.value).toBe("saved");
+    expect(alertText()).toBe("A collection with this name already exists.");
+    expect(openMenus()[0]?.querySelector("input")?.value).toBe("watch LATER");
+
+    createFromMenu("saved");
+    expect(listPlaylists()).toHaveLength(1);
+    expect(playlistsContaining(22)).toEqual([]);
+    expect(alertText()).toBe("A collection with this name already exists.");
 
     createFromMenu("saved 2");
-    expect(listPlaylists().map((item) => item.name)).toEqual(["saved 2"]);
-    expect(openMenus()[0]?.querySelector('[role="alert"]')).toBeNull();
+    expect(listPlaylists().map((item) => item.name)).toEqual([
+      "Watch later",
+      "saved 2",
+    ]);
+    expect(alertText()).toBeNull();
   });
 
   it("takes its colours from theme tokens", () => {
