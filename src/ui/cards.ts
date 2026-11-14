@@ -79,13 +79,13 @@ ${ICON_BUTTON_CSS}
   margin: 0;
   font-weight: 700;
   font-size: 12px;
-  color: #1c2228;
+  color: var(--rdw-text);
 }
 
 .${CSS_CLASS.updatesBar} .${CSS_CLASS.primaryButton} {
   margin-left: auto;
-  background: #2f6fed;
-  border: 1px solid #2f6fed;
+  background: var(--rdw-accent);
+  border: 1px solid var(--rdw-accent);
   border-radius: 8px;
   height: 28px;
   min-height: 28px;
@@ -98,9 +98,9 @@ ${ICON_BUTTON_CSS}
   box-sizing: border-box;
   display: inline-grid;
   place-items: center;
-  border: 1px solid #cfd6dd;
-  background: #fff;
-  color: #1c2228;
+  border: 1px solid var(--rdw-border);
+  background: var(--rdw-surface);
+  color: var(--rdw-text);
   border-radius: 8px;
   height: 28px;
   min-height: 28px;
@@ -114,7 +114,7 @@ ${ICON_BUTTON_CSS}
 
 .${CSS_CLASS.updatesBar} .${CSS_CLASS.secondaryButton}:focus-visible,
 .${CSS_CLASS.updatesBar} .${CSS_CLASS.primaryButton}:focus-visible {
-  outline: 2px solid #4c8bf5;
+  outline: 2px solid var(--rdw-accent);
   outline-offset: 2px;
 }
 `;

@@ -16,6 +16,10 @@ export const SITE_SELECTORS = {
   filterAiCheckbox: "input.toggleSwitch#chkFilterAI",
   /** Row wrapping the native AI filter control — hide when search-tools mirrors it. */
   filterAiRow: "li:has(> label > span.switch > input.toggleSwitch#chkFilterAI)",
+  /** Post page: site link to the previous post of the last search (href="#", site JS). */
+  postPrevSearchLink: "a#prev_search_link",
+  /** Post page: site link to the next post of the last search (href="#", site JS). */
+  postNextSearchLink: "a#next_search_link",
   /** Stray Tags heading between #rdw-search-tools and the tag list. */
   tagsHeadingAfterSearchTools: "#rdw-search-tools + h5",
 } as const;

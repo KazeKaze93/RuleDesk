@@ -303,6 +303,93 @@ describe("collection queue strip", () => {
     ).toBe(true);
   });
 
+  function installSiteSearchLinks(): { previous: HTMLElement; next: HTMLElement } {
+    const wrap = document.createElement("div");
+    wrap.innerHTML =
+      '<div><a href="#" id="prev_search_link">&lt; previous</a></div>' +
+      '<div><a href="#" id="next_search_link">next &gt;</a></div>';
+    document.body.append(wrap);
+    const previous = document.getElementById("prev_search_link");
+    const next = document.getElementById("next_search_link");
+    if (previous === null || next === null) {
+      throw new Error("site links missing");
+    }
+    return { previous, next };
+  }
+
+  function stubAssign(): ReturnType<typeof vi.fn> {
+    const assign = vi.fn();
+    vi.stubGlobal("location", {
+      ...window.location,
+      hash: window.location.hash,
+      assign,
+    });
+    return assign;
+  }
+
+  function clickLink(el: HTMLElement, init?: MouseEventInit): MouseEvent {
+    const event = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+      ...init,
+    });
+    el.dispatchEvent(event);
+    return event;
+  }
+
+  it("steps the site previous/next links through the shuffled collection order", () => {
+    const collectionId = seedOrder([POST_FIRST, POST_MIDDLE, POST_LAST]);
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    shuffleCollection(collectionId);
+    const order = getCollectionOrder(collectionId) ?? [];
+    const current = order[1];
+    const before = order[0];
+    const after = order[2];
+    if (current === undefined || before === undefined || after === undefined) {
+      throw new Error("order missing");
+    }
+    const hash = queueHash(collectionId);
+    openPost(current, hash);
+    const { previous, next } = installSiteSearchLinks();
+    const siteHandler = vi.fn();
+    previous.addEventListener("click", siteHandler);
+    next.addEventListener("click", siteHandler);
+    const assign = stubAssign();
+    mountQueue(current);
+
+    const nextEvent = clickLink(next);
+    expect(nextEvent.defaultPrevented).toBe(true);
+    expect(assign).toHaveBeenLastCalledWith(postHref(after, hash));
+    clickLink(previous);
+    expect(assign).toHaveBeenLastCalledWith(postHref(before, hash));
+    expect(siteHandler).not.toHaveBeenCalled();
+    expect(previous.getAttribute("href")).toBe("#");
+
+    const modified = clickLink(next, { ctrlKey: true });
+    expect(modified.defaultPrevented).toBe(false);
+    expect(assign).toHaveBeenCalledTimes(2);
+  });
+
+  it("blocks the site link at the end of the collection and leaves it alone outside one", () => {
+    const collectionId = seedOrder([POST_FIRST, POST_MIDDLE]);
+    openPost(POST_MIDDLE, queueHash(collectionId));
+    const { next } = installSiteSearchLinks();
+    const siteHandler = vi.fn();
+    next.addEventListener("click", siteHandler);
+    const assign = stubAssign();
+    const host = mountQueue(POST_MIDDLE);
+
+    expect(clickLink(next).defaultPrevented).toBe(true);
+    expect(assign).not.toHaveBeenCalled();
+    expect(siteHandler).not.toHaveBeenCalled();
+
+    cleanupKit(host);
+    hosts.pop();
+    clickLink(next);
+    expect(siteHandler).toHaveBeenCalledTimes(1);
+  });
+
   it("appears after a hashchange and does not bind arrow keys", () => {
     const collectionId = seedOrder([POST_FIRST, POST_MIDDLE]);
     openPost(POST_MIDDLE, "");

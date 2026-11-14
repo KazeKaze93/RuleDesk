@@ -106,24 +106,24 @@ body.${CSS_CLASS.gridFavsHidden} .${CSS_CLASS.cardFav} {
 .${CSS_CLASS.updatesBar} {
   margin: 8px 0;
   padding: 8px 10px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--rdw-border);
   border-radius: 6px;
-  background: #f7f7f7;
+  background: var(--rdw-surface);
   font-family: Segoe UI, system-ui, sans-serif;
   font-size: 14px;
-  color: #1a1a1a;
+  color: var(--rdw-text);
 }
 
 .${CSS_CLASS.updatesBar} .${CSS_CLASS.hint} {
   margin: 0;
-  color: #555;
+  color: var(--rdw-muted);
   font-size: 12px;
 }
 
 .${CSS_CLASS.updatesBar} .${CSS_CLASS.primaryButton} {
-  border: 1px solid #0b57d0;
-  background: #0b57d0;
-  color: #fff;
+  border: 1px solid var(--rdw-accent);
+  background: var(--rdw-accent);
+  color: var(--rdw-surface);
   border-radius: 4px;
   cursor: pointer;
   min-height: 32px;
@@ -132,12 +132,12 @@ body.${CSS_CLASS.gridFavsHidden} .${CSS_CLASS.cardFav} {
 }
 
 .${CSS_CLASS.updatesBar} .${CSS_CLASS.primaryButton}:focus-visible {
-  outline: 2px solid #4c8bf5;
+  outline: 2px solid var(--rdw-accent);
   outline-offset: 2px;
 }
 
 .${CSS_CLASS.updatesBar} .${CSS_CLASS.itemName} {
-  color: #0b57d0;
+  color: var(--rdw-accent);
   font-weight: 600;
   text-decoration: underline;
 }

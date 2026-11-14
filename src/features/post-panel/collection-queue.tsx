@@ -10,6 +10,7 @@ import {
   SEARCH_SECTION_VIEW,
 } from "../../config/constants";
 import { RDW_HASH_COLLECTIONS } from "../../pages/constants";
+import { SITE_SELECTORS } from "../../site/selectors";
 import { getCollectionOrder, listPlaylists } from "../../storage/store";
 import { KIT_FOCUS_CSS, KIT_MIN_TARGET_PX } from "../../ui/kit/shared";
 
@@ -34,6 +35,8 @@ const INDEX_NOT_FOUND = -1;
 const POSITION_BASE = 1;
 
 const EVENT_HASHCHANGE = "hashchange";
+const EVENT_CLICK = "click";
+const MOUSE_BUTTON_PRIMARY = 0;
 
 const QUEUE_GAP_PX = 8;
 const NAME_FONT_WEIGHT = 600;
@@ -203,6 +206,77 @@ function QueueStep(props: {
   );
 }
 
+function isPlainPrimaryClick(event: MouseEvent): boolean {
+  return (
+    event.button === MOUSE_BUTTON_PRIMARY &&
+    !event.metaKey &&
+    !event.ctrlKey &&
+    !event.shiftKey &&
+    !event.altKey
+  );
+}
+
+type SiteStep = {
+  readonly selector: string;
+  readonly href: string | null;
+};
+
+function clickedSiteStep(
+  event: MouseEvent,
+  steps: readonly SiteStep[],
+): SiteStep | null {
+  const target = event.target;
+  if (!(target instanceof Element)) {
+    return null;
+  }
+  for (const step of steps) {
+    if (target.closest(step.selector) !== null) {
+      return step;
+    }
+  }
+  return null;
+}
+
+/**
+ * While a post is open from a collection, the site's own "< previous / next >"
+ * links step through the collection instead of the last search. The click is
+ * taken in the capture phase so the site handler never runs; at either end of
+ * the collection the click does nothing. The links themselves are not changed.
+ */
+function useSiteStepLinks(
+  previousHref: string | null,
+  nextHref: string | null,
+  active: boolean,
+): void {
+  useEffect(() => {
+    if (!active) {
+      return;
+    }
+    const steps: readonly SiteStep[] = [
+      { selector: SITE_SELECTORS.postPrevSearchLink, href: previousHref },
+      { selector: SITE_SELECTORS.postNextSearchLink, href: nextHref },
+    ];
+    const onClick = (event: MouseEvent): void => {
+      if (!isPlainPrimaryClick(event)) {
+        return;
+      }
+      const step = clickedSiteStep(event, steps);
+      if (step === null) {
+        return;
+      }
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (step.href !== null) {
+        window.location.assign(step.href);
+      }
+    };
+    document.addEventListener(EVENT_CLICK, onClick, true);
+    return (): void => {
+      document.removeEventListener(EVENT_CLICK, onClick, true);
+    };
+  }, [previousHref, nextHref, active]);
+}
+
 export function CollectionQueue(props: CollectionQueueProps): JSX.Element | null {
   const [hash, setHash] = useState(readLocationHash);
 
@@ -217,6 +291,11 @@ export function CollectionQueue(props: CollectionQueueProps): JSX.Element | null
   }, []);
 
   const queue = readQueue(props.postId, hash);
+  useSiteStepLinks(
+    queue === null ? null : queue.previousHref,
+    queue === null ? null : queue.nextHref,
+    queue !== null,
+  );
   if (queue === null) {
     return null;
   }
