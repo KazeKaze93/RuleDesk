@@ -1,45 +1,22 @@
 import type { JSX } from "preact";
-import { useCallback, useMemo, useRef, useState } from "preact/hooks";
+import { useCallback, useRef, useState } from "preact/hooks";
 
 import { deriveThumbUrlFromMedia } from "../../site/thumb";
-import type { Collection } from "../../storage/schema";
-import {
-  addPostToCollection,
-  createPlaylist,
-  listPlaylists,
-  playlistsContaining,
-  removePostFromPlaylist,
-} from "../../storage/store";
-import {
-  ANCHORED_POPOVER_WIDTH_PX,
-  Button,
-  IconCheck,
-  IconPlus,
-  Popover,
-  TextField,
-} from "../../ui/kit";
+import { CollectionPicker } from "../../ui/collection-picker";
+import { ANCHORED_POPOVER_WIDTH_PX, Button, Popover } from "../../ui/kit";
+import { IconPlus } from "../../ui/kit/icons";
 import { VIDEO_ELEMENT_ID } from "../video-player";
 import { IMAGE_ID } from "./site-reads";
 
 const TEXT_COLLECTIONS = "Collections";
-const TEXT_FILTER_PLACEHOLDER = "Filter collections…";
-const TEXT_NEW = "New custom collection";
-const TEXT_CREATE = "Create";
-const TEXT_NEW_NAME_LABEL = "New collection name";
 const ARIA_COLLECTIONS = "Custom collections";
-const LABEL_TOGGLE_PREFIX = "Toggle collection";
+const TRIGGER_ICON_PX = 14;
 
-const KEY_ENTER = "Enter";
 const VIDEO_SOURCE_SELECTOR = "source";
 const POST_ANCHOR_ID_PREFIX = "p";
 
 const CLASS_WRAP = "rdw-post-panel-collections";
 const CLASS_TRIGGER = "rdw-post-panel-collections-btn";
-const CLASS_ITEM = "rdw-post-panel-collection-item";
-const CLASS_CHECK = "rdw-post-panel-collection-check";
-const CLASS_NAME = "rdw-post-panel-collection-name";
-const CLASS_NEW = "rdw-post-panel-collection-new";
-const CLASS_NEW_FORM = "rdw-post-panel-collection-new-form";
 
 export type CollectionsMenuProps = {
   readonly postId: number;
@@ -128,66 +105,14 @@ function readPostPageThumbUrl(postId: number): string | null {
   return thumbFromMedia(readVideoMediaUrl(postId), postId);
 }
 
-function addPostWithThumb(collectionId: string, postId: number): void {
-  const thumbUrl = readPostPageThumbUrl(postId);
-  if (thumbUrl !== null) {
-    addPostToCollection(collectionId, postId, thumbUrl);
-    return;
-  }
-  addPostToCollection(collectionId, postId);
-}
-
-function memberIdSet(postId: number): Set<string> {
-  return new Set(playlistsContaining(postId).map((item) => item.id));
-}
-
-function filterPlaylists(
-  playlists: readonly Collection[],
-  query: string,
-): Collection[] {
-  const trimmed = query.trim().toLowerCase();
-  if (trimmed.length === 0) {
-    return [...playlists];
-  }
-  return playlists.filter((item) =>
-    item.name.toLowerCase().includes(trimmed),
-  );
-}
-
 export function CollectionsMenu(
   props: CollectionsMenuProps,
 ): JSX.Element {
   const [open, setOpen] = useState(false);
-  const [filter, setFilter] = useState("");
-  const [creating, setCreating] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [revision, setRevision] = useState(0);
   const triggerRef = useRef<HTMLButtonElement>(null);
-
-  const playlists = useMemo(() => {
-    void revision;
-    return listPlaylists();
-  }, [revision]);
-
-  const members = useMemo(() => {
-    void revision;
-    return memberIdSet(props.postId);
-  }, [props.postId, revision]);
-
-  const visible = useMemo(
-    () => filterPlaylists(playlists, filter),
-    [playlists, filter],
-  );
-
-  const bump = useCallback((): void => {
-    setRevision((value) => value + 1);
-  }, []);
 
   const close = useCallback((): void => {
     setOpen(false);
-    setCreating(false);
-    setNewName("");
-    setFilter("");
   }, []);
 
   const bindTrigger = useCallback((node: HTMLDivElement | null): void => {
@@ -195,29 +120,11 @@ export function CollectionsMenu(
     triggerRef.current = button instanceof HTMLButtonElement ? button : null;
   }, []);
 
-  const toggleMembership = useCallback(
-    (playlistId: string): void => {
-      if (members.has(playlistId)) {
-        removePostFromPlaylist(playlistId, props.postId);
-      } else {
-        addPostWithThumb(playlistId, props.postId);
-      }
-      bump();
-    },
-    [bump, members, props.postId],
+  const postId = props.postId;
+  const readThumbUrl = useCallback(
+    (): string | null => readPostPageThumbUrl(postId),
+    [postId],
   );
-
-  const commitNew = useCallback((): void => {
-    const name = newName.trim();
-    if (name.length === 0) {
-      return;
-    }
-    const playlist = createPlaylist(name);
-    addPostWithThumb(playlist.id, props.postId);
-    bump();
-    setCreating(false);
-    setNewName("");
-  }, [bump, newName, props.postId]);
 
   return (
     <div className={CLASS_WRAP} ref={bindTrigger}>
@@ -230,7 +137,7 @@ export function CollectionsMenu(
           setOpen((value) => !value);
         }}
       >
-        <IconPlus size={14} />
+        <IconPlus size={TRIGGER_ICON_PX} />
         {TEXT_COLLECTIONS}
       </Button>
       <Popover
@@ -240,66 +147,7 @@ export function CollectionsMenu(
         widthPx={ANCHORED_POPOVER_WIDTH_PX}
         aria-label={ARIA_COLLECTIONS}
       >
-        <TextField
-          value={filter}
-          onChange={setFilter}
-          placeholder={TEXT_FILTER_PLACEHOLDER}
-          aria-label={TEXT_FILTER_PLACEHOLDER}
-        />
-        {visible.map((playlist) => {
-          const checked = members.has(playlist.id);
-          return (
-            <button
-              key={playlist.id}
-              type="button"
-              className={CLASS_ITEM}
-              role="menuitemcheckbox"
-              aria-checked={checked}
-              aria-label={`${LABEL_TOGGLE_PREFIX} ${playlist.name}`}
-              onClick={() => {
-                toggleMembership(playlist.id);
-              }}
-            >
-              <span className={CLASS_CHECK} aria-hidden="true">
-                {checked ? <IconCheck size={14} /> : null}
-              </span>
-              <span className={CLASS_NAME}>{playlist.name}</span>
-            </button>
-          );
-        })}
-        {creating ? (
-          <div
-            className={CLASS_NEW_FORM}
-            onKeyDown={(event) => {
-              if (event.key === KEY_ENTER) {
-                event.preventDefault();
-                commitNew();
-              }
-            }}
-          >
-            <TextField
-              value={newName}
-              onChange={setNewName}
-              label={TEXT_NEW_NAME_LABEL}
-              aria-label={TEXT_NEW_NAME_LABEL}
-            />
-            <Button variant="primary" size="s" onClick={commitNew}>
-              {TEXT_CREATE}
-            </Button>
-          </div>
-        ) : (
-          <Button
-            variant="ghost"
-            size="s"
-            className={CLASS_NEW}
-            onClick={() => {
-              setCreating(true);
-            }}
-          >
-            <IconPlus size={14} />
-            {TEXT_NEW}
-          </Button>
-        )}
+        <CollectionPicker postId={postId} readThumbUrl={readThumbUrl} />
       </Popover>
     </div>
   );

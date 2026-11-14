@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RuleDesk Web
 // @namespace    https://github.com/kazekaze93/ruledesk-web
-// @version      0.16.7
+// @version      0.17.0
 // @description  Collections, playlists, favorites, artist updates, and page tweaks for rule34.xxx
 // @downloadURL  https://raw.githubusercontent.com/KazeKaze93/ruledesk-web/main/dist/ruledesk-web.user.js
 // @updateURL    https://raw.githubusercontent.com/KazeKaze93/ruledesk-web/main/dist/ruledesk-web.user.js
@@ -4249,7 +4249,7 @@ function a(t, e, n$6, u, a, i) {
 }
 var KEY_ARROW_DOWN = "ArrowDown";
 var KEY_ARROW_UP = "ArrowUp";
-var KEY_ENTER$3 = "Enter";
+var KEY_ENTER$1 = "Enter";
 var KEY_ESCAPE$2 = "Escape";
 var NO_ACTIVE_INDEX = -1;
 var AUTOCOMPLETE_FIELD_CSS = `
@@ -4418,7 +4418,7 @@ function AutocompleteField(props) {
 						});
 						return;
 					}
-					if (event.key === KEY_ENTER$3) {
+					if (event.key === KEY_ENTER$1) {
 						if (listOpen && activeOption !== void 0) {
 							event.preventDefault();
 							selectOption(activeOption);
@@ -11635,6 +11635,233 @@ var playlistBarFeature = {
 	css: FEATURE_CSS$6,
 	mount: mountPlaylistBar
 };
+var COLLECTION_PICKER_CLASS = "rdw-collection-picker";
+var COLLECTION_PICKER_ITEM_CLASS = "rdw-collection-picker-item";
+var COLLECTION_PICKER_COUNT_CLASS = "rdw-collection-picker-count";
+var COLLECTION_PICKER_NEW_CLASS = "rdw-collection-picker-new";
+var CLASS_LIST = "rdw-collection-picker-list";
+var CLASS_CHECK = "rdw-collection-picker-check";
+var CLASS_NAME$1 = "rdw-collection-picker-name";
+var CLASS_EMPTY = "rdw-collection-picker-empty";
+var CLASS_NEW_FIELD = "rdw-collection-picker-new-field";
+var COLLECTION_PICKER_TEXT = {
+	create: "Create",
+	newName: "New collection name",
+	filter: "Filter collections…",
+	empty: "No collections yet",
+	noMatch: "No matching collections",
+	togglePrefix: "Toggle collection",
+	list: "Custom collections"
+};
+var MEMBER_ROLE = "menuitemcheckbox";
+var CHECK_ICON_PX = 12;
+var CHECK_BOX_PX = 15;
+var ROW_GAP_PX = 8;
+var STACK_GAP_PX = 6;
+var COLLECTION_PICKER_CSS = `
+.${COLLECTION_PICKER_CLASS} {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: ${String(STACK_GAP_PX)}px;
+  min-width: 0;
+  color: var(--rdw-text);
+  font: 12px/1.35 var(--rdw-font);
+}
+.${CLASS_LIST} {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+  max-height: ${String(232)}px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+button.${COLLECTION_PICKER_ITEM_CLASS} {
+  display: flex;
+  align-items: center;
+  gap: ${String(ROW_GAP_PX)}px;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: ${String(28)}px;
+  margin: 0;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--rdw-radius-s);
+  background: transparent;
+  color: var(--rdw-text);
+  font: inherit;
+  font-weight: 400;
+  text-align: left;
+  cursor: pointer;
+}
+button.${COLLECTION_PICKER_ITEM_CLASS}:hover,
+button.${COLLECTION_PICKER_ITEM_CLASS}:focus-visible {
+  background: var(--rdw-surface-2);
+}
+button.${COLLECTION_PICKER_ITEM_CLASS}:focus-visible {
+  outline: 2px solid var(--rdw-accent);
+  outline-offset: -2px;
+}
+.${CLASS_CHECK} {
+  flex: 0 0 ${String(CHECK_BOX_PX)}px;
+  display: inline-grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: ${String(CHECK_BOX_PX)}px;
+  height: ${String(CHECK_BOX_PX)}px;
+  border: 1px solid var(--rdw-border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--rdw-surface);
+}
+.${COLLECTION_PICKER_ITEM_CLASS}[aria-checked="true"] .${CLASS_CHECK} {
+  background: var(--rdw-accent);
+  border-color: var(--rdw-accent);
+}
+.${CLASS_NAME$1} {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.${COLLECTION_PICKER_COUNT_CLASS} {
+  flex: 0 0 auto;
+  color: var(--rdw-muted);
+  font-variant-numeric: tabular-nums;
+}
+.${CLASS_EMPTY} {
+  margin: 0;
+  padding: 4px 6px;
+  color: var(--rdw-muted);
+}
+form.${COLLECTION_PICKER_NEW_CLASS} {
+  display: flex;
+  align-items: center;
+  gap: ${String(STACK_GAP_PX)}px;
+  margin: 0;
+  padding-top: ${String(STACK_GAP_PX)}px;
+  border-top: 1px solid var(--rdw-border);
+}
+.${COLLECTION_PICKER_NEW_CLASS} .${CLASS_NEW_FIELD} {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+}
+`.trim();
+function foldName(name) {
+	return name.trim().toLowerCase();
+}
+function matchesFilter(collection, filter) {
+	const needle = foldName(filter);
+	return needle.length === 0 || collection.name.toLowerCase().includes(needle);
+}
+function addPost(collectionId, postId, readThumbUrl) {
+	const thumbUrl = readThumbUrl();
+	if (thumbUrl === null) {
+		addPostToCollection(collectionId, postId);
+		return;
+	}
+	addPostToCollection(collectionId, postId, thumbUrl);
+}
+/**
+* Custom collections of one post: a checkbox row per collection with its post
+* count, and a "name + Create" row. Used by the post panel and the grid "+" menu.
+* A new name that matches an existing custom collection adds the post to it.
+*/
+function CollectionPicker(props) {
+	const [filter, setFilter] = d("");
+	const [newName, setNewName] = d("");
+	const [, setRevision] = d(0);
+	const collections = listPlaylists();
+	const memberIds = new Set(playlistsContaining(props.postId).map((item) => item.id));
+	const filterShown = collections.length > 8;
+	const visible = filterShown ? collections.filter((item) => matchesFilter(item, filter)) : collections;
+	const changed = () => {
+		setRevision((value) => value + 1);
+		props.onChange?.();
+	};
+	const toggle = (collectionId) => {
+		if (memberIds.has(collectionId)) removePostFromPlaylist(collectionId, props.postId);
+		else addPost(collectionId, props.postId, props.readThumbUrl);
+		changed();
+	};
+	const createFromName = () => {
+		const name = newName.trim();
+		if (name.length === 0) return;
+		addPost((listPlaylists().find((item) => foldName(item.name) === foldName(name)) ?? createPlaylist(name)).id, props.postId, props.readThumbUrl);
+		setNewName("");
+		changed();
+	};
+	const emptyText = collections.length === 0 ? COLLECTION_PICKER_TEXT.empty : COLLECTION_PICKER_TEXT.noMatch;
+	return /* @__PURE__ */ a("div", {
+		className: COLLECTION_PICKER_CLASS,
+		children: [
+			/* @__PURE__ */ a("style", { children: COLLECTION_PICKER_CSS }),
+			filterShown ? /* @__PURE__ */ a(TextField, {
+				value: filter,
+				onChange: setFilter,
+				placeholder: COLLECTION_PICKER_TEXT.filter,
+				"aria-label": COLLECTION_PICKER_TEXT.filter
+			}) : null,
+			visible.length === 0 ? /* @__PURE__ */ a("p", {
+				className: CLASS_EMPTY,
+				children: emptyText
+			}) : /* @__PURE__ */ a("div", {
+				className: CLASS_LIST,
+				role: "group",
+				"aria-label": COLLECTION_PICKER_TEXT.list,
+				children: visible.map((collection) => /* @__PURE__ */ a("button", {
+					type: "button",
+					className: COLLECTION_PICKER_ITEM_CLASS,
+					role: MEMBER_ROLE,
+					"aria-checked": memberIds.has(collection.id),
+					"aria-label": `${COLLECTION_PICKER_TEXT.togglePrefix} ${collection.name}`,
+					onClick: (event) => {
+						event.preventDefault();
+						event.stopPropagation();
+						toggle(collection.id);
+					},
+					children: [
+						/* @__PURE__ */ a("span", {
+							className: CLASS_CHECK,
+							"aria-hidden": "true",
+							children: memberIds.has(collection.id) ? /* @__PURE__ */ a(IconCheck, { size: CHECK_ICON_PX }) : null
+						}),
+						/* @__PURE__ */ a("span", {
+							className: CLASS_NAME$1,
+							children: collection.name
+						}),
+						/* @__PURE__ */ a("span", {
+							className: COLLECTION_PICKER_COUNT_CLASS,
+							children: String(collection.postIds?.length ?? 0)
+						})
+					]
+				}, collection.id))
+			}),
+			/* @__PURE__ */ a("form", {
+				className: COLLECTION_PICKER_NEW_CLASS,
+				onSubmit: (event) => {
+					event.preventDefault();
+					event.stopPropagation();
+					createFromName();
+				},
+				children: [/* @__PURE__ */ a(TextField, {
+					className: CLASS_NEW_FIELD,
+					value: newName,
+					onChange: setNewName,
+					placeholder: COLLECTION_PICKER_TEXT.newName,
+					"aria-label": COLLECTION_PICKER_TEXT.newName
+				}), /* @__PURE__ */ a(Button, {
+					type: "submit",
+					variant: "primary",
+					size: "s",
+					disabled: newName.trim().length === 0,
+					children: COLLECTION_PICKER_TEXT.create
+				})]
+			})
+		]
+	});
+}
 var FEATURE_ID$5 = "playlist-menu";
 var FEATURE_LABEL$5 = "Add to collection button";
 var FEATURE_PAGES$5 = ["list", "post"];
@@ -11642,25 +11869,12 @@ var CLASS_ADD = "rdw-playlist-add";
 var CLASS_ADD_IN = "rdw-playlist-add--in";
 var CLASS_MENU = "rdw-playlist-menu";
 var CLASS_MENU_POPUP = "rdw-playlist-menu--popup";
-var CLASS_LIST = "rdw-playlist-menu-list";
-var CLASS_ITEM$2 = "rdw-playlist-menu-item";
-var CLASS_CHECK$1 = "rdw-playlist-menu-check";
-var CLASS_NAME$2 = "rdw-playlist-menu-name";
-var CLASS_NEW$1 = "rdw-playlist-menu-new";
-var CLASS_NEW_FORM$1 = "rdw-playlist-menu-new-form";
-var CLASS_NEW_INPUT = "rdw-playlist-menu-new-input";
-var CLASS_NEW_SUBMIT = "rdw-playlist-menu-new-submit";
 var ATTR_POST_ID = "data-rdw-post-id";
 var TEXT_ADD_GLYPH = "+";
-var TEXT_NEW_PLAYLIST = "New collection…";
-var TEXT_CREATE$1 = "Create";
-var TEXT_CHECK_MARK = "✓";
 var LABEL_ADD = "Add to collection";
-var LABEL_TOGGLE_PREFIX$1 = "Toggle collection";
-var LABEL_NEW_NAME = "New collection name";
 var MENU_Z_INDEX = 2147483645;
-var MENU_MIN_WIDTH_PX = 180;
-var MENU_MAX_HEIGHT_PX = 280;
+var MENU_WIDTH_PX = 260;
+var MENU_PADDING_PX = 8;
 var MENU_GAP_PX = 4;
 var BUTTON_SIZE_PX = 28;
 var BUTTON_OFFSET_PX = 6;
@@ -11670,7 +11884,6 @@ var FOCUS_OUTLINE_OFFSET = "2px";
 var EVENT_KEYDOWN = "keydown";
 var EVENT_POINTERDOWN = "pointerdown";
 var KEY_ESCAPE = "Escape";
-var KEY_ENTER$2 = "Enter";
 var BODY_SELECTOR$3 = `body.${featureBodyClass(FEATURE_ID$5)}`;
 var FEATURE_CSS$5 = `
 ${BODY_SELECTOR$3} .${CLASS_ADD} {
@@ -11719,100 +11932,19 @@ ${BODY_SELECTOR$3} .${CLASS_ADD}.${CLASS_ADD_IN} {
 }
 ${BODY_SELECTOR$3} .${CLASS_MENU} {
   box-sizing: border-box;
-  min-width: ${String(MENU_MIN_WIDTH_PX)}px;
-  max-height: ${String(MENU_MAX_HEIGHT_PX)}px;
-  overflow: auto;
-  padding: 0.35rem;
-  border: 1px solid #444;
-  border-radius: 4px;
-  background: #fff;
-  color: #1a1a1a;
-  font: 13px/1.3 Segoe UI, system-ui, sans-serif;
+  width: ${String(MENU_WIDTH_PX)}px;
+  max-width: calc(100vw - ${String(8)}px);
+  padding: ${String(MENU_PADDING_PX)}px;
+  border: 1px solid var(--rdw-border);
+  border-radius: var(--rdw-radius-l);
+  background: var(--rdw-surface);
+  color: var(--rdw-text);
+  font: 12px/1.35 var(--rdw-font);
 }
 ${BODY_SELECTOR$3} .${CLASS_MENU}.${CLASS_MENU_POPUP} {
   position: fixed;
   z-index: ${String(MENU_Z_INDEX)};
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
-}
-${BODY_SELECTOR$3} .${CLASS_LIST} {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  margin: 0 0 0.35rem;
-  padding: 0;
-  list-style: none;
-}
-${BODY_SELECTOR$3} .${CLASS_ITEM$2} {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  width: 100%;
-  margin: 0;
-  padding: 0.25rem 0.35rem;
-  border: 0;
-  border-radius: 2px;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-${BODY_SELECTOR$3} .${CLASS_ITEM$2}:hover,
-${BODY_SELECTOR$3} .${CLASS_ITEM$2}:focus-visible {
-  background: #e8f0fe;
-}
-${BODY_SELECTOR$3} .${CLASS_ITEM$2}:focus-visible {
-  outline: ${FOCUS_OUTLINE};
-  outline-offset: ${FOCUS_OUTLINE_OFFSET};
-}
-${BODY_SELECTOR$3} .${CLASS_CHECK$1} {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1rem;
-  flex: 0 0 1rem;
-  font-weight: 700;
-}
-${BODY_SELECTOR$3} .${CLASS_NAME$2} {
-  flex: 1 1 auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-${BODY_SELECTOR$3} .${CLASS_NEW$1},
-${BODY_SELECTOR$3} .${CLASS_NEW_SUBMIT} {
-  display: block;
-  width: 100%;
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0.3rem 0.4rem;
-  border: 1px solid #666;
-  border-radius: 2px;
-  background: #f5f5f5;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-  text-align: left;
-}
-${BODY_SELECTOR$3} .${CLASS_NEW$1}:focus-visible,
-${BODY_SELECTOR$3} .${CLASS_NEW_SUBMIT}:focus-visible,
-${BODY_SELECTOR$3} .${CLASS_NEW_INPUT}:focus-visible {
-  outline: ${FOCUS_OUTLINE};
-  outline-offset: ${FOCUS_OUTLINE_OFFSET};
-}
-${BODY_SELECTOR$3} .${CLASS_NEW_FORM$1} {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-${BODY_SELECTOR$3} .${CLASS_NEW_INPUT} {
-  box-sizing: border-box;
-  width: 100%;
-  margin: 0;
-  padding: 0.3rem 0.4rem;
-  border: 1px solid #666;
-  border-radius: 2px;
-  font: inherit;
+  box-shadow: var(--rdw-shadow-2);
 }
 `;
 var NO_THUMB_URL = () => null;
@@ -11876,14 +12008,6 @@ function readThumbUrlFromTrigger(button) {
 	if (!(thumb instanceof HTMLElement)) return null;
 	return readPreviewThumbUrl(thumb, postId);
 }
-function addPostWithThumb$1(collectionId, postId, readThumbUrl) {
-	const thumbUrl = readThumbUrl();
-	if (thumbUrl !== null) {
-		addPostToCollection(collectionId, postId, thumbUrl);
-		return;
-	}
-	addPostToCollection(collectionId, postId);
-}
 function findThumbLink$1(thumb, postId) {
 	const byId = thumb.querySelector(postAnchorSelector(postId));
 	if (byId instanceof HTMLAnchorElement) return byId;
@@ -11892,6 +12016,7 @@ function findThumbLink$1(thumb, postId) {
 }
 function closeOpenMenu() {
 	if (openPopup === null) return;
+	Q$1(null, openPopup.menu);
 	openPopup.menu.remove();
 	openPopup.trigger.setAttribute("aria-expanded", "false");
 	openPopup = null;
@@ -11957,103 +12082,21 @@ function syncAddButtonsForPost(postId) {
 		applyAddButtonState(node, postId);
 	}
 }
-function fillPlaylistList(list, postId, readThumbUrl) {
-	list.replaceChildren();
-	const playlists = listPlaylists();
-	const memberIds = new Set(playlistsContaining(postId).map((item) => item.id));
-	for (const playlist of playlists) {
-		const item = document.createElement("button");
-		item.type = "button";
-		item.className = CLASS_ITEM$2;
-		item.setAttribute("role", "menuitemcheckbox");
-		const checked = memberIds.has(playlist.id);
-		item.setAttribute("aria-checked", checked ? "true" : "false");
-		item.setAttribute("aria-label", `${LABEL_TOGGLE_PREFIX$1} ${playlist.name}`);
-		const check = document.createElement("span");
-		check.className = CLASS_CHECK$1;
-		check.setAttribute("aria-hidden", "true");
-		check.textContent = checked ? TEXT_CHECK_MARK : "";
-		const name = document.createElement("span");
-		name.className = CLASS_NAME$2;
-		name.textContent = playlist.name;
-		item.append(check, name);
-		item.addEventListener("click", (event) => {
-			event.preventDefault();
-			event.stopPropagation();
-			if (memberIds.has(playlist.id)) removePostFromPlaylist(playlist.id, postId);
-			else addPostWithThumb$1(playlist.id, postId, readThumbUrl);
-			fillPlaylistList(list, postId, readThumbUrl);
-			syncAddButtonsForPost(postId);
-		});
-		list.append(item);
-	}
-}
-function showNewPlaylistForm(host, list, postId, readThumbUrl, onCreated) {
-	host.replaceChildren();
-	const form = document.createElement("div");
-	form.className = CLASS_NEW_FORM$1;
-	const input = document.createElement("input");
-	input.type = "text";
-	input.className = CLASS_NEW_INPUT;
-	input.setAttribute("aria-label", LABEL_NEW_NAME);
-	input.autocomplete = "off";
-	const submit = document.createElement("button");
-	submit.type = "button";
-	submit.className = CLASS_NEW_SUBMIT;
-	submit.textContent = TEXT_CREATE$1;
-	const commit = () => {
-		const name = input.value.trim();
-		if (name.length === 0) return;
-		addPostWithThumb$1(createPlaylist(name).id, postId, readThumbUrl);
-		fillPlaylistList(list, postId, readThumbUrl);
-		syncAddButtonsForPost(postId);
-		onCreated?.();
-	};
-	submit.addEventListener("click", (event) => {
-		event.preventDefault();
-		event.stopPropagation();
-		commit();
-	});
-	input.addEventListener("keydown", (event) => {
-		if (event.key !== KEY_ENTER$2) return;
-		event.preventDefault();
-		event.stopPropagation();
-		commit();
-	});
-	form.append(input, submit);
-	host.append(form);
-	input.focus();
-}
-function mountNewPlaylistControl(host, list, postId, readThumbUrl, onCreated) {
-	host.replaceChildren();
-	const button = document.createElement("button");
-	button.type = "button";
-	button.className = CLASS_NEW$1;
-	button.textContent = TEXT_NEW_PLAYLIST;
-	button.addEventListener("click", (event) => {
-		event.preventDefault();
-		event.stopPropagation();
-		showNewPlaylistForm(host, list, postId, readThumbUrl, onCreated);
-	});
-	host.append(button);
-}
 /**
-* Builds the playlist membership menu for a post (list popup or post-actions).
-* Callers own placement; list page uses a single floating instance.
+* Builds the collection menu for a post: a themed panel holding the shared
+* collection picker. Callers own placement; the list page keeps one open at a time.
 */
 function createPlaylistMenu(postId, options) {
-	const readThumbUrl = options?.readThumbUrl ?? NO_THUMB_URL;
 	const root = document.createElement("div");
 	root.className = CLASS_MENU;
 	root.setAttribute("role", "menu");
 	root.setAttribute(ATTR_POST_ID, String(postId));
-	const list = document.createElement("div");
-	list.className = CLASS_LIST;
-	list.setAttribute("role", "group");
-	fillPlaylistList(list, postId, readThumbUrl);
-	const newHost = document.createElement("div");
-	mountNewPlaylistControl(newHost, list, postId, readThumbUrl, options?.onCreated);
-	root.append(list, newHost);
+	const onChange = options?.onChange;
+	Q$1(k$1(CollectionPicker, {
+		postId,
+		readThumbUrl: options?.readThumbUrl ?? NO_THUMB_URL,
+		...onChange === void 0 ? {} : { onChange }
+	}), root);
 	return root;
 }
 function openMenuForButton(button, postId) {
@@ -12063,8 +12106,8 @@ function openMenuForButton(button, postId) {
 	}
 	closeOpenMenu();
 	const menu = createPlaylistMenu(postId, {
-		onCreated: () => {
-			closeOpenMenu();
+		onChange: () => {
+			syncAddButtonsForPost(postId);
 		},
 		readThumbUrl: () => readThumbUrlFromTrigger(button)
 	});
@@ -12129,7 +12172,7 @@ var playlistMenuFeature = {
 	mount: mountPlaylistMenu
 };
 var CLASS_STRIP = "rdw-post-panel-collection-queue";
-var CLASS_NAME$1 = "rdw-post-panel-collection-queue-name";
+var CLASS_NAME = "rdw-post-panel-collection-queue-name";
 var CLASS_POSITION = "rdw-post-panel-collection-queue-position";
 var CLASS_NAV = "rdw-post-panel-collection-queue-nav";
 var CLASS_FOCUSABLE = "rdw-kit-focusable";
@@ -12156,7 +12199,7 @@ ${KIT_FOCUS_CSS}
   gap: ${String(QUEUE_GAP_PX)}px;
   min-width: 0;
 }
-.${CLASS_NAME$1} {
+.${CLASS_NAME} {
   flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
@@ -12336,7 +12379,7 @@ function CollectionQueue(props) {
 		children: [
 			/* @__PURE__ */ a("style", { children: QUEUE_CSS }),
 			/* @__PURE__ */ a("a", {
-				className: `${CLASS_NAME$1} ${CLASS_FOCUSABLE}`,
+				className: `${CLASS_NAME} ${CLASS_FOCUSABLE}`,
 				href: queue.collectionHref,
 				children: queue.name
 			}),
@@ -12913,22 +12956,12 @@ var videoPlayerFeature = {
 	mount: mountVideoPlayer
 };
 var TEXT_COLLECTIONS = "Collections";
-var TEXT_FILTER_PLACEHOLDER = "Filter collections…";
-var TEXT_NEW = "New custom collection";
-var TEXT_CREATE = "Create";
-var TEXT_NEW_NAME_LABEL = "New collection name";
 var ARIA_COLLECTIONS = "Custom collections";
-var LABEL_TOGGLE_PREFIX = "Toggle collection";
-var KEY_ENTER$1 = "Enter";
+var TRIGGER_ICON_PX = 14;
 var VIDEO_SOURCE_SELECTOR = "source";
 var POST_ANCHOR_ID_PREFIX = "p";
 var CLASS_WRAP$1 = "rdw-post-panel-collections";
 var CLASS_TRIGGER = "rdw-post-panel-collections-btn";
-var CLASS_ITEM$1 = "rdw-post-panel-collection-item";
-var CLASS_CHECK = "rdw-post-panel-collection-check";
-var CLASS_NAME = "rdw-post-panel-collection-name";
-var CLASS_NEW = "rdw-post-panel-collection-new";
-var CLASS_NEW_FORM = "rdw-post-panel-collection-new-form";
 function readAttributeSrc(element) {
 	if (!(element instanceof HTMLSourceElement)) {
 		const current = element.currentSrc.trim();
@@ -12981,70 +13014,18 @@ function readPostPageThumbUrl(postId) {
 	}
 	return thumbFromMedia(readVideoMediaUrl(postId), postId);
 }
-function addPostWithThumb(collectionId, postId) {
-	const thumbUrl = readPostPageThumbUrl(postId);
-	if (thumbUrl !== null) {
-		addPostToCollection(collectionId, postId, thumbUrl);
-		return;
-	}
-	addPostToCollection(collectionId, postId);
-}
-function memberIdSet(postId) {
-	return new Set(playlistsContaining(postId).map((item) => item.id));
-}
-function filterPlaylists(playlists, query) {
-	const trimmed = query.trim().toLowerCase();
-	if (trimmed.length === 0) return [...playlists];
-	return playlists.filter((item) => item.name.toLowerCase().includes(trimmed));
-}
 function CollectionsMenu(props) {
 	const [open, setOpen] = d(false);
-	const [filter, setFilter] = d("");
-	const [creating, setCreating] = d(false);
-	const [newName, setNewName] = d("");
-	const [revision, setRevision] = d(0);
 	const triggerRef = T(null);
-	const playlists = w$1(() => {
-		return listPlaylists();
-	}, [revision]);
-	const members = w$1(() => {
-		return memberIdSet(props.postId);
-	}, [props.postId, revision]);
-	const visible = w$1(() => filterPlaylists(playlists, filter), [playlists, filter]);
-	const bump = b(() => {
-		setRevision((value) => value + 1);
-	}, []);
 	const close = b(() => {
 		setOpen(false);
-		setCreating(false);
-		setNewName("");
-		setFilter("");
 	}, []);
 	const bindTrigger = b((node) => {
 		const button = node?.querySelector("button");
 		triggerRef.current = button instanceof HTMLButtonElement ? button : null;
 	}, []);
-	const toggleMembership = b((playlistId) => {
-		if (members.has(playlistId)) removePostFromPlaylist(playlistId, props.postId);
-		else addPostWithThumb(playlistId, props.postId);
-		bump();
-	}, [
-		bump,
-		members,
-		props.postId
-	]);
-	const commitNew = b(() => {
-		const name = newName.trim();
-		if (name.length === 0) return;
-		addPostWithThumb(createPlaylist(name).id, props.postId);
-		bump();
-		setCreating(false);
-		setNewName("");
-	}, [
-		bump,
-		newName,
-		props.postId
-	]);
+	const postId = props.postId;
+	const readThumbUrl = b(() => readPostPageThumbUrl(postId), [postId]);
 	return /* @__PURE__ */ a("div", {
 		className: CLASS_WRAP$1,
 		ref: bindTrigger,
@@ -13056,70 +13037,17 @@ function CollectionsMenu(props) {
 			onClick: () => {
 				setOpen((value) => !value);
 			},
-			children: [/* @__PURE__ */ a(IconPlus, { size: 14 }), TEXT_COLLECTIONS]
+			children: [/* @__PURE__ */ a(IconPlus, { size: TRIGGER_ICON_PX }), TEXT_COLLECTIONS]
 		}), /* @__PURE__ */ a(Popover, {
 			open,
 			onClose: close,
 			anchorRef: triggerRef,
 			widthPx: 260,
 			"aria-label": ARIA_COLLECTIONS,
-			children: [
-				/* @__PURE__ */ a(TextField, {
-					value: filter,
-					onChange: setFilter,
-					placeholder: TEXT_FILTER_PLACEHOLDER,
-					"aria-label": TEXT_FILTER_PLACEHOLDER
-				}),
-				visible.map((playlist) => {
-					const checked = members.has(playlist.id);
-					return /* @__PURE__ */ a("button", {
-						type: "button",
-						className: CLASS_ITEM$1,
-						role: "menuitemcheckbox",
-						"aria-checked": checked,
-						"aria-label": `${LABEL_TOGGLE_PREFIX} ${playlist.name}`,
-						onClick: () => {
-							toggleMembership(playlist.id);
-						},
-						children: [/* @__PURE__ */ a("span", {
-							className: CLASS_CHECK,
-							"aria-hidden": "true",
-							children: checked ? /* @__PURE__ */ a(IconCheck, { size: 14 }) : null
-						}), /* @__PURE__ */ a("span", {
-							className: CLASS_NAME,
-							children: playlist.name
-						})]
-					}, playlist.id);
-				}),
-				creating ? /* @__PURE__ */ a("div", {
-					className: CLASS_NEW_FORM,
-					onKeyDown: (event) => {
-						if (event.key === KEY_ENTER$1) {
-							event.preventDefault();
-							commitNew();
-						}
-					},
-					children: [/* @__PURE__ */ a(TextField, {
-						value: newName,
-						onChange: setNewName,
-						label: TEXT_NEW_NAME_LABEL,
-						"aria-label": TEXT_NEW_NAME_LABEL
-					}), /* @__PURE__ */ a(Button, {
-						variant: "primary",
-						size: "s",
-						onClick: commitNew,
-						children: TEXT_CREATE
-					})]
-				}) : /* @__PURE__ */ a(Button, {
-					variant: "ghost",
-					size: "s",
-					className: CLASS_NEW,
-					onClick: () => {
-						setCreating(true);
-					},
-					children: [/* @__PURE__ */ a(IconPlus, { size: 14 }), TEXT_NEW]
-				})
-			]
+			children: /* @__PURE__ */ a(CollectionPicker, {
+				postId,
+				readThumbUrl
+			})
 		})]
 	});
 }
@@ -13584,49 +13512,6 @@ ${BODY_SELECTOR$1} #${POST_ACTIONS_ID} .rdw-post-panel-tabpanel[hidden] {
 }
 ${BODY_SELECTOR$1} #${POST_ACTIONS_ID} .rdw-post-panel-comments-host {
   min-width: 0;
-}
-${BODY_SELECTOR$1} #${POST_ACTIONS_ID} .rdw-post-panel-collection-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  margin: 0;
-  padding: 5px 6px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-${BODY_SELECTOR$1} #${POST_ACTIONS_ID} .rdw-post-panel-collection-item:hover,
-${BODY_SELECTOR$1} #${POST_ACTIONS_ID} .rdw-post-panel-collection-item:focus-visible {
-  background: var(--rdw-surface-2);
-}
-${BODY_SELECTOR$1} #${POST_ACTIONS_ID} .rdw-post-panel-collection-check {
-  width: 15px;
-  height: 15px;
-  flex: 0 0 15px;
-  display: inline-grid;
-  place-items: center;
-  border: 1px solid var(--rdw-border);
-  border-radius: 4px;
-  color: var(--rdw-surface);
-  background: transparent;
-}
-${BODY_SELECTOR$1} #${POST_ACTIONS_ID} .rdw-post-panel-collection-item[aria-checked="true"] .rdw-post-panel-collection-check {
-  background: var(--rdw-accent);
-  border-color: var(--rdw-accent);
-}
-${BODY_SELECTOR$1} #${POST_ACTIONS_ID} .rdw-post-panel-collection-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-${BODY_SELECTOR$1} #${POST_ACTIONS_ID} .rdw-post-panel-collection-new-form {
-  display: grid;
-  gap: 6px;
 }
 @media ${NARROW_MEDIA_QUERY} {
   ${BODY_SELECTOR$1} #${POST_ACTIONS_ID}.${CLASS_MODE_WIDE} {
@@ -15177,12 +15062,12 @@ bootEarly();
 whenDomReady(() => {
 	applyLayoutBeforePaint();
 	scheduleAfterFirstPaint(() => {
-		module.import('./app-DuBBVOtb-XmQCKNn3.js').then(({ startApp }) => {
+		module.import('./app-DhUP2RYg-DJMCOTF7.js').then(({ startApp }) => {
 			startApp();
 		});
 	});
 });})}}));
-System.register("./app-DuBBVOtb-XmQCKNn3.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var yieldToMain,detectPageKind,mountCards,syncFavoritesPage,runFeaturesYielding,getAppearance,applyAppearanceTheme,ensureDocumentStyles,SITE_SELECTORS,log,SITE_ORIGIN,SEARCH_PARAM_TAGS,normalizeArtistTag,CSS_CLASS,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,HEADER_SELECTOR,RDW_OWN_PAGE_CLASS,MENU_ITEM_ID,parseRdwHash,getSyncState,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,runFavoritesSync,UI_TEXT,Q$1,RDW_PAGE_ROOT_ID,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,resolveFavoritesUserId,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,rdwPageHash,createFavoritesSyncTabId,APPEARANCE_BACKGROUND_KEY,readArtistsMirror,listArtistTags,writeArtistsMirror,reloadFromStorage,save,CURRENT_PAGE_CLASS,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,a,applyTokenProperties,resolveAppearancePalette,isCollectionDetailPage,menuRouteForPage,getSiteSkinCss,$$1,PANEL_UI_CLASS,TOKEN_VAR,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,SITE_LIGHT_C_BG,SITE_LIGHT_C_BG_ALT,SITE_DARK_C_BG,SITE_DARK_C_BORDER,APPEARANCE_BACKGROUND_TOO_LARGE;return{setters:[function(module){yieldToMain=module.y;detectPageKind=module.d;mountCards=module.m;syncFavoritesPage=module.s;runFeaturesYielding=module.r;getAppearance=module.g;applyAppearanceTheme=module.a;ensureDocumentStyles=module.e;SITE_SELECTORS=module.S;log=module.l;SITE_ORIGIN=module.b;SEARCH_PARAM_TAGS=module.c;normalizeArtistTag=module.n;CSS_CLASS=module.C;ensureStyleElement=module.f;RDW_OWN_PAGE_STYLE_ID=module.R;buildOwnPageCss=module.h;HEADER_SELECTOR=module.H;RDW_OWN_PAGE_CLASS=module.i;MENU_ITEM_ID=module.M;parseRdwHash=module.p;getSyncState=module.j;readFavoritesSyncMode=module.k;FAVORITES_SYNC_MODE_FULL=module.F;runFavoritesSync=module.o;UI_TEXT=module.U;Q$1=module.Q;RDW_PAGE_ROOT_ID=module.q;NAVBAR_SELECTOR=module.N;FEED_MENU_ITEM_ID=module.t;RDW_HASH_COLLECTIONS=module.u;MENU_LABEL=module.v;RDW_HASH_FOLLOWING=module.w;resolveFavoritesUserId=module.x;MY_FAVORITES_CONTAINER_ID=module.z;RDW_HASH_SETTINGS=module.A;rdwPageHash=module.B;createFavoritesSyncTabId=module.D;APPEARANCE_BACKGROUND_KEY=module.E;readArtistsMirror=module.G;listArtistTags=module.I;writeArtistsMirror=module.J;reloadFromStorage=module.K;save=module.L;CURRENT_PAGE_CLASS=module.O;setSyncState=module.P;SEARCH_PARAM_PAGE=module.T;FAVORITES_PAGE=module.V;FAVORITES_SECTION_VIEW=module.W;SEARCH_PATH=module.X;a=module.Y;applyTokenProperties=module.Z;resolveAppearancePalette=module._;isCollectionDetailPage=module.$;menuRouteForPage=module.a0;getSiteSkinCss=module.a1;$$1=module.a2;PANEL_UI_CLASS=module.a3;TOKEN_VAR=module.a4;RDW_THEME_ATTR=module.a5;APPEARANCE_THEME_SITE=module.a6;APPEARANCE_THEME_SITE_DARK=module.a7;SITE_LIGHT_C_BG=module.a8;SITE_LIGHT_C_BG_ALT=module.a9;SITE_DARK_C_BG=module.aa;SITE_DARK_C_BORDER=module.ab;APPEARANCE_BACKGROUND_TOO_LARGE=module.ac;}],execute:(function(){exports({i:navigateToRdwRoute,n:loadBackground,r:saveBackground,startApp:startApp,t:clearBackground});/** Matches host.tsx page title class (owned there; styled here for site polish). */
+System.register("./app-DhUP2RYg-DJMCOTF7.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var yieldToMain,detectPageKind,mountCards,syncFavoritesPage,runFeaturesYielding,getAppearance,applyAppearanceTheme,ensureDocumentStyles,SITE_SELECTORS,log,SITE_ORIGIN,SEARCH_PARAM_TAGS,normalizeArtistTag,CSS_CLASS,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,HEADER_SELECTOR,RDW_OWN_PAGE_CLASS,MENU_ITEM_ID,parseRdwHash,getSyncState,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,runFavoritesSync,UI_TEXT,Q$1,RDW_PAGE_ROOT_ID,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,resolveFavoritesUserId,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,rdwPageHash,createFavoritesSyncTabId,APPEARANCE_BACKGROUND_KEY,readArtistsMirror,listArtistTags,writeArtistsMirror,reloadFromStorage,save,CURRENT_PAGE_CLASS,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,a,applyTokenProperties,resolveAppearancePalette,isCollectionDetailPage,menuRouteForPage,getSiteSkinCss,$$1,PANEL_UI_CLASS,TOKEN_VAR,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,SITE_LIGHT_C_BG,SITE_LIGHT_C_BG_ALT,SITE_DARK_C_BG,SITE_DARK_C_BORDER,APPEARANCE_BACKGROUND_TOO_LARGE;return{setters:[function(module){yieldToMain=module.y;detectPageKind=module.d;mountCards=module.m;syncFavoritesPage=module.s;runFeaturesYielding=module.r;getAppearance=module.g;applyAppearanceTheme=module.a;ensureDocumentStyles=module.e;SITE_SELECTORS=module.S;log=module.l;SITE_ORIGIN=module.b;SEARCH_PARAM_TAGS=module.c;normalizeArtistTag=module.n;CSS_CLASS=module.C;ensureStyleElement=module.f;RDW_OWN_PAGE_STYLE_ID=module.R;buildOwnPageCss=module.h;HEADER_SELECTOR=module.H;RDW_OWN_PAGE_CLASS=module.i;MENU_ITEM_ID=module.M;parseRdwHash=module.p;getSyncState=module.j;readFavoritesSyncMode=module.k;FAVORITES_SYNC_MODE_FULL=module.F;runFavoritesSync=module.o;UI_TEXT=module.U;Q$1=module.Q;RDW_PAGE_ROOT_ID=module.q;NAVBAR_SELECTOR=module.N;FEED_MENU_ITEM_ID=module.t;RDW_HASH_COLLECTIONS=module.u;MENU_LABEL=module.v;RDW_HASH_FOLLOWING=module.w;resolveFavoritesUserId=module.x;MY_FAVORITES_CONTAINER_ID=module.z;RDW_HASH_SETTINGS=module.A;rdwPageHash=module.B;createFavoritesSyncTabId=module.D;APPEARANCE_BACKGROUND_KEY=module.E;readArtistsMirror=module.G;listArtistTags=module.I;writeArtistsMirror=module.J;reloadFromStorage=module.K;save=module.L;CURRENT_PAGE_CLASS=module.O;setSyncState=module.P;SEARCH_PARAM_PAGE=module.T;FAVORITES_PAGE=module.V;FAVORITES_SECTION_VIEW=module.W;SEARCH_PATH=module.X;a=module.Y;applyTokenProperties=module.Z;resolveAppearancePalette=module._;isCollectionDetailPage=module.$;menuRouteForPage=module.a0;getSiteSkinCss=module.a1;$$1=module.a2;PANEL_UI_CLASS=module.a3;TOKEN_VAR=module.a4;RDW_THEME_ATTR=module.a5;APPEARANCE_THEME_SITE=module.a6;APPEARANCE_THEME_SITE_DARK=module.a7;SITE_LIGHT_C_BG=module.a8;SITE_LIGHT_C_BG_ALT=module.a9;SITE_DARK_C_BG=module.aa;SITE_DARK_C_BORDER=module.ab;APPEARANCE_BACKGROUND_TOO_LARGE=module.ac;}],execute:(function(){exports({i:navigateToRdwRoute,n:loadBackground,r:saveBackground,startApp:startApp,t:clearBackground});/** Matches host.tsx page title class (owned there; styled here for site polish). */
 var PAGE_TITLE_CLASS$1 = "rdw-page-title";
 /** Matches kit SectionLabel class. */
 var SECTION_LABEL_CLASS = "rdw-section-label";
@@ -15472,28 +15357,28 @@ var collectionsFactory = null;
 var followingFactory = null;
 function getSettingsFactory() {
 	if (settingsFactory === null) settingsFactory = async () => {
-		const mod = await module.import('./settings-page-CXnKczZk-DZ2CABQD.js');
+		const mod = await module.import('./settings-page-U74z9Evd-DDunBAYN.js');
 		return /* @__PURE__ */ a(mod.SettingsPage, {});
 	};
 	return settingsFactory;
 }
 function getCollectionsFactory() {
 	if (collectionsFactory === null) collectionsFactory = async () => {
-		const mod = await module.import('./collections-page-DPB8RFSl-DouhkETp.js');
+		const mod = await module.import('./collections-page-BNyHdfFw-DouhkETp.js');
 		return /* @__PURE__ */ a(mod.CollectionsPage, {});
 	};
 	return collectionsFactory;
 }
 function getFollowingFactory() {
 	if (followingFactory === null) followingFactory = async () => {
-		const mod = await module.import('./following-page-CHZKTdqF-CdG-nCP_.js');
+		const mod = await module.import('./following-page-TiVKyY_X-CdG-nCP_.js');
 		return /* @__PURE__ */ a(mod.FollowingPage, {});
 	};
 	return followingFactory;
 }
 function collectionDetailFactory(collectionId) {
 	return async () => {
-		const mod = await module.import('./collection-detail-page-CK_S-PXz-DI32JGo9.js');
+		const mod = await module.import('./collection-detail-page-CtDtMSnq-CeFcVIfK.js');
 		return /* @__PURE__ */ a(mod.CollectionDetailPage, { collectionId }, collectionId);
 	};
 }
@@ -16195,7 +16080,7 @@ async function startApp() {
 	await yieldToMain();
 	maybeResumeFavoritesSync();
 }})}}));
-System.register("./settings-page-CXnKczZk-DZ2CABQD.js", ['./___monkey.entry.js','./app-DuBBVOtb-XmQCKNn3.js'],(function(exports){'use strict';var d,a,PANEL_UI_CLASS,Card,SectionLabel,Switch,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,NumberField,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,setGridFavButtonsVisible,P$1,T,A,getAppearance,applyAppearanceTheme,getSiteSkinCss,APPEARANCE_THEME_CUSTOM,KIT_FOCUS_CSS,Select,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,$$1,Segmented,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,TextField,Button,clampBackgroundDim,FEATURES,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,setFeatureEnabled,applyCssOnlyFeatureEnabled,isFeatureEnabled,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,applyCssOnlyFeatureChoice,getFeatureChoice,createAutocompleteQuerier,b,readSiteBlacklist,Chip,AutocompleteField,ProgressBar,createDefaultCustomTheme,AppearanceThemeSchema,prepareBackgroundImageFile,writeSiteBlacklist,runFavoritesSync,log,FAVORITES_SYNC_PAGE_PAUSE_MS,load,createDefaultStorage,clearStorageCache,clearFavsCache,getSyncState,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,setAppearance,loadFavSet,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,gridDensityFeature,FAVORITES_SYNC_MODE_INCREMENTAL,FAVORITES_SYNC_MODE_FULL,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureChoiceValue,getScreenPixelSize,loadBackground,clearBackground,saveBackground;return{setters:[function(module){d=module.ad;a=module.Y;PANEL_UI_CLASS=module.a3;Card=module.ae;SectionLabel=module.af;Switch=module.ag;UI_TEXT=module.U;TWEAKS_SWITCH_ID=module.ah;setTweaksEnabled=module.ai;NumberField=module.aj;UPDATES_GROUP_SIZE_ID=module.ak;setUpdatesGroupSize=module.al;getUpdatesGroupSize=module.am;PLAYLIST_CHUNK_SIZE_ID=module.an;setPlaylistChunkSize=module.ao;getPlaylistChunkSize=module.ap;GRID_FAV_CHECKBOX_ID=module.aq;setGridFavButtonsEnabled=module.ar;setGridFavButtonsVisible=module.as;P$1=module.at;T=module.au;A=module.av;getAppearance=module.g;applyAppearanceTheme=module.a;getSiteSkinCss=module.a1;APPEARANCE_THEME_CUSTOM=module.aw;KIT_FOCUS_CSS=module.ax;Select=module.ay;APPEARANCE_THEME_SITE=module.a6;APPEARANCE_THEME_SITE_DARK=module.a7;APPEARANCE_THEME_LIGHT=module.az;APPEARANCE_THEME_DARK=module.aA;$$1=module.a2;Segmented=module.aB;APPEARANCE_CUSTOM_BASE_LIGHT=module.aC;APPEARANCE_CUSTOM_BASE_DARK=module.aD;TextField=module.aE;Button=module.aF;clampBackgroundDim=module.aG;FEATURES=module.aH;featurePanelLabel=module.aI;FEATURE_CHECKBOX_ID_PREFIX=module.aJ;setFeatureEnabled=module.aK;applyCssOnlyFeatureEnabled=module.aL;isFeatureEnabled=module.aM;FEATURE_CHOICE_ID_PREFIX=module.aN;setFeatureChoiceValue=module.aO;applyCssOnlyFeatureChoice=module.aP;getFeatureChoice=module.aQ;createAutocompleteQuerier=module.aR;b=module.aS;readSiteBlacklist=module.aT;Chip=module.aU;AutocompleteField=module.aV;ProgressBar=module.aW;createDefaultCustomTheme=module.aX;AppearanceThemeSchema=module.aY;prepareBackgroundImageFile=module.aZ;writeSiteBlacklist=module.a_;runFavoritesSync=module.o;log=module.l;FAVORITES_SYNC_PAGE_PAUSE_MS=module.a$;load=module.b0;createDefaultStorage=module.b1;clearStorageCache=module.b2;clearFavsCache=module.b3;getSyncState=module.j;object=module.b4;StorageSchema=module.b5;optional=module.b6;string=module.b7;FavsSchema=module.b8;literal=module.b9;IMPORT_SCHEMA_ERROR_PREFIX=module.ba;stripLegacyPanelWindowSize=module.bb;save=module.L;migrateMarksFavToFavs=module.bc;FAVS_STORAGE_KEY=module.bd;createDefaultFavs=module.be;parseFavsStrict=module.bf;setAppearance=module.bg;loadFavSet=module.bh;STORAGE_BACKUP_KEY=module.bi;extractFavIdsFromMarks=module.bj;gridDensityFeature=module.bk;FAVORITES_SYNC_MODE_INCREMENTAL=module.bl;FAVORITES_SYNC_MODE_FULL=module.F;getTweaksEnabled=module.bm;getGridFavButtonsEnabled=module.bn;getFeatureChoiceValue=module.bo;getScreenPixelSize=module.bp;},function(module){loadBackground=module.n;clearBackground=module.t;saveBackground=module.r;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
+System.register("./settings-page-U74z9Evd-DDunBAYN.js", ['./___monkey.entry.js','./app-DhUP2RYg-DJMCOTF7.js'],(function(exports){'use strict';var d,a,PANEL_UI_CLASS,Card,SectionLabel,Switch,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,NumberField,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,setGridFavButtonsVisible,P$1,T,A,getAppearance,applyAppearanceTheme,getSiteSkinCss,APPEARANCE_THEME_CUSTOM,KIT_FOCUS_CSS,Select,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,$$1,Segmented,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,TextField,Button,clampBackgroundDim,FEATURES,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,setFeatureEnabled,applyCssOnlyFeatureEnabled,isFeatureEnabled,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,applyCssOnlyFeatureChoice,getFeatureChoice,createAutocompleteQuerier,b,readSiteBlacklist,Chip,AutocompleteField,ProgressBar,createDefaultCustomTheme,AppearanceThemeSchema,prepareBackgroundImageFile,writeSiteBlacklist,runFavoritesSync,log,FAVORITES_SYNC_PAGE_PAUSE_MS,load,createDefaultStorage,clearStorageCache,clearFavsCache,getSyncState,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,setAppearance,loadFavSet,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,gridDensityFeature,FAVORITES_SYNC_MODE_INCREMENTAL,FAVORITES_SYNC_MODE_FULL,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureChoiceValue,getScreenPixelSize,loadBackground,clearBackground,saveBackground;return{setters:[function(module){d=module.ad;a=module.Y;PANEL_UI_CLASS=module.a3;Card=module.ae;SectionLabel=module.af;Switch=module.ag;UI_TEXT=module.U;TWEAKS_SWITCH_ID=module.ah;setTweaksEnabled=module.ai;NumberField=module.aj;UPDATES_GROUP_SIZE_ID=module.ak;setUpdatesGroupSize=module.al;getUpdatesGroupSize=module.am;PLAYLIST_CHUNK_SIZE_ID=module.an;setPlaylistChunkSize=module.ao;getPlaylistChunkSize=module.ap;GRID_FAV_CHECKBOX_ID=module.aq;setGridFavButtonsEnabled=module.ar;setGridFavButtonsVisible=module.as;P$1=module.at;T=module.au;A=module.av;getAppearance=module.g;applyAppearanceTheme=module.a;getSiteSkinCss=module.a1;APPEARANCE_THEME_CUSTOM=module.aw;KIT_FOCUS_CSS=module.ax;Select=module.ay;APPEARANCE_THEME_SITE=module.a6;APPEARANCE_THEME_SITE_DARK=module.a7;APPEARANCE_THEME_LIGHT=module.az;APPEARANCE_THEME_DARK=module.aA;$$1=module.a2;Segmented=module.aB;APPEARANCE_CUSTOM_BASE_LIGHT=module.aC;APPEARANCE_CUSTOM_BASE_DARK=module.aD;TextField=module.aE;Button=module.aF;clampBackgroundDim=module.aG;FEATURES=module.aH;featurePanelLabel=module.aI;FEATURE_CHECKBOX_ID_PREFIX=module.aJ;setFeatureEnabled=module.aK;applyCssOnlyFeatureEnabled=module.aL;isFeatureEnabled=module.aM;FEATURE_CHOICE_ID_PREFIX=module.aN;setFeatureChoiceValue=module.aO;applyCssOnlyFeatureChoice=module.aP;getFeatureChoice=module.aQ;createAutocompleteQuerier=module.aR;b=module.aS;readSiteBlacklist=module.aT;Chip=module.aU;AutocompleteField=module.aV;ProgressBar=module.aW;createDefaultCustomTheme=module.aX;AppearanceThemeSchema=module.aY;prepareBackgroundImageFile=module.aZ;writeSiteBlacklist=module.a_;runFavoritesSync=module.o;log=module.l;FAVORITES_SYNC_PAGE_PAUSE_MS=module.a$;load=module.b0;createDefaultStorage=module.b1;clearStorageCache=module.b2;clearFavsCache=module.b3;getSyncState=module.j;object=module.b4;StorageSchema=module.b5;optional=module.b6;string=module.b7;FavsSchema=module.b8;literal=module.b9;IMPORT_SCHEMA_ERROR_PREFIX=module.ba;stripLegacyPanelWindowSize=module.bb;save=module.L;migrateMarksFavToFavs=module.bc;FAVS_STORAGE_KEY=module.bd;createDefaultFavs=module.be;parseFavsStrict=module.bf;setAppearance=module.bg;loadFavSet=module.bh;STORAGE_BACKUP_KEY=module.bi;extractFavIdsFromMarks=module.bj;gridDensityFeature=module.bk;FAVORITES_SYNC_MODE_INCREMENTAL=module.bl;FAVORITES_SYNC_MODE_FULL=module.F;getTweaksEnabled=module.bm;getGridFavButtonsEnabled=module.bn;getFeatureChoiceValue=module.bo;getScreenPixelSize=module.bp;},function(module){loadBackground=module.n;clearBackground=module.t;saveBackground=module.r;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
 var THEME_OPTIONS = [
 	{
 		value: APPEARANCE_THEME_SITE,
@@ -17588,7 +17473,7 @@ function SettingsPage() {
 		]
 	});
 }})}}));
-System.register("./collections-page-DPB8RFSl-DouhkETp.js", ['./___monkey.entry.js'],(function(exports){'use strict';var d,b,A,reloadFromStorage,load,a,Segmented,TextField,Button,IconPlus,EmptyState,resolveCollectionKind,UI_TEXT,QueryField,Dialog,createDynamicCollection,createPlaylist,COLLECTION_KIND_POSTS,collectionDetailHash,readCoverMirror,COLLECTION_KIND_SEARCH,buildSearchUrl,readCountMirror;return{setters:[function(module){d=module.ad;b=module.aS;A=module.av;reloadFromStorage=module.K;load=module.b0;a=module.Y;Segmented=module.aB;TextField=module.aE;Button=module.aF;IconPlus=module.bq;EmptyState=module.br;resolveCollectionKind=module.bs;UI_TEXT=module.U;QueryField=module.bt;Dialog=module.bu;createDynamicCollection=module.bv;createPlaylist=module.bw;COLLECTION_KIND_POSTS=module.bx;collectionDetailHash=module.by;readCoverMirror=module.bz;COLLECTION_KIND_SEARCH=module.bA;buildSearchUrl=module.bB;readCountMirror=module.bC;}],execute:(function(){exports("CollectionsPage",CollectionsPage);var EVENT_PAGESHOW = "pageshow";
+System.register("./collections-page-BNyHdfFw-DouhkETp.js", ['./___monkey.entry.js'],(function(exports){'use strict';var d,b,A,reloadFromStorage,load,a,Segmented,TextField,Button,IconPlus,EmptyState,resolveCollectionKind,UI_TEXT,QueryField,Dialog,createDynamicCollection,createPlaylist,COLLECTION_KIND_POSTS,collectionDetailHash,readCoverMirror,COLLECTION_KIND_SEARCH,buildSearchUrl,readCountMirror;return{setters:[function(module){d=module.ad;b=module.aS;A=module.av;reloadFromStorage=module.K;load=module.b0;a=module.Y;Segmented=module.aB;TextField=module.aE;Button=module.aF;IconPlus=module.bq;EmptyState=module.br;resolveCollectionKind=module.bs;UI_TEXT=module.U;QueryField=module.bt;Dialog=module.bu;createDynamicCollection=module.bv;createPlaylist=module.bw;COLLECTION_KIND_POSTS=module.bx;collectionDetailHash=module.by;readCoverMirror=module.bz;COLLECTION_KIND_SEARCH=module.bA;buildSearchUrl=module.bB;readCountMirror=module.bC;}],execute:(function(){exports("CollectionsPage",CollectionsPage);var EVENT_PAGESHOW = "pageshow";
 var PAGE_CLASS = "rdw-collections-page";
 var HEADER_CLASS = "rdw-collections-header";
 var TOOLBAR_CLASS = "rdw-collections-toolbar";
@@ -18128,7 +18013,7 @@ function CollectionsPage() {
 		]
 	});
 }})}}));
-System.register("./following-page-CHZKTdqF-CdG-nCP_.js", ['./___monkey.entry.js'],(function(exports){'use strict';var d,T,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST,A,getSeenPostId,a,Card,PANEL_UI_CLASS,UI_TEXT,$$1,EmptyState,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,Button,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,TextField,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,UNFOLLOWED_PREFIX,UNFOLLOW_UNDO_LABEL,buildSearchUrl,TAG_TYPE_INCLUDE,IconButton,IconX,AutocompleteField,normalizeArtistTag,isFollowingArtist,addArtist,log,removeArtist,UNFOLLOW_UNDO_MS,load;return{setters:[function(module){d=module.ad;T=module.au;createAutocompleteQuerier=module.aR;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.bD;A=module.av;getSeenPostId=module.bE;a=module.Y;Card=module.ae;PANEL_UI_CLASS=module.a3;UI_TEXT=module.U;$$1=module.a2;EmptyState=module.br;ARTISTS_EMPTY_HINT=module.bF;ARTISTS_EMPTY_TITLE=module.bG;Button=module.aF;SEARCH_PATH=module.X;SEARCH_PARAM_PAGE=module.T;SEARCH_PAGE=module.bH;SEARCH_SECTION=module.bI;TextField=module.aE;ARTIST_FILTER_LABEL=module.bJ;ARTIST_FILTER_ID=module.bK;UNFOLLOWED_PREFIX=module.bL;UNFOLLOW_UNDO_LABEL=module.bM;buildSearchUrl=module.bB;TAG_TYPE_INCLUDE=module.bN;IconButton=module.bO;IconX=module.bP;AutocompleteField=module.aV;normalizeArtistTag=module.n;isFollowingArtist=module.bQ;addArtist=module.bR;log=module.l;removeArtist=module.bS;UNFOLLOW_UNDO_MS=module.bT;load=module.b0;}],execute:(function(){exports("FollowingPage",FollowingPage);var ADD_FORM_CLASS = "rdw-following-add";
+System.register("./following-page-TiVKyY_X-CdG-nCP_.js", ['./___monkey.entry.js'],(function(exports){'use strict';var d,T,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST,A,getSeenPostId,a,Card,PANEL_UI_CLASS,UI_TEXT,$$1,EmptyState,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,Button,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,TextField,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,UNFOLLOWED_PREFIX,UNFOLLOW_UNDO_LABEL,buildSearchUrl,TAG_TYPE_INCLUDE,IconButton,IconX,AutocompleteField,normalizeArtistTag,isFollowingArtist,addArtist,log,removeArtist,UNFOLLOW_UNDO_MS,load;return{setters:[function(module){d=module.ad;T=module.au;createAutocompleteQuerier=module.aR;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.bD;A=module.av;getSeenPostId=module.bE;a=module.Y;Card=module.ae;PANEL_UI_CLASS=module.a3;UI_TEXT=module.U;$$1=module.a2;EmptyState=module.br;ARTISTS_EMPTY_HINT=module.bF;ARTISTS_EMPTY_TITLE=module.bG;Button=module.aF;SEARCH_PATH=module.X;SEARCH_PARAM_PAGE=module.T;SEARCH_PAGE=module.bH;SEARCH_SECTION=module.bI;TextField=module.aE;ARTIST_FILTER_LABEL=module.bJ;ARTIST_FILTER_ID=module.bK;UNFOLLOWED_PREFIX=module.bL;UNFOLLOW_UNDO_LABEL=module.bM;buildSearchUrl=module.bB;TAG_TYPE_INCLUDE=module.bN;IconButton=module.bO;IconX=module.bP;AutocompleteField=module.aV;normalizeArtistTag=module.n;isFollowingArtist=module.bQ;addArtist=module.bR;log=module.l;removeArtist=module.bS;UNFOLLOW_UNDO_MS=module.bT;load=module.b0;}],execute:(function(){exports("FollowingPage",FollowingPage);var ADD_FORM_CLASS = "rdw-following-add";
 var ADD_INPUT_ID = "rdw-following-add-tag";
 var OPEN_POSTS_LABEL = "Open Posts";
 var OPEN_POSTS_HREF = `${SEARCH_PATH}?${SEARCH_PARAM_PAGE}=${SEARCH_PAGE}&s=${SEARCH_SECTION}`;
@@ -18363,7 +18248,7 @@ function FollowingPage() {
 		})
 	})] });
 }})}}));
-System.register("./collection-detail-page-CK_S-PXz-DI32JGo9.js", ['./___monkey.entry.js','./app-DuBBVOtb-XmQCKNn3.js'],(function(exports){'use strict';var d,T,w$1,b,a,$$1,Button,UI_TEXT,shuffleCollection,resetCollectionOrder,EmptyState,Dialog,TextField,Toast,getCollectionOrder,listPlaylists,RDW_HASH_COLLECTIONS,removePostsFromCollection,renameCollection,deleteCollection,RDW_ROUTE_COLLECTIONS,restorePosts,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION_VIEW,SEARCH_PATH,collectionQueueHash,navigateToRdwRoute;return{setters:[function(module){d=module.ad;T=module.au;w$1=module.bU;b=module.aS;a=module.Y;$$1=module.a2;Button=module.aF;UI_TEXT=module.U;shuffleCollection=module.bV;resetCollectionOrder=module.bW;EmptyState=module.br;Dialog=module.bu;TextField=module.aE;Toast=module.bX;getCollectionOrder=module.bY;listPlaylists=module.bZ;RDW_HASH_COLLECTIONS=module.u;removePostsFromCollection=module.b_;renameCollection=module.b$;deleteCollection=module.c0;RDW_ROUTE_COLLECTIONS=module.c1;restorePosts=module.c2;SEARCH_PARAM_PAGE=module.T;SEARCH_PAGE=module.bH;SEARCH_SECTION_VIEW=module.c3;SEARCH_PATH=module.X;collectionQueueHash=module.c4;},function(module){navigateToRdwRoute=module.i;}],execute:(function(){exports("CollectionDetailPage",CollectionDetailPage);var CELL_SIZE_PX = 200;
+System.register("./collection-detail-page-CtDtMSnq-CeFcVIfK.js", ['./___monkey.entry.js','./app-DhUP2RYg-DJMCOTF7.js'],(function(exports){'use strict';var d,T,w$1,b,a,$$1,Button,UI_TEXT,shuffleCollection,resetCollectionOrder,EmptyState,Dialog,TextField,Toast,getCollectionOrder,listPlaylists,RDW_HASH_COLLECTIONS,removePostsFromCollection,renameCollection,deleteCollection,RDW_ROUTE_COLLECTIONS,restorePosts,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION_VIEW,SEARCH_PATH,collectionQueueHash,navigateToRdwRoute;return{setters:[function(module){d=module.ad;T=module.au;w$1=module.bU;b=module.aS;a=module.Y;$$1=module.a2;Button=module.aF;UI_TEXT=module.U;shuffleCollection=module.bV;resetCollectionOrder=module.bW;EmptyState=module.br;Dialog=module.bu;TextField=module.aE;Toast=module.bX;getCollectionOrder=module.bY;listPlaylists=module.bZ;RDW_HASH_COLLECTIONS=module.u;removePostsFromCollection=module.b_;renameCollection=module.b$;deleteCollection=module.c0;RDW_ROUTE_COLLECTIONS=module.c1;restorePosts=module.c2;SEARCH_PARAM_PAGE=module.T;SEARCH_PAGE=module.bH;SEARCH_SECTION_VIEW=module.c3;SEARCH_PATH=module.X;collectionQueueHash=module.c4;},function(module){navigateToRdwRoute=module.i;}],execute:(function(){exports("CollectionDetailPage",CollectionDetailPage);var CELL_SIZE_PX = 200;
 var GRID_GAP_PX = 4;
 var SECTION_GAP_PX = 12;
 var ACTIONS_GAP_PX = 8;

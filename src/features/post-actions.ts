@@ -168,49 +168,6 @@ ${BODY_SELECTOR} #${POST_ACTIONS_ID} .rdw-post-panel-tabpanel[hidden] {
 ${BODY_SELECTOR} #${POST_ACTIONS_ID} .rdw-post-panel-comments-host {
   min-width: 0;
 }
-${BODY_SELECTOR} #${POST_ACTIONS_ID} .rdw-post-panel-collection-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  margin: 0;
-  padding: 5px 6px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-${BODY_SELECTOR} #${POST_ACTIONS_ID} .rdw-post-panel-collection-item:hover,
-${BODY_SELECTOR} #${POST_ACTIONS_ID} .rdw-post-panel-collection-item:focus-visible {
-  background: var(--rdw-surface-2);
-}
-${BODY_SELECTOR} #${POST_ACTIONS_ID} .rdw-post-panel-collection-check {
-  width: 15px;
-  height: 15px;
-  flex: 0 0 15px;
-  display: inline-grid;
-  place-items: center;
-  border: 1px solid var(--rdw-border);
-  border-radius: 4px;
-  color: var(--rdw-surface);
-  background: transparent;
-}
-${BODY_SELECTOR} #${POST_ACTIONS_ID} .rdw-post-panel-collection-item[aria-checked="true"] .rdw-post-panel-collection-check {
-  background: var(--rdw-accent);
-  border-color: var(--rdw-accent);
-}
-${BODY_SELECTOR} #${POST_ACTIONS_ID} .rdw-post-panel-collection-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-${BODY_SELECTOR} #${POST_ACTIONS_ID} .rdw-post-panel-collection-new-form {
-  display: grid;
-  gap: 6px;
-}
 @media ${NARROW_MEDIA_QUERY} {
   ${BODY_SELECTOR} #${POST_ACTIONS_ID}.${CLASS_MODE_WIDE} {
     position: static;

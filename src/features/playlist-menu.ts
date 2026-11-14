@@ -1,15 +1,12 @@
-import {
-  addPostToCollection,
-  createPlaylist,
-  listPlaylists,
-  playlistsContaining,
-  removePostFromPlaylist,
-} from "../storage/store";
+import { h, render } from "preact";
+
+import { playlistsContaining } from "../storage/store";
 import {
   SITE_SELECTORS,
   extractPostIdFromThumb,
 } from "../site/selectors";
 import { ensureThumbAnchor } from "../site/thumb";
+import { CollectionPicker } from "../ui/collection-picker";
 import { KIT_ICON_BUTTON_CLASS } from "../ui/fav-button";
 import { THUMB_CLASS, featureBodyClass, type Feature, type FeatureContext } from "./types";
 import { onThumbsAdded } from "./runtime";
@@ -22,29 +19,16 @@ const CLASS_ADD = "rdw-playlist-add";
 const CLASS_ADD_IN = "rdw-playlist-add--in";
 const CLASS_MENU = "rdw-playlist-menu";
 const CLASS_MENU_POPUP = "rdw-playlist-menu--popup";
-const CLASS_LIST = "rdw-playlist-menu-list";
-const CLASS_ITEM = "rdw-playlist-menu-item";
-const CLASS_CHECK = "rdw-playlist-menu-check";
-const CLASS_NAME = "rdw-playlist-menu-name";
-const CLASS_NEW = "rdw-playlist-menu-new";
-const CLASS_NEW_FORM = "rdw-playlist-menu-new-form";
-const CLASS_NEW_INPUT = "rdw-playlist-menu-new-input";
-const CLASS_NEW_SUBMIT = "rdw-playlist-menu-new-submit";
 
 const ATTR_POST_ID = "data-rdw-post-id";
 
 const TEXT_ADD_GLYPH = "+";
-const TEXT_NEW_PLAYLIST = "New collection…";
-const TEXT_CREATE = "Create";
-const TEXT_CHECK_MARK = "✓";
 
 const LABEL_ADD = "Add to collection";
-const LABEL_TOGGLE_PREFIX = "Toggle collection";
-const LABEL_NEW_NAME = "New collection name";
 
 const MENU_Z_INDEX = 2147483645;
-const MENU_MIN_WIDTH_PX = 180;
-const MENU_MAX_HEIGHT_PX = 280;
+const MENU_WIDTH_PX = 260;
+const MENU_PADDING_PX = 8;
 const MENU_GAP_PX = 4;
 const BUTTON_SIZE_PX = 28;
 const BUTTON_OFFSET_PX = 6;
@@ -56,7 +40,6 @@ const FOCUS_OUTLINE_OFFSET = "2px";
 const EVENT_KEYDOWN = "keydown";
 const EVENT_POINTERDOWN = "pointerdown";
 const KEY_ESCAPE = "Escape";
-const KEY_ENTER = "Enter";
 
 const BODY_CLASS = featureBodyClass(FEATURE_ID);
 const BODY_SELECTOR = `body.${BODY_CLASS}`;
@@ -108,100 +91,19 @@ ${BODY_SELECTOR} .${CLASS_ADD}.${CLASS_ADD_IN} {
 }
 ${BODY_SELECTOR} .${CLASS_MENU} {
   box-sizing: border-box;
-  min-width: ${String(MENU_MIN_WIDTH_PX)}px;
-  max-height: ${String(MENU_MAX_HEIGHT_PX)}px;
-  overflow: auto;
-  padding: 0.35rem;
-  border: 1px solid #444;
-  border-radius: 4px;
-  background: #fff;
-  color: #1a1a1a;
-  font: 13px/1.3 Segoe UI, system-ui, sans-serif;
+  width: ${String(MENU_WIDTH_PX)}px;
+  max-width: calc(100vw - ${String(MENU_GAP_PX * 2)}px);
+  padding: ${String(MENU_PADDING_PX)}px;
+  border: 1px solid var(--rdw-border);
+  border-radius: var(--rdw-radius-l);
+  background: var(--rdw-surface);
+  color: var(--rdw-text);
+  font: 12px/1.35 var(--rdw-font);
 }
 ${BODY_SELECTOR} .${CLASS_MENU}.${CLASS_MENU_POPUP} {
   position: fixed;
   z-index: ${String(MENU_Z_INDEX)};
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
-}
-${BODY_SELECTOR} .${CLASS_LIST} {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  margin: 0 0 0.35rem;
-  padding: 0;
-  list-style: none;
-}
-${BODY_SELECTOR} .${CLASS_ITEM} {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  width: 100%;
-  margin: 0;
-  padding: 0.25rem 0.35rem;
-  border: 0;
-  border-radius: 2px;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-${BODY_SELECTOR} .${CLASS_ITEM}:hover,
-${BODY_SELECTOR} .${CLASS_ITEM}:focus-visible {
-  background: #e8f0fe;
-}
-${BODY_SELECTOR} .${CLASS_ITEM}:focus-visible {
-  outline: ${FOCUS_OUTLINE};
-  outline-offset: ${FOCUS_OUTLINE_OFFSET};
-}
-${BODY_SELECTOR} .${CLASS_CHECK} {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1rem;
-  flex: 0 0 1rem;
-  font-weight: 700;
-}
-${BODY_SELECTOR} .${CLASS_NAME} {
-  flex: 1 1 auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-${BODY_SELECTOR} .${CLASS_NEW},
-${BODY_SELECTOR} .${CLASS_NEW_SUBMIT} {
-  display: block;
-  width: 100%;
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0.3rem 0.4rem;
-  border: 1px solid #666;
-  border-radius: 2px;
-  background: #f5f5f5;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-  text-align: left;
-}
-${BODY_SELECTOR} .${CLASS_NEW}:focus-visible,
-${BODY_SELECTOR} .${CLASS_NEW_SUBMIT}:focus-visible,
-${BODY_SELECTOR} .${CLASS_NEW_INPUT}:focus-visible {
-  outline: ${FOCUS_OUTLINE};
-  outline-offset: ${FOCUS_OUTLINE_OFFSET};
-}
-${BODY_SELECTOR} .${CLASS_NEW_FORM} {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-${BODY_SELECTOR} .${CLASS_NEW_INPUT} {
-  box-sizing: border-box;
-  width: 100%;
-  margin: 0;
-  padding: 0.3rem 0.4rem;
-  border: 1px solid #666;
-  border-radius: 2px;
-  font: inherit;
+  box-shadow: var(--rdw-shadow-2);
 }
 `;
 
@@ -307,19 +209,6 @@ function readThumbUrlFromTrigger(button: HTMLElement): string | null {
   return readPreviewThumbUrl(thumb, postId);
 }
 
-function addPostWithThumb(
-  collectionId: string,
-  postId: number,
-  readThumbUrl: ThumbUrlReader,
-): void {
-  const thumbUrl = readThumbUrl();
-  if (thumbUrl !== null) {
-    addPostToCollection(collectionId, postId, thumbUrl);
-    return;
-  }
-  addPostToCollection(collectionId, postId);
-}
-
 function findThumbLink(thumb: HTMLElement, postId: string): HTMLAnchorElement | null {
   const byId = thumb.querySelector(postAnchorSelector(postId));
   if (byId instanceof HTMLAnchorElement) {
@@ -333,6 +222,7 @@ function closeOpenMenu(): void {
   if (openPopup === null) {
     return;
   }
+  render(null, openPopup.menu);
   openPopup.menu.remove();
   openPopup.trigger.setAttribute("aria-expanded", "false");
   openPopup = null;
@@ -428,148 +318,27 @@ function syncAddButtonsForPost(postId: number): void {
   }
 }
 
-function fillPlaylistList(
-  list: HTMLElement,
-  postId: number,
-  readThumbUrl: ThumbUrlReader,
-): void {
-  list.replaceChildren();
-  const playlists = listPlaylists();
-  const memberIds = new Set(playlistsContaining(postId).map((item) => item.id));
-
-  for (const playlist of playlists) {
-    const item = document.createElement("button");
-    item.type = "button";
-    item.className = CLASS_ITEM;
-    item.setAttribute("role", "menuitemcheckbox");
-    const checked = memberIds.has(playlist.id);
-    item.setAttribute("aria-checked", checked ? "true" : "false");
-    item.setAttribute(
-      "aria-label",
-      `${LABEL_TOGGLE_PREFIX} ${playlist.name}`,
-    );
-
-    const check = document.createElement("span");
-    check.className = CLASS_CHECK;
-    check.setAttribute("aria-hidden", "true");
-    check.textContent = checked ? TEXT_CHECK_MARK : "";
-
-    const name = document.createElement("span");
-    name.className = CLASS_NAME;
-    name.textContent = playlist.name;
-
-    item.append(check, name);
-    item.addEventListener("click", (event: Event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      if (memberIds.has(playlist.id)) {
-        removePostFromPlaylist(playlist.id, postId);
-      } else {
-        addPostWithThumb(playlist.id, postId, readThumbUrl);
-      }
-      fillPlaylistList(list, postId, readThumbUrl);
-      syncAddButtonsForPost(postId);
-    });
-    list.append(item);
-  }
-}
-
-function showNewPlaylistForm(
-  host: HTMLElement,
-  list: HTMLElement,
-  postId: number,
-  readThumbUrl: ThumbUrlReader,
-  onCreated: (() => void) | undefined,
-): void {
-  host.replaceChildren();
-  const form = document.createElement("div");
-  form.className = CLASS_NEW_FORM;
-
-  const input = document.createElement("input");
-  input.type = "text";
-  input.className = CLASS_NEW_INPUT;
-  input.setAttribute("aria-label", LABEL_NEW_NAME);
-  input.autocomplete = "off";
-
-  const submit = document.createElement("button");
-  submit.type = "button";
-  submit.className = CLASS_NEW_SUBMIT;
-  submit.textContent = TEXT_CREATE;
-
-  const commit = (): void => {
-    const name = input.value.trim();
-    if (name.length === 0) {
-      return;
-    }
-    const playlist = createPlaylist(name);
-    addPostWithThumb(playlist.id, postId, readThumbUrl);
-    fillPlaylistList(list, postId, readThumbUrl);
-    syncAddButtonsForPost(postId);
-    onCreated?.();
-  };
-
-  submit.addEventListener("click", (event: Event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    commit();
-  });
-  input.addEventListener("keydown", (event: KeyboardEvent) => {
-    if (event.key !== KEY_ENTER) {
-      return;
-    }
-    event.preventDefault();
-    event.stopPropagation();
-    commit();
-  });
-
-  form.append(input, submit);
-  host.append(form);
-  input.focus();
-}
-
-function mountNewPlaylistControl(
-  host: HTMLElement,
-  list: HTMLElement,
-  postId: number,
-  readThumbUrl: ThumbUrlReader,
-  onCreated: (() => void) | undefined,
-): void {
-  host.replaceChildren();
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = CLASS_NEW;
-  button.textContent = TEXT_NEW_PLAYLIST;
-  button.addEventListener("click", (event: Event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    showNewPlaylistForm(host, list, postId, readThumbUrl, onCreated);
-  });
-  host.append(button);
-}
-
 /**
- * Builds the playlist membership menu for a post (list popup or post-actions).
- * Callers own placement; list page uses a single floating instance.
+ * Builds the collection menu for a post: a themed panel holding the shared
+ * collection picker. Callers own placement; the list page keeps one open at a time.
  */
 export function createPlaylistMenu(
   postId: number,
-  options?: { onCreated?: () => void; readThumbUrl?: ThumbUrlReader },
+  options?: { onChange?: () => void; readThumbUrl?: ThumbUrlReader },
 ): HTMLElement {
-  const readThumbUrl = options?.readThumbUrl ?? NO_THUMB_URL;
   const root = document.createElement("div");
   root.className = CLASS_MENU;
   root.setAttribute("role", "menu");
   root.setAttribute(ATTR_POST_ID, String(postId));
-
-  const list = document.createElement("div");
-  list.className = CLASS_LIST;
-  list.setAttribute("role", "group");
-  fillPlaylistList(list, postId, readThumbUrl);
-
-  const newHost = document.createElement("div");
-  mountNewPlaylistControl(newHost, list, postId, readThumbUrl, options?.onCreated);
-
-  root.append(list, newHost);
+  const onChange = options?.onChange;
+  render(
+    h(CollectionPicker, {
+      postId,
+      readThumbUrl: options?.readThumbUrl ?? NO_THUMB_URL,
+      ...(onChange === undefined ? {} : { onChange }),
+    }),
+    root,
+  );
   return root;
 }
 
@@ -581,8 +350,8 @@ function openMenuForButton(button: HTMLButtonElement, postId: number): void {
   closeOpenMenu();
 
   const menu = createPlaylistMenu(postId, {
-    onCreated: (): void => {
-      closeOpenMenu();
+    onChange: (): void => {
+      syncAddButtonsForPost(postId);
     },
     readThumbUrl: (): string | null => readThumbUrlFromTrigger(button),
   });

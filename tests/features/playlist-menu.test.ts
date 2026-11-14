@@ -1,3 +1,4 @@
+import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -26,10 +27,10 @@ import {
 const CLASS_ADD = "rdw-playlist-add";
 const CLASS_ADD_IN = "rdw-playlist-add--in";
 const CLASS_MENU = "rdw-playlist-menu";
-const CLASS_ITEM = "rdw-playlist-menu-item";
-const CLASS_NEW = "rdw-playlist-menu-new";
-const CLASS_NEW_INPUT = "rdw-playlist-menu-new-input";
-const CLASS_NEW_SUBMIT = "rdw-playlist-menu-new-submit";
+const CLASS_ITEM = "rdw-collection-picker-item";
+const CLASS_COUNT = "rdw-collection-picker-count";
+const LABEL_NEW_NAME = "New collection name";
+const TEXT_CREATE = "Create";
 const ATTR_POST_ID = "data-rdw-post-id";
 const PREVIEW_CLASS = "preview";
 const THUMB_DIR = "12";
@@ -116,10 +117,38 @@ function placeOutsidePreview(thumb: HTMLElement, src: string): HTMLImageElement 
   return img;
 }
 
+function clickEl(el: Element | null | undefined): void {
+  if (el === null || el === undefined) {
+    throw new Error("element to click is missing");
+  }
+  act(() => {
+    el.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+  });
+}
+
+function firstItem(): Element | null {
+  return openMenus()[0]?.querySelector(`button.${CLASS_ITEM}`) ?? null;
+}
+
 function clickFirstItem(): void {
-  openMenus()[0]
-    ?.querySelector(`button.${CLASS_ITEM}`)
-    ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  clickEl(firstItem());
+}
+
+/** Types a name into the menu's "new collection" field and presses Create. */
+function createFromMenu(name: string): void {
+  const menu = openMenus()[0];
+  const input = menu?.querySelector(`input[aria-label="${LABEL_NEW_NAME}"]`);
+  if (!(input instanceof HTMLInputElement)) {
+    throw new Error("new collection input missing");
+  }
+  act(() => {
+    input.value = name;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  const create = Array.from(menu?.querySelectorAll("button") ?? []).find(
+    (button) => button.textContent?.trim() === TEXT_CREATE,
+  );
+  clickEl(create);
 }
 
 function openMenus(): HTMLElement[] {
@@ -235,64 +264,43 @@ describe("playlistMenuFeature", () => {
     expect(addButton(thumb).classList.contains(CLASS_ADD_IN)).toBe(true);
   });
 
-  it("toggles playlist membership from the open menu", () => {
+  it("toggles playlist membership from the open menu and shows post counts", () => {
     const playlist = createPlaylist("A");
+    addPostToPlaylist(playlist.id, 500);
     const thumb = buildThumb("10");
     document.body.append(thumb);
     playlistMenuFeature.mount(makeCtx("list", "?page=post&s=list"));
 
     addButton(thumb).click();
-    const menus = openMenus();
-    expect(menus).toHaveLength(1);
+    expect(openMenus()).toHaveLength(1);
+    expect(firstItem()).toBeInstanceOf(HTMLButtonElement);
+    expect(firstItem()?.getAttribute("aria-checked")).toBe("false");
+    expect(firstItem()?.querySelector(`.${CLASS_COUNT}`)?.textContent).toBe("1");
 
-    const item = menus[0]?.querySelector(`button.${CLASS_ITEM}`);
-    expect(item).toBeInstanceOf(HTMLButtonElement);
-    expect(item?.getAttribute("aria-checked")).toBe("false");
-
-    item?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    clickFirstItem();
     expect(playlistsContaining(10).map((entry) => entry.id)).toEqual([
       playlist.id,
     ]);
     expect(addButton(thumb).classList.contains(CLASS_ADD_IN)).toBe(true);
     expect(openMenus()).toHaveLength(1);
-    expect(
-      openMenus()[0]?.querySelector(`button.${CLASS_ITEM}`)?.getAttribute(
-        "aria-checked",
-      ),
-    ).toBe("true");
+    expect(firstItem()?.getAttribute("aria-checked")).toBe("true");
+    expect(firstItem()?.querySelector(`.${CLASS_COUNT}`)?.textContent).toBe("2");
 
-    openMenus()[0]
-      ?.querySelector(`button.${CLASS_ITEM}`)
-      ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    clickFirstItem();
     expect(playlistsContaining(10)).toEqual([]);
     expect(addButton(thumb).classList.contains(CLASS_ADD_IN)).toBe(false);
   });
 
-  it("creates a collection from New collection… and closes the menu", () => {
+  it("creates a collection from the name row and keeps the menu open", () => {
     const thumb = buildThumb("20");
     document.body.append(thumb);
     playlistMenuFeature.mount(makeCtx("list", "?page=post&s=list"));
 
     addButton(thumb).click();
-    const menu = openMenus()[0];
-    expect(menu).toBeDefined();
+    expect(openMenus()[0]?.textContent).toContain("No collections yet");
+    createFromMenu("  Watch later  ");
 
-    const newButton = menu?.querySelector(`button.${CLASS_NEW}`);
-    expect(newButton).toBeInstanceOf(HTMLButtonElement);
-    newButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-
-    const input = menu?.querySelector(`input.${CLASS_NEW_INPUT}`);
-    const submit = menu?.querySelector(`button.${CLASS_NEW_SUBMIT}`);
-    expect(input).toBeInstanceOf(HTMLInputElement);
-    expect(submit).toBeInstanceOf(HTMLButtonElement);
-
-    if (!(input instanceof HTMLInputElement)) {
-      throw new Error("new playlist input missing");
-    }
-    input.value = "  Watch later  ";
-    submit?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-
-    expect(openMenus()).toHaveLength(0);
+    expect(openMenus()).toHaveLength(1);
     const playlists = listPlaylists();
     expect(playlists).toHaveLength(1);
     expect(playlists[0]?.name).toBe("Watch later");
@@ -300,6 +308,32 @@ describe("playlistMenuFeature", () => {
       playlists[0]?.id,
     ]);
     expect(addButton(thumb).classList.contains(CLASS_ADD_IN)).toBe(true);
+    expect(firstItem()?.getAttribute("aria-checked")).toBe("true");
+  });
+
+  it("adds to the existing collection when the new name matches one", () => {
+    const existing = createPlaylist("Watch later");
+    const thumb = buildThumb("21");
+    document.body.append(thumb);
+    playlistMenuFeature.mount(makeCtx("list", "?page=post&s=list"));
+
+    addButton(thumb).click();
+    createFromMenu("watch LATER");
+
+    expect(listPlaylists()).toHaveLength(1);
+    expect(playlistsContaining(21).map((entry) => entry.id)).toEqual([existing.id]);
+  });
+
+  it("takes its colours from theme tokens", () => {
+    const css = playlistMenuFeature.css ?? "";
+    const menuRules = css
+      .split("}")
+      .filter((rule) => (rule.split("{")[0] ?? "").includes(`.${CLASS_MENU}`));
+    expect(menuRules.length).toBeGreaterThan(0);
+    for (const rule of menuRules) {
+      expect(rule).not.toMatch(/#[0-9a-f]{3,8}\b/i);
+    }
+    expect(menuRules.join("\n")).toContain("background: var(--rdw-surface)");
   });
 
   it("keeps only one open menu at a time", () => {
@@ -348,7 +382,7 @@ describe("playlistMenuFeature", () => {
     expect(addButton(thumb).getAttribute(ATTR_POST_ID)).toBe("99");
   });
 
-  it("exports createPlaylistMenu for post-actions reuse", () => {
+  it("exports createPlaylistMenu as a standalone menu", () => {
     const playlist = createPlaylist("Side");
     const menu = createPlaylistMenu(55);
     document.body.append(menu);
@@ -359,9 +393,7 @@ describe("playlistMenuFeature", () => {
       "Side",
     );
 
-    menu
-      .querySelector(`button.${CLASS_ITEM}`)
-      ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    clickEl(menu.querySelector(`button.${CLASS_ITEM}`));
     expect(playlistsContaining(55).map((entry) => entry.id)).toEqual([
       playlist.id,
     ]);
@@ -410,18 +442,7 @@ describe("playlistMenuFeature", () => {
     playlistMenuFeature.mount(makeCtx("list", "?page=post&s=list"));
 
     addButton(thumb).click();
-    const menu = openMenus()[0];
-    menu
-      ?.querySelector(`button.${CLASS_NEW}`)
-      ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    const input = menu?.querySelector(`input.${CLASS_NEW_INPUT}`);
-    if (!(input instanceof HTMLInputElement)) {
-      throw new Error("new playlist input missing");
-    }
-    input.value = "Watch later";
-    menu
-      ?.querySelector(`button.${CLASS_NEW_SUBMIT}`)
-      ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    createFromMenu("Watch later");
 
     expect(listPlaylists()[0]?.name).toBe("Watch later");
     expect(listPlaylists()[0]?.postIds).toEqual([20]);

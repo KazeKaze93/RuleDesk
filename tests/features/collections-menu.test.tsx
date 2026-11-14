@@ -24,7 +24,6 @@ const IMAGE_HASH = "abcd1234ef";
 const VIDEO_HASH = "ef987654ab";
 const KNOWN_THUMB =
   `https://${THUMB_IMAGE_HOST}/thumbnails/${MEDIA_DIR}/thumbnail_known.jpg?${String(POST_ID)}`;
-const TEXT_NEW = "New custom collection";
 const TEXT_CREATE = "Create";
 const LABEL_NEW_NAME = "New collection name";
 const NEW_COLLECTION_NAME = "Later";
@@ -229,7 +228,6 @@ describe("CollectionsMenu thumbs", () => {
     mountImage(sampleUrl(IMAGE_HASH));
     mount();
     openMenu();
-    fireClick(buttonByText(TEXT_NEW));
     const input = document.querySelector(`input[aria-label="${LABEL_NEW_NAME}"]`);
     if (!(input instanceof HTMLInputElement)) {
       throw new Error("new collection input missing");

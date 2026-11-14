@@ -575,7 +575,7 @@ describe("postActionsFeature", () => {
     expect(document.querySelector(`.${CLASS_COLLECTIONS_BTN}`)).not.toBeNull();
   });
 
-  it("opens Collections popover with filter, checkmarks, and new collection", async () => {
+  it("opens Collections popover with checkmarks, counts, and the new-name row", async () => {
     buildPostDom();
     const existing = createPlaylist("Best of nyx");
     createPlaylist("Wallpapers");
@@ -597,7 +597,7 @@ describe("postActionsFeature", () => {
       ),
     ];
     expect(items.map((node) => node.textContent)).toEqual(
-      expect.arrayContaining(["Best of nyx", "Wallpapers"]),
+      expect.arrayContaining(["Best of nyx0", "Wallpapers0"]),
     );
     expect(
       items.find((node) => node.textContent?.includes("Best of nyx"))
@@ -616,8 +616,13 @@ describe("postActionsFeature", () => {
     });
 
     expect(
-      document.body.textContent?.includes("New custom collection"),
-    ).toBe(true);
+      document.querySelector('input[aria-label="New collection name"]'),
+    ).toBeInstanceOf(HTMLInputElement);
+    expect(
+      [...document.querySelectorAll('[role="menuitemcheckbox"]')]
+        .find((node) => node.textContent?.includes(existing.name))
+        ?.textContent,
+    ).toBe("Best of nyx1");
   });
 
   it("renders icon-only Original with aria-label and title", () => {
