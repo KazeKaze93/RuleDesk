@@ -19,7 +19,12 @@ import {
 import { log } from "../log";
 import { normalizeArtistTag, parseTags } from "../search/query";
 import { readArtistsMirror, writeArtistsMirror } from "./artists-mirror";
-import { removeCoverMirror, writeCoverMirror } from "./cover-mirror";
+import {
+  removeCountMirror,
+  removeCoverMirror,
+  writeCountMirror,
+  writeCoverMirror,
+} from "./cover-mirror";
 import {
   addFav,
   addFavs,
@@ -50,6 +55,7 @@ import {
   type Collection,
   type ExportBlob,
   type MarkFlags,
+  type PostCount,
   type Settings,
   type StorageData,
   type TagEntry,
@@ -289,6 +295,7 @@ export function deleteCollection(id: string): boolean {
     return false;
   }
   removeCoverMirror(id);
+  removeCountMirror(id);
   data.collections = next;
   save(data);
   return true;
@@ -755,6 +762,51 @@ export function setDynamicCover(
   return true;
 }
 
+/**
+ * Remembers how many posts a saved search has, as read from its results page.
+ * Negative or fractional values are ignored. Writes only when the count changed.
+ * Returns true when storage was written.
+ */
+export function setDynamicPostCount(
+  collectionId: string,
+  count: PostCount,
+): boolean {
+  if (!Number.isInteger(count.value) || count.value < 0) {
+    return false;
+  }
+  const known = load().collections;
+  const cached = known.find((item) => item.id === collectionId);
+  if (cached === undefined || isPlaylist(cached)) {
+    return false;
+  }
+  writeCountMirror(
+    collectionId,
+    count,
+    known.map((item) => item.id),
+  );
+  if (samePostCount(cached.postCount, count)) {
+    return false;
+  }
+  const data = reloadFromStorage();
+  const target = data.collections.find((item) => item.id === collectionId);
+  if (target === undefined || isPlaylist(target)) {
+    return false;
+  }
+  if (samePostCount(target.postCount, count)) {
+    return false;
+  }
+  target.postCount = { value: count.value, exact: count.exact };
+  CollectionSchema.parse(target);
+  save(data);
+  return true;
+}
+
+function samePostCount(left: PostCount | undefined, right: PostCount): boolean {
+  return (
+    left !== undefined && left.value === right.value && left.exact === right.exact
+  );
+}
+
 function sameStrings(left: readonly string[], right: readonly string[]): boolean {
   if (left.length !== right.length) {
     return false;
@@ -781,7 +833,9 @@ export function updateDynamicQuery(
   if (target.query !== trimmedQuery) {
     // The old cover shows posts of the old query.
     delete target.cover;
+    delete target.postCount;
     removeCoverMirror(collectionId);
+    removeCountMirror(collectionId);
   }
   target.query = trimmedQuery;
   target.tags = parseTags(trimmedQuery);

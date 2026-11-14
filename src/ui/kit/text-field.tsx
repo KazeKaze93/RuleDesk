@@ -41,6 +41,11 @@ ${KIT_FOCUS_CSS}
   font: inherit;
   font-size: 12px;
 }
+/* Site CSS paints focused text inputs light yellow; keep the theme colours. */
+input.rdw-field__input.rdw-kit-focusable:focus {
+  background: var(--rdw-surface);
+  color: var(--rdw-text);
+}
 .rdw-field__input::placeholder {
   color: var(--rdw-muted);
 }

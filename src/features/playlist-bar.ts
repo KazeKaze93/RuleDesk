@@ -20,7 +20,11 @@ import {
   withoutSortRandom,
 } from "../search/query";
 import { SITE_SELECTORS } from "../site/selectors";
-import { isPlaylist, type Collection } from "../storage/schema";
+import {
+  isPlaylist,
+  type Collection,
+  type PostCount,
+} from "../storage/schema";
 import {
   deleteCollection,
   DYNAMIC_COVER_SIZE,
@@ -29,6 +33,7 @@ import {
   load,
   renameCollection,
   setDynamicCover,
+  setDynamicPostCount,
   updateDynamicQuery,
 } from "../storage/store";
 import { Button, Dialog, type DialogFieldValues } from "../ui/kit";
@@ -584,6 +589,8 @@ function DynamicCollectionBar(props: DynamicBarProps): JSX.Element {
 }
 
 const FIRST_PAGE_PID = "0";
+const QUERY_MARK = "?";
+const PID_PATTERN = /^\d+$/;
 
 function isFirstResultsPage(search: string): boolean {
   const pid = new URLSearchParams(search).get(SEARCH_PARAM_PID);
@@ -626,6 +633,57 @@ function rememberDynamicCover(
     return;
   }
   setDynamicCover(collectionId, readFirstThumbUrls());
+  const count = readResultCount();
+  if (count !== null) {
+    setDynamicPostCount(collectionId, count);
+  }
+}
+
+function readPidFromLink(link: Element): number | null {
+  const href = link.getAttribute("href");
+  if (href === null) {
+    return null;
+  }
+  const query = href.slice(href.indexOf(QUERY_MARK) + QUERY_MARK.length);
+  const raw = new URLSearchParams(query).get(SEARCH_PARAM_PID);
+  if (raw === null || !PID_PATTERN.test(raw)) {
+    return null;
+  }
+  return Number(raw);
+}
+
+/**
+ * Size of the current search, read from the first results page.
+ * With a last-page link: at least its offset (`pid`), so the count is a lower
+ * bound. With other page links only: the largest offset among them. With no
+ * page links: the number of thumbs on the page, exact. No grid: null.
+ */
+function readResultCount(): PostCount | null {
+  const last = document.querySelector(SITE_SELECTORS.paginationLastPage);
+  if (last !== null) {
+    const pid = readPidFromLink(last);
+    if (pid !== null) {
+      return { value: pid, exact: false };
+    }
+  }
+  let largest: number | null = null;
+  for (const link of document.querySelectorAll(SITE_SELECTORS.paginationPageLink)) {
+    const pid = readPidFromLink(link);
+    if (pid !== null && (largest === null || pid > largest)) {
+      largest = pid;
+    }
+  }
+  if (largest !== null) {
+    return { value: largest, exact: false };
+  }
+  const imageList = findImageList(document);
+  if (imageList === null) {
+    return null;
+  }
+  return {
+    value: imageList.querySelectorAll(SITE_SELECTORS.thumb).length,
+    exact: true,
+  };
 }
 
 function mountDynamicBar(tagsParam: string, search: string): void {

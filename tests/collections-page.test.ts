@@ -18,7 +18,9 @@ import {
 import { collectionDetailHash } from "../src/pages/constants";
 import { buildSearchUrl } from "../src/search/query";
 import {
+  clearCountMirror,
   clearCoverMirror,
+  readCountMirror,
   readCoverMirror,
   writeCoverMirror,
 } from "../src/storage/cover-mirror";
@@ -33,6 +35,7 @@ import {
   deleteCollection,
   save,
   setDynamicCover,
+  setDynamicPostCount,
   updateDynamicQuery,
 } from "../src/storage/store";
 
@@ -149,6 +152,7 @@ describe("createCollectionsPage", () => {
   beforeEach(() => {
     installGmMocks();
     clearCoverMirror();
+    clearCountMirror();
     document.body.replaceChildren();
     save(createDefaultStorage());
   });
@@ -351,6 +355,27 @@ describe("createCollectionsPage", () => {
     const cells = cardByName(root, "Birds").querySelectorAll("[data-cover-index]");
     expect(cells[0]?.querySelector("img")?.getAttribute("src")).toBe(THUMB_1);
     expect(cells[1]?.querySelector("img")?.getAttribute("src")).toBe(THUMB_2);
+  });
+
+  it("shows the post count of a dynamic collection once it is known", () => {
+    const big = createDynamicCollection("Big", "cat");
+    const small = createDynamicCollection("Small", "dog");
+    const single = createDynamicCollection("Single", "owl");
+    createDynamicCollection("Unknown", "bird");
+    setDynamicPostCount(big.id, { value: 12516, exact: false });
+    setDynamicPostCount(small.id, { value: 37, exact: true });
+    setDynamicPostCount(single.id, { value: 1, exact: true });
+
+    const root = mount();
+    expect(cardByName(root, "Big").textContent).toContain("12,516+ posts");
+    expect(cardByName(root, "Small").textContent).toContain("37 posts");
+    expect(cardByName(root, "Single").textContent).toContain("1 post");
+    expect(cardByName(root, "Single").textContent).not.toContain("1 posts");
+    expect(cardByName(root, "Unknown").textContent).toContain("saved search");
+
+    expect(readCountMirror(big.id)).toEqual({ value: 12516, exact: false });
+    deleteCollection(big.id);
+    expect(readCountMirror(big.id)).toBeNull();
   });
 
   it("forgets the mirrored cover when the query changes or the collection is deleted", () => {

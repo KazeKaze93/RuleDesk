@@ -20,6 +20,12 @@ export const SITE_SELECTORS = {
   postPrevSearchLink: "a#prev_search_link",
   /** Post page: site link to the next post of the last search (href="#", site JS). */
   postNextSearchLink: "a#next_search_link",
+  /** List page pager. */
+  pagination: "div.pagination",
+  /** Pager link to the last results page; its `pid` is the offset of that page. */
+  paginationLastPage: 'div.pagination a[alt="last page"]',
+  /** Any pager link to another results page. */
+  paginationPageLink: "div.pagination > a[href]",
   /** Stray Tags heading between #rdw-search-tools and the tag list. */
   tagsHeadingAfterSearchTools: "#rdw-search-tools + h5",
 } as const;

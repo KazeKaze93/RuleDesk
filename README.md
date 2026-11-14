@@ -18,6 +18,11 @@ Local build: `npm install` then `npm run build` → `dist/ruledesk-web.user.js`.
 
 Measured on Tampermonkey 5.5.1: with Dynamic, native page flash on load is typically 0/5 vs ~5/5 with UserScripts API; pages also open faster. Prefer Dynamic for RuleDesk Web.
 
+### 0.16.7 notes
+
+- **Dialogs on site pages:** a focused text field keeps the theme colours (the site painted it light yellow, hiding the text on dark themes)
+- **Dynamic cards:** the caption shows the post count once the results page has been opened: exact for a single page, "N+" otherwise (read from the pager, no extra requests)
+
 ### 0.16.6 notes
 
 - **Dynamic bar:** drawn like the custom collection header: no boxed panel, larger name, plain buttons, red Delete

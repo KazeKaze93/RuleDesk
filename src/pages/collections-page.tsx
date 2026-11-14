@@ -12,7 +12,7 @@ import {
   resolveCollectionKind,
   type Collection,
 } from "../storage/schema";
-import { readCoverMirror } from "../storage/cover-mirror";
+import { readCountMirror, readCoverMirror } from "../storage/cover-mirror";
 import {
   createDynamicCollection,
   createPlaylist,
@@ -71,6 +71,8 @@ const GRID_LABEL = "Collections";
 const BADGE_CUSTOM = "Custom";
 const BADGE_DYNAMIC = "Dynamic";
 const SAVED_SEARCH_CAPTION = "saved search";
+const COUNT_LOCALE = "en-US";
+const COUNT_AT_LEAST_MARK = "+";
 const EMPTY_TITLE = "No collections yet";
 const EMPTY_DESCRIPTION =
   "Custom collections are posts you pick. Dynamic collections are saved searches.";
@@ -430,6 +432,21 @@ function CustomCard(props: { readonly collection: Collection }): JSX.Element {
   );
 }
 
+/** "1,234 posts", "12,516+ posts" for a lower bound, or the plain caption. */
+function dynamicMeta(collection: Collection): string {
+  const count = readCountMirror(collection.id) ?? collection.postCount ?? null;
+  if (count === null) {
+    return SAVED_SEARCH_CAPTION;
+  }
+  const number = count.value.toLocaleString(COUNT_LOCALE);
+  if (count.exact) {
+    const word =
+      count.value === POST_COUNT_SINGULAR ? POST_WORD_SINGULAR : POST_WORD_PLURAL;
+    return `${number} ${word}`;
+  }
+  return `${number}${COUNT_AT_LEAST_MARK} ${POST_WORD_PLURAL}`;
+}
+
 function DynamicCard(props: { readonly collection: Collection }): JSX.Element {
   const cover =
     readCoverMirror(props.collection.id) ?? props.collection.cover ?? [];
@@ -443,7 +460,7 @@ function DynamicCard(props: { readonly collection: Collection }): JSX.Element {
       href={buildSearchUrl(props.collection.tags)}
       kind={COLLECTION_KIND_SEARCH}
       badge={BADGE_DYNAMIC}
-      meta={SAVED_SEARCH_CAPTION}
+      meta={dynamicMeta(props.collection)}
     >
       <Cover collectionId={props.collection.id} urls={slots} />
     </CardLink>

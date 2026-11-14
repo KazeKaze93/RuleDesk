@@ -389,6 +389,59 @@ describe("dynamic collection bar", () => {
     expect(coverOf(created.id)).toEqual(stored);
   });
 
+  function addPagination(html: string): void {
+    const pager = document.createElement("div");
+    pager.className = "pagination";
+    pager.innerHTML = html;
+    document.getElementById("content")?.append(pager);
+  }
+
+  function countOf(collectionId: string): unknown {
+    return load().collections.find((item) => item.id === collectionId)?.postCount;
+  }
+
+  it("reads a lower-bound post count from the last-page link", () => {
+    const created = createDynamicCollection("Birds", "cat");
+    addThumbs(buildListPage(), 4);
+    addPagination(
+      ' <b>1</b> <a href="?page=post&amp;s=list&amp;tags=cat&amp;pid=42">2</a>' +
+        '<a href="?page=post&amp;s=list&amp;tags=cat&amp;pid=42" alt="next">&gt;</a>' +
+        '<a href="?page=post&amp;s=list&amp;tags=cat&amp;pid=12516" alt="last page">&gt;&gt;</a>',
+    );
+
+    playlistBarFeature.mount(makeCtx(tagsSearch("cat")));
+
+    expect(countOf(created.id)).toEqual({ value: 12516, exact: false });
+  });
+
+  it("uses the largest page offset when there is no last-page link", () => {
+    const created = createDynamicCollection("Birds", "cat");
+    addThumbs(buildListPage(), 4);
+    addPagination(
+      ' <b>1</b> <a href="?page=post&amp;s=list&amp;tags=cat&amp;pid=42">2</a>' +
+        '<a href="?page=post&amp;s=list&amp;tags=cat&amp;pid=84">3</a>',
+    );
+
+    playlistBarFeature.mount(makeCtx(tagsSearch("cat")));
+
+    expect(countOf(created.id)).toEqual({ value: 84, exact: false });
+  });
+
+  it("counts the thumbs exactly on a single-page search and skips later pages", () => {
+    const created = createDynamicCollection("Birds", "cat");
+    addThumbs(buildListPage(), 3);
+    addPagination(" <b>1</b> ");
+
+    playlistBarFeature.mount(makeCtx(`${tagsSearch("cat")}&pid=42`));
+    expect(countOf(created.id)).toBeUndefined();
+
+    playlistBarFeature.mount(makeCtx(tagsSearch("cat")));
+    expect(countOf(created.id)).toEqual({ value: 3, exact: true });
+
+    updateDynamicQuery(created.id, "dog");
+    expect(countOf(created.id)).toBeUndefined();
+  });
+
   it("drops the cover when the query is edited", () => {
     const created = createDynamicCollection("Birds", "cat");
     addThumbs(buildListPage(), 4);

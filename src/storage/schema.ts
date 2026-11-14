@@ -40,8 +40,19 @@ export const TagEntrySchema = z.object({
  * custom-collection defaults without dropping `postIds` or search tags.
  * `shuffledOrder: null` means insertion order (`postIds`).
  * Dynamic searches may also carry `cover`: thumb URLs seen on the first
- * page of their results, newest visit wins.
+ * page of their results, newest visit wins. `postCount` comes from the same page.
  */
+/**
+ * Size of a saved search as read from its results page.
+ * `exact: false` means "at least `value`" (taken from the last-page link).
+ */
+export const PostCountSchema = z.object({
+  value: z.int(),
+  exact: z.boolean(),
+});
+
+export type PostCount = z.infer<typeof PostCountSchema>;
+
 export const CollectionSchema = z.object({
   id: z.string().check(z.minLength(1)),
   name: z.string().check(z.minLength(1)),
@@ -52,6 +63,7 @@ export const CollectionSchema = z.object({
   shuffledOrder: z.optional(z.nullable(z.array(z.int()))),
   query: z.optional(z.string()),
   cover: z.optional(z.array(z.string())),
+  postCount: z.optional(PostCountSchema),
 });
 
 export const ArtistEntrySchema = z.object({
