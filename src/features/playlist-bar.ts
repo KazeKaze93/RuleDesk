@@ -1,17 +1,37 @@
-import { SEARCH_PARAM_TAGS } from "../config/constants";
+import { Fragment, h, render } from "preact";
+import type { JSX } from "preact";
+import { useState } from "preact/hooks";
+
+import { SEARCH_PARAM_TAGS, UI_TEXT } from "../config/constants";
 import { log } from "../log";
 import {
   buildPlaylistQueries,
   buildSearchUrl,
   parsePlaylistQuery,
   parseTags,
+  queriesMatchIgnoringSortRandom,
+  queryHasSortRandom,
+  serialize,
+  withSortRandom,
+  withoutSortRandom,
 } from "../search/query";
 import { SITE_SELECTORS } from "../site/selectors";
-import type { Collection } from "../storage/schema";
+import { isPlaylist, type Collection } from "../storage/schema";
 import {
+  deleteCollection,
   getPlaylistChunkSize,
   listPlaylists,
+  load,
+  renameCollection,
+  updateDynamicQuery,
 } from "../storage/store";
+import { Button, Dialog, type DialogFieldValues } from "../ui/kit";
+import {
+  IconOriginalOrder,
+  IconPencil,
+  IconShuffle,
+  IconTrash,
+} from "../ui/kit/icons";
 import { featureBodyClass, type Feature, type FeatureContext } from "./types";
 
 const FEATURE_ID = "playlist-bar";
@@ -28,12 +48,36 @@ const PART_LABEL_CLASS = "rdw-playlist-bar-part-label";
 const PART_LINK_CLASS = "rdw-playlist-bar-part-link";
 const CAPTION_CLASS = "rdw-playlist-bar-caption";
 
+const DYNAMIC_ROOT_ID = "rdw-dynamic-collection-bar";
+const ACTIONS_CLASS = "rdw-dynamic-collection-actions";
+
 const TEXT_POSTS_SUFFIX = " posts";
 const TEXT_PART_PREFIX = "Part ";
 const TEXT_PART_OF = " of ";
 const TEXT_CAPTION = "Posts are ordered by the site (newest first).";
 const TEXT_PREV = "Previous";
 const TEXT_NEXT = "Next";
+const TEXT_SHUFFLE = "Shuffle";
+const TEXT_ORIGINAL_ORDER = "Original order";
+const TEXT_EDIT_QUERY = "Edit query";
+const TEXT_QUERY_LABEL = "Query";
+
+const DIALOG_NONE = "none";
+const DIALOG_EDIT_QUERY = "edit-query";
+const DIALOG_RENAME = "rename";
+const DIALOG_DELETE = "delete";
+const DIALOG_VARIANT_FIELDS = "fields" as const;
+const DIALOG_VARIANT_CONFIRM = "confirm" as const;
+const DIALOG_TONE_DANGER = "danger" as const;
+const BAR_BUTTON_VARIANT = "secondary" as const;
+const BAR_BUTTON_SIZE = "s" as const;
+const ICON_GLYPH_PX = 16;
+
+type DynamicDialogKind =
+  | typeof DIALOG_NONE
+  | typeof DIALOG_EDIT_QUERY
+  | typeof DIALOG_RENAME
+  | typeof DIALOG_DELETE;
 
 const WARN_MISSING_HOST =
   "playlist-bar: image-list not found; playlist bar not mounted";
@@ -94,6 +138,13 @@ body.${BODY_CLASS} .${CAPTION_CLASS} {
   font-size: 0.875rem;
   line-height: 1.35;
   opacity: 0.8;
+}
+body.${BODY_CLASS} .${ACTIONS_CLASS} {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 100%;
 }
 `.trim();
 
@@ -283,40 +334,305 @@ function createBar(match: PlaylistMatch): HTMLDivElement {
   return bar;
 }
 
-function mountPlaylistBar(ctx: FeatureContext): void {
-  removeExistingBar(document);
-
-  const tagsParam = readTagsParam(ctx.search);
-  const queryIds = parsePlaylistQuery(tagsParam);
-  if (queryIds === null) {
-    return;
-  }
-
-  const match = findPlaylistMatch(queryIds);
-  if (match === null) {
-    return;
-  }
-
+function placeBar(bar: HTMLElement): boolean {
   const imageList = findImageList(document);
-  const bar = createBar(match);
-
   if (imageList !== null) {
     const host = imageList.parentElement;
     if (host === null) {
       log.warn(WARN_MISSING_HOST);
-      return;
+      return false;
     }
     insertBar(host, bar, imageList);
-    return;
+    return true;
   }
 
   const fallback = findFallbackHost(document);
   if (fallback === null) {
     log.warn(WARN_MISSING_HOST);
-    return;
+    return false;
   }
   log.warn(WARN_MISSING_HOST);
   insertBar(fallback, bar, null);
+  return true;
+}
+
+function storedDynamicQuery(collection: Collection): string {
+  if (collection.query !== undefined) {
+    return collection.query;
+  }
+  return serialize(collection.tags);
+}
+
+function findDynamicCollection(tagsParam: string): Collection | null {
+  for (const collection of load().collections) {
+    if (isPlaylist(collection)) {
+      continue;
+    }
+    const stored = storedDynamicQuery(collection);
+    // An empty saved query would match the plain post list.
+    if (withoutSortRandom(stored).length === 0) {
+      continue;
+    }
+    if (queriesMatchIgnoringSortRandom(tagsParam, stored)) {
+      return collection;
+    }
+  }
+  return null;
+}
+
+function removeDynamicBar(root: ParentNode): void {
+  const existing =
+    root instanceof Document
+      ? root.getElementById(DYNAMIC_ROOT_ID)
+      : root.querySelector(`#${DYNAMIC_ROOT_ID}`);
+  if (!(existing instanceof HTMLElement)) {
+    return;
+  }
+  render(null, existing);
+  existing.remove();
+}
+
+function deleteConfirmMessage(collectionName: string): string {
+  return `${UI_TEXT.confirmDelete} (${collectionName})`;
+}
+
+function navigateToQuery(query: string): void {
+  window.location.assign(buildSearchUrl(parseTags(query)));
+}
+
+type DynamicBarProps = {
+  readonly collectionId: string;
+  readonly initialName: string;
+  readonly storedQuery: string;
+  readonly pageQuery: string;
+};
+
+function DynamicCollectionBar(props: DynamicBarProps): JSX.Element {
+  const [name, setName] = useState(props.initialName);
+  const [query, setQuery] = useState(props.storedQuery);
+  const [dialog, setDialog] = useState<DynamicDialogKind>(DIALOG_NONE);
+  const [fields, setFields] = useState<DialogFieldValues>({
+    name: props.initialName,
+    query: props.storedQuery,
+  });
+  const shuffled = queryHasSortRandom(props.pageQuery);
+
+  function closeDialog(): void {
+    setDialog(DIALOG_NONE);
+  }
+
+  function openFields(kind: typeof DIALOG_EDIT_QUERY | typeof DIALOG_RENAME): void {
+    setFields({ name, query });
+    setDialog(kind);
+  }
+
+  function onShuffle(): void {
+    if (shuffled) {
+      window.location.reload();
+      return;
+    }
+    navigateToQuery(withSortRandom(props.pageQuery));
+  }
+
+  function onOriginalOrder(): void {
+    navigateToQuery(withoutSortRandom(props.pageQuery));
+  }
+
+  function onEditSubmit(): void {
+    if (fields.query.trim().length === 0) {
+      return;
+    }
+    const updated = updateDynamicQuery(props.collectionId, fields.query);
+    if (updated === null) {
+      return;
+    }
+    const trimmedName = fields.name.trim();
+    if (trimmedName.length > 0 && trimmedName !== updated.name) {
+      renameCollection(props.collectionId, trimmedName);
+    }
+    const nextQuery = updated.query ?? serialize(updated.tags);
+    setQuery(nextQuery);
+    navigateToQuery(nextQuery);
+  }
+
+  function onRenameSubmit(): void {
+    const trimmedName = fields.name.trim();
+    if (trimmedName.length === 0) {
+      return;
+    }
+    const renamed = renameCollection(props.collectionId, trimmedName);
+    if (renamed === null) {
+      return;
+    }
+    setName(renamed.name);
+    const nextQuery = fields.query.trim();
+    if (nextQuery.length > 0 && nextQuery !== query.trim()) {
+      const updated = updateDynamicQuery(props.collectionId, nextQuery);
+      if (updated === null) {
+        return;
+      }
+      const savedQuery = updated.query ?? serialize(updated.tags);
+      setQuery(savedQuery);
+      navigateToQuery(savedQuery);
+      return;
+    }
+    closeDialog();
+  }
+
+  function onConfirmDelete(): void {
+    const removed = deleteCollection(props.collectionId);
+    if (!removed) {
+      closeDialog();
+      return;
+    }
+    const root = document.getElementById(DYNAMIC_ROOT_ID);
+    if (!(root instanceof HTMLElement)) {
+      return;
+    }
+    root.remove();
+    render(null, root);
+  }
+
+  const fieldsOpen = dialog === DIALOG_EDIT_QUERY || dialog === DIALOG_RENAME;
+  const fieldsTitle = dialog === DIALOG_RENAME ? UI_TEXT.rename : TEXT_EDIT_QUERY;
+  const onFieldsSubmit = dialog === DIALOG_RENAME ? onRenameSubmit : onEditSubmit;
+
+  return h(
+    Fragment,
+    null,
+    h(
+      "div",
+      { className: TITLE_CLASS },
+      h("span", { className: NAME_CLASS }, name),
+    ),
+    h(
+      "div",
+      { className: ACTIONS_CLASS },
+      h(
+        Button,
+        {
+          variant: BAR_BUTTON_VARIANT,
+          size: BAR_BUTTON_SIZE,
+          onClick: onShuffle,
+        },
+        h(IconShuffle, { size: ICON_GLYPH_PX }),
+        TEXT_SHUFFLE,
+      ),
+      shuffled
+        ? h(
+            Button,
+            {
+              variant: BAR_BUTTON_VARIANT,
+              size: BAR_BUTTON_SIZE,
+              onClick: onOriginalOrder,
+            },
+            h(IconOriginalOrder, { size: ICON_GLYPH_PX }),
+            TEXT_ORIGINAL_ORDER,
+          )
+        : null,
+      h(
+        Button,
+        {
+          variant: BAR_BUTTON_VARIANT,
+          size: BAR_BUTTON_SIZE,
+          onClick: () => {
+            openFields(DIALOG_EDIT_QUERY);
+          },
+        },
+        h(IconPencil, { size: ICON_GLYPH_PX }),
+        TEXT_EDIT_QUERY,
+      ),
+      h(
+        Button,
+        {
+          variant: BAR_BUTTON_VARIANT,
+          size: BAR_BUTTON_SIZE,
+          onClick: () => {
+            openFields(DIALOG_RENAME);
+          },
+        },
+        UI_TEXT.rename,
+      ),
+      h(
+        Button,
+        {
+          variant: BAR_BUTTON_VARIANT,
+          size: BAR_BUTTON_SIZE,
+          onClick: () => {
+            setDialog(DIALOG_DELETE);
+          },
+        },
+        h(IconTrash, { size: ICON_GLYPH_PX }),
+        UI_TEXT.delete,
+      ),
+    ),
+    fieldsOpen
+      ? h(Dialog, {
+          variant: DIALOG_VARIANT_FIELDS,
+          open: true,
+          title: fieldsTitle,
+          fields,
+          onFieldsChange: setFields,
+          onSubmit: onFieldsSubmit,
+          onClose: closeDialog,
+          submitLabel: UI_TEXT.save,
+          cancelLabel: UI_TEXT.cancel,
+          nameLabel: UI_TEXT.nameLabel,
+          queryLabel: TEXT_QUERY_LABEL,
+        })
+      : null,
+    dialog === DIALOG_DELETE
+      ? h(Dialog, {
+          variant: DIALOG_VARIANT_CONFIRM,
+          open: true,
+          title: UI_TEXT.delete,
+          message: deleteConfirmMessage(name),
+          confirmLabel: UI_TEXT.confirm,
+          cancelLabel: UI_TEXT.cancel,
+          confirmTone: DIALOG_TONE_DANGER,
+          onConfirm: onConfirmDelete,
+          onClose: closeDialog,
+        })
+      : null,
+  );
+}
+
+function mountDynamicBar(tagsParam: string): void {
+  const collection = findDynamicCollection(tagsParam);
+  if (collection === null) {
+    return;
+  }
+  const bar = document.createElement("div");
+  bar.id = DYNAMIC_ROOT_ID;
+  bar.className = ROOT_CLASS;
+  if (!placeBar(bar)) {
+    return;
+  }
+  render(
+    h(DynamicCollectionBar, {
+      collectionId: collection.id,
+      initialName: collection.name,
+      storedQuery: storedDynamicQuery(collection),
+      pageQuery: tagsParam,
+    }),
+    bar,
+  );
+}
+
+function mountPlaylistBar(ctx: FeatureContext): void {
+  removeExistingBar(document);
+  removeDynamicBar(document);
+
+  const tagsParam = readTagsParam(ctx.search);
+  const queryIds = parsePlaylistQuery(tagsParam);
+  if (queryIds !== null) {
+    const match = findPlaylistMatch(queryIds);
+    if (match !== null) {
+      placeBar(createBar(match));
+    }
+  }
+
+  mountDynamicBar(tagsParam);
 }
 
 export const playlistBarFeature: Feature = {

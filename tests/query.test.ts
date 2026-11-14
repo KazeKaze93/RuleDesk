@@ -9,7 +9,11 @@ import {
   buildSearchUrl,
   parsePlaylistQuery,
   parseTags,
+  queriesMatchIgnoringSortRandom,
+  queryHasSortRandom,
   serialize,
+  withSortRandom,
+  withoutSortRandom,
 } from "../src/search/query";
 import type { TagEntry } from "../src/storage/schema";
 
@@ -110,5 +114,46 @@ describe("buildPlaylistQueries / parsePlaylistQuery", () => {
       [9, 8, 7],
       [6, 5],
     ]);
+  });
+});
+
+describe("queriesMatchIgnoringSortRandom", () => {
+  it("matches the same tokens in any order", () => {
+    expect(queriesMatchIgnoringSortRandom("cat dog", "dog cat")).toBe(true);
+    expect(queriesMatchIgnoringSortRandom("cat -dog", "-dog cat")).toBe(true);
+  });
+
+  it("ignores sort:random and repeated whitespace", () => {
+    expect(
+      queriesMatchIgnoringSortRandom("cat dog sort:random", "dog cat"),
+    ).toBe(true);
+    expect(
+      queriesMatchIgnoringSortRandom("sort:random cat sort:random", "cat"),
+    ).toBe(true);
+    expect(queriesMatchIgnoringSortRandom("  cat   dog  ", "dog cat")).toBe(
+      true,
+    );
+    expect(queriesMatchIgnoringSortRandom("sort:random", "")).toBe(true);
+  });
+
+  it("treats other tokens as significant, including duplicates and grouping", () => {
+    expect(queriesMatchIgnoringSortRandom("cat dog", "cat")).toBe(false);
+    expect(queriesMatchIgnoringSortRandom("cat cat", "cat")).toBe(false);
+    expect(queriesMatchIgnoringSortRandom("cat -dog", "cat dog")).toBe(false);
+    expect(queriesMatchIgnoringSortRandom("cat sort:score", "cat")).toBe(
+      false,
+    );
+    expect(queriesMatchIgnoringSortRandom("( cat )", "cat")).toBe(false);
+    expect(queriesMatchIgnoringSortRandom("Cat", "cat")).toBe(false);
+  });
+
+  it("adds, detects, and removes sort:random without reordering other tokens", () => {
+    expect(queryHasSortRandom("dog sort:random cat")).toBe(true);
+    expect(queryHasSortRandom("dog cat")).toBe(false);
+    expect(withSortRandom("dog cat")).toBe("dog cat sort:random");
+    expect(withSortRandom("dog sort:random cat")).toBe("dog sort:random cat");
+    expect(withoutSortRandom("dog sort:random cat sort:random")).toBe(
+      "dog cat",
+    );
   });
 });

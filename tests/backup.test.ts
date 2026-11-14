@@ -21,7 +21,9 @@ import { createDefaultFavs, createDefaultStorage } from "../src/storage/schema";
 import {
   addArtist,
   addCollection,
+  addPostToCollection,
   clearStorageCache,
+  createPlaylist,
   load,
   save,
 } from "../src/storage/store";
@@ -432,5 +434,73 @@ describe("backup export/import", () => {
     });
     expect(reexported.background).toBe("data:image/png;base64,from-backup");
     expect(memory.get(APPEARANCE_BACKGROUND_KEY)).toBe("");
+  });
+
+  it("exports collection thumbs, shuffledOrder, and dynamic query", async () => {
+    const posts = createPlaylist("Later");
+    addPostToCollection(posts.id, 42, "https://wimg.rule34.xxx/thumbnails/1/thumbnail_ab.jpg?42");
+    addCollection("Cats", [{ tag: "cat", type: "include" }]);
+
+    const file = await buildBackupFile({
+      includeBackground: false,
+      includeFavorites: false,
+    });
+    const exportedPosts = file.storage.collections.find((entry) => entry.id === posts.id);
+    expect(exportedPosts?.postIds).toEqual([42]);
+    expect(exportedPosts?.thumbs).toEqual({
+      "42": "https://wimg.rule34.xxx/thumbnails/1/thumbnail_ab.jpg?42",
+    });
+    expect(exportedPosts?.shuffledOrder).toBeNull();
+    const serialized = serializeBackupFile(file);
+    expect(serialized).toContain("\"thumbs\"");
+    expect(serialized).toContain("\"shuffledOrder\"");
+  });
+
+  it("imports a backup written before thumbs, shuffledOrder, and query existed", async () => {
+    const legacy = {
+      format: BACKUP_FORMAT,
+      version: BACKUP_VERSION,
+      exportedAt: "2026-01-01T00:00:00.000Z",
+      storage: {
+        version: 1,
+        collections: [
+          {
+            id: "legacy-search",
+            name: "Cats",
+            tags: [{ tag: "cat", type: "include" }],
+          },
+          {
+            id: "legacy-posts",
+            name: "Later",
+            tags: [],
+            kind: "posts",
+            postIds: [4, 5],
+          },
+        ],
+        artists: [],
+        marks: {},
+      },
+    };
+
+    const result = await importBackupJson(
+      JSON.stringify(legacy),
+      IMPORT_MODE_REPLACE,
+    );
+    expect(result.ok).toBe(true);
+    const collections = load().collections;
+    expect(collections.find((entry) => entry.id === "legacy-search")).toEqual({
+      id: "legacy-search",
+      name: "Cats",
+      tags: [{ tag: "cat", type: "include" }],
+    });
+    expect(collections.find((entry) => entry.id === "legacy-posts")).toEqual({
+      id: "legacy-posts",
+      name: "Later",
+      tags: [],
+      kind: "posts",
+      postIds: [4, 5],
+      thumbs: {},
+      shuffledOrder: null,
+    });
   });
 });

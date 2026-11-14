@@ -14,6 +14,24 @@ export const RDW_ROUTES = [
 
 export type RdwRoute = (typeof RDW_ROUTES)[number];
 
+/** Custom-collection detail under `#rdw/collections/<id>`. */
+export const RDW_COLLECTION_DETAIL_KIND = "collection" as const;
+
+export type RdwCollectionDetailPage = {
+  readonly kind: typeof RDW_COLLECTION_DETAIL_KIND;
+  readonly collectionId: string;
+};
+
+/** Static script page, or one custom collection. */
+export type RdwPage = RdwRoute | RdwCollectionDetailPage;
+
+/**
+ * Post-queue hash on site post URLs (`/index.php?...#rdw-c=<collectionId>`).
+ * Not a script page — must not match `#rdw/`.
+ */
+export const RDW_COLLECTION_QUEUE_HASH_MARK = "#rdw-c" as const;
+export const RDW_COLLECTION_QUEUE_HASH_PREFIX = "#rdw-c=" as const;
+
 export const RDW_HASH_COLLECTIONS = `${RDW_HASH_PREFIX}${RDW_ROUTE_COLLECTIONS}`;
 export const RDW_HASH_FOLLOWING = `${RDW_HASH_PREFIX}${RDW_ROUTE_FOLLOWING}`;
 export const RDW_HASH_SETTINGS = `${RDW_HASH_PREFIX}${RDW_ROUTE_SETTINGS}`;
@@ -92,22 +110,87 @@ export function featurePanelLabel(featureId: string, fallback: string): string {
   return fallback;
 }
 
+const HASH_SUFFIX_SPLIT = /[?#]/;
+const COLLECTION_DETAIL_SEGMENT_INDEX = 1;
+
 export function isRdwRoute(value: string): value is RdwRoute {
   return RDW_ROUTES.some((route) => route === value);
 }
 
-/** Parse location.hash → route id, or null when hash is not ours. */
-export function parseRdwHash(hash: string): RdwRoute | null {
+export function isCollectionDetailPage(
+  page: RdwPage,
+): page is RdwCollectionDetailPage {
+  return typeof page !== "string";
+}
+
+/** Navbar item for a script page. Collection detail stays under Collections. */
+export function menuRouteForPage(page: RdwPage): RdwRoute {
+  if (isCollectionDetailPage(page)) {
+    return RDW_ROUTE_COLLECTIONS;
+  }
+  return page;
+}
+
+export function collectionDetailHash(collectionId: string): string {
+  return `${RDW_HASH_PREFIX}${RDW_ROUTE_COLLECTIONS}/${encodeURIComponent(collectionId)}`;
+}
+
+export function collectionQueueHash(collectionId: string): string {
+  return `${RDW_COLLECTION_QUEUE_HASH_PREFIX}${encodeURIComponent(collectionId)}`;
+}
+
+export function rdwPageHash(page: RdwPage): string {
+  if (isCollectionDetailPage(page)) {
+    return collectionDetailHash(page.collectionId);
+  }
+  return `${RDW_HASH_PREFIX}${page}`;
+}
+
+function hashSegment(raw: string): string {
+  return raw.split(HASH_SUFFIX_SPLIT)[0] ?? "";
+}
+
+function decodeCollectionId(raw: string): string {
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
+}
+
+/**
+ * Parse location.hash → script page, or null when the hash is not ours.
+ * `#rdw-c=…` is the post-page queue and is never a script page.
+ * `#rdw/collections/<id>` is that custom collection; a bare
+ * `#rdw/collections` stays the list.
+ */
+export function parseRdwHash(hash: string): RdwPage | null {
   const trimmed = hash.trim();
-  if (!trimmed.startsWith(RDW_HASH_PREFIX)) {
+  if (
+    trimmed.startsWith(RDW_COLLECTION_QUEUE_HASH_MARK) ||
+    !trimmed.startsWith(RDW_HASH_PREFIX)
+  ) {
     return null;
   }
   const rest = trimmed.slice(RDW_HASH_PREFIX.length);
-  const path = rest.split(/[/?#]/)[0] ?? "";
-  if (isRdwRoute(path)) {
-    return path;
+  const segments = rest.split("/");
+  const head = hashSegment(segments[0] ?? "");
+  if (!isRdwRoute(head)) {
+    return null;
   }
-  return null;
+  if (head !== RDW_ROUTE_COLLECTIONS || segments.length <= COLLECTION_DETAIL_SEGMENT_INDEX) {
+    return head;
+  }
+  const collectionId = decodeCollectionId(
+    hashSegment(segments[COLLECTION_DETAIL_SEGMENT_INDEX] ?? ""),
+  );
+  if (collectionId.length === 0) {
+    return RDW_ROUTE_COLLECTIONS;
+  }
+  return {
+    kind: RDW_COLLECTION_DETAIL_KIND,
+    collectionId,
+  };
 }
 
 /** CSS: hide site siblings after header while own page is open. */

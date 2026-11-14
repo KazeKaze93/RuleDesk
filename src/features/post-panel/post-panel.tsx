@@ -25,6 +25,7 @@ import {
   kitTabId,
   kitTabPanelId,
 } from "../../ui/kit";
+import { CollectionQueue } from "./collection-queue";
 import { CollectionsMenu } from "./collections-menu";
 import { PostActionsList } from "./post-actions-list";
 import {
@@ -232,6 +233,7 @@ export function PostPanel(props: PostPanelProps): JSX.Element {
 
   return (
     <div className={CLASS_ROOT}>
+      <CollectionQueue postId={numericId} />
       <div className={CLASS_ACTIONS}>
         {props.postId !== null || numericId !== null ? (
           <div className={CLASS_ACTIONS_ROW}>

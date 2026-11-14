@@ -32,13 +32,23 @@ export const TagEntrySchema = z.object({
   type: TagTypeSchema,
 });
 
-/** Optional `kind` / `postIds`: missing `kind` means a saved search. */
+/**
+ * Optional `kind` / `postIds`: missing `kind` means a saved search.
+ * Custom (`posts`) rows may also carry `thumbs` and `shuffledOrder`.
+ * Dynamic searches may carry `query` (raw tag string). All three are optional
+ * so 0.15 blobs still parse; {@link migrateCollectionMediaFields} fills the
+ * custom-collection defaults without dropping `postIds` or search tags.
+ * `shuffledOrder: null` means insertion order (`postIds`).
+ */
 export const CollectionSchema = z.object({
   id: z.string().check(z.minLength(1)),
   name: z.string().check(z.minLength(1)),
   tags: z.array(TagEntrySchema),
   kind: z.optional(CollectionKindSchema),
   postIds: z.optional(z.array(z.int())),
+  thumbs: z.optional(z.record(z.string(), z.string())),
+  shuffledOrder: z.optional(z.nullable(z.array(z.int()))),
+  query: z.optional(z.string()),
 });
 
 export const ArtistEntrySchema = z.object({
@@ -388,6 +398,49 @@ export function migrateRetiredFeatureChoices(
 
 export function isPlaylist(collection: Collection): boolean {
   return collection.kind === COLLECTION_KIND_POSTS;
+}
+
+/**
+ * Posts collections gain `thumbs: {}` and `shuffledOrder: null` when those
+ * keys are absent. Saved searches (including explicit `kind: "search"`) are
+ * copied through unchanged. No SCHEMA_VERSION bump.
+ */
+export function migrateCollectionMediaFields(
+  data: StorageData,
+): { data: StorageData; changed: boolean } {
+  let changed = false;
+  const collections: Collection[] = [];
+  for (const collection of data.collections) {
+    if (!isPlaylist(collection)) {
+      collections.push(collection);
+      continue;
+    }
+    const needsThumbs = collection.thumbs === undefined;
+    const needsOrder = collection.shuffledOrder === undefined;
+    if (!needsThumbs && !needsOrder) {
+      collections.push(collection);
+      continue;
+    }
+    changed = true;
+    const next: Collection = { ...collection };
+    if (needsThumbs) {
+      next.thumbs = {};
+    }
+    if (needsOrder) {
+      next.shuffledOrder = null;
+    }
+    collections.push(next);
+  }
+  if (!changed) {
+    return { data, changed: false };
+  }
+  return {
+    data: {
+      ...data,
+      collections,
+    },
+    changed: true,
+  };
 }
 
 export function resolveCollectionKind(collection: Collection): CollectionKind {

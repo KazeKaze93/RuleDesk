@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RuleDesk Web
 // @namespace    https://github.com/kazekaze93/ruledesk-web
-// @version      0.15.1
+// @version      0.16.0
 // @description  Collections, playlists, favorites, artist updates, and page tweaks for rule34.xxx
 // @downloadURL  https://raw.githubusercontent.com/KazeKaze93/ruledesk-web/main/dist/ruledesk-web.user.js
 // @updateURL    https://raw.githubusercontent.com/KazeKaze93/ruledesk-web/main/dist/ruledesk-web.user.js
@@ -14,26 +14,27 @@
 !function(){function e(e,t){return(t||"")+" (SystemJS Error#"+e+" https://github.com/systemjs/systemjs/blob/main/docs/errors.md#"+e+")"}function t(e,t){if(-1!==e.indexOf("\\")&&(e=e.replace(j,"/")),"/"===e[0]&&"/"===e[1])return t.slice(0,t.indexOf(":")+1)+e;if("."===e[0]&&("/"===e[1]||"."===e[1]&&("/"===e[2]||2===e.length&&(e+="/"))||1===e.length&&(e+="/"))||"/"===e[0]){var n,r=t.slice(0,t.indexOf(":")+1);if(n="/"===t[r.length+1]?"file:"!==r?(n=t.slice(r.length+2)).slice(n.indexOf("/")+1):t.slice(8):t.slice(r.length+("/"===t[r.length])),"/"===e[0])return t.slice(0,t.length-n.length-1)+e;for(var i=n.slice(0,n.lastIndexOf("/")+1)+e,o=[],s=-1,u=0;u<i.length;u++)-1!==s?"/"===i[u]&&(o.push(i.slice(s,u+1)),s=-1):"."===i[u]?"."!==i[u+1]||"/"!==i[u+2]&&u+2!==i.length?"/"===i[u+1]||u+1===i.length?u+=1:s=u:(o.pop(),u+=2):s=u;return-1!==s&&o.push(i.slice(s)),t.slice(0,t.length-n.length)+o.join("")}}function n(e,n){return t(e,n)||(-1!==e.indexOf(":")?e:t("./"+e,n))}function r(e,n,r,i,o){for(var s in e){var a=t(s,r)||s,f=e[s];if("string"==typeof f){var l=c(i,t(f,r)||f,o);l?n[a]=l:u("W1",s,f,"bare specifier did not resolve")}}}function i(e,t,i){var o;for(o in e.imports&&r(e.imports,i.imports,t,i,null),e.scopes||{}){var s=n(o,t);r(e.scopes[o],i.scopes[s]||(i.scopes[s]={}),t,i,s)}for(o in e.depcache||{})i.depcache[n(o,t)]=e.depcache[o];for(o in e.integrity||{})i.integrity[n(o,t)]=e.integrity[o]}function o(e,t){if(t[e])return e;var n=e.length;do{var r=e.slice(0,n+1);if(r in t)return r}while(-1!==(n=e.lastIndexOf("/",n-1)))}function s(e,t){var n=o(e,t);if(n){var r=t[n];if(null===r)return;if(!(e.length>n.length&&"/"!==r[r.length-1]))return r+e.slice(n.length);u("W2",n,r,"should have a trailing '/'")}}function u(t,n,r,i){console.warn(e(t,"Package target "+i+", resolving target '"+r+"' for "+n))}function c(e,t,n){for(var r=e.scopes,i=n&&o(n,r);i;){var u=s(t,r[i]);if(u)return u;i=o(i.slice(0,i.lastIndexOf("/")),r)}return s(t,e.imports)||-1!==t.indexOf(":")&&t}function a(){this[M]={}}function f(e){return e.id}function l(e,t,n,r){if(e.onload(n,t.id,t.d&&t.d.map(f),!!r),n)throw n}function d(t,n,r,i){var o=t[M][n];if(o)return o;var s=[],u=Object.create(null);P&&Object.defineProperty(u,P,{value:"Module"});var c=Promise.resolve().then((function(){return t.instantiate(n,r,i)})).then((function(r){if(!r)throw Error(e(2,"Module "+n+" did not instantiate"));var i=r[1]((function(e,t){o.h=!0;var n=!1;if("string"==typeof e)e in u&&u[e]===t||(u[e]=t,n=!0);else{for(var r in e)t=e[r],r in u&&u[r]===t||(u[r]=t,n=!0);e&&e.__esModule&&(u.__esModule=e.__esModule)}if(n)for(var i=0;i<s.length;i++){var c=s[i];c&&c(u)}return t}),2===r[1].length?{import:function(e,r){return t.import(e,n,r)},meta:t.createContext(n)}:void 0);return o.e=i.execute||function(){},[r[0],i.setters||[],r[2]||[]]}),(function(e){throw o.e=null,o.er=e,l(t,o,e,!0),e})),a=c.then((function(e){return Promise.all(e[0].map((function(r,i){var o=e[1][i],s=e[2][i];return Promise.resolve(t.resolve(r,n)).then((function(e){var r=d(t,e,n,s);return Promise.resolve(r.I).then((function(){return o&&(r.i.push(o),!r.h&&r.I||o(r.n)),r}))}))}))).then((function(e){o.d=e}))}));return o=t[M][n]={id:n,i:s,n:u,m:i,I:c,L:a,h:!1,d:void 0,e:void 0,er:void 0,E:void 0,C:void 0,p:void 0}}function h(e,t,n,r){if(!r[t.id])return r[t.id]=!0,Promise.resolve(t.L).then((function(){return t.p&&null!==t.p.e||(t.p=n),Promise.all(t.d.map((function(t){return h(e,t,n,r)})))})).catch((function(n){if(t.er)throw n;throw t.e=null,l(e,t,n,!1),n}))}function p(e,t){return t.C=h(e,t,t,{}).then((function(){return v(e,t,{})})).then((function(){return t.n}))}function v(e,t,n){function r(){try{var n=o.call(L);if(n)return n=n.then((function(){t.C=t.n,t.E=null,l(e,t,null,!0)}),(function(n){throw t.er=n,t.E=null,l(e,t,n,!0),n})),t.E=n;t.C=t.n,t.L=t.I=void 0}catch(r){throw t.er=r,r}finally{l(e,t,t.er,!0)}}if(!n[t.id]){if(n[t.id]=!0,!t.e){if(t.er)throw t.er;return t.E?t.E:void 0}var i,o=t.e;return t.e=null,t.d.forEach((function(r){try{var o=v(e,r,n);o&&(i=i||[]).push(o)}catch(s){throw t.er=s,l(e,t,s,!1),s}})),i?Promise.all(i).then(r):r()}}function m(){[].forEach.call(document.querySelectorAll("script"),(function(t){if(!t.sp)if("systemjs-module"===t.type){if(t.sp=!0,!t.src)return;System.import("import:"===t.src.slice(0,7)?t.src.slice(7):n(t.src,g)).catch((function(e){if(e.message.indexOf("https://github.com/systemjs/systemjs/blob/main/docs/errors.md#3")>-1){var n=document.createEvent("Event");n.initEvent("error",!1,!1),t.dispatchEvent(n)}return Promise.reject(e)}))}else if("systemjs-importmap"===t.type){t.sp=!0;var r=t.src?(System.fetch||fetch)(t.src,{integrity:t.integrity,priority:t.fetchPriority,passThrough:!0}).then((function(e){if(!e.ok)throw Error("Invalid status code: "+e.status);return e.text()})).catch((function(n){return n.message=e("W4","Error fetching systemjs-import map "+t.src)+"\n"+n.message,console.warn(n),"function"==typeof t.onerror&&t.onerror(),"{}"})):t.innerHTML;W=W.then((function(){return r})).then((function(n){!function(t,n,r){var o={};try{o=JSON.parse(n)}catch(s){console.warn(Error(e("W5","systemjs-importmap contains invalid JSON")+"\n\n"+n+"\n"))}i(o,r,t)}(N,n,t.src||g)}))}}))}var g,y="undefined"!=typeof Symbol,b="undefined"!=typeof self,S="undefined"!=typeof document,w=b?self:global;if(S){var O=document.querySelector("base[href]");O&&(g=O.href)}if(!g&&"undefined"!=typeof location){var E=(g=location.href.split("#")[0].split("?")[0]).lastIndexOf("/");-1!==E&&(g=g.slice(0,E+1))}var x,j=/\\/g,P=y&&Symbol.toStringTag,M=y?Symbol():"@",I=a.prototype;I.import=function(e,t,n){var r=this;return t&&"object"==typeof t&&(n=t,t=void 0),Promise.resolve(r.prepareImport()).then((function(){return r.resolve(e,t,n)})).then((function(e){var t=d(r,e,void 0,n);return t.C||p(r,t)}))},I.createContext=function(e){var t=this;return{url:e,resolve:function(n,r){return Promise.resolve(t.resolve(n,r||e))}}},I.onload=function(){},I.register=function(e,t,n){x=[e,t,n]},I.getRegister=function(){var e=x;return x=void 0,e};var L=Object.freeze(Object.create(null));w.System=new a;var C,R,W=Promise.resolve(),N={imports:{},scopes:{},depcache:{},integrity:{}},T=S;if(I.prepareImport=function(e){return(T||e)&&(m(),T=!1),W},I.getImportMap=function(){return JSON.parse(JSON.stringify(N))},S&&(m(),window.addEventListener("DOMContentLoaded",m)),I.addImportMap=function(e,t){i(e,t||g,N)},S){window.addEventListener("error",(function(e){J=e.filename,_=e.error}));var A=location.origin}I.createScript=function(e){var t=document.createElement("script");t.async=!0,e.indexOf(A+"/")&&(t.crossOrigin="anonymous");var n=N.integrity[e];return n&&(t.integrity=n),t.src=e,t};var J,_,k={},U=I.register;I.register=function(e,t){if(S&&"loading"===document.readyState&&"string"!=typeof e){var n=document.querySelectorAll("script[src]"),r=n[n.length-1];if(r){C=e;var i=this;R=setTimeout((function(){k[r.src]=[e,t],i.import(r.src)}))}}else C=void 0;return U.call(this,e,t)},I.instantiate=function(t,n){var r=k[t];if(r)return delete k[t],r;var i=this;return Promise.resolve(I.createScript(t)).then((function(r){return new Promise((function(o,s){r.addEventListener("error",(function(){s(Error(e(3,"Error loading "+t+(n?" from "+n:""))))})),r.addEventListener("load",(function(){if(document.head.removeChild(r),J===t)s(_);else{var e=i.getRegister(t);e&&e[0]===C&&clearTimeout(R),o(e)}})),document.head.appendChild(r)}))}))},I.shouldFetch=function(){return!1},"undefined"!=typeof fetch&&(I.fetch=fetch);var $=I.instantiate,B=/^(text|application)\/(x-)?javascript(;|$)/;I.instantiate=function(t,n,r){var i=this;return this.shouldFetch(t,n,r)?this.fetch(t,{credentials:"same-origin",integrity:N.integrity[t],meta:r}).then((function(r){if(!r.ok)throw Error(e(7,r.status+" "+r.statusText+", loading "+t+(n?" from "+n:"")));var o=r.headers.get("content-type");if(!o||!B.test(o))throw Error(e(4,'Unknown Content-Type "'+o+'", loading '+t+(n?" from "+n:"")));return r.text().then((function(e){return e.indexOf("//# sourceURL=")<0&&(e+="\n//# sourceURL="+t),(0,eval)(e),i.getRegister(t)}))})):$.apply(this,arguments)},I.resolve=function(n,r){return c(N,t(n,r=r||g)||n,r)||function(t,n){throw Error(e(8,"Unable to resolve bare specifier '"+t+(n?"' from "+n:"'")))}(n,r)};var F=I.instantiate;I.instantiate=function(e,t,n){var r=N.depcache[e];if(r)for(var i=0;i<r.length;i++)d(this,this.resolve(r[i],e),e);return F.call(this,e,t,n)},b&&"function"==typeof importScripts&&(I.instantiate=function(e){var t=this;return Promise.resolve().then((function(){return importScripts(e),t.getRegister(e)}))}),function(e){function t(t){return!e.hasOwnProperty(t)||!isNaN(t)&&t<e.length||a&&e[t]&&"undefined"!=typeof window&&e[t].parent===window}var n,r,i,o=e.System.constructor.prototype,s=o.import;o.import=function(o,u,c){return function(){for(var o in n=r=void 0,e)t(o)||(n?r||(r=o):n=o,i=o)}(),s.call(this,o,u,c)};var u=[[],function(){return{}}],c=o.getRegister;o.getRegister=function(){var o=c.call(this);if(o)return o;var s,a=function(o){var s,u,c=0;for(var a in e)if(!t(a)){if(0===c&&a!==n||1===c&&a!==r)return a;s?(i=a,u=o&&u||a):s=a===i,c++}return u}(this.firstGlobalProp);if(!a)return u;try{s=e[a]}catch(f){return u}return[[],function(e){return{execute:function(){e(s),e({default:s,__useDefault:!0})}}}]};var a="undefined"!=typeof navigator&&-1!==navigator.userAgent.indexOf("Trident")}("undefined"!=typeof self?self:global),function(e){var t=e.System.constructor.prototype,r=/^[^#?]+\.(css|html|json|wasm)([?#].*)?$/,i=t.shouldFetch.bind(t);t.shouldFetch=function(e){return i(e)||r.test(e)};var o=/^application\/json(;|$)/,s=/^text\/css(;|$)/,u=/^application\/wasm(;|$)/,c=t.fetch;t.fetch=function(t,r){return c(t,r).then((function(i){if(r.passThrough)return i;if(!i.ok)return i;var c=i.headers.get("content-type");return o.test(c)?i.json().then((function(e){return new Response(new Blob(['System.register([],function(e){return{execute:function(){e("default",'+JSON.stringify(e)+")}}})"],{type:"application/javascript"}))})):s.test(c)?i.text().then((function(e){return e=e.replace(/url\(\s*(?:(["'])((?:\\.|[^\n\\"'])+)\1|((?:\\.|[^\s,"'()\\])+))\s*\)/g,(function(e,r,i,o){return["url(",r,n(i||o,t),r,")"].join("")})),new Response(new Blob(["System.register([],function(e){return{execute:function(){var s=new CSSStyleSheet();s.replaceSync("+JSON.stringify(e)+');e("default",s)}}})'],{type:"application/javascript"}))})):u.test(c)?(WebAssembly.compileStreaming?WebAssembly.compileStreaming(i):i.arrayBuffer().then(WebAssembly.compile)).then((function(n){e.System.wasmModules||(e.System.wasmModules=Object.create(null)),e.System.wasmModules[t]=n;var r=[],i=[];return WebAssembly.Module.imports&&WebAssembly.Module.imports(n).forEach((function(e){var t=JSON.stringify(e.module);-1===r.indexOf(t)&&(r.push(t),i.push("function(m){i["+t+"]=m}"))})),new Response(new Blob(["System.register(["+r.join(",")+"],function(e){var i={};return{setters:["+i.join(",")+"],execute:function(){return WebAssembly.instantiate(System.wasmModules["+JSON.stringify(t)+"],i).then(function(m){e(m.exports)})}}})"],{type:"application/javascript"}))})):i}))}}("undefined"!=typeof self?self:global);var q="undefined"!=typeof Symbol&&Symbol.toStringTag;I.get=function(e){var t=this[M][e];if(t&&null===t.e&&!t.E)return t.er?null:t.n},I.set=function(t,n){try{new URL(t)}catch(s){console.warn(Error(e("W3",'"'+t+'" is not a valid URL to set in the module registry')))}var r;q&&"Module"===n[q]?r=n:(r=Object.assign(Object.create(null),n),q&&Object.defineProperty(r,q,{value:"Module"}));var i=Promise.resolve(r),o=this[M][t]||(this[M][t]={id:t,i:[],h:!1,d:[],e:null,er:void 0,E:void 0});return!o.e&&!o.E&&(Object.assign(o,{n:r,I:void 0,L:void 0,C:i}),r)},I.has=function(e){return!!this[M][e]},I.delete=function(e){var t=this[M],n=t[e];if(!n||n.p&&null!==n.p.e||n.E)return!1;var r=n.i;return n.d&&n.d.forEach((function(e){var t=e.i.indexOf(n);-1!==t&&e.i.splice(t,1)})),delete t[e],function(){var n=t[e];if(!n||!r||null!==n.e||n.E)return!1;r.forEach((function(e){n.i.push(e),e(n.n)})),r=null}};var D="undefined"!=typeof Symbol&&Symbol.iterator;I.entries=function(){var e,t,n=this,r=Object.keys(n[M]),i=0,o={next:function(){for(;void 0!==(t=r[i++])&&void 0===(e=n.get(t)););return{done:void 0===t,value:void 0!==t&&[t,e]}}};return o[D]=function(){return this},o}}();
 !function(t){function e(t){t.registerRegistry=Object.create(null),t.namedRegisterAliases=Object.create(null)}var r=t.System;e(r);var i,s,n=r.constructor.prototype,l=r.constructor,a=function(){l.call(this),e(this)};a.prototype=n,r.constructor=a;var o=n.register;n.register=function(t,e,r,n){if("string"!=typeof t)return o.apply(this,arguments);var l=[e,r,n];return this.registerRegistry[t]=l,i||(i=l,s=t),Promise.resolve().then((function(){i=null,s=null})),o.apply(this,[e,r,n])};var u=n.resolve;n.resolve=function(t,e){try{return u.call(this,t,e)}catch(r){if(t in this.registerRegistry)return this.namedRegisterAliases[t]||t;throw r}};var c=n.instantiate;n.instantiate=function(t,e,r){var i=this.registerRegistry[t];return i?(this.registerRegistry[t]=null,i):c.call(this,t,e,r)};var g=n.getRegister;n.getRegister=function(t){var e=g.call(this,t);s&&t&&(this.namedRegisterAliases[s]=t);var r=i||e;return i=null,s=null,r}}("undefined"!=typeof self?self:global);
 ;(typeof System!='undefined')&&(System=new System.constructor());
-System.register("./___monkey.entry.js", [],(function(exports,module){'use strict';return{execute:(function(){exports({$:getSiteSkinCss,D:createFavoritesSyncTabId,G:readArtistsMirror,I:listArtistTags,J:writeArtistsMirror,K:reloadFromStorage,L:save,P:setSyncState,Q:Q$1,Y:a,Z:applyTokenProperties,_:resolveAppearancePalette,a:applyAppearanceTheme,a$:clearStorageCache,a0:$$1,aC:TextField,aD:Button,aE:clampBackgroundDim,aG:featurePanelLabel,aI:setFeatureEnabled,aJ:applyCssOnlyFeatureEnabled,aK:isFeatureEnabled,aM:setFeatureChoiceValue,aN:applyCssOnlyFeatureChoice,aO:getFeatureChoice,aP:b,aQ:Chip,aR:readSiteBlacklist,aS:AutocompleteField,aT:ProgressBar,aU:createDefaultCustomTheme,aW:prepareBackgroundImageFile,aX:writeSiteBlacklist,aZ:load,a_:createDefaultStorage,ab:d,ac:Card,ad:SectionLabel,ae:Switch,ag:setTweaksEnabled,ah:NumberField,aj:setUpdatesGroupSize,ak:getUpdatesGroupSize,am:setPlaylistChunkSize,an:getPlaylistChunkSize,ap:setGridFavButtonsEnabled,aq:setGridFavButtonsVisible,ar:P$1,as:T,at:A,aw:Select,az:Segmented,b0:clearFavsCache,b1:object,b3:optional,b4:string,b6:literal,b8:stripLegacyPanelWindowSize,b9:migrateMarksFavToFavs,bA:IconTrash,bB:getSeenPostId,bL:IconX,bM:isFollowingArtist,bN:addArtist,bO:removeArtist,bR:array,bS:nullable,bb:createDefaultFavs,bc:parseFavsStrict,bd:setAppearance,be:loadFavSet,bg:extractFavIdsFromMarks,bj:getTweaksEnabled,bk:getGridFavButtonsEnabled,bl:getFeatureChoiceValue,bm:getScreenPixelSize,bn:listPlaylists,bo:readTagsFromLocation,bp:addCollection,bq:serialize,br:renameCollection,bs:deleteCollection,bt:buildSearchUrl,bu:createPlaylist,bv:EmptyState,bw:buildPlaylistQueries,bx:buildUpdatesSearchUrl,by:isPlaylist,bz:IconButton,d:detectPageKind,e:ensureDocumentStyles,f:ensureStyleElement,g:getAppearance,h:buildOwnPageCss,j:getSyncState,k:readFavoritesSyncMode,m:mountCards,n:normalizeArtistTag,o:runFavoritesSync,p:parseRdwHash,r:runFeaturesYielding,s:syncFavoritesPage,x:resolveFavoritesUserId,y:yieldToMain});var STORAGE_KEY = "ruledesk-web.storage";
-var STORAGE_BACKUP_KEY = exports("bf","ruledesk-web.storage.backup");
-var FAVS_STORAGE_KEY = exports("ba","ruledesk-web.favs");
+System.register("./___monkey.entry.js", [],(function(exports,module){'use strict';return{execute:(function(){exports({$:isCollectionDetailPage,B:rdwPageHash,D:createFavoritesSyncTabId,G:readArtistsMirror,I:listArtistTags,J:writeArtistsMirror,K:reloadFromStorage,L:save,P:setSyncState,Q:Q$1,Y:a,Z:applyTokenProperties,_:resolveAppearancePalette,a:applyAppearanceTheme,a$:load,a0:menuRouteForPage,a1:getSiteSkinCss,a2:$$1,aB:Segmented,aE:TextField,aF:Button,aG:clampBackgroundDim,aI:featurePanelLabel,aK:setFeatureEnabled,aL:applyCssOnlyFeatureEnabled,aM:isFeatureEnabled,aO:setFeatureChoiceValue,aP:applyCssOnlyFeatureChoice,aQ:getFeatureChoice,aR:b,aS:readSiteBlacklist,aT:Chip,aU:AutocompleteField,aV:ProgressBar,aW:createDefaultCustomTheme,aY:prepareBackgroundImageFile,aZ:writeSiteBlacklist,ad:d,ae:Card,af:SectionLabel,ag:Switch,ai:setTweaksEnabled,aj:NumberField,al:setUpdatesGroupSize,am:getUpdatesGroupSize,ao:setPlaylistChunkSize,ap:getPlaylistChunkSize,ar:setGridFavButtonsEnabled,as:setGridFavButtonsVisible,at:P$1,au:T,av:A,ay:Select,b$:deleteCollection,b0:createDefaultStorage,b1:clearStorageCache,b2:clearFavsCache,b3:object,b5:optional,b6:string,b8:literal,bA:getSeenPostId,bK:IconButton,bL:IconX,bM:isFollowingArtist,bN:addArtist,bO:removeArtist,bR:array,bS:nullable,bT:w$1,bU:shuffleCollection,bV:resetCollectionOrder,bW:Toast,bX:getCollectionOrder,bY:listPlaylists,bZ:removePostsFromCollection,b_:renameCollection,ba:stripLegacyPanelWindowSize,bb:migrateMarksFavToFavs,bd:createDefaultFavs,be:parseFavsStrict,bf:setAppearance,bg:loadFavSet,bi:extractFavIdsFromMarks,bl:getTweaksEnabled,bm:getGridFavButtonsEnabled,bn:getFeatureChoiceValue,bo:getScreenPixelSize,bp:IconPlus,bq:EmptyState,br:resolveCollectionKind,bs:Dialog,bt:createDynamicCollection,bu:createPlaylist,bw:collectionDetailHash,by:buildSearchUrl,bz:serialize,c1:restorePosts,c3:collectionQueueHash,d:detectPageKind,e:ensureDocumentStyles,f:ensureStyleElement,g:getAppearance,h:buildOwnPageCss,j:getSyncState,k:readFavoritesSyncMode,m:mountCards,n:normalizeArtistTag,o:runFavoritesSync,p:parseRdwHash,r:runFeaturesYielding,s:syncFavoritesPage,x:resolveFavoritesUserId,y:yieldToMain});var STORAGE_KEY = "ruledesk-web.storage";
+var STORAGE_BACKUP_KEY = exports("bh","ruledesk-web.storage.backup");
+var FAVS_STORAGE_KEY = exports("bc","ruledesk-web.favs");
 var DEBUG_KEY = "ruledesk-web.debug";
 var APPEARANCE_BACKGROUND_KEY = exports("E","ruledesk-web.appearance.background");
-var APPEARANCE_BACKGROUND_TOO_LARGE = exports("aa","Background image is too large (max 1.5 MB).");
+var APPEARANCE_BACKGROUND_TOO_LARGE = exports("ac","Background image is too large (max 1.5 MB).");
 var TOKEN_STYLE_ID = "ruledesk-web-tokens";
 var SITE_SKIN_STYLE_ID = "ruledesk-web-site-skin";
 var RDW_SKIN_CLASS = "rdw-skin";
-var RDW_THEME_ATTR = exports("a3","data-rdw-theme");
-var APPEARANCE_THEME_SITE = exports("a4","site");
-var APPEARANCE_THEME_SITE_DARK = exports("a5","site-dark");
-var APPEARANCE_THEME_LIGHT = exports("ax","light");
-var APPEARANCE_THEME_DARK = exports("ay","dark");
-var APPEARANCE_THEME_CUSTOM = exports("au","custom");
+var RDW_THEME_ATTR = exports("a5","data-rdw-theme");
+var APPEARANCE_THEME_SITE = exports("a6","site");
+var APPEARANCE_THEME_SITE_DARK = exports("a7","site-dark");
+var APPEARANCE_THEME_LIGHT = exports("az","light");
+var APPEARANCE_THEME_DARK = exports("aA","dark");
+var APPEARANCE_THEME_CUSTOM = exports("aw","custom");
 var DEFAULT_APPEARANCE_THEME = APPEARANCE_THEME_LIGHT;
 var SITE_ORIGIN = exports("b","https://rule34.xxx");
 var SEARCH_PATH = exports("X","/index.php");
-var SEARCH_PAGE = exports("bE","post");
-var SEARCH_SECTION = exports("bF","list");
+var SEARCH_PAGE = exports("bD","post");
+var SEARCH_SECTION = exports("bE","list");
+var SEARCH_SECTION_VIEW = exports("c2","view");
 var SEARCH_PARAM_PAGE = exports("T","page");
 var SEARCH_PARAM_TAGS = exports("c","tags");
 var FAVORITES_PAGE = exports("V","favorites");
@@ -47,12 +48,12 @@ var VOTE_PARAM_TYPE = "type";
 var VOTE_PAGE = "post";
 var VOTE_SECTION = "vote";
 var FETCH_CREDENTIALS = exports("bQ","same-origin");
-var TAG_TYPE_INCLUDE = exports("bK","include");
+var TAG_TYPE_INCLUDE = exports("bJ","include");
 var TAG_TYPE_EXCLUDE = "exclude";
 var UPDATES_ID_PREFIX = "id:>";
-var IMPORT_SCHEMA_ERROR_PREFIX = exports("b7","File is not a RuleDesk Web export");
-var COLLECTION_KIND_SEARCH = "search";
-var COLLECTION_KIND_POSTS = "posts";
+var IMPORT_SCHEMA_ERROR_PREFIX = exports("b9","File is not a RuleDesk Web export");
+var COLLECTION_KIND_SEARCH = exports("bx","search");
+var COLLECTION_KIND_POSTS = exports("bv","posts");
 var DOCUMENT_STYLE_ID = "ruledesk-web-document-style";
 var UPDATES_BAR_ID = "ruledesk-web-updates-bar";
 var SITE_THEME_COOKIE_NAME = "theme";
@@ -62,7 +63,6 @@ var SITE_THEME_STYLESHEET_DIR = "/css/";
 var SITE_THEME_STYLESHEET_LIGHT = "desktop.css";
 var SITE_THEME_STYLESHEET_DARK = "desktop-dark.css";
 var UI_TEXT = exports("U",{
-	saveCurrent: "Save current search",
 	nameLabel: "Name",
 	save: "Save",
 	cancel: "Cancel",
@@ -70,11 +70,9 @@ var UI_TEXT = exports("U",{
 	delete: "Delete",
 	confirmDelete: "Delete this collection?",
 	confirm: "Confirm",
-	openCollection: "Open collection",
 	export: "Export",
 	import: "Import",
 	importErrorPrefix: "Import failed:",
-	notOnSearchPage: "Open a post list search with tags to save it.",
 	enablePageTweaksLabel: "Enable page tweaks",
 	gridFavButtonsLabel: "Show favorite buttons in grid",
 	cardFavAddLabel: "Add post to favorites",
@@ -124,8 +122,8 @@ var CSS_CLASS = exports("C",{
 	updatesBarActions: "rdw-updates-bar-actions"
 });
 /** Hash routes and DOM ids for RuleDesk own pages (replaces floating panel). */
-var RDW_HASH_PREFIX = exports("B","#rdw/");
-var RDW_ROUTE_COLLECTIONS = "collections";
+var RDW_HASH_PREFIX = "#rdw/";
+var RDW_ROUTE_COLLECTIONS = exports("c0","collections");
 var RDW_ROUTE_FOLLOWING = "following";
 var RDW_ROUTE_SETTINGS = "settings";
 var RDW_ROUTES = [
@@ -133,6 +131,9 @@ var RDW_ROUTES = [
 	RDW_ROUTE_FOLLOWING,
 	RDW_ROUTE_SETTINGS
 ];
+/** Custom-collection detail under `#rdw/collections/<id>`. */
+var RDW_COLLECTION_DETAIL_KIND = "collection";
+var RDW_COLLECTION_QUEUE_HASH_PREFIX = "#rdw-c=";
 var RDW_HASH_COLLECTIONS = exports("u",`${RDW_HASH_PREFIX}${RDW_ROUTE_COLLECTIONS}`);
 var RDW_HASH_FOLLOWING = exports("w",`${RDW_HASH_PREFIX}${RDW_ROUTE_FOLLOWING}`);
 var RDW_HASH_SETTINGS = exports("A",`${RDW_HASH_PREFIX}${RDW_ROUTE_SETTINGS}`);
@@ -158,7 +159,7 @@ var MENU_LABEL = exports("v",{
 var MY_FAVORITES_CONTAINER_ID = exports("z","my-favorites-container");
 var FEED_MENU_ITEM_ID = exports("t","rdw-feed-menu");
 /** Shared class names for own-page section layouts (relocated from ui/panel). */
-var PANEL_UI_CLASS = exports("a1",{
+var PANEL_UI_CLASS = exports("a3",{
 	artistMeta: "rdw-artist-meta",
 	artistFilter: "rdw-artist-filter",
 	artistList: "rdw-artist-list",
@@ -172,33 +173,75 @@ var PANEL_UI_CLASS = exports("a1",{
 	pageCard: "rdw-page-card"
 });
 var UNFOLLOW_UNDO_MS = exports("bP",5e3);
-var ARTISTS_EMPTY_TITLE = exports("bD","No followed artists yet");
-var ARTISTS_EMPTY_HINT = exports("bC","Follow artists with the Follow button next to their name in the tag list.");
-var ARTIST_FILTER_LABEL = exports("bG","Filter artists");
-var UNFOLLOW_UNDO_LABEL = exports("bJ","Undo");
-var UNFOLLOWED_PREFIX = exports("bI","Unfollowed ");
-var FEATURE_CHECKBOX_ID_PREFIX = exports("aH","rdw-feature-");
-var FEATURE_CHOICE_ID_PREFIX = exports("aL","rdw-feature-choice-");
-var UPDATES_GROUP_SIZE_ID = exports("ai","rdw-updates-group-size");
-var PLAYLIST_CHUNK_SIZE_ID = exports("al","rdw-playlist-chunk-size");
-var ARTIST_FILTER_ID = exports("bH","rdw-artist-filter");
-var GRID_FAV_CHECKBOX_ID = exports("ao","rdw-grid-fav-buttons");
-var TWEAKS_SWITCH_ID = exports("af","rdw-tweaks-enabled");
+var ARTISTS_EMPTY_TITLE = exports("bC","No followed artists yet");
+var ARTISTS_EMPTY_HINT = exports("bB","Follow artists with the Follow button next to their name in the tag list.");
+var ARTIST_FILTER_LABEL = exports("bF","Filter artists");
+var UNFOLLOW_UNDO_LABEL = exports("bI","Undo");
+var UNFOLLOWED_PREFIX = exports("bH","Unfollowed ");
+var FEATURE_CHECKBOX_ID_PREFIX = exports("aJ","rdw-feature-");
+var FEATURE_CHOICE_ID_PREFIX = exports("aN","rdw-feature-choice-");
+var UPDATES_GROUP_SIZE_ID = exports("ak","rdw-updates-group-size");
+var PLAYLIST_CHUNK_SIZE_ID = exports("an","rdw-playlist-chunk-size");
+var ARTIST_FILTER_ID = exports("bG","rdw-artist-filter");
+var GRID_FAV_CHECKBOX_ID = exports("aq","rdw-grid-fav-buttons");
+var TWEAKS_SWITCH_ID = exports("ah","rdw-tweaks-enabled");
 var TAG_GROUPS_PANEL_LABEL = "Collapse tags";
 function featurePanelLabel(featureId, fallback) {
 	if (featureId === "tag-groups") return TAG_GROUPS_PANEL_LABEL;
 	return fallback;
 }
+var HASH_SUFFIX_SPLIT = /[?#]/;
+var COLLECTION_DETAIL_SEGMENT_INDEX = 1;
 function isRdwRoute(value) {
 	return RDW_ROUTES.some((route) => route === value);
 }
-/** Parse location.hash → route id, or null when hash is not ours. */
+function isCollectionDetailPage(page) {
+	return typeof page !== "string";
+}
+/** Navbar item for a script page. Collection detail stays under Collections. */
+function menuRouteForPage(page) {
+	if (isCollectionDetailPage(page)) return RDW_ROUTE_COLLECTIONS;
+	return page;
+}
+function collectionDetailHash(collectionId) {
+	return `${RDW_HASH_PREFIX}${RDW_ROUTE_COLLECTIONS}/${encodeURIComponent(collectionId)}`;
+}
+function collectionQueueHash(collectionId) {
+	return `${RDW_COLLECTION_QUEUE_HASH_PREFIX}${encodeURIComponent(collectionId)}`;
+}
+function rdwPageHash(page) {
+	if (isCollectionDetailPage(page)) return collectionDetailHash(page.collectionId);
+	return `${RDW_HASH_PREFIX}${page}`;
+}
+function hashSegment(raw) {
+	return raw.split(HASH_SUFFIX_SPLIT)[0] ?? "";
+}
+function decodeCollectionId(raw) {
+	try {
+		return decodeURIComponent(raw);
+	} catch {
+		return raw;
+	}
+}
+/**
+* Parse location.hash → script page, or null when the hash is not ours.
+* `#rdw-c=…` is the post-page queue and is never a script page.
+* `#rdw/collections/<id>` is that custom collection; a bare
+* `#rdw/collections` stays the list.
+*/
 function parseRdwHash(hash) {
 	const trimmed = hash.trim();
-	if (!trimmed.startsWith("#rdw/")) return null;
-	const path = trimmed.slice(5).split(/[/?#]/)[0] ?? "";
-	if (isRdwRoute(path)) return path;
-	return null;
+	if (trimmed.startsWith("#rdw-c") || !trimmed.startsWith("#rdw/")) return null;
+	const segments = trimmed.slice(5).split("/");
+	const head = hashSegment(segments[0] ?? "");
+	if (!isRdwRoute(head)) return null;
+	if (head !== "collections" || segments.length <= COLLECTION_DETAIL_SEGMENT_INDEX) return head;
+	const collectionId = decodeCollectionId(hashSegment(segments[COLLECTION_DETAIL_SEGMENT_INDEX] ?? ""));
+	if (collectionId.length === 0) return RDW_ROUTE_COLLECTIONS;
+	return {
+		kind: RDW_COLLECTION_DETAIL_KIND,
+		collectionId
+	};
 }
 /** CSS: hide site siblings after header while own page is open. */
 function buildOwnPageCss() {
@@ -213,44 +256,11 @@ html.${RDW_OWN_PAGE_CLASS} ${HEADER_SELECTOR$1} ~ *:not(#${RDW_PAGE_ROOT_ID}) {
 }
 `;
 }
-var SITE_SELECTORS = exports("S",{
-	thumb: "span.thumb",
-	thumbLink: "a[href*=\"s=view\"]",
-	previewImage: "img.preview",
-	cardFavButton: `button.${CSS_CLASS.cardFav}`,
-	favoritesDeleteLink: "a[onclick]",
-	tagSidebar: "ul#tag-sidebar",
-	tagTypeArtist: "li.tag-type-artist",
-	imageList: "div.image-list",
-	postListContent: "#post-list div.content",
-	contentRoot: "#content",
-	artistFollowButton: `button.${CSS_CLASS.artistFollow}`,
-	/** Native AI filter checkbox (site owns click/cookie logic). */
-	filterAiCheckbox: "input.toggleSwitch#chkFilterAI",
-	/** Row wrapping the native AI filter control — hide when search-tools mirrors it. */
-	filterAiRow: "li:has(> label > span.switch > input.toggleSwitch#chkFilterAI)",
-	/** Stray Tags heading between #rdw-search-tools and the tag list. */
-	tagsHeadingAfterSearchTools: "#rdw-search-tools + h5"
-});
-var THUMB_ID_PATTERN = /^s(\d+)$/;
-var FAVORITES_DELETE_ID_PATTERN = /s=delete&id=(\d+)/;
-function extractPostIdFromThumb(thumb) {
-	const match = THUMB_ID_PATTERN.exec(thumb.id);
-	if (match === null) return null;
-	const postId = match[1];
-	return postId === void 0 ? null : postId;
-}
-function extractPostIdFromFavoritesDeleteOnclick(onclick) {
-	const match = FAVORITES_DELETE_ID_PATTERN.exec(onclick);
-	if (match === null) return null;
-	const postId = match[1];
-	return postId === void 0 ? null : postId;
-}
 /**
 * Design tokens for RuleDesk Web UI and site skin.
 * Light values match docs/design/mock-components.html.
 */
-var TOKEN_VAR = exports("a2",{
+var TOKEN_VAR = exports("a4",{
 	bg: "--rdw-bg",
 	surface: "--rdw-surface",
 	surface2: "--rdw-surface-2",
@@ -372,16 +382,16 @@ var CONTRAST_OFFSET$1 = .05;
 * Hex equivalents of `docs/design/site-desktop.css` light `* { --c-* }`.
 * Script-page Site default chrome; keep in sync with skin/theme site palette.
 */
-var SITE_LIGHT_C_BG = exports("a6","#aae5a4");
-var SITE_LIGHT_C_BG_ALT = exports("a7","#89cf81");
+var SITE_LIGHT_C_BG = exports("a8","#aae5a4");
+var SITE_LIGHT_C_BG_ALT = exports("a9","#89cf81");
 var SITE_LIGHT_C_BG_OVERLAY = "#98d491";
 var SITE_LIGHT_C_TEXT = "#000000";
 var SITE_LIGHT_C_TEXT_SOFT = "#666666";
 var SITE_LIGHT_C_LINK = "#000099";
 /** Site dark script-page chrome (theme=site-dark). */
-var SITE_DARK_C_BG = exports("a8","#303a30");
+var SITE_DARK_C_BG = exports("aa","#303a30");
 var SITE_DARK_C_SURFACE2 = "#303030";
-var SITE_DARK_C_BORDER = exports("a9","#505a50");
+var SITE_DARK_C_BORDER = exports("ab","#505a50");
 var SITE_DARK_C_TEXT = "#c0c0c0";
 var SITE_DARK_C_MUTED = "#878787";
 var SITE_DARK_C_ACCENT = "#b0e0b0";
@@ -498,1330 +508,6 @@ function clearCustomThemeProperties(target) {
 	target.style.removeProperty(TOKEN_VAR.backgroundImage);
 	target.style.removeProperty(TOKEN_VAR.backgroundDim);
 }
-/**
-* Site chrome CSS for html.rdw-skin (light / dark / custom themes).
-* Colors only via --rdw-* tokens. Does not change .thumb 200×200 cell size.
-* Injected via applyAppearanceTheme → injectSiteSkinHook(getSiteSkinCss()).
-*/
-var ROOT = `html.${RDW_SKIN_CLASS}`;
-var ROOT_DARK = `${ROOT}[${RDW_THEME_ATTR}="${APPEARANCE_THEME_DARK}"]`;
-var ROOT_SITE = `html[${RDW_THEME_ATTR}="${APPEARANCE_THEME_SITE}"]`;
-var ROOT_SITE_DARK = `html[${RDW_THEME_ATTR}="${APPEARANCE_THEME_SITE_DARK}"]`;
-var ROOT_THEME_DARK = `html[${RDW_THEME_ATTR}="${APPEARANCE_THEME_DARK}"]`;
-/** search-tools mount root (id + class in src/features/search-tools.tsx). */
-var SEARCH_TOOLS_ROOT_ID$1 = "rdw-search-tools";
-/** Reset control class (src/features/search-tools.tsx). */
-var SEARCH_TOOLS_RESET_CLASS = "rdw-search-tools-reset";
-/**
-* Same exclusions as :not…:not…, but :where() zeros their specificity so an
-* ID-bearing :not cannot outrank accent rules like div.tag-search submit.
-*/
-var WHERE_NOT_OUR_CONTROL = `:where(:not([class*="rdw-"])${`:not(#${SEARCH_TOOLS_ROOT_ID$1} *)`})`;
-/**
-* Body class Package E sets only while the post panel host is mounted
-* (`POST_PANEL_MOUNTED_CLASS` in post-actions.ts).
-*/
-var RDW_POST_PANEL_MOUNTED_CLASS = "rdw-post-panel-mounted";
-/** Native "I came" counter row — hide with panel chrome (E HANDOFF). */
-var POST_PANEL_ICAME_ROW = "li:has(a[onclick^=\"iCame(\"])";
-/** Post panel host id — keep in sync with POST_ACTIONS_ID in features/types.ts. */
-var POST_ACTIONS_HOST_ID = "rdw-post-actions";
-/** Kit select list — keep in sync with src/ui/kit/select.tsx. */
-var KIT_SELECT_LIST_CLASS = "rdw-select__list";
-/** Kit autocomplete list — keep in sync with src/ui/kit/autocomplete-field.tsx. */
-var KIT_AC_LIST_CLASS = "rdw-ac__list";
-/** Kit dialog panel — keep in sync with src/ui/kit/dialog.tsx. */
-var KIT_DIALOG_CLASS = "rdw-dialog";
-/** Playlist add-to menu — keep in sync with src/features/playlist-menu.ts. */
-var PLAYLIST_MENU_CLASS = "rdw-playlist-menu";
-/** Firefox / modern Chromium thin scrollbar (E HANDOFF). */
-var SCROLLBAR_WIDTH = "thin";
-/** Post panel Original control — keep in sync with post-actions ORIGINAL_BUTTON_SIZE_PX. */
-var POST_PANEL_ORIGINAL_SIZE_PX = 34;
-/** Active tab underline — keep in sync with kit/tabs.tsx. */
-var POST_PANEL_TAB_UNDERLINE_PX = 2;
-/** Post panel classes — keep in sync with src/features/post-panel/post-panel.tsx. */
-var POST_PANEL_ACTIONS_CLASS = "rdw-post-panel-actions";
-var POST_PANEL_ACTIONS_ROW_CLASS = "rdw-post-panel-actions-row";
-var POST_PANEL_FAV_CLASS = "rdw-post-panel-fav";
-var POST_PANEL_ORIGINAL_CLASS = "rdw-post-panel-original";
-var POST_PANEL_TABPANEL_CLASS = "rdw-post-panel-tabpanel";
-var POST_PANEL_POST_ACTION_CLASS = "rdw-post-panel-post-action";
-/** Kit tabs — keep in sync with src/ui/kit/tabs.tsx. */
-var KIT_TABS_CLASS = "rdw-tabs";
-var KIT_TAB_CLASS = "rdw-tabs__tab";
-var KIT_BTN_PRIMARY_CLASS = "rdw-btn--primary";
-/**
-* Body class while search-tools «AI posts» row is rendered
-* (`SEARCH_TOOLS_AI_ROW_BODY_CLASS` in search-tools.tsx — F HANDOFF).
-*/
-var SEARCH_TOOLS_AI_ROW_BODY_CLASS$1 = "rdw-search-tools-ai-posts";
-/** F bulk-select chrome — keep in sync with src/features/favorites-bulk.tsx. */
-var FAV_BULK_SELECTED_CLASS = "rdw-fav-bulk-selected";
-var FAV_BULK_CHECK_CLASS = "rdw-fav-bulk-check";
-var FAV_BULK_ROOT_ID = "rdw-favorites-bulk";
-var FAV_BULK_BAR_CLASS = "rdw-favorites-bulk-bar";
-var FAV_BULK_STATUS_CLASS = "rdw-favorites-bulk-status";
-/** Body class while selection mode is active (featureBodyClass + "-selecting"). */
-var FAV_BULK_SELECTING_BODY_CLASS = "rdw-f-favorites-bulk-selecting";
-var FAV_BULK_OUTLINE_WIDTH = "2px";
-var FAV_BULK_OUTLINE_OFFSET = "2px";
-var FAV_BULK_CHECK_SIZE = "1.25rem";
-var FAV_BULK_CHECK_INSET = "0.25rem";
-var FAV_BULK_CHECK_Z_INDEX = 2;
-var FAV_BULK_CHECK_FONT_SIZE = "0.75rem";
-var v$2 = {
-	bg: `var(${TOKEN_VAR.bg})`,
-	surface: `var(${TOKEN_VAR.surface})`,
-	surface2: `var(${TOKEN_VAR.surface2})`,
-	border: `var(${TOKEN_VAR.border})`,
-	text: `var(${TOKEN_VAR.text})`,
-	muted: `var(${TOKEN_VAR.muted})`,
-	accent: `var(${TOKEN_VAR.accent})`,
-	accentSoft: `var(${TOKEN_VAR.accentSoft})`,
-	danger: `var(${TOKEN_VAR.danger})`,
-	dangerSoft: `var(${TOKEN_VAR.dangerSoft})`,
-	tagArtist: `var(${TOKEN_VAR.tagArtist})`,
-	tagCharacter: `var(${TOKEN_VAR.tagCharacter})`,
-	tagCopyright: `var(${TOKEN_VAR.tagCopyright})`,
-	tagMetadata: `var(${TOKEN_VAR.tagMetadata})`,
-	radiusS: `var(${TOKEN_VAR.radiusS})`,
-	radiusM: `var(${TOKEN_VAR.radiusM})`,
-	radiusL: `var(${TOKEN_VAR.radiusL})`,
-	shadow1: `var(${TOKEN_VAR.shadow1})`,
-	shadow2: `var(${TOKEN_VAR.shadow2})`,
-	font: `var(${TOKEN_VAR.font})`
-};
-/** Full site-skin stylesheet (empty until injected by boot). */
-var SITE_SKIN_CSS = `
-/* —— base —— */
-${ROOT} body {
-  font-family: ${v$2.font};
-  font-size: 13px;
-  line-height: 1.4;
-  background: ${v$2.bg};
-  color: ${v$2.text};
-}
-
-${ROOT} body,
-${ROOT} body div,
-${ROOT} body h1,
-${ROOT} body h2,
-${ROOT} body h3,
-${ROOT} body h4,
-${ROOT} body h5,
-${ROOT} body h6,
-${ROOT} body p,
-${ROOT} body ul,
-${ROOT} body li,
-${ROOT} body dd,
-${ROOT} body dt,
-${ROOT} body input,
-${ROOT} body select,
-${ROOT} body button,
-${ROOT} body textarea {
-  font-family: ${v$2.font};
-}
-
-${ROOT} a:link {
-  color: ${v$2.accent};
-  text-decoration: none;
-}
-
-${ROOT} a:visited {
-  color: ${v$2.muted};
-  text-decoration: none;
-}
-
-${ROOT} a:hover,
-${ROOT} a:active {
-  color: ${v$2.text};
-  text-decoration: none;
-}
-
-${ROOT} a.last-page {
-  color: ${v$2.muted};
-}
-
-${ROOT} a.spoiler,
-${ROOT} span.spoiler {
-  color: ${v$2.text};
-  background: ${v$2.text};
-}
-
-${ROOT} a.spoiler:hover,
-${ROOT} span.spoiler:hover {
-  color: ${v$2.bg};
-  background: ${v$2.text};
-}
-
-${ROOT} hr {
-  border-color: ${v$2.border};
-}
-
-${ROOT} code {
-  font-family: ui-monospace, monospace;
-}
-
-/* —— header —— */
-${ROOT} div#header {
-  background: ${v$2.surface};
-  border-bottom: 1px solid ${v$2.border};
-  margin-bottom: 0.75em;
-}
-
-${ROOT} div#header #site-title {
-  background-image: none;
-  background-color: transparent;
-  padding: 12px 18px 4px 18px;
-  font: 800 17px ${v$2.font};
-  letter-spacing: -0.02em;
-  color: ${v$2.text};
-}
-
-${ROOT} div#header #site-title a {
-  color: ${v$2.text};
-  font-weight: 800;
-  background: none;
-  text-shadow: none;
-}
-
-${ROOT} div#header ul#navbar {
-  background: transparent;
-  padding: 4px 18px 8px 10px;
-  margin: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px;
-}
-
-${ROOT} div#header ul#navbar li {
-  font-size: 13px;
-  font-weight: normal;
-  padding: 0;
-  margin: 0;
-  background: transparent;
-  background-image: none;
-  list-style: none;
-  display: inline;
-}
-
-${ROOT} div#header ul#navbar li a {
-  display: inline-block;
-  padding: 6px 10px;
-  border-radius: ${v$2.radiusM};
-  color: ${v$2.muted};
-  font-weight: normal;
-}
-
-${ROOT} div#header ul#navbar li.current-page {
-  background: transparent;
-  background-image: none;
-}
-
-${ROOT} div#header ul#navbar li.current-page a,
-${ROOT} #navbar li.current-page a {
-  background: ${v$2.accentSoft};
-  color: ${v$2.accent};
-  font-weight: 600;
-}
-
-${ROOT} div#header ul#subnavbar {
-  background: ${v$2.surface};
-  border-top: 1px solid ${v$2.border};
-  border-bottom: none;
-  padding: 6px 18px;
-  margin: 0;
-}
-
-${ROOT} div#header ul#subnavbar li {
-  padding: 0 8px;
-  font-size: 12.5px;
-}
-
-${ROOT} div#header ul#subnavbar li a {
-  color: ${v$2.muted};
-}
-
-${ROOT} div#header ul#subnavbar li a:hover {
-  color: ${v$2.accent};
-}
-
-${ROOT} div.tips {
-  background: ${v$2.accentSoft};
-  background-image: none;
-  border-bottom: 1px solid ${v$2.border};
-  color: ${v$2.text};
-}
-
-/* —— sidebar —— */
-${ROOT} div.sidebar {
-  width: 228px;
-  min-width: 228px;
-  max-width: 228px;
-  margin-right: 1em;
-}
-
-${ROOT} div.sidebar h5,
-${ROOT} div.sidebar h6,
-${ROOT} ul#tag-sidebar h5,
-${ROOT} ul#tag-sidebar h6 {
-  font: 600 10.5px ${v$2.font};
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: ${v$2.muted};
-  margin: 0 0 6px;
-}
-
-/* Standalone "Tags"/"Search" (and similar) headings above the list card */
-${ROOT} div.sidebar > h5 {
-  display: none;
-}
-
-/* Tags between search panel card and tag list (typical site markup) */
-${ROOT} div.tag-search + h5 {
-  display: none;
-}
-
-/* D: Tags heading immediately after search-tools when they are siblings */
-${ROOT} ${SITE_SELECTORS.tagsHeadingAfterSearchTools} {
-  display: none;
-}
-
-/* F: native AI filter row — only while search-tools AI posts row is rendered */
-${ROOT} body.${SEARCH_TOOLS_AI_ROW_BODY_CLASS$1} ${SITE_SELECTORS.filterAiRow} {
-  display: none;
-}
-
-${ROOT} div.tag-search,
-${ROOT} ul#tag-sidebar {
-  background: ${v$2.surface};
-  border: 1px solid ${v$2.border};
-  border-radius: ${v$2.radiusL};
-  padding: 12px;
-  box-shadow: ${v$2.shadow1};
-  box-sizing: border-box;
-}
-
-${ROOT} div.tag-search {
-  margin-bottom: 12px;
-}
-
-${ROOT} ul#tag-sidebar {
-  margin: 0;
-  padding: 12px;
-  list-style: none;
-}
-
-/*
- * Tag rows: ?/+/- /name (list) or ?/name (post) wrap as inline text;
- * count stays top-right on the first line (artists-sidebar.test markup).
- */
-${ROOT} ul#tag-sidebar > li {
-  display: block;
-  position: relative;
-  margin: 0 0 5px;
-  padding-right: 4.5em;
-  font-size: 12.5px;
-  line-height: 1.35;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-}
-
-${ROOT} ul#tag-sidebar > li > a {
-  display: inline;
-}
-
-${ROOT} ul#tag-sidebar > li > h5,
-${ROOT} ul#tag-sidebar > li > h6 {
-  display: block;
-  margin-top: 8px;
-}
-
-${ROOT} ul#tag-sidebar > li:first-child > h5,
-${ROOT} ul#tag-sidebar > li:first-child > h6 {
-  margin-top: 0;
-}
-
-${ROOT} .tag-count,
-${ROOT} span.post-count,
-${ROOT} span.tag-count {
-  position: absolute;
-  top: 0;
-  right: 0;
-  margin-left: 0;
-  color: ${v$2.muted};
-  font-size: 12px;
-  line-height: 1.35;
-}
-
-/*
- * Tag type color on the LAST link of the row (tag name).
- * List rows: ? + − name — name is 4th. Post rows: ? name — name is 2nd.
- * Operators / wiki stay muted on every page.
- */
-${ROOT} ul#tag-sidebar > li[class*="tag-type-"] > a:not(:last-of-type) {
-  color: ${v$2.muted};
-  font-size: 11px;
-  font-weight: normal;
-}
-
-${ROOT} .tag-type-artist > a,
-${ROOT} .tag-type-artist {
-  color: ${v$2.tagArtist};
-}
-
-${ROOT} .tag-type-character > a,
-${ROOT} .tag-type-character {
-  color: ${v$2.tagCharacter};
-}
-
-${ROOT} .tag-type-copyright > a,
-${ROOT} .tag-type-copyright {
-  color: ${v$2.tagCopyright};
-}
-
-${ROOT} .tag-type-metadata > a,
-${ROOT} .tag-type-metadata {
-  color: ${v$2.tagMetadata};
-}
-
-${ROOT} ul#tag-sidebar > li.tag-type-artist > a:last-of-type {
-  color: ${v$2.tagArtist};
-  font-size: 12.5px;
-  font-weight: normal;
-}
-
-${ROOT} ul#tag-sidebar > li.tag-type-character > a:last-of-type {
-  color: ${v$2.tagCharacter};
-  font-size: 12.5px;
-  font-weight: normal;
-}
-
-${ROOT} ul#tag-sidebar > li.tag-type-copyright > a:last-of-type {
-  color: ${v$2.tagCopyright};
-  font-size: 12.5px;
-  font-weight: normal;
-}
-
-${ROOT} ul#tag-sidebar > li.tag-type-metadata > a:last-of-type {
-  color: ${v$2.tagMetadata};
-  font-size: 12.5px;
-  font-weight: normal;
-}
-
-${ROOT} .tag-type-artist > a:hover,
-${ROOT} .tag-type-artist:hover,
-${ROOT} .tag-type-character > a:hover,
-${ROOT} .tag-type-character:hover,
-${ROOT} .tag-type-copyright > a:hover,
-${ROOT} .tag-type-copyright:hover,
-${ROOT} .tag-type-metadata > a:hover,
-${ROOT} .tag-type-metadata:hover,
-${ROOT} ul#tag-sidebar > li[class*="tag-type-"] > a:last-of-type:hover {
-  color: ${v$2.accent};
-}
-
-/* Artist Follow: kit secondary on theme tokens (beats document-chrome #fff) */
-${ROOT} button.${CSS_CLASS.artistFollow} {
-  background: ${v$2.surface};
-  border: 1px solid ${v$2.border};
-  color: ${v$2.text};
-  border-radius: ${v$2.radiusS};
-}
-
-${ROOT} button.${CSS_CLASS.artistFollow}:hover {
-  background: ${v$2.accentSoft};
-  border-color: ${v$2.accent};
-  color: ${v$2.accent};
-}
-
-${ROOT} button.${CSS_CLASS.artistFollow}.${CSS_CLASS.artistFollowMarked} {
-  background: ${v$2.accentSoft};
-  border-color: ${v$2.accent};
-  color: ${v$2.accent};
-}
-
-/* —— search field —— */
-${ROOT} div.tag-search input[type="text"],
-${ROOT} div.tag-search input[type="search"] {
-  width: 100%;
-  height: 34px;
-  box-sizing: border-box;
-  border: 1px solid ${v$2.border};
-  border-radius: ${v$2.radiusM};
-  padding: 0 10px;
-  background: ${v$2.surface};
-  color: ${v$2.text};
-  font-size: 13px;
-}
-
-${ROOT} div.tag-search input[type="submit"],
-${ROOT} div.tag-search button[type="submit"] {
-  width: 100%;
-  box-sizing: border-box;
-  margin-top: 8px;
-  padding: 6px 12px;
-  border: none;
-  border-radius: ${v$2.radiusS};
-  background: ${v$2.accent};
-  color: ${v$2.surface};
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-${ROOT} div.tag-search input[type="submit"]:hover,
-${ROOT} div.tag-search button[type="submit"]:hover {
-  filter: brightness(1.05);
-}
-
-/* Kit ghost / link-button: single line in the search-tools foot row */
-${ROOT} #${SEARCH_TOOLS_ROOT_ID$1} .${SEARCH_TOOLS_RESET_CLASS} {
-  flex-shrink: 0;
-  white-space: nowrap;
-  background: transparent;
-  border-color: transparent;
-  color: ${v$2.accent};
-  font-weight: 600;
-  padding: 0;
-  min-height: auto;
-  height: auto;
-}
-
-${ROOT} #${SEARCH_TOOLS_ROOT_ID$1} .${SEARCH_TOOLS_RESET_CLASS}:hover {
-  color: ${v$2.text};
-  background: transparent;
-  border-color: transparent;
-}
-
-${ROOT} input[type="text"]${WHERE_NOT_OUR_CONTROL}:focus,
-${ROOT} input[type="password"]${WHERE_NOT_OUR_CONTROL}:focus,
-${ROOT} input[type="search"]${WHERE_NOT_OUR_CONTROL}:focus,
-${ROOT} textarea${WHERE_NOT_OUR_CONTROL}:focus,
-${ROOT} select${WHERE_NOT_OUR_CONTROL}:focus {
-  background: ${v$2.surface};
-  outline: 2px solid ${v$2.accent};
-  outline-offset: 1px;
-  border-color: ${v$2.accent};
-}
-
-/* —— awesomplete —— */
-/* Site hides closed lists with opacity/scale + display:block; do not undo that. */
-${ROOT} .awesomplete > ul[hidden],
-${ROOT} .awesomplete > ul:empty {
-  display: none !important;
-  pointer-events: none;
-}
-
-${ROOT} .awesomplete > ul:not([hidden]):not(:empty) {
-  background: ${v$2.surface};
-  background-image: none;
-  border: 1px solid ${v$2.border};
-  border-radius: ${v$2.radiusL};
-  box-shadow: ${v$2.shadow2};
-  margin: 0.35em 0 0;
-  padding: 4px 0;
-  text-shadow: none;
-  transform: none;
-}
-
-${ROOT} .awesomplete > ul:before {
-  display: none;
-  content: none;
-}
-
-${ROOT} .awesomplete > ul > li {
-  padding: 6px 10px;
-  color: ${v$2.text};
-  cursor: pointer;
-}
-
-${ROOT} .awesomplete > ul > li:hover,
-${ROOT} .awesomplete > ul > li[aria-selected="true"] {
-  background: ${v$2.accentSoft};
-  color: ${v$2.accent};
-}
-
-${ROOT} .awesomplete mark {
-  background: ${v$2.accentSoft};
-  color: ${v$2.text};
-}
-
-${ROOT} div.auto_complete {
-  background: ${v$2.surface};
-}
-
-${ROOT} div.auto_complete ul {
-  border-color: ${v$2.border};
-  background: ${v$2.surface};
-}
-
-${ROOT} div.auto_complete ul li.selected {
-  background-color: ${v$2.accentSoft};
-}
-
-${ROOT} div.auto_complete ul strong.highlight {
-  color: ${v$2.accent};
-}
-
-/* —— grid / thumbs (cell size unchanged) —— */
-${ROOT} div.image-list {
-  column-gap: ${String(4)}px;
-  row-gap: ${String(4)}px;
-  align-items: flex-start;
-  align-content: flex-start;
-}
-
-${ROOT} img.preview {
-  border-radius: ${v$2.radiusL};
-}
-
-/* Favorites: Remove stays subtle; hover must not paint the thumb cell */
-${ROOT} span.thumb,
-${ROOT} span.thumb:hover,
-${ROOT} span.thumb > a,
-${ROOT} span.thumb > a:hover {
-  background-color: transparent;
-}
-
-${ROOT} span.thumb > a[onclick] {
-  color: ${v$2.muted};
-  font-size: 12px;
-  font-weight: normal;
-  padding: 2px 8px;
-  border-radius: ${v$2.radiusS};
-  background: transparent;
-  border: none;
-}
-
-${ROOT} span.thumb > a[onclick]:hover {
-  color: ${v$2.danger};
-  background: transparent;
-}
-
-${ROOT} span.thumb > a[onclick] b {
-  font-weight: normal;
-  color: inherit;
-}
-
-/* —— favorites bulk select (F HANDOFF; tokens for Light/Dark/Site) —— */
-${ROOT} body.${FAV_BULK_SELECTING_BODY_CLASS} span.thumb {
-  position: relative;
-  cursor: pointer;
-}
-
-${ROOT} span.thumb.${FAV_BULK_SELECTED_CLASS} {
-  outline: ${FAV_BULK_OUTLINE_WIDTH} solid ${v$2.accent};
-  outline-offset: ${FAV_BULK_OUTLINE_OFFSET};
-  border-radius: ${v$2.radiusL};
-}
-
-/*
- * Check badge is a sibling of a#p{ID}, never inside the link.
- * Hidden until the thumb is selected.
- */
-${ROOT} span.thumb > .${FAV_BULK_CHECK_CLASS} {
-  position: absolute;
-  top: ${FAV_BULK_CHECK_INSET};
-  left: ${FAV_BULK_CHECK_INSET};
-  z-index: ${String(FAV_BULK_CHECK_Z_INDEX)};
-  display: none;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  width: ${FAV_BULK_CHECK_SIZE};
-  height: ${FAV_BULK_CHECK_SIZE};
-  border-radius: 50%;
-  background: ${v$2.accent};
-  color: ${v$2.surface};
-  font-size: ${FAV_BULK_CHECK_FONT_SIZE};
-  font-weight: 700;
-  line-height: 1;
-  pointer-events: none;
-}
-
-${ROOT} span.thumb.${FAV_BULK_SELECTED_CLASS} > .${FAV_BULK_CHECK_CLASS} {
-  display: inline-flex;
-}
-
-${ROOT} #${FAV_BULK_ROOT_ID},
-${ROOT} .${FAV_BULK_BAR_CLASS} {
-  color: ${v$2.text};
-}
-
-${ROOT} #${FAV_BULK_ROOT_ID} .${FAV_BULK_STATUS_CLASS} {
-  color: ${v$2.muted};
-}
-
-${ROOT} .webm-thumb {
-  border: 1px solid ${v$2.accent};
-  box-sizing: border-box;
-}
-
-${ROOT} img.flagged,
-${ROOT} img.has-children,
-${ROOT} img.has-parent,
-${ROOT} img.pending,
-${ROOT} img.video {
-  border-width: 1px;
-  border-style: solid;
-  box-sizing: border-box;
-}
-
-${ROOT} img.flagged {
-  border-color: ${v$2.danger};
-}
-
-${ROOT} img.has-children {
-  border-color: ${v$2.tagCharacter};
-}
-
-${ROOT} img.has-parent {
-  border-color: ${v$2.tagMetadata};
-}
-
-${ROOT} img.pending,
-${ROOT} img.video {
-  border-color: ${v$2.accent};
-}
-
-/* —— pagination —— */
-${ROOT} div#paginator,
-${ROOT} .pagination {
-  display: block;
-  padding: 1.5em 0 1em;
-  text-align: center;
-  clear: both;
-}
-
-${ROOT} div#paginator a,
-${ROOT} .pagination a {
-  display: inline-block;
-  margin: 0 3px;
-  padding: 4px 10px;
-  border: 1px solid ${v$2.border};
-  border-radius: ${v$2.radiusM};
-  background: ${v$2.surface};
-  color: ${v$2.text};
-  text-decoration: none;
-}
-
-${ROOT} div#paginator a:hover,
-${ROOT} .pagination a:hover {
-  background: ${v$2.accentSoft};
-  color: ${v$2.accent};
-  border-color: ${v$2.accent};
-}
-
-${ROOT} div#paginator a.current,
-${ROOT} div#paginator span.current,
-${ROOT} .pagination a.current,
-${ROOT} .pagination span.current {
-  background: ${v$2.accent};
-  border-color: ${v$2.accent};
-  color: ${v$2.surface};
-  font-weight: 600;
-}
-
-${ROOT} div#paginator span {
-  margin: 0 3px;
-  padding: 4px 8px;
-}
-
-${ROOT} .manual-page-chooser > input[type="text"] {
-  width: 4em;
-  height: 28px;
-  border: 1px solid ${v$2.border};
-  border-radius: ${v$2.radiusS};
-  background: ${v$2.surface};
-  color: ${v$2.text};
-  padding: 0 6px;
-}
-
-${ROOT} .manual-page-chooser > input[type="submit"] {
-  height: 28px;
-  margin-left: 4px;
-  padding: 0 10px;
-  border: none;
-  border-radius: ${v$2.radiusS};
-  background: ${v$2.accent};
-  color: ${v$2.surface};
-  font-weight: 600;
-  cursor: pointer;
-}
-
-/* —— forms / tables (site chrome; skip search-tools + any .rdw-* control) —— */
-${ROOT} input${WHERE_NOT_OUR_CONTROL},
-${ROOT} select${WHERE_NOT_OUR_CONTROL},
-${ROOT} textarea${WHERE_NOT_OUR_CONTROL},
-${ROOT} button${WHERE_NOT_OUR_CONTROL} {
-  color: ${v$2.text};
-  font-family: ${v$2.font};
-}
-
-${ROOT} input[type="text"]${WHERE_NOT_OUR_CONTROL},
-${ROOT} input[type="password"]${WHERE_NOT_OUR_CONTROL},
-${ROOT} input[type="search"]${WHERE_NOT_OUR_CONTROL},
-${ROOT} input[type="number"]${WHERE_NOT_OUR_CONTROL},
-${ROOT} select${WHERE_NOT_OUR_CONTROL},
-${ROOT} textarea${WHERE_NOT_OUR_CONTROL} {
-  background: ${v$2.surface};
-  border: 1px solid ${v$2.border};
-  border-radius: ${v$2.radiusS};
-  color: ${v$2.text};
-}
-
-${ROOT} button${WHERE_NOT_OUR_CONTROL},
-${ROOT} input[type="submit"]${WHERE_NOT_OUR_CONTROL},
-${ROOT} input[type="button"]${WHERE_NOT_OUR_CONTROL},
-${ROOT} .gdprbutton button {
-  background: ${v$2.surface};
-  border: 1px solid ${v$2.border};
-  border-radius: ${v$2.radiusS};
-  color: ${v$2.text};
-  padding: 4px 10px;
-  cursor: pointer;
-}
-
-${ROOT} button${WHERE_NOT_OUR_CONTROL}:hover,
-${ROOT} input[type="submit"]${WHERE_NOT_OUR_CONTROL}:hover,
-${ROOT} input[type="button"]${WHERE_NOT_OUR_CONTROL}:hover,
-${ROOT} .gdprbutton button:hover {
-  background: ${v$2.accentSoft};
-  border-color: ${v$2.accent};
-  color: ${v$2.accent};
-}
-
-/* Keep search submit as primary accent (overrides generic button chrome) */
-${ROOT} div.tag-search input[type="submit"],
-${ROOT} div.tag-search button[type="submit"],
-${ROOT} .manual-page-chooser > input[type="submit"] {
-  background: ${v$2.accent};
-  border: none;
-  color: ${v$2.surface};
-  font-weight: 600;
-}
-
-${ROOT} div.tag-search input[type="submit"]:hover,
-${ROOT} div.tag-search button[type="submit"]:hover,
-${ROOT} .manual-page-chooser > input[type="submit"]:hover {
-  background: ${v$2.accent};
-  border: none;
-  color: ${v$2.surface};
-  filter: brightness(1.05);
-}
-
-${ROOT} table {
-  color: ${v$2.text};
-}
-
-${ROOT} tr.tableheader,
-${ROOT} thead tr {
-  background: ${v$2.surface2} !important;
-  background-image: none !important;
-  color: ${v$2.text};
-}
-
-${ROOT} table.highlightable th {
-  color: ${v$2.text};
-  background: ${v$2.surface2};
-}
-
-${ROOT} table.highlightable td {
-  border-color: ${v$2.border};
-}
-
-${ROOT} table.highlightable > tbody > tr:hover {
-  background: ${v$2.accentSoft};
-}
-
-${ROOT} table tr.good {
-  background: ${v$2.accentSoft};
-}
-
-${ROOT} table tr.selected {
-  background: ${v$2.accentSoft} !important;
-}
-
-${ROOT} table tr.highlight {
-  background: ${v$2.surface2};
-}
-
-${ROOT} table tr.pending-tag {
-  background: ${v$2.surface2};
-}
-
-/* Zebra without native green tint */
-${ROOT} table tr:nth-child(odd) {
-  background: ${v$2.surface2};
-}
-
-${ROOT} table.form th {
-  color: ${v$2.muted};
-}
-
-/* Forum tables */
-${ROOT} div#forum > table {
-  background: ${v$2.surface};
-  border: 1px solid ${v$2.border};
-  border-radius: ${v$2.radiusL};
-  border-collapse: separate;
-  border-spacing: 0;
-  overflow: hidden;
-  box-shadow: ${v$2.shadow1};
-}
-
-${ROOT} div#forum > table th,
-${ROOT} div#forum > table td {
-  border-color: ${v$2.border};
-  color: ${v$2.text};
-}
-
-${ROOT} div#forum > table th:first-child,
-${ROOT} div#forum > table td:first-child {
-  text-align: left;
-}
-
-${ROOT} div#forum > table tr:nth-child(odd) {
-  background: ${v$2.surface2};
-}
-
-${ROOT} div#forum > table tr:nth-child(even) {
-  background: ${v$2.surface};
-}
-
-${ROOT} div#forum > table.highlightable > tbody > tr:hover {
-  background: ${v$2.accentSoft};
-}
-
-${ROOT} .added-tags {
-  color: ${v$2.tagCharacter};
-}
-
-${ROOT} .removed-tags {
-  color: ${v$2.danger};
-}
-
-${ROOT} .obsolete-tag-change {
-  color: ${v$2.text};
-}
-
-/* —— notices / cards —— */
-${ROOT} div.status-notice,
-${ROOT} div.notice,
-${ROOT} div.has-mail,
-${ROOT} div.blocked,
-${ROOT} div.quote,
-${ROOT} div.help div.code,
-${ROOT} div#post-comments div#comment-list > div,
-${ROOT} div#comments div#comment-list > div.post > div.col2,
-${ROOT} div.response-list > div.post > div.content {
-  background: ${v$2.surface};
-  border: 1px solid ${v$2.border};
-  border-radius: ${v$2.radiusL};
-  box-shadow: ${v$2.shadow1};
-}
-
-${ROOT} div.status-notice {
-  border-color: ${v$2.border};
-  padding: 1em;
-  margin: 1em;
-  color: ${v$2.text};
-}
-
-${ROOT} div.notice {
-  color: ${v$2.danger};
-  padding: 0.75em 1em;
-  margin-bottom: 1em;
-}
-
-${ROOT} div.has-mail {
-  border-color: ${v$2.tagCharacter};
-  background: ${v$2.accentSoft};
-  padding: 1em;
-  margin: 1em;
-  color: ${v$2.text};
-}
-
-${ROOT} div.blocked {
-  border-color: ${v$2.danger};
-  background: ${v$2.dangerSoft};
-  color: ${v$2.danger};
-  padding: 1em;
-  margin: 1em;
-}
-
-${ROOT} div.quote {
-  border-color: ${v$2.border};
-  background: ${v$2.surface2};
-  background-image: none;
-  color: ${v$2.text};
-  padding: 12px;
-  margin-top: 10px;
-}
-
-${ROOT} div.help div.code {
-  border: 1px dashed ${v$2.border};
-  background: ${v$2.surface2};
-  color: ${v$2.text};
-}
-
-${ROOT} div.help h4 {
-  color: ${v$2.tagCharacter};
-}
-
-${ROOT} div#post-comments div#comment-list > div,
-${ROOT} div#comments div#comment-list > div.post > div.col2 {
-  padding: 12px;
-  margin-bottom: 1em;
-}
-
-${ROOT} div.response-list > div.post > div.content {
-  padding: 10px 12px;
-}
-
-${ROOT} div.response-list > div.post > div.content > div.footer {
-  color: ${v$2.muted};
-  margin-top: 0.75em;
-}
-
-/* Edit | Respond (and similar) on comments / forum posts */
-${ROOT} div.response-list > div.post > div.content > div.footer a,
-${ROOT} ul.flat-list li a {
-  color: ${v$2.muted};
-  font-weight: normal;
-  padding: 2px 6px;
-  border-radius: ${v$2.radiusS};
-}
-
-${ROOT} div.response-list > div.post > div.content > div.footer a:hover,
-${ROOT} ul.flat-list li a:hover {
-  color: ${v$2.accent};
-  background: ${v$2.accentSoft};
-}
-
-${ROOT} ul.flat-list li a.forum-update {
-  font-style: italic;
-  color: ${v$2.muted};
-}
-
-${ROOT} div.link-list ul {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-${ROOT} div.link-list li {
-  margin: 0 0 4px;
-}
-
-${ROOT} div.link-list a {
-  display: inline-block;
-  padding: 4px 8px;
-  border-radius: ${v$2.radiusS};
-  color: ${v$2.muted};
-}
-
-${ROOT} div.link-list a:hover {
-  color: ${v$2.accent};
-  background: ${v$2.accentSoft};
-}
-
-${ROOT} span.author,
-${ROOT} span.date {
-  color: ${v$2.muted};
-}
-
-${ROOT} span.locked-topic {
-  color: ${v$2.muted};
-}
-
-${ROOT} strong.divider {
-  color: ${v$2.muted};
-}
-
-${ROOT} div#footer {
-  color: ${v$2.muted};
-}
-
-${ROOT} div#footer > .footer-disabled,
-${ROOT} div#footer > #label {
-  color: ${v$2.muted};
-}
-
-${ROOT} div#user-record > table > tbody > tr.positive-record {
-  background: ${v$2.accentSoft};
-}
-
-${ROOT} div#user-record > table > tbody > tr.negative-record {
-  background: ${v$2.dangerSoft};
-}
-
-${ROOT} div.mailbody {
-  background-color: ${v$2.surface};
-  border-color: ${v$2.border};
-}
-
-${ROOT} div.mail .received {
-  color: ${v$2.tagCharacter};
-}
-
-${ROOT} div.mail .sent {
-  color: ${v$2.danger};
-}
-
-${ROOT} .gdprinner {
-  background-color: ${v$2.surface};
-  border-color: ${v$2.border};
-  color: ${v$2.text};
-}
-
-/* —— post page —— */
-/* E: hide native left-column chrome only while body.rdw-post-panel-mounted */
-${ROOT} body.${RDW_POST_PANEL_MOUNTED_CLASS} div#stats {
-  display: none !important;
-}
-
-${ROOT} body.${RDW_POST_PANEL_MOUNTED_CLASS} div.link-list {
-  display: none !important;
-}
-
-${ROOT} body.${RDW_POST_PANEL_MOUNTED_CLASS} ${POST_PANEL_ICAME_ROW} {
-  display: none !important;
-}
-
-/*
- * A: comments moved into the panel column — lift site max-width: 680px
- * so #post-comments fills the narrow column.
- */
-${ROOT} body.${RDW_POST_PANEL_MOUNTED_CLASS} #${POST_ACTIONS_HOST_ID} #post-comments {
-  max-width: none;
-}
-
-${ROOT} img#image {
-  border-radius: ${v$2.radiusL};
-}
-
-${ROOT} div#post-view > div#right-col > div#edit,
-${ROOT} div#edit-box {
-  background: ${v$2.surface};
-  border: 1px solid ${v$2.border};
-  border-radius: ${v$2.radiusL};
-  color: ${v$2.text};
-}
-
-${ROOT} div#note-container > div.note-body {
-  background: ${v$2.surface};
-  border: 1px solid ${v$2.border};
-  color: ${v$2.text};
-  border-radius: ${v$2.radiusS};
-}
-
-${ROOT} div#note-container > div.note-body > p.tn,
-${ROOT} tn {
-  color: ${v$2.muted};
-}
-
-${ROOT} div#note-container > div.note-box {
-  border-color: ${v$2.accent};
-  background: ${v$2.accentSoft};
-}
-
-${ROOT} div#note-container > div.note-box > div.note-corner {
-  background: ${v$2.accent};
-}
-
-${ROOT} div#note-container > div.unsaved {
-  background: ${v$2.surface};
-  border-color: ${v$2.danger};
-}
-
-${ROOT} div#note-container > div.unsaved > div.note-corner {
-  background: ${v$2.danger};
-}
-
-${ROOT} a.original-file-changed#highres {
-  color: ${v$2.accent};
-}
-
-${ROOT} div#post-add p#scale {
-  color: ${v$2.muted};
-}
-
-${ROOT} h2.wiki-title {
-  color: ${v$2.accent};
-}
-
-${ROOT} div.wiki > h2.title {
-  color: ${v$2.accent};
-}
-
-${ROOT} div#wiki-show > div#body > div#byline {
-  color: ${v$2.muted};
-}
-
-${ROOT} div#wiki-diff del {
-  background-color: ${v$2.dangerSoft};
-  color: ${v$2.danger};
-}
-
-${ROOT} div#wiki-diff ins {
-  background-color: ${v$2.accentSoft};
-  color: ${v$2.text};
-}
-
-${ROOT} dt.bad {
-  color: ${v$2.danger};
-}
-
-${ROOT} .blacklisted-tags-disabled {
-  color: ${v$2.muted} !important;
-}
-
-/* —— dark theme contrast (tokens already dark; keep chrome readable) —— */
-${ROOT_DARK} a:visited {
-  color: ${v$2.muted};
-}
-
-${ROOT_DARK} a:hover,
-${ROOT_DARK} a:active {
-  color: ${v$2.text};
-}
-
-${ROOT_DARK} a.spoiler,
-${ROOT_DARK} span.spoiler {
-  color: ${v$2.bg};
-  background: ${v$2.text};
-}
-
-${ROOT_DARK} a.spoiler:hover,
-${ROOT_DARK} span.spoiler:hover {
-  color: ${v$2.text};
-  background: ${v$2.muted};
-}
-
-${ROOT_DARK} div#paginator a.current,
-${ROOT_DARK} div#paginator span.current,
-${ROOT_DARK} .pagination a.current,
-${ROOT_DARK} .pagination span.current,
-${ROOT_DARK} div.tag-search input[type="submit"],
-${ROOT_DARK} div.tag-search button[type="submit"],
-${ROOT_DARK} .manual-page-chooser > input[type="submit"],
-${ROOT_DARK} span.thumb > .${FAV_BULK_CHECK_CLASS},
-${ROOT_DARK} #${POST_ACTIONS_HOST_ID} .${POST_PANEL_FAV_CLASS}.${KIT_BTN_PRIMARY_CLASS} {
-  color: ${v$2.text};
-}
-
-${ROOT_DARK} div.has-mail {
-  background: ${v$2.surface2};
-  border-color: ${v$2.tagCharacter};
-}
-
-/*
- * Post panel actions + tabs (A→E HANDOFF).
- * Unscoped under #rdw-post-actions so Site default/Site dark (no html.rdw-skin)
- * still beat native button/link chrome via document --rdw-* tokens.
- */
-#${POST_ACTIONS_HOST_ID} .${POST_PANEL_ACTIONS_CLASS},
-#${POST_ACTIONS_HOST_ID} .${POST_PANEL_ACTIONS_ROW_CLASS},
-#${POST_ACTIONS_HOST_ID} .${POST_PANEL_TABPANEL_CLASS} {
-  color: ${v$2.text};
-}
-
-#${POST_ACTIONS_HOST_ID} .${POST_PANEL_FAV_CLASS}.${KIT_BTN_PRIMARY_CLASS} {
-  background: ${v$2.accent};
-  border-color: ${v$2.accent};
-  color: ${v$2.surface};
-}
-
-#${POST_ACTIONS_HOST_ID} .${POST_PANEL_ORIGINAL_CLASS} {
-  box-sizing: border-box;
-  width: ${String(POST_PANEL_ORIGINAL_SIZE_PX)}px;
-  height: ${String(POST_PANEL_ORIGINAL_SIZE_PX)}px;
-  min-width: ${String(POST_PANEL_ORIGINAL_SIZE_PX)}px;
-  min-height: ${String(POST_PANEL_ORIGINAL_SIZE_PX)}px;
-  background: ${v$2.surface};
-  border: 1px solid ${v$2.border};
-  color: ${v$2.text};
-  text-decoration: none;
-}
-
-#${POST_ACTIONS_HOST_ID} .${KIT_TABS_CLASS} {
-  border-bottom: 1px solid ${v$2.border};
-  color: ${v$2.text};
-}
-
-#${POST_ACTIONS_HOST_ID} .${KIT_TAB_CLASS} {
-  background: transparent;
-  border: 0;
-  border-bottom: ${String(POST_PANEL_TAB_UNDERLINE_PX)}px solid transparent;
-  color: ${v$2.muted};
-}
-
-#${POST_ACTIONS_HOST_ID} .${KIT_TAB_CLASS}[aria-selected="true"] {
-  color: ${v$2.text};
-  font-weight: 600;
-  border-bottom-color: ${v$2.accent};
-}
-
-#${POST_ACTIONS_HOST_ID} .${POST_PANEL_POST_ACTION_CLASS} {
-  background: ${v$2.surface};
-  border: 1px solid ${v$2.border};
-  color: ${v$2.text};
-  justify-content: flex-start;
-}
-
-/* Site themes: muted fails AA on green/dark chrome — tabs use text; keep accent underline. */
-${ROOT_SITE} #${POST_ACTIONS_HOST_ID} .${KIT_TAB_CLASS},
-${ROOT_SITE_DARK} #${POST_ACTIONS_HOST_ID} .${KIT_TAB_CLASS} {
-  color: ${v$2.text};
-}
-
-${ROOT_SITE} #${POST_ACTIONS_HOST_ID} .${KIT_TAB_CLASS}[aria-selected="true"],
-${ROOT_SITE_DARK} #${POST_ACTIONS_HOST_ID} .${KIT_TAB_CLASS}[aria-selected="true"] {
-  border-bottom-color: ${v$2.accent};
-  color: ${v$2.text};
-}
-
-/* Dark RuleDesk: primary fill uses light label (surface token is dark). */
-${ROOT_THEME_DARK} #${POST_ACTIONS_HOST_ID} .${POST_PANEL_FAV_CLASS}.${KIT_BTN_PRIMARY_CLASS} {
-  color: ${v$2.text};
-}
-
-/*
- * Own scrollable UI — tokens for all four themes (site/site-dark have no html.rdw-skin).
- * Fixes white post-column scrollbar on dark. Kit lists/dialogs + playlist menu.
- */
-#${POST_ACTIONS_HOST_ID},
-.${KIT_SELECT_LIST_CLASS},
-.${KIT_AC_LIST_CLASS},
-.${KIT_DIALOG_CLASS},
-.${PLAYLIST_MENU_CLASS} {
-  scrollbar-width: ${SCROLLBAR_WIDTH};
-  scrollbar-color: ${v$2.border} ${v$2.surface};
-}
-
-/* Site autocomplete lists under rdw-skin */
-${ROOT} .awesomplete > ul:not([hidden]):not(:empty),
-${ROOT} div.auto_complete ul {
-  scrollbar-width: ${SCROLLBAR_WIDTH};
-  scrollbar-color: ${v$2.border} ${v$2.surface};
-}
-
-/*
- * Script page host sits on site bg for Site default / Site dark (no html.rdw-skin).
- * Color uses document tokens; Shadow title inherits from the host once tokens sync.
- */
-#${RDW_PAGE_ROOT_ID} {
-  color: ${v$2.text};
-}
-`.trim();
-/** Returns the site-skin CSS string for injection. */
-function getSiteSkinCss() {
-	return SITE_SKIN_CSS;
-}
 function isDebugEnabled() {
 	try {
 		return GM_getValue(DEBUG_KEY, void 0) === true;
@@ -1845,160 +531,6 @@ var log = exports("l",{
 		console.error(`[ruledesk-web] ${message}`, ...details);
 	}
 });
-var MS_PER_DAY$1 = 864e5;
-var COOKIE_NAME_VALUE_SEPARATOR$1 = "=";
-var STYLESHEET_REL = "stylesheet";
-var LIGHT_STYLESHEET_PATH = `${SITE_THEME_STYLESHEET_DIR}${SITE_THEME_STYLESHEET_LIGHT}`;
-var DARK_STYLESHEET_PATH = `${SITE_THEME_STYLESHEET_DIR}${SITE_THEME_STYLESHEET_DARK}`;
-function writeThemeCookie(value, expires) {
-	document.cookie = [
-		`${SITE_THEME_COOKIE_NAME}${COOKIE_NAME_VALUE_SEPARATOR$1}${value}`,
-		`expires=${expires.toUTCString()}`,
-		`path=/`
-	].join("; ");
-}
-/** Deletes the site `theme` cookie (light / default). */
-function clearSiteThemeCookie() {
-	document.cookie = [
-		`${SITE_THEME_COOKIE_NAME}${COOKIE_NAME_VALUE_SEPARATOR$1}`,
-		`expires=${(/* @__PURE__ */ new Date(0)).toUTCString()}`,
-		`path=/`
-	].join("; ");
-}
-/** Collapse `//` (and longer) runs in a pathname so `/css/...` comparisons work. */
-var REPEATED_PATH_SLASHES = /\/{2,}/g;
-function collapsePathSlashes(pathname) {
-	return pathname.replace(REPEATED_PATH_SLASHES, "/");
-}
-/**
-* Match site desktop CSS hrefs via URL pathname (query ignored).
-* Production uses absolute hrefs with a doubled slash (`…xxx//css/desktop.css?46`);
-* collapsing repeated path slashes makes that equal `/css/desktop.css`.
-*/
-function isSiteDesktopStylesheetHref(href) {
-	try {
-		const path = collapsePathSlashes(new URL(href, location.href).pathname);
-		return path === LIGHT_STYLESHEET_PATH || path === DARK_STYLESHEET_PATH;
-	} catch {
-		return false;
-	}
-}
-function stylesheetFilenameForTheme(theme) {
-	return theme === "dark" ? SITE_THEME_STYLESHEET_DARK : SITE_THEME_STYLESHEET_LIGHT;
-}
-/** Swap filename in the raw href so `//css/` and `/css/` forms stay intact. */
-function replaceStylesheetFilename(href, filename) {
-	if (href.includes("desktop-dark.css")) return href.replace(SITE_THEME_STYLESHEET_DARK, filename);
-	if (href.includes("desktop.css")) return href.replace(SITE_THEME_STYLESHEET_LIGHT, filename);
-	return href;
-}
-function findSiteDesktopStylesheetLink() {
-	const links = document.querySelectorAll(`link[rel="${STYLESHEET_REL}"]`);
-	for (const link of links) {
-		const href = link.getAttribute("href");
-		if (href === null || href.length === 0) continue;
-		if (isSiteDesktopStylesheetHref(href)) return link;
-	}
-	return null;
-}
-var WARN_STYLESHEET_MISSING = "Site desktop stylesheet link not found; theme cookie updated only";
-var READY_STATE_LOADING = "loading";
-var EVENT_DOM_CONTENT_LOADED = "DOMContentLoaded";
-var STYLESHEET_OBSERVER_OPTIONS = {
-	childList: true,
-	subtree: true
-};
-var pendingStylesheetTheme = null;
-var stylesheetObserver = null;
-var domContentLoadedBound = false;
-function swapStylesheetLink(link, theme) {
-	const href = link.getAttribute("href");
-	if (href === null || href.length === 0) return false;
-	link.setAttribute("href", replaceStylesheetFilename(href, stylesheetFilenameForTheme(theme)));
-	return true;
-}
-function disconnectStylesheetWatch() {
-	if (stylesheetObserver !== null) {
-		stylesheetObserver.disconnect();
-		stylesheetObserver = null;
-	}
-	if (domContentLoadedBound) {
-		document.removeEventListener(EVENT_DOM_CONTENT_LOADED, onStylesheetDomReady);
-		domContentLoadedBound = false;
-	}
-}
-function tryApplyPendingStylesheet() {
-	if (pendingStylesheetTheme === null) return false;
-	const link = findSiteDesktopStylesheetLink();
-	if (link === null) return false;
-	if (!swapStylesheetLink(link, pendingStylesheetTheme)) return false;
-	pendingStylesheetTheme = null;
-	disconnectStylesheetWatch();
-	return true;
-}
-function onStylesheetDomReady() {
-	domContentLoadedBound = false;
-	if (tryApplyPendingStylesheet()) return;
-	if (pendingStylesheetTheme !== null) {
-		log.warn(WARN_STYLESHEET_MISSING);
-		pendingStylesheetTheme = null;
-		disconnectStylesheetWatch();
-	}
-}
-function warnStylesheetMissing() {
-	log.warn(WARN_STYLESHEET_MISSING);
-	pendingStylesheetTheme = null;
-	disconnectStylesheetWatch();
-}
-/**
-* Swap desktop.css ↔ desktop-dark.css once the link exists.
-* At document-start the link is not parsed yet: watch documentElement and
-* fall back to DOMContentLoaded. Warn only if it is still missing after that.
-*/
-function scheduleSiteDesktopStylesheet(theme) {
-	const link = findSiteDesktopStylesheetLink();
-	if (link !== null && swapStylesheetLink(link, theme)) {
-		pendingStylesheetTheme = null;
-		disconnectStylesheetWatch();
-		return;
-	}
-	pendingStylesheetTheme = theme;
-	if (document.readyState !== READY_STATE_LOADING) {
-		warnStylesheetMissing();
-		return;
-	}
-	const root = document.documentElement;
-	if (stylesheetObserver === null && root !== null) {
-		stylesheetObserver = new MutationObserver(() => {
-			tryApplyPendingStylesheet();
-		});
-		stylesheetObserver.observe(root, STYLESHEET_OBSERVER_OPTIONS);
-	}
-	if (!domContentLoadedBound) {
-		document.addEventListener(EVENT_DOM_CONTENT_LOADED, onStylesheetDomReady);
-		domContentLoadedBound = true;
-	}
-}
-/** Cookie only. Stylesheet swap is {@link scheduleSiteDesktopStylesheet}. */
-function writeSiteThemeCookie(theme) {
-	if (theme === "dark") {
-		writeThemeCookie(SITE_THEME_COOKIE_VALUE_DARK, new Date(Date.now() + 365 * MS_PER_DAY$1));
-		return;
-	}
-	clearSiteThemeCookie();
-}
-/**
-* RuleDesk skin modes need a predictable site base: no theme cookie + light CSS.
-* Does not touch html.rdw-skin (that is owned by src/skin/theme.ts).
-*/
-function forceLightSiteBase() {
-	writeSiteThemeCookie("light");
-	scheduleSiteDesktopStylesheet("light");
-}
-function setSiteTheme(theme) {
-	writeSiteThemeCookie(theme);
-	scheduleSiteDesktopStylesheet(theme);
-}
 function getEnumValues(entries) {
 	const numericValues = Object.values(entries).filter((v) => typeof v === "number");
 	return Object.entries(entries).filter(([k, _]) => numericValues.indexOf(+k) === -1).map(([_, v]) => v);
@@ -3520,13 +2052,23 @@ var TagEntrySchema = /* @__PURE__ */ object({
 	tag: (/* @__PURE__ */ string()).check(/* @__PURE__ */ _minLength(1)),
 	type: TagTypeSchema
 });
-/** Optional `kind` / `postIds`: missing `kind` means a saved search. */
+/**
+* Optional `kind` / `postIds`: missing `kind` means a saved search.
+* Custom (`posts`) rows may also carry `thumbs` and `shuffledOrder`.
+* Dynamic searches may carry `query` (raw tag string). All three are optional
+* so 0.15 blobs still parse; {@link migrateCollectionMediaFields} fills the
+* custom-collection defaults without dropping `postIds` or search tags.
+* `shuffledOrder: null` means insertion order (`postIds`).
+*/
 var CollectionSchema = /* @__PURE__ */ object({
 	id: (/* @__PURE__ */ string()).check(/* @__PURE__ */ _minLength(1)),
 	name: (/* @__PURE__ */ string()).check(/* @__PURE__ */ _minLength(1)),
 	tags: /* @__PURE__ */ array(TagEntrySchema),
 	kind: /* @__PURE__ */ optional(CollectionKindSchema),
-	postIds: /* @__PURE__ */ optional(/* @__PURE__ */ array(int()))
+	postIds: /* @__PURE__ */ optional(/* @__PURE__ */ array(int())),
+	thumbs: /* @__PURE__ */ optional(/* @__PURE__ */ record(/* @__PURE__ */ string(), /* @__PURE__ */ string())),
+	shuffledOrder: /* @__PURE__ */ optional(/* @__PURE__ */ nullable(/* @__PURE__ */ array(int()))),
+	query: /* @__PURE__ */ optional(/* @__PURE__ */ string())
 });
 var ArtistEntrySchema = /* @__PURE__ */ object({ tag: (/* @__PURE__ */ string()).check(/* @__PURE__ */ _minLength(1)) });
 /** Legacy `fav` remains optional so old storage/export blobs still parse. */
@@ -3534,15 +2076,15 @@ var MarkFlagsSchema = /* @__PURE__ */ object({
 	fav: /* @__PURE__ */ optional(/* @__PURE__ */ boolean()),
 	seen: /* @__PURE__ */ optional(/* @__PURE__ */ boolean())
 });
-var AppearanceThemeSchema = exports("aV",/* @__PURE__ */ _enum([
+var AppearanceThemeSchema = exports("aX",/* @__PURE__ */ _enum([
 	APPEARANCE_THEME_SITE,
 	APPEARANCE_THEME_SITE_DARK,
 	APPEARANCE_THEME_LIGHT,
 	APPEARANCE_THEME_DARK,
 	APPEARANCE_THEME_CUSTOM
 ]));
-var APPEARANCE_CUSTOM_BASE_LIGHT = exports("aA","light");
-var APPEARANCE_CUSTOM_BASE_DARK = exports("aB","dark");
+var APPEARANCE_CUSTOM_BASE_LIGHT = exports("aC","light");
+var APPEARANCE_CUSTOM_BASE_DARK = exports("aD","dark");
 var AppearanceCustomBaseSchema = /* @__PURE__ */ _enum([APPEARANCE_CUSTOM_BASE_LIGHT, APPEARANCE_CUSTOM_BASE_DARK]);
 /** Canonical custom theme: Light/Dark base + optional background image/dim. */
 var AppearanceCustomSchema = /* @__PURE__ */ object({
@@ -3606,7 +2148,7 @@ var SettingsSchema = /* @__PURE__ */ object({
 	appearance: /* @__PURE__ */ optional(AppearanceStoredSchema)
 });
 var UpdatesSchema = /* @__PURE__ */ object({ seenPostId: int().check(/* @__PURE__ */ _nonnegative()) });
-var StorageSchema = exports("b2",/* @__PURE__ */ object({
+var StorageSchema = exports("b4",/* @__PURE__ */ object({
 	version: /* @__PURE__ */ literal(1),
 	collections: /* @__PURE__ */ array(CollectionSchema),
 	artists: /* @__PURE__ */ array(ArtistEntrySchema),
@@ -3641,7 +2183,7 @@ var FavsSyncSchema = /* @__PURE__ */ object({
 	lock: /* @__PURE__ */ optional(FavsSyncLockSchema),
 	mode: /* @__PURE__ */ optional(FavsSyncModeSchema)
 });
-var FavsSchema = exports("b5",/* @__PURE__ */ object({
+var FavsSchema = exports("b7",/* @__PURE__ */ object({
 	version: /* @__PURE__ */ literal(1),
 	ids: /* @__PURE__ */ array(int()),
 	sync: /* @__PURE__ */ optional(FavsSyncSchema)
@@ -3752,6 +2294,46 @@ function migrateRetiredFeatureChoices(data) {
 function isPlaylist(collection) {
 	return collection.kind === COLLECTION_KIND_POSTS;
 }
+/**
+* Posts collections gain `thumbs: {}` and `shuffledOrder: null` when those
+* keys are absent. Saved searches (including explicit `kind: "search"`) are
+* copied through unchanged. No SCHEMA_VERSION bump.
+*/
+function migrateCollectionMediaFields(data) {
+	let changed = false;
+	const collections = [];
+	for (const collection of data.collections) {
+		if (!isPlaylist(collection)) {
+			collections.push(collection);
+			continue;
+		}
+		const needsThumbs = collection.thumbs === void 0;
+		const needsOrder = collection.shuffledOrder === void 0;
+		if (!needsThumbs && !needsOrder) {
+			collections.push(collection);
+			continue;
+		}
+		changed = true;
+		const next = { ...collection };
+		if (needsThumbs) next.thumbs = {};
+		if (needsOrder) next.shuffledOrder = null;
+		collections.push(next);
+	}
+	if (!changed) return {
+		data,
+		changed: false
+	};
+	return {
+		data: {
+			...data,
+			collections
+		},
+		changed: true
+	};
+}
+function resolveCollectionKind(collection) {
+	return collection.kind ?? "search";
+}
 function createDefaultFavs() {
 	return {
 		version: 1,
@@ -3813,669 +2395,6 @@ function resolvePlaylistChunkSize(data) {
 function resolveSeenPostId(data) {
 	return data.updates?.seenPostId ?? 0;
 }
-var BACKGROUND_DIM_MAX = .8;
-/** JPEG quality when downscaling a custom background to screen size. */
-var APPEARANCE_BACKGROUND_JPEG_QUALITY = .85;
-var CONTRAST_OFFSET = .05;
-var JPEG_MIME = "image/jpeg";
-var BODY_BG_IMAGE = "background-image";
-var BODY_BG_SIZE = "background-size";
-var BODY_BG_POSITION = "background-position";
-var BODY_BG_REPEAT = "background-repeat";
-var BODY_BG_ATTACHMENT = "background-attachment";
-/** Site light tag/link colors (not exported from tokens). */
-var SITE_C_LINK_ARTIST = "#cc0000";
-var SITE_C_LINK_CHARACTER = "#00aa00";
-var SITE_C_LINK_COPYRIGHT = "#aa00aa";
-var SITE_C_LINK_METADATA = "#ff8800";
-/** Site dark accent-soft / tag colors (not exported from tokens). */
-var SITE_DARK_ACCENT_SOFT = SITE_DARK_C_BORDER;
-var SITE_DARK_TAG_ARTIST = "#f0a0a0";
-var SITE_DARK_TAG_CHARACTER = "#f0f0a0";
-var SITE_DARK_TAG_COPYRIGHT = "#f0a0f0";
-var SITE_DARK_TAG_METADATA = "#90d9ed";
-/**
-* Script-page / token palette for Appearance theme "Site default".
-* Card surface = --c-bg; border = --c-bg-alt (aligned with page-css host cards).
-* Danger/radius/shadow/font from Light.
-*/
-var SITE_DEFAULT_PALETTE = {
-	bg: SITE_LIGHT_C_BG,
-	surface: SITE_LIGHT_C_BG,
-	surface2: SITE_LIGHT_C_BG_OVERLAY,
-	border: SITE_LIGHT_C_BG_ALT,
-	text: SITE_LIGHT_C_TEXT,
-	muted: SITE_LIGHT_C_TEXT_SOFT,
-	accent: SITE_LIGHT_C_LINK,
-	accentSoft: SITE_LIGHT_C_BG_ALT,
-	danger: LIGHT_PALETTE.danger,
-	dangerSoft: LIGHT_PALETTE.dangerSoft,
-	tagArtist: SITE_C_LINK_ARTIST,
-	tagCharacter: SITE_C_LINK_CHARACTER,
-	tagCopyright: SITE_C_LINK_COPYRIGHT,
-	tagMetadata: SITE_C_LINK_METADATA,
-	radiusS: LIGHT_PALETTE.radiusS,
-	radiusM: LIGHT_PALETTE.radiusM,
-	radiusL: LIGHT_PALETTE.radiusL,
-	shadow1: LIGHT_PALETTE.shadow1,
-	shadow2: LIGHT_PALETTE.shadow2,
-	font: LIGHT_PALETTE.font
-};
-/**
-* Script-page / token palette for Appearance theme "Site dark".
-* Surface = page bg (not darker chrome); danger/radius/shadow/font from Dark.
-*/
-var SITE_DARK_PALETTE = {
-	bg: SITE_DARK_C_BG,
-	surface: SITE_DARK_C_BG,
-	surface2: SITE_DARK_C_SURFACE2,
-	border: SITE_DARK_C_BORDER,
-	text: SITE_DARK_C_TEXT,
-	muted: SITE_DARK_C_MUTED,
-	accent: SITE_DARK_C_ACCENT,
-	accentSoft: SITE_DARK_ACCENT_SOFT,
-	danger: DARK_PALETTE.danger,
-	dangerSoft: DARK_PALETTE.dangerSoft,
-	tagArtist: SITE_DARK_TAG_ARTIST,
-	tagCharacter: SITE_DARK_TAG_CHARACTER,
-	tagCopyright: SITE_DARK_TAG_COPYRIGHT,
-	tagMetadata: SITE_DARK_TAG_METADATA,
-	radiusS: DARK_PALETTE.radiusS,
-	radiusM: DARK_PALETTE.radiusM,
-	radiusL: DARK_PALETTE.radiusL,
-	shadow1: DARK_PALETTE.shadow1,
-	shadow2: DARK_PALETTE.shadow2,
-	font: DARK_PALETTE.font
-};
-/**
-* Pick text color for a surface: prefer `preferred`, else the first
-* neighboring candidate that meets {@link CONTRAST_RATIO_MIN}.
-*/
-function pickContrastingText(surface, preferred, neighbors) {
-	const preferredRatio = contrastRatio(preferred, surface);
-	if (preferredRatio !== null && preferredRatio >= 4.5) return {
-		text: preferred,
-		ratio: preferredRatio,
-		swapped: false
-	};
-	for (const candidate of neighbors) {
-		const ratio = contrastRatio(candidate, surface);
-		if (ratio !== null && ratio >= 4.5) return {
-			text: candidate,
-			ratio,
-			swapped: true
-		};
-	}
-	return {
-		text: preferred,
-		ratio: preferredRatio,
-		swapped: false
-	};
-}
-function finalizeSitePaletteText(palette) {
-	const picked = pickContrastingText(palette.surface, palette.text, [
-		palette.bg,
-		palette.muted,
-		palette.accent,
-		LIGHT_PALETTE.text,
-		DARK_PALETTE.text
-	]);
-	if (!picked.swapped) return palette;
-	return {
-		...palette,
-		text: picked.text
-	};
-}
-/** Site default after contrast gate (text-on-surface). */
-var SITE_DEFAULT_PALETTE_RESOLVED = finalizeSitePaletteText(SITE_DEFAULT_PALETTE);
-/** Site dark after contrast gate (text-on-surface). */
-var SITE_DARK_PALETTE_RESOLVED = finalizeSitePaletteText(SITE_DARK_PALETTE);
-function createDefaultCustomTheme() {
-	return {
-		base: APPEARANCE_CUSTOM_BASE_LIGHT,
-		backgroundDim: 0
-	};
-}
-function clampBackgroundDim(value) {
-	if (!Number.isFinite(value)) return 0;
-	return Math.min(BACKGROUND_DIM_MAX, Math.max(0, value));
-}
-/** WCAG contrast ratio of two hex colors; null if either is unparseable. */
-function contrastRatio(foreground, background) {
-	const l1 = relativeLuminance(foreground);
-	const l2 = relativeLuminance(background);
-	if (l1 === null || l2 === null) return null;
-	const lighter = Math.max(l1, l2);
-	const darker = Math.min(l1, l2);
-	return (lighter + CONTRAST_OFFSET) / (darker + CONTRAST_OFFSET);
-}
-/**
-* Canonical token palette for an Appearance value.
-* Site themes use site chrome colors — not RuleDesk Light/Dark.
-* Callers (boot/host) should use this instead of light/dark-only resolvers.
-*/
-function resolveAppearancePalette(appearance) {
-	const theme = appearance.theme;
-	if (theme === "site-dark") return SITE_DARK_PALETTE_RESOLVED;
-	if (theme === "site") return SITE_DEFAULT_PALETTE_RESOLVED;
-	if (theme === "dark") return DARK_PALETTE;
-	if (theme === "custom") return appearance.custom?.base === "dark" ? DARK_PALETTE : LIGHT_PALETTE;
-	return LIGHT_PALETTE;
-}
-function escapeUrlForCss(url) {
-	return url.replace(/\\/g, "\\\\").replace(/"/g, "\\\"");
-}
-function clearBodyBackground() {
-	const body = document.body;
-	if (body === null) return;
-	body.style.removeProperty(BODY_BG_IMAGE);
-	body.style.removeProperty(BODY_BG_SIZE);
-	body.style.removeProperty(BODY_BG_POSITION);
-	body.style.removeProperty(BODY_BG_REPEAT);
-	body.style.removeProperty(BODY_BG_ATTACHMENT);
-}
-/**
-* Apply custom background image on <body> with a dim overlay (0–0.8).
-* Cleared when image is empty.
-*/
-function applyBodyBackgroundImage(imageUrl, dim) {
-	const body = document.body;
-	if (body === null) return;
-	if (imageUrl === void 0 || imageUrl.length === 0) {
-		clearBodyBackground();
-		return;
-	}
-	const clamped = clampBackgroundDim(dim);
-	const escaped = escapeUrlForCss(imageUrl);
-	body.style.setProperty(BODY_BG_IMAGE, `linear-gradient(rgba(0, 0, 0, ${String(clamped)}), rgba(0, 0, 0, ${String(clamped)})), url("${escaped}")`);
-	body.style.setProperty(BODY_BG_SIZE, "cover");
-	body.style.setProperty(BODY_BG_POSITION, "center");
-	body.style.setProperty(BODY_BG_REPEAT, "no-repeat");
-	body.style.setProperty(BODY_BG_ATTACHMENT, "fixed");
-}
-function syncSiteCookieAndStylesheet(appearance) {
-	if (appearance.theme === "site-dark") {
-		setSiteTheme("dark");
-		return;
-	}
-	if (appearance.theme === "site") {
-		setSiteTheme("light");
-		return;
-	}
-	forceLightSiteBase();
-}
-/** CSS pixel screen size × devicePixelRatio (for background hints/resize). */
-function getScreenPixelSize() {
-	const dpr = Number.isFinite(window.devicePixelRatio) && window.devicePixelRatio > 0 ? window.devicePixelRatio : 1;
-	return {
-		width: Math.round(window.screen.width * dpr),
-		height: Math.round(window.screen.height * dpr)
-	};
-}
-/**
-* Fit source inside max box without upscaling. Pure sizing helper (testable).
-*/
-function computeDownscaleSize(sourceWidth, sourceHeight, maxWidth, maxHeight) {
-	if (!Number.isFinite(sourceWidth) || !Number.isFinite(sourceHeight) || sourceWidth <= 0 || sourceHeight <= 0) return {
-		width: 0,
-		height: 0
-	};
-	if (sourceWidth <= maxWidth && sourceHeight <= maxHeight) return {
-		width: Math.round(sourceWidth),
-		height: Math.round(sourceHeight)
-	};
-	const scale = Math.min(maxWidth / sourceWidth, maxHeight / sourceHeight);
-	return {
-		width: Math.max(1, Math.round(sourceWidth * scale)),
-		height: Math.max(1, Math.round(sourceHeight * scale))
-	};
-}
-function loadImageElement(src) {
-	return new Promise((resolve, reject) => {
-		const image = new Image();
-		image.onload = () => {
-			resolve(image);
-		};
-		image.onerror = () => {
-			reject(/* @__PURE__ */ new Error("Could not decode image"));
-		};
-		image.src = src;
-	});
-}
-function readFileAsDataUrl(file) {
-	return new Promise((resolve, reject) => {
-		const reader = new FileReader();
-		reader.onload = () => {
-			if (typeof reader.result === "string") {
-				resolve(reader.result);
-				return;
-			}
-			reject(/* @__PURE__ */ new Error("Could not read image file"));
-		};
-		reader.onerror = () => {
-			reject(reader.error ?? /* @__PURE__ */ new Error("Could not read image file"));
-		};
-		reader.readAsDataURL(file);
-	});
-}
-/**
-* Decode file, downscale to screen pixels (never upscale), encode JPEG.
-*/
-async function prepareBackgroundImageFile(file) {
-	const image = await loadImageElement(await readFileAsDataUrl(file));
-	const sourceWidth = image.naturalWidth;
-	const sourceHeight = image.naturalHeight;
-	const screen = getScreenPixelSize();
-	const sized = computeDownscaleSize(sourceWidth, sourceHeight, screen.width, screen.height);
-	const canvas = document.createElement("canvas");
-	canvas.width = sized.width;
-	canvas.height = sized.height;
-	const context = canvas.getContext("2d");
-	if (context === null) throw new Error("Could not prepare background image");
-	context.drawImage(image, 0, 0, sized.width, sized.height);
-	return {
-		dataUrl: canvas.toDataURL(JPEG_MIME, APPEARANCE_BACKGROUND_JPEG_QUALITY),
-		sourceWidth,
-		sourceHeight,
-		outputWidth: sized.width,
-		outputHeight: sized.height,
-		belowScreen: sourceWidth < screen.width || sourceHeight < screen.height
-	};
-}
-/**
-* Full theme apply for boot and settings UI:
-* site cookie/stylesheet + html.rdw-skin / tokens / site-skin / custom props + body image.
-* Token palette comes from {@link resolveAppearancePalette} and is written once via
-* injectTokenStyles + syncPageRootTokens (same tick as applyAppearanceToDocument).
-*/
-function applyAppearanceTheme(options) {
-	const { appearance } = options;
-	syncSiteCookieAndStylesheet(appearance);
-	applyAppearanceToDocument({
-		appearance,
-		siteSkinCss: options.siteSkinCss ?? getSiteSkinCss(),
-		...options.backgroundDataUrl !== void 0 ? { backgroundDataUrl: options.backgroundDataUrl } : {}
-	});
-	const palette = resolveAppearancePalette(appearance);
-	injectTokenStyles(palette);
-	syncPageRootTokens(palette);
-	if (!themeEnablesSkin(appearance.theme)) document.documentElement.classList.remove(RDW_SKIN_CLASS);
-	if (appearance.theme === "custom" && appearance.custom !== void 0) {
-		const custom = appearance.custom;
-		applyBodyBackgroundImage(options.backgroundDataUrl ?? custom.backgroundImage, custom.backgroundDim ?? 0);
-		if (custom.backgroundDim !== void 0) document.documentElement.style.setProperty(TOKEN_VAR.backgroundDim, String(clampBackgroundDim(custom.backgroundDim)));
-	} else clearBodyBackground();
-	const textOnSurface = contrastRatio(palette.text, palette.surface);
-	return {
-		contrastWarning: textOnSurface !== null && textOnSurface < 4.5,
-		contrastRatio: textOnSurface
-	};
-}
-/**
-* Whether RuleDesk site-skin class is active.
-* site / site-dark keep native page chrome; light / dark / custom enable rdw-skin.
-*/
-function themeEnablesSkin(theme) {
-	return theme === "light" || theme === "dark" || theme === "custom";
-}
-/**
-* Ensures a <style id=...> exists under documentElement (works before <head>).
-* Safe at document-start. B1/B2 should reuse these helpers.
-*/
-function ensureStyleElement(id) {
-	const existing = document.getElementById(id);
-	if (existing instanceof HTMLStyleElement) return existing;
-	if (existing !== null) existing.remove();
-	const style = document.createElement("style");
-	style.id = id;
-	(document.head ?? document.documentElement).append(style);
-	return style;
-}
-/** Inject or replace the design-token stylesheet. */
-function injectTokenStyles(palette) {
-	const style = ensureStyleElement(TOKEN_STYLE_ID);
-	style.textContent = buildTokensCss(palette, ":root");
-	return style;
-}
-/**
-* Copy the same palette onto #rdw-page-root when present.
-* Shadow DOM uses :host { all: initial }, so document :root tokens do not inherit.
-*/
-function syncPageRootTokens(palette) {
-	const host = document.getElementById(RDW_PAGE_ROOT_ID);
-	if (!(host instanceof HTMLElement)) return;
-	applyTokenProperties(host, palette);
-}
-/**
-* Inject or replace the site-skin stylesheet (rules scoped under html.rdw-skin).
-*/
-function injectSiteSkinHook(cssText = "") {
-	const style = ensureStyleElement(SITE_SKIN_STYLE_ID);
-	style.textContent = cssText;
-	return style;
-}
-function applyHtmlThemeAttributes(theme) {
-	const root = document.documentElement;
-	root.setAttribute(RDW_THEME_ATTR, theme);
-	if (themeEnablesSkin(theme)) root.classList.add(RDW_SKIN_CLASS);
-	else root.classList.remove(RDW_SKIN_CLASS);
-}
-/**
-* Document-start-safe appearance apply:
-* html class/attr + token CSS (+ site-skin) + optional custom props.
-* Palette from {@link resolveAppearancePalette} (site ≠ Light/Dark).
-* Also syncs live #rdw-page-root Shadow host to the same palette.
-*/
-function applyAppearanceToDocument(options) {
-	const { appearance } = options;
-	applyHtmlThemeAttributes(appearance.theme);
-	const palette = resolveAppearancePalette(appearance);
-	injectTokenStyles(palette);
-	syncPageRootTokens(palette);
-	injectSiteSkinHook(options.siteSkinCss ?? "");
-	const root = document.documentElement;
-	clearCustomThemeProperties(root);
-	const omitImage = options.omitBackgroundImage === true;
-	const backgroundImage = omitImage ? void 0 : options.backgroundDataUrl ?? appearance.custom?.backgroundImage;
-	if (appearance.theme === "custom" && appearance.custom !== void 0) applyCustomThemeProperties(root, backgroundImage !== void 0 && backgroundImage.length > 0 ? {
-		backgroundImage,
-		...appearance.custom.backgroundDim !== void 0 ? { backgroundDim: appearance.custom.backgroundDim } : {}
-	} : { ...appearance.custom.backgroundDim !== void 0 ? { backgroundDim: appearance.custom.backgroundDim } : {} });
-	else if (!omitImage && options.backgroundDataUrl !== void 0 && options.backgroundDataUrl.length > 0) applyCustomThemeProperties(root, { backgroundImage: options.backgroundDataUrl });
-}
-/**
-* Pre-paint appearance read: one GM_getValue + shape checks only (no zod).
-* Full AppearanceSchema validation stays on the post-paint store path.
-*/
-var CUSTOM_BASE_LIGHT = "light";
-var CUSTOM_BASE_DARK = "dark";
-/** Cached raw STORAGE_KEY payload from the single pre-paint GM read. */
-var rawStorageCache;
-var rawStorageRead = false;
-function isRecord(value) {
-	return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-function getGmGetValue$2() {
-	return GM_getValue;
-}
-/**
-* Single GM read for the pre-paint path. Subsequent calls reuse the cache
-* so layout peek does not hit GM again before first paint.
-*/
-function readRawStorageOnce() {
-	if (!rawStorageRead) {
-		rawStorageCache = getGmGetValue$2()(STORAGE_KEY, void 0);
-		rawStorageRead = true;
-	}
-	return rawStorageCache;
-}
-function cheapParseTheme(value) {
-	if (value === "site") return APPEARANCE_THEME_SITE;
-	if (value === "site-dark") return APPEARANCE_THEME_SITE_DARK;
-	if (value === "light") return APPEARANCE_THEME_LIGHT;
-	if (value === "dark") return APPEARANCE_THEME_DARK;
-	if (value === "custom") return APPEARANCE_THEME_CUSTOM;
-	return DEFAULT_APPEARANCE_THEME;
-}
-function cheapParseCustom(raw) {
-	if (!isRecord(raw)) return;
-	const baseRaw = raw.base;
-	const custom = { base: baseRaw === CUSTOM_BASE_DARK || baseRaw === CUSTOM_BASE_LIGHT ? baseRaw : CUSTOM_BASE_LIGHT };
-	if (typeof raw.backgroundImage === "string") custom.backgroundImage = raw.backgroundImage;
-	if (typeof raw.backgroundDim === "number" && Number.isFinite(raw.backgroundDim)) custom.backgroundDim = raw.backgroundDim;
-	return custom;
-}
-/**
-* Cheap appearance extract from a raw GM storage blob (or undefined).
-* Does not validate marks / collections / artists / favs.
-*/
-function cheapParseAppearance(raw) {
-	if (!isRecord(raw)) return { theme: DEFAULT_APPEARANCE_THEME };
-	const settings = raw.settings;
-	if (!isRecord(settings)) return { theme: DEFAULT_APPEARANCE_THEME };
-	const appearanceRaw = settings.appearance;
-	if (!isRecord(appearanceRaw)) return { theme: DEFAULT_APPEARANCE_THEME };
-	const theme = cheapParseTheme(appearanceRaw.theme);
-	if (theme !== "custom") return { theme };
-	const custom = cheapParseCustom(appearanceRaw.custom);
-	if (custom === void 0) return { theme };
-	return {
-		theme,
-		custom
-	};
-}
-/** Pre-paint appearance: one GM read + cheap shape check. */
-function peekAppearanceForPaint() {
-	return cheapParseAppearance(readRawStorageOnce());
-}
-/**
-* Cheap layout flags from the same cached GM blob (no second GM read, no zod).
-* Used after CSS injection for grid-density / menu-cleanup / search reserve.
-*/
-function peekLayoutSettings() {
-	const raw = readRawStorageOnce();
-	if (!isRecord(raw) || !isRecord(raw.settings)) return {
-		tweaksEnabled: true,
-		features: {},
-		featureChoice: {}
-	};
-	const settings = raw.settings;
-	const tweaksEnabled = typeof settings.tweaksEnabled === "boolean" ? settings.tweaksEnabled : true;
-	const features = {};
-	if (isRecord(settings.features)) {
-		for (const [key, value] of Object.entries(settings.features)) if (typeof value === "boolean") features[key] = value;
-	}
-	const featureChoice = {};
-	if (isRecord(settings.featureChoice)) {
-		for (const [key, value] of Object.entries(settings.featureChoice)) if (typeof value === "string") featureChoice[key] = value;
-	}
-	return {
-		tweaksEnabled,
-		features,
-		featureChoice
-	};
-}
-function resolveFeatureEnabled(layout, id, defaultEnabled) {
-	if (!layout.tweaksEnabled) return false;
-	const stored = layout.features[id];
-	if (stored === void 0) return defaultEnabled;
-	return stored;
-}
-function resolveFeatureChoice(layout, id, defaultValue, allowed) {
-	const stored = layout.featureChoice[id];
-	if (stored !== void 0 && allowed.includes(stored)) return stored;
-	return defaultValue;
-}
-/**
-* Pre-CSS operations on document-start (must stay minimal — A1 counts these):
-* 1. GM_getValue(STORAGE_KEY) via {@link peekAppearanceForPaint}
-* 2. cheap shape parse of settings.appearance (no zod)
-* Then immediately inject theme + skin CSS (base color only, no background image).
-*/
-function syncSiteCookieAfterCss(appearance) {
-	const theme = appearance.theme === "site-dark" ? "dark" : "light";
-	writeSiteThemeCookie(theme);
-	scheduleSiteDesktopStylesheet(theme);
-}
-/**
-* If the URL already has #rdw/…, stamp html.rdw-own-page after CSS inject.
-* Kept here (not in pages/router) so document-start does not import Preact host.
-*/
-function applyOwnPageClassEarly() {
-	if (parseRdwHash(window.location.hash) === null) return;
-	const root = document.documentElement;
-	if (root === null) return;
-	const style = ensureStyleElement(RDW_OWN_PAGE_STYLE_ID);
-	style.textContent = buildOwnPageCss();
-	root.classList.add(RDW_OWN_PAGE_CLASS);
-}
-/**
-* Runs at userscript document-start, before DOMContentLoaded.
-* Hot path: cheap appearance GM read → inject token + site-skin CSS (no bg image).
-* Cookie sync / rdw-own-page run only after styles are in the DOM.
-*/
-function bootEarly() {
-	const appearance = peekAppearanceForPaint();
-	applyAppearanceToDocument({
-		appearance,
-		siteSkinCss: getSiteSkinCss(),
-		omitBackgroundImage: true
-	});
-	syncSiteCookieAfterCss(appearance);
-	applyOwnPageClassEarly();
-}
-var THUMB_CLASS = "rdw-thumb";
-var THUMB_ANCHOR_NAME = "--rdw-img";
-var FEATURE_STYLE_ID_PREFIX = "rdw-feature-style-";
-var POST_ACTIONS_ID = "rdw-post-actions";
-function featureBodyClass(id) {
-	return `rdw-f-${id}`;
-}
-function featureChoiceBodyClass(id, value) {
-	return `rdw-f-${id}-${value}`;
-}
-var FEATURE_ID$12 = "grid-density";
-var COMPACT_PX = 150;
-var LARGE_PX = 250;
-var CHOICE_DEFAULT = "default";
-var CHOICE_COMPACT = "compact";
-var CHOICE_LARGE = "large";
-function sizeCss(choiceValue, px) {
-	const bodyClass = featureChoiceBodyClass(FEATURE_ID$12, choiceValue);
-	return [
-		`body.${bodyClass} span.thumb,`,
-		`body.${bodyClass} span.thumb > a {`,
-		`  width: ${String(px)}px !important;`,
-		`  height: ${String(px)}px !important;`,
-		`}`,
-		`body.${bodyClass} img.preview {`,
-		`  max-width: ${String(px)}px !important;`,
-		`  max-height: ${String(px)}px !important;`,
-		`}`
-	].join("\n");
-}
-/** Same gap on both axes for Default, Compact, and Large. Does not set cell size. */
-function gapCss() {
-	return [
-		`body.${featureBodyClass(FEATURE_ID$12)} div.image-list {`,
-		`  column-gap: ${String(4)}px !important;`,
-		`  row-gap: ${String(4)}px !important;`,
-		`}`
-	].join("\n");
-}
-var gridDensityFeature = exports("bh",{
-	id: FEATURE_ID$12,
-	label: "Grid size",
-	pages: ["list", "favorites"],
-	defaultEnabled: true,
-	cssOnly: true,
-	choice: {
-		options: [
-			{
-				value: CHOICE_DEFAULT,
-				label: "Default"
-			},
-			{
-				value: CHOICE_COMPACT,
-				label: "Compact (150)"
-			},
-			{
-				value: CHOICE_LARGE,
-				label: "Large (250)"
-			}
-		],
-		defaultValue: CHOICE_DEFAULT
-	},
-	css: [
-		sizeCss(CHOICE_COMPACT, COMPACT_PX),
-		sizeCss(CHOICE_LARGE, LARGE_PX),
-		gapCss()
-	].join("\n"),
-	mount: () => void 0
-});
-var FEATURE_ID$11 = "menu-cleanup";
-var FEATURE_LABEL$11 = "Clean header menu";
-var CONTENT_ID$1 = "content";
-var HIDDEN_CLASS = "rdw-menu-hidden";
-var BODY_FEATURE_CLASS$3 = featureBodyClass(FEATURE_ID$11);
-var MISSING_MENU_WARN = "Header menu not found";
-var HIDE_LINK_TEXT_SET = /* @__PURE__ */ new Set([
-	"iCame Top 100",
-	"Discord",
-	"X",
-	"Other Sites",
-	"Contact Us",
-	"DMCA",
-	"About",
-	"TOS",
-	"My Favorites"
-]);
-var FEATURE_PAGES$11 = [
-	"list",
-	"post",
-	"favorites",
-	"other"
-];
-var FEATURE_CSS$11 = `body.${BODY_FEATURE_CLASS$3} li.${HIDDEN_CLASS} { display:none !important; }`;
-function isHeaderMenuLink(anchor, content) {
-	const listItem = anchor.closest("li");
-	if (listItem === null) return false;
-	if (content !== null && content.contains(listItem)) return false;
-	return true;
-}
-function collectHeaderMenuLinks() {
-	const content = document.getElementById(CONTENT_ID$1);
-	const anchors = document.querySelectorAll("a");
-	const headerLinks = [];
-	for (const node of anchors) {
-		if (!(node instanceof HTMLAnchorElement)) continue;
-		if (!isHeaderMenuLink(node, content)) continue;
-		headerLinks.push(node);
-	}
-	return headerLinks;
-}
-function mountMenuCleanup(_ctx) {
-	const headerLinks = collectHeaderMenuLinks();
-	if (headerLinks.length === 0) {
-		log.warn(MISSING_MENU_WARN);
-		return;
-	}
-	for (const anchor of headerLinks) {
-		const text = anchor.textContent?.trim() ?? "";
-		if (!HIDE_LINK_TEXT_SET.has(text)) continue;
-		const listItem = anchor.closest("li");
-		if (listItem === null) continue;
-		listItem.classList.add(HIDDEN_CLASS);
-	}
-}
-var menuCleanupFeature = {
-	id: FEATURE_ID$11,
-	label: FEATURE_LABEL$11,
-	pages: [...FEATURE_PAGES$11],
-	defaultEnabled: true,
-	cssOnly: true,
-	css: FEATURE_CSS$11,
-	mount: mountMenuCleanup
-};
-function detectPageKind(search) {
-	const params = new URLSearchParams(search);
-	const page = params.get(SEARCH_PARAM_PAGE);
-	const section = params.get("s");
-	if (page === "post" && section === "list") return "list";
-	if (page === "post" && section === "view") return "post";
-	if (page === "favorites" && section === "view") return "favorites";
-	return "other";
-}
-function readPostIdFromSearch(search) {
-	const params = new URLSearchParams(search);
-	const page = params.get(SEARCH_PARAM_PAGE);
-	const section = params.get("s");
-	const id = params.get("id");
-	if (page !== "post" || section !== "view") return null;
-	if (id === null || id.trim().length === 0) return null;
-	if (!/^\d+$/.test(id)) return null;
-	return id;
-}
 var UPDATES_ID_TOKEN_PATTERN = /^id:>(\d+)$/;
 var PLAYLIST_ID_TOKEN_PATTERN = /^id:(\d+)$/;
 function normalizeArtistTag(raw) {
@@ -4514,15 +2433,6 @@ function buildSearchUrl(tags) {
 	params.set(SEARCH_PARAM_PAGE, SEARCH_PAGE);
 	params.set("s", SEARCH_SECTION);
 	return `${SITE_ORIGIN}${SEARCH_PATH}?${params.toString()}&${SEARCH_PARAM_TAGS}=${encoded}`;
-}
-function readTagsFromLocation(search) {
-	const params = new URLSearchParams(search);
-	const page = params.get(SEARCH_PARAM_PAGE);
-	const section = params.get("s");
-	const tagsRaw = params.get(SEARCH_PARAM_TAGS);
-	if (page !== "post" || section !== "list") return null;
-	if (tagsRaw === null || tagsRaw.trim().length === 0) return null;
-	return parseTags(tagsRaw);
 }
 function formatGroupQuery(tags) {
 	if (tags.length === 1) {
@@ -4709,6 +2619,48 @@ function parsePlaylistQuery(tagsParam) {
 		ids.push(id);
 	}
 	return ids;
+}
+/** Site shuffle token. Ignored when matching a saved dynamic search. */
+var SORT_RANDOM_TOKEN = "sort:random";
+var SEARCH_TOKEN_SPLIT = /\s+/;
+function searchTokens(raw) {
+	return raw.trim().split(SEARCH_TOKEN_SPLIT).filter((token) => token.length > 0);
+}
+function tokenCountsIgnoringSortRandom(raw) {
+	const counts = /* @__PURE__ */ new Map();
+	for (const token of searchTokens(raw)) {
+		if (token === "sort:random") continue;
+		counts.set(token, (counts.get(token) ?? 0) + 1);
+	}
+	return counts;
+}
+/** True when `raw` contains at least one `sort:random` token. */
+function queryHasSortRandom(raw) {
+	return searchTokens(raw).includes(SORT_RANDOM_TOKEN);
+}
+/** Token string with every `sort:random` removed. Other tokens keep their order. */
+function withoutSortRandom(raw) {
+	return searchTokens(raw).filter((token) => token !== SORT_RANDOM_TOKEN).join(" ");
+}
+/**
+* Token string that includes one trailing `sort:random`.
+* Existing shuffle tokens are left in place.
+*/
+function withSortRandom(raw) {
+	const tokens = searchTokens(raw);
+	if (!tokens.includes("sort:random")) tokens.push(SORT_RANDOM_TOKEN);
+	return tokens.join(" ");
+}
+/**
+* True when two search strings are the same multiset of tokens.
+* Token order does not matter. Every `sort:random` token is ignored.
+*/
+function queriesMatchIgnoringSortRandom(left, right) {
+	const leftCounts = tokenCountsIgnoringSortRandom(left);
+	const rightCounts = tokenCountsIgnoringSortRandom(right);
+	if (leftCounts.size !== rightCounts.size) return false;
+	for (const [token, count] of leftCounts) if (rightCounts.get(token) !== count) return false;
+	return true;
 }
 /** localStorage key for the followed-artists tag list mirror (not a cookie). */
 var ARTISTS_MIRROR_KEY = "ruledesk-web.artists-mirror";
@@ -5023,14 +2975,14 @@ function extractFavIdsFromMarks(marks) {
 }
 var cachedStorage = null;
 var storageCacheHydrated = false;
-function getGmGetValue() {
+function getGmGetValue$2() {
 	return GM_getValue;
 }
 function getGmSetValue() {
 	return GM_setValue;
 }
 function readRaw() {
-	return getGmGetValue()(STORAGE_KEY, void 0);
+	return getGmGetValue$2()(STORAGE_KEY, void 0);
 }
 function writeData(data) {
 	getGmSetValue()(STORAGE_KEY, data);
@@ -5082,10 +3034,17 @@ function loadUncached() {
 	const reparsed = StorageSchema.safeParse(after);
 	if (!reparsed.success) {
 		seedArtistsMirrorIfMissing(parsed.data);
-		return parsed.data;
+		return persistCollectionMediaMigration(parsed.data);
 	}
 	seedArtistsMirrorIfMissing(reparsed.data);
-	return reparsed.data;
+	return persistCollectionMediaMigration(reparsed.data);
+}
+function persistCollectionMediaMigration(data) {
+	const migrated = migrateCollectionMediaFields(data);
+	if (!migrated.changed) return data;
+	const parsed = StorageSchema.parse(migrated.data);
+	writeData(parsed);
+	return parsed;
 }
 function backupInvalid(raw) {
 	getGmSetValue()(STORAGE_BACKUP_KEY, raw);
@@ -5125,12 +3084,12 @@ function reloadFromStorage() {
 	return load();
 }
 function save(data) {
-	const parsed = StorageSchema.parse(data);
-	const pruned = pruneMarksIfNeeded(parsed.marks);
+	const migrated = migrateCollectionMediaFields(StorageSchema.parse(data)).data;
+	const pruned = pruneMarksIfNeeded(migrated.marks);
 	const toWrite = pruned.pruned ? {
-		...parsed,
+		...migrated,
 		marks: pruned.marks
-	} : parsed;
+	} : migrated;
 	writeData(toWrite);
 	migrateMarksFavToFavs();
 	const after = readRaw();
@@ -5149,19 +3108,8 @@ function save(data) {
 	setStorageCache(reparsed.data);
 	syncArtistsMirror(reparsed.data);
 }
-function addCollection(name, tags) {
-	const data = load();
-	const collection = CollectionSchema.parse({
-		id: crypto.randomUUID(),
-		name: name.trim(),
-		tags
-	});
-	data.collections.push(collection);
-	save(data);
-	return collection;
-}
 function renameCollection(id, name) {
-	const data = load();
+	const data = reloadFromStorage();
 	const target = data.collections.find((item) => item.id === id);
 	if (target === void 0) return null;
 	target.name = name.trim();
@@ -5170,7 +3118,7 @@ function renameCollection(id, name) {
 	return target;
 }
 function deleteCollection(id) {
-	const data = load();
+	const data = reloadFromStorage();
 	const next = data.collections.filter((item) => item.id !== id);
 	if (next.length === data.collections.length) return false;
 	data.collections = next;
@@ -5179,13 +3127,15 @@ function deleteCollection(id) {
 }
 /** Creates a post playlist (`kind: "posts"`, empty tags, empty postIds). */
 function createPlaylist(name) {
-	const data = load();
+	const data = reloadFromStorage();
 	const collection = CollectionSchema.parse({
 		id: crypto.randomUUID(),
 		name: name.trim(),
 		tags: [],
 		kind: COLLECTION_KIND_POSTS,
-		postIds: []
+		postIds: [],
+		thumbs: {},
+		shuffledOrder: null
 	});
 	data.collections.push(collection);
 	save(data);
@@ -5199,33 +3149,260 @@ function playlistsContaining(postId) {
 	if (normalized === null) return [];
 	return listPlaylists().filter((playlist) => (playlist.postIds ?? []).includes(normalized));
 }
-function addPostToPlaylist(id, postId) {
+var FISHER_YATES_STOP_INDEX = 0;
+var SHUFFLE_DISTINCT_MIN_LENGTH = 2;
+var SHUFFLE_FALLBACK_INDEX = 1;
+function thumbKey(postId) {
+	return String(postId);
+}
+function readThumb(thumbs, postId) {
+	if (thumbs === void 0) return null;
+	const value = thumbs[thumbKey(postId)];
+	if (value === void 0 || value.length === 0) return null;
+	return value;
+}
+function normalizeThumbUrl(thumbUrl) {
+	if (thumbUrl === void 0) return null;
+	const trimmed = thumbUrl.trim();
+	if (trimmed.length === 0) return null;
+	return trimmed;
+}
+function samePostOrder(left, right) {
+	if (left.length !== right.length) return false;
+	for (let index = 0; index < left.length; index += 1) if (left[index] !== right[index]) return false;
+	return true;
+}
+/** Fisher-Yates. When another permutation exists, the result is not `order`. */
+function shufflePermutation(order) {
+	const next = [...order];
+	for (let index = next.length - 1; index > FISHER_YATES_STOP_INDEX; index -= 1) {
+		const swapIndex = Math.floor(Math.random() * (index + 1));
+		const current = next[index];
+		const swapped = next[swapIndex];
+		if (current === void 0 || swapped === void 0) continue;
+		next[index] = swapped;
+		next[swapIndex] = current;
+	}
+	if (next.length < SHUFFLE_DISTINCT_MIN_LENGTH || !samePostOrder(next, order)) return next;
+	const first = next[FISHER_YATES_STOP_INDEX];
+	const second = next[SHUFFLE_FALLBACK_INDEX];
+	if (first === void 0 || second === void 0) return next;
+	next[FISHER_YATES_STOP_INDEX] = second;
+	next[SHUFFLE_FALLBACK_INDEX] = first;
+	return next;
+}
+function clampInsertIndex(index, length) {
+	if (!Number.isFinite(index) || index < FISHER_YATES_STOP_INDEX) return length;
+	const truncated = Math.trunc(index);
+	if (truncated > length) return length;
+	return truncated;
+}
+/**
+* Display order: `shuffledOrder` with deleted ids dropped, then postIds that
+* are not in that list (new since the shuffle), in insertion order.
+* `null` / missing `shuffledOrder` is insertion order.
+*/
+function collectionDisplayOrder(collection) {
+	const insertion = collection.postIds ?? [];
+	const shuffled = collection.shuffledOrder;
+	if (shuffled === void 0 || shuffled === null) return [...insertion];
+	const present = new Set(insertion);
+	const ordered = [];
+	const seen = /* @__PURE__ */ new Set();
+	for (const id of shuffled) {
+		if (!present.has(id) || seen.has(id)) continue;
+		ordered.push(id);
+		seen.add(id);
+	}
+	for (const id of insertion) {
+		if (seen.has(id)) continue;
+		ordered.push(id);
+		seen.add(id);
+	}
+	return ordered;
+}
+function findPlaylist(data, collectionId) {
+	const target = data.collections.find((item) => item.id === collectionId);
+	if (target === void 0 || !isPlaylist(target)) return null;
+	return target;
+}
+function ensurePostsMedia(target) {
+	target.kind = COLLECTION_KIND_POSTS;
+	target.tags = [];
+	if (target.thumbs === void 0) target.thumbs = {};
+	if (target.shuffledOrder === void 0) target.shuffledOrder = null;
+}
+/**
+* Phase 2 HANDOFF: custom collections are `kind: "posts"`.
+* Append `postId` (no duplicates). Pass `thumbUrl` to store a thumb.
+* Re-add with a URL fills an empty thumb; re-add without a URL keeps a known thumb.
+* New ids stay out of `shuffledOrder` and show up at the end of {@link getCollectionOrder}.
+*/
+function addPostToCollection(collectionId, postId, thumbUrl) {
 	const normalized = normalizePostId(postId);
 	if (normalized === null) return null;
-	const data = load();
-	const target = data.collections.find((item) => item.id === id);
-	if (target === void 0 || !isPlaylist(target)) return null;
+	const data = reloadFromStorage();
+	const target = findPlaylist(data, collectionId);
+	if (target === null) return null;
 	const postIds = [...target.postIds ?? []];
-	if (!postIds.includes(normalized)) postIds.push(normalized);
+	if (!postIds.includes(normalized)) {
+		postIds.push(normalized);
+		if (target.shuffledOrder !== void 0 && target.shuffledOrder !== null) target.shuffledOrder = target.shuffledOrder.filter((id) => id !== normalized);
+	}
 	target.postIds = postIds;
-	target.tags = [];
-	target.kind = COLLECTION_KIND_POSTS;
+	const incoming = normalizeThumbUrl(thumbUrl);
+	const known = readThumb(target.thumbs, normalized);
+	const nextThumb = incoming ?? known;
+	if (nextThumb !== null) target.thumbs = {
+		...target.thumbs ?? {},
+		[thumbKey(normalized)]: nextThumb
+	};
+	ensurePostsMedia(target);
 	CollectionSchema.parse(target);
 	save(data);
 	return target;
 }
+/**
+* Phase 2 HANDOFF: drops the given ids from a custom collection.
+* Returned snapshot is the undo input for {@link restorePosts}.
+* Unknown ids are omitted. A missing or non-posts collection returns null.
+*/
+function removePostsFromCollection(collectionId, postIds) {
+	const data = reloadFromStorage();
+	const target = findPlaylist(data, collectionId);
+	if (target === null) return null;
+	const removal = /* @__PURE__ */ new Set();
+	for (const rawId of postIds) {
+		const normalized = normalizePostId(rawId);
+		if (normalized !== null) removal.add(normalized);
+	}
+	const currentIds = target.postIds ?? [];
+	const display = collectionDisplayOrder(target);
+	const posts = [];
+	for (let index = 0; index < currentIds.length; index += 1) {
+		const id = currentIds[index];
+		if (id === void 0 || !removal.has(id)) continue;
+		const displayIndex = display.indexOf(id);
+		posts.push({
+			postId: id,
+			thumbUrl: readThumb(target.thumbs, id),
+			insertionIndex: index,
+			displayIndex: displayIndex < FISHER_YATES_STOP_INDEX ? index : displayIndex
+		});
+	}
+	if (posts.length === 0) return {
+		collectionId,
+		posts
+	};
+	const removedIds = new Set(posts.map((post) => post.postId));
+	target.postIds = currentIds.filter((id) => !removedIds.has(id));
+	if (target.shuffledOrder !== void 0 && target.shuffledOrder !== null) target.shuffledOrder = target.shuffledOrder.filter((id) => !removedIds.has(id));
+	ensurePostsMedia(target);
+	CollectionSchema.parse(target);
+	save(data);
+	return {
+		collectionId,
+		posts
+	};
+}
 function removePostFromPlaylist(id, postId) {
 	const normalized = normalizePostId(postId);
 	if (normalized === null) return null;
-	const data = load();
-	const target = data.collections.find((item) => item.id === id);
-	if (target === void 0 || !isPlaylist(target)) return null;
-	const previous = target.postIds ?? [];
-	const postIds = previous.filter((entry) => entry !== normalized);
-	if (postIds.length === previous.length) return target;
+	if (removePostsFromCollection(id, [normalized]) === null) return null;
+	return load().collections.find((item) => item.id === id) ?? null;
+}
+/** Phase 2 HANDOFF: puts {@link removePostsFromCollection} posts back. */
+function restorePosts(snapshot) {
+	const data = reloadFromStorage();
+	const target = findPlaylist(data, snapshot.collectionId);
+	if (target === null) return null;
+	if (snapshot.posts.length === 0) return target;
+	const postIds = [...target.postIds ?? []];
+	const thumbs = { ...target.thumbs ?? {} };
+	const byInsertion = [...snapshot.posts].sort((left, right) => left.insertionIndex - right.insertionIndex);
+	for (const post of byInsertion) {
+		const normalized = normalizePostId(post.postId);
+		if (normalized === null) continue;
+		if (!postIds.includes(normalized)) {
+			const index = clampInsertIndex(post.insertionIndex, postIds.length);
+			postIds.splice(index, 0, normalized);
+		}
+		if (post.thumbUrl !== null && post.thumbUrl.length > 0) thumbs[thumbKey(normalized)] = post.thumbUrl;
+	}
 	target.postIds = postIds;
-	target.tags = [];
-	target.kind = COLLECTION_KIND_POSTS;
+	target.thumbs = thumbs;
+	if (target.shuffledOrder !== void 0 && target.shuffledOrder !== null) {
+		const order = [...target.shuffledOrder];
+		const byDisplay = [...snapshot.posts].sort((left, right) => left.displayIndex - right.displayIndex);
+		for (const post of byDisplay) {
+			const normalized = normalizePostId(post.postId);
+			if (normalized === null || order.includes(normalized)) continue;
+			const index = clampInsertIndex(post.displayIndex, order.length);
+			order.splice(index, 0, normalized);
+		}
+		target.shuffledOrder = order;
+	}
+	ensurePostsMedia(target);
+	CollectionSchema.parse(target);
+	save(data);
+	return target;
+}
+/** Phase 2 HANDOFF: replaces `shuffledOrder` with a new permutation of the display order. */
+function shuffleCollection(collectionId) {
+	const data = reloadFromStorage();
+	const target = findPlaylist(data, collectionId);
+	if (target === null) return null;
+	target.shuffledOrder = shufflePermutation(collectionDisplayOrder(target));
+	ensurePostsMedia(target);
+	CollectionSchema.parse(target);
+	save(data);
+	return target;
+}
+/** Phase 2 HANDOFF: `shuffledOrder: null` so {@link getCollectionOrder} follows `postIds`. */
+function resetCollectionOrder(collectionId) {
+	const data = reloadFromStorage();
+	const target = findPlaylist(data, collectionId);
+	if (target === null) return null;
+	target.shuffledOrder = null;
+	ensurePostsMedia(target);
+	CollectionSchema.parse(target);
+	save(data);
+	return target;
+}
+/** Phase 2 HANDOFF: read-only display order. Null when the id is missing or not a posts collection. */
+function getCollectionOrder(collectionId) {
+	const target = findPlaylist(load(), collectionId);
+	if (target === null) return null;
+	return collectionDisplayOrder(target);
+}
+/**
+* Phase 2 HANDOFF: saved search. `query` is stored raw; `tags` are `parseTags(query)`
+* so existing search links keep working. Missing `query` on older rows means
+* `serialize(collection.tags)`.
+*/
+function createDynamicCollection(name, query) {
+	const data = reloadFromStorage();
+	const trimmedQuery = query.trim();
+	const collection = CollectionSchema.parse({
+		id: crypto.randomUUID(),
+		name: name.trim(),
+		tags: parseTags(trimmedQuery),
+		kind: COLLECTION_KIND_SEARCH,
+		query: trimmedQuery
+	});
+	data.collections.push(collection);
+	save(data);
+	return collection;
+}
+/** Phase 2 HANDOFF: replaces `query` and `tags` on a saved search. Posts collections return null. */
+function updateDynamicQuery(collectionId, query) {
+	const data = reloadFromStorage();
+	const target = data.collections.find((item) => item.id === collectionId);
+	if (target === void 0 || isPlaylist(target)) return null;
+	const trimmedQuery = query.trim();
+	target.query = trimmedQuery;
+	target.tags = parseTags(trimmedQuery);
+	target.kind = COLLECTION_KIND_SEARCH;
 	CollectionSchema.parse(target);
 	save(data);
 	return target;
@@ -5395,174 +3572,6 @@ function removeArtist(tag) {
 	save(data);
 	return true;
 }
-var COOKIE_PAIR_SEPARATOR = ";";
-var COOKIE_NAME_VALUE_SEPARATOR = "=";
-var BLACKLIST_SPLIT_PATTERN = /[, ]|%20+/g;
-var USER_ENTRY_PREFIX = "user:";
-var RATING_ENTRY_PREFIX = "rating:";
-var MS_PER_DAY = 864e5;
-var DAYS_PER_YEAR = 365;
-var BLACKLIST_TAG_SEPARATOR = " ";
-var changeListeners = /* @__PURE__ */ new Set();
-/** Subscribe to writes of the site `tag_blacklist` cookie. */
-function onSiteBlacklistChange(cb) {
-	changeListeners.add(cb);
-	return () => {
-		changeListeners.delete(cb);
-	};
-}
-function readCookieValue(name) {
-	const pairs = document.cookie.split(COOKIE_PAIR_SEPARATOR);
-	const prefix = `${name}${COOKIE_NAME_VALUE_SEPARATOR}`;
-	for (const pair of pairs) {
-		const trimmed = pair.trim();
-		if (!trimmed.startsWith(prefix)) continue;
-		return trimmed.slice(prefix.length);
-	}
-	return null;
-}
-function normalizeBlacklistTags(tags) {
-	const seen = /* @__PURE__ */ new Set();
-	const result = [];
-	for (const raw of tags) {
-		const normalized = raw.trim().toLowerCase().replaceAll(" ", "_");
-		if (normalized.length === 0 || seen.has(normalized)) continue;
-		seen.add(normalized);
-		result.push(normalized);
-	}
-	return result;
-}
-function encodeBlacklistCookieValue(tags) {
-	if (tags.length === 0) return "";
-	return encodeURIComponent(encodeURIComponent(tags.join(BLACKLIST_TAG_SEPARATOR)));
-}
-function writeBlacklistCookie(value, expires) {
-	document.cookie = [
-		`${SITE_BLACKLIST_COOKIE_NAME}${COOKIE_NAME_VALUE_SEPARATOR}${value}`,
-		`expires=${expires.toUTCString()}`,
-		`path=/`
-	].join("; ");
-}
-/**
-* Reads the site `tag_blacklist` cookie using the site's decode + split rule.
-* Empty tokens are dropped; entries are lowercased.
-*/
-function readSiteBlacklist() {
-	const raw = readCookieValue(SITE_BLACKLIST_COOKIE_NAME);
-	if (raw === null || raw.length === 0) return [];
-	let decoded;
-	try {
-		decoded = decodeURIComponent(decodeURI(raw));
-	} catch {
-		return [];
-	}
-	const result = [];
-	for (const part of decoded.split(BLACKLIST_SPLIT_PATTERN)) {
-		const trimmed = part.trim().toLowerCase();
-		if (trimmed.length === 0) continue;
-		result.push(trimmed);
-	}
-	return result;
-}
-/**
-* Writes the site `tag_blacklist` cookie (browser cookie only; account list untouched).
-* Value encoding matches the live site: encodeURIComponent twice over space-joined tags.
-*/
-function writeSiteBlacklist(tags) {
-	const normalized = normalizeBlacklistTags(tags);
-	const expires = new Date(Date.now() + 5 * DAYS_PER_YEAR * MS_PER_DAY);
-	writeBlacklistCookie(encodeBlacklistCookieValue(normalized), expires);
-	for (const listener of changeListeners) listener(normalized);
-}
-/**
-* True when any blacklist entry matches a post tag or `rating:x`.
-* Entries starting with `user:` are ignored. `score` is reserved for callers.
-*/
-function isBlacklisted(tags, score, rating, list) {
-	if (list.length === 0) return false;
-	const tagSet = /* @__PURE__ */ new Set();
-	for (const tag of tags) {
-		const normalized = tag.trim().toLowerCase();
-		if (normalized.length > 0) tagSet.add(normalized);
-	}
-	const ratingNorm = rating.trim().toLowerCase();
-	for (const entry of list) {
-		if (entry.startsWith(USER_ENTRY_PREFIX)) continue;
-		if (entry.startsWith(RATING_ENTRY_PREFIX)) {
-			const value = entry.slice(7);
-			if (value.length > 0 && value === ratingNorm) return true;
-			continue;
-		}
-		if (tagSet.has(entry)) return true;
-	}
-	return false;
-}
-var FEATURE_ID$10 = "blacklist-hide";
-var FEATURE_LABEL$10 = "Hide blacklisted posts";
-var FEATURE_PAGES$10 = ["list"];
-var BODY_FEATURE_CLASS$2 = featureBodyClass(FEATURE_ID$10);
-var CLASS_BLACKLISTED$1 = "rdw-blacklisted";
-var SCORE_TOKEN_PREFIX$2 = "score:";
-var RATING_TOKEN_PREFIX$1 = "rating:";
-var WHITESPACE_SPLIT = /\s+/;
-var FEATURE_CSS$10 = `
-body.${BODY_FEATURE_CLASS$2} span.thumb.${CLASS_BLACKLISTED$1} {
-  display: none !important;
-}
-`.trim();
-var unsubscribeThumbsAdded$5;
-var unsubscribeBlacklistChange;
-function parseAltTags(alt) {
-	const tags = [];
-	for (const token of alt.trim().split(WHITESPACE_SPLIT)) {
-		if (token.length === 0) continue;
-		const lower = token.toLowerCase();
-		if (lower.startsWith(SCORE_TOKEN_PREFIX$2) || lower.startsWith(RATING_TOKEN_PREFIX$1)) continue;
-		tags.push(token);
-	}
-	return tags;
-}
-function parseTitleRating(title) {
-	for (const token of title.trim().split(WHITESPACE_SPLIT)) {
-		if (token.length === 0) continue;
-		if (token.toLowerCase().startsWith(RATING_TOKEN_PREFIX$1)) return token.slice(7);
-	}
-	return "";
-}
-function applyBlacklistToThumb(thumb, list) {
-	if (!(thumb instanceof HTMLElement)) return;
-	const img = thumb.querySelector(SITE_SELECTORS.previewImage);
-	const alt = img?.getAttribute("alt") ?? "";
-	const title = img?.getAttribute("title") ?? "";
-	const matched = isBlacklisted(parseAltTags(alt), 0, parseTitleRating(title), list);
-	thumb.classList.toggle(CLASS_BLACKLISTED$1, matched);
-}
-function applyBlacklistToRoot(root, list = readSiteBlacklist()) {
-	const thumbs = root.querySelectorAll(SITE_SELECTORS.thumb);
-	for (const thumb of thumbs) applyBlacklistToThumb(thumb, list);
-}
-function ensureSubscriptions() {
-	if (unsubscribeThumbsAdded$5 === void 0) unsubscribeThumbsAdded$5 = onThumbsAdded((root) => {
-		applyBlacklistToRoot(root);
-	});
-	if (unsubscribeBlacklistChange === void 0) unsubscribeBlacklistChange = onSiteBlacklistChange((list) => {
-		applyBlacklistToRoot(document, list);
-	});
-}
-function mountBlacklistHide(ctx) {
-	if (ctx.pageKind !== "list") return;
-	applyBlacklistToRoot(document);
-	ensureSubscriptions();
-}
-var blacklistHideFeature = {
-	id: FEATURE_ID$10,
-	label: FEATURE_LABEL$10,
-	pages: [...FEATURE_PAGES$10],
-	defaultEnabled: true,
-	cssOnly: true,
-	css: FEATURE_CSS$10,
-	mount: mountBlacklistHide
-};
 var n;
 var t$1;
 var u$2;
@@ -5865,7 +3874,7 @@ var f$1 = 0;
 var c = [];
 var e = [];
 var a$1 = n;
-var v = a$1.__b;
+var v$2 = a$1.__b;
 var l = a$1.__r;
 var m = a$1.diffed;
 var h = a$1.__c;
@@ -5955,7 +3964,7 @@ function g() {
 	} while (e.length);
 }
 a$1.__b = function(n) {
-	r = null, v && v(n);
+	r = null, v$2 && v$2(n);
 }, a$1.__ = function(n, t) {
 	n && t.__k && t.__k.__m && (n.__m = t.__k.__m), p && p(n, t);
 }, a$1.__r = function(n) {
@@ -6025,701 +4034,7 @@ function E(n, t) {
 function G(n, t) {
 	return "function" == typeof t ? t(n) : t;
 }
-function buildAddFavUrl(postId) {
-	const params = new URLSearchParams();
-	params.set("id", postId);
-	return `${SITE_ORIGIN}${ADDFAV_PATH}?${params.toString()}`;
-}
-function buildVoteUrl(postId) {
-	const params = new URLSearchParams();
-	params.set(VOTE_PARAM_PAGE, VOTE_PAGE);
-	params.set("s", VOTE_SECTION);
-	params.set("id", postId);
-	params.set(VOTE_PARAM_TYPE, "up");
-	return `${SITE_ORIGIN}${VOTE_PATH}?${params.toString()}`;
-}
-/** Favorites delete URL used by single-remove and bulk-remove (same request kind). */
-function buildRemoveFavUrl(postId) {
-	const params = new URLSearchParams();
-	params.set(SEARCH_PARAM_PAGE, FAVORITES_PAGE);
-	params.set("s", FAVORITES_SECTION_DELETE);
-	params.set("id", postId);
-	params.set(FAVORITES_PARAM_RETURN_PID, "0");
-	return `${SITE_ORIGIN}${SEARCH_PATH}?${params.toString()}`;
-}
-async function fetchText(url) {
-	const response = await fetch(url, {
-		method: "GET",
-		credentials: FETCH_CREDENTIALS
-	});
-	if (!response.ok) throw new Error(`HTTP ${String(response.status)}`);
-	return (await response.text()).trim();
-}
-function parseVoteScore(raw) {
-	if (raw.length === 0) return;
-	const score = Number(raw);
-	if (!Number.isFinite(score)) return;
-	return score;
-}
-async function addFavorite(postId) {
-	let addResponse;
-	try {
-		addResponse = await fetchText(buildAddFavUrl(postId));
-	} catch (error) {
-		log.warn("addfav request failed", postId, error);
-		return { status: "error" };
-	}
-	if (addResponse === "1") return { status: "already" };
-	if (addResponse === "2") return { status: "not_logged_in" };
-	if (addResponse !== "3") {
-		log.warn("Unexpected addfav response", postId, addResponse);
-		return { status: "error" };
-	}
-	try {
-		const score = await voteUp(postId);
-		if (score === null) return { status: "added" };
-		return {
-			status: "added",
-			score
-		};
-	} catch (error) {
-		log.warn("vote request failed after addfav", postId, error);
-		return { status: "added" };
-	}
-}
-/** GET vote-up endpoint; returns the new score number, or null if unparseable/failed. */
-async function voteUp(postId) {
-	try {
-		const score = parseVoteScore(await fetchText(buildVoteUrl(postId)));
-		return score === void 0 ? null : score;
-	} catch (error) {
-		log.warn("vote request failed", postId, error);
-		return null;
-	}
-}
-async function removeFavorite(postId, options = {}) {
-	try {
-		const init = {
-			method: "GET",
-			credentials: FETCH_CREDENTIALS
-		};
-		if (options.signal !== void 0) init.signal = options.signal;
-		const response = await fetch(buildRemoveFavUrl(postId), init);
-		if (!response.ok) {
-			log.warn("remove favorite HTTP error", postId, response.status);
-			return { status: "error" };
-		}
-		return { status: "removed" };
-	} catch (error) {
-		if (options.signal?.aborted === true || error instanceof DOMException && error.name === "AbortError" || error instanceof Error && error.name === "AbortError") return { status: "error" };
-		log.warn("remove favorite request failed", postId, error);
-		return { status: "error" };
-	}
-}
-var removeClickBound = false;
-var POST_LINK_ID_PREFIX = "p";
-/**
-* Resolve a favorites-page thumb's post id from Remove onclick, thumb id, or a#p{ID}.
-*/
-function resolveFavoriteThumbPostId(thumb) {
-	const removeLinks = thumb.querySelectorAll(SITE_SELECTORS.favoritesDeleteLink);
-	for (const link of removeLinks) {
-		if (!(link instanceof HTMLAnchorElement)) continue;
-		const onclick = link.getAttribute("onclick");
-		if (onclick === null) continue;
-		const fromOnclick = extractPostIdFromFavoritesDeleteOnclick(onclick);
-		if (fromOnclick !== null) return fromOnclick;
-	}
-	const fromThumbId = extractPostIdFromThumb(thumb);
-	if (fromThumbId !== null) return fromThumbId;
-	const postLinks = thumb.querySelectorAll(`a[id^="${POST_LINK_ID_PREFIX}"]`);
-	for (const link of postLinks) {
-		if (!(link instanceof HTMLAnchorElement)) continue;
-		const id = link.id;
-		if (!id.startsWith(POST_LINK_ID_PREFIX)) continue;
-		const postId = id.slice(1);
-		if (/^\d+$/.test(postId)) return postId;
-	}
-	return null;
-}
-/** Current-page favorite thumbs that have a resolvable post id. */
-function listFavoriteThumbEntries(root = document) {
-	const entries = [];
-	const seen = /* @__PURE__ */ new Set();
-	const thumbs = root.querySelectorAll(SITE_SELECTORS.thumb);
-	for (const node of thumbs) {
-		if (!(node instanceof HTMLElement)) continue;
-		const postId = resolveFavoriteThumbPostId(node);
-		if (postId === null || seen.has(postId)) continue;
-		seen.add(postId);
-		entries.push({
-			thumb: node,
-			postId
-		});
-	}
-	return entries;
-}
-var CELL_SEPARATOR_TAGS = /* @__PURE__ */ new Set([
-	"BR",
-	"HR",
-	"WBR"
-]);
-var CELL_SEPARATOR_TEXT_PATTERN = /^[|\u00b7•·,\s]*$/;
-/**
-* True for Remove links / light separators that belong to a favorites cell.
-* Stops adjacency walks before paginator, scripts, and other page chrome.
-*/
-function isFavoriteCellResidue(node, postId) {
-	if (node.nodeType === Node.TEXT_NODE) {
-		const text = node.textContent ?? "";
-		return CELL_SEPARATOR_TEXT_PATTERN.test(text);
-	}
-	if (!(node instanceof HTMLElement)) return false;
-	if (CELL_SEPARATOR_TAGS.has(node.tagName)) return true;
-	if (!(node instanceof HTMLAnchorElement)) return false;
-	const onclick = node.getAttribute("onclick");
-	if (onclick === null) return false;
-	const removeId = extractPostIdFromFavoritesDeleteOnclick(onclick);
-	if (removeId === null) return false;
-	return postId === null || removeId === postId;
-}
-/**
-* Remove a favorites cell from the DOM: the thumb and, when Remove / separators
-* sit between this thumb and the next `span.thumb`, those siblings too.
-* Never injects into `a#p{ID}`; never deletes paginator/other non-cell nodes.
-*/
-function removeFavoriteCell(thumb) {
-	const postId = resolveFavoriteThumbPostId(thumb);
-	const nodesToRemove = [thumb];
-	let sibling = thumb.nextSibling;
-	while (sibling !== null) {
-		if (sibling instanceof HTMLElement && sibling.matches(SITE_SELECTORS.thumb)) break;
-		if (!isFavoriteCellResidue(sibling, postId)) break;
-		nodesToRemove.push(sibling);
-		sibling = sibling.nextSibling;
-	}
-	for (const node of nodesToRemove) node.remove();
-}
-function collectFavoritePostIds(root) {
-	const ids = [];
-	const seen = /* @__PURE__ */ new Set();
-	const links = root.querySelectorAll(SITE_SELECTORS.favoritesDeleteLink);
-	for (const link of links) {
-		if (!(link instanceof HTMLAnchorElement)) continue;
-		const onclick = link.getAttribute("onclick");
-		if (onclick === null) continue;
-		const postId = extractPostIdFromFavoritesDeleteOnclick(onclick);
-		if (postId === null || seen.has(postId)) continue;
-		seen.add(postId);
-		ids.push(postId);
-	}
-	return ids;
-}
-function bindRemoveClickCapture() {
-	if (removeClickBound) return;
-	removeClickBound = true;
-	document.addEventListener("click", (event) => {
-		const target = event.target;
-		if (!(target instanceof Element)) return;
-		const link = target.closest("a");
-		if (!(link instanceof HTMLAnchorElement)) return;
-		const onclick = link.getAttribute("onclick");
-		if (onclick === null) return;
-		const postId = extractPostIdFromFavoritesDeleteOnclick(onclick);
-		if (postId === null) return;
-		removeFav(postId);
-	}, true);
-}
-function syncFavoritesPage(root = document, search = window.location.search) {
-	if (detectPageKind(search) !== "favorites") return;
-	const ids = collectFavoritePostIds(root);
-	const numericIds = [];
-	for (const postId of ids) {
-		const parsed = Number(postId);
-		if (Number.isFinite(parsed)) numericIds.push(Math.trunc(parsed));
-	}
-	addFavs(numericIds);
-	bindRemoveClickCapture();
-}
-/** Minimum pause between sequential favorites page fetches. */
-var FAVORITES_SYNC_PAGE_PAUSE_MS = exports("aY",1500);
-/** Pauses before each of the three retries (HTTP error / missing paginator). */
-var FAVORITES_SYNC_RETRY_DELAYS_MS = [
-	1e4,
-	3e4,
-	6e4
-];
-var FAVORITES_SYNC_MODE_INCREMENTAL = exports("bi",FAVS_SYNC_MODE_INCREMENTAL);
-var FAVORITES_SYNC_MODE_FULL = exports("F",FAVS_SYNC_MODE_FULL);
-var MY_FAVORITES_LINK_SELECTOR$1 = "li#my-favorites-container a[href*=\"page=favorites\"]";
-var THUMB_SELECTOR$1 = "span.thumb";
-var THUMB_POST_LINK_SELECTOR = "span.thumb a[id^=\"p\"]";
-var PAGINATOR_SELECTOR = "#paginator";
-var LASTPAGE_SELECTOR = "a[name=\"lastpage\"]";
-var NEXT_SELECTOR = "a[name=\"next\"]";
-var REMOVE_LINK_SELECTOR = "a[onclick]";
-var POST_LINK_ID_PATTERN = /^p(\d+)$/;
-var ONCLICK_PID_PATTERN = /[?&]pid=(\d+)/;
-var URL_PARSE_BASE = "https://rule34.xxx";
-var TAB_ID_RANDOM_RADIX = 36;
-var TAB_ID_RANDOM_SLICE_START = 2;
-var FAVORITES_SYNC_ERROR_NOT_LOGGED_IN = "not logged in or menu not found";
-var FAVORITES_SYNC_ERROR_UNEXPECTED_PAGE = "unexpected page";
-function createAbortResult(total, page, pages) {
-	return {
-		status: "aborted",
-		total,
-		page,
-		pages
-	};
-}
-function isAbortError$1(error) {
-	return error instanceof DOMException && error.name === "AbortError" || error instanceof Error && error.name === "AbortError";
-}
-function throwIfAborted(signal) {
-	if (signal.aborted) throw new DOMException("Aborted", "AbortError");
-}
-function delay$1(ms, signal) {
-	return new Promise((resolve, reject) => {
-		if (signal.aborted) {
-			reject(new DOMException("Aborted", "AbortError"));
-			return;
-		}
-		const timer = setTimeout(() => {
-			signal.removeEventListener("abort", onAbort);
-			if (signal.aborted) {
-				reject(new DOMException("Aborted", "AbortError"));
-				return;
-			}
-			resolve();
-		}, ms);
-		const onAbort = () => {
-			clearTimeout(timer);
-			reject(new DOMException("Aborted", "AbortError"));
-		};
-		signal.addEventListener("abort", onAbort, { once: true });
-	});
-}
-function parsePositiveInt(raw) {
-	if (raw === null) return null;
-	const trimmed = raw.trim();
-	if (trimmed.length === 0) return null;
-	const value = Number(trimmed);
-	if (!Number.isFinite(value) || value < 0) return null;
-	return Math.trunc(value);
-}
-function parsePidFromOnclick(onclick) {
-	const raw = ONCLICK_PID_PATTERN.exec(onclick)?.[1];
-	if (raw === void 0) return null;
-	return parsePositiveInt(raw);
-}
-function titleSnippetFromHtml(html) {
-	try {
-		return titleSnippetFromDocument(new DOMParser().parseFromString(html, "text/html"));
-	} catch {
-		return "";
-	}
-}
-function titleSnippetFromDocument(doc) {
-	const raw = doc.title.trim();
-	if (raw.length <= 80) return raw;
-	return raw.slice(0, 80);
-}
-function formatPauseMessage(status, titleSnippet) {
-	if (titleSnippet.length === 0) return `HTTP ${String(status)}`;
-	return `HTTP ${String(status)}: ${titleSnippet}`;
-}
-/** Stable tab id for sync lock (Package H / multi-tab). */
-function createFavoritesSyncTabId() {
-	const random = Math.random().toString(TAB_ID_RANDOM_RADIX).slice(TAB_ID_RANDOM_SLICE_START, 12);
-	return `tab-${String(Date.now())}-${random}`;
-}
-function extractUserIdFromDocument(root) {
-	const link = root.querySelector(MY_FAVORITES_LINK_SELECTOR$1);
-	if (!(link instanceof HTMLAnchorElement)) return null;
-	const href = link.getAttribute("href");
-	if (href === null || href.length === 0) return null;
-	try {
-		return parsePositiveInt(new URL(href, URL_PARSE_BASE).searchParams.get("id"));
-	} catch {
-		return null;
-	}
-}
-/**
-* Reads `id` from a favorites view URL search string.
-* Returns null when the location is not a favorites page or id is missing.
-*/
-function extractUserIdFromFavoritesSearch(search) {
-	if (detectPageKind(search) !== "favorites") return null;
-	return parsePositiveInt(new URLSearchParams(search).get("id"));
-}
-/**
-* Resolve favorites owner id: menu link → favorites URL id → saved sync value.
-*/
-function resolveFavoritesUserId(root, search, savedUserId) {
-	const fromMenu = extractUserIdFromDocument(root);
-	if (fromMenu !== null) return fromMenu;
-	const fromUrl = extractUserIdFromFavoritesSearch(search);
-	if (fromUrl !== null) return fromUrl;
-	if (savedUserId !== void 0 && Number.isFinite(savedUserId)) return Math.trunc(savedUserId);
-	return null;
-}
-function buildFavoritesPageUrl(userId, pid) {
-	const params = new URLSearchParams();
-	params.set(SEARCH_PARAM_PAGE, FAVORITES_PAGE);
-	params.set("s", FAVORITES_SECTION_VIEW);
-	params.set("id", String(userId));
-	params.set("pid", String(pid));
-	return `${SEARCH_PATH}?${params.toString()}`;
-}
-function pageIndexFromPid(pid) {
-	return Math.floor(pid / 50) + 1;
-}
-function pagesFromLastPid(lastPid) {
-	return Math.floor(lastPid / 50) + 1;
-}
-function collectFavoriteIdsFromDocument(doc) {
-	const ids = /* @__PURE__ */ new Set();
-	const postLinks = doc.querySelectorAll(THUMB_POST_LINK_SELECTOR);
-	for (const link of postLinks) {
-		const raw = POST_LINK_ID_PATTERN.exec(link.id)?.[1];
-		if (raw === void 0) continue;
-		const parsed = Number(raw);
-		if (Number.isFinite(parsed)) ids.add(Math.trunc(parsed));
-	}
-	const removeLinks = doc.querySelectorAll(REMOVE_LINK_SELECTOR);
-	for (const link of removeLinks) {
-		const onclick = link.getAttribute("onclick");
-		if (onclick === null) continue;
-		const postId = extractPostIdFromFavoritesDeleteOnclick(onclick);
-		if (postId === null) continue;
-		const parsed = Number(postId);
-		if (Number.isFinite(parsed)) ids.add(Math.trunc(parsed));
-	}
-	return Array.from(ids);
-}
-/**
-* Reads last-page pid from a[name="lastpage"] onclick only.
-* No lastpage and no next → current page is last (returns currentPid).
-* No lastpage but next exists, or lastpage onclick unparseable → null (unexpected).
-*/
-function resolveLastPid(doc, currentPid) {
-	const lastpage = doc.querySelector(LASTPAGE_SELECTOR);
-	if (lastpage instanceof HTMLAnchorElement) {
-		const onclick = lastpage.getAttribute("onclick");
-		if (onclick === null || onclick.length === 0) return null;
-		return parsePidFromOnclick(onclick);
-	}
-	if (doc.querySelector(NEXT_SELECTOR) !== null) return null;
-	return currentPid;
-}
-function hasPaginator(doc) {
-	return doc.querySelector(PAGINATOR_SELECTOR) !== null;
-}
-/**
-* Reads sync mode from persisted FavsSyncState.mode.
-* Missing / unexpected → undefined.
-*/
-function readFavoritesSyncMode(sync) {
-	const mode = sync?.mode;
-	if (mode === FAVORITES_SYNC_MODE_INCREMENTAL || mode === FAVORITES_SYNC_MODE_FULL) return mode;
-}
-/**
-* True when the page has at least one id and every id is already local.
-* Empty pages are not early-stop (handled by trailing-empty completion).
-*/
-function pageIdsAllInLocalSet(pageIds, local) {
-	if (pageIds.length === 0) return false;
-	for (const id of pageIds) if (!local.has(id)) return false;
-	return true;
-}
-function resolveRunMode(unfinished, existing, requested) {
-	if (unfinished) return readFavoritesSyncMode(existing) ?? FAVORITES_SYNC_MODE_FULL;
-	return requested ?? FAVORITES_SYNC_MODE_INCREMENTAL;
-}
-function persistSyncProgress(fields) {
-	const state = {
-		nextPid: fields.nextPid,
-		lastPid: fields.lastPid,
-		startedAt: fields.startedAt,
-		running: fields.running,
-		userId: fields.userId,
-		mode: fields.mode,
-		lock: {
-			tabId: fields.tabId,
-			beatAt: Date.now()
-		}
-	};
-	if (fields.finishedAt !== void 0) state.finishedAt = fields.finishedAt;
-	setSyncState(state);
-	return state;
-}
-async function fetchFavoritesPageOnce(url, signal) {
-	let response;
-	try {
-		response = await fetch(url, {
-			method: "GET",
-			credentials: FETCH_CREDENTIALS,
-			signal
-		});
-	} catch (error) {
-		if (isAbortError$1(error)) throw error;
-		const message = error instanceof Error ? error.message : "request failed";
-		log.warn("favorites sync: fetch failed", url, error);
-		return {
-			ok: false,
-			status: 0,
-			titleSnippet: message.slice(0, 80),
-			message
-		};
-	}
-	const html = await response.text();
-	const titleSnippet = titleSnippetFromHtml(html);
-	if (!response.ok) {
-		log.warn("favorites sync: HTTP error", response.status, url);
-		return {
-			ok: false,
-			status: response.status,
-			titleSnippet,
-			message: formatPauseMessage(response.status, titleSnippet)
-		};
-	}
-	const doc = new DOMParser().parseFromString(html, "text/html");
-	if (!hasPaginator(doc)) {
-		log.warn("favorites sync: missing paginator", url);
-		return {
-			ok: false,
-			status: response.status,
-			titleSnippet: titleSnippetFromDocument(doc),
-			message: formatPauseMessage(response.status, titleSnippetFromDocument(doc))
-		};
-	}
-	return {
-		ok: true,
-		doc,
-		status: response.status,
-		titleSnippet: titleSnippetFromDocument(doc)
-	};
-}
-/**
-* Fetch one favorites page; retry up to 3 times after 10s / 30s / 60s on
-* HTTP errors or missing paginator.
-*/
-async function fetchFavoritesPageWithRetries(url, signal) {
-	let lastFailure = null;
-	for (let attempt = 0; attempt <= FAVORITES_SYNC_RETRY_DELAYS_MS.length; attempt += 1) {
-		throwIfAborted(signal);
-		if (attempt > 0) {
-			const delayMs = FAVORITES_SYNC_RETRY_DELAYS_MS[attempt - 1];
-			if (delayMs === void 0) break;
-			log.warn("favorites sync: retrying after delay", {
-				attempt,
-				delayMs,
-				url
-			});
-			await delay$1(delayMs, signal);
-			throwIfAborted(signal);
-		}
-		const result = await fetchFavoritesPageOnce(url, signal);
-		if (result.ok) return result;
-		lastFailure = result;
-	}
-	if (lastFailure === null) return {
-		ok: false,
-		status: 0,
-		titleSnippet: "",
-		message: formatPauseMessage(0, "")
-	};
-	return lastFailure;
-}
-/**
-* Walks the site favorites list page-by-page and merges ids into local favs.
-* Only adds; never removes. Network I/O lives here only (explicit user click).
-*/
-async function runFavoritesSync(options) {
-	const { onProgress, signal } = options;
-	const tabId = options.tabId ?? createFavoritesSyncTabId();
-	const existing = getSyncState();
-	const userId = resolveFavoritesUserId(document, window.location.search, existing?.userId);
-	if (userId === null) {
-		log.warn("favorites sync: user id not found");
-		return {
-			status: "error",
-			message: FAVORITES_SYNC_ERROR_NOT_LOGGED_IN
-		};
-	}
-	const unfinished = existing !== void 0 && existing.finishedAt === void 0;
-	const mode = resolveRunMode(unfinished, existing, options.mode);
-	const startedAt = unfinished ? existing.startedAt : (/* @__PURE__ */ new Date()).toISOString();
-	let pid = unfinished ? existing.nextPid : 0;
-	let lastPid = unfinished ? existing.lastPid : 0;
-	let persistedNextPid = pid;
-	let total = loadFavSet().size;
-	let page = pageIndexFromPid(pid);
-	let pages = pagesFromLastPid(lastPid);
-	let sawNonEmptyPage = unfinished && existing.nextPid > 0;
-	const writeProgress = (fields) => {
-		const nextPid = fields.nextPid ?? persistedNextPid;
-		persistedNextPid = nextPid;
-		if (fields.lastPid !== void 0) lastPid = fields.lastPid;
-		const payload = {
-			nextPid,
-			lastPid,
-			startedAt,
-			userId,
-			tabId,
-			running: fields.running,
-			mode
-		};
-		if (fields.finishedAt !== void 0) payload.finishedAt = fields.finishedAt;
-		persistSyncProgress(payload);
-	};
-	try {
-		throwIfAborted(signal);
-		writeProgress({ running: true });
-		while (true) {
-			throwIfAborted(signal);
-			const fetched = await fetchFavoritesPageWithRetries(buildFavoritesPageUrl(userId, pid), signal);
-			if (!fetched.ok) {
-				writeProgress({ running: true });
-				return {
-					status: "error",
-					message: fetched.message
-				};
-			}
-			const { doc } = fetched;
-			const cardCount = doc.querySelectorAll(THUMB_SELECTOR$1).length;
-			page = pageIndexFromPid(pid);
-			if (cardCount === 0 && sawNonEmptyPage) {
-				pages = Math.max(pages, page);
-				const finishedAt = (/* @__PURE__ */ new Date()).toISOString();
-				writeProgress({
-					nextPid: pid + 50,
-					running: false,
-					finishedAt
-				});
-				onProgress({
-					page,
-					pages,
-					total
-				});
-				log.info("favorites sync: completed on empty trailing page", {
-					total,
-					pages,
-					pid,
-					mode
-				});
-				return {
-					status: "completed",
-					total,
-					pages
-				};
-			}
-			const resolvedLastPid = resolveLastPid(doc, pid);
-			if (resolvedLastPid === null) {
-				log.warn("favorites sync: unexpected page", {
-					pid,
-					cardCount
-				});
-				writeProgress({ running: true });
-				return {
-					status: "error",
-					message: FAVORITES_SYNC_ERROR_UNEXPECTED_PAGE
-				};
-			}
-			lastPid = resolvedLastPid;
-			pages = pagesFromLastPid(lastPid);
-			if (cardCount === 0) {
-				log.warn("favorites sync: unexpected empty page", {
-					pid,
-					lastPid
-				});
-				writeProgress({ running: true });
-				return {
-					status: "error",
-					message: FAVORITES_SYNC_ERROR_UNEXPECTED_PAGE
-				};
-			}
-			sawNonEmptyPage = true;
-			const ids = collectFavoriteIdsFromDocument(doc);
-			const allKnown = pageIdsAllInLocalSet(ids, loadFavSet());
-			addFavs(ids);
-			total = loadFavSet().size;
-			const nextPid = pid + 50;
-			writeProgress({
-				nextPid,
-				lastPid,
-				running: true
-			});
-			onProgress({
-				page,
-				pages,
-				total
-			});
-			if (mode === FAVORITES_SYNC_MODE_INCREMENTAL && allKnown) {
-				const finishedAt = (/* @__PURE__ */ new Date()).toISOString();
-				writeProgress({
-					nextPid,
-					lastPid,
-					running: false,
-					finishedAt
-				});
-				log.info("favorites sync: incremental early stop", {
-					total,
-					pages,
-					page,
-					pid
-				});
-				return {
-					status: "completed",
-					total,
-					pages
-				};
-			}
-			if (pid >= lastPid) {
-				const finishedAt = (/* @__PURE__ */ new Date()).toISOString();
-				writeProgress({
-					nextPid,
-					lastPid,
-					running: false,
-					finishedAt
-				});
-				log.info("favorites sync: completed", {
-					total,
-					pages,
-					mode
-				});
-				return {
-					status: "completed",
-					total,
-					pages
-				};
-			}
-			throwIfAborted(signal);
-			await delay$1(FAVORITES_SYNC_PAGE_PAUSE_MS, signal);
-			throwIfAborted(signal);
-			pid = nextPid;
-			page = pageIndexFromPid(pid);
-		}
-	} catch (error) {
-		if (isAbortError$1(error)) {
-			writeProgress({ running: false });
-			log.info("favorites sync: aborted", {
-				pid,
-				total,
-				mode
-			});
-			return createAbortResult(total, page, pages);
-		}
-		log.error("favorites sync: unexpected failure", error);
-		writeProgress({ running: true });
-		return {
-			status: "error",
-			message: error instanceof Error ? error.message : "unexpected error"
-		};
-	}
-}
-var KIT_FOCUS_CSS = exports("av",`
+var KIT_FOCUS_CSS = exports("ax",`
 .rdw-kit-focusable:focus-visible {
   outline: 2px solid var(--rdw-accent);
   outline-offset: 2px;
@@ -6751,7 +4066,7 @@ function a(t, e, n$6, u, a, i) {
 var KEY_ARROW_DOWN = "ArrowDown";
 var KEY_ARROW_UP = "ArrowUp";
 var KEY_ENTER$3 = "Enter";
-var KEY_ESCAPE$3 = "Escape";
+var KEY_ESCAPE$2 = "Escape";
 var NO_ACTIVE_INDEX = -1;
 var AUTOCOMPLETE_FIELD_CSS = `
 ${KIT_FOCUS_CSS}
@@ -6887,7 +4202,7 @@ function AutocompleteField(props) {
 					if (hasSuggestions) setOpen(true);
 				},
 				onKeyDown: (event) => {
-					if (event.key === KEY_ESCAPE$3) {
+					if (event.key === KEY_ESCAPE$2) {
 						if (listOpen) {
 							event.preventDefault();
 							setOpen(false);
@@ -7250,6 +4565,32 @@ function IconImage(props) {
 		]
 	});
 }
+function IconShuffle(props) {
+	return /* @__PURE__ */ a("svg", {
+		...baseProps(props.size ?? DEFAULT_SIZE, props.className, props.title),
+		children: [
+			props.title !== void 0 ? /* @__PURE__ */ a("title", { children: props.title }) : null,
+			/* @__PURE__ */ a("path", { d: "m18 14 4 4-4 4" }),
+			/* @__PURE__ */ a("path", { d: "m18 2 4 4-4 4" }),
+			/* @__PURE__ */ a("path", { d: "M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22" }),
+			/* @__PURE__ */ a("path", { d: "M2 6h1.972a4 4 0 0 1 3.6 2.2" }),
+			/* @__PURE__ */ a("path", { d: "M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45" })
+		]
+	});
+}
+function IconOriginalOrder(props) {
+	return /* @__PURE__ */ a("svg", {
+		...baseProps(props.size ?? DEFAULT_SIZE, props.className, props.title),
+		children: [
+			props.title !== void 0 ? /* @__PURE__ */ a("title", { children: props.title }) : null,
+			/* @__PURE__ */ a("path", { d: "M21 6H3" }),
+			/* @__PURE__ */ a("path", { d: "M7 12H3" }),
+			/* @__PURE__ */ a("path", { d: "M7 18H3" }),
+			/* @__PURE__ */ a("path", { d: "M12 18a5 5 0 0 0 9-3 4.5 4.5 0 0 0-4.5-4.5c-1.33 0-2.54.54-3.41 1.41L11 14" }),
+			/* @__PURE__ */ a("path", { d: "M11 10v4h4" })
+		]
+	});
+}
 var CHIP_CSS = `
 ${KIT_FOCUS_CSS}
 .rdw-chip {
@@ -7337,9 +4678,73 @@ function Chip(props) {
 		]
 	})] });
 }
-var KEY_ESCAPE$2 = "Escape";
+var TEXT_FIELD_CSS = `
+${KIT_FOCUS_CSS}
+.rdw-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.rdw-field__label {
+  font: 600 10.5px var(--rdw-font);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--rdw-muted);
+}
+.rdw-field__input {
+  box-sizing: border-box;
+  min-height: 28px;
+  height: 28px;
+  width: 100%;
+  padding: 0 8px;
+  border: 1px solid var(--rdw-border);
+  border-radius: var(--rdw-radius-m);
+  background: var(--rdw-surface);
+  color: var(--rdw-text);
+  font: inherit;
+  font-size: 12px;
+}
+.rdw-field__input::placeholder {
+  color: var(--rdw-muted);
+}
+.rdw-field__input:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+`;
+function TextField(props) {
+	const autoId = P$1();
+	const inputId = props.id ?? autoId;
+	const className = ["rdw-field", props.className].filter((part) => part !== void 0 && part.length > 0).join(" ");
+	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("style", { children: TEXT_FIELD_CSS }), /* @__PURE__ */ a("div", {
+		className,
+		children: [props.label !== void 0 ? /* @__PURE__ */ a("label", {
+			className: "rdw-field__label",
+			htmlFor: inputId,
+			children: props.label
+		}) : null, /* @__PURE__ */ a("input", {
+			id: inputId,
+			className: "rdw-field__input rdw-kit-focusable",
+			type: "text",
+			value: props.value,
+			placeholder: props.placeholder,
+			disabled: props.disabled,
+			"aria-label": props["aria-label"] ?? props.label,
+			onInput: (event) => {
+				props.onChange(event.currentTarget.value);
+			}
+		})]
+	})] });
+}
+var DIALOG_VARIANT_CONFIRM$1 = "confirm";
+var DIALOG_VARIANT_FIELDS$1 = "fields";
+var DEFAULT_NAME_LABEL = "Name";
+var DEFAULT_QUERY_LABEL = "Query";
+var DEFAULT_CONFIRM_TONE = "primary";
+var KEY_ESCAPE$1 = "Escape";
 var KEY_TAB = "Tab";
-var EVENT_KEYDOWN$2 = "keydown";
+var EVENT_KEYDOWN$1 = "keydown";
 var EVENT_MOUSEDOWN$1 = "mousedown";
 var DIALOG_Z_INDEX = 40;
 var DIALOG_MAX_WIDTH_PX = 360;
@@ -7347,6 +4752,8 @@ var DIALOG_BACKDROP_PADDING_PX = 16;
 var DIALOG_BACKDROP_ALPHA = .45;
 var DIALOG_PANEL_PADDING_PX = 16;
 var DIALOG_PANEL_GAP_PX = 12;
+var DIALOG_FIELDS_GAP_PX = 8;
+var DIALOG_ACTIONS_GAP_PX = 8;
 var FOCUSABLE_SELECTOR = [
 	"a[href]",
 	"button:not([disabled])",
@@ -7388,6 +4795,19 @@ ${KIT_FOCUS_CSS}
   font-weight: 600;
   color: var(--rdw-text);
 }
+.rdw-dialog__message {
+  margin: 0;
+}
+.rdw-dialog__fields {
+  display: grid;
+  gap: ${String(DIALOG_FIELDS_GAP_PX)}px;
+  margin: 0;
+}
+.rdw-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: ${String(DIALOG_ACTIONS_GAP_PX)}px;
+}
 `;
 function listFocusable(root) {
 	const nodes = root.querySelectorAll(FOCUSABLE_SELECTOR);
@@ -7403,6 +4823,77 @@ function pathIncludesNode$1(path, node) {
 	if (node === null) return false;
 	for (const entry of path) if (entry === node) return true;
 	return false;
+}
+function renderDialogBody(props) {
+	if (props.variant === DIALOG_VARIANT_CONFIRM$1) {
+		const tone = props.confirmTone ?? DEFAULT_CONFIRM_TONE;
+		return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("p", {
+			className: "rdw-dialog__message",
+			children: props.message
+		}), /* @__PURE__ */ a("div", {
+			className: "rdw-dialog__actions",
+			children: [/* @__PURE__ */ a(Button, {
+				variant: "secondary",
+				size: "s",
+				onClick: props.onClose,
+				children: props.cancelLabel
+			}), /* @__PURE__ */ a(Button, {
+				variant: tone,
+				size: "s",
+				onClick: props.onConfirm,
+				children: props.confirmLabel
+			})]
+		})] });
+	}
+	if (props.variant === DIALOG_VARIANT_FIELDS$1) {
+		const nameLabel = props.nameLabel ?? DEFAULT_NAME_LABEL;
+		const queryLabel = props.queryLabel ?? DEFAULT_QUERY_LABEL;
+		return /* @__PURE__ */ a("form", {
+			className: "rdw-dialog__fields",
+			onSubmit: (event) => {
+				event.preventDefault();
+				props.onSubmit();
+			},
+			children: [
+				/* @__PURE__ */ a(TextField, {
+					label: nameLabel,
+					value: props.fields.name,
+					onChange: (name) => {
+						props.onFieldsChange({
+							name,
+							query: props.fields.query
+						});
+					}
+				}),
+				/* @__PURE__ */ a(TextField, {
+					label: queryLabel,
+					value: props.fields.query,
+					onChange: (query) => {
+						props.onFieldsChange({
+							name: props.fields.name,
+							query
+						});
+					}
+				}),
+				/* @__PURE__ */ a("div", {
+					className: "rdw-dialog__actions",
+					children: [/* @__PURE__ */ a(Button, {
+						variant: "secondary",
+						size: "s",
+						type: "button",
+						onClick: props.onClose,
+						children: props.cancelLabel
+					}), /* @__PURE__ */ a(Button, {
+						variant: "primary",
+						size: "s",
+						type: "submit",
+						children: props.submitLabel
+					})]
+				})
+			]
+		});
+	}
+	return /* @__PURE__ */ a($$1, { children: props.children });
 }
 function Dialog(props) {
 	const panelRef = T(null);
@@ -7436,7 +4927,7 @@ function Dialog(props) {
 			}
 		}
 		const onKeyDown = (event) => {
-			if (event.key === KEY_ESCAPE$2) {
+			if (event.key === KEY_ESCAPE$1) {
 				event.preventDefault();
 				event.stopPropagation();
 				props.onClose();
@@ -7473,10 +4964,10 @@ function Dialog(props) {
 			if (pathIncludesNode$1(event.composedPath(), currentPanel)) return;
 			props.onClose();
 		};
-		document.addEventListener(EVENT_KEYDOWN$2, onKeyDown, true);
+		document.addEventListener(EVENT_KEYDOWN$1, onKeyDown, true);
 		document.addEventListener(EVENT_MOUSEDOWN$1, onPointerDown, true);
 		return () => {
-			document.removeEventListener(EVENT_KEYDOWN$2, onKeyDown, true);
+			document.removeEventListener(EVENT_KEYDOWN$1, onKeyDown, true);
 			document.removeEventListener(EVENT_MOUSEDOWN$1, onPointerDown, true);
 		};
 	}, [
@@ -7500,7 +4991,7 @@ function Dialog(props) {
 				id: titleId,
 				className: "rdw-dialog__title",
 				children: props.title
-			}) : null, props.children]
+			}) : null, renderDialogBody(props)]
 		})
 	})] });
 }
@@ -7734,8 +5225,8 @@ n.vnode = function(t) {
 		writable: true
 	}), t.$$typeof = P, Q && Q(t);
 };
-var KEY_ESCAPE$1 = "Escape";
-var EVENT_KEYDOWN$1 = "keydown";
+var KEY_ESCAPE$3 = "Escape";
+var EVENT_KEYDOWN$2 = "keydown";
 var EVENT_MOUSEDOWN = "mousedown";
 var EVENT_SCROLL = "scroll";
 var EVENT_RESIZE = "resize";
@@ -7794,7 +5285,7 @@ function Popover(props) {
 		}
 		wasOpenRef.current = true;
 		const onKeyDown = (event) => {
-			if (event.key === KEY_ESCAPE$1) {
+			if (event.key === KEY_ESCAPE$3) {
 				event.preventDefault();
 				props.onClose();
 			}
@@ -7807,10 +5298,10 @@ function Popover(props) {
 			if (pathIncludesNode(path, props.anchorRef?.current ?? null)) return;
 			props.onClose();
 		};
-		document.addEventListener(EVENT_KEYDOWN$1, onKeyDown);
+		document.addEventListener(EVENT_KEYDOWN$2, onKeyDown);
 		document.addEventListener(EVENT_MOUSEDOWN, onPointerDown);
 		return () => {
-			document.removeEventListener(EVENT_KEYDOWN$1, onKeyDown);
+			document.removeEventListener(EVENT_KEYDOWN$2, onKeyDown);
 			document.removeEventListener(EVENT_MOUSEDOWN, onPointerDown);
 		};
 	}, [
@@ -8351,64 +5842,3151 @@ function Tabs(props) {
 		})
 	})] });
 }
-var TEXT_FIELD_CSS = `
+/** How long a toast stays visible before it dismisses itself. */
+var TOAST_AUTO_HIDE_MS = 6e3;
+var TOAST_Z_INDEX = 45;
+var TOAST_BOTTOM_PX = 16;
+var TOAST_MAX_WIDTH_PX = 420;
+var TOAST_PADDING_X_PX = 12;
+var TOAST_PADDING_Y_PX = 8;
+var TOAST_GAP_PX = 12;
+var nextToastSlotId = 0;
+var activeToastSlot = null;
+function clearSlotTimer(slot) {
+	if (slot.timerId === null) return;
+	window.clearTimeout(slot.timerId);
+	slot.timerId = null;
+}
+function takeToastSlot(close) {
+	nextToastSlotId += 1;
+	const slot = {
+		id: nextToastSlotId,
+		close,
+		timerId: null
+	};
+	const previous = activeToastSlot;
+	activeToastSlot = slot;
+	if (previous !== null) {
+		clearSlotTimer(previous);
+		previous.close();
+	}
+	return slot;
+}
+function dismissToast(id) {
+	if (activeToastSlot === null || activeToastSlot.id !== id) return;
+	const slot = activeToastSlot;
+	clearSlotTimer(slot);
+	activeToastSlot = null;
+	slot.close();
+}
+function releaseToastSlot(id) {
+	if (activeToastSlot !== null && activeToastSlot.id === id) activeToastSlot = null;
+}
+var TOAST_CSS = `
 ${KIT_FOCUS_CSS}
-.rdw-field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-.rdw-field__label {
-  font: 600 10.5px var(--rdw-font);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--rdw-muted);
-}
-.rdw-field__input {
+.rdw-toast {
+  position: fixed;
+  z-index: ${String(TOAST_Z_INDEX)};
+  left: 50%;
+  bottom: ${String(TOAST_BOTTOM_PX)}px;
+  transform: translateX(-50%);
   box-sizing: border-box;
-  min-height: 28px;
-  height: 28px;
-  width: 100%;
-  padding: 0 8px;
-  border: 1px solid var(--rdw-border);
-  border-radius: var(--rdw-radius-m);
+  display: flex;
+  align-items: center;
+  gap: ${String(TOAST_GAP_PX)}px;
+  width: max-content;
+  max-width: min(${String(TOAST_MAX_WIDTH_PX)}px, calc(100% - ${String(32)}px));
+  padding: ${String(TOAST_PADDING_Y_PX)}px ${String(TOAST_PADDING_X_PX)}px;
   background: var(--rdw-surface);
+  border: 1px solid var(--rdw-border);
+  border-radius: var(--rdw-radius-l);
+  box-shadow: var(--rdw-shadow-2);
   color: var(--rdw-text);
-  font: inherit;
-  font-size: 12px;
+  font: 12.5px/1.4 var(--rdw-font);
 }
-.rdw-field__input::placeholder {
-  color: var(--rdw-muted);
-}
-.rdw-field__input:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
+.rdw-toast__message {
+  margin: 0;
 }
 `;
-function TextField(props) {
-	const autoId = P$1();
-	const inputId = props.id ?? autoId;
-	const className = ["rdw-field", props.className].filter((part) => part !== void 0 && part.length > 0).join(" ");
-	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("style", { children: TEXT_FIELD_CSS }), /* @__PURE__ */ a("div", {
-		className,
-		children: [props.label !== void 0 ? /* @__PURE__ */ a("label", {
-			className: "rdw-field__label",
-			htmlFor: inputId,
-			children: props.label
-		}) : null, /* @__PURE__ */ a("input", {
-			id: inputId,
-			className: "rdw-field__input rdw-kit-focusable",
-			type: "text",
-			value: props.value,
-			placeholder: props.placeholder,
-			disabled: props.disabled,
-			"aria-label": props["aria-label"] ?? props.label,
-			onInput: (event) => {
-				props.onChange(event.currentTarget.value);
-			}
-		})]
+function Toast(props) {
+	const [slotId, setSlotId] = d(null);
+	F(() => {
+		if (!props.open) {
+			setSlotId(null);
+			return;
+		}
+		let alive = true;
+		const slot = takeToastSlot(() => {
+			if (alive) setSlotId(null);
+			props.onClose();
+		});
+		setSlotId(slot.id);
+		slot.timerId = window.setTimeout(() => {
+			dismissToast(slot.id);
+		}, TOAST_AUTO_HIDE_MS);
+		return () => {
+			alive = false;
+			clearSlotTimer(slot);
+			releaseToastSlot(slot.id);
+		};
+	}, [
+		props.open,
+		props.message,
+		props.onClose
+	]);
+	if (!props.open || slotId === null) return null;
+	if (activeToastSlot === null || activeToastSlot.id !== slotId) return null;
+	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("style", { children: TOAST_CSS }), /* @__PURE__ */ a("div", {
+		className: "rdw-toast",
+		role: "status",
+		children: [/* @__PURE__ */ a("p", {
+			className: "rdw-toast__message",
+			children: props.message
+		}), props.action !== void 0 ? /* @__PURE__ */ a(Button, {
+			variant: "secondary",
+			size: "s",
+			onClick: props.action.onClick,
+			children: props.action.label
+		}) : null]
 	})] });
+}var SITE_SELECTORS = exports("S",{
+	thumb: "span.thumb",
+	thumbLink: "a[href*=\"s=view\"]",
+	previewImage: "img.preview",
+	cardFavButton: `button.${CSS_CLASS.cardFav}`,
+	favoritesDeleteLink: "a[onclick]",
+	tagSidebar: "ul#tag-sidebar",
+	tagTypeArtist: "li.tag-type-artist",
+	imageList: "div.image-list",
+	postListContent: "#post-list div.content",
+	contentRoot: "#content",
+	artistFollowButton: `button.${CSS_CLASS.artistFollow}`,
+	/** Native AI filter checkbox (site owns click/cookie logic). */
+	filterAiCheckbox: "input.toggleSwitch#chkFilterAI",
+	/** Row wrapping the native AI filter control — hide when search-tools mirrors it. */
+	filterAiRow: "li:has(> label > span.switch > input.toggleSwitch#chkFilterAI)",
+	/** Stray Tags heading between #rdw-search-tools and the tag list. */
+	tagsHeadingAfterSearchTools: "#rdw-search-tools + h5"
+});
+var THUMB_ID_PATTERN = /^s(\d+)$/;
+var FAVORITES_DELETE_ID_PATTERN = /s=delete&id=(\d+)/;
+function extractPostIdFromThumb(thumb) {
+	const match = THUMB_ID_PATTERN.exec(thumb.id);
+	if (match === null) return null;
+	const postId = match[1];
+	return postId === void 0 ? null : postId;
+}
+function extractPostIdFromFavoritesDeleteOnclick(onclick) {
+	const match = FAVORITES_DELETE_ID_PATTERN.exec(onclick);
+	if (match === null) return null;
+	const postId = match[1];
+	return postId === void 0 ? null : postId;
+}
+/**
+* Site chrome CSS for html.rdw-skin (light / dark / custom themes).
+* Colors only via --rdw-* tokens. Does not change .thumb 200×200 cell size.
+* Injected via applyAppearanceTheme → injectSiteSkinHook(getSiteSkinCss()).
+*/
+var ROOT = `html.${RDW_SKIN_CLASS}`;
+var ROOT_DARK = `${ROOT}[${RDW_THEME_ATTR}="${APPEARANCE_THEME_DARK}"]`;
+var ROOT_SITE = `html[${RDW_THEME_ATTR}="${APPEARANCE_THEME_SITE}"]`;
+var ROOT_SITE_DARK = `html[${RDW_THEME_ATTR}="${APPEARANCE_THEME_SITE_DARK}"]`;
+var ROOT_THEME_DARK = `html[${RDW_THEME_ATTR}="${APPEARANCE_THEME_DARK}"]`;
+/** search-tools mount root (id + class in src/features/search-tools.tsx). */
+var SEARCH_TOOLS_ROOT_ID$1 = "rdw-search-tools";
+/** Reset control class (src/features/search-tools.tsx). */
+var SEARCH_TOOLS_RESET_CLASS = "rdw-search-tools-reset";
+/**
+* Same exclusions as :not…:not…, but :where() zeros their specificity so an
+* ID-bearing :not cannot outrank accent rules like div.tag-search submit.
+*/
+var WHERE_NOT_OUR_CONTROL = `:where(:not([class*="rdw-"])${`:not(#${SEARCH_TOOLS_ROOT_ID$1} *)`})`;
+/**
+* Body class Package E sets only while the post panel host is mounted
+* (`POST_PANEL_MOUNTED_CLASS` in post-actions.ts).
+*/
+var RDW_POST_PANEL_MOUNTED_CLASS = "rdw-post-panel-mounted";
+/** Native "I came" counter row — hide with panel chrome (E HANDOFF). */
+var POST_PANEL_ICAME_ROW = "li:has(a[onclick^=\"iCame(\"])";
+/** Post panel host id — keep in sync with POST_ACTIONS_ID in features/types.ts. */
+var POST_ACTIONS_HOST_ID = "rdw-post-actions";
+/** Kit select list — keep in sync with src/ui/kit/select.tsx. */
+var KIT_SELECT_LIST_CLASS = "rdw-select__list";
+/** Kit autocomplete list — keep in sync with src/ui/kit/autocomplete-field.tsx. */
+var KIT_AC_LIST_CLASS = "rdw-ac__list";
+/** Kit dialog panel — keep in sync with src/ui/kit/dialog.tsx. */
+var KIT_DIALOG_CLASS = "rdw-dialog";
+/** Playlist add-to menu — keep in sync with src/features/playlist-menu.ts. */
+var PLAYLIST_MENU_CLASS = "rdw-playlist-menu";
+/** Firefox / modern Chromium thin scrollbar (E HANDOFF). */
+var SCROLLBAR_WIDTH = "thin";
+/** Post panel Original control — keep in sync with post-actions ORIGINAL_BUTTON_SIZE_PX. */
+var POST_PANEL_ORIGINAL_SIZE_PX = 34;
+/** Active tab underline — keep in sync with kit/tabs.tsx. */
+var POST_PANEL_TAB_UNDERLINE_PX = 2;
+/** Post panel classes — keep in sync with src/features/post-panel/post-panel.tsx. */
+var POST_PANEL_ACTIONS_CLASS = "rdw-post-panel-actions";
+var POST_PANEL_ACTIONS_ROW_CLASS = "rdw-post-panel-actions-row";
+var POST_PANEL_FAV_CLASS = "rdw-post-panel-fav";
+var POST_PANEL_ORIGINAL_CLASS = "rdw-post-panel-original";
+var POST_PANEL_TABPANEL_CLASS = "rdw-post-panel-tabpanel";
+var POST_PANEL_POST_ACTION_CLASS = "rdw-post-panel-post-action";
+/** Kit tabs — keep in sync with src/ui/kit/tabs.tsx. */
+var KIT_TABS_CLASS = "rdw-tabs";
+var KIT_TAB_CLASS = "rdw-tabs__tab";
+var KIT_BTN_PRIMARY_CLASS = "rdw-btn--primary";
+/**
+* Body class while search-tools «AI posts» row is rendered
+* (`SEARCH_TOOLS_AI_ROW_BODY_CLASS` in search-tools.tsx — F HANDOFF).
+*/
+var SEARCH_TOOLS_AI_ROW_BODY_CLASS$1 = "rdw-search-tools-ai-posts";
+/** F bulk-select chrome — keep in sync with src/features/favorites-bulk.tsx. */
+var FAV_BULK_SELECTED_CLASS = "rdw-fav-bulk-selected";
+var FAV_BULK_CHECK_CLASS = "rdw-fav-bulk-check";
+var FAV_BULK_ROOT_ID = "rdw-favorites-bulk";
+var FAV_BULK_BAR_CLASS = "rdw-favorites-bulk-bar";
+var FAV_BULK_STATUS_CLASS = "rdw-favorites-bulk-status";
+/** Body class while selection mode is active (featureBodyClass + "-selecting"). */
+var FAV_BULK_SELECTING_BODY_CLASS = "rdw-f-favorites-bulk-selecting";
+var FAV_BULK_OUTLINE_WIDTH = "2px";
+var FAV_BULK_OUTLINE_OFFSET = "2px";
+var FAV_BULK_CHECK_SIZE = "1.25rem";
+var FAV_BULK_CHECK_INSET = "0.25rem";
+var FAV_BULK_CHECK_Z_INDEX = 2;
+var FAV_BULK_CHECK_FONT_SIZE = "0.75rem";
+var v = {
+	bg: `var(${TOKEN_VAR.bg})`,
+	surface: `var(${TOKEN_VAR.surface})`,
+	surface2: `var(${TOKEN_VAR.surface2})`,
+	border: `var(${TOKEN_VAR.border})`,
+	text: `var(${TOKEN_VAR.text})`,
+	muted: `var(${TOKEN_VAR.muted})`,
+	accent: `var(${TOKEN_VAR.accent})`,
+	accentSoft: `var(${TOKEN_VAR.accentSoft})`,
+	danger: `var(${TOKEN_VAR.danger})`,
+	dangerSoft: `var(${TOKEN_VAR.dangerSoft})`,
+	tagArtist: `var(${TOKEN_VAR.tagArtist})`,
+	tagCharacter: `var(${TOKEN_VAR.tagCharacter})`,
+	tagCopyright: `var(${TOKEN_VAR.tagCopyright})`,
+	tagMetadata: `var(${TOKEN_VAR.tagMetadata})`,
+	radiusS: `var(${TOKEN_VAR.radiusS})`,
+	radiusM: `var(${TOKEN_VAR.radiusM})`,
+	radiusL: `var(${TOKEN_VAR.radiusL})`,
+	shadow1: `var(${TOKEN_VAR.shadow1})`,
+	shadow2: `var(${TOKEN_VAR.shadow2})`,
+	font: `var(${TOKEN_VAR.font})`
+};
+/** Full site-skin stylesheet (empty until injected by boot). */
+var SITE_SKIN_CSS = `
+/* —— base —— */
+${ROOT} body {
+  font-family: ${v.font};
+  font-size: 13px;
+  line-height: 1.4;
+  background: ${v.bg};
+  color: ${v.text};
+}
+
+${ROOT} body,
+${ROOT} body div,
+${ROOT} body h1,
+${ROOT} body h2,
+${ROOT} body h3,
+${ROOT} body h4,
+${ROOT} body h5,
+${ROOT} body h6,
+${ROOT} body p,
+${ROOT} body ul,
+${ROOT} body li,
+${ROOT} body dd,
+${ROOT} body dt,
+${ROOT} body input,
+${ROOT} body select,
+${ROOT} body button,
+${ROOT} body textarea {
+  font-family: ${v.font};
+}
+
+${ROOT} a:link {
+  color: ${v.accent};
+  text-decoration: none;
+}
+
+${ROOT} a:visited {
+  color: ${v.muted};
+  text-decoration: none;
+}
+
+${ROOT} a:hover,
+${ROOT} a:active {
+  color: ${v.text};
+  text-decoration: none;
+}
+
+${ROOT} a.last-page {
+  color: ${v.muted};
+}
+
+${ROOT} a.spoiler,
+${ROOT} span.spoiler {
+  color: ${v.text};
+  background: ${v.text};
+}
+
+${ROOT} a.spoiler:hover,
+${ROOT} span.spoiler:hover {
+  color: ${v.bg};
+  background: ${v.text};
+}
+
+${ROOT} hr {
+  border-color: ${v.border};
+}
+
+${ROOT} code {
+  font-family: ui-monospace, monospace;
+}
+
+/* —— header —— */
+${ROOT} div#header {
+  background: ${v.surface};
+  border-bottom: 1px solid ${v.border};
+  margin-bottom: 0.75em;
+}
+
+${ROOT} div#header #site-title {
+  background-image: none;
+  background-color: transparent;
+  padding: 12px 18px 4px 18px;
+  font: 800 17px ${v.font};
+  letter-spacing: -0.02em;
+  color: ${v.text};
+}
+
+${ROOT} div#header #site-title a {
+  color: ${v.text};
+  font-weight: 800;
+  background: none;
+  text-shadow: none;
+}
+
+${ROOT} div#header ul#navbar {
+  background: transparent;
+  padding: 4px 18px 8px 10px;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+${ROOT} div#header ul#navbar li {
+  font-size: 13px;
+  font-weight: normal;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  background-image: none;
+  list-style: none;
+  display: inline;
+}
+
+${ROOT} div#header ul#navbar li a {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: ${v.radiusM};
+  color: ${v.muted};
+  font-weight: normal;
+}
+
+${ROOT} div#header ul#navbar li.current-page {
+  background: transparent;
+  background-image: none;
+}
+
+${ROOT} div#header ul#navbar li.current-page a,
+${ROOT} #navbar li.current-page a {
+  background: ${v.accentSoft};
+  color: ${v.accent};
+  font-weight: 600;
+}
+
+${ROOT} div#header ul#subnavbar {
+  background: ${v.surface};
+  border-top: 1px solid ${v.border};
+  border-bottom: none;
+  padding: 6px 18px;
+  margin: 0;
+}
+
+${ROOT} div#header ul#subnavbar li {
+  padding: 0 8px;
+  font-size: 12.5px;
+}
+
+${ROOT} div#header ul#subnavbar li a {
+  color: ${v.muted};
+}
+
+${ROOT} div#header ul#subnavbar li a:hover {
+  color: ${v.accent};
+}
+
+${ROOT} div.tips {
+  background: ${v.accentSoft};
+  background-image: none;
+  border-bottom: 1px solid ${v.border};
+  color: ${v.text};
+}
+
+/* —— sidebar —— */
+${ROOT} div.sidebar {
+  width: 228px;
+  min-width: 228px;
+  max-width: 228px;
+  margin-right: 1em;
+}
+
+${ROOT} div.sidebar h5,
+${ROOT} div.sidebar h6,
+${ROOT} ul#tag-sidebar h5,
+${ROOT} ul#tag-sidebar h6 {
+  font: 600 10.5px ${v.font};
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: ${v.muted};
+  margin: 0 0 6px;
+}
+
+/* Standalone "Tags"/"Search" (and similar) headings above the list card */
+${ROOT} div.sidebar > h5 {
+  display: none;
+}
+
+/* Tags between search panel card and tag list (typical site markup) */
+${ROOT} div.tag-search + h5 {
+  display: none;
+}
+
+/* D: Tags heading immediately after search-tools when they are siblings */
+${ROOT} ${SITE_SELECTORS.tagsHeadingAfterSearchTools} {
+  display: none;
+}
+
+/* F: native AI filter row — only while search-tools AI posts row is rendered */
+${ROOT} body.${SEARCH_TOOLS_AI_ROW_BODY_CLASS$1} ${SITE_SELECTORS.filterAiRow} {
+  display: none;
+}
+
+${ROOT} div.tag-search,
+${ROOT} ul#tag-sidebar {
+  background: ${v.surface};
+  border: 1px solid ${v.border};
+  border-radius: ${v.radiusL};
+  padding: 12px;
+  box-shadow: ${v.shadow1};
+  box-sizing: border-box;
+}
+
+${ROOT} div.tag-search {
+  margin-bottom: 12px;
+}
+
+${ROOT} ul#tag-sidebar {
+  margin: 0;
+  padding: 12px;
+  list-style: none;
+}
+
+/*
+ * Tag rows: ?/+/- /name (list) or ?/name (post) wrap as inline text;
+ * count stays top-right on the first line (artists-sidebar.test markup).
+ */
+${ROOT} ul#tag-sidebar > li {
+  display: block;
+  position: relative;
+  margin: 0 0 5px;
+  padding-right: 4.5em;
+  font-size: 12.5px;
+  line-height: 1.35;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+${ROOT} ul#tag-sidebar > li > a {
+  display: inline;
+}
+
+${ROOT} ul#tag-sidebar > li > h5,
+${ROOT} ul#tag-sidebar > li > h6 {
+  display: block;
+  margin-top: 8px;
+}
+
+${ROOT} ul#tag-sidebar > li:first-child > h5,
+${ROOT} ul#tag-sidebar > li:first-child > h6 {
+  margin-top: 0;
+}
+
+${ROOT} .tag-count,
+${ROOT} span.post-count,
+${ROOT} span.tag-count {
+  position: absolute;
+  top: 0;
+  right: 0;
+  margin-left: 0;
+  color: ${v.muted};
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+/*
+ * Tag type color on the LAST link of the row (tag name).
+ * List rows: ? + − name — name is 4th. Post rows: ? name — name is 2nd.
+ * Operators / wiki stay muted on every page.
+ */
+${ROOT} ul#tag-sidebar > li[class*="tag-type-"] > a:not(:last-of-type) {
+  color: ${v.muted};
+  font-size: 11px;
+  font-weight: normal;
+}
+
+${ROOT} .tag-type-artist > a,
+${ROOT} .tag-type-artist {
+  color: ${v.tagArtist};
+}
+
+${ROOT} .tag-type-character > a,
+${ROOT} .tag-type-character {
+  color: ${v.tagCharacter};
+}
+
+${ROOT} .tag-type-copyright > a,
+${ROOT} .tag-type-copyright {
+  color: ${v.tagCopyright};
+}
+
+${ROOT} .tag-type-metadata > a,
+${ROOT} .tag-type-metadata {
+  color: ${v.tagMetadata};
+}
+
+${ROOT} ul#tag-sidebar > li.tag-type-artist > a:last-of-type {
+  color: ${v.tagArtist};
+  font-size: 12.5px;
+  font-weight: normal;
+}
+
+${ROOT} ul#tag-sidebar > li.tag-type-character > a:last-of-type {
+  color: ${v.tagCharacter};
+  font-size: 12.5px;
+  font-weight: normal;
+}
+
+${ROOT} ul#tag-sidebar > li.tag-type-copyright > a:last-of-type {
+  color: ${v.tagCopyright};
+  font-size: 12.5px;
+  font-weight: normal;
+}
+
+${ROOT} ul#tag-sidebar > li.tag-type-metadata > a:last-of-type {
+  color: ${v.tagMetadata};
+  font-size: 12.5px;
+  font-weight: normal;
+}
+
+${ROOT} .tag-type-artist > a:hover,
+${ROOT} .tag-type-artist:hover,
+${ROOT} .tag-type-character > a:hover,
+${ROOT} .tag-type-character:hover,
+${ROOT} .tag-type-copyright > a:hover,
+${ROOT} .tag-type-copyright:hover,
+${ROOT} .tag-type-metadata > a:hover,
+${ROOT} .tag-type-metadata:hover,
+${ROOT} ul#tag-sidebar > li[class*="tag-type-"] > a:last-of-type:hover {
+  color: ${v.accent};
+}
+
+/* Artist Follow: kit secondary on theme tokens (beats document-chrome #fff) */
+${ROOT} button.${CSS_CLASS.artistFollow} {
+  background: ${v.surface};
+  border: 1px solid ${v.border};
+  color: ${v.text};
+  border-radius: ${v.radiusS};
+}
+
+${ROOT} button.${CSS_CLASS.artistFollow}:hover {
+  background: ${v.accentSoft};
+  border-color: ${v.accent};
+  color: ${v.accent};
+}
+
+${ROOT} button.${CSS_CLASS.artistFollow}.${CSS_CLASS.artistFollowMarked} {
+  background: ${v.accentSoft};
+  border-color: ${v.accent};
+  color: ${v.accent};
+}
+
+/* —— search field —— */
+${ROOT} div.tag-search input[type="text"],
+${ROOT} div.tag-search input[type="search"] {
+  width: 100%;
+  height: 34px;
+  box-sizing: border-box;
+  border: 1px solid ${v.border};
+  border-radius: ${v.radiusM};
+  padding: 0 10px;
+  background: ${v.surface};
+  color: ${v.text};
+  font-size: 13px;
+}
+
+${ROOT} div.tag-search input[type="submit"],
+${ROOT} div.tag-search button[type="submit"] {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 8px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: ${v.radiusS};
+  background: ${v.accent};
+  color: ${v.surface};
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+${ROOT} div.tag-search input[type="submit"]:hover,
+${ROOT} div.tag-search button[type="submit"]:hover {
+  filter: brightness(1.05);
+}
+
+/* Kit ghost / link-button: single line in the search-tools foot row */
+${ROOT} #${SEARCH_TOOLS_ROOT_ID$1} .${SEARCH_TOOLS_RESET_CLASS} {
+  flex-shrink: 0;
+  white-space: nowrap;
+  background: transparent;
+  border-color: transparent;
+  color: ${v.accent};
+  font-weight: 600;
+  padding: 0;
+  min-height: auto;
+  height: auto;
+}
+
+${ROOT} #${SEARCH_TOOLS_ROOT_ID$1} .${SEARCH_TOOLS_RESET_CLASS}:hover {
+  color: ${v.text};
+  background: transparent;
+  border-color: transparent;
+}
+
+${ROOT} input[type="text"]${WHERE_NOT_OUR_CONTROL}:focus,
+${ROOT} input[type="password"]${WHERE_NOT_OUR_CONTROL}:focus,
+${ROOT} input[type="search"]${WHERE_NOT_OUR_CONTROL}:focus,
+${ROOT} textarea${WHERE_NOT_OUR_CONTROL}:focus,
+${ROOT} select${WHERE_NOT_OUR_CONTROL}:focus {
+  background: ${v.surface};
+  outline: 2px solid ${v.accent};
+  outline-offset: 1px;
+  border-color: ${v.accent};
+}
+
+/* —— awesomplete —— */
+/* Site hides closed lists with opacity/scale + display:block; do not undo that. */
+${ROOT} .awesomplete > ul[hidden],
+${ROOT} .awesomplete > ul:empty {
+  display: none !important;
+  pointer-events: none;
+}
+
+${ROOT} .awesomplete > ul:not([hidden]):not(:empty) {
+  background: ${v.surface};
+  background-image: none;
+  border: 1px solid ${v.border};
+  border-radius: ${v.radiusL};
+  box-shadow: ${v.shadow2};
+  margin: 0.35em 0 0;
+  padding: 4px 0;
+  text-shadow: none;
+  transform: none;
+}
+
+${ROOT} .awesomplete > ul:before {
+  display: none;
+  content: none;
+}
+
+${ROOT} .awesomplete > ul > li {
+  padding: 6px 10px;
+  color: ${v.text};
+  cursor: pointer;
+}
+
+${ROOT} .awesomplete > ul > li:hover,
+${ROOT} .awesomplete > ul > li[aria-selected="true"] {
+  background: ${v.accentSoft};
+  color: ${v.accent};
+}
+
+${ROOT} .awesomplete mark {
+  background: ${v.accentSoft};
+  color: ${v.text};
+}
+
+${ROOT} div.auto_complete {
+  background: ${v.surface};
+}
+
+${ROOT} div.auto_complete ul {
+  border-color: ${v.border};
+  background: ${v.surface};
+}
+
+${ROOT} div.auto_complete ul li.selected {
+  background-color: ${v.accentSoft};
+}
+
+${ROOT} div.auto_complete ul strong.highlight {
+  color: ${v.accent};
+}
+
+/* —— grid / thumbs (cell size unchanged) —— */
+${ROOT} div.image-list {
+  column-gap: ${String(4)}px;
+  row-gap: ${String(4)}px;
+  align-items: flex-start;
+  align-content: flex-start;
+}
+
+${ROOT} img.preview {
+  border-radius: ${v.radiusL};
+}
+
+/* Favorites: Remove stays subtle; hover must not paint the thumb cell */
+${ROOT} span.thumb,
+${ROOT} span.thumb:hover,
+${ROOT} span.thumb > a,
+${ROOT} span.thumb > a:hover {
+  background-color: transparent;
+}
+
+${ROOT} span.thumb > a[onclick] {
+  color: ${v.muted};
+  font-size: 12px;
+  font-weight: normal;
+  padding: 2px 8px;
+  border-radius: ${v.radiusS};
+  background: transparent;
+  border: none;
+}
+
+${ROOT} span.thumb > a[onclick]:hover {
+  color: ${v.danger};
+  background: transparent;
+}
+
+${ROOT} span.thumb > a[onclick] b {
+  font-weight: normal;
+  color: inherit;
+}
+
+/* —— favorites bulk select (F HANDOFF; tokens for Light/Dark/Site) —— */
+${ROOT} body.${FAV_BULK_SELECTING_BODY_CLASS} span.thumb {
+  position: relative;
+  cursor: pointer;
+}
+
+${ROOT} span.thumb.${FAV_BULK_SELECTED_CLASS} {
+  outline: ${FAV_BULK_OUTLINE_WIDTH} solid ${v.accent};
+  outline-offset: ${FAV_BULK_OUTLINE_OFFSET};
+  border-radius: ${v.radiusL};
+}
+
+/*
+ * Check badge is a sibling of a#p{ID}, never inside the link.
+ * Hidden until the thumb is selected.
+ */
+${ROOT} span.thumb > .${FAV_BULK_CHECK_CLASS} {
+  position: absolute;
+  top: ${FAV_BULK_CHECK_INSET};
+  left: ${FAV_BULK_CHECK_INSET};
+  z-index: ${String(FAV_BULK_CHECK_Z_INDEX)};
+  display: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: ${FAV_BULK_CHECK_SIZE};
+  height: ${FAV_BULK_CHECK_SIZE};
+  border-radius: 50%;
+  background: ${v.accent};
+  color: ${v.surface};
+  font-size: ${FAV_BULK_CHECK_FONT_SIZE};
+  font-weight: 700;
+  line-height: 1;
+  pointer-events: none;
+}
+
+${ROOT} span.thumb.${FAV_BULK_SELECTED_CLASS} > .${FAV_BULK_CHECK_CLASS} {
+  display: inline-flex;
+}
+
+${ROOT} #${FAV_BULK_ROOT_ID},
+${ROOT} .${FAV_BULK_BAR_CLASS} {
+  color: ${v.text};
+}
+
+${ROOT} #${FAV_BULK_ROOT_ID} .${FAV_BULK_STATUS_CLASS} {
+  color: ${v.muted};
+}
+
+${ROOT} .webm-thumb {
+  border: 1px solid ${v.accent};
+  box-sizing: border-box;
+}
+
+${ROOT} img.flagged,
+${ROOT} img.has-children,
+${ROOT} img.has-parent,
+${ROOT} img.pending,
+${ROOT} img.video {
+  border-width: 1px;
+  border-style: solid;
+  box-sizing: border-box;
+}
+
+${ROOT} img.flagged {
+  border-color: ${v.danger};
+}
+
+${ROOT} img.has-children {
+  border-color: ${v.tagCharacter};
+}
+
+${ROOT} img.has-parent {
+  border-color: ${v.tagMetadata};
+}
+
+${ROOT} img.pending,
+${ROOT} img.video {
+  border-color: ${v.accent};
+}
+
+/* —— pagination —— */
+${ROOT} div#paginator,
+${ROOT} .pagination {
+  display: block;
+  padding: 1.5em 0 1em;
+  text-align: center;
+  clear: both;
+}
+
+${ROOT} div#paginator a,
+${ROOT} .pagination a {
+  display: inline-block;
+  margin: 0 3px;
+  padding: 4px 10px;
+  border: 1px solid ${v.border};
+  border-radius: ${v.radiusM};
+  background: ${v.surface};
+  color: ${v.text};
+  text-decoration: none;
+}
+
+${ROOT} div#paginator a:hover,
+${ROOT} .pagination a:hover {
+  background: ${v.accentSoft};
+  color: ${v.accent};
+  border-color: ${v.accent};
+}
+
+${ROOT} div#paginator a.current,
+${ROOT} div#paginator span.current,
+${ROOT} .pagination a.current,
+${ROOT} .pagination span.current {
+  background: ${v.accent};
+  border-color: ${v.accent};
+  color: ${v.surface};
+  font-weight: 600;
+}
+
+${ROOT} div#paginator span {
+  margin: 0 3px;
+  padding: 4px 8px;
+}
+
+${ROOT} .manual-page-chooser > input[type="text"] {
+  width: 4em;
+  height: 28px;
+  border: 1px solid ${v.border};
+  border-radius: ${v.radiusS};
+  background: ${v.surface};
+  color: ${v.text};
+  padding: 0 6px;
+}
+
+${ROOT} .manual-page-chooser > input[type="submit"] {
+  height: 28px;
+  margin-left: 4px;
+  padding: 0 10px;
+  border: none;
+  border-radius: ${v.radiusS};
+  background: ${v.accent};
+  color: ${v.surface};
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* —— forms / tables (site chrome; skip search-tools + any .rdw-* control) —— */
+${ROOT} input${WHERE_NOT_OUR_CONTROL},
+${ROOT} select${WHERE_NOT_OUR_CONTROL},
+${ROOT} textarea${WHERE_NOT_OUR_CONTROL},
+${ROOT} button${WHERE_NOT_OUR_CONTROL} {
+  color: ${v.text};
+  font-family: ${v.font};
+}
+
+${ROOT} input[type="text"]${WHERE_NOT_OUR_CONTROL},
+${ROOT} input[type="password"]${WHERE_NOT_OUR_CONTROL},
+${ROOT} input[type="search"]${WHERE_NOT_OUR_CONTROL},
+${ROOT} input[type="number"]${WHERE_NOT_OUR_CONTROL},
+${ROOT} select${WHERE_NOT_OUR_CONTROL},
+${ROOT} textarea${WHERE_NOT_OUR_CONTROL} {
+  background: ${v.surface};
+  border: 1px solid ${v.border};
+  border-radius: ${v.radiusS};
+  color: ${v.text};
+}
+
+${ROOT} button${WHERE_NOT_OUR_CONTROL},
+${ROOT} input[type="submit"]${WHERE_NOT_OUR_CONTROL},
+${ROOT} input[type="button"]${WHERE_NOT_OUR_CONTROL},
+${ROOT} .gdprbutton button {
+  background: ${v.surface};
+  border: 1px solid ${v.border};
+  border-radius: ${v.radiusS};
+  color: ${v.text};
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+${ROOT} button${WHERE_NOT_OUR_CONTROL}:hover,
+${ROOT} input[type="submit"]${WHERE_NOT_OUR_CONTROL}:hover,
+${ROOT} input[type="button"]${WHERE_NOT_OUR_CONTROL}:hover,
+${ROOT} .gdprbutton button:hover {
+  background: ${v.accentSoft};
+  border-color: ${v.accent};
+  color: ${v.accent};
+}
+
+/* Keep search submit as primary accent (overrides generic button chrome) */
+${ROOT} div.tag-search input[type="submit"],
+${ROOT} div.tag-search button[type="submit"],
+${ROOT} .manual-page-chooser > input[type="submit"] {
+  background: ${v.accent};
+  border: none;
+  color: ${v.surface};
+  font-weight: 600;
+}
+
+${ROOT} div.tag-search input[type="submit"]:hover,
+${ROOT} div.tag-search button[type="submit"]:hover,
+${ROOT} .manual-page-chooser > input[type="submit"]:hover {
+  background: ${v.accent};
+  border: none;
+  color: ${v.surface};
+  filter: brightness(1.05);
+}
+
+${ROOT} table {
+  color: ${v.text};
+}
+
+${ROOT} tr.tableheader,
+${ROOT} thead tr {
+  background: ${v.surface2} !important;
+  background-image: none !important;
+  color: ${v.text};
+}
+
+${ROOT} table.highlightable th {
+  color: ${v.text};
+  background: ${v.surface2};
+}
+
+${ROOT} table.highlightable td {
+  border-color: ${v.border};
+}
+
+${ROOT} table.highlightable > tbody > tr:hover {
+  background: ${v.accentSoft};
+}
+
+${ROOT} table tr.good {
+  background: ${v.accentSoft};
+}
+
+${ROOT} table tr.selected {
+  background: ${v.accentSoft} !important;
+}
+
+${ROOT} table tr.highlight {
+  background: ${v.surface2};
+}
+
+${ROOT} table tr.pending-tag {
+  background: ${v.surface2};
+}
+
+/* Zebra without native green tint */
+${ROOT} table tr:nth-child(odd) {
+  background: ${v.surface2};
+}
+
+${ROOT} table.form th {
+  color: ${v.muted};
+}
+
+/* Forum tables */
+${ROOT} div#forum > table {
+  background: ${v.surface};
+  border: 1px solid ${v.border};
+  border-radius: ${v.radiusL};
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  box-shadow: ${v.shadow1};
+}
+
+${ROOT} div#forum > table th,
+${ROOT} div#forum > table td {
+  border-color: ${v.border};
+  color: ${v.text};
+}
+
+${ROOT} div#forum > table th:first-child,
+${ROOT} div#forum > table td:first-child {
+  text-align: left;
+}
+
+${ROOT} div#forum > table tr:nth-child(odd) {
+  background: ${v.surface2};
+}
+
+${ROOT} div#forum > table tr:nth-child(even) {
+  background: ${v.surface};
+}
+
+${ROOT} div#forum > table.highlightable > tbody > tr:hover {
+  background: ${v.accentSoft};
+}
+
+${ROOT} .added-tags {
+  color: ${v.tagCharacter};
+}
+
+${ROOT} .removed-tags {
+  color: ${v.danger};
+}
+
+${ROOT} .obsolete-tag-change {
+  color: ${v.text};
+}
+
+/* —— notices / cards —— */
+${ROOT} div.status-notice,
+${ROOT} div.notice,
+${ROOT} div.has-mail,
+${ROOT} div.blocked,
+${ROOT} div.quote,
+${ROOT} div.help div.code,
+${ROOT} div#post-comments div#comment-list > div,
+${ROOT} div#comments div#comment-list > div.post > div.col2,
+${ROOT} div.response-list > div.post > div.content {
+  background: ${v.surface};
+  border: 1px solid ${v.border};
+  border-radius: ${v.radiusL};
+  box-shadow: ${v.shadow1};
+}
+
+${ROOT} div.status-notice {
+  border-color: ${v.border};
+  padding: 1em;
+  margin: 1em;
+  color: ${v.text};
+}
+
+${ROOT} div.notice {
+  color: ${v.danger};
+  padding: 0.75em 1em;
+  margin-bottom: 1em;
+}
+
+${ROOT} div.has-mail {
+  border-color: ${v.tagCharacter};
+  background: ${v.accentSoft};
+  padding: 1em;
+  margin: 1em;
+  color: ${v.text};
+}
+
+${ROOT} div.blocked {
+  border-color: ${v.danger};
+  background: ${v.dangerSoft};
+  color: ${v.danger};
+  padding: 1em;
+  margin: 1em;
+}
+
+${ROOT} div.quote {
+  border-color: ${v.border};
+  background: ${v.surface2};
+  background-image: none;
+  color: ${v.text};
+  padding: 12px;
+  margin-top: 10px;
+}
+
+${ROOT} div.help div.code {
+  border: 1px dashed ${v.border};
+  background: ${v.surface2};
+  color: ${v.text};
+}
+
+${ROOT} div.help h4 {
+  color: ${v.tagCharacter};
+}
+
+${ROOT} div#post-comments div#comment-list > div,
+${ROOT} div#comments div#comment-list > div.post > div.col2 {
+  padding: 12px;
+  margin-bottom: 1em;
+}
+
+${ROOT} div.response-list > div.post > div.content {
+  padding: 10px 12px;
+}
+
+${ROOT} div.response-list > div.post > div.content > div.footer {
+  color: ${v.muted};
+  margin-top: 0.75em;
+}
+
+/* Edit | Respond (and similar) on comments / forum posts */
+${ROOT} div.response-list > div.post > div.content > div.footer a,
+${ROOT} ul.flat-list li a {
+  color: ${v.muted};
+  font-weight: normal;
+  padding: 2px 6px;
+  border-radius: ${v.radiusS};
+}
+
+${ROOT} div.response-list > div.post > div.content > div.footer a:hover,
+${ROOT} ul.flat-list li a:hover {
+  color: ${v.accent};
+  background: ${v.accentSoft};
+}
+
+${ROOT} ul.flat-list li a.forum-update {
+  font-style: italic;
+  color: ${v.muted};
+}
+
+${ROOT} div.link-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+${ROOT} div.link-list li {
+  margin: 0 0 4px;
+}
+
+${ROOT} div.link-list a {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: ${v.radiusS};
+  color: ${v.muted};
+}
+
+${ROOT} div.link-list a:hover {
+  color: ${v.accent};
+  background: ${v.accentSoft};
+}
+
+${ROOT} span.author,
+${ROOT} span.date {
+  color: ${v.muted};
+}
+
+${ROOT} span.locked-topic {
+  color: ${v.muted};
+}
+
+${ROOT} strong.divider {
+  color: ${v.muted};
+}
+
+${ROOT} div#footer {
+  color: ${v.muted};
+}
+
+${ROOT} div#footer > .footer-disabled,
+${ROOT} div#footer > #label {
+  color: ${v.muted};
+}
+
+${ROOT} div#user-record > table > tbody > tr.positive-record {
+  background: ${v.accentSoft};
+}
+
+${ROOT} div#user-record > table > tbody > tr.negative-record {
+  background: ${v.dangerSoft};
+}
+
+${ROOT} div.mailbody {
+  background-color: ${v.surface};
+  border-color: ${v.border};
+}
+
+${ROOT} div.mail .received {
+  color: ${v.tagCharacter};
+}
+
+${ROOT} div.mail .sent {
+  color: ${v.danger};
+}
+
+${ROOT} .gdprinner {
+  background-color: ${v.surface};
+  border-color: ${v.border};
+  color: ${v.text};
+}
+
+/* —— post page —— */
+/* E: hide native left-column chrome only while body.rdw-post-panel-mounted */
+${ROOT} body.${RDW_POST_PANEL_MOUNTED_CLASS} div#stats {
+  display: none !important;
+}
+
+${ROOT} body.${RDW_POST_PANEL_MOUNTED_CLASS} div.link-list {
+  display: none !important;
+}
+
+${ROOT} body.${RDW_POST_PANEL_MOUNTED_CLASS} ${POST_PANEL_ICAME_ROW} {
+  display: none !important;
+}
+
+/*
+ * A: comments moved into the panel column — lift site max-width: 680px
+ * so #post-comments fills the narrow column.
+ */
+${ROOT} body.${RDW_POST_PANEL_MOUNTED_CLASS} #${POST_ACTIONS_HOST_ID} #post-comments {
+  max-width: none;
+}
+
+${ROOT} img#image {
+  border-radius: ${v.radiusL};
+}
+
+${ROOT} div#post-view > div#right-col > div#edit,
+${ROOT} div#edit-box {
+  background: ${v.surface};
+  border: 1px solid ${v.border};
+  border-radius: ${v.radiusL};
+  color: ${v.text};
+}
+
+${ROOT} div#note-container > div.note-body {
+  background: ${v.surface};
+  border: 1px solid ${v.border};
+  color: ${v.text};
+  border-radius: ${v.radiusS};
+}
+
+${ROOT} div#note-container > div.note-body > p.tn,
+${ROOT} tn {
+  color: ${v.muted};
+}
+
+${ROOT} div#note-container > div.note-box {
+  border-color: ${v.accent};
+  background: ${v.accentSoft};
+}
+
+${ROOT} div#note-container > div.note-box > div.note-corner {
+  background: ${v.accent};
+}
+
+${ROOT} div#note-container > div.unsaved {
+  background: ${v.surface};
+  border-color: ${v.danger};
+}
+
+${ROOT} div#note-container > div.unsaved > div.note-corner {
+  background: ${v.danger};
+}
+
+${ROOT} a.original-file-changed#highres {
+  color: ${v.accent};
+}
+
+${ROOT} div#post-add p#scale {
+  color: ${v.muted};
+}
+
+${ROOT} h2.wiki-title {
+  color: ${v.accent};
+}
+
+${ROOT} div.wiki > h2.title {
+  color: ${v.accent};
+}
+
+${ROOT} div#wiki-show > div#body > div#byline {
+  color: ${v.muted};
+}
+
+${ROOT} div#wiki-diff del {
+  background-color: ${v.dangerSoft};
+  color: ${v.danger};
+}
+
+${ROOT} div#wiki-diff ins {
+  background-color: ${v.accentSoft};
+  color: ${v.text};
+}
+
+${ROOT} dt.bad {
+  color: ${v.danger};
+}
+
+${ROOT} .blacklisted-tags-disabled {
+  color: ${v.muted} !important;
+}
+
+/* —— dark theme contrast (tokens already dark; keep chrome readable) —— */
+${ROOT_DARK} a:visited {
+  color: ${v.muted};
+}
+
+${ROOT_DARK} a:hover,
+${ROOT_DARK} a:active {
+  color: ${v.text};
+}
+
+${ROOT_DARK} a.spoiler,
+${ROOT_DARK} span.spoiler {
+  color: ${v.bg};
+  background: ${v.text};
+}
+
+${ROOT_DARK} a.spoiler:hover,
+${ROOT_DARK} span.spoiler:hover {
+  color: ${v.text};
+  background: ${v.muted};
+}
+
+${ROOT_DARK} div#paginator a.current,
+${ROOT_DARK} div#paginator span.current,
+${ROOT_DARK} .pagination a.current,
+${ROOT_DARK} .pagination span.current,
+${ROOT_DARK} div.tag-search input[type="submit"],
+${ROOT_DARK} div.tag-search button[type="submit"],
+${ROOT_DARK} .manual-page-chooser > input[type="submit"],
+${ROOT_DARK} span.thumb > .${FAV_BULK_CHECK_CLASS},
+${ROOT_DARK} #${POST_ACTIONS_HOST_ID} .${POST_PANEL_FAV_CLASS}.${KIT_BTN_PRIMARY_CLASS} {
+  color: ${v.text};
+}
+
+${ROOT_DARK} div.has-mail {
+  background: ${v.surface2};
+  border-color: ${v.tagCharacter};
+}
+
+/*
+ * Post panel actions + tabs (A→E HANDOFF).
+ * Unscoped under #rdw-post-actions so Site default/Site dark (no html.rdw-skin)
+ * still beat native button/link chrome via document --rdw-* tokens.
+ */
+#${POST_ACTIONS_HOST_ID} .${POST_PANEL_ACTIONS_CLASS},
+#${POST_ACTIONS_HOST_ID} .${POST_PANEL_ACTIONS_ROW_CLASS},
+#${POST_ACTIONS_HOST_ID} .${POST_PANEL_TABPANEL_CLASS} {
+  color: ${v.text};
+}
+
+#${POST_ACTIONS_HOST_ID} .${POST_PANEL_FAV_CLASS}.${KIT_BTN_PRIMARY_CLASS} {
+  background: ${v.accent};
+  border-color: ${v.accent};
+  color: ${v.surface};
+}
+
+#${POST_ACTIONS_HOST_ID} .${POST_PANEL_ORIGINAL_CLASS} {
+  box-sizing: border-box;
+  width: ${String(POST_PANEL_ORIGINAL_SIZE_PX)}px;
+  height: ${String(POST_PANEL_ORIGINAL_SIZE_PX)}px;
+  min-width: ${String(POST_PANEL_ORIGINAL_SIZE_PX)}px;
+  min-height: ${String(POST_PANEL_ORIGINAL_SIZE_PX)}px;
+  background: ${v.surface};
+  border: 1px solid ${v.border};
+  color: ${v.text};
+  text-decoration: none;
+}
+
+#${POST_ACTIONS_HOST_ID} .${KIT_TABS_CLASS} {
+  border-bottom: 1px solid ${v.border};
+  color: ${v.text};
+}
+
+#${POST_ACTIONS_HOST_ID} .${KIT_TAB_CLASS} {
+  background: transparent;
+  border: 0;
+  border-bottom: ${String(POST_PANEL_TAB_UNDERLINE_PX)}px solid transparent;
+  color: ${v.muted};
+}
+
+#${POST_ACTIONS_HOST_ID} .${KIT_TAB_CLASS}[aria-selected="true"] {
+  color: ${v.text};
+  font-weight: 600;
+  border-bottom-color: ${v.accent};
+}
+
+#${POST_ACTIONS_HOST_ID} .${POST_PANEL_POST_ACTION_CLASS} {
+  background: ${v.surface};
+  border: 1px solid ${v.border};
+  color: ${v.text};
+  justify-content: flex-start;
+}
+
+/* Site themes: muted fails AA on green/dark chrome — tabs use text; keep accent underline. */
+${ROOT_SITE} #${POST_ACTIONS_HOST_ID} .${KIT_TAB_CLASS},
+${ROOT_SITE_DARK} #${POST_ACTIONS_HOST_ID} .${KIT_TAB_CLASS} {
+  color: ${v.text};
+}
+
+${ROOT_SITE} #${POST_ACTIONS_HOST_ID} .${KIT_TAB_CLASS}[aria-selected="true"],
+${ROOT_SITE_DARK} #${POST_ACTIONS_HOST_ID} .${KIT_TAB_CLASS}[aria-selected="true"] {
+  border-bottom-color: ${v.accent};
+  color: ${v.text};
+}
+
+/* Dark RuleDesk: primary fill uses light label (surface token is dark). */
+${ROOT_THEME_DARK} #${POST_ACTIONS_HOST_ID} .${POST_PANEL_FAV_CLASS}.${KIT_BTN_PRIMARY_CLASS} {
+  color: ${v.text};
+}
+
+/*
+ * Own scrollable UI — tokens for all four themes (site/site-dark have no html.rdw-skin).
+ * Fixes white post-column scrollbar on dark. Kit lists/dialogs + playlist menu.
+ */
+#${POST_ACTIONS_HOST_ID},
+.${KIT_SELECT_LIST_CLASS},
+.${KIT_AC_LIST_CLASS},
+.${KIT_DIALOG_CLASS},
+.${PLAYLIST_MENU_CLASS} {
+  scrollbar-width: ${SCROLLBAR_WIDTH};
+  scrollbar-color: ${v.border} ${v.surface};
+}
+
+/* Site autocomplete lists under rdw-skin */
+${ROOT} .awesomplete > ul:not([hidden]):not(:empty),
+${ROOT} div.auto_complete ul {
+  scrollbar-width: ${SCROLLBAR_WIDTH};
+  scrollbar-color: ${v.border} ${v.surface};
+}
+
+/*
+ * Script page host sits on site bg for Site default / Site dark (no html.rdw-skin).
+ * Color uses document tokens; Shadow title inherits from the host once tokens sync.
+ */
+#${RDW_PAGE_ROOT_ID} {
+  color: ${v.text};
+}
+`.trim();
+/** Returns the site-skin CSS string for injection. */
+function getSiteSkinCss() {
+	return SITE_SKIN_CSS;
+}
+var MS_PER_DAY$1 = 864e5;
+var COOKIE_NAME_VALUE_SEPARATOR$1 = "=";
+var STYLESHEET_REL = "stylesheet";
+var LIGHT_STYLESHEET_PATH = `${SITE_THEME_STYLESHEET_DIR}${SITE_THEME_STYLESHEET_LIGHT}`;
+var DARK_STYLESHEET_PATH = `${SITE_THEME_STYLESHEET_DIR}${SITE_THEME_STYLESHEET_DARK}`;
+function writeThemeCookie(value, expires) {
+	document.cookie = [
+		`${SITE_THEME_COOKIE_NAME}${COOKIE_NAME_VALUE_SEPARATOR$1}${value}`,
+		`expires=${expires.toUTCString()}`,
+		`path=/`
+	].join("; ");
+}
+/** Deletes the site `theme` cookie (light / default). */
+function clearSiteThemeCookie() {
+	document.cookie = [
+		`${SITE_THEME_COOKIE_NAME}${COOKIE_NAME_VALUE_SEPARATOR$1}`,
+		`expires=${(/* @__PURE__ */ new Date(0)).toUTCString()}`,
+		`path=/`
+	].join("; ");
+}
+/** Collapse `//` (and longer) runs in a pathname so `/css/...` comparisons work. */
+var REPEATED_PATH_SLASHES = /\/{2,}/g;
+function collapsePathSlashes(pathname) {
+	return pathname.replace(REPEATED_PATH_SLASHES, "/");
+}
+/**
+* Match site desktop CSS hrefs via URL pathname (query ignored).
+* Production uses absolute hrefs with a doubled slash (`…xxx//css/desktop.css?46`);
+* collapsing repeated path slashes makes that equal `/css/desktop.css`.
+*/
+function isSiteDesktopStylesheetHref(href) {
+	try {
+		const path = collapsePathSlashes(new URL(href, location.href).pathname);
+		return path === LIGHT_STYLESHEET_PATH || path === DARK_STYLESHEET_PATH;
+	} catch {
+		return false;
+	}
+}
+function stylesheetFilenameForTheme(theme) {
+	return theme === "dark" ? SITE_THEME_STYLESHEET_DARK : SITE_THEME_STYLESHEET_LIGHT;
+}
+/** Swap filename in the raw href so `//css/` and `/css/` forms stay intact. */
+function replaceStylesheetFilename(href, filename) {
+	if (href.includes("desktop-dark.css")) return href.replace(SITE_THEME_STYLESHEET_DARK, filename);
+	if (href.includes("desktop.css")) return href.replace(SITE_THEME_STYLESHEET_LIGHT, filename);
+	return href;
+}
+function findSiteDesktopStylesheetLink() {
+	const links = document.querySelectorAll(`link[rel="${STYLESHEET_REL}"]`);
+	for (const link of links) {
+		const href = link.getAttribute("href");
+		if (href === null || href.length === 0) continue;
+		if (isSiteDesktopStylesheetHref(href)) return link;
+	}
+	return null;
+}
+var WARN_STYLESHEET_MISSING = "Site desktop stylesheet link not found; theme cookie updated only";
+var READY_STATE_LOADING = "loading";
+var EVENT_DOM_CONTENT_LOADED = "DOMContentLoaded";
+var STYLESHEET_OBSERVER_OPTIONS = {
+	childList: true,
+	subtree: true
+};
+var pendingStylesheetTheme = null;
+var stylesheetObserver = null;
+var domContentLoadedBound = false;
+function swapStylesheetLink(link, theme) {
+	const href = link.getAttribute("href");
+	if (href === null || href.length === 0) return false;
+	link.setAttribute("href", replaceStylesheetFilename(href, stylesheetFilenameForTheme(theme)));
+	return true;
+}
+function disconnectStylesheetWatch() {
+	if (stylesheetObserver !== null) {
+		stylesheetObserver.disconnect();
+		stylesheetObserver = null;
+	}
+	if (domContentLoadedBound) {
+		document.removeEventListener(EVENT_DOM_CONTENT_LOADED, onStylesheetDomReady);
+		domContentLoadedBound = false;
+	}
+}
+function tryApplyPendingStylesheet() {
+	if (pendingStylesheetTheme === null) return false;
+	const link = findSiteDesktopStylesheetLink();
+	if (link === null) return false;
+	if (!swapStylesheetLink(link, pendingStylesheetTheme)) return false;
+	pendingStylesheetTheme = null;
+	disconnectStylesheetWatch();
+	return true;
+}
+function onStylesheetDomReady() {
+	domContentLoadedBound = false;
+	if (tryApplyPendingStylesheet()) return;
+	if (pendingStylesheetTheme !== null) {
+		log.warn(WARN_STYLESHEET_MISSING);
+		pendingStylesheetTheme = null;
+		disconnectStylesheetWatch();
+	}
+}
+function warnStylesheetMissing() {
+	log.warn(WARN_STYLESHEET_MISSING);
+	pendingStylesheetTheme = null;
+	disconnectStylesheetWatch();
+}
+/**
+* Swap desktop.css ↔ desktop-dark.css once the link exists.
+* At document-start the link is not parsed yet: watch documentElement and
+* fall back to DOMContentLoaded. Warn only if it is still missing after that.
+*/
+function scheduleSiteDesktopStylesheet(theme) {
+	const link = findSiteDesktopStylesheetLink();
+	if (link !== null && swapStylesheetLink(link, theme)) {
+		pendingStylesheetTheme = null;
+		disconnectStylesheetWatch();
+		return;
+	}
+	pendingStylesheetTheme = theme;
+	if (document.readyState !== READY_STATE_LOADING) {
+		warnStylesheetMissing();
+		return;
+	}
+	const root = document.documentElement;
+	if (stylesheetObserver === null && root !== null) {
+		stylesheetObserver = new MutationObserver(() => {
+			tryApplyPendingStylesheet();
+		});
+		stylesheetObserver.observe(root, STYLESHEET_OBSERVER_OPTIONS);
+	}
+	if (!domContentLoadedBound) {
+		document.addEventListener(EVENT_DOM_CONTENT_LOADED, onStylesheetDomReady);
+		domContentLoadedBound = true;
+	}
+}
+/** Cookie only. Stylesheet swap is {@link scheduleSiteDesktopStylesheet}. */
+function writeSiteThemeCookie(theme) {
+	if (theme === "dark") {
+		const expires = new Date(Date.now() + 365 * MS_PER_DAY$1);
+		writeThemeCookie(SITE_THEME_COOKIE_VALUE_DARK, expires);
+		return;
+	}
+	clearSiteThemeCookie();
+}
+/**
+* RuleDesk skin modes need a predictable site base: no theme cookie + light CSS.
+* Does not touch html.rdw-skin (that is owned by src/skin/theme.ts).
+*/
+function forceLightSiteBase() {
+	writeSiteThemeCookie("light");
+	scheduleSiteDesktopStylesheet("light");
+}
+function setSiteTheme(theme) {
+	writeSiteThemeCookie(theme);
+	scheduleSiteDesktopStylesheet(theme);
+}
+var BACKGROUND_DIM_MAX = .8;
+/** JPEG quality when downscaling a custom background to screen size. */
+var APPEARANCE_BACKGROUND_JPEG_QUALITY = .85;
+var CONTRAST_OFFSET = .05;
+var JPEG_MIME = "image/jpeg";
+var BODY_BG_IMAGE = "background-image";
+var BODY_BG_SIZE = "background-size";
+var BODY_BG_POSITION = "background-position";
+var BODY_BG_REPEAT = "background-repeat";
+var BODY_BG_ATTACHMENT = "background-attachment";
+/** Site light tag/link colors (not exported from tokens). */
+var SITE_C_LINK_ARTIST = "#cc0000";
+var SITE_C_LINK_CHARACTER = "#00aa00";
+var SITE_C_LINK_COPYRIGHT = "#aa00aa";
+var SITE_C_LINK_METADATA = "#ff8800";
+/** Site dark accent-soft / tag colors (not exported from tokens). */
+var SITE_DARK_ACCENT_SOFT = SITE_DARK_C_BORDER;
+var SITE_DARK_TAG_ARTIST = "#f0a0a0";
+var SITE_DARK_TAG_CHARACTER = "#f0f0a0";
+var SITE_DARK_TAG_COPYRIGHT = "#f0a0f0";
+var SITE_DARK_TAG_METADATA = "#90d9ed";
+/**
+* Script-page / token palette for Appearance theme "Site default".
+* Card surface = --c-bg; border = --c-bg-alt (aligned with page-css host cards).
+* Danger/radius/shadow/font from Light.
+*/
+var SITE_DEFAULT_PALETTE = {
+	bg: SITE_LIGHT_C_BG,
+	surface: SITE_LIGHT_C_BG,
+	surface2: SITE_LIGHT_C_BG_OVERLAY,
+	border: SITE_LIGHT_C_BG_ALT,
+	text: SITE_LIGHT_C_TEXT,
+	muted: SITE_LIGHT_C_TEXT_SOFT,
+	accent: SITE_LIGHT_C_LINK,
+	accentSoft: SITE_LIGHT_C_BG_ALT,
+	danger: LIGHT_PALETTE.danger,
+	dangerSoft: LIGHT_PALETTE.dangerSoft,
+	tagArtist: SITE_C_LINK_ARTIST,
+	tagCharacter: SITE_C_LINK_CHARACTER,
+	tagCopyright: SITE_C_LINK_COPYRIGHT,
+	tagMetadata: SITE_C_LINK_METADATA,
+	radiusS: LIGHT_PALETTE.radiusS,
+	radiusM: LIGHT_PALETTE.radiusM,
+	radiusL: LIGHT_PALETTE.radiusL,
+	shadow1: LIGHT_PALETTE.shadow1,
+	shadow2: LIGHT_PALETTE.shadow2,
+	font: LIGHT_PALETTE.font
+};
+/**
+* Script-page / token palette for Appearance theme "Site dark".
+* Surface = page bg (not darker chrome); danger/radius/shadow/font from Dark.
+*/
+var SITE_DARK_PALETTE = {
+	bg: SITE_DARK_C_BG,
+	surface: SITE_DARK_C_BG,
+	surface2: SITE_DARK_C_SURFACE2,
+	border: SITE_DARK_C_BORDER,
+	text: SITE_DARK_C_TEXT,
+	muted: SITE_DARK_C_MUTED,
+	accent: SITE_DARK_C_ACCENT,
+	accentSoft: SITE_DARK_ACCENT_SOFT,
+	danger: DARK_PALETTE.danger,
+	dangerSoft: DARK_PALETTE.dangerSoft,
+	tagArtist: SITE_DARK_TAG_ARTIST,
+	tagCharacter: SITE_DARK_TAG_CHARACTER,
+	tagCopyright: SITE_DARK_TAG_COPYRIGHT,
+	tagMetadata: SITE_DARK_TAG_METADATA,
+	radiusS: DARK_PALETTE.radiusS,
+	radiusM: DARK_PALETTE.radiusM,
+	radiusL: DARK_PALETTE.radiusL,
+	shadow1: DARK_PALETTE.shadow1,
+	shadow2: DARK_PALETTE.shadow2,
+	font: DARK_PALETTE.font
+};
+/**
+* Pick text color for a surface: prefer `preferred`, else the first
+* neighboring candidate that meets {@link CONTRAST_RATIO_MIN}.
+*/
+function pickContrastingText(surface, preferred, neighbors) {
+	const preferredRatio = contrastRatio(preferred, surface);
+	if (preferredRatio !== null && preferredRatio >= 4.5) return {
+		text: preferred,
+		ratio: preferredRatio,
+		swapped: false
+	};
+	for (const candidate of neighbors) {
+		const ratio = contrastRatio(candidate, surface);
+		if (ratio !== null && ratio >= 4.5) return {
+			text: candidate,
+			ratio,
+			swapped: true
+		};
+	}
+	return {
+		text: preferred,
+		ratio: preferredRatio,
+		swapped: false
+	};
+}
+function finalizeSitePaletteText(palette) {
+	const picked = pickContrastingText(palette.surface, palette.text, [
+		palette.bg,
+		palette.muted,
+		palette.accent,
+		LIGHT_PALETTE.text,
+		DARK_PALETTE.text
+	]);
+	if (!picked.swapped) return palette;
+	return {
+		...palette,
+		text: picked.text
+	};
+}
+/** Site default after contrast gate (text-on-surface). */
+var SITE_DEFAULT_PALETTE_RESOLVED = finalizeSitePaletteText(SITE_DEFAULT_PALETTE);
+/** Site dark after contrast gate (text-on-surface). */
+var SITE_DARK_PALETTE_RESOLVED = finalizeSitePaletteText(SITE_DARK_PALETTE);
+function createDefaultCustomTheme() {
+	return {
+		base: APPEARANCE_CUSTOM_BASE_LIGHT,
+		backgroundDim: 0
+	};
+}
+function clampBackgroundDim(value) {
+	if (!Number.isFinite(value)) return 0;
+	return Math.min(BACKGROUND_DIM_MAX, Math.max(0, value));
+}
+/** WCAG contrast ratio of two hex colors; null if either is unparseable. */
+function contrastRatio(foreground, background) {
+	const l1 = relativeLuminance(foreground);
+	const l2 = relativeLuminance(background);
+	if (l1 === null || l2 === null) return null;
+	const lighter = Math.max(l1, l2);
+	const darker = Math.min(l1, l2);
+	return (lighter + CONTRAST_OFFSET) / (darker + CONTRAST_OFFSET);
+}
+/**
+* Canonical token palette for an Appearance value.
+* Site themes use site chrome colors — not RuleDesk Light/Dark.
+* Callers (boot/host) should use this instead of light/dark-only resolvers.
+*/
+function resolveAppearancePalette(appearance) {
+	const theme = appearance.theme;
+	if (theme === "site-dark") return SITE_DARK_PALETTE_RESOLVED;
+	if (theme === "site") return SITE_DEFAULT_PALETTE_RESOLVED;
+	if (theme === "dark") return DARK_PALETTE;
+	if (theme === "custom") return appearance.custom?.base === "dark" ? DARK_PALETTE : LIGHT_PALETTE;
+	return LIGHT_PALETTE;
+}
+function escapeUrlForCss(url) {
+	return url.replace(/\\/g, "\\\\").replace(/"/g, "\\\"");
+}
+function clearBodyBackground() {
+	const body = document.body;
+	if (body === null) return;
+	body.style.removeProperty(BODY_BG_IMAGE);
+	body.style.removeProperty(BODY_BG_SIZE);
+	body.style.removeProperty(BODY_BG_POSITION);
+	body.style.removeProperty(BODY_BG_REPEAT);
+	body.style.removeProperty(BODY_BG_ATTACHMENT);
+}
+/**
+* Apply custom background image on <body> with a dim overlay (0–0.8).
+* Cleared when image is empty.
+*/
+function applyBodyBackgroundImage(imageUrl, dim) {
+	const body = document.body;
+	if (body === null) return;
+	if (imageUrl === void 0 || imageUrl.length === 0) {
+		clearBodyBackground();
+		return;
+	}
+	const clamped = clampBackgroundDim(dim);
+	const escaped = escapeUrlForCss(imageUrl);
+	body.style.setProperty(BODY_BG_IMAGE, `linear-gradient(rgba(0, 0, 0, ${String(clamped)}), rgba(0, 0, 0, ${String(clamped)})), url("${escaped}")`);
+	body.style.setProperty(BODY_BG_SIZE, "cover");
+	body.style.setProperty(BODY_BG_POSITION, "center");
+	body.style.setProperty(BODY_BG_REPEAT, "no-repeat");
+	body.style.setProperty(BODY_BG_ATTACHMENT, "fixed");
+}
+function syncSiteCookieAndStylesheet(appearance) {
+	if (appearance.theme === "site-dark") {
+		setSiteTheme("dark");
+		return;
+	}
+	if (appearance.theme === "site") {
+		setSiteTheme("light");
+		return;
+	}
+	forceLightSiteBase();
+}
+/** CSS pixel screen size × devicePixelRatio (for background hints/resize). */
+function getScreenPixelSize() {
+	const dpr = Number.isFinite(window.devicePixelRatio) && window.devicePixelRatio > 0 ? window.devicePixelRatio : 1;
+	return {
+		width: Math.round(window.screen.width * dpr),
+		height: Math.round(window.screen.height * dpr)
+	};
+}
+/**
+* Fit source inside max box without upscaling. Pure sizing helper (testable).
+*/
+function computeDownscaleSize(sourceWidth, sourceHeight, maxWidth, maxHeight) {
+	if (!Number.isFinite(sourceWidth) || !Number.isFinite(sourceHeight) || sourceWidth <= 0 || sourceHeight <= 0) return {
+		width: 0,
+		height: 0
+	};
+	if (sourceWidth <= maxWidth && sourceHeight <= maxHeight) return {
+		width: Math.round(sourceWidth),
+		height: Math.round(sourceHeight)
+	};
+	const scale = Math.min(maxWidth / sourceWidth, maxHeight / sourceHeight);
+	return {
+		width: Math.max(1, Math.round(sourceWidth * scale)),
+		height: Math.max(1, Math.round(sourceHeight * scale))
+	};
+}
+function loadImageElement(src) {
+	return new Promise((resolve, reject) => {
+		const image = new Image();
+		image.onload = () => {
+			resolve(image);
+		};
+		image.onerror = () => {
+			reject(/* @__PURE__ */ new Error("Could not decode image"));
+		};
+		image.src = src;
+	});
+}
+function readFileAsDataUrl(file) {
+	return new Promise((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onload = () => {
+			if (typeof reader.result === "string") {
+				resolve(reader.result);
+				return;
+			}
+			reject(/* @__PURE__ */ new Error("Could not read image file"));
+		};
+		reader.onerror = () => {
+			reject(reader.error ?? /* @__PURE__ */ new Error("Could not read image file"));
+		};
+		reader.readAsDataURL(file);
+	});
+}
+/**
+* Decode file, downscale to screen pixels (never upscale), encode JPEG.
+*/
+async function prepareBackgroundImageFile(file) {
+	const image = await loadImageElement(await readFileAsDataUrl(file));
+	const sourceWidth = image.naturalWidth;
+	const sourceHeight = image.naturalHeight;
+	const screen = getScreenPixelSize();
+	const sized = computeDownscaleSize(sourceWidth, sourceHeight, screen.width, screen.height);
+	const canvas = document.createElement("canvas");
+	canvas.width = sized.width;
+	canvas.height = sized.height;
+	const context = canvas.getContext("2d");
+	if (context === null) throw new Error("Could not prepare background image");
+	context.drawImage(image, 0, 0, sized.width, sized.height);
+	return {
+		dataUrl: canvas.toDataURL(JPEG_MIME, APPEARANCE_BACKGROUND_JPEG_QUALITY),
+		sourceWidth,
+		sourceHeight,
+		outputWidth: sized.width,
+		outputHeight: sized.height,
+		belowScreen: sourceWidth < screen.width || sourceHeight < screen.height
+	};
+}
+/**
+* Full theme apply for boot and settings UI:
+* site cookie/stylesheet + html.rdw-skin / tokens / site-skin / custom props + body image.
+* Token palette comes from {@link resolveAppearancePalette} and is written once via
+* injectTokenStyles + syncPageRootTokens (same tick as applyAppearanceToDocument).
+*/
+function applyAppearanceTheme(options) {
+	const { appearance } = options;
+	syncSiteCookieAndStylesheet(appearance);
+	applyAppearanceToDocument({
+		appearance,
+		siteSkinCss: options.siteSkinCss ?? getSiteSkinCss(),
+		...options.backgroundDataUrl !== void 0 ? { backgroundDataUrl: options.backgroundDataUrl } : {}
+	});
+	const palette = resolveAppearancePalette(appearance);
+	injectTokenStyles(palette);
+	syncPageRootTokens(palette);
+	if (!themeEnablesSkin(appearance.theme)) document.documentElement.classList.remove(RDW_SKIN_CLASS);
+	if (appearance.theme === "custom" && appearance.custom !== void 0) {
+		const custom = appearance.custom;
+		applyBodyBackgroundImage(options.backgroundDataUrl ?? custom.backgroundImage, custom.backgroundDim ?? 0);
+		if (custom.backgroundDim !== void 0) document.documentElement.style.setProperty(TOKEN_VAR.backgroundDim, String(clampBackgroundDim(custom.backgroundDim)));
+	} else clearBodyBackground();
+	const textOnSurface = contrastRatio(palette.text, palette.surface);
+	return {
+		contrastWarning: textOnSurface !== null && textOnSurface < 4.5,
+		contrastRatio: textOnSurface
+	};
+}
+/**
+* Whether RuleDesk site-skin class is active.
+* site / site-dark keep native page chrome; light / dark / custom enable rdw-skin.
+*/
+function themeEnablesSkin(theme) {
+	return theme === "light" || theme === "dark" || theme === "custom";
+}
+/**
+* Ensures a <style id=...> exists under documentElement (works before <head>).
+* Safe at document-start. B1/B2 should reuse these helpers.
+*/
+function ensureStyleElement(id) {
+	const existing = document.getElementById(id);
+	if (existing instanceof HTMLStyleElement) return existing;
+	if (existing !== null) existing.remove();
+	const style = document.createElement("style");
+	style.id = id;
+	(document.head ?? document.documentElement).append(style);
+	return style;
+}
+/** Inject or replace the design-token stylesheet. */
+function injectTokenStyles(palette) {
+	const style = ensureStyleElement(TOKEN_STYLE_ID);
+	style.textContent = buildTokensCss(palette, ":root");
+	return style;
+}
+/**
+* Copy the same palette onto #rdw-page-root when present.
+* Shadow DOM uses :host { all: initial }, so document :root tokens do not inherit.
+*/
+function syncPageRootTokens(palette) {
+	const host = document.getElementById(RDW_PAGE_ROOT_ID);
+	if (!(host instanceof HTMLElement)) return;
+	applyTokenProperties(host, palette);
+}
+/**
+* Inject or replace the site-skin stylesheet (rules scoped under html.rdw-skin).
+*/
+function injectSiteSkinHook(cssText = "") {
+	const style = ensureStyleElement(SITE_SKIN_STYLE_ID);
+	style.textContent = cssText;
+	return style;
+}
+function applyHtmlThemeAttributes(theme) {
+	const root = document.documentElement;
+	root.setAttribute(RDW_THEME_ATTR, theme);
+	if (themeEnablesSkin(theme)) root.classList.add(RDW_SKIN_CLASS);
+	else root.classList.remove(RDW_SKIN_CLASS);
+}
+/**
+* Document-start-safe appearance apply:
+* html class/attr + token CSS (+ site-skin) + optional custom props.
+* Palette from {@link resolveAppearancePalette} (site ≠ Light/Dark).
+* Also syncs live #rdw-page-root Shadow host to the same palette.
+*/
+function applyAppearanceToDocument(options) {
+	const { appearance } = options;
+	applyHtmlThemeAttributes(appearance.theme);
+	const palette = resolveAppearancePalette(appearance);
+	injectTokenStyles(palette);
+	syncPageRootTokens(palette);
+	injectSiteSkinHook(options.siteSkinCss ?? "");
+	const root = document.documentElement;
+	clearCustomThemeProperties(root);
+	const omitImage = options.omitBackgroundImage === true;
+	const backgroundImage = omitImage ? void 0 : options.backgroundDataUrl ?? appearance.custom?.backgroundImage;
+	if (appearance.theme === "custom" && appearance.custom !== void 0) {
+		const overrides = backgroundImage !== void 0 && backgroundImage.length > 0 ? {
+			backgroundImage,
+			...appearance.custom.backgroundDim !== void 0 ? { backgroundDim: appearance.custom.backgroundDim } : {}
+		} : { ...appearance.custom.backgroundDim !== void 0 ? { backgroundDim: appearance.custom.backgroundDim } : {} };
+		applyCustomThemeProperties(root, overrides);
+	} else if (!omitImage && options.backgroundDataUrl !== void 0 && options.backgroundDataUrl.length > 0) applyCustomThemeProperties(root, { backgroundImage: options.backgroundDataUrl });
+}
+/**
+* Pre-paint appearance read: one GM_getValue + shape checks only (no zod).
+* Full AppearanceSchema validation stays on the post-paint store path.
+*/
+var CUSTOM_BASE_LIGHT = "light";
+var CUSTOM_BASE_DARK = "dark";
+/** Cached raw STORAGE_KEY payload from the single pre-paint GM read. */
+var rawStorageCache;
+var rawStorageRead = false;
+function isRecord(value) {
+	return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function getGmGetValue() {
+	return GM_getValue;
+}
+/**
+* Single GM read for the pre-paint path. Subsequent calls reuse the cache
+* so layout peek does not hit GM again before first paint.
+*/
+function readRawStorageOnce() {
+	if (!rawStorageRead) {
+		rawStorageCache = getGmGetValue()(STORAGE_KEY, void 0);
+		rawStorageRead = true;
+	}
+	return rawStorageCache;
+}
+function cheapParseTheme(value) {
+	if (value === "site") return APPEARANCE_THEME_SITE;
+	if (value === "site-dark") return APPEARANCE_THEME_SITE_DARK;
+	if (value === "light") return APPEARANCE_THEME_LIGHT;
+	if (value === "dark") return APPEARANCE_THEME_DARK;
+	if (value === "custom") return APPEARANCE_THEME_CUSTOM;
+	return DEFAULT_APPEARANCE_THEME;
+}
+function cheapParseCustom(raw) {
+	if (!isRecord(raw)) return;
+	const baseRaw = raw.base;
+	const custom = { base: baseRaw === CUSTOM_BASE_DARK || baseRaw === CUSTOM_BASE_LIGHT ? baseRaw : CUSTOM_BASE_LIGHT };
+	if (typeof raw.backgroundImage === "string") custom.backgroundImage = raw.backgroundImage;
+	if (typeof raw.backgroundDim === "number" && Number.isFinite(raw.backgroundDim)) custom.backgroundDim = raw.backgroundDim;
+	return custom;
+}
+/**
+* Cheap appearance extract from a raw GM storage blob (or undefined).
+* Does not validate marks / collections / artists / favs.
+*/
+function cheapParseAppearance(raw) {
+	if (!isRecord(raw)) return { theme: DEFAULT_APPEARANCE_THEME };
+	const settings = raw.settings;
+	if (!isRecord(settings)) return { theme: DEFAULT_APPEARANCE_THEME };
+	const appearanceRaw = settings.appearance;
+	if (!isRecord(appearanceRaw)) return { theme: DEFAULT_APPEARANCE_THEME };
+	const theme = cheapParseTheme(appearanceRaw.theme);
+	if (theme !== "custom") return { theme };
+	const custom = cheapParseCustom(appearanceRaw.custom);
+	if (custom === void 0) return { theme };
+	return {
+		theme,
+		custom
+	};
+}
+/** Pre-paint appearance: one GM read + cheap shape check. */
+function peekAppearanceForPaint() {
+	return cheapParseAppearance(readRawStorageOnce());
+}
+/**
+* Cheap layout flags from the same cached GM blob (no second GM read, no zod).
+* Used after CSS injection for grid-density / menu-cleanup / search reserve.
+*/
+function peekLayoutSettings() {
+	const raw = readRawStorageOnce();
+	if (!isRecord(raw) || !isRecord(raw.settings)) return {
+		tweaksEnabled: true,
+		features: {},
+		featureChoice: {}
+	};
+	const settings = raw.settings;
+	const tweaksEnabled = typeof settings.tweaksEnabled === "boolean" ? settings.tweaksEnabled : true;
+	const features = {};
+	if (isRecord(settings.features)) {
+		for (const [key, value] of Object.entries(settings.features)) if (typeof value === "boolean") features[key] = value;
+	}
+	const featureChoice = {};
+	if (isRecord(settings.featureChoice)) {
+		for (const [key, value] of Object.entries(settings.featureChoice)) if (typeof value === "string") featureChoice[key] = value;
+	}
+	return {
+		tweaksEnabled,
+		features,
+		featureChoice
+	};
+}
+function resolveFeatureEnabled(layout, id, defaultEnabled) {
+	if (!layout.tweaksEnabled) return false;
+	const stored = layout.features[id];
+	if (stored === void 0) return defaultEnabled;
+	return stored;
+}
+function resolveFeatureChoice(layout, id, defaultValue, allowed) {
+	const stored = layout.featureChoice[id];
+	if (stored !== void 0 && allowed.includes(stored)) return stored;
+	return defaultValue;
+}
+/**
+* Pre-CSS operations on document-start (must stay minimal — A1 counts these):
+* 1. GM_getValue(STORAGE_KEY) via {@link peekAppearanceForPaint}
+* 2. cheap shape parse of settings.appearance (no zod)
+* Then immediately inject theme + skin CSS (base color only, no background image).
+*/
+function syncSiteCookieAfterCss(appearance) {
+	const theme = appearance.theme === "site-dark" ? "dark" : "light";
+	writeSiteThemeCookie(theme);
+	scheduleSiteDesktopStylesheet(theme);
+}
+/**
+* If the URL already has #rdw/…, stamp html.rdw-own-page after CSS inject.
+* Kept here (not in pages/router) so document-start does not import Preact host.
+*/
+function applyOwnPageClassEarly() {
+	if (parseRdwHash(window.location.hash) === null) return;
+	const root = document.documentElement;
+	if (root === null) return;
+	const style = ensureStyleElement(RDW_OWN_PAGE_STYLE_ID);
+	style.textContent = buildOwnPageCss();
+	root.classList.add(RDW_OWN_PAGE_CLASS);
+}
+/**
+* Runs at userscript document-start, before DOMContentLoaded.
+* Hot path: cheap appearance GM read → inject token + site-skin CSS (no bg image).
+* Cookie sync / rdw-own-page run only after styles are in the DOM.
+*/
+function bootEarly() {
+	const appearance = peekAppearanceForPaint();
+	applyAppearanceToDocument({
+		appearance,
+		siteSkinCss: getSiteSkinCss(),
+		omitBackgroundImage: true
+	});
+	syncSiteCookieAfterCss(appearance);
+	applyOwnPageClassEarly();
+}
+var THUMB_CLASS = "rdw-thumb";
+var THUMB_ANCHOR_NAME = "--rdw-img";
+var FEATURE_STYLE_ID_PREFIX = "rdw-feature-style-";
+var POST_ACTIONS_ID = "rdw-post-actions";
+function featureBodyClass(id) {
+	return `rdw-f-${id}`;
+}
+function featureChoiceBodyClass(id, value) {
+	return `rdw-f-${id}-${value}`;
+}
+var FEATURE_ID$12 = "grid-density";
+var COMPACT_PX = 150;
+var LARGE_PX = 250;
+var CHOICE_DEFAULT = "default";
+var CHOICE_COMPACT = "compact";
+var CHOICE_LARGE = "large";
+function sizeCss(choiceValue, px) {
+	const bodyClass = featureChoiceBodyClass(FEATURE_ID$12, choiceValue);
+	return [
+		`body.${bodyClass} span.thumb,`,
+		`body.${bodyClass} span.thumb > a {`,
+		`  width: ${String(px)}px !important;`,
+		`  height: ${String(px)}px !important;`,
+		`}`,
+		`body.${bodyClass} img.preview {`,
+		`  max-width: ${String(px)}px !important;`,
+		`  max-height: ${String(px)}px !important;`,
+		`}`
+	].join("\n");
+}
+/** Same gap on both axes for Default, Compact, and Large. Does not set cell size. */
+function gapCss() {
+	return [
+		`body.${featureBodyClass(FEATURE_ID$12)} div.image-list {`,
+		`  column-gap: ${String(4)}px !important;`,
+		`  row-gap: ${String(4)}px !important;`,
+		`}`
+	].join("\n");
+}
+var gridDensityFeature = exports("bj",{
+	id: FEATURE_ID$12,
+	label: "Grid size",
+	pages: ["list", "favorites"],
+	defaultEnabled: true,
+	cssOnly: true,
+	choice: {
+		options: [
+			{
+				value: CHOICE_DEFAULT,
+				label: "Default"
+			},
+			{
+				value: CHOICE_COMPACT,
+				label: "Compact (150)"
+			},
+			{
+				value: CHOICE_LARGE,
+				label: "Large (250)"
+			}
+		],
+		defaultValue: CHOICE_DEFAULT
+	},
+	css: [
+		sizeCss(CHOICE_COMPACT, COMPACT_PX),
+		sizeCss(CHOICE_LARGE, LARGE_PX),
+		gapCss()
+	].join("\n"),
+	mount: () => void 0
+});
+var FEATURE_ID$11 = "menu-cleanup";
+var FEATURE_LABEL$11 = "Clean header menu";
+var CONTENT_ID$1 = "content";
+var HIDDEN_CLASS = "rdw-menu-hidden";
+var BODY_FEATURE_CLASS$3 = featureBodyClass(FEATURE_ID$11);
+var MISSING_MENU_WARN = "Header menu not found";
+var HIDE_LINK_TEXT_SET = /* @__PURE__ */ new Set([
+	"iCame Top 100",
+	"Discord",
+	"X",
+	"Other Sites",
+	"Contact Us",
+	"DMCA",
+	"About",
+	"TOS",
+	"My Favorites"
+]);
+var FEATURE_PAGES$11 = [
+	"list",
+	"post",
+	"favorites",
+	"other"
+];
+var FEATURE_CSS$11 = `body.${BODY_FEATURE_CLASS$3} li.${HIDDEN_CLASS} { display:none !important; }`;
+function isHeaderMenuLink(anchor, content) {
+	const listItem = anchor.closest("li");
+	if (listItem === null) return false;
+	if (content !== null && content.contains(listItem)) return false;
+	return true;
+}
+function collectHeaderMenuLinks() {
+	const content = document.getElementById(CONTENT_ID$1);
+	const anchors = document.querySelectorAll("a");
+	const headerLinks = [];
+	for (const node of anchors) {
+		if (!(node instanceof HTMLAnchorElement)) continue;
+		if (!isHeaderMenuLink(node, content)) continue;
+		headerLinks.push(node);
+	}
+	return headerLinks;
+}
+function mountMenuCleanup(_ctx) {
+	const headerLinks = collectHeaderMenuLinks();
+	if (headerLinks.length === 0) {
+		log.warn(MISSING_MENU_WARN);
+		return;
+	}
+	for (const anchor of headerLinks) {
+		const text = anchor.textContent?.trim() ?? "";
+		if (!HIDE_LINK_TEXT_SET.has(text)) continue;
+		const listItem = anchor.closest("li");
+		if (listItem === null) continue;
+		listItem.classList.add(HIDDEN_CLASS);
+	}
+}
+var menuCleanupFeature = {
+	id: FEATURE_ID$11,
+	label: FEATURE_LABEL$11,
+	pages: [...FEATURE_PAGES$11],
+	defaultEnabled: true,
+	cssOnly: true,
+	css: FEATURE_CSS$11,
+	mount: mountMenuCleanup
+};
+function detectPageKind(search) {
+	const params = new URLSearchParams(search);
+	const page = params.get(SEARCH_PARAM_PAGE);
+	const section = params.get("s");
+	if (page === "post" && section === "list") return "list";
+	if (page === "post" && section === "view") return "post";
+	if (page === "favorites" && section === "view") return "favorites";
+	return "other";
+}
+function readPostIdFromSearch(search) {
+	const params = new URLSearchParams(search);
+	const page = params.get(SEARCH_PARAM_PAGE);
+	const section = params.get("s");
+	const id = params.get("id");
+	if (page !== "post" || section !== "view") return null;
+	if (id === null || id.trim().length === 0) return null;
+	if (!/^\d+$/.test(id)) return null;
+	return id;
+}
+var COOKIE_PAIR_SEPARATOR = ";";
+var COOKIE_NAME_VALUE_SEPARATOR = "=";
+var BLACKLIST_SPLIT_PATTERN = /[, ]|%20+/g;
+var USER_ENTRY_PREFIX = "user:";
+var RATING_ENTRY_PREFIX = "rating:";
+var MS_PER_DAY = 864e5;
+var DAYS_PER_YEAR = 365;
+var BLACKLIST_TAG_SEPARATOR = " ";
+var changeListeners = /* @__PURE__ */ new Set();
+/** Subscribe to writes of the site `tag_blacklist` cookie. */
+function onSiteBlacklistChange(cb) {
+	changeListeners.add(cb);
+	return () => {
+		changeListeners.delete(cb);
+	};
+}
+function readCookieValue(name) {
+	const pairs = document.cookie.split(COOKIE_PAIR_SEPARATOR);
+	const prefix = `${name}${COOKIE_NAME_VALUE_SEPARATOR}`;
+	for (const pair of pairs) {
+		const trimmed = pair.trim();
+		if (!trimmed.startsWith(prefix)) continue;
+		return trimmed.slice(prefix.length);
+	}
+	return null;
+}
+function normalizeBlacklistTags(tags) {
+	const seen = /* @__PURE__ */ new Set();
+	const result = [];
+	for (const raw of tags) {
+		const normalized = raw.trim().toLowerCase().replaceAll(" ", "_");
+		if (normalized.length === 0 || seen.has(normalized)) continue;
+		seen.add(normalized);
+		result.push(normalized);
+	}
+	return result;
+}
+function encodeBlacklistCookieValue(tags) {
+	if (tags.length === 0) return "";
+	return encodeURIComponent(encodeURIComponent(tags.join(BLACKLIST_TAG_SEPARATOR)));
+}
+function writeBlacklistCookie(value, expires) {
+	document.cookie = [
+		`${SITE_BLACKLIST_COOKIE_NAME}${COOKIE_NAME_VALUE_SEPARATOR}${value}`,
+		`expires=${expires.toUTCString()}`,
+		`path=/`
+	].join("; ");
+}
+/**
+* Reads the site `tag_blacklist` cookie using the site's decode + split rule.
+* Empty tokens are dropped; entries are lowercased.
+*/
+function readSiteBlacklist() {
+	const raw = readCookieValue(SITE_BLACKLIST_COOKIE_NAME);
+	if (raw === null || raw.length === 0) return [];
+	let decoded;
+	try {
+		decoded = decodeURIComponent(decodeURI(raw));
+	} catch {
+		return [];
+	}
+	const result = [];
+	for (const part of decoded.split(BLACKLIST_SPLIT_PATTERN)) {
+		const trimmed = part.trim().toLowerCase();
+		if (trimmed.length === 0) continue;
+		result.push(trimmed);
+	}
+	return result;
+}
+/**
+* Writes the site `tag_blacklist` cookie (browser cookie only; account list untouched).
+* Value encoding matches the live site: encodeURIComponent twice over space-joined tags.
+*/
+function writeSiteBlacklist(tags) {
+	const normalized = normalizeBlacklistTags(tags);
+	const expires = new Date(Date.now() + 5 * DAYS_PER_YEAR * MS_PER_DAY);
+	writeBlacklistCookie(encodeBlacklistCookieValue(normalized), expires);
+	for (const listener of changeListeners) listener(normalized);
+}
+/**
+* True when any blacklist entry matches a post tag or `rating:x`.
+* Entries starting with `user:` are ignored. `score` is reserved for callers.
+*/
+function isBlacklisted(tags, score, rating, list) {
+	if (list.length === 0) return false;
+	const tagSet = /* @__PURE__ */ new Set();
+	for (const tag of tags) {
+		const normalized = tag.trim().toLowerCase();
+		if (normalized.length > 0) tagSet.add(normalized);
+	}
+	const ratingNorm = rating.trim().toLowerCase();
+	for (const entry of list) {
+		if (entry.startsWith(USER_ENTRY_PREFIX)) continue;
+		if (entry.startsWith(RATING_ENTRY_PREFIX)) {
+			const value = entry.slice(7);
+			if (value.length > 0 && value === ratingNorm) return true;
+			continue;
+		}
+		if (tagSet.has(entry)) return true;
+	}
+	return false;
+}
+var FEATURE_ID$10 = "blacklist-hide";
+var FEATURE_LABEL$10 = "Hide blacklisted posts";
+var FEATURE_PAGES$10 = ["list"];
+var BODY_FEATURE_CLASS$2 = featureBodyClass(FEATURE_ID$10);
+var CLASS_BLACKLISTED$1 = "rdw-blacklisted";
+var SCORE_TOKEN_PREFIX$2 = "score:";
+var RATING_TOKEN_PREFIX$1 = "rating:";
+var WHITESPACE_SPLIT = /\s+/;
+var FEATURE_CSS$10 = `
+body.${BODY_FEATURE_CLASS$2} span.thumb.${CLASS_BLACKLISTED$1} {
+  display: none !important;
+}
+`.trim();
+var unsubscribeThumbsAdded$5;
+var unsubscribeBlacklistChange;
+function parseAltTags(alt) {
+	const tags = [];
+	for (const token of alt.trim().split(WHITESPACE_SPLIT)) {
+		if (token.length === 0) continue;
+		const lower = token.toLowerCase();
+		if (lower.startsWith(SCORE_TOKEN_PREFIX$2) || lower.startsWith(RATING_TOKEN_PREFIX$1)) continue;
+		tags.push(token);
+	}
+	return tags;
+}
+function parseTitleRating(title) {
+	for (const token of title.trim().split(WHITESPACE_SPLIT)) {
+		if (token.length === 0) continue;
+		if (token.toLowerCase().startsWith(RATING_TOKEN_PREFIX$1)) return token.slice(7);
+	}
+	return "";
+}
+function applyBlacklistToThumb(thumb, list) {
+	if (!(thumb instanceof HTMLElement)) return;
+	const img = thumb.querySelector(SITE_SELECTORS.previewImage);
+	const alt = img?.getAttribute("alt") ?? "";
+	const title = img?.getAttribute("title") ?? "";
+	const matched = isBlacklisted(parseAltTags(alt), 0, parseTitleRating(title), list);
+	thumb.classList.toggle(CLASS_BLACKLISTED$1, matched);
+}
+function applyBlacklistToRoot(root, list = readSiteBlacklist()) {
+	const thumbs = root.querySelectorAll(SITE_SELECTORS.thumb);
+	for (const thumb of thumbs) applyBlacklistToThumb(thumb, list);
+}
+function ensureSubscriptions() {
+	if (unsubscribeThumbsAdded$5 === void 0) unsubscribeThumbsAdded$5 = onThumbsAdded((root) => {
+		applyBlacklistToRoot(root);
+	});
+	if (unsubscribeBlacklistChange === void 0) unsubscribeBlacklistChange = onSiteBlacklistChange((list) => {
+		applyBlacklistToRoot(document, list);
+	});
+}
+function mountBlacklistHide(ctx) {
+	if (ctx.pageKind !== "list") return;
+	applyBlacklistToRoot(document);
+	ensureSubscriptions();
+}
+var blacklistHideFeature = {
+	id: FEATURE_ID$10,
+	label: FEATURE_LABEL$10,
+	pages: [...FEATURE_PAGES$10],
+	defaultEnabled: true,
+	cssOnly: true,
+	css: FEATURE_CSS$10,
+	mount: mountBlacklistHide
+};
+function buildAddFavUrl(postId) {
+	const params = new URLSearchParams();
+	params.set("id", postId);
+	return `${SITE_ORIGIN}${ADDFAV_PATH}?${params.toString()}`;
+}
+function buildVoteUrl(postId) {
+	const params = new URLSearchParams();
+	params.set(VOTE_PARAM_PAGE, VOTE_PAGE);
+	params.set("s", VOTE_SECTION);
+	params.set("id", postId);
+	params.set(VOTE_PARAM_TYPE, "up");
+	return `${SITE_ORIGIN}${VOTE_PATH}?${params.toString()}`;
+}
+/** Favorites delete URL used by single-remove and bulk-remove (same request kind). */
+function buildRemoveFavUrl(postId) {
+	const params = new URLSearchParams();
+	params.set(SEARCH_PARAM_PAGE, FAVORITES_PAGE);
+	params.set("s", FAVORITES_SECTION_DELETE);
+	params.set("id", postId);
+	params.set(FAVORITES_PARAM_RETURN_PID, "0");
+	return `${SITE_ORIGIN}${SEARCH_PATH}?${params.toString()}`;
+}
+async function fetchText(url) {
+	const response = await fetch(url, {
+		method: "GET",
+		credentials: FETCH_CREDENTIALS
+	});
+	if (!response.ok) throw new Error(`HTTP ${String(response.status)}`);
+	return (await response.text()).trim();
+}
+function parseVoteScore(raw) {
+	if (raw.length === 0) return;
+	const score = Number(raw);
+	if (!Number.isFinite(score)) return;
+	return score;
+}
+async function addFavorite(postId) {
+	let addResponse;
+	try {
+		addResponse = await fetchText(buildAddFavUrl(postId));
+	} catch (error) {
+		log.warn("addfav request failed", postId, error);
+		return { status: "error" };
+	}
+	if (addResponse === "1") return { status: "already" };
+	if (addResponse === "2") return { status: "not_logged_in" };
+	if (addResponse !== "3") {
+		log.warn("Unexpected addfav response", postId, addResponse);
+		return { status: "error" };
+	}
+	try {
+		const score = await voteUp(postId);
+		if (score === null) return { status: "added" };
+		return {
+			status: "added",
+			score
+		};
+	} catch (error) {
+		log.warn("vote request failed after addfav", postId, error);
+		return { status: "added" };
+	}
+}
+/** GET vote-up endpoint; returns the new score number, or null if unparseable/failed. */
+async function voteUp(postId) {
+	try {
+		const score = parseVoteScore(await fetchText(buildVoteUrl(postId)));
+		return score === void 0 ? null : score;
+	} catch (error) {
+		log.warn("vote request failed", postId, error);
+		return null;
+	}
+}
+async function removeFavorite(postId, options = {}) {
+	try {
+		const init = {
+			method: "GET",
+			credentials: FETCH_CREDENTIALS
+		};
+		if (options.signal !== void 0) init.signal = options.signal;
+		const response = await fetch(buildRemoveFavUrl(postId), init);
+		if (!response.ok) {
+			log.warn("remove favorite HTTP error", postId, response.status);
+			return { status: "error" };
+		}
+		return { status: "removed" };
+	} catch (error) {
+		if (options.signal?.aborted === true || error instanceof DOMException && error.name === "AbortError" || error instanceof Error && error.name === "AbortError") return { status: "error" };
+		log.warn("remove favorite request failed", postId, error);
+		return { status: "error" };
+	}
+}
+var removeClickBound = false;
+var POST_LINK_ID_PREFIX = "p";
+/**
+* Resolve a favorites-page thumb's post id from Remove onclick, thumb id, or a#p{ID}.
+*/
+function resolveFavoriteThumbPostId(thumb) {
+	const removeLinks = thumb.querySelectorAll(SITE_SELECTORS.favoritesDeleteLink);
+	for (const link of removeLinks) {
+		if (!(link instanceof HTMLAnchorElement)) continue;
+		const onclick = link.getAttribute("onclick");
+		if (onclick === null) continue;
+		const fromOnclick = extractPostIdFromFavoritesDeleteOnclick(onclick);
+		if (fromOnclick !== null) return fromOnclick;
+	}
+	const fromThumbId = extractPostIdFromThumb(thumb);
+	if (fromThumbId !== null) return fromThumbId;
+	const postLinks = thumb.querySelectorAll(`a[id^="${POST_LINK_ID_PREFIX}"]`);
+	for (const link of postLinks) {
+		if (!(link instanceof HTMLAnchorElement)) continue;
+		const id = link.id;
+		if (!id.startsWith(POST_LINK_ID_PREFIX)) continue;
+		const postId = id.slice(1);
+		if (/^\d+$/.test(postId)) return postId;
+	}
+	return null;
+}
+/** Current-page favorite thumbs that have a resolvable post id. */
+function listFavoriteThumbEntries(root = document) {
+	const entries = [];
+	const seen = /* @__PURE__ */ new Set();
+	const thumbs = root.querySelectorAll(SITE_SELECTORS.thumb);
+	for (const node of thumbs) {
+		if (!(node instanceof HTMLElement)) continue;
+		const postId = resolveFavoriteThumbPostId(node);
+		if (postId === null || seen.has(postId)) continue;
+		seen.add(postId);
+		entries.push({
+			thumb: node,
+			postId
+		});
+	}
+	return entries;
+}
+var CELL_SEPARATOR_TAGS = /* @__PURE__ */ new Set([
+	"BR",
+	"HR",
+	"WBR"
+]);
+var CELL_SEPARATOR_TEXT_PATTERN = /^[|\u00b7•·,\s]*$/;
+/**
+* True for Remove links / light separators that belong to a favorites cell.
+* Stops adjacency walks before paginator, scripts, and other page chrome.
+*/
+function isFavoriteCellResidue(node, postId) {
+	if (node.nodeType === Node.TEXT_NODE) {
+		const text = node.textContent ?? "";
+		return CELL_SEPARATOR_TEXT_PATTERN.test(text);
+	}
+	if (!(node instanceof HTMLElement)) return false;
+	if (CELL_SEPARATOR_TAGS.has(node.tagName)) return true;
+	if (!(node instanceof HTMLAnchorElement)) return false;
+	const onclick = node.getAttribute("onclick");
+	if (onclick === null) return false;
+	const removeId = extractPostIdFromFavoritesDeleteOnclick(onclick);
+	if (removeId === null) return false;
+	return postId === null || removeId === postId;
+}
+/**
+* Remove a favorites cell from the DOM: the thumb and, when Remove / separators
+* sit between this thumb and the next `span.thumb`, those siblings too.
+* Never injects into `a#p{ID}`; never deletes paginator/other non-cell nodes.
+*/
+function removeFavoriteCell(thumb) {
+	const postId = resolveFavoriteThumbPostId(thumb);
+	const nodesToRemove = [thumb];
+	let sibling = thumb.nextSibling;
+	while (sibling !== null) {
+		if (sibling instanceof HTMLElement && sibling.matches(SITE_SELECTORS.thumb)) break;
+		if (!isFavoriteCellResidue(sibling, postId)) break;
+		nodesToRemove.push(sibling);
+		sibling = sibling.nextSibling;
+	}
+	for (const node of nodesToRemove) node.remove();
+}
+function collectFavoritePostIds(root) {
+	const ids = [];
+	const seen = /* @__PURE__ */ new Set();
+	const links = root.querySelectorAll(SITE_SELECTORS.favoritesDeleteLink);
+	for (const link of links) {
+		if (!(link instanceof HTMLAnchorElement)) continue;
+		const onclick = link.getAttribute("onclick");
+		if (onclick === null) continue;
+		const postId = extractPostIdFromFavoritesDeleteOnclick(onclick);
+		if (postId === null || seen.has(postId)) continue;
+		seen.add(postId);
+		ids.push(postId);
+	}
+	return ids;
+}
+function bindRemoveClickCapture() {
+	if (removeClickBound) return;
+	removeClickBound = true;
+	document.addEventListener("click", (event) => {
+		const target = event.target;
+		if (!(target instanceof Element)) return;
+		const link = target.closest("a");
+		if (!(link instanceof HTMLAnchorElement)) return;
+		const onclick = link.getAttribute("onclick");
+		if (onclick === null) return;
+		const postId = extractPostIdFromFavoritesDeleteOnclick(onclick);
+		if (postId === null) return;
+		removeFav(postId);
+	}, true);
+}
+function syncFavoritesPage(root = document, search = window.location.search) {
+	if (detectPageKind(search) !== "favorites") return;
+	const ids = collectFavoritePostIds(root);
+	const numericIds = [];
+	for (const postId of ids) {
+		const parsed = Number(postId);
+		if (Number.isFinite(parsed)) numericIds.push(Math.trunc(parsed));
+	}
+	addFavs(numericIds);
+	bindRemoveClickCapture();
+}
+/** Minimum pause between sequential favorites page fetches. */
+var FAVORITES_SYNC_PAGE_PAUSE_MS = exports("a_",1500);
+/** Pauses before each of the three retries (HTTP error / missing paginator). */
+var FAVORITES_SYNC_RETRY_DELAYS_MS = [
+	1e4,
+	3e4,
+	6e4
+];
+var FAVORITES_SYNC_MODE_INCREMENTAL = exports("bk",FAVS_SYNC_MODE_INCREMENTAL);
+var FAVORITES_SYNC_MODE_FULL = exports("F",FAVS_SYNC_MODE_FULL);
+var MY_FAVORITES_LINK_SELECTOR$1 = "li#my-favorites-container a[href*=\"page=favorites\"]";
+var THUMB_SELECTOR$1 = "span.thumb";
+var THUMB_POST_LINK_SELECTOR = "span.thumb a[id^=\"p\"]";
+var PAGINATOR_SELECTOR = "#paginator";
+var LASTPAGE_SELECTOR = "a[name=\"lastpage\"]";
+var NEXT_SELECTOR = "a[name=\"next\"]";
+var REMOVE_LINK_SELECTOR = "a[onclick]";
+var POST_LINK_ID_PATTERN = /^p(\d+)$/;
+var ONCLICK_PID_PATTERN = /[?&]pid=(\d+)/;
+var URL_PARSE_BASE = "https://rule34.xxx";
+var TAB_ID_RANDOM_RADIX = 36;
+var TAB_ID_RANDOM_SLICE_START = 2;
+var FAVORITES_SYNC_ERROR_NOT_LOGGED_IN = "not logged in or menu not found";
+var FAVORITES_SYNC_ERROR_UNEXPECTED_PAGE = "unexpected page";
+function createAbortResult(total, page, pages) {
+	return {
+		status: "aborted",
+		total,
+		page,
+		pages
+	};
+}
+function isAbortError$1(error) {
+	return error instanceof DOMException && error.name === "AbortError" || error instanceof Error && error.name === "AbortError";
+}
+function throwIfAborted(signal) {
+	if (signal.aborted) throw new DOMException("Aborted", "AbortError");
+}
+function delay$1(ms, signal) {
+	return new Promise((resolve, reject) => {
+		if (signal.aborted) {
+			reject(new DOMException("Aborted", "AbortError"));
+			return;
+		}
+		const timer = setTimeout(() => {
+			signal.removeEventListener("abort", onAbort);
+			if (signal.aborted) {
+				reject(new DOMException("Aborted", "AbortError"));
+				return;
+			}
+			resolve();
+		}, ms);
+		const onAbort = () => {
+			clearTimeout(timer);
+			reject(new DOMException("Aborted", "AbortError"));
+		};
+		signal.addEventListener("abort", onAbort, { once: true });
+	});
+}
+function parsePositiveInt(raw) {
+	if (raw === null) return null;
+	const trimmed = raw.trim();
+	if (trimmed.length === 0) return null;
+	const value = Number(trimmed);
+	if (!Number.isFinite(value) || value < 0) return null;
+	return Math.trunc(value);
+}
+function parsePidFromOnclick(onclick) {
+	const raw = ONCLICK_PID_PATTERN.exec(onclick)?.[1];
+	if (raw === void 0) return null;
+	return parsePositiveInt(raw);
+}
+function titleSnippetFromHtml(html) {
+	try {
+		return titleSnippetFromDocument(new DOMParser().parseFromString(html, "text/html"));
+	} catch {
+		return "";
+	}
+}
+function titleSnippetFromDocument(doc) {
+	const raw = doc.title.trim();
+	if (raw.length <= 80) return raw;
+	return raw.slice(0, 80);
+}
+function formatPauseMessage(status, titleSnippet) {
+	if (titleSnippet.length === 0) return `HTTP ${String(status)}`;
+	return `HTTP ${String(status)}: ${titleSnippet}`;
+}
+/** Stable tab id for sync lock (Package H / multi-tab). */
+function createFavoritesSyncTabId() {
+	const random = Math.random().toString(TAB_ID_RANDOM_RADIX).slice(TAB_ID_RANDOM_SLICE_START, 12);
+	return `tab-${String(Date.now())}-${random}`;
+}
+function extractUserIdFromDocument(root) {
+	const link = root.querySelector(MY_FAVORITES_LINK_SELECTOR$1);
+	if (!(link instanceof HTMLAnchorElement)) return null;
+	const href = link.getAttribute("href");
+	if (href === null || href.length === 0) return null;
+	try {
+		return parsePositiveInt(new URL(href, URL_PARSE_BASE).searchParams.get("id"));
+	} catch {
+		return null;
+	}
+}
+/**
+* Reads `id` from a favorites view URL search string.
+* Returns null when the location is not a favorites page or id is missing.
+*/
+function extractUserIdFromFavoritesSearch(search) {
+	if (detectPageKind(search) !== "favorites") return null;
+	return parsePositiveInt(new URLSearchParams(search).get("id"));
+}
+/**
+* Resolve favorites owner id: menu link → favorites URL id → saved sync value.
+*/
+function resolveFavoritesUserId(root, search, savedUserId) {
+	const fromMenu = extractUserIdFromDocument(root);
+	if (fromMenu !== null) return fromMenu;
+	const fromUrl = extractUserIdFromFavoritesSearch(search);
+	if (fromUrl !== null) return fromUrl;
+	if (savedUserId !== void 0 && Number.isFinite(savedUserId)) return Math.trunc(savedUserId);
+	return null;
+}
+function buildFavoritesPageUrl(userId, pid) {
+	const params = new URLSearchParams();
+	params.set(SEARCH_PARAM_PAGE, FAVORITES_PAGE);
+	params.set("s", FAVORITES_SECTION_VIEW);
+	params.set("id", String(userId));
+	params.set("pid", String(pid));
+	return `${SEARCH_PATH}?${params.toString()}`;
+}
+function pageIndexFromPid(pid) {
+	return Math.floor(pid / 50) + 1;
+}
+function pagesFromLastPid(lastPid) {
+	return Math.floor(lastPid / 50) + 1;
+}
+function collectFavoriteIdsFromDocument(doc) {
+	const ids = /* @__PURE__ */ new Set();
+	const postLinks = doc.querySelectorAll(THUMB_POST_LINK_SELECTOR);
+	for (const link of postLinks) {
+		const raw = POST_LINK_ID_PATTERN.exec(link.id)?.[1];
+		if (raw === void 0) continue;
+		const parsed = Number(raw);
+		if (Number.isFinite(parsed)) ids.add(Math.trunc(parsed));
+	}
+	const removeLinks = doc.querySelectorAll(REMOVE_LINK_SELECTOR);
+	for (const link of removeLinks) {
+		const onclick = link.getAttribute("onclick");
+		if (onclick === null) continue;
+		const postId = extractPostIdFromFavoritesDeleteOnclick(onclick);
+		if (postId === null) continue;
+		const parsed = Number(postId);
+		if (Number.isFinite(parsed)) ids.add(Math.trunc(parsed));
+	}
+	return Array.from(ids);
+}
+/**
+* Reads last-page pid from a[name="lastpage"] onclick only.
+* No lastpage and no next → current page is last (returns currentPid).
+* No lastpage but next exists, or lastpage onclick unparseable → null (unexpected).
+*/
+function resolveLastPid(doc, currentPid) {
+	const lastpage = doc.querySelector(LASTPAGE_SELECTOR);
+	if (lastpage instanceof HTMLAnchorElement) {
+		const onclick = lastpage.getAttribute("onclick");
+		if (onclick === null || onclick.length === 0) return null;
+		return parsePidFromOnclick(onclick);
+	}
+	if (doc.querySelector(NEXT_SELECTOR) !== null) return null;
+	return currentPid;
+}
+function hasPaginator(doc) {
+	return doc.querySelector(PAGINATOR_SELECTOR) !== null;
+}
+/**
+* Reads sync mode from persisted FavsSyncState.mode.
+* Missing / unexpected → undefined.
+*/
+function readFavoritesSyncMode(sync) {
+	const mode = sync?.mode;
+	if (mode === FAVORITES_SYNC_MODE_INCREMENTAL || mode === FAVORITES_SYNC_MODE_FULL) return mode;
+}
+/**
+* True when the page has at least one id and every id is already local.
+* Empty pages are not early-stop (handled by trailing-empty completion).
+*/
+function pageIdsAllInLocalSet(pageIds, local) {
+	if (pageIds.length === 0) return false;
+	for (const id of pageIds) if (!local.has(id)) return false;
+	return true;
+}
+function resolveRunMode(unfinished, existing, requested) {
+	if (unfinished) return readFavoritesSyncMode(existing) ?? FAVORITES_SYNC_MODE_FULL;
+	return requested ?? FAVORITES_SYNC_MODE_INCREMENTAL;
+}
+function persistSyncProgress(fields) {
+	const state = {
+		nextPid: fields.nextPid,
+		lastPid: fields.lastPid,
+		startedAt: fields.startedAt,
+		running: fields.running,
+		userId: fields.userId,
+		mode: fields.mode,
+		lock: {
+			tabId: fields.tabId,
+			beatAt: Date.now()
+		}
+	};
+	if (fields.finishedAt !== void 0) state.finishedAt = fields.finishedAt;
+	setSyncState(state);
+	return state;
+}
+async function fetchFavoritesPageOnce(url, signal) {
+	let response;
+	try {
+		response = await fetch(url, {
+			method: "GET",
+			credentials: FETCH_CREDENTIALS,
+			signal
+		});
+	} catch (error) {
+		if (isAbortError$1(error)) throw error;
+		const message = error instanceof Error ? error.message : "request failed";
+		log.warn("favorites sync: fetch failed", url, error);
+		return {
+			ok: false,
+			status: 0,
+			titleSnippet: message.slice(0, 80),
+			message
+		};
+	}
+	const html = await response.text();
+	const titleSnippet = titleSnippetFromHtml(html);
+	if (!response.ok) {
+		log.warn("favorites sync: HTTP error", response.status, url);
+		return {
+			ok: false,
+			status: response.status,
+			titleSnippet,
+			message: formatPauseMessage(response.status, titleSnippet)
+		};
+	}
+	const doc = new DOMParser().parseFromString(html, "text/html");
+	if (!hasPaginator(doc)) {
+		log.warn("favorites sync: missing paginator", url);
+		return {
+			ok: false,
+			status: response.status,
+			titleSnippet: titleSnippetFromDocument(doc),
+			message: formatPauseMessage(response.status, titleSnippetFromDocument(doc))
+		};
+	}
+	return {
+		ok: true,
+		doc,
+		status: response.status,
+		titleSnippet: titleSnippetFromDocument(doc)
+	};
+}
+/**
+* Fetch one favorites page; retry up to 3 times after 10s / 30s / 60s on
+* HTTP errors or missing paginator.
+*/
+async function fetchFavoritesPageWithRetries(url, signal) {
+	let lastFailure = null;
+	for (let attempt = 0; attempt <= FAVORITES_SYNC_RETRY_DELAYS_MS.length; attempt += 1) {
+		throwIfAborted(signal);
+		if (attempt > 0) {
+			const delayMs = FAVORITES_SYNC_RETRY_DELAYS_MS[attempt - 1];
+			if (delayMs === void 0) break;
+			log.warn("favorites sync: retrying after delay", {
+				attempt,
+				delayMs,
+				url
+			});
+			await delay$1(delayMs, signal);
+			throwIfAborted(signal);
+		}
+		const result = await fetchFavoritesPageOnce(url, signal);
+		if (result.ok) return result;
+		lastFailure = result;
+	}
+	if (lastFailure === null) return {
+		ok: false,
+		status: 0,
+		titleSnippet: "",
+		message: formatPauseMessage(0, "")
+	};
+	return lastFailure;
+}
+/**
+* Walks the site favorites list page-by-page and merges ids into local favs.
+* Only adds; never removes. Network I/O lives here only (explicit user click).
+*/
+async function runFavoritesSync(options) {
+	const { onProgress, signal } = options;
+	const tabId = options.tabId ?? createFavoritesSyncTabId();
+	const existing = getSyncState();
+	const userId = resolveFavoritesUserId(document, window.location.search, existing?.userId);
+	if (userId === null) {
+		log.warn("favorites sync: user id not found");
+		return {
+			status: "error",
+			message: FAVORITES_SYNC_ERROR_NOT_LOGGED_IN
+		};
+	}
+	const unfinished = existing !== void 0 && existing.finishedAt === void 0;
+	const mode = resolveRunMode(unfinished, existing, options.mode);
+	const startedAt = unfinished ? existing.startedAt : (/* @__PURE__ */ new Date()).toISOString();
+	let pid = unfinished ? existing.nextPid : 0;
+	let lastPid = unfinished ? existing.lastPid : 0;
+	let persistedNextPid = pid;
+	let total = loadFavSet().size;
+	let page = pageIndexFromPid(pid);
+	let pages = pagesFromLastPid(lastPid);
+	let sawNonEmptyPage = unfinished && existing.nextPid > 0;
+	const writeProgress = (fields) => {
+		const nextPid = fields.nextPid ?? persistedNextPid;
+		persistedNextPid = nextPid;
+		if (fields.lastPid !== void 0) lastPid = fields.lastPid;
+		const payload = {
+			nextPid,
+			lastPid,
+			startedAt,
+			userId,
+			tabId,
+			running: fields.running,
+			mode
+		};
+		if (fields.finishedAt !== void 0) payload.finishedAt = fields.finishedAt;
+		persistSyncProgress(payload);
+	};
+	try {
+		throwIfAborted(signal);
+		writeProgress({ running: true });
+		while (true) {
+			throwIfAborted(signal);
+			const fetched = await fetchFavoritesPageWithRetries(buildFavoritesPageUrl(userId, pid), signal);
+			if (!fetched.ok) {
+				writeProgress({ running: true });
+				return {
+					status: "error",
+					message: fetched.message
+				};
+			}
+			const { doc } = fetched;
+			const cardCount = doc.querySelectorAll(THUMB_SELECTOR$1).length;
+			page = pageIndexFromPid(pid);
+			if (cardCount === 0 && sawNonEmptyPage) {
+				pages = Math.max(pages, page);
+				const finishedAt = (/* @__PURE__ */ new Date()).toISOString();
+				writeProgress({
+					nextPid: pid + 50,
+					running: false,
+					finishedAt
+				});
+				onProgress({
+					page,
+					pages,
+					total
+				});
+				log.info("favorites sync: completed on empty trailing page", {
+					total,
+					pages,
+					pid,
+					mode
+				});
+				return {
+					status: "completed",
+					total,
+					pages
+				};
+			}
+			const resolvedLastPid = resolveLastPid(doc, pid);
+			if (resolvedLastPid === null) {
+				log.warn("favorites sync: unexpected page", {
+					pid,
+					cardCount
+				});
+				writeProgress({ running: true });
+				return {
+					status: "error",
+					message: FAVORITES_SYNC_ERROR_UNEXPECTED_PAGE
+				};
+			}
+			lastPid = resolvedLastPid;
+			pages = pagesFromLastPid(lastPid);
+			if (cardCount === 0) {
+				log.warn("favorites sync: unexpected empty page", {
+					pid,
+					lastPid
+				});
+				writeProgress({ running: true });
+				return {
+					status: "error",
+					message: FAVORITES_SYNC_ERROR_UNEXPECTED_PAGE
+				};
+			}
+			sawNonEmptyPage = true;
+			const ids = collectFavoriteIdsFromDocument(doc);
+			const allKnown = pageIdsAllInLocalSet(ids, loadFavSet());
+			addFavs(ids);
+			total = loadFavSet().size;
+			const nextPid = pid + 50;
+			writeProgress({
+				nextPid,
+				lastPid,
+				running: true
+			});
+			onProgress({
+				page,
+				pages,
+				total
+			});
+			if (mode === FAVORITES_SYNC_MODE_INCREMENTAL && allKnown) {
+				const finishedAt = (/* @__PURE__ */ new Date()).toISOString();
+				writeProgress({
+					nextPid,
+					lastPid,
+					running: false,
+					finishedAt
+				});
+				log.info("favorites sync: incremental early stop", {
+					total,
+					pages,
+					page,
+					pid
+				});
+				return {
+					status: "completed",
+					total,
+					pages
+				};
+			}
+			if (pid >= lastPid) {
+				const finishedAt = (/* @__PURE__ */ new Date()).toISOString();
+				writeProgress({
+					nextPid,
+					lastPid,
+					running: false,
+					finishedAt
+				});
+				log.info("favorites sync: completed", {
+					total,
+					pages,
+					mode
+				});
+				return {
+					status: "completed",
+					total,
+					pages
+				};
+			}
+			throwIfAborted(signal);
+			await delay$1(FAVORITES_SYNC_PAGE_PAUSE_MS, signal);
+			throwIfAborted(signal);
+			pid = nextPid;
+			page = pageIndexFromPid(pid);
+		}
+	} catch (error) {
+		if (isAbortError$1(error)) {
+			writeProgress({ running: false });
+			log.info("favorites sync: aborted", {
+				pid,
+				total,
+				mode
+			});
+			return createAbortResult(total, page, pages);
+		}
+		log.error("favorites sync: unexpected failure", error);
+		writeProgress({ running: true });
+		return {
+			status: "error",
+			message: error instanceof Error ? error.message : "unexpected error"
+		};
+	}
 }
 var FEATURE_ID$9 = "favorites-bulk";
 var FEATURE_LABEL$9 = "Bulk remove favorites";
@@ -8808,28 +9386,31 @@ function FavoritesBulkBar(props) {
 			children: TEXT_SELECT
 		})
 	});
-	if (phase.kind === "removing") return /* @__PURE__ */ a("div", {
-		className: BAR_CLASS,
-		children: [
-			/* @__PURE__ */ a("div", {
-				className: PROGRESS_WRAP_CLASS,
-				children: /* @__PURE__ */ a(ProgressBar, {
-					value: phase.total === 0 ? 0 : phase.done / phase.total,
-					label: progressLabel(phase.done, phase.total)
+	if (phase.kind === "removing") {
+		const ratio = phase.total === 0 ? 0 : phase.done / phase.total;
+		return /* @__PURE__ */ a("div", {
+			className: BAR_CLASS,
+			children: [
+				/* @__PURE__ */ a("div", {
+					className: PROGRESS_WRAP_CLASS,
+					children: /* @__PURE__ */ a(ProgressBar, {
+						value: ratio,
+						label: progressLabel(phase.done, phase.total)
+					})
+				}),
+				/* @__PURE__ */ a("span", {
+					className: STATUS_CLASS,
+					children: progressLabel(phase.done, phase.total)
+				}),
+				/* @__PURE__ */ a(Button, {
+					variant: "secondary",
+					size: "s",
+					onClick: stopRemoval,
+					children: TEXT_STOP
 				})
-			}),
-			/* @__PURE__ */ a("span", {
-				className: STATUS_CLASS,
-				children: progressLabel(phase.done, phase.total)
-			}),
-			/* @__PURE__ */ a(Button, {
-				variant: "secondary",
-				size: "s",
-				onClick: stopRemoval,
-				children: TEXT_STOP
-			})
-		]
-	});
+			]
+		});
+	}
 	if (phase.kind === "error" || phase.kind === "stopped") return /* @__PURE__ */ a("div", {
 		className: BAR_CLASS,
 		children: [/* @__PURE__ */ a("span", {
@@ -8933,12 +9514,41 @@ var BASE_GRID_CSS = `
   anchor-name: ${THUMB_ANCHOR_NAME};
 }
 `;
+/** Grid thumbnail CDN host (rule34.xxx). */
+var THUMB_IMAGE_HOST = "wimg.rule34.xxx";
 /**
 * Video CDN origin. Path after origin starts with `//images/` (verified double
 * slash on ws-cdn-video.rule34.xxx).
 */
 var VIDEO_CDN_ORIGIN = "https://ws-cdn-video.rule34.xxx";
 var THUMB_PATH_PATTERN = /^\/thumbnails\/([^/]+)\/thumbnail_([^/]+)\.jpg$/i;
+var HTTPS_PROTOCOL = "https:";
+var THUMB_DIRECTORY = "thumbnails";
+var THUMB_FILE_PREFIX = "thumbnail_";
+var THUMB_FILE_EXT = "jpg";
+var MIN_POST_ID = 0;
+var VIDEO_CDN_HOST = new URL(VIDEO_CDN_ORIGIN).hostname;
+/** `/samples/<dir>/sample_<hash>.<ext>` with repeated slashes allowed. */
+var SAMPLE_MEDIA_PATTERN = /^\/+samples\/+([^/]+)\/+sample_([^/]+)\.[^/.]+$/i;
+/** `/images/<dir>/<hash>.<ext>` with repeated slashes allowed. */
+var IMAGE_MEDIA_PATTERN = /^\/+images\/+([^/]+)\/+([^/]+)\.[^/.]+$/i;
+function normalizeMediaPostId(postId) {
+	if (!Number.isInteger(postId) || postId < MIN_POST_ID) return null;
+	return postId;
+}
+function readMediaDirAndHash(pathname) {
+	const sample = SAMPLE_MEDIA_PATTERN.exec(pathname);
+	const image = sample === null ? IMAGE_MEDIA_PATTERN.exec(pathname) : null;
+	const match = sample ?? image;
+	if (match === null) return null;
+	const dir = match[1];
+	const hash = match[2];
+	if (dir === void 0 || hash === void 0 || dir.length === 0 || hash.length === 0) return null;
+	return {
+		dir,
+		hash
+	};
+}
 function ensureThumbAnchor(thumb) {
 	thumb.classList.add(THUMB_CLASS);
 }
@@ -8962,6 +9572,29 @@ function buildVideoUrlFromThumbUrl(thumbUrl) {
 	const hash = match[2];
 	if (dir === void 0 || hash === void 0 || dir.length === 0 || hash.length === 0) return null;
 	return `${VIDEO_CDN_ORIGIN}//images/${dir}/${hash}.mp4${parsed.search}`;
+}
+/**
+* Thumb URL for a sample or full-media CDN URL.
+* Sample: `https://wimg.rule34.xxx//samples/<dir>/sample_<hash>.<ext>?<id>`
+* Image/video: `https://ws-cdn-video.rule34.xxx//images/<dir>/<hash>.<ext>?<id>`
+* Result: `https://wimg.rule34.xxx/thumbnails/<dir>/thumbnail_<hash>.jpg?<postId>`
+* Repeated slashes in the path are accepted. Unparseable input → null.
+* The query is `postId` (the caller’s post), not whatever query the media URL had.
+*/
+function deriveThumbUrlFromMedia(mediaUrl, postId) {
+	const normalizedId = normalizeMediaPostId(postId);
+	if (normalizedId === null) return null;
+	let parsed;
+	try {
+		parsed = new URL(mediaUrl);
+	} catch {
+		return null;
+	}
+	if (parsed.protocol !== HTTPS_PROTOCOL) return null;
+	if (parsed.hostname !== "wimg.rule34.xxx" && parsed.hostname !== VIDEO_CDN_HOST) return null;
+	const media = readMediaDirAndHash(parsed.pathname);
+	if (media === null) return null;
+	return `https://${THUMB_IMAGE_HOST}/${THUMB_DIRECTORY}/${media.dir}/${THUMB_FILE_PREFIX}${media.hash}.${THUMB_FILE_EXT}?${String(normalizedId)}`;
 }
 /** Kit IconButton root class — prefer for preview badges. */
 var KIT_ICON_BUTTON_CLASS = "rdw-icon-btn";
@@ -10150,12 +10783,28 @@ var PARTS_CLASS = "rdw-playlist-bar-parts";
 var PART_LABEL_CLASS = "rdw-playlist-bar-part-label";
 var PART_LINK_CLASS = "rdw-playlist-bar-part-link";
 var CAPTION_CLASS = "rdw-playlist-bar-caption";
+var DYNAMIC_ROOT_ID = "rdw-dynamic-collection-bar";
+var ACTIONS_CLASS = "rdw-dynamic-collection-actions";
 var TEXT_POSTS_SUFFIX = " posts";
 var TEXT_PART_PREFIX = "Part ";
 var TEXT_PART_OF = " of ";
 var TEXT_CAPTION = "Posts are ordered by the site (newest first).";
 var TEXT_PREV = "Previous";
 var TEXT_NEXT = "Next";
+var TEXT_SHUFFLE = "Shuffle";
+var TEXT_ORIGINAL_ORDER = "Original order";
+var TEXT_EDIT_QUERY = "Edit query";
+var TEXT_QUERY_LABEL = "Query";
+var DIALOG_NONE = "none";
+var DIALOG_EDIT_QUERY = "edit-query";
+var DIALOG_RENAME = "rename";
+var DIALOG_DELETE = "delete";
+var DIALOG_VARIANT_FIELDS = "fields";
+var DIALOG_VARIANT_CONFIRM = "confirm";
+var DIALOG_TONE_DANGER = "danger";
+var BAR_BUTTON_VARIANT = "secondary";
+var BAR_BUTTON_SIZE = "s";
+var ICON_GLYPH_PX = 16;
 var WARN_MISSING_HOST = "playlist-bar: image-list not found; playlist bar not mounted";
 var BODY_CLASS$2 = featureBodyClass(FEATURE_ID$6);
 var FEATURE_CSS$6 = `
@@ -10212,6 +10861,13 @@ body.${BODY_CLASS$2} .${CAPTION_CLASS} {
   font-size: 0.875rem;
   line-height: 1.35;
   opacity: 0.8;
+}
+body.${BODY_CLASS$2} .${ACTIONS_CLASS} {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 100%;
 }
 `.trim();
 function readTagsParam(search) {
@@ -10330,30 +10986,194 @@ function createBar(match) {
 	bar.append(caption);
 	return bar;
 }
-function mountPlaylistBar(ctx) {
-	removeExistingBar(document);
-	const queryIds = parsePlaylistQuery(readTagsParam(ctx.search));
-	if (queryIds === null) return;
-	const match = findPlaylistMatch(queryIds);
-	if (match === null) return;
+function placeBar(bar) {
 	const imageList = findImageList(document);
-	const bar = createBar(match);
 	if (imageList !== null) {
 		const host = imageList.parentElement;
 		if (host === null) {
 			log.warn(WARN_MISSING_HOST);
-			return;
+			return false;
 		}
 		insertBar(host, bar, imageList);
-		return;
+		return true;
 	}
 	const fallback = findFallbackHost(document);
 	if (fallback === null) {
 		log.warn(WARN_MISSING_HOST);
-		return;
+		return false;
 	}
 	log.warn(WARN_MISSING_HOST);
 	insertBar(fallback, bar, null);
+	return true;
+}
+function storedDynamicQuery(collection) {
+	if (collection.query !== void 0) return collection.query;
+	return serialize(collection.tags);
+}
+function findDynamicCollection(tagsParam) {
+	for (const collection of load().collections) {
+		if (isPlaylist(collection)) continue;
+		const stored = storedDynamicQuery(collection);
+		if (withoutSortRandom(stored).length === 0) continue;
+		if (queriesMatchIgnoringSortRandom(tagsParam, stored)) return collection;
+	}
+	return null;
+}
+function removeDynamicBar(root) {
+	const existing = root instanceof Document ? root.getElementById(DYNAMIC_ROOT_ID) : root.querySelector(`#${DYNAMIC_ROOT_ID}`);
+	if (!(existing instanceof HTMLElement)) return;
+	Q$1(null, existing);
+	existing.remove();
+}
+function deleteConfirmMessage(collectionName) {
+	return `${UI_TEXT.confirmDelete} (${collectionName})`;
+}
+function navigateToQuery(query) {
+	window.location.assign(buildSearchUrl(parseTags(query)));
+}
+function DynamicCollectionBar(props) {
+	const [name, setName] = d(props.initialName);
+	const [query, setQuery] = d(props.storedQuery);
+	const [dialog, setDialog] = d(DIALOG_NONE);
+	const [fields, setFields] = d({
+		name: props.initialName,
+		query: props.storedQuery
+	});
+	const shuffled = queryHasSortRandom(props.pageQuery);
+	function closeDialog() {
+		setDialog(DIALOG_NONE);
+	}
+	function openFields(kind) {
+		setFields({
+			name,
+			query
+		});
+		setDialog(kind);
+	}
+	function onShuffle() {
+		if (shuffled) {
+			window.location.reload();
+			return;
+		}
+		navigateToQuery(withSortRandom(props.pageQuery));
+	}
+	function onOriginalOrder() {
+		navigateToQuery(withoutSortRandom(props.pageQuery));
+	}
+	function onEditSubmit() {
+		if (fields.query.trim().length === 0) return;
+		const updated = updateDynamicQuery(props.collectionId, fields.query);
+		if (updated === null) return;
+		const trimmedName = fields.name.trim();
+		if (trimmedName.length > 0 && trimmedName !== updated.name) renameCollection(props.collectionId, trimmedName);
+		const nextQuery = updated.query ?? serialize(updated.tags);
+		setQuery(nextQuery);
+		navigateToQuery(nextQuery);
+	}
+	function onRenameSubmit() {
+		const trimmedName = fields.name.trim();
+		if (trimmedName.length === 0) return;
+		const renamed = renameCollection(props.collectionId, trimmedName);
+		if (renamed === null) return;
+		setName(renamed.name);
+		const nextQuery = fields.query.trim();
+		if (nextQuery.length > 0 && nextQuery !== query.trim()) {
+			const updated = updateDynamicQuery(props.collectionId, nextQuery);
+			if (updated === null) return;
+			const savedQuery = updated.query ?? serialize(updated.tags);
+			setQuery(savedQuery);
+			navigateToQuery(savedQuery);
+			return;
+		}
+		closeDialog();
+	}
+	function onConfirmDelete() {
+		if (!deleteCollection(props.collectionId)) {
+			closeDialog();
+			return;
+		}
+		const root = document.getElementById(DYNAMIC_ROOT_ID);
+		if (!(root instanceof HTMLElement)) return;
+		root.remove();
+		Q$1(null, root);
+	}
+	const fieldsOpen = dialog === DIALOG_EDIT_QUERY || dialog === DIALOG_RENAME;
+	const fieldsTitle = dialog === DIALOG_RENAME ? UI_TEXT.rename : TEXT_EDIT_QUERY;
+	const onFieldsSubmit = dialog === DIALOG_RENAME ? onRenameSubmit : onEditSubmit;
+	return k$1($$1, null, k$1("div", { className: TITLE_CLASS }, k$1("span", { className: NAME_CLASS }, name)), k$1("div", { className: ACTIONS_CLASS }, k$1(Button, {
+		variant: BAR_BUTTON_VARIANT,
+		size: BAR_BUTTON_SIZE,
+		onClick: onShuffle
+	}, k$1(IconShuffle, { size: ICON_GLYPH_PX }), TEXT_SHUFFLE), shuffled ? k$1(Button, {
+		variant: BAR_BUTTON_VARIANT,
+		size: BAR_BUTTON_SIZE,
+		onClick: onOriginalOrder
+	}, k$1(IconOriginalOrder, { size: ICON_GLYPH_PX }), TEXT_ORIGINAL_ORDER) : null, k$1(Button, {
+		variant: BAR_BUTTON_VARIANT,
+		size: BAR_BUTTON_SIZE,
+		onClick: () => {
+			openFields(DIALOG_EDIT_QUERY);
+		}
+	}, k$1(IconPencil, { size: ICON_GLYPH_PX }), TEXT_EDIT_QUERY), k$1(Button, {
+		variant: BAR_BUTTON_VARIANT,
+		size: BAR_BUTTON_SIZE,
+		onClick: () => {
+			openFields(DIALOG_RENAME);
+		}
+	}, UI_TEXT.rename), k$1(Button, {
+		variant: BAR_BUTTON_VARIANT,
+		size: BAR_BUTTON_SIZE,
+		onClick: () => {
+			setDialog(DIALOG_DELETE);
+		}
+	}, k$1(IconTrash, { size: ICON_GLYPH_PX }), UI_TEXT.delete)), fieldsOpen ? k$1(Dialog, {
+		variant: DIALOG_VARIANT_FIELDS,
+		open: true,
+		title: fieldsTitle,
+		fields,
+		onFieldsChange: setFields,
+		onSubmit: onFieldsSubmit,
+		onClose: closeDialog,
+		submitLabel: UI_TEXT.save,
+		cancelLabel: UI_TEXT.cancel,
+		nameLabel: UI_TEXT.nameLabel,
+		queryLabel: TEXT_QUERY_LABEL
+	}) : null, dialog === DIALOG_DELETE ? k$1(Dialog, {
+		variant: DIALOG_VARIANT_CONFIRM,
+		open: true,
+		title: UI_TEXT.delete,
+		message: deleteConfirmMessage(name),
+		confirmLabel: UI_TEXT.confirm,
+		cancelLabel: UI_TEXT.cancel,
+		confirmTone: DIALOG_TONE_DANGER,
+		onConfirm: onConfirmDelete,
+		onClose: closeDialog
+	}) : null);
+}
+function mountDynamicBar(tagsParam) {
+	const collection = findDynamicCollection(tagsParam);
+	if (collection === null) return;
+	const bar = document.createElement("div");
+	bar.id = DYNAMIC_ROOT_ID;
+	bar.className = ROOT_CLASS$1;
+	if (!placeBar(bar)) return;
+	Q$1(k$1(DynamicCollectionBar, {
+		collectionId: collection.id,
+		initialName: collection.name,
+		storedQuery: storedDynamicQuery(collection),
+		pageQuery: tagsParam
+	}), bar);
+}
+function mountPlaylistBar(ctx) {
+	removeExistingBar(document);
+	removeDynamicBar(document);
+	const tagsParam = readTagsParam(ctx.search);
+	const queryIds = parsePlaylistQuery(tagsParam);
+	if (queryIds !== null) {
+		const match = findPlaylistMatch(queryIds);
+		if (match !== null) placeBar(createBar(match));
+	}
+	mountDynamicBar(tagsParam);
 }
 var playlistBarFeature = {
 	id: FEATURE_ID$6,
@@ -10373,7 +11193,7 @@ var CLASS_MENU_POPUP = "rdw-playlist-menu--popup";
 var CLASS_LIST = "rdw-playlist-menu-list";
 var CLASS_ITEM$2 = "rdw-playlist-menu-item";
 var CLASS_CHECK$1 = "rdw-playlist-menu-check";
-var CLASS_NAME$1 = "rdw-playlist-menu-name";
+var CLASS_NAME$2 = "rdw-playlist-menu-name";
 var CLASS_NEW$1 = "rdw-playlist-menu-new";
 var CLASS_NEW_FORM$1 = "rdw-playlist-menu-new-form";
 var CLASS_NEW_INPUT = "rdw-playlist-menu-new-input";
@@ -10501,7 +11321,7 @@ ${BODY_SELECTOR$3} .${CLASS_CHECK$1} {
   flex: 0 0 1rem;
   font-weight: 700;
 }
-${BODY_SELECTOR$3} .${CLASS_NAME$1} {
+${BODY_SELECTOR$3} .${CLASS_NAME$2} {
   flex: 1 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -10543,6 +11363,7 @@ ${BODY_SELECTOR$3} .${CLASS_NEW_INPUT} {
   font: inherit;
 }
 `;
+var NO_THUMB_URL = () => null;
 var unsubscribeThumbsAdded$1;
 var openPopup = null;
 var escapeBound = false;
@@ -10563,8 +11384,56 @@ function applyAddButtonState(button, postId) {
 	button.setAttribute("aria-pressed", inPlaylist ? "true" : "false");
 	button.setAttribute("aria-label", `${LABEL_ADD} ${String(postId)}`);
 }
+function postAnchorSelector(postId) {
+	return `#p${postId}`;
+}
+function readImageAddress(img) {
+	const current = img.currentSrc.trim();
+	if (current.length > 0) return current;
+	const attribute = img.getAttribute("src");
+	if (attribute === null) return null;
+	const trimmed = attribute.trim();
+	if (trimmed.length === 0) return null;
+	return trimmed;
+}
+/**
+* Thumb URL from this post's `img.preview`.
+* A preview outside `a#p{id}` wins. The copy nested in the link is used only
+* when that is the only preview (rule34 puts `img.preview` inside the anchor).
+*/
+function readPreviewThumbUrl(thumb, postId) {
+	const anchor = thumb.querySelector(postAnchorSelector(postId));
+	const images = thumb.querySelectorAll(SITE_SELECTORS.previewImage);
+	let nestedImage = null;
+	for (const node of images) {
+		if (!(node instanceof HTMLImageElement)) continue;
+		if (anchor instanceof Element && anchor.contains(node)) {
+			if (nestedImage === null) nestedImage = node;
+			continue;
+		}
+		const url = readImageAddress(node);
+		if (url !== null) return url;
+	}
+	if (nestedImage === null) return null;
+	return readImageAddress(nestedImage);
+}
+function readThumbUrlFromTrigger(button) {
+	const postId = button.getAttribute(ATTR_POST_ID);
+	if (postId === null || postId.length === 0) return null;
+	const thumb = button.closest(SITE_SELECTORS.thumb);
+	if (!(thumb instanceof HTMLElement)) return null;
+	return readPreviewThumbUrl(thumb, postId);
+}
+function addPostWithThumb$1(collectionId, postId, readThumbUrl) {
+	const thumbUrl = readThumbUrl();
+	if (thumbUrl !== null) {
+		addPostToCollection(collectionId, postId, thumbUrl);
+		return;
+	}
+	addPostToCollection(collectionId, postId);
+}
 function findThumbLink$1(thumb, postId) {
-	const byId = thumb.querySelector(`#p${postId}`);
+	const byId = thumb.querySelector(postAnchorSelector(postId));
 	if (byId instanceof HTMLAnchorElement) return byId;
 	const byHref = thumb.querySelector(SITE_SELECTORS.thumbLink);
 	return byHref instanceof HTMLAnchorElement ? byHref : null;
@@ -10636,7 +11505,7 @@ function syncAddButtonsForPost(postId) {
 		applyAddButtonState(node, postId);
 	}
 }
-function fillPlaylistList(list, postId) {
+function fillPlaylistList(list, postId, readThumbUrl) {
 	list.replaceChildren();
 	const playlists = listPlaylists();
 	const memberIds = new Set(playlistsContaining(postId).map((item) => item.id));
@@ -10653,21 +11522,21 @@ function fillPlaylistList(list, postId) {
 		check.setAttribute("aria-hidden", "true");
 		check.textContent = checked ? TEXT_CHECK_MARK : "";
 		const name = document.createElement("span");
-		name.className = CLASS_NAME$1;
+		name.className = CLASS_NAME$2;
 		name.textContent = playlist.name;
 		item.append(check, name);
 		item.addEventListener("click", (event) => {
 			event.preventDefault();
 			event.stopPropagation();
 			if (memberIds.has(playlist.id)) removePostFromPlaylist(playlist.id, postId);
-			else addPostToPlaylist(playlist.id, postId);
-			fillPlaylistList(list, postId);
+			else addPostWithThumb$1(playlist.id, postId, readThumbUrl);
+			fillPlaylistList(list, postId, readThumbUrl);
 			syncAddButtonsForPost(postId);
 		});
 		list.append(item);
 	}
 }
-function showNewPlaylistForm(host, list, postId, onCreated) {
+function showNewPlaylistForm(host, list, postId, readThumbUrl, onCreated) {
 	host.replaceChildren();
 	const form = document.createElement("div");
 	form.className = CLASS_NEW_FORM$1;
@@ -10683,8 +11552,8 @@ function showNewPlaylistForm(host, list, postId, onCreated) {
 	const commit = () => {
 		const name = input.value.trim();
 		if (name.length === 0) return;
-		addPostToPlaylist(createPlaylist(name).id, postId);
-		fillPlaylistList(list, postId);
+		addPostWithThumb$1(createPlaylist(name).id, postId, readThumbUrl);
+		fillPlaylistList(list, postId, readThumbUrl);
 		syncAddButtonsForPost(postId);
 		onCreated?.();
 	};
@@ -10703,7 +11572,7 @@ function showNewPlaylistForm(host, list, postId, onCreated) {
 	host.append(form);
 	input.focus();
 }
-function mountNewPlaylistControl(host, list, postId, onCreated) {
+function mountNewPlaylistControl(host, list, postId, readThumbUrl, onCreated) {
 	host.replaceChildren();
 	const button = document.createElement("button");
 	button.type = "button";
@@ -10712,7 +11581,7 @@ function mountNewPlaylistControl(host, list, postId, onCreated) {
 	button.addEventListener("click", (event) => {
 		event.preventDefault();
 		event.stopPropagation();
-		showNewPlaylistForm(host, list, postId, onCreated);
+		showNewPlaylistForm(host, list, postId, readThumbUrl, onCreated);
 	});
 	host.append(button);
 }
@@ -10721,6 +11590,7 @@ function mountNewPlaylistControl(host, list, postId, onCreated) {
 * Callers own placement; list page uses a single floating instance.
 */
 function createPlaylistMenu(postId, options) {
+	const readThumbUrl = options?.readThumbUrl ?? NO_THUMB_URL;
 	const root = document.createElement("div");
 	root.className = CLASS_MENU;
 	root.setAttribute("role", "menu");
@@ -10728,9 +11598,9 @@ function createPlaylistMenu(postId, options) {
 	const list = document.createElement("div");
 	list.className = CLASS_LIST;
 	list.setAttribute("role", "group");
-	fillPlaylistList(list, postId);
+	fillPlaylistList(list, postId, readThumbUrl);
 	const newHost = document.createElement("div");
-	mountNewPlaylistControl(newHost, list, postId, options?.onCreated);
+	mountNewPlaylistControl(newHost, list, postId, readThumbUrl, options?.onCreated);
 	root.append(list, newHost);
 	return root;
 }
@@ -10740,9 +11610,12 @@ function openMenuForButton(button, postId) {
 		return;
 	}
 	closeOpenMenu();
-	const menu = createPlaylistMenu(postId, { onCreated: () => {
-		closeOpenMenu();
-	} });
+	const menu = createPlaylistMenu(postId, {
+		onCreated: () => {
+			closeOpenMenu();
+		},
+		readThumbUrl: () => readThumbUrlFromTrigger(button)
+	});
 	menu.classList.add(CLASS_MENU_POPUP);
 	positionMenuNear(menu, button);
 	button.setAttribute("aria-expanded", "true");
@@ -10803,195 +11676,201 @@ var playlistMenuFeature = {
 	css: FEATURE_CSS$5,
 	mount: mountPlaylistMenu
 };
-var TEXT_COLLECTIONS = "Collections";
-var TEXT_FILTER_PLACEHOLDER = "Filter collections…";
-var TEXT_NEW = "New custom collection";
-var TEXT_CREATE = "Create";
-var TEXT_NEW_NAME_LABEL = "New collection name";
-var ARIA_COLLECTIONS = "Custom collections";
-var LABEL_TOGGLE_PREFIX = "Toggle collection";
-var KEY_ENTER$1 = "Enter";
-var CLASS_WRAP$1 = "rdw-post-panel-collections";
-var CLASS_TRIGGER = "rdw-post-panel-collections-btn";
-var CLASS_ITEM$1 = "rdw-post-panel-collection-item";
-var CLASS_CHECK = "rdw-post-panel-collection-check";
-var CLASS_NAME = "rdw-post-panel-collection-name";
-var CLASS_NEW = "rdw-post-panel-collection-new";
-var CLASS_NEW_FORM = "rdw-post-panel-collection-new-form";
-function memberIdSet(postId) {
-	return new Set(playlistsContaining(postId).map((item) => item.id));
+var CLASS_STRIP = "rdw-post-panel-collection-queue";
+var CLASS_NAME$1 = "rdw-post-panel-collection-queue-name";
+var CLASS_POSITION = "rdw-post-panel-collection-queue-position";
+var CLASS_NAV = "rdw-post-panel-collection-queue-nav";
+var CLASS_FOCUSABLE = "rdw-kit-focusable";
+var GLYPH_PREVIOUS = "‹";
+var GLYPH_NEXT = "›";
+var LABEL_PREVIOUS = "Previous post in collection";
+var LABEL_NEXT = "Next post in collection";
+var ARIA_QUEUE = "Collection queue";
+var POSITION_SEPARATOR = " / ";
+var INDEX_NOT_FOUND = -1;
+var POSITION_BASE = 1;
+var EVENT_HASHCHANGE = "hashchange";
+var QUEUE_GAP_PX = 8;
+var NAME_FONT_WEIGHT = 600;
+var NAV_DISABLED_OPACITY = .55;
+var POST_VIEW_QUERY = `${SEARCH_PARAM_PAGE}=${SEARCH_PAGE}&s=${SEARCH_SECTION_VIEW}`;
+var QUEUE_CSS = `
+${KIT_FOCUS_CSS}
+.${CLASS_STRIP} {
+  display: flex;
+  align-items: center;
+  gap: ${String(QUEUE_GAP_PX)}px;
+  min-width: 0;
 }
-function filterPlaylists(playlists, query) {
-	const trimmed = query.trim().toLowerCase();
-	if (trimmed.length === 0) return [...playlists];
-	return playlists.filter((item) => item.name.toLowerCase().includes(trimmed));
+.${CLASS_NAME$1} {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--rdw-accent);
+  font-weight: ${String(NAME_FONT_WEIGHT)};
+  text-decoration: none;
 }
-function CollectionsMenu(props) {
-	const [open, setOpen] = d(false);
-	const [filter, setFilter] = d("");
-	const [creating, setCreating] = d(false);
-	const [newName, setNewName] = d("");
-	const [revision, setRevision] = d(0);
-	const triggerRef = T(null);
-	const playlists = w$1(() => {
-		return listPlaylists();
-	}, [revision]);
-	const members = w$1(() => {
-		return memberIdSet(props.postId);
-	}, [props.postId, revision]);
-	const visible = w$1(() => filterPlaylists(playlists, filter), [playlists, filter]);
-	const bump = b(() => {
-		setRevision((value) => value + 1);
-	}, []);
-	const close = b(() => {
-		setOpen(false);
-		setCreating(false);
-		setNewName("");
-		setFilter("");
-	}, []);
-	const bindTrigger = b((node) => {
-		const button = node?.querySelector("button");
-		triggerRef.current = button instanceof HTMLButtonElement ? button : null;
-	}, []);
-	const toggleMembership = b((playlistId) => {
-		if (members.has(playlistId)) removePostFromPlaylist(playlistId, props.postId);
-		else addPostToPlaylist(playlistId, props.postId);
-		bump();
-	}, [
-		bump,
-		members,
-		props.postId
-	]);
-	const commitNew = b(() => {
-		const name = newName.trim();
-		if (name.length === 0) return;
-		addPostToPlaylist(createPlaylist(name).id, props.postId);
-		bump();
-		setCreating(false);
-		setNewName("");
-	}, [
-		bump,
-		newName,
-		props.postId
-	]);
-	return /* @__PURE__ */ a("div", {
-		className: CLASS_WRAP$1,
-		ref: bindTrigger,
-		children: [/* @__PURE__ */ a(Button, {
-			variant: "secondary",
-			size: "m",
-			className: CLASS_TRIGGER,
-			"aria-label": TEXT_COLLECTIONS,
-			onClick: () => {
-				setOpen((value) => !value);
-			},
-			children: [/* @__PURE__ */ a(IconPlus, { size: 14 }), TEXT_COLLECTIONS]
-		}), /* @__PURE__ */ a(Popover, {
-			open,
-			onClose: close,
-			anchorRef: triggerRef,
-			widthPx: 260,
-			"aria-label": ARIA_COLLECTIONS,
-			children: [
-				/* @__PURE__ */ a(TextField, {
-					value: filter,
-					onChange: setFilter,
-					placeholder: TEXT_FILTER_PLACEHOLDER,
-					"aria-label": TEXT_FILTER_PLACEHOLDER
-				}),
-				visible.map((playlist) => {
-					const checked = members.has(playlist.id);
-					return /* @__PURE__ */ a("button", {
-						type: "button",
-						className: CLASS_ITEM$1,
-						role: "menuitemcheckbox",
-						"aria-checked": checked,
-						"aria-label": `${LABEL_TOGGLE_PREFIX} ${playlist.name}`,
-						onClick: () => {
-							toggleMembership(playlist.id);
-						},
-						children: [/* @__PURE__ */ a("span", {
-							className: CLASS_CHECK,
-							"aria-hidden": "true",
-							children: checked ? /* @__PURE__ */ a(IconCheck, { size: 14 }) : null
-						}), /* @__PURE__ */ a("span", {
-							className: CLASS_NAME,
-							children: playlist.name
-						})]
-					}, playlist.id);
-				}),
-				creating ? /* @__PURE__ */ a("div", {
-					className: CLASS_NEW_FORM,
-					onKeyDown: (event) => {
-						if (event.key === KEY_ENTER$1) {
-							event.preventDefault();
-							commitNew();
-						}
-					},
-					children: [/* @__PURE__ */ a(TextField, {
-						value: newName,
-						onChange: setNewName,
-						label: TEXT_NEW_NAME_LABEL,
-						"aria-label": TEXT_NEW_NAME_LABEL
-					}), /* @__PURE__ */ a(Button, {
-						variant: "primary",
-						size: "s",
-						onClick: commitNew,
-						children: TEXT_CREATE
-					})]
-				}) : /* @__PURE__ */ a(Button, {
-					variant: "ghost",
-					size: "s",
-					className: CLASS_NEW,
-					onClick: () => {
-						setCreating(true);
-					},
-					children: [/* @__PURE__ */ a(IconPlus, { size: 14 }), TEXT_NEW]
-				})
-			]
-		})]
+.${CLASS_POSITION} {
+  flex: 0 0 auto;
+  color: var(--rdw-muted);
+  font-variant-numeric: tabular-nums;
+}
+a.${CLASS_NAV},
+button.${CLASS_NAV} {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  width: ${String(28)}px;
+  height: ${String(28)}px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--rdw-border);
+  border-radius: var(--rdw-radius-m);
+  background: var(--rdw-surface);
+  color: var(--rdw-text);
+  font: inherit;
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+}
+button.${CLASS_NAV}:disabled {
+  opacity: ${String(NAV_DISABLED_OPACITY)};
+  cursor: not-allowed;
+}
+`;
+function readCollectionQueueId(hash) {
+	if (!hash.startsWith("#rdw-c=")) return null;
+	const id = hash.slice(7).trim();
+	if (id.length === 0) return null;
+	return id;
+}
+function readLocationHash() {
+	return window.location.hash;
+}
+function collectionName(collectionId) {
+	for (const playlist of listPlaylists()) if (playlist.id === collectionId) return playlist.name;
+	return null;
+}
+function indexOfPost(order, postId) {
+	for (let index = 0; index < order.length; index += 1) if (order[index] === postId) return index;
+	return INDEX_NOT_FOUND;
+}
+function neighborPostHref(postId, queueHash) {
+	return `${SEARCH_PATH}?${POST_VIEW_QUERY}&id=${String(postId)}${queueHash}`;
+}
+function hrefAt(order, index, queueHash) {
+	if (index < 0 || index >= order.length) return null;
+	const postId = order[index];
+	if (postId === void 0) return null;
+	return neighborPostHref(postId, queueHash);
+}
+function readQueue(postId, hash) {
+	if (postId === null) return null;
+	const collectionId = readCollectionQueueId(hash);
+	if (collectionId === null) return null;
+	const order = getCollectionOrder(collectionId);
+	if (order === null) return null;
+	const index = indexOfPost(order, postId);
+	if (index === INDEX_NOT_FOUND) return null;
+	const name = collectionName(collectionId);
+	if (name === null) return null;
+	const position = index + POSITION_BASE;
+	return {
+		name,
+		collectionHref: `${RDW_HASH_COLLECTIONS}/${collectionId}`,
+		positionLabel: `${String(position)}${POSITION_SEPARATOR}${String(order.length)}`,
+		previousHref: hrefAt(order, index - 1, hash),
+		nextHref: hrefAt(order, index + 1, hash)
+	};
+}
+function QueueStep(props) {
+	const className = `${CLASS_NAV} ${CLASS_FOCUSABLE}`;
+	if (props.href === null) return /* @__PURE__ */ a("button", {
+		type: "button",
+		className,
+		disabled: true,
+		"aria-label": props.label,
+		children: props.glyph
+	});
+	return /* @__PURE__ */ a("a", {
+		className,
+		href: props.href,
+		"aria-label": props.label,
+		children: props.glyph
 	});
 }
-var DISPLAY_EDIT = "Edit";
-var DISPLAY_RESIZE = "Resize image";
-var DISPLAY_REPORT = "Report to moderation";
-var DISPLAY_ADD_NOTE = "Add note";
-var CLASS_WRAP = "rdw-post-panel-post-actions";
-var CLASS_ITEM = "rdw-post-panel-post-action";
-var ICON_SIZE$1 = 14;
-function buttonLabel(text) {
-	if (text === "Edit") return DISPLAY_EDIT;
-	if (text === "Resize image") return DISPLAY_RESIZE;
-	if (text === "Report to moderation") return DISPLAY_REPORT;
-	return DISPLAY_ADD_NOTE;
+function CollectionQueue(props) {
+	const [hash, setHash] = d(readLocationHash);
+	A(() => {
+		const onHashChange = () => {
+			setHash(readLocationHash());
+		};
+		window.addEventListener(EVENT_HASHCHANGE, onHashChange);
+		return () => {
+			window.removeEventListener(EVENT_HASHCHANGE, onHashChange);
+		};
+	}, []);
+	const queue = readQueue(props.postId, hash);
+	if (queue === null) return null;
+	return /* @__PURE__ */ a("nav", {
+		className: CLASS_STRIP,
+		"aria-label": ARIA_QUEUE,
+		children: [
+			/* @__PURE__ */ a("style", { children: QUEUE_CSS }),
+			/* @__PURE__ */ a("a", {
+				className: `${CLASS_NAME$1} ${CLASS_FOCUSABLE}`,
+				href: queue.collectionHref,
+				children: queue.name
+			}),
+			/* @__PURE__ */ a("span", {
+				className: CLASS_POSITION,
+				children: queue.positionLabel
+			}),
+			/* @__PURE__ */ a(QueueStep, {
+				label: LABEL_PREVIOUS,
+				glyph: GLYPH_PREVIOUS,
+				href: queue.previousHref
+			}),
+			/* @__PURE__ */ a(QueueStep, {
+				label: LABEL_NEXT,
+				glyph: GLYPH_NEXT,
+				href: queue.nextHref
+			})
+		]
+	});
 }
-function actionIcon(text) {
-	if (text === "Edit") return /* @__PURE__ */ a(IconPencil, { size: ICON_SIZE$1 });
-	if (text === "Resize image") return /* @__PURE__ */ a(IconImage, { size: ICON_SIZE$1 });
-	if (text === "Report to moderation") return /* @__PURE__ */ a(IconFlag, { size: ICON_SIZE$1 });
-	return /* @__PURE__ */ a(IconNote, { size: ICON_SIZE$1 });
+/**
+* DOM-ready scheduling helpers. Favorites sync resume lives in deferred app start
+* so this module stays off the favs/storage import path.
+*/
+/**
+* Run `callback` once the document is interactive enough for body mounts.
+* At document-start, waits for DOMContentLoaded; if already past that, runs now.
+*/
+function whenDomReady(callback) {
+	if (document.readyState === "interactive" || document.readyState === "complete") {
+		callback();
+		return;
+	}
+	document.addEventListener("DOMContentLoaded", callback, { once: true });
 }
-/** Full-width open buttons that proxy native link-list clicks. No Popover. */
-function PostActionsList(props) {
-	if (props.links.length === 0) return null;
-	return /* @__PURE__ */ a("div", {
-		className: CLASS_WRAP,
-		children: props.links.map((link) => /* @__PURE__ */ a(Button, {
-			variant: "secondary",
-			size: "m",
-			className: CLASS_ITEM,
-			"aria-label": buttonLabel(link.text),
-			onClick: () => {
-				link.anchor.click();
-			},
-			children: [actionIcon(link.text), buttonLabel(link.text)]
-		}, link.text))
+/**
+* After first paint: rAF → zero-delay task → callback.
+* Use for feature mounts and heavy module work.
+*/
+function scheduleAfterFirstPaint(callback) {
+	requestAnimationFrame(() => {
+		setTimeout(callback, 0);
 	});
 }
 /** Read-only helpers for native post-page markup used by the side panel. */
 var LINK_LIST_SELECTOR = "div.link-list ul";
 var STATS_SELECTOR = "div#stats";
 var FLEXI_SELECTOR = "#fit-to-screen div.flexi, div#right-col div.flexi, div.flexi";
+var IMAGE_ID = "image";
 var HEADER_SELECTOR = "div#header";
 var POST_COMMENTS_ID = "post-comments";
 var COMMENT_LIST_ID = "comment-list";
@@ -11305,6 +12184,466 @@ function readCommentCount() {
 	}
 	return null;
 }
+/**
+* Post-page Fluid Player tweaks: persist volume/mute/rate, and CSS/JS size
+* modes (Fit height / Fit width / Original).
+*
+* Does not replace the Fluid wrapper or rename its classes — only the
+* wrapper size via explicit width/height (overrides Fluid's intrinsic px).
+*/
+var FEATURE_ID$4 = VIDEO_PLAYER_FEATURE_ID;
+var FEATURE_LABEL$4 = "Video player tweaks";
+var FEATURE_PAGES$4 = ["post"];
+var VIDEO_ELEMENT_ID = "gelcomVideoPlayer";
+var FLUID_WRAPPER_ID = "fluid_video_wrapper_gelcomVideoPlayer";
+var FLUID_WRAPPER_CLASS = "fluid_video_wrapper";
+var VOLUME_MIN = 0;
+var VOLUME_MAX = 1;
+var CHROME_GAP_PX = 12;
+var WARN_NO_VIDEO = "video-player: #gelcomVideoPlayer missing; tweaks not mounted";
+var BODY_CLASS$1 = featureBodyClass(FEATURE_ID$4);
+var BODY_SELECTOR$2 = `body.${BODY_CLASS$1}`;
+var WRAPPER_SELECTOR = `#${FLUID_WRAPPER_ID}.${FLUID_WRAPPER_CLASS}`;
+var SIZE_LABEL_FIT_HEIGHT = "Fit height";
+var SIZE_LABEL_FIT_WIDTH = "Fit width";
+var SIZE_LABEL_ORIGINAL = "Original";
+var SIZE_MODE_VALUES = [
+	VIDEO_SIZE_FIT_HEIGHT,
+	VIDEO_SIZE_FIT_WIDTH,
+	VIDEO_SIZE_ORIGINAL
+];
+/** Settings caption under the Video player tweaks switch. */
+var VIDEO_PLAYER_SETTING_CAPTION = "Fit height fills under the header (may upscale). Fit width uses the media column. Original is native pixels.";
+var FEATURE_CSS$4 = [
+	`${BODY_SELECTOR$2} ${WRAPPER_SELECTOR} {`,
+	`  box-sizing: border-box;`,
+	`}`
+].join("\n");
+/**
+* Pure size calculator for the three Video size modes.
+* Fit height may upscale; Fit width always uses full column width;
+* Original is videoWidth × videoHeight with no scaling.
+*/
+function computeVideoPlayerSize(input) {
+	const { mode, videoWidth, videoHeight, columnWidthPx, availableHeightPx } = input;
+	if (videoWidth <= 0 || videoHeight <= 0 || columnWidthPx <= 0 || availableHeightPx <= 0) return {
+		widthPx: 0,
+		heightPx: 0
+	};
+	if (mode === "original") return {
+		widthPx: videoWidth,
+		heightPx: videoHeight
+	};
+	if (mode === "fit-width") return sizeForColumnWidth(videoWidth, videoHeight, columnWidthPx);
+	const widthIfFullHeight = Math.round(availableHeightPx * videoWidth / videoHeight);
+	if (widthIfFullHeight <= columnWidthPx) return {
+		widthPx: widthIfFullHeight,
+		heightPx: availableHeightPx
+	};
+	return sizeForColumnWidth(videoWidth, videoHeight, columnWidthPx);
+}
+function sizeForColumnWidth(videoWidth, videoHeight, columnWidthPx) {
+	return {
+		widthPx: columnWidthPx,
+		heightPx: Math.round(columnWidthPx * videoHeight / videoWidth)
+	};
+}
+function clampVolume(value) {
+	if (!Number.isFinite(value)) return VOLUME_MIN;
+	return Math.min(VOLUME_MAX, Math.max(VOLUME_MIN, value));
+}
+function readStoredState(ctx) {
+	return ctx.getState(parseVideoPlayerState);
+}
+function writeStoredState(ctx, state) {
+	ctx.setState({
+		volume: state.volume,
+		muted: state.muted,
+		playbackRate: state.playbackRate
+	});
+}
+function findVideo() {
+	const node = document.getElementById(VIDEO_ELEMENT_ID);
+	return node instanceof HTMLVideoElement ? node : null;
+}
+function findWrapper() {
+	const node = document.getElementById(FLUID_WRAPPER_ID);
+	if (!(node instanceof HTMLElement)) return null;
+	if (!node.classList.contains("fluid_video_wrapper")) return null;
+	return node;
+}
+function readSizeModeFromBody() {
+	for (const value of SIZE_MODE_VALUES) if (document.body.classList.contains(featureChoiceBodyClass(FEATURE_ID$4, value))) return value;
+	return resolveVideoSize(DEFAULT_VIDEO_SIZE);
+}
+function measureMediaColumnWidthPx(wrapper) {
+	const parent = wrapper.parentElement;
+	if (parent !== null && parent.clientWidth > 0) return parent.clientWidth;
+	return wrapper.clientWidth;
+}
+function measureAvailableHeightPx() {
+	const chromeOffsetPx = measureHeaderOffsetPx(CHROME_GAP_PX);
+	return Math.max(0, window.innerHeight - chromeOffsetPx);
+}
+function clearWrapperSize(wrapper) {
+	wrapper.style.removeProperty("width");
+	wrapper.style.removeProperty("height");
+}
+function applyWrapperSize(wrapper, video) {
+	if (!document.body.classList.contains(BODY_CLASS$1)) {
+		clearWrapperSize(wrapper);
+		return;
+	}
+	const videoWidth = video.videoWidth;
+	const videoHeight = video.videoHeight;
+	if (videoWidth <= 0 || videoHeight <= 0) return;
+	const size = computeVideoPlayerSize({
+		mode: readSizeModeFromBody(),
+		videoWidth,
+		videoHeight,
+		columnWidthPx: measureMediaColumnWidthPx(wrapper),
+		availableHeightPx: measureAvailableHeightPx()
+	});
+	if (size.widthPx <= 0 || size.heightPx <= 0) return;
+	wrapper.style.width = `${String(size.widthPx)}px`;
+	wrapper.style.height = `${String(size.heightPx)}px`;
+}
+/**
+* Apply persisted volume/mute/rate. Fluid's own volume UI may not mirror
+* programmatic `video.volume` / `video.muted` — see LIVE-CHECK note.
+*/
+function applyPersistedPlayback(video, state) {
+	const volume = state.volume ?? VOLUME_MAX;
+	const muted = state.muted ?? false;
+	const playbackRate = state.playbackRate ?? 1;
+	video.volume = clampVolume(volume);
+	video.muted = muted;
+	video.playbackRate = playbackRate;
+}
+function persistFromVideo(ctx, video) {
+	writeStoredState(ctx, {
+		volume: clampVolume(video.volume),
+		muted: video.muted,
+		playbackRate: video.playbackRate
+	});
+}
+function bindPlayer(ctx, video) {
+	const wrapper = findWrapper();
+	const state = readStoredState(ctx);
+	const applyLayout = () => {
+		if (wrapper !== null) applyWrapperSize(wrapper, video);
+	};
+	const onLoadedMetadata = () => {
+		applyPersistedPlayback(video, readStoredState(ctx));
+		applyLayout();
+	};
+	if (video.readyState >= HTMLMediaElement.HAVE_METADATA) {
+		applyPersistedPlayback(video, state);
+		applyLayout();
+	}
+	video.addEventListener("loadedmetadata", onLoadedMetadata);
+	video.addEventListener("volumechange", () => {
+		persistFromVideo(ctx, video);
+	});
+	video.addEventListener("ratechange", () => {
+		persistFromVideo(ctx, video);
+	});
+	const onResize = () => {
+		applyLayout();
+	};
+	window.addEventListener("resize", onResize);
+	new MutationObserver(() => {
+		applyLayout();
+	}).observe(document.body, {
+		attributes: true,
+		attributeFilter: ["class"]
+	});
+}
+function mountVideoPlayer(ctx) {
+	scheduleAfterFirstPaint(() => {
+		const video = findVideo();
+		if (video === null) {
+			log.warn(WARN_NO_VIDEO);
+			return;
+		}
+		bindPlayer(ctx, video);
+	});
+}
+var videoPlayerFeature = {
+	id: FEATURE_ID$4,
+	label: FEATURE_LABEL$4,
+	pages: [...FEATURE_PAGES$4],
+	defaultEnabled: true,
+	cssOnly: true,
+	settingsCaption: VIDEO_PLAYER_SETTING_CAPTION,
+	choice: {
+		label: "Video size",
+		options: [
+			{
+				value: VIDEO_SIZE_FIT_HEIGHT,
+				label: SIZE_LABEL_FIT_HEIGHT
+			},
+			{
+				value: VIDEO_SIZE_FIT_WIDTH,
+				label: SIZE_LABEL_FIT_WIDTH
+			},
+			{
+				value: VIDEO_SIZE_ORIGINAL,
+				label: SIZE_LABEL_ORIGINAL
+			}
+		],
+		defaultValue: DEFAULT_VIDEO_SIZE
+	},
+	css: FEATURE_CSS$4,
+	mount: mountVideoPlayer
+};
+var TEXT_COLLECTIONS = "Collections";
+var TEXT_FILTER_PLACEHOLDER = "Filter collections…";
+var TEXT_NEW = "New custom collection";
+var TEXT_CREATE = "Create";
+var TEXT_NEW_NAME_LABEL = "New collection name";
+var ARIA_COLLECTIONS = "Custom collections";
+var LABEL_TOGGLE_PREFIX = "Toggle collection";
+var KEY_ENTER$1 = "Enter";
+var VIDEO_SOURCE_SELECTOR = "source";
+var POST_ANCHOR_ID_PREFIX = "p";
+var CLASS_WRAP$1 = "rdw-post-panel-collections";
+var CLASS_TRIGGER = "rdw-post-panel-collections-btn";
+var CLASS_ITEM$1 = "rdw-post-panel-collection-item";
+var CLASS_CHECK = "rdw-post-panel-collection-check";
+var CLASS_NAME = "rdw-post-panel-collection-name";
+var CLASS_NEW = "rdw-post-panel-collection-new";
+var CLASS_NEW_FORM = "rdw-post-panel-collection-new-form";
+function readAttributeSrc(element) {
+	if (!(element instanceof HTMLSourceElement)) {
+		const current = element.currentSrc.trim();
+		if (current.length > 0) return current;
+	}
+	const attribute = element.getAttribute("src");
+	if (attribute === null) return null;
+	const trimmed = attribute.trim();
+	if (trimmed.length === 0) return null;
+	return trimmed;
+}
+function postAnchorElement(postId) {
+	const anchor = document.getElementById(`${POST_ANCHOR_ID_PREFIX}${String(postId)}`);
+	return anchor instanceof Element ? anchor : null;
+}
+function isInsidePostAnchor(node, postId) {
+	const anchor = postAnchorElement(postId);
+	return anchor !== null && anchor.contains(node);
+}
+function readVideoElementUrl(video) {
+	const source = video.querySelector(VIDEO_SOURCE_SELECTOR);
+	if (source instanceof HTMLSourceElement) {
+		const sourceUrl = readAttributeSrc(source);
+		if (sourceUrl !== null) return sourceUrl;
+	}
+	return readAttributeSrc(video);
+}
+function readVideoMediaUrl(postId) {
+	const candidates = [];
+	const byId = document.getElementById(VIDEO_ELEMENT_ID);
+	if (byId instanceof HTMLVideoElement) candidates.push(byId);
+	for (const node of document.querySelectorAll("video")) if (node instanceof HTMLVideoElement && node !== byId) candidates.push(node);
+	for (const video of candidates) {
+		if (isInsidePostAnchor(video, postId)) continue;
+		const url = readVideoElementUrl(video);
+		if (url !== null) return url;
+	}
+	return null;
+}
+function thumbFromMedia(mediaUrl, postId) {
+	if (mediaUrl === null) return null;
+	return deriveThumbUrlFromMedia(mediaUrl, postId);
+}
+/** Post-page thumb from img#image, otherwise the video source. Null when neither yields one. */
+function readPostPageThumbUrl(postId) {
+	const image = document.getElementById(IMAGE_ID);
+	if (image instanceof HTMLImageElement && !isInsidePostAnchor(image, postId)) {
+		const fromImage = thumbFromMedia(readAttributeSrc(image), postId);
+		if (fromImage !== null) return fromImage;
+	}
+	return thumbFromMedia(readVideoMediaUrl(postId), postId);
+}
+function addPostWithThumb(collectionId, postId) {
+	const thumbUrl = readPostPageThumbUrl(postId);
+	if (thumbUrl !== null) {
+		addPostToCollection(collectionId, postId, thumbUrl);
+		return;
+	}
+	addPostToCollection(collectionId, postId);
+}
+function memberIdSet(postId) {
+	return new Set(playlistsContaining(postId).map((item) => item.id));
+}
+function filterPlaylists(playlists, query) {
+	const trimmed = query.trim().toLowerCase();
+	if (trimmed.length === 0) return [...playlists];
+	return playlists.filter((item) => item.name.toLowerCase().includes(trimmed));
+}
+function CollectionsMenu(props) {
+	const [open, setOpen] = d(false);
+	const [filter, setFilter] = d("");
+	const [creating, setCreating] = d(false);
+	const [newName, setNewName] = d("");
+	const [revision, setRevision] = d(0);
+	const triggerRef = T(null);
+	const playlists = w$1(() => {
+		return listPlaylists();
+	}, [revision]);
+	const members = w$1(() => {
+		return memberIdSet(props.postId);
+	}, [props.postId, revision]);
+	const visible = w$1(() => filterPlaylists(playlists, filter), [playlists, filter]);
+	const bump = b(() => {
+		setRevision((value) => value + 1);
+	}, []);
+	const close = b(() => {
+		setOpen(false);
+		setCreating(false);
+		setNewName("");
+		setFilter("");
+	}, []);
+	const bindTrigger = b((node) => {
+		const button = node?.querySelector("button");
+		triggerRef.current = button instanceof HTMLButtonElement ? button : null;
+	}, []);
+	const toggleMembership = b((playlistId) => {
+		if (members.has(playlistId)) removePostFromPlaylist(playlistId, props.postId);
+		else addPostWithThumb(playlistId, props.postId);
+		bump();
+	}, [
+		bump,
+		members,
+		props.postId
+	]);
+	const commitNew = b(() => {
+		const name = newName.trim();
+		if (name.length === 0) return;
+		addPostWithThumb(createPlaylist(name).id, props.postId);
+		bump();
+		setCreating(false);
+		setNewName("");
+	}, [
+		bump,
+		newName,
+		props.postId
+	]);
+	return /* @__PURE__ */ a("div", {
+		className: CLASS_WRAP$1,
+		ref: bindTrigger,
+		children: [/* @__PURE__ */ a(Button, {
+			variant: "secondary",
+			size: "m",
+			className: CLASS_TRIGGER,
+			"aria-label": TEXT_COLLECTIONS,
+			onClick: () => {
+				setOpen((value) => !value);
+			},
+			children: [/* @__PURE__ */ a(IconPlus, { size: 14 }), TEXT_COLLECTIONS]
+		}), /* @__PURE__ */ a(Popover, {
+			open,
+			onClose: close,
+			anchorRef: triggerRef,
+			widthPx: 260,
+			"aria-label": ARIA_COLLECTIONS,
+			children: [
+				/* @__PURE__ */ a(TextField, {
+					value: filter,
+					onChange: setFilter,
+					placeholder: TEXT_FILTER_PLACEHOLDER,
+					"aria-label": TEXT_FILTER_PLACEHOLDER
+				}),
+				visible.map((playlist) => {
+					const checked = members.has(playlist.id);
+					return /* @__PURE__ */ a("button", {
+						type: "button",
+						className: CLASS_ITEM$1,
+						role: "menuitemcheckbox",
+						"aria-checked": checked,
+						"aria-label": `${LABEL_TOGGLE_PREFIX} ${playlist.name}`,
+						onClick: () => {
+							toggleMembership(playlist.id);
+						},
+						children: [/* @__PURE__ */ a("span", {
+							className: CLASS_CHECK,
+							"aria-hidden": "true",
+							children: checked ? /* @__PURE__ */ a(IconCheck, { size: 14 }) : null
+						}), /* @__PURE__ */ a("span", {
+							className: CLASS_NAME,
+							children: playlist.name
+						})]
+					}, playlist.id);
+				}),
+				creating ? /* @__PURE__ */ a("div", {
+					className: CLASS_NEW_FORM,
+					onKeyDown: (event) => {
+						if (event.key === KEY_ENTER$1) {
+							event.preventDefault();
+							commitNew();
+						}
+					},
+					children: [/* @__PURE__ */ a(TextField, {
+						value: newName,
+						onChange: setNewName,
+						label: TEXT_NEW_NAME_LABEL,
+						"aria-label": TEXT_NEW_NAME_LABEL
+					}), /* @__PURE__ */ a(Button, {
+						variant: "primary",
+						size: "s",
+						onClick: commitNew,
+						children: TEXT_CREATE
+					})]
+				}) : /* @__PURE__ */ a(Button, {
+					variant: "ghost",
+					size: "s",
+					className: CLASS_NEW,
+					onClick: () => {
+						setCreating(true);
+					},
+					children: [/* @__PURE__ */ a(IconPlus, { size: 14 }), TEXT_NEW]
+				})
+			]
+		})]
+	});
+}
+var DISPLAY_EDIT = "Edit";
+var DISPLAY_RESIZE = "Resize image";
+var DISPLAY_REPORT = "Report to moderation";
+var DISPLAY_ADD_NOTE = "Add note";
+var CLASS_WRAP = "rdw-post-panel-post-actions";
+var CLASS_ITEM = "rdw-post-panel-post-action";
+var ICON_SIZE$1 = 14;
+function buttonLabel(text) {
+	if (text === "Edit") return DISPLAY_EDIT;
+	if (text === "Resize image") return DISPLAY_RESIZE;
+	if (text === "Report to moderation") return DISPLAY_REPORT;
+	return DISPLAY_ADD_NOTE;
+}
+function actionIcon(text) {
+	if (text === "Edit") return /* @__PURE__ */ a(IconPencil, { size: ICON_SIZE$1 });
+	if (text === "Resize image") return /* @__PURE__ */ a(IconImage, { size: ICON_SIZE$1 });
+	if (text === "Report to moderation") return /* @__PURE__ */ a(IconFlag, { size: ICON_SIZE$1 });
+	return /* @__PURE__ */ a(IconNote, { size: ICON_SIZE$1 });
+}
+/** Full-width open buttons that proxy native link-list clicks. No Popover. */
+function PostActionsList(props) {
+	if (props.links.length === 0) return null;
+	return /* @__PURE__ */ a("div", {
+		className: CLASS_WRAP,
+		children: props.links.map((link) => /* @__PURE__ */ a(Button, {
+			variant: "secondary",
+			size: "m",
+			className: CLASS_ITEM,
+			"aria-label": buttonLabel(link.text),
+			onClick: () => {
+				link.anchor.click();
+			},
+			children: [actionIcon(link.text), buttonLabel(link.text)]
+		}, link.text))
+	});
+}
 var POST_PANEL_TAB_INFO = "info";
 var POST_PANEL_TAB_COMMENTS = "comments";
 var TEXT_FAVORITE = "Favorite";
@@ -11451,86 +12790,90 @@ function PostPanel(props) {
 	const showActionsRow2 = props.postId !== null || iCame !== null || originalHref !== null;
 	return /* @__PURE__ */ a("div", {
 		className: CLASS_ROOT,
-		children: [/* @__PURE__ */ a("div", {
-			className: CLASS_ACTIONS,
-			children: [props.postId !== null || numericId !== null ? /* @__PURE__ */ a("div", {
-				className: CLASS_ACTIONS_ROW,
-				children: [props.postId !== null ? /* @__PURE__ */ a(Button, {
-					variant: "primary",
-					size: "m",
-					className: CLASS_FAV,
-					loading: favPending,
-					"aria-label": favorited ? `${UI_TEXT.cardFavRemoveLabel} ${props.postId}` : `${UI_TEXT.cardFavAddLabel} ${props.postId}`,
-					onClick: () => {
-						onFavClick();
-					},
-					children: [favorited ? /* @__PURE__ */ a(IconStarFilled, { size: ICON_SIZE }) : /* @__PURE__ */ a(IconStar, { size: ICON_SIZE }), favorited ? TEXT_IN_FAVORITES : TEXT_FAVORITE]
-				}) : null, numericId !== null ? /* @__PURE__ */ a(CollectionsMenu, { postId: numericId }) : null]
-			}) : null, showActionsRow2 ? /* @__PURE__ */ a("div", {
-				className: CLASS_ACTIONS_ROW,
-				children: [
-					props.postId !== null ? /* @__PURE__ */ a(Button, {
-						variant: "secondary",
+		children: [
+			/* @__PURE__ */ a(CollectionQueue, { postId: numericId }),
+			/* @__PURE__ */ a("div", {
+				className: CLASS_ACTIONS,
+				children: [props.postId !== null || numericId !== null ? /* @__PURE__ */ a("div", {
+					className: CLASS_ACTIONS_ROW,
+					children: [props.postId !== null ? /* @__PURE__ */ a(Button, {
+						variant: "primary",
 						size: "m",
-						className: CLASS_VOTE,
-						loading: votePending,
-						"aria-label": LABEL_VOTE,
+						className: CLASS_FAV,
+						loading: favPending,
+						"aria-label": favorited ? `${UI_TEXT.cardFavRemoveLabel} ${props.postId}` : `${UI_TEXT.cardFavAddLabel} ${props.postId}`,
 						onClick: () => {
-							onVoteClick();
+							onFavClick();
 						},
-						children: [/* @__PURE__ */ a(IconArrowUp, { size: ICON_SIZE }), voteLabel(scoreText)]
+						children: [favorited ? /* @__PURE__ */ a(IconStarFilled, { size: ICON_SIZE }) : /* @__PURE__ */ a(IconStar, { size: ICON_SIZE }), favorited ? TEXT_IN_FAVORITES : TEXT_FAVORITE]
+					}) : null, numericId !== null ? /* @__PURE__ */ a(CollectionsMenu, { postId: numericId }) : null]
+				}) : null, showActionsRow2 ? /* @__PURE__ */ a("div", {
+					className: CLASS_ACTIONS_ROW,
+					children: [
+						props.postId !== null ? /* @__PURE__ */ a(Button, {
+							variant: "secondary",
+							size: "m",
+							className: CLASS_VOTE,
+							loading: votePending,
+							"aria-label": LABEL_VOTE,
+							onClick: () => {
+								onVoteClick();
+							},
+							children: [/* @__PURE__ */ a(IconArrowUp, { size: ICON_SIZE }), voteLabel(scoreText)]
+						}) : null,
+						iCame !== null ? /* @__PURE__ */ a(Button, {
+							variant: "secondary",
+							size: "m",
+							className: CLASS_ICAME,
+							"aria-label": LABEL_ICAME,
+							onClick: onICameClick,
+							children: [/* @__PURE__ */ a(IconDroplet, { size: ICON_SIZE }), TEXT_ICAME]
+						}) : null,
+						originalHref !== null ? /* @__PURE__ */ a("a", {
+							className: CLASS_ORIGINAL,
+							href: originalHref,
+							target: "_blank",
+							rel: "noopener",
+							"aria-label": LABEL_ORIGINAL,
+							title: LABEL_ORIGINAL,
+							children: /* @__PURE__ */ a(IconExternalLink, { size: ORIGINAL_ICON_SIZE })
+						}) : null
+					]
+				}) : null]
+			}),
+			showInfoCard ? /* @__PURE__ */ a(Card, {
+				className: CLASS_CARD,
+				as: "section",
+				children: [
+					hasComments ? /* @__PURE__ */ a(Tabs, {
+						className: CLASS_TABS,
+						"aria-label": ARIA_PANEL_TABS,
+						items: tabItems,
+						value: activeTab,
+						onChange: onTabChange
 					}) : null,
-					iCame !== null ? /* @__PURE__ */ a(Button, {
-						variant: "secondary",
-						size: "m",
-						className: CLASS_ICAME,
-						"aria-label": LABEL_ICAME,
-						onClick: onICameClick,
-						children: [/* @__PURE__ */ a(IconDroplet, { size: ICON_SIZE }), TEXT_ICAME]
-					}) : null,
-					originalHref !== null ? /* @__PURE__ */ a("a", {
-						className: CLASS_ORIGINAL,
-						href: originalHref,
-						target: "_blank",
-						rel: "noopener",
-						"aria-label": LABEL_ORIGINAL,
-						title: LABEL_ORIGINAL,
-						children: /* @__PURE__ */ a(IconExternalLink, { size: ORIGINAL_ICON_SIZE })
+					/* @__PURE__ */ a("div", {
+						className: CLASS_TAB_PANEL,
+						role: "tabpanel",
+						id: kitTabPanelId(POST_PANEL_TAB_INFO),
+						"aria-labelledby": kitTabId(POST_PANEL_TAB_INFO),
+						hidden: hasComments && activeTab !== "info",
+						children: /* @__PURE__ */ a(InfoPanel, {
+							stats,
+							moreLinks
+						})
+					}),
+					hasComments ? /* @__PURE__ */ a("div", {
+						className: `${CLASS_TAB_PANEL} ${CLASS_COMMENTS}`,
+						role: "tabpanel",
+						id: kitTabPanelId(POST_PANEL_TAB_COMMENTS),
+						"aria-labelledby": kitTabId(POST_PANEL_TAB_COMMENTS),
+						hidden: activeTab !== POST_PANEL_TAB_COMMENTS,
+						children: /* @__PURE__ */ a(CommentsHost, {})
 					}) : null
 				]
-			}) : null]
-		}), showInfoCard ? /* @__PURE__ */ a(Card, {
-			className: CLASS_CARD,
-			as: "section",
-			children: [
-				hasComments ? /* @__PURE__ */ a(Tabs, {
-					className: CLASS_TABS,
-					"aria-label": ARIA_PANEL_TABS,
-					items: tabItems,
-					value: activeTab,
-					onChange: onTabChange
-				}) : null,
-				/* @__PURE__ */ a("div", {
-					className: CLASS_TAB_PANEL,
-					role: "tabpanel",
-					id: kitTabPanelId(POST_PANEL_TAB_INFO),
-					"aria-labelledby": kitTabId(POST_PANEL_TAB_INFO),
-					hidden: hasComments && activeTab !== "info",
-					children: /* @__PURE__ */ a(InfoPanel, {
-						stats,
-						moreLinks
-					})
-				}),
-				hasComments ? /* @__PURE__ */ a("div", {
-					className: `${CLASS_TAB_PANEL} ${CLASS_COMMENTS}`,
-					role: "tabpanel",
-					id: kitTabPanelId(POST_PANEL_TAB_COMMENTS),
-					"aria-labelledby": kitTabId(POST_PANEL_TAB_COMMENTS),
-					hidden: activeTab !== POST_PANEL_TAB_COMMENTS,
-					children: /* @__PURE__ */ a(CommentsHost, {})
-				}) : null
-			]
-		}) : null]
+			}) : null
+		]
 	});
 }
 function InfoPanel(props) {
@@ -11582,9 +12925,9 @@ function StatRowView(props) {
 		children: row.value
 	})] });
 }
-var FEATURE_ID$4 = "post-actions";
-var FEATURE_LABEL$4 = "Post side panel";
-var FEATURE_PAGES$4 = ["post"];
+var FEATURE_ID$3 = "post-actions";
+var FEATURE_LABEL$3 = "Post side panel";
+var FEATURE_PAGES$3 = ["post"];
 /** Body class while the panel host is in the document — CSS hide handoff for G. */
 var POST_PANEL_MOUNTED_CLASS = "rdw-post-panel-mounted";
 var NARROW_BREAKPOINT_PX = 1100;
@@ -11606,15 +12949,15 @@ var CLASS_PANEL = "rdw-post-actions";
 var CLASS_MODE_WIDE = "rdw-post-actions--wide";
 var CLASS_MODE_NARROW = "rdw-post-actions--narrow";
 var WARN_NO_FLEXI = "post-actions: div.flexi missing; panel not mounted";
-var BODY_SELECTOR$2 = `body.${featureBodyClass(FEATURE_ID$4)}`;
-var FEATURE_CSS$4 = `
-${BODY_SELECTOR$2} #fit-to-screen div.flexi,
-${BODY_SELECTOR$2} div#right-col div.flexi,
-${BODY_SELECTOR$2} div.flexi {
+var BODY_SELECTOR$1 = `body.${featureBodyClass(FEATURE_ID$3)}`;
+var FEATURE_CSS$3 = `
+${BODY_SELECTOR$1} #fit-to-screen div.flexi,
+${BODY_SELECTOR$1} div#right-col div.flexi,
+${BODY_SELECTOR$1} div.flexi {
   flex-wrap: wrap;
   align-items: flex-start;
 }
-${BODY_SELECTOR$2} #${POST_ACTIONS_ID}.${CLASS_PANEL} {
+${BODY_SELECTOR$1} #${POST_ACTIONS_ID}.${CLASS_PANEL} {
   box-sizing: border-box;
   width: ${String(PANEL_WIDTH_PX)}px;
   min-width: ${String(PANEL_MIN_WIDTH_PX)}px;
@@ -11624,14 +12967,14 @@ ${BODY_SELECTOR$2} #${POST_ACTIONS_ID}.${CLASS_PANEL} {
   font: ${String(PANEL_FONT_SIZE_PX)}px/1.35 var(--rdw-font);
   color: var(--rdw-text);
 }
-${BODY_SELECTOR$2} #${POST_ACTIONS_ID}.${CLASS_MODE_WIDE} {
+${BODY_SELECTOR$1} #${POST_ACTIONS_ID}.${CLASS_MODE_WIDE} {
   position: sticky;
   top: var(${STICKY_TOP_VAR}, ${String(PANEL_STICKY_GAP_PX)}px);
   align-self: flex-start;
   max-height: calc(100vh - var(${STICKY_TOP_VAR}, ${String(PANEL_STICKY_GAP_PX)}px) - ${String(PANEL_STICKY_GAP_PX)}px);
   overflow-y: auto;
 }
-${BODY_SELECTOR$2} #${POST_ACTIONS_ID}.${CLASS_MODE_NARROW} {
+${BODY_SELECTOR$1} #${POST_ACTIONS_ID}.${CLASS_MODE_NARROW} {
   position: static;
   width: 100%;
   min-width: 0;
@@ -11641,42 +12984,42 @@ ${BODY_SELECTOR$2} #${POST_ACTIONS_ID}.${CLASS_MODE_NARROW} {
   max-height: none;
   overflow-y: visible;
 }
-${BODY_SELECTOR$2} #${POST_ACTIONS_ID} .rdw-post-panel {
+${BODY_SELECTOR$1} #${POST_ACTIONS_ID} .rdw-post-panel {
   display: grid;
   gap: ${String(PANEL_BLOCK_GAP_PX)}px;
   position: relative;
 }
-${BODY_SELECTOR$2} #${POST_ACTIONS_ID} .rdw-post-panel-card {
+${BODY_SELECTOR$1} #${POST_ACTIONS_ID} .rdw-post-panel-card {
   padding: ${String(PANEL_CARD_PADDING_PX)}px;
   display: grid;
   gap: ${String(PANEL_BLOCK_GAP_PX)}px;
 }
-${BODY_SELECTOR$2} #${POST_ACTIONS_ID} .rdw-btn {
+${BODY_SELECTOR$1} #${POST_ACTIONS_ID} .rdw-btn {
   min-height: ${String(PANEL_BUTTON_HEIGHT_PX)}px;
   font-size: ${String(PANEL_FONT_SIZE_PX)}px;
 }
-${BODY_SELECTOR$2} #${POST_ACTIONS_ID} .rdw-post-panel-actions {
+${BODY_SELECTOR$1} #${POST_ACTIONS_ID} .rdw-post-panel-actions {
   display: grid;
   gap: ${String(PANEL_BUTTON_GAP_PX)}px;
 }
-${BODY_SELECTOR$2} #${POST_ACTIONS_ID} .rdw-post-panel-actions-row {
+${BODY_SELECTOR$1} #${POST_ACTIONS_ID} .rdw-post-panel-actions-row {
   display: flex;
   flex-wrap: wrap;
   align-items: stretch;
   gap: ${String(PANEL_BUTTON_GAP_PX)}px;
 }
-${BODY_SELECTOR$2} #${POST_ACTIONS_ID} .rdw-post-panel-actions-row > .rdw-btn,
-${BODY_SELECTOR$2} #${POST_ACTIONS_ID} .rdw-post-panel-actions-row > .rdw-post-panel-collections {
+${BODY_SELECTOR$1} #${POST_ACTIONS_ID} .rdw-post-panel-actions-row > .rdw-btn,
+${BODY_SELECTOR$1} #${POST_ACTIONS_ID} .rdw-post-panel-actions-row > .rdw-post-panel-collections {
   flex: 1 1 0;
   min-width: 0;
 }
-${BODY_SELECTOR$2} #${POST_ACTIONS_ID} .rdw-post-panel-collections {
+${BODY_SELECTOR$1} #${POST_ACTIONS_ID} .rdw-post-panel-collections {
   position: relative;
 }
-${BODY_SELECTOR$2} #${POST_ACTIONS_ID} .rdw-post-panel-collections .rdw-btn {
+${BODY_SELECTOR$1} #${POST_ACTIONS_ID} .rdw-post-panel-collections .rdw-btn {
   width: 100%;
 }
-${BODY_SELECTOR$2} #${POST_ACTIONS_ID} .rdw-post-panel-original {
+${BODY_SELECTOR$1} #${POST_ACTIONS_ID} .rdw-post-panel-original {
   box-sizing: border-box;
   flex: 0 0 ${String(ORIGINAL_BUTTON_SIZE_PX)}px;
   width: ${String(ORIGINAL_BUTTON_SIZE_PX)}px;
@@ -11692,42 +13035,42 @@ ${BODY_SELECTOR$2} #${POST_ACTIONS_ID} .rdw-post-panel-original {
   color: var(--rdw-text);
   text-decoration: none;
 }
-${BODY_SELECTOR$2} #${POST_ACTIONS_ID} .rdw-post-panel-stats {
+${BODY_SELECTOR$1} #${POST_ACTIONS_ID} .rdw-post-panel-stats {
   display: grid;
   grid-template-columns: ${String(STAT_LABEL_WIDTH_PX)}px 1fr;
   column-gap: ${String(PANEL_BUTTON_GAP_PX)}px;
   row-gap: ${String(PANEL_BUTTON_GAP_PX)}px;
   font-size: ${String(PANEL_FONT_SIZE_PX)}px;
 }
-${BODY_SELECTOR$2} #${POST_ACTIONS_ID} .rdw-post-panel-stat-label {
+${BODY_SELECTOR$1} #${POST_ACTIONS_ID} .rdw-post-panel-stat-label {
   color: var(--rdw-muted);
 }
-${BODY_SELECTOR$2} #${POST_ACTIONS_ID} .rdw-post-panel-source {
+${BODY_SELECTOR$1} #${POST_ACTIONS_ID} .rdw-post-panel-source {
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--rdw-accent);
 }
-${BODY_SELECTOR$2} #${POST_ACTIONS_ID} .rdw-post-panel-info {
+${BODY_SELECTOR$1} #${POST_ACTIONS_ID} .rdw-post-panel-info {
   display: grid;
   gap: ${String(PANEL_BLOCK_GAP_PX)}px;
 }
-${BODY_SELECTOR$2} #${POST_ACTIONS_ID} .rdw-post-panel-post-actions {
+${BODY_SELECTOR$1} #${POST_ACTIONS_ID} .rdw-post-panel-post-actions {
   display: grid;
   gap: ${String(PANEL_BUTTON_GAP_PX)}px;
 }
-${BODY_SELECTOR$2} #${POST_ACTIONS_ID} .rdw-post-panel-post-action {
+${BODY_SELECTOR$1} #${POST_ACTIONS_ID} .rdw-post-panel-post-action {
   width: 100%;
   justify-content: flex-start;
 }
-${BODY_SELECTOR$2} #${POST_ACTIONS_ID} .rdw-post-panel-tabpanel[hidden] {
+${BODY_SELECTOR$1} #${POST_ACTIONS_ID} .rdw-post-panel-tabpanel[hidden] {
   display: none;
 }
-${BODY_SELECTOR$2} #${POST_ACTIONS_ID} .rdw-post-panel-comments-host {
+${BODY_SELECTOR$1} #${POST_ACTIONS_ID} .rdw-post-panel-comments-host {
   min-width: 0;
 }
-${BODY_SELECTOR$2} #${POST_ACTIONS_ID} .rdw-post-panel-collection-item {
+${BODY_SELECTOR$1} #${POST_ACTIONS_ID} .rdw-post-panel-collection-item {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -11742,11 +13085,11 @@ ${BODY_SELECTOR$2} #${POST_ACTIONS_ID} .rdw-post-panel-collection-item {
   text-align: left;
   cursor: pointer;
 }
-${BODY_SELECTOR$2} #${POST_ACTIONS_ID} .rdw-post-panel-collection-item:hover,
-${BODY_SELECTOR$2} #${POST_ACTIONS_ID} .rdw-post-panel-collection-item:focus-visible {
+${BODY_SELECTOR$1} #${POST_ACTIONS_ID} .rdw-post-panel-collection-item:hover,
+${BODY_SELECTOR$1} #${POST_ACTIONS_ID} .rdw-post-panel-collection-item:focus-visible {
   background: var(--rdw-surface-2);
 }
-${BODY_SELECTOR$2} #${POST_ACTIONS_ID} .rdw-post-panel-collection-check {
+${BODY_SELECTOR$1} #${POST_ACTIONS_ID} .rdw-post-panel-collection-check {
   width: 15px;
   height: 15px;
   flex: 0 0 15px;
@@ -11757,21 +13100,21 @@ ${BODY_SELECTOR$2} #${POST_ACTIONS_ID} .rdw-post-panel-collection-check {
   color: var(--rdw-surface);
   background: transparent;
 }
-${BODY_SELECTOR$2} #${POST_ACTIONS_ID} .rdw-post-panel-collection-item[aria-checked="true"] .rdw-post-panel-collection-check {
+${BODY_SELECTOR$1} #${POST_ACTIONS_ID} .rdw-post-panel-collection-item[aria-checked="true"] .rdw-post-panel-collection-check {
   background: var(--rdw-accent);
   border-color: var(--rdw-accent);
 }
-${BODY_SELECTOR$2} #${POST_ACTIONS_ID} .rdw-post-panel-collection-name {
+${BODY_SELECTOR$1} #${POST_ACTIONS_ID} .rdw-post-panel-collection-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-${BODY_SELECTOR$2} #${POST_ACTIONS_ID} .rdw-post-panel-collection-new-form {
+${BODY_SELECTOR$1} #${POST_ACTIONS_ID} .rdw-post-panel-collection-new-form {
   display: grid;
   gap: 6px;
 }
 @media ${NARROW_MEDIA_QUERY} {
-  ${BODY_SELECTOR$2} #${POST_ACTIONS_ID}.${CLASS_MODE_WIDE} {
+  ${BODY_SELECTOR$1} #${POST_ACTIONS_ID}.${CLASS_MODE_WIDE} {
     position: static;
     max-height: none;
     overflow-y: visible;
@@ -11857,7 +13200,7 @@ function mountPostActions(ctx) {
 	host.id = POST_ACTIONS_ID;
 	host.className = CLASS_PANEL;
 	host.setAttribute("role", "complementary");
-	host.setAttribute("aria-label", FEATURE_LABEL$4);
+	host.setAttribute("aria-label", FEATURE_LABEL$3);
 	const postId = readPostIdFromSearch(ctx.search);
 	panelHost = host;
 	document.body.classList.add(POST_PANEL_MOUNTED_CLASS);
@@ -11866,16 +13209,16 @@ function mountPostActions(ctx) {
 	Q$1(k$1(PostPanel, { postId }), host);
 }
 var postActionsFeature = {
-	id: FEATURE_ID$4,
-	label: FEATURE_LABEL$4,
-	pages: [...FEATURE_PAGES$4],
+	id: FEATURE_ID$3,
+	label: FEATURE_LABEL$3,
+	pages: [...FEATURE_PAGES$3],
 	defaultEnabled: true,
-	css: FEATURE_CSS$4,
+	css: FEATURE_CSS$3,
 	mount: mountPostActions
 };
-var FEATURE_ID$3 = "search-tools";
-var FEATURE_LABEL$3 = "Search tools";
-var FEATURE_PAGES$3 = ["list", "post"];
+var FEATURE_ID$2 = "search-tools";
+var FEATURE_LABEL$2 = "Search tools";
+var FEATURE_PAGES$2 = ["list", "post"];
 /**
 * Followed artists for Feed chip / source detection (read-only).
 * Mirror first — GM snapshots on bfcache pages can omit recent follows.
@@ -11922,7 +13265,7 @@ var EVENT_CHANGE = "change";
 var EVENT_CLICK = "click";
 var EVENT_AWESOMPLETE_SELECT = "awesomplete-selectcomplete";
 var WARN_NO_FORM = "search-tools: search form not found; not mounted";
-var BODY_CLASS$1 = featureBodyClass(FEATURE_ID$3);
+var BODY_CLASS = featureBodyClass(FEATURE_ID$2);
 /**
 * Set on document.body while the panel's «AI posts» row is rendered.
 * Site-skin (HANDOFF G) must hide native Filter AI only under this class.
@@ -12009,51 +13352,51 @@ var SOURCE_OPTIONS = [
 ];
 var SORT_TOKEN_TO_MODE = /* @__PURE__ */ new Map();
 for (const option of SORT_OPTIONS) if (option.token !== null) SORT_TOKEN_TO_MODE.set(option.token, option.value);
-var FEATURE_CSS$3 = [
-	`body.${BODY_CLASS$1} .${ROOT_CLASS} {`,
+var FEATURE_CSS$2 = [
+	`body.${BODY_CLASS} .${ROOT_CLASS} {`,
 	"  margin-top: 8px;",
 	"  max-width: 100%;",
 	"  box-sizing: border-box;",
 	"}",
-	`body.${BODY_CLASS$1} .${CARD_CLASS} {`,
+	`body.${BODY_CLASS} .${CARD_CLASS} {`,
 	"  padding: 10px;",
 	"  display: grid;",
 	"  gap: 10px;",
 	"}",
-	`body.${BODY_CLASS$1} .${CHIPS_CLASS} {`,
+	`body.${BODY_CLASS} .${CHIPS_CLASS} {`,
 	"  display: flex;",
 	"  flex-wrap: wrap;",
 	"  gap: 5px;",
 	"}",
-	`body.${BODY_CLASS$1} .${CHIP_CLASS} {`,
+	`body.${BODY_CLASS} .${CHIP_CLASS} {`,
 	"  cursor: default;",
 	"}",
-	`body.${BODY_CLASS$1} .${CHIP_CLASS}[${CHIP_ATTR_TOGGLE}="1"] {`,
+	`body.${BODY_CLASS} .${CHIP_CLASS}[${CHIP_ATTR_TOGGLE}="1"] {`,
 	"  cursor: pointer;",
 	"}",
-	`body.${BODY_CLASS$1} .${FIELD_CLASS} {`,
+	`body.${BODY_CLASS} .${FIELD_CLASS} {`,
 	"  display: grid;",
 	"  gap: 0;",
 	"  min-width: 0;",
 	"}",
-	`body.${BODY_CLASS$1} .${ROW_SORT_CLASS} {`,
+	`body.${BODY_CLASS} .${ROW_SORT_CLASS} {`,
 	"  display: grid;",
 	"  grid-template-columns: 1fr 72px;",
 	"  gap: 8px;",
 	"  align-items: start;",
 	"}",
-	`body.${BODY_CLASS$1} .${FOOT_CLASS} {`,
+	`body.${BODY_CLASS} .${FOOT_CLASS} {`,
 	"  display: flex;",
 	"  justify-content: space-between;",
 	"  align-items: center;",
 	"  border-top: 1px solid var(--rdw-border);",
 	"  padding-top: 8px;",
 	"}",
-	`body.${BODY_CLASS$1} .${HINT_CLASS} {`,
+	`body.${BODY_CLASS} .${HINT_CLASS} {`,
 	"  font-size: 12px;",
 	"  color: var(--rdw-muted);",
 	"}",
-	`body.${BODY_CLASS$1} .${RESET_CLASS} {`,
+	`body.${BODY_CLASS} .${RESET_CLASS} {`,
 	"  padding: 0;",
 	"  min-height: auto;",
 	"  height: auto;",
@@ -12786,19 +14129,19 @@ function mountSearchTools(_ctx) {
 	Q$1(/* @__PURE__ */ a(SearchToolsPanel, { input }), root);
 }
 var searchToolsFeature = {
-	id: FEATURE_ID$3,
-	label: FEATURE_LABEL$3,
-	pages: [...FEATURE_PAGES$3],
+	id: FEATURE_ID$2,
+	label: FEATURE_LABEL$2,
+	pages: [...FEATURE_PAGES$2],
 	defaultEnabled: true,
-	css: FEATURE_CSS$3,
+	css: FEATURE_CSS$2,
 	mount: mountSearchTools
 };
-var FEATURE_ID$2 = "tag-groups";
-var FEATURE_LABEL$2 = "Collapse tags";
+var FEATURE_ID$1 = "tag-groups";
+var FEATURE_LABEL$1 = "Collapse tags";
 var TAG_SIDEBAR_SELECTOR = "ul#tag-sidebar";
 var TOGGLE_CLASS = "rdw-tag-group-toggle";
 var COLLAPSED_CLASS = "rdw-tag-group-collapsed";
-var BODY_FEATURE_CLASS = featureBodyClass(FEATURE_ID$2);
+var BODY_FEATURE_CLASS = featureBodyClass(FEATURE_ID$1);
 var MISSING_SIDEBAR_WARN = "Tag sidebar not found";
 var GROUP_HEADER_NAME_SET = /* @__PURE__ */ new Set([
 	"Copyright",
@@ -12808,7 +14151,7 @@ var GROUP_HEADER_NAME_SET = /* @__PURE__ */ new Set([
 	"Meta"
 ]);
 var DEFAULT_COLLAPSED = ["General", "Meta"];
-var FEATURE_PAGES$2 = ["list", "post"];
+var FEATURE_PAGES$1 = ["list", "post"];
 /**
 * Site-skin `html.rdw-skin ul#tag-sidebar > li { display: block }` includes an id,
 * so a body+class rule cannot hide the row. Match that chain, then add the
@@ -12817,7 +14160,7 @@ var FEATURE_PAGES$2 = ["list", "post"];
 var COLLAPSED_ROW = `ul#tag-sidebar > li.${COLLAPSED_CLASS}`;
 var HIDE_COLLAPSED_WITH_SKIN = `html.${RDW_SKIN_CLASS} body.${BODY_FEATURE_CLASS} ${COLLAPSED_ROW}`;
 var HIDE_COLLAPSED_SITE_THEME = `body.${BODY_FEATURE_CLASS} ${COLLAPSED_ROW}`;
-var FEATURE_CSS$2 = [
+var FEATURE_CSS$1 = [
 	`${HIDE_COLLAPSED_WITH_SKIN},`,
 	`${HIDE_COLLAPSED_SITE_THEME} { display: none; }`,
 	`body.${BODY_FEATURE_CLASS} button.${TOGGLE_CLASS} {`,
@@ -12833,7 +14176,7 @@ var FEATURE_CSS$2 = [
 	"  outline-offset: 2px;",
 	"}"
 ].join("\n");
-var TagGroupsStateSchema = /* @__PURE__ */ object({ collapsed: /* @__PURE__ */ array(/* @__PURE__ */ string()) });
+var TagGroupsStateSchema = object({ collapsed: array(string()) });
 function defaultState() {
 	return { collapsed: [...DEFAULT_COLLAPSED] };
 }
@@ -12911,249 +14254,12 @@ function mountTagGroups(ctx) {
 	for (const group of groups) mountToggle(group, collapsedNames, ctx);
 }
 var tagGroupsFeature = {
-	id: FEATURE_ID$2,
-	label: FEATURE_LABEL$2,
-	pages: [...FEATURE_PAGES$2],
-	defaultEnabled: true,
-	css: FEATURE_CSS$2,
-	mount: mountTagGroups
-};
-/**
-* DOM-ready scheduling helpers. Favorites sync resume lives in deferred app start
-* so this module stays off the favs/storage import path.
-*/
-/**
-* Run `callback` once the document is interactive enough for body mounts.
-* At document-start, waits for DOMContentLoaded; if already past that, runs now.
-*/
-function whenDomReady(callback) {
-	if (document.readyState === "interactive" || document.readyState === "complete") {
-		callback();
-		return;
-	}
-	document.addEventListener("DOMContentLoaded", callback, { once: true });
-}
-/**
-* After first paint: rAF → zero-delay task → callback.
-* Use for feature mounts and heavy module work.
-*/
-function scheduleAfterFirstPaint(callback) {
-	requestAnimationFrame(() => {
-		setTimeout(callback, 0);
-	});
-}
-/**
-* Post-page Fluid Player tweaks: persist volume/mute/rate, and CSS/JS size
-* modes (Fit height / Fit width / Original).
-*
-* Does not replace the Fluid wrapper or rename its classes — only the
-* wrapper size via explicit width/height (overrides Fluid's intrinsic px).
-*/
-var FEATURE_ID$1 = VIDEO_PLAYER_FEATURE_ID;
-var FEATURE_LABEL$1 = "Video player tweaks";
-var FEATURE_PAGES$1 = ["post"];
-var VIDEO_ELEMENT_ID = "gelcomVideoPlayer";
-var FLUID_WRAPPER_ID = "fluid_video_wrapper_gelcomVideoPlayer";
-var FLUID_WRAPPER_CLASS = "fluid_video_wrapper";
-var VOLUME_MIN = 0;
-var VOLUME_MAX = 1;
-var CHROME_GAP_PX = 12;
-var WARN_NO_VIDEO = "video-player: #gelcomVideoPlayer missing; tweaks not mounted";
-var BODY_CLASS = featureBodyClass(FEATURE_ID$1);
-var BODY_SELECTOR$1 = `body.${BODY_CLASS}`;
-var WRAPPER_SELECTOR = `#${FLUID_WRAPPER_ID}.${FLUID_WRAPPER_CLASS}`;
-var SIZE_LABEL_FIT_HEIGHT = "Fit height";
-var SIZE_LABEL_FIT_WIDTH = "Fit width";
-var SIZE_LABEL_ORIGINAL = "Original";
-var SIZE_MODE_VALUES = [
-	VIDEO_SIZE_FIT_HEIGHT,
-	VIDEO_SIZE_FIT_WIDTH,
-	VIDEO_SIZE_ORIGINAL
-];
-/** Settings caption under the Video player tweaks switch. */
-var VIDEO_PLAYER_SETTING_CAPTION = "Fit height fills under the header (may upscale). Fit width uses the media column. Original is native pixels.";
-var FEATURE_CSS$1 = [
-	`${BODY_SELECTOR$1} ${WRAPPER_SELECTOR} {`,
-	`  box-sizing: border-box;`,
-	`}`
-].join("\n");
-/**
-* Pure size calculator for the three Video size modes.
-* Fit height may upscale; Fit width always uses full column width;
-* Original is videoWidth × videoHeight with no scaling.
-*/
-function computeVideoPlayerSize(input) {
-	const { mode, videoWidth, videoHeight, columnWidthPx, availableHeightPx } = input;
-	if (videoWidth <= 0 || videoHeight <= 0 || columnWidthPx <= 0 || availableHeightPx <= 0) return {
-		widthPx: 0,
-		heightPx: 0
-	};
-	if (mode === "original") return {
-		widthPx: videoWidth,
-		heightPx: videoHeight
-	};
-	if (mode === "fit-width") return sizeForColumnWidth(videoWidth, videoHeight, columnWidthPx);
-	const widthIfFullHeight = Math.round(availableHeightPx * videoWidth / videoHeight);
-	if (widthIfFullHeight <= columnWidthPx) return {
-		widthPx: widthIfFullHeight,
-		heightPx: availableHeightPx
-	};
-	return sizeForColumnWidth(videoWidth, videoHeight, columnWidthPx);
-}
-function sizeForColumnWidth(videoWidth, videoHeight, columnWidthPx) {
-	return {
-		widthPx: columnWidthPx,
-		heightPx: Math.round(columnWidthPx * videoHeight / videoWidth)
-	};
-}
-function clampVolume(value) {
-	if (!Number.isFinite(value)) return VOLUME_MIN;
-	return Math.min(VOLUME_MAX, Math.max(VOLUME_MIN, value));
-}
-function readStoredState(ctx) {
-	return ctx.getState(parseVideoPlayerState);
-}
-function writeStoredState(ctx, state) {
-	ctx.setState({
-		volume: state.volume,
-		muted: state.muted,
-		playbackRate: state.playbackRate
-	});
-}
-function findVideo() {
-	const node = document.getElementById(VIDEO_ELEMENT_ID);
-	return node instanceof HTMLVideoElement ? node : null;
-}
-function findWrapper() {
-	const node = document.getElementById(FLUID_WRAPPER_ID);
-	if (!(node instanceof HTMLElement)) return null;
-	if (!node.classList.contains("fluid_video_wrapper")) return null;
-	return node;
-}
-function readSizeModeFromBody() {
-	for (const value of SIZE_MODE_VALUES) if (document.body.classList.contains(featureChoiceBodyClass(FEATURE_ID$1, value))) return value;
-	return resolveVideoSize(DEFAULT_VIDEO_SIZE);
-}
-function measureMediaColumnWidthPx(wrapper) {
-	const parent = wrapper.parentElement;
-	if (parent !== null && parent.clientWidth > 0) return parent.clientWidth;
-	return wrapper.clientWidth;
-}
-function measureAvailableHeightPx() {
-	const chromeOffsetPx = measureHeaderOffsetPx(CHROME_GAP_PX);
-	return Math.max(0, window.innerHeight - chromeOffsetPx);
-}
-function clearWrapperSize(wrapper) {
-	wrapper.style.removeProperty("width");
-	wrapper.style.removeProperty("height");
-}
-function applyWrapperSize(wrapper, video) {
-	if (!document.body.classList.contains(BODY_CLASS)) {
-		clearWrapperSize(wrapper);
-		return;
-	}
-	const videoWidth = video.videoWidth;
-	const videoHeight = video.videoHeight;
-	if (videoWidth <= 0 || videoHeight <= 0) return;
-	const size = computeVideoPlayerSize({
-		mode: readSizeModeFromBody(),
-		videoWidth,
-		videoHeight,
-		columnWidthPx: measureMediaColumnWidthPx(wrapper),
-		availableHeightPx: measureAvailableHeightPx()
-	});
-	if (size.widthPx <= 0 || size.heightPx <= 0) return;
-	wrapper.style.width = `${String(size.widthPx)}px`;
-	wrapper.style.height = `${String(size.heightPx)}px`;
-}
-/**
-* Apply persisted volume/mute/rate. Fluid's own volume UI may not mirror
-* programmatic `video.volume` / `video.muted` — see LIVE-CHECK note.
-*/
-function applyPersistedPlayback(video, state) {
-	const volume = state.volume ?? VOLUME_MAX;
-	const muted = state.muted ?? false;
-	const playbackRate = state.playbackRate ?? 1;
-	video.volume = clampVolume(volume);
-	video.muted = muted;
-	video.playbackRate = playbackRate;
-}
-function persistFromVideo(ctx, video) {
-	writeStoredState(ctx, {
-		volume: clampVolume(video.volume),
-		muted: video.muted,
-		playbackRate: video.playbackRate
-	});
-}
-function bindPlayer(ctx, video) {
-	const wrapper = findWrapper();
-	const state = readStoredState(ctx);
-	const applyLayout = () => {
-		if (wrapper !== null) applyWrapperSize(wrapper, video);
-	};
-	const onLoadedMetadata = () => {
-		applyPersistedPlayback(video, readStoredState(ctx));
-		applyLayout();
-	};
-	if (video.readyState >= HTMLMediaElement.HAVE_METADATA) {
-		applyPersistedPlayback(video, state);
-		applyLayout();
-	}
-	video.addEventListener("loadedmetadata", onLoadedMetadata);
-	video.addEventListener("volumechange", () => {
-		persistFromVideo(ctx, video);
-	});
-	video.addEventListener("ratechange", () => {
-		persistFromVideo(ctx, video);
-	});
-	const onResize = () => {
-		applyLayout();
-	};
-	window.addEventListener("resize", onResize);
-	new MutationObserver(() => {
-		applyLayout();
-	}).observe(document.body, {
-		attributes: true,
-		attributeFilter: ["class"]
-	});
-}
-function mountVideoPlayer(ctx) {
-	scheduleAfterFirstPaint(() => {
-		const video = findVideo();
-		if (video === null) {
-			log.warn(WARN_NO_VIDEO);
-			return;
-		}
-		bindPlayer(ctx, video);
-	});
-}
-var videoPlayerFeature = {
 	id: FEATURE_ID$1,
 	label: FEATURE_LABEL$1,
 	pages: [...FEATURE_PAGES$1],
 	defaultEnabled: true,
-	cssOnly: true,
-	settingsCaption: VIDEO_PLAYER_SETTING_CAPTION,
-	choice: {
-		label: "Video size",
-		options: [
-			{
-				value: VIDEO_SIZE_FIT_HEIGHT,
-				label: SIZE_LABEL_FIT_HEIGHT
-			},
-			{
-				value: VIDEO_SIZE_FIT_WIDTH,
-				label: SIZE_LABEL_FIT_WIDTH
-			},
-			{
-				value: VIDEO_SIZE_ORIGINAL,
-				label: SIZE_LABEL_ORIGINAL
-			}
-		],
-		defaultValue: DEFAULT_VIDEO_SIZE
-	},
 	css: FEATURE_CSS$1,
-	mount: mountVideoPlayer
+	mount: mountTagGroups
 };
 var FEATURE_ID = "video-preview";
 var FEATURE_LABEL = "Video preview on hover";
@@ -13311,7 +14417,7 @@ function mountVideoPreview(ctx) {
 		startBindings();
 	});
 }
-var FEATURES = exports("aF",[
+var FEATURES = exports("aH",[
 	feedFeature,
 	menuCleanupFeature,
 	tagGroupsFeature,
@@ -13556,12 +14662,12 @@ bootEarly();
 whenDomReady(() => {
 	applyLayoutBeforePaint();
 	scheduleAfterFirstPaint(() => {
-		module.import('./app-DbCqnCui-BYA0sn3V.js').then(({ startApp }) => {
+		module.import('./app-BOYx65x_-6rKCbrAL.js').then(({ startApp }) => {
 			startApp();
 		});
 	});
 });})}}));
-System.register("./app-DbCqnCui-BYA0sn3V.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var yieldToMain,detectPageKind,mountCards,syncFavoritesPage,runFeaturesYielding,getAppearance,applyAppearanceTheme,ensureDocumentStyles,SITE_SELECTORS,log,SITE_ORIGIN,SEARCH_PARAM_TAGS,normalizeArtistTag,CSS_CLASS,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,HEADER_SELECTOR$1,RDW_OWN_PAGE_CLASS,MENU_ITEM_ID,parseRdwHash,getSyncState,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,runFavoritesSync,UI_TEXT,Q$1,RDW_PAGE_ROOT_ID,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,resolveFavoritesUserId,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,RDW_HASH_PREFIX,createFavoritesSyncTabId,APPEARANCE_BACKGROUND_KEY,readArtistsMirror,listArtistTags,writeArtistsMirror,reloadFromStorage,save,CURRENT_PAGE_CLASS$1,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,a,applyTokenProperties,resolveAppearancePalette,getSiteSkinCss,$$1,PANEL_UI_CLASS,TOKEN_VAR,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,SITE_LIGHT_C_BG,SITE_LIGHT_C_BG_ALT,SITE_DARK_C_BG,SITE_DARK_C_BORDER,APPEARANCE_BACKGROUND_TOO_LARGE;return{setters:[function(module){yieldToMain=module.y;detectPageKind=module.d;mountCards=module.m;syncFavoritesPage=module.s;runFeaturesYielding=module.r;getAppearance=module.g;applyAppearanceTheme=module.a;ensureDocumentStyles=module.e;SITE_SELECTORS=module.S;log=module.l;SITE_ORIGIN=module.b;SEARCH_PARAM_TAGS=module.c;normalizeArtistTag=module.n;CSS_CLASS=module.C;ensureStyleElement=module.f;RDW_OWN_PAGE_STYLE_ID=module.R;buildOwnPageCss=module.h;HEADER_SELECTOR$1=module.H;RDW_OWN_PAGE_CLASS=module.i;MENU_ITEM_ID=module.M;parseRdwHash=module.p;getSyncState=module.j;readFavoritesSyncMode=module.k;FAVORITES_SYNC_MODE_FULL=module.F;runFavoritesSync=module.o;UI_TEXT=module.U;Q$1=module.Q;RDW_PAGE_ROOT_ID=module.q;NAVBAR_SELECTOR=module.N;FEED_MENU_ITEM_ID=module.t;RDW_HASH_COLLECTIONS=module.u;MENU_LABEL=module.v;RDW_HASH_FOLLOWING=module.w;resolveFavoritesUserId=module.x;MY_FAVORITES_CONTAINER_ID=module.z;RDW_HASH_SETTINGS=module.A;RDW_HASH_PREFIX=module.B;createFavoritesSyncTabId=module.D;APPEARANCE_BACKGROUND_KEY=module.E;readArtistsMirror=module.G;listArtistTags=module.I;writeArtistsMirror=module.J;reloadFromStorage=module.K;save=module.L;CURRENT_PAGE_CLASS$1=module.O;setSyncState=module.P;SEARCH_PARAM_PAGE=module.T;FAVORITES_PAGE=module.V;FAVORITES_SECTION_VIEW=module.W;SEARCH_PATH=module.X;a=module.Y;applyTokenProperties=module.Z;resolveAppearancePalette=module._;getSiteSkinCss=module.$;$$1=module.a0;PANEL_UI_CLASS=module.a1;TOKEN_VAR=module.a2;RDW_THEME_ATTR=module.a3;APPEARANCE_THEME_SITE=module.a4;APPEARANCE_THEME_SITE_DARK=module.a5;SITE_LIGHT_C_BG=module.a6;SITE_LIGHT_C_BG_ALT=module.a7;SITE_DARK_C_BG=module.a8;SITE_DARK_C_BORDER=module.a9;APPEARANCE_BACKGROUND_TOO_LARGE=module.aa;}],execute:(function(){exports({n:loadBackground,r:saveBackground,startApp:startApp,t:clearBackground});/** Matches host.tsx page title class (owned there; styled here for site polish). */
+System.register("./app-BOYx65x_-6rKCbrAL.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var yieldToMain,detectPageKind,mountCards,syncFavoritesPage,runFeaturesYielding,getAppearance,applyAppearanceTheme,ensureDocumentStyles,SITE_SELECTORS,log,SITE_ORIGIN,SEARCH_PARAM_TAGS,normalizeArtistTag,CSS_CLASS,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,HEADER_SELECTOR,RDW_OWN_PAGE_CLASS,MENU_ITEM_ID,parseRdwHash,getSyncState,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,runFavoritesSync,UI_TEXT,Q$1,RDW_PAGE_ROOT_ID,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,resolveFavoritesUserId,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,rdwPageHash,createFavoritesSyncTabId,APPEARANCE_BACKGROUND_KEY,readArtistsMirror,listArtistTags,writeArtistsMirror,reloadFromStorage,save,CURRENT_PAGE_CLASS,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,a,applyTokenProperties,resolveAppearancePalette,isCollectionDetailPage,menuRouteForPage,getSiteSkinCss,$$1,PANEL_UI_CLASS,TOKEN_VAR,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,SITE_LIGHT_C_BG,SITE_LIGHT_C_BG_ALT,SITE_DARK_C_BG,SITE_DARK_C_BORDER,APPEARANCE_BACKGROUND_TOO_LARGE;return{setters:[function(module){yieldToMain=module.y;detectPageKind=module.d;mountCards=module.m;syncFavoritesPage=module.s;runFeaturesYielding=module.r;getAppearance=module.g;applyAppearanceTheme=module.a;ensureDocumentStyles=module.e;SITE_SELECTORS=module.S;log=module.l;SITE_ORIGIN=module.b;SEARCH_PARAM_TAGS=module.c;normalizeArtistTag=module.n;CSS_CLASS=module.C;ensureStyleElement=module.f;RDW_OWN_PAGE_STYLE_ID=module.R;buildOwnPageCss=module.h;HEADER_SELECTOR=module.H;RDW_OWN_PAGE_CLASS=module.i;MENU_ITEM_ID=module.M;parseRdwHash=module.p;getSyncState=module.j;readFavoritesSyncMode=module.k;FAVORITES_SYNC_MODE_FULL=module.F;runFavoritesSync=module.o;UI_TEXT=module.U;Q$1=module.Q;RDW_PAGE_ROOT_ID=module.q;NAVBAR_SELECTOR=module.N;FEED_MENU_ITEM_ID=module.t;RDW_HASH_COLLECTIONS=module.u;MENU_LABEL=module.v;RDW_HASH_FOLLOWING=module.w;resolveFavoritesUserId=module.x;MY_FAVORITES_CONTAINER_ID=module.z;RDW_HASH_SETTINGS=module.A;rdwPageHash=module.B;createFavoritesSyncTabId=module.D;APPEARANCE_BACKGROUND_KEY=module.E;readArtistsMirror=module.G;listArtistTags=module.I;writeArtistsMirror=module.J;reloadFromStorage=module.K;save=module.L;CURRENT_PAGE_CLASS=module.O;setSyncState=module.P;SEARCH_PARAM_PAGE=module.T;FAVORITES_PAGE=module.V;FAVORITES_SECTION_VIEW=module.W;SEARCH_PATH=module.X;a=module.Y;applyTokenProperties=module.Z;resolveAppearancePalette=module._;isCollectionDetailPage=module.$;menuRouteForPage=module.a0;getSiteSkinCss=module.a1;$$1=module.a2;PANEL_UI_CLASS=module.a3;TOKEN_VAR=module.a4;RDW_THEME_ATTR=module.a5;APPEARANCE_THEME_SITE=module.a6;APPEARANCE_THEME_SITE_DARK=module.a7;SITE_LIGHT_C_BG=module.a8;SITE_LIGHT_C_BG_ALT=module.a9;SITE_DARK_C_BG=module.aa;SITE_DARK_C_BORDER=module.ab;APPEARANCE_BACKGROUND_TOO_LARGE=module.ac;}],execute:(function(){exports({i:navigateToRdwRoute,n:loadBackground,r:saveBackground,startApp:startApp,t:clearBackground});/** Matches host.tsx page title class (owned there; styled here for site polish). */
 var PAGE_TITLE_CLASS$1 = "rdw-page-title";
 /** Matches kit SectionLabel class. */
 var SECTION_LABEL_CLASS = "rdw-section-label";
@@ -13834,13 +14940,14 @@ ${PAGE_CONTENT_CSS}
 function PageShell(props) {
 	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("style", { children: PAGE_HOST_CSS }), /* @__PURE__ */ a("div", {
 		className: PAGE_SHELL_CLASS,
-		children: [/* @__PURE__ */ a("h1", {
+		children: [props.title !== null ? /* @__PURE__ */ a("h1", {
 			className: PAGE_TITLE_CLASS,
 			children: props.title
-		}), props.children]
+		}) : null, props.children]
 	})] });
 }
 function titleForRoute(route) {
+	if (isCollectionDetailPage(route)) return null;
 	if (route === "collections") return MENU_LABEL.collections;
 	if (route === "following") return MENU_LABEL.following;
 	return MENU_LABEL.settings;
@@ -13850,26 +14957,33 @@ var collectionsFactory = null;
 var followingFactory = null;
 function getSettingsFactory() {
 	if (settingsFactory === null) settingsFactory = async () => {
-		const mod = await module.import('./settings-page-B0nDeaCc-B01Ffn4T.js');
+		const mod = await module.import('./settings-page-D8hZxxO2-CQM9t3Zw.js');
 		return /* @__PURE__ */ a(mod.SettingsPage, {});
 	};
 	return settingsFactory;
 }
 function getCollectionsFactory() {
 	if (collectionsFactory === null) collectionsFactory = async () => {
-		const mod = await module.import('./collections-page-BY_JwDXA-CbhDLuYq.js');
+		const mod = await module.import('./collections-page-Bzxwp80F-DXPmlSqj.js');
 		return /* @__PURE__ */ a(mod.CollectionsPage, {});
 	};
 	return collectionsFactory;
 }
 function getFollowingFactory() {
 	if (followingFactory === null) followingFactory = async () => {
-		const mod = await module.import('./following-page-Co1KJLrS-BqxCEE3u.js');
+		const mod = await module.import('./following-page-dsuPK5T0-BLr-yztN.js');
 		return /* @__PURE__ */ a(mod.FollowingPage, {});
 	};
 	return followingFactory;
 }
+function collectionDetailFactory(collectionId) {
+	return async () => {
+		const mod = await module.import('./collection-detail-page-gR0xAtfb-DGtbzDJY.js');
+		return /* @__PURE__ */ a(mod.CollectionDetailPage, { collectionId }, collectionId);
+	};
+}
 function pageFactoryForRoute(route) {
+	if (isCollectionDetailPage(route)) return collectionDetailFactory(route.collectionId);
 	if (route === "collections") return getCollectionsFactory();
 	if (route === "following") return getFollowingFactory();
 	return getSettingsFactory();
@@ -13952,7 +15066,7 @@ function findNavbar() {
 	return navbar instanceof HTMLUListElement ? navbar : null;
 }
 function findHeader$1() {
-	const header = document.querySelector(HEADER_SELECTOR$1);
+	const header = document.querySelector(HEADER_SELECTOR);
 	return header instanceof HTMLElement ? header : null;
 }
 /**
@@ -14066,28 +15180,28 @@ function captureSiteCurrentIfNeeded() {
 		savedSiteCurrent = null;
 		return;
 	}
-	const current = navbar.querySelector(`li.${CURRENT_PAGE_CLASS$1}`);
+	const current = navbar.querySelector(`li.${CURRENT_PAGE_CLASS}`);
 	savedSiteCurrent = current instanceof HTMLLIElement && current.id !== MENU_ITEM_ID.collections && current.id !== MENU_ITEM_ID.following && current.id !== MENU_ITEM_ID.favorites && current.id !== MENU_ITEM_ID.settings ? current : null;
 }
 function clearAllOwnCurrent() {
 	for (const id of Object.values(MENU_ITEM_ID)) {
 		const item = document.getElementById(id);
-		if (item instanceof HTMLLIElement) item.classList.remove(CURRENT_PAGE_CLASS$1);
+		if (item instanceof HTMLLIElement) item.classList.remove(CURRENT_PAGE_CLASS);
 	}
 }
 /** Mark the own-page nav item; remember site current-page for restore. */
 function setOwnPageCurrentHighlight(route) {
 	captureSiteCurrentIfNeeded();
 	const navbar = findNavbar();
-	if (navbar !== null) for (const child of navbar.querySelectorAll(`li.${CURRENT_PAGE_CLASS$1}`)) child.classList.remove(CURRENT_PAGE_CLASS$1);
+	if (navbar !== null) for (const child of navbar.querySelectorAll(`li.${CURRENT_PAGE_CLASS}`)) child.classList.remove(CURRENT_PAGE_CLASS);
 	clearAllOwnCurrent();
 	const item = document.getElementById(menuItemIdForRoute(route));
-	if (item instanceof HTMLLIElement) item.classList.add(CURRENT_PAGE_CLASS$1);
+	if (item instanceof HTMLLIElement) item.classList.add(CURRENT_PAGE_CLASS);
 }
 /** Restore site current-page after leaving #rdw/ routes. */
 function clearOwnPageCurrentHighlight() {
 	clearAllOwnCurrent();
-	if (savedSiteCurrent !== null && savedSiteCurrent.isConnected) savedSiteCurrent.classList.add(CURRENT_PAGE_CLASS$1);
+	if (savedSiteCurrent !== null && savedSiteCurrent.isConnected) savedSiteCurrent.classList.add(CURRENT_PAGE_CLASS);
 	savedSiteCurrent = null;
 	siteCurrentCaptured = false;
 }
@@ -14102,7 +15216,7 @@ function ensureOwnPageStyle() {
 	style.textContent = buildOwnPageCss();
 }
 function findHeader() {
-	const header = document.querySelector(HEADER_SELECTOR$1);
+	const header = document.querySelector(HEADER_SELECTOR);
 	return header instanceof HTMLElement ? header : null;
 }
 async function enterRoute(route) {
@@ -14110,7 +15224,7 @@ async function enterRoute(route) {
 	if (header === null) return;
 	document.documentElement.classList.add(RDW_OWN_PAGE_CLASS);
 	await showRdwPage(route, header);
-	setOwnPageCurrentHighlight(route);
+	setOwnPageCurrentHighlight(menuRouteForPage(route));
 }
 function leaveRoute() {
 	document.documentElement.classList.remove(RDW_OWN_PAGE_CLASS);
@@ -14145,7 +15259,7 @@ function isModifiedClick(event) {
 * replaces so Back returns to the underlying site page.
 */
 async function navigateToRdwRoute(route) {
-	const nextHash = `${RDW_HASH_PREFIX}${route}`;
+	const nextHash = rdwPageHash(route);
 	const nextUrl = `${window.location.pathname}${window.location.search}${nextHash}`;
 	if (parseRdwHash(window.location.hash) !== null) window.history.replaceState(window.history.state, HISTORY_STATE_TITLE, nextUrl);
 	else window.history.pushState(window.history.state, HISTORY_STATE_TITLE, nextUrl);
@@ -14174,6 +15288,7 @@ function onDocumentClick(event) {
 /**
 * Install navbar items + hash router. No menu / no page when div#header is absent.
 * Page Preact modules load lazily on first #rdw/* open (factories in host).
+* The collection detail module loads only for #rdw/collections/<id>.
 */
 async function startRdwPages() {
 	ensureOwnPageStyle();
@@ -14565,7 +15680,7 @@ async function startApp() {
 	await yieldToMain();
 	maybeResumeFavoritesSync();
 }})}}));
-System.register("./settings-page-B0nDeaCc-B01Ffn4T.js", ['./___monkey.entry.js','./app-DbCqnCui-BYA0sn3V.js','./autocomplete-HoEAiNev-O5tr1WB9.js'],(function(exports){'use strict';var d,a,PANEL_UI_CLASS,Card,SectionLabel,Switch,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,NumberField,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,setGridFavButtonsVisible,P$1,T,A,APPEARANCE_THEME_CUSTOM,KIT_FOCUS_CSS,Select,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,$$1,Segmented,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,TextField,Button,clampBackgroundDim,FEATURES,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,setFeatureEnabled,applyCssOnlyFeatureEnabled,isFeatureEnabled,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,applyCssOnlyFeatureChoice,getFeatureChoice,b,Chip,readSiteBlacklist,AutocompleteField,ProgressBar,createDefaultCustomTheme,AppearanceThemeSchema,getAppearance,prepareBackgroundImageFile,writeSiteBlacklist,runFavoritesSync,log,FAVORITES_SYNC_PAGE_PAUSE_MS,load,createDefaultStorage,clearStorageCache,clearFavsCache,getSyncState,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,setAppearance,applyAppearanceTheme,getSiteSkinCss,loadFavSet,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,gridDensityFeature,FAVORITES_SYNC_MODE_INCREMENTAL,FAVORITES_SYNC_MODE_FULL,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureChoiceValue,getScreenPixelSize,clearBackground,saveBackground,loadBackground,createAutocompleteQuerier;return{setters:[function(module){d=module.ab;a=module.Y;PANEL_UI_CLASS=module.a1;Card=module.ac;SectionLabel=module.ad;Switch=module.ae;UI_TEXT=module.U;TWEAKS_SWITCH_ID=module.af;setTweaksEnabled=module.ag;NumberField=module.ah;UPDATES_GROUP_SIZE_ID=module.ai;setUpdatesGroupSize=module.aj;getUpdatesGroupSize=module.ak;PLAYLIST_CHUNK_SIZE_ID=module.al;setPlaylistChunkSize=module.am;getPlaylistChunkSize=module.an;GRID_FAV_CHECKBOX_ID=module.ao;setGridFavButtonsEnabled=module.ap;setGridFavButtonsVisible=module.aq;P$1=module.ar;T=module.as;A=module.at;APPEARANCE_THEME_CUSTOM=module.au;KIT_FOCUS_CSS=module.av;Select=module.aw;APPEARANCE_THEME_SITE=module.a4;APPEARANCE_THEME_SITE_DARK=module.a5;APPEARANCE_THEME_LIGHT=module.ax;APPEARANCE_THEME_DARK=module.ay;$$1=module.a0;Segmented=module.az;APPEARANCE_CUSTOM_BASE_LIGHT=module.aA;APPEARANCE_CUSTOM_BASE_DARK=module.aB;TextField=module.aC;Button=module.aD;clampBackgroundDim=module.aE;FEATURES=module.aF;featurePanelLabel=module.aG;FEATURE_CHECKBOX_ID_PREFIX=module.aH;setFeatureEnabled=module.aI;applyCssOnlyFeatureEnabled=module.aJ;isFeatureEnabled=module.aK;FEATURE_CHOICE_ID_PREFIX=module.aL;setFeatureChoiceValue=module.aM;applyCssOnlyFeatureChoice=module.aN;getFeatureChoice=module.aO;b=module.aP;Chip=module.aQ;readSiteBlacklist=module.aR;AutocompleteField=module.aS;ProgressBar=module.aT;createDefaultCustomTheme=module.aU;AppearanceThemeSchema=module.aV;getAppearance=module.g;prepareBackgroundImageFile=module.aW;writeSiteBlacklist=module.aX;runFavoritesSync=module.o;log=module.l;FAVORITES_SYNC_PAGE_PAUSE_MS=module.aY;load=module.aZ;createDefaultStorage=module.a_;clearStorageCache=module.a$;clearFavsCache=module.b0;getSyncState=module.j;object=module.b1;StorageSchema=module.b2;optional=module.b3;string=module.b4;FavsSchema=module.b5;literal=module.b6;IMPORT_SCHEMA_ERROR_PREFIX=module.b7;stripLegacyPanelWindowSize=module.b8;save=module.L;migrateMarksFavToFavs=module.b9;FAVS_STORAGE_KEY=module.ba;createDefaultFavs=module.bb;parseFavsStrict=module.bc;setAppearance=module.bd;applyAppearanceTheme=module.a;getSiteSkinCss=module.$;loadFavSet=module.be;STORAGE_BACKUP_KEY=module.bf;extractFavIdsFromMarks=module.bg;gridDensityFeature=module.bh;FAVORITES_SYNC_MODE_INCREMENTAL=module.bi;FAVORITES_SYNC_MODE_FULL=module.F;getTweaksEnabled=module.bj;getGridFavButtonsEnabled=module.bk;getFeatureChoiceValue=module.bl;getScreenPixelSize=module.bm;},function(module){clearBackground=module.t;saveBackground=module.r;loadBackground=module.n;},function(module){createAutocompleteQuerier=module.c;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
+System.register("./settings-page-D8hZxxO2-CQM9t3Zw.js", ['./___monkey.entry.js','./app-BOYx65x_-6rKCbrAL.js','./autocomplete-C_YP9Bea-BhQ9wpRW.js'],(function(exports){'use strict';var d,a,PANEL_UI_CLASS,Card,SectionLabel,Switch,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,NumberField,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,setGridFavButtonsVisible,P$1,T,A,getAppearance,applyAppearanceTheme,getSiteSkinCss,APPEARANCE_THEME_CUSTOM,KIT_FOCUS_CSS,Select,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,$$1,Segmented,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,TextField,Button,clampBackgroundDim,FEATURES,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,setFeatureEnabled,applyCssOnlyFeatureEnabled,isFeatureEnabled,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,applyCssOnlyFeatureChoice,getFeatureChoice,b,readSiteBlacklist,Chip,AutocompleteField,ProgressBar,createDefaultCustomTheme,AppearanceThemeSchema,prepareBackgroundImageFile,writeSiteBlacklist,runFavoritesSync,log,FAVORITES_SYNC_PAGE_PAUSE_MS,load,createDefaultStorage,clearStorageCache,clearFavsCache,getSyncState,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,setAppearance,loadFavSet,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,gridDensityFeature,FAVORITES_SYNC_MODE_INCREMENTAL,FAVORITES_SYNC_MODE_FULL,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureChoiceValue,getScreenPixelSize,loadBackground,clearBackground,saveBackground,createAutocompleteQuerier;return{setters:[function(module){d=module.ad;a=module.Y;PANEL_UI_CLASS=module.a3;Card=module.ae;SectionLabel=module.af;Switch=module.ag;UI_TEXT=module.U;TWEAKS_SWITCH_ID=module.ah;setTweaksEnabled=module.ai;NumberField=module.aj;UPDATES_GROUP_SIZE_ID=module.ak;setUpdatesGroupSize=module.al;getUpdatesGroupSize=module.am;PLAYLIST_CHUNK_SIZE_ID=module.an;setPlaylistChunkSize=module.ao;getPlaylistChunkSize=module.ap;GRID_FAV_CHECKBOX_ID=module.aq;setGridFavButtonsEnabled=module.ar;setGridFavButtonsVisible=module.as;P$1=module.at;T=module.au;A=module.av;getAppearance=module.g;applyAppearanceTheme=module.a;getSiteSkinCss=module.a1;APPEARANCE_THEME_CUSTOM=module.aw;KIT_FOCUS_CSS=module.ax;Select=module.ay;APPEARANCE_THEME_SITE=module.a6;APPEARANCE_THEME_SITE_DARK=module.a7;APPEARANCE_THEME_LIGHT=module.az;APPEARANCE_THEME_DARK=module.aA;$$1=module.a2;Segmented=module.aB;APPEARANCE_CUSTOM_BASE_LIGHT=module.aC;APPEARANCE_CUSTOM_BASE_DARK=module.aD;TextField=module.aE;Button=module.aF;clampBackgroundDim=module.aG;FEATURES=module.aH;featurePanelLabel=module.aI;FEATURE_CHECKBOX_ID_PREFIX=module.aJ;setFeatureEnabled=module.aK;applyCssOnlyFeatureEnabled=module.aL;isFeatureEnabled=module.aM;FEATURE_CHOICE_ID_PREFIX=module.aN;setFeatureChoiceValue=module.aO;applyCssOnlyFeatureChoice=module.aP;getFeatureChoice=module.aQ;b=module.aR;readSiteBlacklist=module.aS;Chip=module.aT;AutocompleteField=module.aU;ProgressBar=module.aV;createDefaultCustomTheme=module.aW;AppearanceThemeSchema=module.aX;prepareBackgroundImageFile=module.aY;writeSiteBlacklist=module.aZ;runFavoritesSync=module.o;log=module.l;FAVORITES_SYNC_PAGE_PAUSE_MS=module.a_;load=module.a$;createDefaultStorage=module.b0;clearStorageCache=module.b1;clearFavsCache=module.b2;getSyncState=module.j;object=module.b3;StorageSchema=module.b4;optional=module.b5;string=module.b6;FavsSchema=module.b7;literal=module.b8;IMPORT_SCHEMA_ERROR_PREFIX=module.b9;stripLegacyPanelWindowSize=module.ba;save=module.L;migrateMarksFavToFavs=module.bb;FAVS_STORAGE_KEY=module.bc;createDefaultFavs=module.bd;parseFavsStrict=module.be;setAppearance=module.bf;loadFavSet=module.bg;STORAGE_BACKUP_KEY=module.bh;extractFavIdsFromMarks=module.bi;gridDensityFeature=module.bj;FAVORITES_SYNC_MODE_INCREMENTAL=module.bk;FAVORITES_SYNC_MODE_FULL=module.F;getTweaksEnabled=module.bl;getGridFavButtonsEnabled=module.bm;getFeatureChoiceValue=module.bn;getScreenPixelSize=module.bo;},function(module){loadBackground=module.n;clearBackground=module.t;saveBackground=module.r;},function(module){createAutocompleteQuerier=module.c;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
 var THEME_OPTIONS = [
 	{
 		value: APPEARANCE_THEME_SITE,
@@ -15958,380 +17073,582 @@ function SettingsPage() {
 		]
 	});
 }})}}));
-System.register("./collections-page-BY_JwDXA-CbhDLuYq.js", ['./___monkey.entry.js'],(function(exports){'use strict';var d,listPlaylists,readTagsFromLocation,a,Card,PANEL_UI_CLASS,SectionLabel,addCollection,$$1,Button,UI_TEXT,serialize,renameCollection,deleteCollection,buildSearchUrl,createPlaylist,EmptyState,buildPlaylistQueries,getPlaylistChunkSize,buildUpdatesSearchUrl,load,isPlaylist,A,TextField,IconButton,IconTrash;return{setters:[function(module){d=module.ab;listPlaylists=module.bn;readTagsFromLocation=module.bo;a=module.Y;Card=module.ac;PANEL_UI_CLASS=module.a1;SectionLabel=module.ad;addCollection=module.bp;$$1=module.a0;Button=module.aD;UI_TEXT=module.U;serialize=module.bq;renameCollection=module.br;deleteCollection=module.bs;buildSearchUrl=module.bt;createPlaylist=module.bu;EmptyState=module.bv;buildPlaylistQueries=module.bw;getPlaylistChunkSize=module.an;buildUpdatesSearchUrl=module.bx;load=module.aZ;isPlaylist=module.by;A=module.at;TextField=module.aC;IconButton=module.bz;IconTrash=module.bA;}],execute:(function(){exports("CollectionsPage",CollectionsPage);var PAGE_CLASS = "rdw-collections-page";
-var PLAYLIST_META_CLASS = "rdw-playlist-meta";
-var PLAYLIST_PARTS_CLASS = "rdw-playlist-parts";
-var PLAYLIST_PART_CLASS = "rdw-playlist-part";
-var ROW_MAIN_CLASS = "rdw-collections-row-main";
-var DYNAMIC_COLLECTIONS_HEADING = "Dynamic Collection";
-var CUSTOM_COLLECTIONS_HEADING = "Custom Collection";
-var EMPTY_DYNAMIC_COLLECTIONS = "No dynamic collections yet.";
-var EMPTY_CUSTOM_COLLECTIONS = "No custom collections yet.";
-var EMPTY_CUSTOM_COLLECTIONS_HINT = "Use the + button on a post";
-var NEW_CUSTOM_COLLECTION = "New Custom Collection";
-var OPEN_CUSTOM_COLLECTION = "Open Custom Collection";
-var CUSTOM_COLLECTION_PARTS_LABEL = "Custom Collection parts";
-var SAVE_NAME_ID = "rdw-save-name";
-var PLAYLIST_NAME_ID = "rdw-playlist-name";
+System.register("./collections-page-Bzxwp80F-DXPmlSqj.js", ['./___monkey.entry.js'],(function(exports){'use strict';var d,b,load,a,Segmented,TextField,Button,IconPlus,EmptyState,resolveCollectionKind,UI_TEXT,Dialog,createDynamicCollection,createPlaylist,COLLECTION_KIND_POSTS,collectionDetailHash,COLLECTION_KIND_SEARCH,Chip,buildSearchUrl,serialize;return{setters:[function(module){d=module.ad;b=module.aR;load=module.a$;a=module.Y;Segmented=module.aB;TextField=module.aE;Button=module.aF;IconPlus=module.bp;EmptyState=module.bq;resolveCollectionKind=module.br;UI_TEXT=module.U;Dialog=module.bs;createDynamicCollection=module.bt;createPlaylist=module.bu;COLLECTION_KIND_POSTS=module.bv;collectionDetailHash=module.bw;COLLECTION_KIND_SEARCH=module.bx;Chip=module.aT;buildSearchUrl=module.by;serialize=module.bz;}],execute:(function(){exports("CollectionsPage",CollectionsPage);var PAGE_CLASS = "rdw-collections-page";
+var HEADER_CLASS = "rdw-collections-header";
+var TOOLBAR_CLASS = "rdw-collections-toolbar";
+var FILTER_FIELD_CLASS = "rdw-collections-filter";
+var GRID_CLASS = "rdw-collections-grid";
+var CARD_CLASS = "rdw-collection-card";
+var COVER_CLASS = "rdw-collection-cover";
+var COVER_CELL_CLASS = "rdw-collection-cover-cell";
+var COVER_IMAGE_CLASS = "rdw-collection-cover-image";
+var COVER_EMPTY_CLASS = "rdw-collection-cover-empty";
+var CHIPS_CLASS = "rdw-collection-chips";
+var META_ROW_CLASS = "rdw-collection-meta-row";
+var NAME_CLASS = "rdw-collection-name";
+var BADGE_CLASS = "rdw-collection-badge";
+var CAPTION_CLASS = "rdw-collection-caption";
+var FORM_ERROR_CLASS = "rdw-collection-form-error";
+var FILTER_ALL = "all";
+var FILTER_CUSTOM = "custom";
+var FILTER_DYNAMIC = "dynamic";
+var KIND_CUSTOM = "custom";
+var KIND_DYNAMIC = "dynamic";
+var FILTER_ALL_LABEL = "All";
+var FILTER_CUSTOM_LABEL = "Custom";
+var FILTER_DYNAMIC_LABEL = "Dynamic";
+var NEW_BUTTON_LABEL = "New";
+var NEW_DIALOG_TITLE = "New collection";
+var CREATE_LABEL = "Create";
+var QUERY_FIELD_LABEL = "Query";
+var QUERY_PLACEHOLDER = "tag -tag ( a ~ b )";
+var TYPE_SEGMENTED_LABEL = "Show";
+var KIND_SEGMENTED_LABEL = "Collection kind";
+var FILTER_ARIA_LABEL = "Filter by name";
+var FILTER_PLACEHOLDER = "Filter by name";
+var GRID_LABEL = "Collections";
+var BADGE_CUSTOM = "Custom";
+var BADGE_DYNAMIC = "Dynamic";
+var SAVED_SEARCH_CAPTION = "saved search";
+var EMPTY_TITLE = "No collections yet";
+var EMPTY_DESCRIPTION = "Custom collections are posts you pick. Dynamic collections are saved searches.";
+var FILTER_EMPTY_TITLE = "No matching collections";
+var FILTER_EMPTY_DESCRIPTION = "Nothing matches this filter.";
+var EMPTY_NAME_MESSAGE = "Enter a name.";
+var EMPTY_QUERY_MESSAGE = "Enter a query.";
+var DUPLICATE_NAME_MESSAGE = "A collection with this name already exists.";
+var ANY_OF_LABEL_PREFIX = "Any of ";
+var ANY_OF_LABEL_SUFFIX = " tags";
+var POST_WORD_SINGULAR = "post";
+var POST_WORD_PLURAL = "posts";
+var POST_COUNT_SINGULAR = 1;
+var COVER_AXIS_COUNT = 2;
+var COVER_SLOT_COUNT = 4;
+var COVER_GAP_PX = 2;
+var GRID_MIN_TRACK_PX = 200;
+var GRID_GAP_PX = 12;
+var PAGE_STACK_GAP_PX = 12;
+var HEADER_GAP_PX = 12;
+var TOOLBAR_GAP_PX = 8;
+var FILTER_FIELD_MIN_PX = 160;
+var CARD_PADDING_PX = 8;
+var CARD_GAP_PX = 8;
+var META_GAP_PX = 8;
+var CHIP_GAP_PX = 4;
+var CHIP_AREA_MAX_HEIGHT_PX = 72;
+var BADGE_FONT_PX = 10;
+var CAPTION_FONT_PX = 12;
+var ICON_PX = 14;
+var BADGE_TRACKING = "0.04em";
+var NAME_FIELD_ID = "rdw-collection-name";
+var QUERY_FIELD_ID = "rdw-collection-query";
+var FILTER_FIELD_ID = "rdw-collections-filter";
+var FORM_ERROR_ID = "rdw-collection-form-error";
+var QUERY_TOKEN_SPLIT = /\s+/;
+var CHIP_VARIANT_TOKEN = "dot";
+var CHIP_VARIANT_GROUP = "group";
+var CHIP_VARIANT_EXCLUDE = "exclude";
+var FILTER_OPTIONS = [
+	{
+		value: FILTER_ALL,
+		label: FILTER_ALL_LABEL
+	},
+	{
+		value: FILTER_CUSTOM,
+		label: FILTER_CUSTOM_LABEL
+	},
+	{
+		value: FILTER_DYNAMIC,
+		label: FILTER_DYNAMIC_LABEL
+	}
+];
+var NEW_KIND_OPTIONS = [{
+	value: KIND_CUSTOM,
+	label: FILTER_CUSTOM_LABEL
+}, {
+	value: KIND_DYNAMIC,
+	label: FILTER_DYNAMIC_LABEL
+}];
 var COLLECTIONS_PAGE_CSS = `
 .${PAGE_CLASS} {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: ${String(PAGE_STACK_GAP_PX)}px;
 }
-.${PAGE_CLASS} .${ROW_MAIN_CLASS} {
+.${HEADER_CLASS} {
+  display: flex;
+  flex-direction: column;
+  gap: ${String(HEADER_GAP_PX)}px;
+}
+.${TOOLBAR_CLASS} {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: ${String(TOOLBAR_GAP_PX)}px;
 }
-.${PAGE_CLASS} .${PLAYLIST_META_CLASS} {
+.${TOOLBAR_CLASS} .${FILTER_FIELD_CLASS} {
+  flex: 1 1 ${String(FILTER_FIELD_MIN_PX)}px;
+  min-width: 0;
   margin: 0;
-  color: var(--rdw-muted);
-  font-size: 12px;
 }
-.${PAGE_CLASS} .${PLAYLIST_PARTS_CLASS} {
+.${GRID_CLASS} {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(${String(GRID_MIN_TRACK_PX)}px, 1fr));
+  gap: ${String(GRID_GAP_PX)}px;
+}
+.${CARD_CLASS} {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.${PAGE_CLASS} .${PLAYLIST_PART_CLASS} {
-  color: var(--rdw-accent);
+  flex-direction: column;
+  gap: ${String(CARD_GAP_PX)}px;
+  min-width: 0;
+  padding: ${String(CARD_PADDING_PX)}px;
+  box-sizing: border-box;
   text-decoration: none;
-  font-size: 12px;
+  color: var(--rdw-text);
+  background: var(--rdw-surface);
+  border: 1px solid var(--rdw-border);
+  border-radius: var(--rdw-radius-l);
+}
+.${CARD_CLASS}:hover,
+.${CARD_CLASS}:focus,
+.${CARD_CLASS}:focus-visible {
+  border-color: var(--rdw-accent);
+  background: var(--rdw-surface-2);
+  outline: none;
+}
+.${COVER_CLASS} {
+  display: grid;
+  grid-template-columns: repeat(${String(COVER_AXIS_COUNT)}, minmax(0, 1fr));
+  grid-template-rows: repeat(${String(COVER_AXIS_COUNT)}, minmax(0, 1fr));
+  aspect-ratio: 1;
+  gap: ${String(COVER_GAP_PX)}px;
+  border-radius: var(--rdw-radius-m);
+  overflow: hidden;
+  background: var(--rdw-surface-2);
+}
+.${COVER_CELL_CLASS},
+.${COVER_EMPTY_CLASS} {
+  min-width: 0;
+  min-height: 0;
+  background: var(--rdw-surface-2);
+}
+.${COVER_IMAGE_CLASS},
+.${COVER_EMPTY_CLASS} {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.${COVER_IMAGE_CLASS} {
+  object-fit: cover;
+}
+.${CHIPS_CLASS} {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: ${String(CHIP_GAP_PX)}px;
+  max-height: ${String(CHIP_AREA_MAX_HEIGHT_PX)}px;
+  overflow: hidden;
+}
+.${META_ROW_CLASS} {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: ${String(META_GAP_PX)}px;
+  min-width: 0;
+}
+.${NAME_CLASS} {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-weight: 600;
 }
-.${PAGE_CLASS} .${PLAYLIST_PART_CLASS}:focus-visible {
-  outline: 2px solid var(--rdw-accent);
-  outline-offset: 2px;
+.${BADGE_CLASS} {
+  flex: none;
+  font-size: ${String(BADGE_FONT_PX)}px;
+  font-weight: 700;
+  letter-spacing: ${BADGE_TRACKING};
+  text-transform: uppercase;
+  color: var(--rdw-accent);
+}
+.${CAPTION_CLASS} {
+  margin: 0;
+  color: var(--rdw-muted);
+  font-size: ${String(CAPTION_FONT_PX)}px;
+}
+.${FORM_ERROR_CLASS} {
+  margin: 0;
+  color: var(--rdw-danger);
+  font-size: ${String(CAPTION_FONT_PX)}px;
 }
 `.trim();
-var sharedMode = { kind: "list" };
-var sharedNameDraft = "";
+function isListFilter(value) {
+	return value === FILTER_ALL || value === FILTER_CUSTOM || value === FILTER_DYNAMIC;
+}
+function isNewKind(value) {
+	return value === KIND_CUSTOM || value === KIND_DYNAMIC;
+}
+function foldedName(name) {
+	return name.trim().toLowerCase();
+}
 function postsLabel(count) {
-	return `${String(count)} post${count === 1 ? "" : "s"}`;
+	return `${String(count)} ${count === POST_COUNT_SINGULAR ? POST_WORD_SINGULAR : POST_WORD_PLURAL}`;
 }
-function listSavedSearches() {
-	return load().collections.filter((entry) => !isPlaylist(entry));
+function anyOfLabel(count) {
+	return `${ANY_OF_LABEL_PREFIX}${String(count)}${ANY_OF_LABEL_SUFFIX}`;
 }
-function playlistPostCount(playlist) {
-	return playlist.postIds?.length ?? 0;
+function nameError(name, collections) {
+	const trimmed = name.trim();
+	if (trimmed.length === 0) return EMPTY_NAME_MESSAGE;
+	const key = foldedName(trimmed);
+	for (const collection of collections) if (foldedName(collection.name) === key) return DUPLICATE_NAME_MESSAGE;
+	return null;
 }
-function NameForm(props) {
-	A(() => {
-		const input = document.getElementById(props.inputId);
-		if (input instanceof HTMLInputElement) {
-			input.focus();
-			input.select();
+function nameMatchesFilter(name, query) {
+	const needle = query.trim().toLowerCase();
+	if (needle.length === 0) return true;
+	return name.toLowerCase().includes(needle);
+}
+function visibleCollections(collections, filter, nameQuery) {
+	const visible = [];
+	for (const collection of collections) {
+		if (!nameMatchesFilter(collection.name, nameQuery)) continue;
+		const kind = resolveCollectionKind(collection);
+		if (filter === FILTER_CUSTOM && kind !== "posts") continue;
+		if (filter === FILTER_DYNAMIC && kind !== "search") continue;
+		visible.push(collection);
+	}
+	return visible;
+}
+function kindForFilter(filter) {
+	if (filter === FILTER_DYNAMIC) return KIND_DYNAMIC;
+	return KIND_CUSTOM;
+}
+function filterAfterCreate(kind, filter) {
+	if (kind === KIND_DYNAMIC && filter === FILTER_CUSTOM) return FILTER_DYNAMIC;
+	if (kind === KIND_CUSTOM && filter === FILTER_DYNAMIC) return FILTER_CUSTOM;
+	return filter;
+}
+function queryTokens(query) {
+	const trimmed = query.trim();
+	if (trimmed.length === 0) return [];
+	return trimmed.split(QUERY_TOKEN_SPLIT).filter((token) => token.length > 0);
+}
+function readParenGroup(tokens, start) {
+	if (tokens[start] !== "(") return null;
+	let members = 0;
+	for (let index = start + 1; index < tokens.length; index += 1) {
+		const token = tokens[index];
+		if (token === void 0 || token === "(") return null;
+		if (token === ")") {
+			if (members === 0) return null;
+			return {
+				memberCount: members,
+				nextIndex: index + 1
+			};
 		}
-	}, [props.inputId]);
-	return /* @__PURE__ */ a("form", {
-		className: "rdw-form",
-		onSubmit: (event) => {
-			event.preventDefault();
-			props.onSubmit();
-		},
-		children: [/* @__PURE__ */ a(TextField, {
-			id: props.inputId,
-			label: UI_TEXT.nameLabel,
-			value: props.value,
-			onChange: props.onChange
-		}), /* @__PURE__ */ a("div", {
-			className: "rdw-form-actions",
-			children: [/* @__PURE__ */ a(Button, {
-				type: "submit",
-				variant: "primary",
-				children: UI_TEXT.save
-			}), /* @__PURE__ */ a(Button, {
-				type: "button",
-				variant: "secondary",
-				onClick: props.onCancel,
-				children: UI_TEXT.cancel
-			})]
-		})]
+		if (token !== "~") members += 1;
+	}
+	return null;
+}
+function buildQueryChips(query) {
+	const tokens = queryTokens(query);
+	const chips = [];
+	let index = 0;
+	while (index < tokens.length) {
+		const token = tokens[index];
+		if (token === void 0) break;
+		if (token === "(") {
+			const group = readParenGroup(tokens, index);
+			if (group !== null) {
+				chips.push({
+					label: anyOfLabel(group.memberCount),
+					variant: CHIP_VARIANT_GROUP
+				});
+				index = group.nextIndex;
+				continue;
+			}
+		}
+		const excluded = token.startsWith("-") && token.length > 1;
+		chips.push({
+			label: token,
+			variant: excluded ? CHIP_VARIANT_EXCLUDE : CHIP_VARIANT_TOKEN
+		});
+		index += 1;
+	}
+	return chips;
+}
+function dynamicQueryText(collection) {
+	if (collection.query !== void 0) return collection.query;
+	return serialize(collection.tags);
+}
+/** Cover uses insertion order (`postIds`), not shuffled display order. */
+function coverPostIds(collection) {
+	const ids = collection.postIds ?? [];
+	const slots = [];
+	for (let index = 0; index < COVER_SLOT_COUNT; index += 1) {
+		const id = ids[index];
+		slots.push(id === void 0 ? null : id);
+	}
+	return slots;
+}
+function thumbUrl(collection, postId) {
+	const thumbs = collection.thumbs;
+	if (thumbs === void 0) return null;
+	const value = thumbs[String(postId)];
+	if (value === void 0 || value.trim().length === 0) return null;
+	return value;
+}
+function cardAriaLabel(name, badge, meta) {
+	return `${name}, ${badge}, ${meta}`;
+}
+function CardLink(props) {
+	return /* @__PURE__ */ a("a", {
+		className: CARD_CLASS,
+		href: props.href,
+		"aria-label": cardAriaLabel(props.collection.name, props.badge, props.meta),
+		"data-collection-id": props.collection.id,
+		"data-collection-kind": props.kind,
+		children: [
+			props.children,
+			/* @__PURE__ */ a("span", {
+				className: META_ROW_CLASS,
+				children: [/* @__PURE__ */ a("span", {
+					className: NAME_CLASS,
+					children: props.collection.name
+				}), /* @__PURE__ */ a("span", {
+					className: BADGE_CLASS,
+					children: props.badge
+				})]
+			}),
+			/* @__PURE__ */ a("span", {
+				className: CAPTION_CLASS,
+				children: props.meta
+			})
+		]
 	});
 }
-function RenameDeleteActions(props) {
-	return /* @__PURE__ */ a("div", {
-		className: "rdw-item-actions",
-		children: [/* @__PURE__ */ a(Button, {
-			variant: "secondary",
-			size: "s",
-			"aria-label": `${UI_TEXT.rename}: ${props.collection.name}`,
-			onClick: props.onRename,
-			children: UI_TEXT.rename
-		}), /* @__PURE__ */ a(IconButton, {
-			label: `${UI_TEXT.delete}: ${props.collection.name}`,
-			onClick: props.onDelete,
-			children: /* @__PURE__ */ a(IconTrash, { size: 14 })
+function CustomCard(props) {
+	const meta = postsLabel(props.collection.postIds?.length ?? 0);
+	const slots = coverPostIds(props.collection);
+	return /* @__PURE__ */ a(CardLink, {
+		collection: props.collection,
+		href: collectionDetailHash(props.collection.id),
+		kind: COLLECTION_KIND_POSTS,
+		badge: BADGE_CUSTOM,
+		meta,
+		children: /* @__PURE__ */ a("span", {
+			className: COVER_CLASS,
+			children: slots.map((postId, index) => {
+				const url = postId === null ? null : thumbUrl(props.collection, postId);
+				return /* @__PURE__ */ a("span", {
+					className: COVER_CELL_CLASS,
+					"data-cover-index": String(index),
+					"data-post-id": postId === null ? "" : String(postId),
+					children: url !== null ? /* @__PURE__ */ a("img", {
+						className: COVER_IMAGE_CLASS,
+						src: url,
+						alt: ""
+					}) : /* @__PURE__ */ a("span", { className: COVER_EMPTY_CLASS })
+				}, `${props.collection.id}-${String(index)}`);
+			})
+		})
+	});
+}
+function DynamicCard(props) {
+	const chips = buildQueryChips(dynamicQueryText(props.collection));
+	return /* @__PURE__ */ a(CardLink, {
+		collection: props.collection,
+		href: buildSearchUrl(props.collection.tags),
+		kind: COLLECTION_KIND_SEARCH,
+		badge: BADGE_DYNAMIC,
+		meta: SAVED_SEARCH_CAPTION,
+		children: /* @__PURE__ */ a("span", {
+			className: CHIPS_CLASS,
+			children: chips.map((chip, index) => /* @__PURE__ */ a(Chip, {
+				label: chip.label,
+				variant: chip.variant
+			}, `${chip.variant}-${chip.label}-${String(index)}`))
+		})
+	});
+}
+function CollectionCard(props) {
+	if (resolveCollectionKind(props.collection) === "posts") return /* @__PURE__ */ a(CustomCard, { collection: props.collection });
+	return /* @__PURE__ */ a(DynamicCard, { collection: props.collection });
+}
+function NewCollectionDialog(props) {
+	return /* @__PURE__ */ a(Dialog, {
+		variant: "content",
+		open: props.open,
+		onClose: props.onClose,
+		title: NEW_DIALOG_TITLE,
+		children: [/* @__PURE__ */ a(Segmented, {
+			label: KIND_SEGMENTED_LABEL,
+			options: NEW_KIND_OPTIONS,
+			value: props.kind,
+			onChange: (value) => {
+				if (isNewKind(value)) props.onKindChange(value);
+			}
+		}), /* @__PURE__ */ a("form", {
+			className: "rdw-dialog__fields",
+			onSubmit: (event) => {
+				event.preventDefault();
+				props.onSubmit();
+			},
+			children: [
+				/* @__PURE__ */ a(TextField, {
+					id: NAME_FIELD_ID,
+					label: UI_TEXT.nameLabel,
+					value: props.name,
+					onChange: props.onNameChange
+				}),
+				props.kind === KIND_DYNAMIC ? /* @__PURE__ */ a(TextField, {
+					id: QUERY_FIELD_ID,
+					label: QUERY_FIELD_LABEL,
+					placeholder: QUERY_PLACEHOLDER,
+					value: props.query,
+					onChange: props.onQueryChange
+				}) : null,
+				props.error.length > 0 ? /* @__PURE__ */ a("p", {
+					id: FORM_ERROR_ID,
+					className: FORM_ERROR_CLASS,
+					role: "alert",
+					children: props.error
+				}) : null,
+				/* @__PURE__ */ a("div", {
+					className: "rdw-dialog__actions",
+					children: [/* @__PURE__ */ a(Button, {
+						type: "button",
+						variant: "secondary",
+						size: "s",
+						onClick: props.onClose,
+						children: UI_TEXT.cancel
+					}), /* @__PURE__ */ a(Button, {
+						type: "submit",
+						variant: "primary",
+						size: "s",
+						children: CREATE_LABEL
+					})]
+				})
+			]
 		})]
 	});
 }
 function CollectionsPage() {
-	const [mode, setMode] = d(sharedMode);
-	const [nameDraft, setNameDraft] = d(sharedNameDraft);
-	const [, setTick] = d(0);
-	const refresh = () => {
-		setTick((value) => value + 1);
+	const [filter, setFilter] = d(FILTER_ALL);
+	const [nameQuery, setNameQuery] = d("");
+	const [dialogOpen, setDialogOpen] = d(false);
+	const [newKind, setNewKind] = d(KIND_CUSTOM);
+	const [nameDraft, setNameDraft] = d("");
+	const [queryDraft, setQueryDraft] = d("");
+	const [formError, setFormError] = d("");
+	const [, setRevision] = d(0);
+	const closeDialog = b(() => {
+		setDialogOpen(false);
+		setFormError("");
+		setNameDraft("");
+		setQueryDraft("");
+	}, []);
+	const collections = load().collections;
+	const visible = visibleCollections(collections, filter, nameQuery);
+	const emptyCopy = collections.length === 0 ? {
+		title: EMPTY_TITLE,
+		description: EMPTY_DESCRIPTION
+	} : {
+		title: FILTER_EMPTY_TITLE,
+		description: FILTER_EMPTY_DESCRIPTION
 	};
-	const setModeBoth = (next) => {
-		sharedMode = next;
-		setMode(next);
+	const openDialog = () => {
+		setNewKind(kindForFilter(filter));
+		setNameDraft("");
+		setQueryDraft("");
+		setFormError("");
+		setDialogOpen(true);
 	};
-	const setDraftBoth = (next) => {
-		sharedNameDraft = next;
-		setNameDraft(next);
+	const submitNew = () => {
+		const message = nameError(nameDraft, load().collections);
+		if (message !== null) {
+			setFormError(message);
+			return;
+		}
+		if (newKind === KIND_DYNAMIC && queryDraft.trim().length === 0) {
+			setFormError(EMPTY_QUERY_MESSAGE);
+			return;
+		}
+		const name = nameDraft.trim();
+		if (newKind === KIND_DYNAMIC) createDynamicCollection(name, queryDraft);
+		else createPlaylist(name);
+		setFilter((current) => filterAfterCreate(newKind, current));
+		closeDialog();
+		setRevision((value) => value + 1);
 	};
-	const saved = listSavedSearches();
-	const playlists = listPlaylists();
-	const searchTags = readTagsFromLocation(window.location.search);
-	const canSave = searchTags !== null && searchTags.length > 0;
-	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("style", { children: COLLECTIONS_PAGE_CSS }), /* @__PURE__ */ a(Card, {
-		className: `${PANEL_UI_CLASS.pageCard} ${PAGE_CLASS}`,
-		children: [/* @__PURE__ */ a("section", {
-			className: "rdw-section",
-			children: [
-				/* @__PURE__ */ a(SectionLabel, { children: DYNAMIC_COLLECTIONS_HEADING }),
-				mode.kind === "save-search" ? /* @__PURE__ */ a(NameForm, {
-					inputId: SAVE_NAME_ID,
-					value: nameDraft,
-					onChange: setDraftBoth,
-					onSubmit: () => {
-						const tags = readTagsFromLocation(window.location.search);
-						if (tags === null || tags.length === 0) {
-							setModeBoth({ kind: "list" });
-							refresh();
-							return;
-						}
-						const name = nameDraft.trim();
-						if (name.length === 0) return;
-						addCollection(name, tags);
-						setModeBoth({ kind: "list" });
-						setDraftBoth("");
-						refresh();
-					},
-					onCancel: () => {
-						setModeBoth({ kind: "list" });
-					}
-				}) : /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a(Button, {
-					variant: "primary",
-					disabled: !canSave,
-					onClick: () => {
-						const tags = readTagsFromLocation(window.location.search);
-						if (tags === null || tags.length === 0) return;
-						setDraftBoth(serialize(tags));
-						setModeBoth({ kind: "save-search" });
-					},
-					children: UI_TEXT.saveCurrent
-				}), !canSave ? /* @__PURE__ */ a("p", {
-					className: "rdw-hint",
-					children: UI_TEXT.notOnSearchPage
-				}) : null] }),
-				saved.length === 0 ? /* @__PURE__ */ a("p", {
-					className: "rdw-hint",
-					children: EMPTY_DYNAMIC_COLLECTIONS
-				}) : /* @__PURE__ */ a("ul", {
-					className: "rdw-list",
-					children: saved.map((collection) => /* @__PURE__ */ a("li", {
-						className: "rdw-list-item",
-						children: mode.kind === "rename" && mode.id === collection.id ? /* @__PURE__ */ a(NameForm, {
-							inputId: `rdw-rename-${collection.id}`,
-							value: nameDraft,
-							onChange: setDraftBoth,
-							onSubmit: () => {
-								const nextName = nameDraft.trim();
-								if (nextName.length === 0) return;
-								renameCollection(collection.id, nextName);
-								setModeBoth({ kind: "list" });
-								setDraftBoth("");
-								refresh();
-							},
-							onCancel: () => {
-								setModeBoth({ kind: "list" });
+	return /* @__PURE__ */ a("div", {
+		className: PAGE_CLASS,
+		children: [
+			/* @__PURE__ */ a("style", { children: COLLECTIONS_PAGE_CSS }),
+			/* @__PURE__ */ a("header", {
+				className: HEADER_CLASS,
+				children: /* @__PURE__ */ a("div", {
+					className: TOOLBAR_CLASS,
+					children: [
+						/* @__PURE__ */ a(Segmented, {
+							label: TYPE_SEGMENTED_LABEL,
+							options: FILTER_OPTIONS,
+							value: filter,
+							onChange: (value) => {
+								if (isListFilter(value)) setFilter(value);
 							}
-						}) : mode.kind === "confirm-delete" && mode.id === collection.id ? /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("p", {
-							className: "rdw-hint",
-							children: `${UI_TEXT.confirmDelete} (${collection.name})`
-						}), /* @__PURE__ */ a("div", {
-							className: "rdw-confirm-row",
-							children: [/* @__PURE__ */ a(Button, {
-								variant: "danger",
-								onClick: () => {
-									deleteCollection(collection.id);
-									setModeBoth({ kind: "list" });
-									setDraftBoth("");
-									refresh();
-								},
-								children: UI_TEXT.confirm
-							}), /* @__PURE__ */ a(Button, {
-								variant: "secondary",
-								onClick: () => {
-									setModeBoth({ kind: "list" });
-								},
-								children: UI_TEXT.cancel
-							})]
-						})] }) : /* @__PURE__ */ a("div", {
-							className: ROW_MAIN_CLASS,
-							children: [/* @__PURE__ */ a("button", {
-								type: "button",
-								className: "rdw-item-name",
-								"aria-label": `${UI_TEXT.openCollection}: ${collection.name}`,
-								onClick: () => {
-									window.location.assign(buildSearchUrl(collection.tags));
-								},
-								children: collection.name
-							}), /* @__PURE__ */ a(RenameDeleteActions, {
-								collection,
-								onRename: () => {
-									setDraftBoth(collection.name);
-									setModeBoth({
-										kind: "rename",
-										id: collection.id
-									});
-								},
-								onDelete: () => {
-									setModeBoth({
-										kind: "confirm-delete",
-										id: collection.id
-									});
-								}
-							})]
+						}),
+						/* @__PURE__ */ a(TextField, {
+							id: FILTER_FIELD_ID,
+							className: FILTER_FIELD_CLASS,
+							value: nameQuery,
+							placeholder: FILTER_PLACEHOLDER,
+							"aria-label": FILTER_ARIA_LABEL,
+							onChange: setNameQuery
+						}),
+						/* @__PURE__ */ a(Button, {
+							type: "button",
+							variant: "primary",
+							onClick: openDialog,
+							children: [/* @__PURE__ */ a(IconPlus, { size: ICON_PX }), NEW_BUTTON_LABEL]
 						})
-					}, collection.id))
+					]
 				})
-			]
-		}), /* @__PURE__ */ a("section", {
-			className: "rdw-section",
-			children: [
-				/* @__PURE__ */ a(SectionLabel, { children: CUSTOM_COLLECTIONS_HEADING }),
-				mode.kind === "create-playlist" ? /* @__PURE__ */ a(NameForm, {
-					inputId: PLAYLIST_NAME_ID,
-					value: nameDraft,
-					onChange: setDraftBoth,
-					onSubmit: () => {
-						const name = nameDraft.trim();
-						if (name.length === 0) return;
-						createPlaylist(name);
-						setModeBoth({ kind: "list" });
-						setDraftBoth("");
-						refresh();
-					},
-					onCancel: () => {
-						setModeBoth({ kind: "list" });
-					}
-				}) : /* @__PURE__ */ a(Button, {
-					variant: "primary",
-					onClick: () => {
-						setDraftBoth("");
-						setModeBoth({ kind: "create-playlist" });
-					},
-					children: NEW_CUSTOM_COLLECTION
-				}),
-				playlists.length === 0 ? /* @__PURE__ */ a(EmptyState, {
-					title: EMPTY_CUSTOM_COLLECTIONS,
-					description: EMPTY_CUSTOM_COLLECTIONS_HINT
-				}) : /* @__PURE__ */ a("ul", {
-					className: "rdw-list",
-					children: playlists.map((playlist) => {
-						const count = playlistPostCount(playlist);
-						const queries = buildPlaylistQueries(playlist.postIds ?? [], getPlaylistChunkSize());
-						const canOpen = count > 0 && queries.length > 0;
-						return /* @__PURE__ */ a("li", {
-							className: "rdw-list-item",
-							children: mode.kind === "rename" && mode.id === playlist.id ? /* @__PURE__ */ a(NameForm, {
-								inputId: `rdw-rename-${playlist.id}`,
-								value: nameDraft,
-								onChange: setDraftBoth,
-								onSubmit: () => {
-									const nextName = nameDraft.trim();
-									if (nextName.length === 0) return;
-									renameCollection(playlist.id, nextName);
-									setModeBoth({ kind: "list" });
-									setDraftBoth("");
-									refresh();
-								},
-								onCancel: () => {
-									setModeBoth({ kind: "list" });
-								}
-							}) : mode.kind === "confirm-delete" && mode.id === playlist.id ? /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("p", {
-								className: "rdw-hint",
-								children: `${UI_TEXT.confirmDelete} (${playlist.name})`
-							}), /* @__PURE__ */ a("div", {
-								className: "rdw-confirm-row",
-								children: [/* @__PURE__ */ a(Button, {
-									variant: "danger",
-									onClick: () => {
-										deleteCollection(playlist.id);
-										setModeBoth({ kind: "list" });
-										setDraftBoth("");
-										refresh();
-									},
-									children: UI_TEXT.confirm
-								}), /* @__PURE__ */ a(Button, {
-									variant: "secondary",
-									onClick: () => {
-										setModeBoth({ kind: "list" });
-									},
-									children: UI_TEXT.cancel
-								})]
-							})] }) : /* @__PURE__ */ a($$1, { children: [
-								/* @__PURE__ */ a("div", {
-									className: ROW_MAIN_CLASS,
-									children: [/* @__PURE__ */ a("button", {
-										type: "button",
-										className: "rdw-item-name",
-										"aria-label": `${OPEN_CUSTOM_COLLECTION}: ${playlist.name}`,
-										disabled: !canOpen,
-										onClick: () => {
-											const first = queries[0];
-											if (first === void 0) return;
-											window.location.assign(buildUpdatesSearchUrl(first));
-										},
-										children: playlist.name
-									}), /* @__PURE__ */ a(RenameDeleteActions, {
-										collection: playlist,
-										onRename: () => {
-											setDraftBoth(playlist.name);
-											setModeBoth({
-												kind: "rename",
-												id: playlist.id
-											});
-										},
-										onDelete: () => {
-											setModeBoth({
-												kind: "confirm-delete",
-												id: playlist.id
-											});
-										}
-									})]
-								}),
-								/* @__PURE__ */ a("p", {
-									className: PLAYLIST_META_CLASS,
-									children: postsLabel(count)
-								}),
-								queries.length > 1 ? /* @__PURE__ */ a("ul", {
-									className: PLAYLIST_PARTS_CLASS,
-									"aria-label": CUSTOM_COLLECTION_PARTS_LABEL,
-									children: queries.map((query, index) => /* @__PURE__ */ a("li", { children: /* @__PURE__ */ a("a", {
-										className: PLAYLIST_PART_CLASS,
-										href: buildUpdatesSearchUrl(query),
-										children: String(index + 1)
-									}) }, `${playlist.id}-${String(index)}`))
-								}) : null
-							] })
-						}, playlist.id);
-					})
-				})
-			]
-		})]
-	})] });
+			}),
+			visible.length === 0 ? /* @__PURE__ */ a(EmptyState, {
+				title: emptyCopy.title,
+				description: emptyCopy.description
+			}) : /* @__PURE__ */ a("div", {
+				className: GRID_CLASS,
+				"aria-label": GRID_LABEL,
+				children: visible.map((collection) => /* @__PURE__ */ a(CollectionCard, { collection }, collection.id))
+			}),
+			/* @__PURE__ */ a(NewCollectionDialog, {
+				open: dialogOpen,
+				kind: newKind,
+				name: nameDraft,
+				query: queryDraft,
+				error: formError,
+				onClose: closeDialog,
+				onKindChange: (kind) => {
+					setNewKind(kind);
+					setFormError("");
+				},
+				onNameChange: (name) => {
+					setNameDraft(name);
+					setFormError("");
+				},
+				onQueryChange: (query) => {
+					setQueryDraft(query);
+					setFormError("");
+				},
+				onSubmit: submitNew
+			})
+		]
+	});
 }})}}));
-System.register("./following-page-Co1KJLrS-BqxCEE3u.js", ['./___monkey.entry.js','./autocomplete-HoEAiNev-O5tr1WB9.js'],(function(exports){'use strict';var d,T,A,getSeenPostId,a,Card,PANEL_UI_CLASS,UI_TEXT,$$1,EmptyState,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,Button,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,TextField,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,UNFOLLOWED_PREFIX,UNFOLLOW_UNDO_LABEL,buildSearchUrl,TAG_TYPE_INCLUDE,IconButton,IconX,AutocompleteField,normalizeArtistTag,isFollowingArtist,addArtist,log,removeArtist,UNFOLLOW_UNDO_MS,load,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST;return{setters:[function(module){d=module.ab;T=module.as;A=module.at;getSeenPostId=module.bB;a=module.Y;Card=module.ac;PANEL_UI_CLASS=module.a1;UI_TEXT=module.U;$$1=module.a0;EmptyState=module.bv;ARTISTS_EMPTY_HINT=module.bC;ARTISTS_EMPTY_TITLE=module.bD;Button=module.aD;SEARCH_PATH=module.X;SEARCH_PARAM_PAGE=module.T;SEARCH_PAGE=module.bE;SEARCH_SECTION=module.bF;TextField=module.aC;ARTIST_FILTER_LABEL=module.bG;ARTIST_FILTER_ID=module.bH;UNFOLLOWED_PREFIX=module.bI;UNFOLLOW_UNDO_LABEL=module.bJ;buildSearchUrl=module.bt;TAG_TYPE_INCLUDE=module.bK;IconButton=module.bz;IconX=module.bL;AutocompleteField=module.aS;normalizeArtistTag=module.n;isFollowingArtist=module.bM;addArtist=module.bN;log=module.l;removeArtist=module.bO;UNFOLLOW_UNDO_MS=module.bP;load=module.aZ;},function(module){createAutocompleteQuerier=module.c;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.A;}],execute:(function(){exports("FollowingPage",FollowingPage);var ADD_FORM_CLASS = "rdw-following-add";
+System.register("./following-page-dsuPK5T0-BLr-yztN.js", ['./___monkey.entry.js','./autocomplete-C_YP9Bea-BhQ9wpRW.js'],(function(exports){'use strict';var d,T,A,getSeenPostId,a,Card,PANEL_UI_CLASS,UI_TEXT,$$1,EmptyState,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,Button,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,TextField,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,UNFOLLOWED_PREFIX,UNFOLLOW_UNDO_LABEL,buildSearchUrl,TAG_TYPE_INCLUDE,IconButton,IconX,AutocompleteField,normalizeArtistTag,isFollowingArtist,addArtist,log,removeArtist,UNFOLLOW_UNDO_MS,load,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST;return{setters:[function(module){d=module.ad;T=module.au;A=module.av;getSeenPostId=module.bA;a=module.Y;Card=module.ae;PANEL_UI_CLASS=module.a3;UI_TEXT=module.U;$$1=module.a2;EmptyState=module.bq;ARTISTS_EMPTY_HINT=module.bB;ARTISTS_EMPTY_TITLE=module.bC;Button=module.aF;SEARCH_PATH=module.X;SEARCH_PARAM_PAGE=module.T;SEARCH_PAGE=module.bD;SEARCH_SECTION=module.bE;TextField=module.aE;ARTIST_FILTER_LABEL=module.bF;ARTIST_FILTER_ID=module.bG;UNFOLLOWED_PREFIX=module.bH;UNFOLLOW_UNDO_LABEL=module.bI;buildSearchUrl=module.by;TAG_TYPE_INCLUDE=module.bJ;IconButton=module.bK;IconX=module.bL;AutocompleteField=module.aU;normalizeArtistTag=module.n;isFollowingArtist=module.bM;addArtist=module.bN;log=module.l;removeArtist=module.bO;UNFOLLOW_UNDO_MS=module.bP;load=module.a$;},function(module){createAutocompleteQuerier=module.c;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.A;}],execute:(function(){exports("FollowingPage",FollowingPage);var ADD_FORM_CLASS = "rdw-following-add";
 var ADD_INPUT_ID = "rdw-following-add-tag";
 var OPEN_POSTS_LABEL = "Open Posts";
 var OPEN_POSTS_HREF = `${SEARCH_PATH}?${SEARCH_PARAM_PAGE}=${SEARCH_PAGE}&s=${SEARCH_SECTION}`;
@@ -16566,7 +17883,7 @@ function FollowingPage() {
 		})
 	})] });
 }})}}));
-System.register("./autocomplete-HoEAiNev-O5tr1WB9.js", ['./___monkey.entry.js'],(function(exports){'use strict';var FETCH_CREDENTIALS,log,SITE_ORIGIN,array,object,optional,nullable,string;return{setters:[function(module){FETCH_CREDENTIALS=module.bQ;log=module.l;SITE_ORIGIN=module.b;array=module.bR;object=module.b1;optional=module.b3;nullable=module.bS;string=module.b4;}],execute:(function(){exports("c",createAutocompleteQuerier);var AUTOCOMPLETE_PATH = "/public/autocomplete.php";
+System.register("./autocomplete-C_YP9Bea-BhQ9wpRW.js", ['./___monkey.entry.js'],(function(exports){'use strict';var FETCH_CREDENTIALS,log,SITE_ORIGIN,array,object,optional,nullable,string;return{setters:[function(module){FETCH_CREDENTIALS=module.bQ;log=module.l;SITE_ORIGIN=module.b;array=module.bR;object=module.b3;optional=module.b5;nullable=module.bS;string=module.b6;}],execute:(function(){exports("c",createAutocompleteQuerier);var AUTOCOMPLETE_PATH = "/public/autocomplete.php";
 var AUTOCOMPLETE_TAG_TYPE_ARTIST = exports("A","artist");
 var HTTP_TOO_MANY_REQUESTS = 429;
 var ABORT_ERROR_NAME = "AbortError";
@@ -16693,5 +18010,496 @@ function createAutocompleteQuerier(options = {}) {
 		query,
 		cancel
 	};
+}})}}));
+System.register("./collection-detail-page-gR0xAtfb-DGtbzDJY.js", ['./___monkey.entry.js','./app-BOYx65x_-6rKCbrAL.js'],(function(exports){'use strict';var d,T,w$1,b,a,$$1,Button,UI_TEXT,shuffleCollection,resetCollectionOrder,EmptyState,Dialog,TextField,Toast,getCollectionOrder,listPlaylists,RDW_HASH_COLLECTIONS,removePostsFromCollection,renameCollection,deleteCollection,RDW_ROUTE_COLLECTIONS,restorePosts,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION_VIEW,SEARCH_PATH,collectionQueueHash,navigateToRdwRoute;return{setters:[function(module){d=module.ad;T=module.au;w$1=module.bT;b=module.aR;a=module.Y;$$1=module.a2;Button=module.aF;UI_TEXT=module.U;shuffleCollection=module.bU;resetCollectionOrder=module.bV;EmptyState=module.bq;Dialog=module.bs;TextField=module.aE;Toast=module.bW;getCollectionOrder=module.bX;listPlaylists=module.bY;RDW_HASH_COLLECTIONS=module.u;removePostsFromCollection=module.bZ;renameCollection=module.b_;deleteCollection=module.b$;RDW_ROUTE_COLLECTIONS=module.c0;restorePosts=module.c1;SEARCH_PARAM_PAGE=module.T;SEARCH_PAGE=module.bD;SEARCH_SECTION_VIEW=module.c2;SEARCH_PATH=module.X;collectionQueueHash=module.c3;},function(module){navigateToRdwRoute=module.i;}],execute:(function(){exports("CollectionDetailPage",CollectionDetailPage);var CELL_SIZE_PX = 200;
+var GRID_GAP_PX = 4;
+var SECTION_GAP_PX = 12;
+var ACTIONS_GAP_PX = 8;
+var HEADING_GAP_PX = 8;
+var NAME_MIN_LENGTH = 1;
+var POST_COUNT_SINGULAR = 1;
+var MOUSE_BUTTON_PRIMARY = 0;
+var OBJECT_FIT_CONTAIN = "contain";
+var IMG_LOADING_LAZY = "lazy";
+/** Same mark chrome as favorites bulk select. */
+var CLASS_MARK_SELECTED = "rdw-fav-bulk-selected";
+var CLASS_MARK_CHECK = "rdw-fav-bulk-check";
+var MARK_CHECK_GLYPH = "✓";
+var SELECT_OUTLINE_WIDTH = "2px";
+var SELECT_OUTLINE_OFFSET = "2px";
+var CHECK_SIZE = "1.25rem";
+var CHECK_INSET = "0.25rem";
+var CHECK_Z_INDEX = 2;
+var CHECK_FONT_SIZE = "0.75rem";
+var ACCENT_FALLBACK = "#4c8bf5";
+var SURFACE_FALLBACK = "#ffffff";
+var CLASS_ROOT = "rdw-collection-detail";
+var CLASS_BACK = "rdw-collection-back";
+var CLASS_HEADING = "rdw-collection-heading";
+var CLASS_NAME = "rdw-collection-name";
+var CLASS_COUNT = "rdw-collection-count";
+var CLASS_ACTIONS = "rdw-collection-actions";
+var CLASS_GRID = "rdw-collection-grid";
+var CLASS_CELL = "rdw-collection-cell";
+var CLASS_FALLBACK = "rdw-collection-fallback";
+var CLASS_MISSING = "rdw-collection-missing";
+var CLASS_DIALOG_FORM = "rdw-collection-dialog-form";
+var CLASS_DIALOG_ACTIONS = "rdw-collection-dialog-actions";
+var LABEL_BACK = "← Collections";
+var LABEL_SHUFFLE = "Shuffle";
+var LABEL_ORIGINAL_ORDER = "Original order";
+var LABEL_SELECT = "Select";
+var LABEL_SELECT_ALL = "Select all";
+var LABEL_CLEAR = "Clear";
+var LABEL_CANCEL = UI_TEXT.cancel;
+var LABEL_UNDO = "Undo";
+var REMOVE_SELECTED_PREFIX = "Remove selected (";
+var REMOVE_SELECTED_SUFFIX = ")";
+var FALLBACK_PREFIX = "#";
+var POST_LINK_LABEL_PREFIX = "Post #";
+var POST_NOUN_SINGULAR = "post";
+var POST_NOUN_PLURAL = "posts";
+var REMOVED_PREFIX = "Removed ";
+var UNKNOWN_COLLECTION_MESSAGE = "Collection not found.";
+var EMPTY_COLLECTION_TITLE = "No posts yet";
+var EMPTY_COLLECTION_HINT = "Add posts with + on a thumbnail, and with Collections on the post page.";
+var RENAME_INPUT_ID = "rdw-collection-rename-name";
+var RENAME_DIALOG_LABEL = "Rename collection";
+var DELETE_DIALOG_LABEL = "Delete collection";
+var GRID_LABEL = "Collection posts";
+var COLLECTION_DETAIL_CSS = `
+.${CLASS_ROOT} {
+  display: flex;
+  flex-direction: column;
+  gap: ${String(SECTION_GAP_PX)}px;
+}
+.${CLASS_BACK} {
+  color: var(--rdw-accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+.${CLASS_HEADING} {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: ${String(HEADING_GAP_PX)}px ${String(SECTION_GAP_PX)}px;
+}
+.${CLASS_NAME} {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--rdw-text);
+}
+.${CLASS_COUNT} {
+  margin: 0;
+  color: var(--rdw-muted);
+}
+.${CLASS_ACTIONS} {
+  display: flex;
+  flex-wrap: wrap;
+  gap: ${String(ACTIONS_GAP_PX)}px;
+}
+.${CLASS_GRID} {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, ${String(CELL_SIZE_PX)}px);
+  gap: ${String(GRID_GAP_PX)}px;
+}
+.${CLASS_CELL} {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: ${String(CELL_SIZE_PX)}px;
+  height: ${String(CELL_SIZE_PX)}px;
+  overflow: hidden;
+  border: 1px solid var(--rdw-border);
+  background: var(--rdw-surface);
+  color: var(--rdw-text);
+  text-decoration: none;
+}
+.${CLASS_CELL} img {
+  width: 100%;
+  height: 100%;
+  object-fit: ${OBJECT_FIT_CONTAIN};
+}
+.${CLASS_FALLBACK} {
+  font-weight: 600;
+  color: var(--rdw-muted);
+}
+.${CLASS_MISSING} {
+  margin: 0;
+}
+.${CLASS_DIALOG_FORM} {
+  display: grid;
+  gap: ${String(SECTION_GAP_PX)}px;
+}
+.${CLASS_DIALOG_ACTIONS} {
+  display: flex;
+  justify-content: flex-end;
+  gap: ${String(ACTIONS_GAP_PX)}px;
+}
+.${CLASS_CELL}.${CLASS_MARK_SELECTED} {
+  outline: ${SELECT_OUTLINE_WIDTH} solid var(--rdw-accent, ${ACCENT_FALLBACK});
+  outline-offset: ${SELECT_OUTLINE_OFFSET};
+}
+.${CLASS_CELL} > .${CLASS_MARK_CHECK} {
+  position: absolute;
+  top: ${CHECK_INSET};
+  left: ${CHECK_INSET};
+  z-index: ${String(CHECK_Z_INDEX)};
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: ${CHECK_SIZE};
+  height: ${CHECK_SIZE};
+  border-radius: 999px;
+  background: var(--rdw-accent, ${ACCENT_FALLBACK});
+  color: var(--rdw-surface, ${SURFACE_FALLBACK});
+  font-size: ${CHECK_FONT_SIZE};
+  font-weight: 700;
+  line-height: 1;
+  pointer-events: none;
+}
+.${CLASS_CELL}.${CLASS_MARK_SELECTED} > .${CLASS_MARK_CHECK} {
+  display: inline-flex;
+}
+`.trim();
+function postsCountLabel(count) {
+	return `${String(count)} ${count === POST_COUNT_SINGULAR ? POST_NOUN_SINGULAR : POST_NOUN_PLURAL}`;
+}
+function removedPostsMessage(count) {
+	return `${REMOVED_PREFIX}${String(count)} ${count === POST_COUNT_SINGULAR ? POST_NOUN_SINGULAR : POST_NOUN_PLURAL}`;
+}
+function removeSelectedLabel(count) {
+	return `${REMOVE_SELECTED_PREFIX}${String(count)}${REMOVE_SELECTED_SUFFIX}`;
+}
+function fallbackLabel(postId) {
+	return `${FALLBACK_PREFIX}${String(postId)}`;
+}
+function thumbUrlFor(thumbs, postId) {
+	const value = thumbs[String(postId)];
+	if (value === void 0 || value.length === 0) return null;
+	return value;
+}
+function readCollectionDetail(collectionId) {
+	const order = getCollectionOrder(collectionId);
+	if (order === null) return null;
+	const collection = listPlaylists().find((item) => item.id === collectionId);
+	if (collection === void 0) return null;
+	return {
+		name: collection.name,
+		order,
+		thumbs: collection.thumbs ?? {},
+		shuffled: collection.shuffledOrder !== null && collection.shuffledOrder !== void 0
+	};
+}
+/** Post page link that carries the collection queue hash, not a script route. */
+function collectionPostHref(collectionId, postId) {
+	const params = new URLSearchParams();
+	params.set(SEARCH_PARAM_PAGE, SEARCH_PAGE);
+	params.set("s", SEARCH_SECTION_VIEW);
+	params.set("id", String(postId));
+	return `${SEARCH_PATH}?${params.toString()}${collectionQueueHash(collectionId)}`;
+}
+function isModifiedClick(event) {
+	return event.button !== MOUSE_BUTTON_PRIMARY || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
+}
+function PostCell(props) {
+	const [failedUrl, setFailedUrl] = d(null);
+	const thumbUrl = props.thumbUrl;
+	const failed = thumbUrl !== null && failedUrl === thumbUrl;
+	const thumbUrlRef = T(thumbUrl);
+	thumbUrlRef.current = thumbUrl;
+	const markFailed = b(() => {
+		setFailedUrl(thumbUrlRef.current);
+	}, []);
+	const imageRef = b((node) => {
+		if (node === null) return;
+		node.addEventListener("error", markFailed);
+	}, [markFailed]);
+	const showImage = thumbUrl !== null && !failed;
+	const className = [CLASS_CELL, props.selected ? CLASS_MARK_SELECTED : ""].filter((part) => part.length > 0).join(" ");
+	return /* @__PURE__ */ a("a", {
+		className,
+		href: collectionPostHref(props.collectionId, props.postId),
+		"aria-label": `${POST_LINK_LABEL_PREFIX}${String(props.postId)}`,
+		...props.selecting ? { "aria-pressed": props.selected } : {},
+		onClick: (event) => {
+			if (!props.selecting || isModifiedClick(event)) return;
+			event.preventDefault();
+			props.onToggle(props.postId);
+		},
+		children: [showImage ? /* @__PURE__ */ a("img", {
+			src: thumbUrl,
+			alt: "",
+			loading: IMG_LOADING_LAZY,
+			ref: imageRef
+		}) : /* @__PURE__ */ a("span", {
+			className: CLASS_FALLBACK,
+			children: fallbackLabel(props.postId)
+		}), props.selected ? /* @__PURE__ */ a("span", {
+			className: CLASS_MARK_CHECK,
+			"aria-hidden": "true",
+			children: MARK_CHECK_GLYPH
+		}) : null]
+	});
+}
+function BackToCollections() {
+	return /* @__PURE__ */ a("a", {
+		className: CLASS_BACK,
+		href: RDW_HASH_COLLECTIONS,
+		children: LABEL_BACK
+	});
+}
+function CollectionDetailPage(props) {
+	const [revision, setRevision] = d(0);
+	const [selecting, setSelecting] = d(false);
+	const [selected, setSelected] = d(() => /* @__PURE__ */ new Set());
+	const [renameOpen, setRenameOpen] = d(false);
+	const [nameDraft, setNameDraft] = d("");
+	const [deleteOpen, setDeleteOpen] = d(false);
+	const [toast, setToast] = d(null);
+	const toastRef = T(null);
+	const toastIdRef = T(0);
+	const detail = w$1(() => readCollectionDetail(props.collectionId), [props.collectionId, revision]);
+	const refresh = b(() => {
+		setRevision((value) => value + 1);
+	}, []);
+	const onToastClose = b(() => {
+		toastRef.current = null;
+		setToast(null);
+	}, []);
+	const onUndo = b(() => {
+		const current = toastRef.current;
+		if (current === null) return;
+		restorePosts(current.snapshot);
+		toastRef.current = null;
+		setToast(null);
+		setRevision((value) => value + 1);
+	}, []);
+	function showRemoval(snapshot) {
+		if (snapshot.posts.length === 0) return;
+		toastIdRef.current += 1;
+		const next = {
+			id: toastIdRef.current,
+			message: removedPostsMessage(snapshot.posts.length),
+			snapshot
+		};
+		toastRef.current = next;
+		setToast(next);
+	}
+	function leaveSelectMode() {
+		setSelecting(false);
+		setSelected(/* @__PURE__ */ new Set());
+	}
+	function togglePost(postId) {
+		setSelected((current) => {
+			const next = new Set(current);
+			if (next.has(postId)) next.delete(postId);
+			else next.add(postId);
+			return next;
+		});
+	}
+	function openRename() {
+		if (detail === null) return;
+		setNameDraft(detail.name);
+		setRenameOpen(true);
+	}
+	function submitRename(event) {
+		event.preventDefault();
+		const trimmed = nameDraft.trim();
+		if (trimmed.length < NAME_MIN_LENGTH) return;
+		renameCollection(props.collectionId, trimmed);
+		setRenameOpen(false);
+		refresh();
+	}
+	function confirmDelete() {
+		setDeleteOpen(false);
+		if (!deleteCollection(props.collectionId)) {
+			refresh();
+			return;
+		}
+		navigateToRdwRoute(RDW_ROUTE_COLLECTIONS);
+	}
+	function removeSelected() {
+		if (selected.size === 0) return;
+		const snapshot = removePostsFromCollection(props.collectionId, [...selected]);
+		leaveSelectMode();
+		refresh();
+		if (snapshot !== null) showRemoval(snapshot);
+	}
+	const toastAction = toast === null ? null : {
+		label: LABEL_UNDO,
+		onClick: onUndo
+	};
+	return /* @__PURE__ */ a("div", {
+		className: CLASS_ROOT,
+		"data-collection-id": props.collectionId,
+		children: [
+			/* @__PURE__ */ a("style", { children: COLLECTION_DETAIL_CSS }),
+			detail === null ? /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("p", {
+				className: CLASS_MISSING,
+				children: UNKNOWN_COLLECTION_MESSAGE
+			}), /* @__PURE__ */ a(BackToCollections, {})] }) : /* @__PURE__ */ a($$1, { children: [
+				/* @__PURE__ */ a(BackToCollections, {}),
+				/* @__PURE__ */ a("div", {
+					className: CLASS_HEADING,
+					children: [/* @__PURE__ */ a("h1", {
+						className: CLASS_NAME,
+						children: detail.name
+					}), /* @__PURE__ */ a("p", {
+						className: CLASS_COUNT,
+						children: postsCountLabel(detail.order.length)
+					})]
+				}),
+				/* @__PURE__ */ a("div", {
+					className: CLASS_ACTIONS,
+					children: selecting ? /* @__PURE__ */ a($$1, { children: [
+						/* @__PURE__ */ a(Button, {
+							variant: "secondary",
+							size: "s",
+							onClick: () => {
+								setSelected(new Set(detail.order));
+							},
+							children: LABEL_SELECT_ALL
+						}),
+						/* @__PURE__ */ a(Button, {
+							variant: "secondary",
+							size: "s",
+							onClick: () => {
+								setSelected(/* @__PURE__ */ new Set());
+							},
+							children: LABEL_CLEAR
+						}),
+						/* @__PURE__ */ a(Button, {
+							variant: "secondary",
+							size: "s",
+							disabled: selected.size === 0,
+							onClick: removeSelected,
+							children: removeSelectedLabel(selected.size)
+						}),
+						/* @__PURE__ */ a(Button, {
+							variant: "secondary",
+							size: "s",
+							onClick: leaveSelectMode,
+							children: LABEL_CANCEL
+						})
+					] }) : /* @__PURE__ */ a($$1, { children: [
+						/* @__PURE__ */ a(Button, {
+							variant: "secondary",
+							size: "s",
+							onClick: () => {
+								shuffleCollection(props.collectionId);
+								refresh();
+							},
+							children: LABEL_SHUFFLE
+						}),
+						detail.shuffled ? /* @__PURE__ */ a(Button, {
+							variant: "secondary",
+							size: "s",
+							onClick: () => {
+								resetCollectionOrder(props.collectionId);
+								refresh();
+							},
+							children: LABEL_ORIGINAL_ORDER
+						}) : null,
+						/* @__PURE__ */ a(Button, {
+							variant: "secondary",
+							size: "s",
+							onClick: () => {
+								setSelected(/* @__PURE__ */ new Set());
+								setSelecting(true);
+							},
+							children: LABEL_SELECT
+						}),
+						/* @__PURE__ */ a(Button, {
+							variant: "secondary",
+							size: "s",
+							onClick: openRename,
+							children: UI_TEXT.rename
+						}),
+						/* @__PURE__ */ a(Button, {
+							variant: "danger",
+							size: "s",
+							onClick: () => {
+								setDeleteOpen(true);
+							},
+							children: UI_TEXT.delete
+						})
+					] })
+				}),
+				detail.order.length === 0 ? /* @__PURE__ */ a(EmptyState, {
+					title: EMPTY_COLLECTION_TITLE,
+					description: EMPTY_COLLECTION_HINT
+				}) : /* @__PURE__ */ a("div", {
+					className: CLASS_GRID,
+					"aria-label": GRID_LABEL,
+					children: detail.order.map((postId) => /* @__PURE__ */ a(PostCell, {
+						postId,
+						collectionId: props.collectionId,
+						thumbUrl: thumbUrlFor(detail.thumbs, postId),
+						selecting,
+						selected: selected.has(postId),
+						onToggle: togglePost
+					}, postId))
+				}),
+				/* @__PURE__ */ a(Dialog, {
+					open: renameOpen,
+					onClose: () => {
+						setRenameOpen(false);
+					},
+					title: UI_TEXT.rename,
+					"aria-label": RENAME_DIALOG_LABEL,
+					children: /* @__PURE__ */ a("form", {
+						className: CLASS_DIALOG_FORM,
+						onSubmit: submitRename,
+						children: [/* @__PURE__ */ a(TextField, {
+							id: RENAME_INPUT_ID,
+							label: UI_TEXT.nameLabel,
+							value: nameDraft,
+							onChange: setNameDraft
+						}), /* @__PURE__ */ a("div", {
+							className: CLASS_DIALOG_ACTIONS,
+							children: [/* @__PURE__ */ a(Button, {
+								type: "button",
+								variant: "secondary",
+								size: "s",
+								onClick: () => {
+									setRenameOpen(false);
+								},
+								children: UI_TEXT.cancel
+							}), /* @__PURE__ */ a(Button, {
+								type: "submit",
+								variant: "primary",
+								size: "s",
+								children: UI_TEXT.save
+							})]
+						})]
+					})
+				}),
+				/* @__PURE__ */ a(Dialog, {
+					variant: "confirm",
+					open: deleteOpen,
+					onClose: () => {
+						setDeleteOpen(false);
+					},
+					title: UI_TEXT.delete,
+					"aria-label": DELETE_DIALOG_LABEL,
+					message: UI_TEXT.confirmDelete,
+					confirmLabel: UI_TEXT.delete,
+					cancelLabel: UI_TEXT.cancel,
+					confirmTone: "danger",
+					onConfirm: confirmDelete
+				})
+			] }),
+			/* @__PURE__ */ a(Toast, {
+				open: toast !== null,
+				message: toast === null ? "" : toast.message,
+				onClose: onToastClose,
+				...toastAction === null ? {} : { action: toastAction }
+			}, toast?.id)
+		]
+	});
 }})}}));
 System.import("./___monkey.entry.js", "./");

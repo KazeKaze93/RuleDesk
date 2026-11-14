@@ -1,18 +1,64 @@
 import type { ComponentChildren, JSX, RefObject } from "preact";
 import { useEffect, useId, useRef } from "preact/hooks";
 
+import { Button } from "./button";
 import { KIT_FOCUS_CSS } from "./shared";
+import { TextField } from "./text-field";
 
-export type DialogProps = {
+const DIALOG_VARIANT_CONTENT = "content";
+const DIALOG_VARIANT_CONFIRM = "confirm";
+const DIALOG_VARIANT_FIELDS = "fields";
+
+const DEFAULT_NAME_LABEL = "Name";
+const DEFAULT_QUERY_LABEL = "Query";
+const DEFAULT_CONFIRM_TONE = "primary";
+
+export type DialogConfirmTone = typeof DEFAULT_CONFIRM_TONE | "danger";
+
+export type DialogFieldValues = {
+  readonly name: string;
+  readonly query: string;
+};
+
+type DialogShellProps = {
   readonly open: boolean;
   readonly onClose: () => void;
-  readonly children?: ComponentChildren;
   readonly className?: string;
   readonly title?: string;
   readonly "aria-label"?: string;
   /** Optional element to focus when the dialog opens (falls back to first focusable / panel). */
   readonly initialFocusRef?: RefObject<HTMLElement | null>;
 };
+
+export type DialogContentProps = DialogShellProps & {
+  readonly variant?: typeof DIALOG_VARIANT_CONTENT;
+  readonly children?: ComponentChildren;
+};
+
+export type DialogConfirmProps = DialogShellProps & {
+  readonly variant: typeof DIALOG_VARIANT_CONFIRM;
+  readonly message: string;
+  readonly confirmLabel: string;
+  readonly cancelLabel: string;
+  readonly onConfirm: () => void;
+  readonly confirmTone?: DialogConfirmTone;
+};
+
+export type DialogFieldsProps = DialogShellProps & {
+  readonly variant: typeof DIALOG_VARIANT_FIELDS;
+  readonly fields: DialogFieldValues;
+  readonly onFieldsChange: (fields: DialogFieldValues) => void;
+  readonly onSubmit: () => void;
+  readonly submitLabel: string;
+  readonly cancelLabel: string;
+  readonly nameLabel?: string;
+  readonly queryLabel?: string;
+};
+
+export type DialogProps =
+  | DialogContentProps
+  | DialogConfirmProps
+  | DialogFieldsProps;
 
 const KEY_ESCAPE = "Escape";
 const KEY_TAB = "Tab";
@@ -25,6 +71,8 @@ const DIALOG_BACKDROP_PADDING_PX = 16;
 const DIALOG_BACKDROP_ALPHA = 0.45;
 const DIALOG_PANEL_PADDING_PX = 16;
 const DIALOG_PANEL_GAP_PX = 12;
+const DIALOG_FIELDS_GAP_PX = 8;
+const DIALOG_ACTIONS_GAP_PX = 8;
 
 const FOCUSABLE_SELECTOR = [
   "a[href]",
@@ -68,6 +116,19 @@ ${KIT_FOCUS_CSS}
   font-weight: 600;
   color: var(--rdw-text);
 }
+.rdw-dialog__message {
+  margin: 0;
+}
+.rdw-dialog__fields {
+  display: grid;
+  gap: ${String(DIALOG_FIELDS_GAP_PX)}px;
+  margin: 0;
+}
+.rdw-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: ${String(DIALOG_ACTIONS_GAP_PX)}px;
+}
 `;
 
 function listFocusable(root: HTMLElement): HTMLElement[] {
@@ -98,6 +159,64 @@ function pathIncludesNode(
     }
   }
   return false;
+}
+
+function renderDialogBody(props: DialogProps): JSX.Element | null {
+  if (props.variant === DIALOG_VARIANT_CONFIRM) {
+    const tone = props.confirmTone ?? DEFAULT_CONFIRM_TONE;
+    return (
+      <>
+        <p className="rdw-dialog__message">{props.message}</p>
+        <div className="rdw-dialog__actions">
+          <Button variant="secondary" size="s" onClick={props.onClose}>
+            {props.cancelLabel}
+          </Button>
+          <Button variant={tone} size="s" onClick={props.onConfirm}>
+            {props.confirmLabel}
+          </Button>
+        </div>
+      </>
+    );
+  }
+
+  if (props.variant === DIALOG_VARIANT_FIELDS) {
+    const nameLabel = props.nameLabel ?? DEFAULT_NAME_LABEL;
+    const queryLabel = props.queryLabel ?? DEFAULT_QUERY_LABEL;
+    return (
+      <form
+        className="rdw-dialog__fields"
+        onSubmit={(event) => {
+          event.preventDefault();
+          props.onSubmit();
+        }}
+      >
+        <TextField
+          label={nameLabel}
+          value={props.fields.name}
+          onChange={(name) => {
+            props.onFieldsChange({ name, query: props.fields.query });
+          }}
+        />
+        <TextField
+          label={queryLabel}
+          value={props.fields.query}
+          onChange={(query) => {
+            props.onFieldsChange({ name: props.fields.name, query });
+          }}
+        />
+        <div className="rdw-dialog__actions">
+          <Button variant="secondary" size="s" type="button" onClick={props.onClose}>
+            {props.cancelLabel}
+          </Button>
+          <Button variant="primary" size="s" type="submit">
+            {props.submitLabel}
+          </Button>
+        </div>
+      </form>
+    );
+  }
+
+  return <>{props.children}</>;
 }
 
 export function Dialog(props: DialogProps): JSX.Element | null {
@@ -228,7 +347,7 @@ export function Dialog(props: DialogProps): JSX.Element | null {
               {props.title}
             </h2>
           ) : null}
-          {props.children}
+          {renderDialogBody(props)}
         </div>
       </div>
     </>

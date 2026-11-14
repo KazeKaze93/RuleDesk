@@ -440,3 +440,65 @@ export function parsePlaylistQuery(tagsParam: string): number[] | null {
   }
   return ids;
 }
+
+/** Site shuffle token. Ignored when matching a saved dynamic search. */
+export const SORT_RANDOM_TOKEN = "sort:random";
+
+const SEARCH_TOKEN_SPLIT = /\s+/;
+
+function searchTokens(raw: string): string[] {
+  return raw.trim().split(SEARCH_TOKEN_SPLIT).filter((token) => token.length > 0);
+}
+
+function tokenCountsIgnoringSortRandom(raw: string): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const token of searchTokens(raw)) {
+    if (token === SORT_RANDOM_TOKEN) {
+      continue;
+    }
+    counts.set(token, (counts.get(token) ?? 0) + 1);
+  }
+  return counts;
+}
+
+/** True when `raw` contains at least one `sort:random` token. */
+export function queryHasSortRandom(raw: string): boolean {
+  return searchTokens(raw).includes(SORT_RANDOM_TOKEN);
+}
+
+/** Token string with every `sort:random` removed. Other tokens keep their order. */
+export function withoutSortRandom(raw: string): string {
+  return searchTokens(raw)
+    .filter((token) => token !== SORT_RANDOM_TOKEN)
+    .join(TAG_SEPARATOR);
+}
+
+/**
+ * Token string that includes one trailing `sort:random`.
+ * Existing shuffle tokens are left in place.
+ */
+export function withSortRandom(raw: string): string {
+  const tokens = searchTokens(raw);
+  if (!tokens.includes(SORT_RANDOM_TOKEN)) {
+    tokens.push(SORT_RANDOM_TOKEN);
+  }
+  return tokens.join(TAG_SEPARATOR);
+}
+
+/**
+ * True when two search strings are the same multiset of tokens.
+ * Token order does not matter. Every `sort:random` token is ignored.
+ */
+export function queriesMatchIgnoringSortRandom(left: string, right: string): boolean {
+  const leftCounts = tokenCountsIgnoringSortRandom(left);
+  const rightCounts = tokenCountsIgnoringSortRandom(right);
+  if (leftCounts.size !== rightCounts.size) {
+    return false;
+  }
+  for (const [token, count] of leftCounts) {
+    if (rightCounts.get(token) !== count) {
+      return false;
+    }
+  }
+  return true;
+}

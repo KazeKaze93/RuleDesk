@@ -1,6 +1,7 @@
+import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { DEBUG_KEY, STORAGE_KEY } from "../../src/config/constants";
+import { DEBUG_KEY, STORAGE_KEY, UI_TEXT } from "../../src/config/constants";
 import { playlistBarFeature } from "../../src/features/playlist-bar";
 import {
   featureBodyClass,
@@ -10,11 +11,23 @@ import {
   buildPlaylistQueries,
   buildSearchUrl,
   parseTags,
+  withSortRandom,
+  withoutSortRandom,
 } from "../../src/search/query";
 import { createDefaultStorage } from "../../src/storage/schema";
-import { clearStorageCache, save } from "../../src/storage/store";
+import {
+  clearStorageCache,
+  createDynamicCollection,
+  load,
+  save,
+} from "../../src/storage/store";
 
 const ROOT_ID = "rdw-playlist-bar";
+const DYNAMIC_ROOT_ID = "rdw-dynamic-collection-bar";
+const TEXT_SHUFFLE = "Shuffle";
+const TEXT_ORIGINAL_ORDER = "Original order";
+const TEXT_EDIT_QUERY = "Edit query";
+const TEXT_QUERY_LABEL = "Query";
 const NAME_CLASS = "rdw-playlist-bar-name";
 const COUNT_CLASS = "rdw-playlist-bar-count";
 const PART_LABEL_CLASS = "rdw-playlist-bar-part-label";
@@ -85,6 +98,36 @@ function buildListPage(): HTMLDivElement {
 
 function tagsSearch(query: string): string {
   return `?page=post&s=list&tags=${encodeURIComponent(query)}`;
+}
+
+function stubLocation(): { assign: ReturnType<typeof vi.fn>; reload: ReturnType<typeof vi.fn> } {
+  const assign = vi.fn();
+  const reload = vi.fn();
+  vi.stubGlobal("location", {
+    search: "",
+    assign,
+    reload,
+  });
+  return { assign, reload };
+}
+
+function click(el: Element): void {
+  act(() => {
+    el.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+}
+
+function findButton(root: ParentNode, text: string): HTMLButtonElement | null {
+  const buttons = Array.from(root.querySelectorAll("button"));
+  const match = buttons.find((button) => button.textContent === text);
+  return match instanceof HTMLButtonElement ? match : null;
+}
+
+function setInputValue(input: HTMLInputElement, value: string): void {
+  act(() => {
+    input.value = value;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
 }
 
 describe("playlistBarFeature", () => {
@@ -223,5 +266,280 @@ describe("playlistBarFeature", () => {
     expect(bar).not.toBeNull();
     expect(bar?.parentElement).toBe(content);
     expect(warnSpy).toHaveBeenCalled();
+  });
+});
+
+describe("dynamic collection bar", () => {
+  beforeEach(() => {
+    document.body.replaceChildren();
+    document.body.className = "";
+    installGmMocks();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it("shows the bar above the grid when token order differs from the saved query", () => {
+    createDynamicCollection("Birds", "cat -dog");
+    const list = buildListPage();
+
+    playlistBarFeature.mount(makeCtx(tagsSearch("-dog cat")));
+
+    const bar = document.getElementById(DYNAMIC_ROOT_ID);
+    expect(bar).not.toBeNull();
+    expect(bar?.nextElementSibling).toBe(list);
+    expect(bar?.querySelector(`.${NAME_CLASS}`)?.textContent).toBe("Birds");
+    expect(findButton(bar ?? document.body, TEXT_SHUFFLE)).not.toBeNull();
+    expect(findButton(bar ?? document.body, TEXT_EDIT_QUERY)).not.toBeNull();
+    expect(findButton(bar ?? document.body, UI_TEXT.rename)).not.toBeNull();
+    expect(findButton(bar ?? document.body, UI_TEXT.delete)).not.toBeNull();
+    expect(findButton(bar ?? document.body, TEXT_ORIGINAL_ORDER)).toBeNull();
+    expect(document.getElementById(ROOT_ID)).toBeNull();
+  });
+
+  it("matches a legacy search that only has tags", () => {
+    const data = createDefaultStorage();
+    data.collections = [
+      {
+        id: "legacy-birds",
+        name: "Legacy birds",
+        tags: parseTags("bird -cat"),
+      },
+    ];
+    save(data);
+    buildListPage();
+
+    playlistBarFeature.mount(makeCtx(tagsSearch("-cat bird")));
+
+    const bar = document.getElementById(DYNAMIC_ROOT_ID);
+    expect(bar?.querySelector(`.${NAME_CLASS}`)?.textContent).toBe(
+      "Legacy birds",
+    );
+  });
+
+  it("ignores sort:random and shows Original order only while shuffled", () => {
+    createDynamicCollection("Birds", "cat dog");
+    buildListPage();
+
+    playlistBarFeature.mount(makeCtx(tagsSearch("dog sort:random cat")));
+
+    const bar = document.getElementById(DYNAMIC_ROOT_ID);
+    expect(bar?.querySelector(`.${NAME_CLASS}`)?.textContent).toBe("Birds");
+    expect(findButton(bar ?? document.body, TEXT_ORIGINAL_ORDER)).not.toBeNull();
+  });
+
+  it("draws nothing when the query does not match a dynamic collection", () => {
+    createDynamicCollection("Birds", "cat");
+    buildListPage();
+
+    playlistBarFeature.mount(makeCtx(tagsSearch("dog")));
+
+    expect(document.getElementById(DYNAMIC_ROOT_ID)).toBeNull();
+  });
+
+  it("draws nothing on the plain post list for a saved search with no tags", () => {
+    const data = createDefaultStorage();
+    data.collections = [{ id: "blank", name: "Blank", tags: [] }];
+    save(data);
+    buildListPage();
+
+    playlistBarFeature.mount(makeCtx(tagsSearch("")));
+    expect(document.getElementById(DYNAMIC_ROOT_ID)).toBeNull();
+
+    playlistBarFeature.mount(makeCtx(tagsSearch("sort:random")));
+    expect(document.getElementById(DYNAMIC_ROOT_ID)).toBeNull();
+  });
+
+  it("keeps the saved query when Edit query is submitted empty", () => {
+    const created = createDynamicCollection("Birds", "cat dog");
+    buildListPage();
+    const { assign } = stubLocation();
+
+    playlistBarFeature.mount(makeCtx(tagsSearch("dog cat")));
+    const edit = findButton(
+      document.getElementById(DYNAMIC_ROOT_ID) ?? document.body,
+      TEXT_EDIT_QUERY,
+    );
+    if (edit === null) {
+      throw new Error("edit missing");
+    }
+    click(edit);
+    const queryInput = document.querySelector(
+      `input[aria-label="${TEXT_QUERY_LABEL}"]`,
+    );
+    if (!(queryInput instanceof HTMLInputElement)) {
+      throw new Error("query input missing");
+    }
+    setInputValue(queryInput, "   ");
+    const saveButton = findButton(document.body, UI_TEXT.save);
+    if (saveButton === null) {
+      throw new Error("save missing");
+    }
+    click(saveButton);
+
+    expect(load().collections.find((item) => item.id === created.id)?.query).toBe(
+      "cat dog",
+    );
+    expect(assign).not.toHaveBeenCalled();
+  });
+
+  it("adds sort:random, and reloads when the page is already shuffled", () => {
+    createDynamicCollection("Birds", "cat dog");
+    buildListPage();
+    const { assign, reload } = stubLocation();
+
+    playlistBarFeature.mount(makeCtx(tagsSearch("dog cat")));
+    const shuffle = findButton(
+      document.getElementById(DYNAMIC_ROOT_ID) ?? document.body,
+      TEXT_SHUFFLE,
+    );
+    expect(shuffle).not.toBeNull();
+    if (shuffle !== null) {
+      click(shuffle);
+    }
+
+    expect(assign).toHaveBeenCalledWith(
+      buildSearchUrl(parseTags(withSortRandom("dog cat"))),
+    );
+    expect(reload).not.toHaveBeenCalled();
+
+    document.body.replaceChildren();
+    buildListPage();
+    playlistBarFeature.mount(makeCtx(tagsSearch("dog sort:random cat")));
+    const reshuffle = findButton(
+      document.getElementById(DYNAMIC_ROOT_ID) ?? document.body,
+      TEXT_SHUFFLE,
+    );
+    expect(reshuffle).not.toBeNull();
+    if (reshuffle !== null) {
+      click(reshuffle);
+    }
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it("drops sort:random for Original order", () => {
+    createDynamicCollection("Birds", "cat dog");
+    buildListPage();
+    const { assign } = stubLocation();
+    const pageQuery = "dog sort:random cat";
+
+    playlistBarFeature.mount(makeCtx(tagsSearch(pageQuery)));
+    const original = findButton(
+      document.getElementById(DYNAMIC_ROOT_ID) ?? document.body,
+      TEXT_ORIGINAL_ORDER,
+    );
+    expect(original).not.toBeNull();
+    if (original !== null) {
+      click(original);
+    }
+
+    expect(assign).toHaveBeenCalledWith(
+      buildSearchUrl(parseTags(withoutSortRandom(pageQuery))),
+    );
+  });
+
+  it("saves an edited query and navigates to it", () => {
+    const created = createDynamicCollection("Birds", "cat dog");
+    buildListPage();
+    const { assign } = stubLocation();
+
+    playlistBarFeature.mount(makeCtx(tagsSearch("dog cat")));
+    const edit = findButton(
+      document.getElementById(DYNAMIC_ROOT_ID) ?? document.body,
+      TEXT_EDIT_QUERY,
+    );
+    expect(edit).not.toBeNull();
+    if (edit !== null) {
+      click(edit);
+    }
+
+    const queryInput = document.querySelector(
+      `input[aria-label="${TEXT_QUERY_LABEL}"]`,
+    );
+    expect(queryInput).toBeInstanceOf(HTMLInputElement);
+    if (!(queryInput instanceof HTMLInputElement)) {
+      return;
+    }
+    setInputValue(queryInput, "  bird  ");
+    const saveButton = findButton(document.body, UI_TEXT.save);
+    expect(saveButton).not.toBeNull();
+    if (saveButton !== null) {
+      click(saveButton);
+    }
+
+    expect(load().collections.find((item) => item.id === created.id)?.query).toBe(
+      "bird",
+    );
+    expect(assign).toHaveBeenCalledWith(buildSearchUrl(parseTags("bird")));
+  });
+
+  it("renames from the fields dialog without leaving the page", () => {
+    const created = createDynamicCollection("Birds", "cat");
+    buildListPage();
+    const { assign } = stubLocation();
+
+    playlistBarFeature.mount(makeCtx(tagsSearch("cat")));
+    const rename = findButton(
+      document.getElementById(DYNAMIC_ROOT_ID) ?? document.body,
+      UI_TEXT.rename,
+    );
+    expect(rename).not.toBeNull();
+    if (rename !== null) {
+      click(rename);
+    }
+
+    const nameInput = document.querySelector(
+      `input[aria-label="${UI_TEXT.nameLabel}"]`,
+    );
+    expect(nameInput).toBeInstanceOf(HTMLInputElement);
+    if (!(nameInput instanceof HTMLInputElement)) {
+      return;
+    }
+    setInputValue(nameInput, "  Owls  ");
+    const saveButton = findButton(document.body, UI_TEXT.save);
+    expect(saveButton).not.toBeNull();
+    if (saveButton !== null) {
+      click(saveButton);
+    }
+
+    expect(load().collections.find((item) => item.id === created.id)?.name).toBe(
+      "Owls",
+    );
+    expect(
+      document.getElementById(DYNAMIC_ROOT_ID)?.querySelector(`.${NAME_CLASS}`)
+        ?.textContent,
+    ).toBe("Owls");
+    expect(assign).not.toHaveBeenCalled();
+  });
+
+  it("deletes the collection after confirm and removes the bar", () => {
+    const created = createDynamicCollection("Birds", "cat");
+    buildListPage();
+
+    playlistBarFeature.mount(makeCtx(tagsSearch("cat")));
+    const remove = findButton(
+      document.getElementById(DYNAMIC_ROOT_ID) ?? document.body,
+      UI_TEXT.delete,
+    );
+    expect(remove).not.toBeNull();
+    if (remove !== null) {
+      click(remove);
+    }
+
+    expect(document.body.textContent).toContain(
+      `${UI_TEXT.confirmDelete} (Birds)`,
+    );
+    const confirm = findButton(document.body, UI_TEXT.confirm);
+    expect(confirm).not.toBeNull();
+    if (confirm !== null) {
+      click(confirm);
+    }
+
+    expect(document.getElementById(DYNAMIC_ROOT_ID)).toBeNull();
+    expect(load().collections.some((item) => item.id === created.id)).toBe(
+      false,
+    );
   });
 });

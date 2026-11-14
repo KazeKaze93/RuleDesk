@@ -113,15 +113,20 @@ describe("own pages smoke", () => {
     expect(shadow.querySelector("#rdw-following-add-tag")).not.toBeNull();
   });
 
-  it("mounts Collections with Custom Collection and Dynamic Collection labels", async () => {
+  it("mounts the collections list without Save current search", async () => {
     const header = document.getElementById("header");
     if (!(header instanceof HTMLElement)) {
       throw new Error("header missing");
     }
     await showRdwPage(RDW_ROUTE_COLLECTIONS, header);
     const text = shadowRoot().textContent ?? "";
-    expect(text).toContain("Custom Collection");
-    expect(text).toContain("Dynamic Collection");
+    expect(shadowRoot().querySelectorAll("h1")).toHaveLength(1);
+    expect(text).toContain("Collections");
+    expect(text).toContain(
+      "Custom collections are posts you pick. Dynamic collections are saved searches.",
+    );
+    expect(text).toContain("New");
+    expect(text).not.toContain(UI_TEXT.saveCurrent);
     expect(text).not.toContain("Playlists");
     expect(text).not.toContain("Saved searches");
   });
@@ -131,7 +136,9 @@ describe("own pages smoke", () => {
     expect(settings.textContent).toContain("Appearance");
     expect(settings.textContent).toContain("Data");
     const collections = createCollectionsPage();
-    expect(collections.textContent).toContain("Custom Collection");
+    expect(collections.querySelector("h1")).toBeNull();
+    expect(collections.textContent).toContain("New");
+    expect(collections.textContent).not.toContain(UI_TEXT.saveCurrent);
   });
 });
 

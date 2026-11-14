@@ -5,13 +5,14 @@ import { resolveAppearancePalette } from "../skin/theme";
 import { getAppearance } from "../storage/store";
 import { applyTokenProperties } from "../ui/tokens";
 import {
+  isCollectionDetailPage,
   MENU_LABEL,
   PAGE_CONTENT_MAX_WIDTH_PX,
   RDW_PAGE_ROOT_ID,
   RDW_ROUTE_COLLECTIONS,
   RDW_ROUTE_FOLLOWING,
   RDW_ROUTE_SETTINGS,
-  type RdwRoute,
+  type RdwPage,
 } from "./constants";
 import { PAGE_CONTENT_CSS } from "./page-css";
 
@@ -50,7 +51,7 @@ ${PAGE_CONTENT_CSS}
 `;
 
 type PageShellProps = {
-  readonly title: string;
+  readonly title: string | null;
   readonly children: ComponentChild;
 };
 
@@ -59,14 +60,19 @@ function PageShell(props: PageShellProps): JSX.Element {
     <>
       <style>{PAGE_HOST_CSS}</style>
       <div className={PAGE_SHELL_CLASS}>
-        <h1 className={PAGE_TITLE_CLASS}>{props.title}</h1>
+        {props.title !== null ? (
+          <h1 className={PAGE_TITLE_CLASS}>{props.title}</h1>
+        ) : null}
         {props.children}
       </div>
     </>
   );
 }
 
-function titleForRoute(route: RdwRoute): string {
+function titleForRoute(route: RdwPage): string | null {
+  if (isCollectionDetailPage(route)) {
+    return null;
+  }
   if (route === RDW_ROUTE_COLLECTIONS) {
     return MENU_LABEL.collections;
   }
@@ -112,7 +118,22 @@ function getFollowingFactory(): PageFactory {
   return followingFactory;
 }
 
-function pageFactoryForRoute(route: RdwRoute): PageFactory {
+function collectionDetailFactory(collectionId: string): PageFactory {
+  return async (): Promise<JSX.Element> => {
+    const mod = await import("./collection-detail-page");
+    return (
+      <mod.CollectionDetailPage
+        key={collectionId}
+        collectionId={collectionId}
+      />
+    );
+  };
+}
+
+function pageFactoryForRoute(route: RdwPage): PageFactory {
+  if (isCollectionDetailPage(route)) {
+    return collectionDetailFactory(route.collectionId);
+  }
   if (route === RDW_ROUTE_COLLECTIONS) {
     return getCollectionsFactory();
   }
@@ -160,7 +181,7 @@ function ensureHost(header: HTMLElement): {
 
 /** Mount Preact page for route into #rdw-page-root after div#header. */
 export async function showRdwPage(
-  route: RdwRoute,
+  route: RdwPage,
   header: HTMLElement,
 ): Promise<void> {
   const { host, mount } = ensureHost(header);

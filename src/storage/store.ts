@@ -5,6 +5,7 @@ import {
   APPEARANCE_BACKGROUND_MAX_BYTES,
   APPEARANCE_BACKGROUND_TOO_LARGE,
   COLLECTION_KIND_POSTS,
+  COLLECTION_KIND_SEARCH,
   DEFAULT_GRID_FAV_BUTTONS,
   DEFAULT_PLAYLIST_CHUNK_SIZE,
   DEFAULT_SEEN_POST_ID,
@@ -16,7 +17,7 @@ import {
   STORAGE_KEY,
 } from "../config/constants";
 import { log } from "../log";
-import { normalizeArtistTag } from "../search/query";
+import { normalizeArtistTag, parseTags } from "../search/query";
 import { readArtistsMirror, writeArtistsMirror } from "./artists-mirror";
 import {
   addFav,
@@ -36,6 +37,7 @@ import {
   createDefaultAppearance,
   createDefaultStorage,
   isPlaylist,
+  migrateCollectionMediaFields,
   resolveAppearance,
   resolveGridFavButtons,
   resolvePlaylistChunkSize,
@@ -136,10 +138,20 @@ function loadUncached(): StorageData {
   const reparsed = StorageSchema.safeParse(after);
   if (!reparsed.success) {
     seedArtistsMirrorIfMissing(parsed.data);
-    return parsed.data;
+    return persistCollectionMediaMigration(parsed.data);
   }
   seedArtistsMirrorIfMissing(reparsed.data);
-  return reparsed.data;
+  return persistCollectionMediaMigration(reparsed.data);
+}
+
+function persistCollectionMediaMigration(data: StorageData): StorageData {
+  const migrated = migrateCollectionMediaFields(data);
+  if (!migrated.changed) {
+    return data;
+  }
+  const parsed = StorageSchema.parse(migrated.data);
+  writeData(parsed);
+  return parsed;
 }
 
 function backupInvalid(raw: unknown): void {
@@ -221,10 +233,11 @@ export function reloadFromStorage(): StorageData {
 
 export function save(data: StorageData): void {
   const parsed = StorageSchema.parse(data);
-  const pruned = pruneMarksIfNeeded(parsed.marks);
+  const migrated = migrateCollectionMediaFields(parsed).data;
+  const pruned = pruneMarksIfNeeded(migrated.marks);
   const toWrite = pruned.pruned
-    ? { ...parsed, marks: pruned.marks }
-    : parsed;
+    ? { ...migrated, marks: pruned.marks }
+    : migrated;
   writeData(toWrite);
   migrateMarksFavToFavs();
   const after = readRaw();
@@ -257,7 +270,7 @@ export function addCollection(name: string, tags: TagEntry[]): Collection {
 }
 
 export function renameCollection(id: string, name: string): Collection | null {
-  const data = load();
+  const data = reloadFromStorage();
   const target = data.collections.find((item) => item.id === id);
   if (target === undefined) {
     return null;
@@ -269,7 +282,7 @@ export function renameCollection(id: string, name: string): Collection | null {
 }
 
 export function deleteCollection(id: string): boolean {
-  const data = load();
+  const data = reloadFromStorage();
   const next = data.collections.filter((item) => item.id !== id);
   if (next.length === data.collections.length) {
     return false;
@@ -281,13 +294,15 @@ export function deleteCollection(id: string): boolean {
 
 /** Creates a post playlist (`kind: "posts"`, empty tags, empty postIds). */
 export function createPlaylist(name: string): Collection {
-  const data = load();
+  const data = reloadFromStorage();
   const collection = CollectionSchema.parse({
     id: crypto.randomUUID(),
     name: name.trim(),
     tags: [],
     kind: COLLECTION_KIND_POSTS,
     postIds: [],
+    thumbs: {},
+    shuffledOrder: null,
   });
   data.collections.push(collection);
   save(data);
@@ -308,29 +323,256 @@ export function playlistsContaining(postId: number): Collection[] {
   );
 }
 
-export function addPostToPlaylist(
-  id: string,
+const FISHER_YATES_STOP_INDEX = 0;
+const SHUFFLE_DISTINCT_MIN_LENGTH = 2;
+const SHUFFLE_FALLBACK_INDEX = 1;
+
+/** One removed custom-collection post, enough to undo membership, thumb, and order. */
+export type CollectionPostRestore = {
+  readonly postId: number;
+  readonly thumbUrl: string | null;
+  readonly insertionIndex: number;
+  readonly displayIndex: number;
+};
+
+/** Undo payload from {@link removePostsFromCollection}. */
+export type CollectionPostsSnapshot = {
+  readonly collectionId: string;
+  readonly posts: readonly CollectionPostRestore[];
+};
+
+function thumbKey(postId: number): string {
+  return String(postId);
+}
+
+function readThumb(
+  thumbs: Record<string, string> | undefined,
   postId: number,
+): string | null {
+  if (thumbs === undefined) {
+    return null;
+  }
+  const value = thumbs[thumbKey(postId)];
+  if (value === undefined || value.length === 0) {
+    return null;
+  }
+  return value;
+}
+
+function normalizeThumbUrl(thumbUrl: string | undefined): string | null {
+  if (thumbUrl === undefined) {
+    return null;
+  }
+  const trimmed = thumbUrl.trim();
+  if (trimmed.length === 0) {
+    return null;
+  }
+  return trimmed;
+}
+
+function samePostOrder(left: readonly number[], right: readonly number[]): boolean {
+  if (left.length !== right.length) {
+    return false;
+  }
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index] !== right[index]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/** Fisher-Yates. When another permutation exists, the result is not `order`. */
+function shufflePermutation(order: readonly number[]): number[] {
+  const next = [...order];
+  for (let index = next.length - 1; index > FISHER_YATES_STOP_INDEX; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    const current = next[index];
+    const swapped = next[swapIndex];
+    if (current === undefined || swapped === undefined) {
+      continue;
+    }
+    next[index] = swapped;
+    next[swapIndex] = current;
+  }
+  if (next.length < SHUFFLE_DISTINCT_MIN_LENGTH || !samePostOrder(next, order)) {
+    return next;
+  }
+  const first = next[FISHER_YATES_STOP_INDEX];
+  const second = next[SHUFFLE_FALLBACK_INDEX];
+  if (first === undefined || second === undefined) {
+    return next;
+  }
+  next[FISHER_YATES_STOP_INDEX] = second;
+  next[SHUFFLE_FALLBACK_INDEX] = first;
+  return next;
+}
+
+function clampInsertIndex(index: number, length: number): number {
+  if (!Number.isFinite(index) || index < FISHER_YATES_STOP_INDEX) {
+    return length;
+  }
+  const truncated = Math.trunc(index);
+  if (truncated > length) {
+    return length;
+  }
+  return truncated;
+}
+
+/**
+ * Display order: `shuffledOrder` with deleted ids dropped, then postIds that
+ * are not in that list (new since the shuffle), in insertion order.
+ * `null` / missing `shuffledOrder` is insertion order.
+ */
+function collectionDisplayOrder(collection: Collection): number[] {
+  const insertion = collection.postIds ?? [];
+  const shuffled = collection.shuffledOrder;
+  if (shuffled === undefined || shuffled === null) {
+    return [...insertion];
+  }
+  const present = new Set(insertion);
+  const ordered: number[] = [];
+  const seen = new Set<number>();
+  for (const id of shuffled) {
+    if (!present.has(id) || seen.has(id)) {
+      continue;
+    }
+    ordered.push(id);
+    seen.add(id);
+  }
+  for (const id of insertion) {
+    if (seen.has(id)) {
+      continue;
+    }
+    ordered.push(id);
+    seen.add(id);
+  }
+  return ordered;
+}
+
+function findPlaylist(
+  data: StorageData,
+  collectionId: string,
+): Collection | null {
+  const target = data.collections.find((item) => item.id === collectionId);
+  if (target === undefined || !isPlaylist(target)) {
+    return null;
+  }
+  return target;
+}
+
+function ensurePostsMedia(target: Collection): void {
+  target.kind = COLLECTION_KIND_POSTS;
+  target.tags = [];
+  if (target.thumbs === undefined) {
+    target.thumbs = {};
+  }
+  if (target.shuffledOrder === undefined) {
+    target.shuffledOrder = null;
+  }
+}
+
+/**
+ * Phase 2 HANDOFF: custom collections are `kind: "posts"`.
+ * Append `postId` (no duplicates). Pass `thumbUrl` to store a thumb.
+ * Re-add with a URL fills an empty thumb; re-add without a URL keeps a known thumb.
+ * New ids stay out of `shuffledOrder` and show up at the end of {@link getCollectionOrder}.
+ */
+export function addPostToCollection(
+  collectionId: string,
+  postId: number,
+  thumbUrl?: string,
 ): Collection | null {
   const normalized = normalizePostId(postId);
   if (normalized === null) {
     return null;
   }
-  const data = load();
-  const target = data.collections.find((item) => item.id === id);
-  if (target === undefined || !isPlaylist(target)) {
+  const data = reloadFromStorage();
+  const target = findPlaylist(data, collectionId);
+  if (target === null) {
     return null;
   }
   const postIds = [...(target.postIds ?? [])];
-  if (!postIds.includes(normalized)) {
+  const alreadyPresent = postIds.includes(normalized);
+  if (!alreadyPresent) {
     postIds.push(normalized);
+    if (target.shuffledOrder !== undefined && target.shuffledOrder !== null) {
+      target.shuffledOrder = target.shuffledOrder.filter((id) => id !== normalized);
+    }
   }
   target.postIds = postIds;
-  target.tags = [];
-  target.kind = COLLECTION_KIND_POSTS;
+  const incoming = normalizeThumbUrl(thumbUrl);
+  const known = readThumb(target.thumbs, normalized);
+  const nextThumb = incoming ?? known;
+  if (nextThumb !== null) {
+    target.thumbs = {
+      ...(target.thumbs ?? {}),
+      [thumbKey(normalized)]: nextThumb,
+    };
+  }
+  ensurePostsMedia(target);
   CollectionSchema.parse(target);
   save(data);
   return target;
+}
+
+export function addPostToPlaylist(
+  id: string,
+  postId: number,
+): Collection | null {
+  return addPostToCollection(id, postId);
+}
+
+/**
+ * Phase 2 HANDOFF: drops the given ids from a custom collection.
+ * Returned snapshot is the undo input for {@link restorePosts}.
+ * Unknown ids are omitted. A missing or non-posts collection returns null.
+ */
+export function removePostsFromCollection(
+  collectionId: string,
+  postIds: readonly number[],
+): CollectionPostsSnapshot | null {
+  const data = reloadFromStorage();
+  const target = findPlaylist(data, collectionId);
+  if (target === null) {
+    return null;
+  }
+  const removal = new Set<number>();
+  for (const rawId of postIds) {
+    const normalized = normalizePostId(rawId);
+    if (normalized !== null) {
+      removal.add(normalized);
+    }
+  }
+  const currentIds = target.postIds ?? [];
+  const display = collectionDisplayOrder(target);
+  const posts: CollectionPostRestore[] = [];
+  for (let index = 0; index < currentIds.length; index += 1) {
+    const id = currentIds[index];
+    if (id === undefined || !removal.has(id)) {
+      continue;
+    }
+    const displayIndex = display.indexOf(id);
+    posts.push({
+      postId: id,
+      thumbUrl: readThumb(target.thumbs, id),
+      insertionIndex: index,
+      displayIndex: displayIndex < FISHER_YATES_STOP_INDEX ? index : displayIndex,
+    });
+  }
+  if (posts.length === 0) {
+    return { collectionId, posts };
+  }
+  const removedIds = new Set(posts.map((post) => post.postId));
+  target.postIds = currentIds.filter((id) => !removedIds.has(id));
+  // Keep thumbs so a later add without a URL can fill from a known thumb.
+  if (target.shuffledOrder !== undefined && target.shuffledOrder !== null) {
+    target.shuffledOrder = target.shuffledOrder.filter((id) => !removedIds.has(id));
+  }
+  ensurePostsMedia(target);
+  CollectionSchema.parse(target);
+  save(data);
+  return { collectionId, posts };
 }
 
 export function removePostFromPlaylist(
@@ -341,19 +583,136 @@ export function removePostFromPlaylist(
   if (normalized === null) {
     return null;
   }
-  const data = load();
-  const target = data.collections.find((item) => item.id === id);
-  if (target === undefined || !isPlaylist(target)) {
+  const snapshot = removePostsFromCollection(id, [normalized]);
+  if (snapshot === null) {
     return null;
   }
-  const previous = target.postIds ?? [];
-  const postIds = previous.filter((entry) => entry !== normalized);
-  if (postIds.length === previous.length) {
+  const updated = load().collections.find((item) => item.id === id);
+  return updated ?? null;
+}
+
+/** Phase 2 HANDOFF: puts {@link removePostsFromCollection} posts back. */
+export function restorePosts(snapshot: CollectionPostsSnapshot): Collection | null {
+  const data = reloadFromStorage();
+  const target = findPlaylist(data, snapshot.collectionId);
+  if (target === null) {
+    return null;
+  }
+  if (snapshot.posts.length === 0) {
     return target;
   }
+  const postIds = [...(target.postIds ?? [])];
+  const thumbs: Record<string, string> = { ...(target.thumbs ?? {}) };
+  const byInsertion = [...snapshot.posts].sort(
+    (left, right) => left.insertionIndex - right.insertionIndex,
+  );
+  for (const post of byInsertion) {
+    const normalized = normalizePostId(post.postId);
+    if (normalized === null) {
+      continue;
+    }
+    if (!postIds.includes(normalized)) {
+      const index = clampInsertIndex(post.insertionIndex, postIds.length);
+      postIds.splice(index, 0, normalized);
+    }
+    if (post.thumbUrl !== null && post.thumbUrl.length > 0) {
+      thumbs[thumbKey(normalized)] = post.thumbUrl;
+    }
+  }
   target.postIds = postIds;
-  target.tags = [];
-  target.kind = COLLECTION_KIND_POSTS;
+  target.thumbs = thumbs;
+  if (target.shuffledOrder !== undefined && target.shuffledOrder !== null) {
+    const order = [...target.shuffledOrder];
+    const byDisplay = [...snapshot.posts].sort(
+      (left, right) => left.displayIndex - right.displayIndex,
+    );
+    for (const post of byDisplay) {
+      const normalized = normalizePostId(post.postId);
+      if (normalized === null || order.includes(normalized)) {
+        continue;
+      }
+      const index = clampInsertIndex(post.displayIndex, order.length);
+      order.splice(index, 0, normalized);
+    }
+    target.shuffledOrder = order;
+  }
+  ensurePostsMedia(target);
+  CollectionSchema.parse(target);
+  save(data);
+  return target;
+}
+
+/** Phase 2 HANDOFF: replaces `shuffledOrder` with a new permutation of the display order. */
+export function shuffleCollection(collectionId: string): Collection | null {
+  const data = reloadFromStorage();
+  const target = findPlaylist(data, collectionId);
+  if (target === null) {
+    return null;
+  }
+  target.shuffledOrder = shufflePermutation(collectionDisplayOrder(target));
+  ensurePostsMedia(target);
+  CollectionSchema.parse(target);
+  save(data);
+  return target;
+}
+
+/** Phase 2 HANDOFF: `shuffledOrder: null` so {@link getCollectionOrder} follows `postIds`. */
+export function resetCollectionOrder(collectionId: string): Collection | null {
+  const data = reloadFromStorage();
+  const target = findPlaylist(data, collectionId);
+  if (target === null) {
+    return null;
+  }
+  target.shuffledOrder = null;
+  ensurePostsMedia(target);
+  CollectionSchema.parse(target);
+  save(data);
+  return target;
+}
+
+/** Phase 2 HANDOFF: read-only display order. Null when the id is missing or not a posts collection. */
+export function getCollectionOrder(collectionId: string): number[] | null {
+  const target = findPlaylist(load(), collectionId);
+  if (target === null) {
+    return null;
+  }
+  return collectionDisplayOrder(target);
+}
+
+/**
+ * Phase 2 HANDOFF: saved search. `query` is stored raw; `tags` are `parseTags(query)`
+ * so existing search links keep working. Missing `query` on older rows means
+ * `serialize(collection.tags)`.
+ */
+export function createDynamicCollection(name: string, query: string): Collection {
+  const data = reloadFromStorage();
+  const trimmedQuery = query.trim();
+  const collection = CollectionSchema.parse({
+    id: crypto.randomUUID(),
+    name: name.trim(),
+    tags: parseTags(trimmedQuery),
+    kind: COLLECTION_KIND_SEARCH,
+    query: trimmedQuery,
+  });
+  data.collections.push(collection);
+  save(data);
+  return collection;
+}
+
+/** Phase 2 HANDOFF: replaces `query` and `tags` on a saved search. Posts collections return null. */
+export function updateDynamicQuery(
+  collectionId: string,
+  query: string,
+): Collection | null {
+  const data = reloadFromStorage();
+  const target = data.collections.find((item) => item.id === collectionId);
+  if (target === undefined || isPlaylist(target)) {
+    return null;
+  }
+  const trimmedQuery = query.trim();
+  target.query = trimmedQuery;
+  target.tags = parseTags(trimmedQuery);
+  target.kind = COLLECTION_KIND_SEARCH;
   CollectionSchema.parse(target);
   save(data);
   return target;

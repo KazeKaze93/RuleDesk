@@ -1,12 +1,13 @@
 import { ensureStyleElement } from "../boot/appearance-dom";
 import {
   HEADER_SELECTOR,
-  RDW_HASH_PREFIX,
   RDW_OWN_PAGE_CLASS,
   RDW_OWN_PAGE_STYLE_ID,
   buildOwnPageCss,
+  menuRouteForPage,
   parseRdwHash,
-  type RdwRoute,
+  rdwPageHash,
+  type RdwPage,
 } from "./constants";
 import { hideRdwPage, showRdwPage } from "./host";
 import {
@@ -35,14 +36,14 @@ function findHeader(): HTMLElement | null {
   return header instanceof HTMLElement ? header : null;
 }
 
-async function enterRoute(route: RdwRoute): Promise<void> {
+async function enterRoute(route: RdwPage): Promise<void> {
   const header = findHeader();
   if (header === null) {
     return;
   }
   document.documentElement.classList.add(RDW_OWN_PAGE_CLASS);
   await showRdwPage(route, header);
-  setOwnPageCurrentHighlight(route);
+  setOwnPageCurrentHighlight(menuRouteForPage(route));
 }
 
 function leaveRoute(): void {
@@ -91,8 +92,8 @@ function isModifiedClick(event: MouseEvent): boolean {
  * First visit to a #rdw/* route pushes history; switching among script pages
  * replaces so Back returns to the underlying site page.
  */
-export async function navigateToRdwRoute(route: RdwRoute): Promise<void> {
-  const nextHash = `${RDW_HASH_PREFIX}${route}`;
+export async function navigateToRdwRoute(route: RdwPage): Promise<void> {
+  const nextHash = rdwPageHash(route);
   const nextUrl = `${window.location.pathname}${window.location.search}${nextHash}`;
   const alreadyOnScriptPage = parseRdwHash(window.location.hash) !== null;
   if (alreadyOnScriptPage) {
@@ -144,6 +145,7 @@ function onDocumentClick(event: MouseEvent): void {
 /**
  * Install navbar items + hash router. No menu / no page when div#header is absent.
  * Page Preact modules load lazily on first #rdw/* open (factories in host).
+ * The collection detail module loads only for #rdw/collections/<id>.
  */
 export async function startRdwPages(): Promise<void> {
   ensureOwnPageStyle();

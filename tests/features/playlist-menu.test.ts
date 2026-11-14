@@ -5,6 +5,7 @@ import {
   playlistMenuFeature,
   resetPlaylistMenuRuntimeState,
 } from "../../src/features/playlist-menu";
+import { THUMB_IMAGE_HOST } from "../../src/site/thumb";
 import {
   notifyThumbsAdded,
   resetFeatureRuntimeState,
@@ -30,6 +31,12 @@ const CLASS_NEW = "rdw-playlist-menu-new";
 const CLASS_NEW_INPUT = "rdw-playlist-menu-new-input";
 const CLASS_NEW_SUBMIT = "rdw-playlist-menu-new-submit";
 const ATTR_POST_ID = "data-rdw-post-id";
+const PREVIEW_CLASS = "preview";
+const THUMB_DIR = "12";
+
+function gridThumbUrl(hash: string, postId: string): string {
+  return `https://${THUMB_IMAGE_HOST}/thumbnails/${THUMB_DIR}/thumbnail_${hash}.jpg?${postId}`;
+}
 
 const memory = new Map<string, unknown>();
 
@@ -87,6 +94,32 @@ function addButton(thumb: HTMLElement): HTMLButtonElement {
     throw new Error("playlist add button missing");
   }
   return button;
+}
+
+function previewInLink(thumb: HTMLElement): HTMLImageElement {
+  const img = thumb.querySelector("a img.preview");
+  if (!(img instanceof HTMLImageElement)) {
+    throw new Error("nested preview missing");
+  }
+  return img;
+}
+
+function placeOutsidePreview(thumb: HTMLElement, src: string): HTMLImageElement {
+  const img = document.createElement("img");
+  img.className = PREVIEW_CLASS;
+  img.setAttribute("src", src);
+  const link = thumb.querySelector("a");
+  if (link === null) {
+    throw new Error("thumb link missing");
+  }
+  thumb.insertBefore(img, link);
+  return img;
+}
+
+function clickFirstItem(): void {
+  openMenus()[0]
+    ?.querySelector(`button.${CLASS_ITEM}`)
+    ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
 }
 
 function openMenus(): HTMLElement[] {
@@ -332,5 +365,108 @@ describe("playlistMenuFeature", () => {
     expect(playlistsContaining(55).map((entry) => entry.id)).toEqual([
       playlist.id,
     ]);
+    expect(listPlaylists()[0]?.thumbs).toEqual({});
+  });
+
+  it("stores img.preview from outside the anchor when adding", () => {
+    const playlist = createPlaylist("Later");
+    const outside = gridThumbUrl("outside", "10");
+    const inside = gridThumbUrl("inside", "10");
+    const thumb = buildThumb("10");
+    placeOutsidePreview(thumb, outside);
+    previewInLink(thumb).setAttribute("src", inside);
+    document.body.append(thumb);
+    playlistMenuFeature.mount(makeCtx("list", "?page=post&s=list"));
+
+    addButton(thumb).click();
+    clickFirstItem();
+
+    expect(playlistsContaining(10).map((entry) => entry.id)).toEqual([
+      playlist.id,
+    ]);
+    expect(listPlaylists()[0]?.thumbs).toEqual({ "10": outside });
+  });
+
+  it("stores the nested img.preview when that is the only preview", () => {
+    const playlist = createPlaylist("Later");
+    const nested = gridThumbUrl("nested", "10");
+    const thumb = buildThumb("10");
+    previewInLink(thumb).setAttribute("src", nested);
+    document.body.append(thumb);
+    playlistMenuFeature.mount(makeCtx("list", "?page=post&s=list"));
+
+    addButton(thumb).click();
+    clickFirstItem();
+
+    expect(listPlaylists()[0]?.id).toBe(playlist.id);
+    expect(listPlaylists()[0]?.thumbs).toEqual({ "10": nested });
+  });
+
+  it("stores the preview when creating a collection from the grid menu", () => {
+    const nested = gridThumbUrl("created", "20");
+    const thumb = buildThumb("20");
+    previewInLink(thumb).setAttribute("src", `  ${nested}  `);
+    document.body.append(thumb);
+    playlistMenuFeature.mount(makeCtx("list", "?page=post&s=list"));
+
+    addButton(thumb).click();
+    const menu = openMenus()[0];
+    menu
+      ?.querySelector(`button.${CLASS_NEW}`)
+      ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    const input = menu?.querySelector(`input.${CLASS_NEW_INPUT}`);
+    if (!(input instanceof HTMLInputElement)) {
+      throw new Error("new playlist input missing");
+    }
+    input.value = "Watch later";
+    menu
+      ?.querySelector(`button.${CLASS_NEW_SUBMIT}`)
+      ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+    expect(listPlaylists()[0]?.name).toBe("Watch later");
+    expect(listPlaylists()[0]?.postIds).toEqual([20]);
+    expect(listPlaylists()[0]?.thumbs).toEqual({ "20": nested });
+  });
+
+  it("keeps a known thumb when adding again without a preview URL", () => {
+    createPlaylist("Later");
+    const known = gridThumbUrl("kept", "10");
+    const thumb = buildThumb("10");
+    const img = previewInLink(thumb);
+    img.setAttribute("src", known);
+    document.body.append(thumb);
+    playlistMenuFeature.mount(makeCtx("list", "?page=post&s=list"));
+
+    addButton(thumb).click();
+    clickFirstItem();
+    expect(listPlaylists()[0]?.thumbs).toEqual({ "10": known });
+
+    img.removeAttribute("src");
+    clickFirstItem();
+    clickFirstItem();
+
+    expect(listPlaylists()[0]?.postIds).toEqual([10]);
+    expect(listPlaylists()[0]?.thumbs).toEqual({ "10": known });
+  });
+
+  it("fills an empty thumb when a later add can see the preview", () => {
+    createPlaylist("Later");
+    const known = gridThumbUrl("later", "10");
+    const thumb = buildThumb("10");
+    const img = previewInLink(thumb);
+    document.body.append(thumb);
+    playlistMenuFeature.mount(makeCtx("list", "?page=post&s=list"));
+
+    addButton(thumb).click();
+    clickFirstItem();
+    expect(listPlaylists()[0]?.postIds).toEqual([10]);
+    expect(listPlaylists()[0]?.thumbs).toEqual({});
+
+    clickFirstItem();
+    img.setAttribute("src", known);
+    clickFirstItem();
+
+    expect(listPlaylists()[0]?.postIds).toEqual([10]);
+    expect(listPlaylists()[0]?.thumbs).toEqual({ "10": known });
   });
 });

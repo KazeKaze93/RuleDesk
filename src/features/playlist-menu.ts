@@ -1,5 +1,5 @@
 import {
-  addPostToPlaylist,
+  addPostToCollection,
   createPlaylist,
   listPlaylists,
   playlistsContaining,
@@ -211,6 +211,11 @@ type OpenPopup = {
   postId: number;
 };
 
+/** Reads a non-empty thumb URL at the moment of add, or null when none is known. */
+type ThumbUrlReader = () => string | null;
+
+const NO_THUMB_URL: ThumbUrlReader = () => null;
+
 let unsubscribeThumbsAdded: (() => void) | undefined;
 let openPopup: OpenPopup | null = null;
 let escapeBound = false;
@@ -239,8 +244,84 @@ function applyAddButtonState(button: HTMLButtonElement, postId: number): void {
   button.setAttribute("aria-label", `${LABEL_ADD} ${String(postId)}`);
 }
 
+function postAnchorSelector(postId: string): string {
+  return `#p${postId}`;
+}
+
+function readImageAddress(img: HTMLImageElement): string | null {
+  const current = img.currentSrc.trim();
+  if (current.length > 0) {
+    return current;
+  }
+  const attribute = img.getAttribute("src");
+  if (attribute === null) {
+    return null;
+  }
+  const trimmed = attribute.trim();
+  if (trimmed.length === 0) {
+    return null;
+  }
+  return trimmed;
+}
+
+/**
+ * Thumb URL from this post's `img.preview`.
+ * A preview outside `a#p{id}` wins. The copy nested in the link is used only
+ * when that is the only preview (rule34 puts `img.preview` inside the anchor).
+ */
+function readPreviewThumbUrl(thumb: HTMLElement, postId: string): string | null {
+  const anchor = thumb.querySelector(postAnchorSelector(postId));
+  const images = thumb.querySelectorAll(SITE_SELECTORS.previewImage);
+  let nestedImage: HTMLImageElement | null = null;
+  for (const node of images) {
+    if (!(node instanceof HTMLImageElement)) {
+      continue;
+    }
+    const nested = anchor instanceof Element && anchor.contains(node);
+    if (nested) {
+      if (nestedImage === null) {
+        nestedImage = node;
+      }
+      continue;
+    }
+    const url = readImageAddress(node);
+    if (url !== null) {
+      return url;
+    }
+  }
+  if (nestedImage === null) {
+    return null;
+  }
+  return readImageAddress(nestedImage);
+}
+
+function readThumbUrlFromTrigger(button: HTMLElement): string | null {
+  const postId = button.getAttribute(ATTR_POST_ID);
+  if (postId === null || postId.length === 0) {
+    return null;
+  }
+  const thumb = button.closest(SITE_SELECTORS.thumb);
+  if (!(thumb instanceof HTMLElement)) {
+    return null;
+  }
+  return readPreviewThumbUrl(thumb, postId);
+}
+
+function addPostWithThumb(
+  collectionId: string,
+  postId: number,
+  readThumbUrl: ThumbUrlReader,
+): void {
+  const thumbUrl = readThumbUrl();
+  if (thumbUrl !== null) {
+    addPostToCollection(collectionId, postId, thumbUrl);
+    return;
+  }
+  addPostToCollection(collectionId, postId);
+}
+
 function findThumbLink(thumb: HTMLElement, postId: string): HTMLAnchorElement | null {
-  const byId = thumb.querySelector(`#p${postId}`);
+  const byId = thumb.querySelector(postAnchorSelector(postId));
   if (byId instanceof HTMLAnchorElement) {
     return byId;
   }
@@ -347,7 +428,11 @@ function syncAddButtonsForPost(postId: number): void {
   }
 }
 
-function fillPlaylistList(list: HTMLElement, postId: number): void {
+function fillPlaylistList(
+  list: HTMLElement,
+  postId: number,
+  readThumbUrl: ThumbUrlReader,
+): void {
   list.replaceChildren();
   const playlists = listPlaylists();
   const memberIds = new Set(playlistsContaining(postId).map((item) => item.id));
@@ -380,9 +465,9 @@ function fillPlaylistList(list: HTMLElement, postId: number): void {
       if (memberIds.has(playlist.id)) {
         removePostFromPlaylist(playlist.id, postId);
       } else {
-        addPostToPlaylist(playlist.id, postId);
+        addPostWithThumb(playlist.id, postId, readThumbUrl);
       }
-      fillPlaylistList(list, postId);
+      fillPlaylistList(list, postId, readThumbUrl);
       syncAddButtonsForPost(postId);
     });
     list.append(item);
@@ -393,6 +478,7 @@ function showNewPlaylistForm(
   host: HTMLElement,
   list: HTMLElement,
   postId: number,
+  readThumbUrl: ThumbUrlReader,
   onCreated: (() => void) | undefined,
 ): void {
   host.replaceChildren();
@@ -416,8 +502,8 @@ function showNewPlaylistForm(
       return;
     }
     const playlist = createPlaylist(name);
-    addPostToPlaylist(playlist.id, postId);
-    fillPlaylistList(list, postId);
+    addPostWithThumb(playlist.id, postId, readThumbUrl);
+    fillPlaylistList(list, postId, readThumbUrl);
     syncAddButtonsForPost(postId);
     onCreated?.();
   };
@@ -445,6 +531,7 @@ function mountNewPlaylistControl(
   host: HTMLElement,
   list: HTMLElement,
   postId: number,
+  readThumbUrl: ThumbUrlReader,
   onCreated: (() => void) | undefined,
 ): void {
   host.replaceChildren();
@@ -455,7 +542,7 @@ function mountNewPlaylistControl(
   button.addEventListener("click", (event: Event) => {
     event.preventDefault();
     event.stopPropagation();
-    showNewPlaylistForm(host, list, postId, onCreated);
+    showNewPlaylistForm(host, list, postId, readThumbUrl, onCreated);
   });
   host.append(button);
 }
@@ -466,8 +553,9 @@ function mountNewPlaylistControl(
  */
 export function createPlaylistMenu(
   postId: number,
-  options?: { onCreated?: () => void },
+  options?: { onCreated?: () => void; readThumbUrl?: ThumbUrlReader },
 ): HTMLElement {
+  const readThumbUrl = options?.readThumbUrl ?? NO_THUMB_URL;
   const root = document.createElement("div");
   root.className = CLASS_MENU;
   root.setAttribute("role", "menu");
@@ -476,10 +564,10 @@ export function createPlaylistMenu(
   const list = document.createElement("div");
   list.className = CLASS_LIST;
   list.setAttribute("role", "group");
-  fillPlaylistList(list, postId);
+  fillPlaylistList(list, postId, readThumbUrl);
 
   const newHost = document.createElement("div");
-  mountNewPlaylistControl(newHost, list, postId, options?.onCreated);
+  mountNewPlaylistControl(newHost, list, postId, readThumbUrl, options?.onCreated);
 
   root.append(list, newHost);
   return root;
@@ -496,6 +584,7 @@ function openMenuForButton(button: HTMLButtonElement, postId: number): void {
     onCreated: (): void => {
       closeOpenMenu();
     },
+    readThumbUrl: (): string | null => readThumbUrlFromTrigger(button),
   });
   menu.classList.add(CLASS_MENU_POPUP);
   positionMenuNear(menu, button);

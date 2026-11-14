@@ -1,9 +1,10 @@
 import type { JSX } from "preact";
 import { useCallback, useMemo, useRef, useState } from "preact/hooks";
 
+import { deriveThumbUrlFromMedia } from "../../site/thumb";
 import type { Collection } from "../../storage/schema";
 import {
-  addPostToPlaylist,
+  addPostToCollection,
   createPlaylist,
   listPlaylists,
   playlistsContaining,
@@ -17,6 +18,8 @@ import {
   Popover,
   TextField,
 } from "../../ui/kit";
+import { VIDEO_ELEMENT_ID } from "../video-player";
+import { IMAGE_ID } from "./site-reads";
 
 const TEXT_COLLECTIONS = "Collections";
 const TEXT_FILTER_PLACEHOLDER = "Filter collections…";
@@ -27,6 +30,8 @@ const ARIA_COLLECTIONS = "Custom collections";
 const LABEL_TOGGLE_PREFIX = "Toggle collection";
 
 const KEY_ENTER = "Enter";
+const VIDEO_SOURCE_SELECTOR = "source";
+const POST_ANCHOR_ID_PREFIX = "p";
 
 const CLASS_WRAP = "rdw-post-panel-collections";
 const CLASS_TRIGGER = "rdw-post-panel-collections-btn";
@@ -39,6 +44,98 @@ const CLASS_NEW_FORM = "rdw-post-panel-collection-new-form";
 export type CollectionsMenuProps = {
   readonly postId: number;
 };
+
+function readAttributeSrc(
+  element: HTMLImageElement | HTMLSourceElement | HTMLVideoElement,
+): string | null {
+  if (!(element instanceof HTMLSourceElement)) {
+    const current = element.currentSrc.trim();
+    if (current.length > 0) {
+      return current;
+    }
+  }
+  const attribute = element.getAttribute("src");
+  if (attribute === null) {
+    return null;
+  }
+  const trimmed = attribute.trim();
+  if (trimmed.length === 0) {
+    return null;
+  }
+  return trimmed;
+}
+
+function postAnchorElement(postId: number): Element | null {
+  const anchor = document.getElementById(`${POST_ANCHOR_ID_PREFIX}${String(postId)}`);
+  return anchor instanceof Element ? anchor : null;
+}
+
+function isInsidePostAnchor(node: Node, postId: number): boolean {
+  const anchor = postAnchorElement(postId);
+  return anchor !== null && anchor.contains(node);
+}
+
+function readVideoElementUrl(video: HTMLVideoElement): string | null {
+  const source = video.querySelector(VIDEO_SOURCE_SELECTOR);
+  if (source instanceof HTMLSourceElement) {
+    const sourceUrl = readAttributeSrc(source);
+    if (sourceUrl !== null) {
+      return sourceUrl;
+    }
+  }
+  return readAttributeSrc(video);
+}
+
+function readVideoMediaUrl(postId: number): string | null {
+  const candidates: HTMLVideoElement[] = [];
+  const byId = document.getElementById(VIDEO_ELEMENT_ID);
+  if (byId instanceof HTMLVideoElement) {
+    candidates.push(byId);
+  }
+  for (const node of document.querySelectorAll("video")) {
+    if (node instanceof HTMLVideoElement && node !== byId) {
+      candidates.push(node);
+    }
+  }
+  for (const video of candidates) {
+    if (isInsidePostAnchor(video, postId)) {
+      continue;
+    }
+    const url = readVideoElementUrl(video);
+    if (url !== null) {
+      return url;
+    }
+  }
+  return null;
+}
+
+function thumbFromMedia(mediaUrl: string | null, postId: number): string | null {
+  if (mediaUrl === null) {
+    return null;
+  }
+  return deriveThumbUrlFromMedia(mediaUrl, postId);
+}
+
+/** Post-page thumb from img#image, otherwise the video source. Null when neither yields one. */
+function readPostPageThumbUrl(postId: number): string | null {
+  const image = document.getElementById(IMAGE_ID);
+  if (image instanceof HTMLImageElement && !isInsidePostAnchor(image, postId)) {
+    const fromImage = thumbFromMedia(readAttributeSrc(image), postId);
+    if (fromImage !== null) {
+      return fromImage;
+    }
+  }
+  return thumbFromMedia(readVideoMediaUrl(postId), postId);
+}
+
+function addPostWithThumb(collectionId: string, postId: number): void {
+  const thumbUrl = readPostPageThumbUrl(postId);
+  if (thumbUrl !== null) {
+    addPostToCollection(collectionId, postId, thumbUrl);
+    return;
+  }
+  addPostToCollection(collectionId, postId);
+}
 
 function memberIdSet(postId: number): Set<string> {
   return new Set(playlistsContaining(postId).map((item) => item.id));
@@ -103,7 +200,7 @@ export function CollectionsMenu(
       if (members.has(playlistId)) {
         removePostFromPlaylist(playlistId, props.postId);
       } else {
-        addPostToPlaylist(playlistId, props.postId);
+        addPostWithThumb(playlistId, props.postId);
       }
       bump();
     },
@@ -116,7 +213,7 @@ export function CollectionsMenu(
       return;
     }
     const playlist = createPlaylist(name);
-    addPostToPlaylist(playlist.id, props.postId);
+    addPostWithThumb(playlist.id, props.postId);
     bump();
     setCreating(false);
     setNewName("");

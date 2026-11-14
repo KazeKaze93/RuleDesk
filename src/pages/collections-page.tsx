@@ -1,510 +1,732 @@
-import type { JSX } from "preact";
+import type { ComponentChildren, JSX } from "preact";
 import { render as preactRender } from "preact";
-import { useEffect, useState } from "preact/hooks";
+import { useCallback, useState } from "preact/hooks";
 
-import { UI_TEXT } from "../config/constants";
 import {
-  buildPlaylistQueries,
-  buildSearchUrl,
-  buildUpdatesSearchUrl,
-  readTagsFromLocation,
-  serialize,
-} from "../search/query";
-import { isPlaylist, type Collection } from "../storage/schema";
+  COLLECTION_KIND_POSTS,
+  COLLECTION_KIND_SEARCH,
+  EXCLUDE_PREFIX,
+  UI_TEXT,
+  UPDATES_OR_CLOSE,
+  UPDATES_OR_JOIN,
+  UPDATES_OR_OPEN,
+} from "../config/constants";
+import { buildSearchUrl, serialize } from "../search/query";
 import {
-  addCollection,
+  resolveCollectionKind,
+  type Collection,
+} from "../storage/schema";
+import {
+  createDynamicCollection,
   createPlaylist,
-  deleteCollection,
-  getPlaylistChunkSize,
-  listPlaylists,
   load,
-  renameCollection,
 } from "../storage/store";
 import {
   Button,
-  Card,
+  Chip,
+  Dialog,
   EmptyState,
-  IconButton,
-  SectionLabel,
+  Segmented,
   TextField,
+  type ChipVariant,
+  type SegmentedOption,
 } from "../ui/kit";
-import { IconTrash } from "../ui/kit/icons";
-import { PANEL_UI_CLASS } from "./constants";
+import { IconPlus } from "../ui/kit/icons";
+import { collectionDetailHash } from "./constants";
 
 const PAGE_CLASS = "rdw-collections-page";
-const PLAYLIST_META_CLASS = "rdw-playlist-meta";
-const PLAYLIST_PARTS_CLASS = "rdw-playlist-parts";
-const PLAYLIST_PART_CLASS = "rdw-playlist-part";
-const ROW_MAIN_CLASS = "rdw-collections-row-main";
+const HEADER_CLASS = "rdw-collections-header";
+const TOOLBAR_CLASS = "rdw-collections-toolbar";
+const FILTER_FIELD_CLASS = "rdw-collections-filter";
+const GRID_CLASS = "rdw-collections-grid";
+const CARD_CLASS = "rdw-collection-card";
+const COVER_CLASS = "rdw-collection-cover";
+const COVER_CELL_CLASS = "rdw-collection-cover-cell";
+const COVER_IMAGE_CLASS = "rdw-collection-cover-image";
+const COVER_EMPTY_CLASS = "rdw-collection-cover-empty";
+const CHIPS_CLASS = "rdw-collection-chips";
+const META_ROW_CLASS = "rdw-collection-meta-row";
+const NAME_CLASS = "rdw-collection-name";
+const BADGE_CLASS = "rdw-collection-badge";
+const CAPTION_CLASS = "rdw-collection-caption";
+const FORM_ERROR_CLASS = "rdw-collection-form-error";
 
-const DYNAMIC_COLLECTIONS_HEADING = "Dynamic Collection";
-const CUSTOM_COLLECTIONS_HEADING = "Custom Collection";
-const EMPTY_DYNAMIC_COLLECTIONS = "No dynamic collections yet.";
-const EMPTY_CUSTOM_COLLECTIONS = "No custom collections yet.";
-const EMPTY_CUSTOM_COLLECTIONS_HINT = "Use the + button on a post";
-const NEW_CUSTOM_COLLECTION = "New Custom Collection";
-const OPEN_CUSTOM_COLLECTION = "Open Custom Collection";
-const CUSTOM_COLLECTION_PARTS_LABEL = "Custom Collection parts";
-const SAVE_NAME_ID = "rdw-save-name";
-const PLAYLIST_NAME_ID = "rdw-playlist-name";
+const FILTER_ALL = "all";
+const FILTER_CUSTOM = "custom";
+const FILTER_DYNAMIC = "dynamic";
+const KIND_CUSTOM = "custom";
+const KIND_DYNAMIC = "dynamic";
+
+const FILTER_ALL_LABEL = "All";
+const FILTER_CUSTOM_LABEL = "Custom";
+const FILTER_DYNAMIC_LABEL = "Dynamic";
+const NEW_BUTTON_LABEL = "New";
+const NEW_DIALOG_TITLE = "New collection";
+const CREATE_LABEL = "Create";
+const QUERY_FIELD_LABEL = "Query";
+const QUERY_PLACEHOLDER = "tag -tag ( a ~ b )";
+const TYPE_SEGMENTED_LABEL = "Show";
+const KIND_SEGMENTED_LABEL = "Collection kind";
+const FILTER_ARIA_LABEL = "Filter by name";
+const FILTER_PLACEHOLDER = "Filter by name";
+const GRID_LABEL = "Collections";
+const BADGE_CUSTOM = "Custom";
+const BADGE_DYNAMIC = "Dynamic";
+const SAVED_SEARCH_CAPTION = "saved search";
+const EMPTY_TITLE = "No collections yet";
+const EMPTY_DESCRIPTION =
+  "Custom collections are posts you pick. Dynamic collections are saved searches.";
+const FILTER_EMPTY_TITLE = "No matching collections";
+const FILTER_EMPTY_DESCRIPTION = "Nothing matches this filter.";
+const EMPTY_NAME_MESSAGE = "Enter a name.";
+const EMPTY_QUERY_MESSAGE = "Enter a query.";
+const DUPLICATE_NAME_MESSAGE = "A collection with this name already exists.";
+const ANY_OF_LABEL_PREFIX = "Any of ";
+const ANY_OF_LABEL_SUFFIX = " tags";
+const POST_WORD_SINGULAR = "post";
+const POST_WORD_PLURAL = "posts";
+
+const POST_COUNT_SINGULAR = 1;
+const COVER_AXIS_COUNT = 2;
+const COVER_SLOT_COUNT = COVER_AXIS_COUNT * COVER_AXIS_COUNT;
+const COVER_GAP_PX = 2;
+const GRID_MIN_TRACK_PX = 200;
+const GRID_GAP_PX = 12;
+const PAGE_STACK_GAP_PX = 12;
+const HEADER_GAP_PX = 12;
+const TOOLBAR_GAP_PX = 8;
+const FILTER_FIELD_MIN_PX = 160;
+const CARD_PADDING_PX = 8;
+const CARD_GAP_PX = 8;
+const META_GAP_PX = 8;
+const CHIP_GAP_PX = 4;
+const CHIP_AREA_MAX_HEIGHT_PX = 72;
+const BADGE_FONT_PX = 10;
+const CAPTION_FONT_PX = 12;
+const ICON_PX = 14;
+const BADGE_TRACKING = "0.04em";
+
+const NAME_FIELD_ID = "rdw-collection-name";
+const QUERY_FIELD_ID = "rdw-collection-query";
+const FILTER_FIELD_ID = "rdw-collections-filter";
+const FORM_ERROR_ID = "rdw-collection-form-error";
+
+const QUERY_TOKEN_SPLIT = /\s+/;
+const CHIP_VARIANT_TOKEN: ChipVariant = "dot";
+const CHIP_VARIANT_GROUP: ChipVariant = "group";
+const CHIP_VARIANT_EXCLUDE: ChipVariant = "exclude";
+
+const FILTER_OPTIONS: readonly SegmentedOption[] = [
+  { value: FILTER_ALL, label: FILTER_ALL_LABEL },
+  { value: FILTER_CUSTOM, label: FILTER_CUSTOM_LABEL },
+  { value: FILTER_DYNAMIC, label: FILTER_DYNAMIC_LABEL },
+];
+
+const NEW_KIND_OPTIONS: readonly SegmentedOption[] = [
+  { value: KIND_CUSTOM, label: FILTER_CUSTOM_LABEL },
+  { value: KIND_DYNAMIC, label: FILTER_DYNAMIC_LABEL },
+];
+
+type ListFilter = typeof FILTER_ALL | typeof FILTER_CUSTOM | typeof FILTER_DYNAMIC;
+type NewKind = typeof KIND_CUSTOM | typeof KIND_DYNAMIC;
+
+type QueryChipModel = {
+  readonly label: string;
+  readonly variant: ChipVariant;
+};
+
+type ParenGroup = {
+  readonly memberCount: number;
+  readonly nextIndex: number;
+};
 
 export const COLLECTIONS_PAGE_CSS = `
 .${PAGE_CLASS} {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: ${String(PAGE_STACK_GAP_PX)}px;
 }
-.${PAGE_CLASS} .${ROW_MAIN_CLASS} {
+.${HEADER_CLASS} {
+  display: flex;
+  flex-direction: column;
+  gap: ${String(HEADER_GAP_PX)}px;
+}
+.${TOOLBAR_CLASS} {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: ${String(TOOLBAR_GAP_PX)}px;
 }
-.${PAGE_CLASS} .${PLAYLIST_META_CLASS} {
+.${TOOLBAR_CLASS} .${FILTER_FIELD_CLASS} {
+  flex: 1 1 ${String(FILTER_FIELD_MIN_PX)}px;
+  min-width: 0;
   margin: 0;
-  color: var(--rdw-muted);
-  font-size: 12px;
 }
-.${PAGE_CLASS} .${PLAYLIST_PARTS_CLASS} {
+.${GRID_CLASS} {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(${String(GRID_MIN_TRACK_PX)}px, 1fr));
+  gap: ${String(GRID_GAP_PX)}px;
+}
+.${CARD_CLASS} {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.${PAGE_CLASS} .${PLAYLIST_PART_CLASS} {
-  color: var(--rdw-accent);
+  flex-direction: column;
+  gap: ${String(CARD_GAP_PX)}px;
+  min-width: 0;
+  padding: ${String(CARD_PADDING_PX)}px;
+  box-sizing: border-box;
   text-decoration: none;
-  font-size: 12px;
+  color: var(--rdw-text);
+  background: var(--rdw-surface);
+  border: 1px solid var(--rdw-border);
+  border-radius: var(--rdw-radius-l);
+}
+.${CARD_CLASS}:hover,
+.${CARD_CLASS}:focus,
+.${CARD_CLASS}:focus-visible {
+  border-color: var(--rdw-accent);
+  background: var(--rdw-surface-2);
+  outline: none;
+}
+.${COVER_CLASS} {
+  display: grid;
+  grid-template-columns: repeat(${String(COVER_AXIS_COUNT)}, minmax(0, 1fr));
+  grid-template-rows: repeat(${String(COVER_AXIS_COUNT)}, minmax(0, 1fr));
+  aspect-ratio: 1;
+  gap: ${String(COVER_GAP_PX)}px;
+  border-radius: var(--rdw-radius-m);
+  overflow: hidden;
+  background: var(--rdw-surface-2);
+}
+.${COVER_CELL_CLASS},
+.${COVER_EMPTY_CLASS} {
+  min-width: 0;
+  min-height: 0;
+  background: var(--rdw-surface-2);
+}
+.${COVER_IMAGE_CLASS},
+.${COVER_EMPTY_CLASS} {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.${COVER_IMAGE_CLASS} {
+  object-fit: cover;
+}
+.${CHIPS_CLASS} {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: ${String(CHIP_GAP_PX)}px;
+  max-height: ${String(CHIP_AREA_MAX_HEIGHT_PX)}px;
+  overflow: hidden;
+}
+.${META_ROW_CLASS} {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: ${String(META_GAP_PX)}px;
+  min-width: 0;
+}
+.${NAME_CLASS} {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-weight: 600;
 }
-.${PAGE_CLASS} .${PLAYLIST_PART_CLASS}:focus-visible {
-  outline: 2px solid var(--rdw-accent);
-  outline-offset: 2px;
+.${BADGE_CLASS} {
+  flex: none;
+  font-size: ${String(BADGE_FONT_PX)}px;
+  font-weight: 700;
+  letter-spacing: ${BADGE_TRACKING};
+  text-transform: uppercase;
+  color: var(--rdw-accent);
+}
+.${CAPTION_CLASS} {
+  margin: 0;
+  color: var(--rdw-muted);
+  font-size: ${String(CAPTION_FONT_PX)}px;
+}
+.${FORM_ERROR_CLASS} {
+  margin: 0;
+  color: var(--rdw-danger);
+  font-size: ${String(CAPTION_FONT_PX)}px;
 }
 `.trim();
 
-type PageMode =
-  | { kind: "list" }
-  | { kind: "save-search" }
-  | { kind: "create-playlist" }
-  | { kind: "rename"; id: string }
-  | { kind: "confirm-delete"; id: string };
-
-let sharedMode: PageMode = { kind: "list" };
-let sharedNameDraft = "";
-
-/** Clears transient rename/save UI state (tests and remount hygiene). */
+/** Mounted state lives on the Preact tree; a new mount starts clean. */
 export function resetCollectionsPageState(): void {
-  sharedMode = { kind: "list" };
-  sharedNameDraft = "";
+  return;
 }
 
-function postsLabel(count: number): string {
-  return `${String(count)} post${count === 1 ? "" : "s"}`;
-}
-
-function listSavedSearches(): Collection[] {
-  return load().collections.filter((entry) => !isPlaylist(entry));
-}
-
-function playlistPostCount(playlist: Collection): number {
-  return playlist.postIds?.length ?? 0;
-}
-
-function NameForm(props: {
-  readonly inputId: string;
-  readonly value: string;
-  readonly onChange: (value: string) => void;
-  readonly onSubmit: () => void;
-  readonly onCancel: () => void;
-}): JSX.Element {
-  useEffect(() => {
-    const input = document.getElementById(props.inputId);
-    if (input instanceof HTMLInputElement) {
-      input.focus();
-      input.select();
-    }
-  }, [props.inputId]);
-
+function isListFilter(value: string): value is ListFilter {
   return (
-    <form
-      className="rdw-form"
-      onSubmit={(event) => {
-        event.preventDefault();
-        props.onSubmit();
-      }}
-    >
-      <TextField
-        id={props.inputId}
-        label={UI_TEXT.nameLabel}
-        value={props.value}
-        onChange={props.onChange}
-      />
-      <div className="rdw-form-actions">
-        <Button type="submit" variant="primary">
-          {UI_TEXT.save}
-        </Button>
-        <Button type="button" variant="secondary" onClick={props.onCancel}>
-          {UI_TEXT.cancel}
-        </Button>
-      </div>
-    </form>
+    value === FILTER_ALL || value === FILTER_CUSTOM || value === FILTER_DYNAMIC
   );
 }
 
-function RenameDeleteActions(props: {
+function isNewKind(value: string): value is NewKind {
+  return value === KIND_CUSTOM || value === KIND_DYNAMIC;
+}
+
+function foldedName(name: string): string {
+  return name.trim().toLowerCase();
+}
+
+function postsLabel(count: number): string {
+  const word =
+    count === POST_COUNT_SINGULAR ? POST_WORD_SINGULAR : POST_WORD_PLURAL;
+  return `${String(count)} ${word}`;
+}
+
+function anyOfLabel(count: number): string {
+  return `${ANY_OF_LABEL_PREFIX}${String(count)}${ANY_OF_LABEL_SUFFIX}`;
+}
+
+function nameError(
+  name: string,
+  collections: readonly Collection[],
+): string | null {
+  const trimmed = name.trim();
+  if (trimmed.length === 0) {
+    return EMPTY_NAME_MESSAGE;
+  }
+  const key = foldedName(trimmed);
+  for (const collection of collections) {
+    if (foldedName(collection.name) === key) {
+      return DUPLICATE_NAME_MESSAGE;
+    }
+  }
+  return null;
+}
+
+function nameMatchesFilter(name: string, query: string): boolean {
+  const needle = query.trim().toLowerCase();
+  if (needle.length === 0) {
+    return true;
+  }
+  return name.toLowerCase().includes(needle);
+}
+
+function visibleCollections(
+  collections: readonly Collection[],
+  filter: ListFilter,
+  nameQuery: string,
+): Collection[] {
+  const visible: Collection[] = [];
+  for (const collection of collections) {
+    if (!nameMatchesFilter(collection.name, nameQuery)) {
+      continue;
+    }
+    const kind = resolveCollectionKind(collection);
+    if (filter === FILTER_CUSTOM && kind !== COLLECTION_KIND_POSTS) {
+      continue;
+    }
+    if (filter === FILTER_DYNAMIC && kind !== COLLECTION_KIND_SEARCH) {
+      continue;
+    }
+    visible.push(collection);
+  }
+  return visible;
+}
+
+function kindForFilter(filter: ListFilter): NewKind {
+  if (filter === FILTER_DYNAMIC) {
+    return KIND_DYNAMIC;
+  }
+  return KIND_CUSTOM;
+}
+
+function filterAfterCreate(kind: NewKind, filter: ListFilter): ListFilter {
+  if (kind === KIND_DYNAMIC && filter === FILTER_CUSTOM) {
+    return FILTER_DYNAMIC;
+  }
+  if (kind === KIND_CUSTOM && filter === FILTER_DYNAMIC) {
+    return FILTER_CUSTOM;
+  }
+  return filter;
+}
+
+function queryTokens(query: string): string[] {
+  const trimmed = query.trim();
+  if (trimmed.length === 0) {
+    return [];
+  }
+  return trimmed.split(QUERY_TOKEN_SPLIT).filter((token) => token.length > 0);
+}
+
+function readParenGroup(
+  tokens: readonly string[],
+  start: number,
+): ParenGroup | null {
+  if (tokens[start] !== UPDATES_OR_OPEN) {
+    return null;
+  }
+  let members = 0;
+  for (let index = start + 1; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    if (token === undefined || token === UPDATES_OR_OPEN) {
+      return null;
+    }
+    if (token === UPDATES_OR_CLOSE) {
+      if (members === 0) {
+        return null;
+      }
+      return { memberCount: members, nextIndex: index + 1 };
+    }
+    if (token !== UPDATES_OR_JOIN) {
+      members += 1;
+    }
+  }
+  return null;
+}
+
+function buildQueryChips(query: string): QueryChipModel[] {
+  const tokens = queryTokens(query);
+  const chips: QueryChipModel[] = [];
+  let index = 0;
+  while (index < tokens.length) {
+    const token = tokens[index];
+    if (token === undefined) {
+      break;
+    }
+    if (token === UPDATES_OR_OPEN) {
+      const group = readParenGroup(tokens, index);
+      if (group !== null) {
+        chips.push({
+          label: anyOfLabel(group.memberCount),
+          variant: CHIP_VARIANT_GROUP,
+        });
+        index = group.nextIndex;
+        continue;
+      }
+    }
+    const excluded =
+      token.startsWith(EXCLUDE_PREFIX) &&
+      token.length > EXCLUDE_PREFIX.length;
+    chips.push({
+      label: token,
+      variant: excluded ? CHIP_VARIANT_EXCLUDE : CHIP_VARIANT_TOKEN,
+    });
+    index += 1;
+  }
+  return chips;
+}
+
+function dynamicQueryText(collection: Collection): string {
+  if (collection.query !== undefined) {
+    return collection.query;
+  }
+  return serialize(collection.tags);
+}
+
+/** Cover uses insertion order (`postIds`), not shuffled display order. */
+function coverPostIds(collection: Collection): readonly (number | null)[] {
+  const ids = collection.postIds ?? [];
+  const slots: (number | null)[] = [];
+  for (let index = 0; index < COVER_SLOT_COUNT; index += 1) {
+    const id = ids[index];
+    slots.push(id === undefined ? null : id);
+  }
+  return slots;
+}
+
+function thumbUrl(collection: Collection, postId: number): string | null {
+  const thumbs = collection.thumbs;
+  if (thumbs === undefined) {
+    return null;
+  }
+  const value = thumbs[String(postId)];
+  if (value === undefined || value.trim().length === 0) {
+    return null;
+  }
+  return value;
+}
+
+function cardAriaLabel(name: string, badge: string, meta: string): string {
+  return `${name}, ${badge}, ${meta}`;
+}
+
+function CardLink(props: {
   readonly collection: Collection;
-  readonly onRename: () => void;
-  readonly onDelete: () => void;
+  readonly href: string;
+  readonly kind: string;
+  readonly badge: string;
+  readonly meta: string;
+  readonly children: ComponentChildren;
 }): JSX.Element {
   return (
-    <div className="rdw-item-actions">
-      <Button
-        variant="secondary"
-        size="s"
-        aria-label={`${UI_TEXT.rename}: ${props.collection.name}`}
-        onClick={props.onRename}
+    <a
+      className={CARD_CLASS}
+      href={props.href}
+      aria-label={cardAriaLabel(props.collection.name, props.badge, props.meta)}
+      data-collection-id={props.collection.id}
+      data-collection-kind={props.kind}
+    >
+      {props.children}
+      <span className={META_ROW_CLASS}>
+        <span className={NAME_CLASS}>{props.collection.name}</span>
+        <span className={BADGE_CLASS}>{props.badge}</span>
+      </span>
+      <span className={CAPTION_CLASS}>{props.meta}</span>
+    </a>
+  );
+}
+
+function CustomCard(props: { readonly collection: Collection }): JSX.Element {
+  const count = props.collection.postIds?.length ?? 0;
+  const meta = postsLabel(count);
+  const slots = coverPostIds(props.collection);
+  return (
+    <CardLink
+      collection={props.collection}
+      href={collectionDetailHash(props.collection.id)}
+      kind={COLLECTION_KIND_POSTS}
+      badge={BADGE_CUSTOM}
+      meta={meta}
+    >
+      <span className={COVER_CLASS}>
+        {slots.map((postId, index) => {
+          const url = postId === null ? null : thumbUrl(props.collection, postId);
+          return (
+            <span
+              key={`${props.collection.id}-${String(index)}`}
+              className={COVER_CELL_CLASS}
+              data-cover-index={String(index)}
+              data-post-id={postId === null ? "" : String(postId)}
+            >
+              {url !== null ? (
+                <img className={COVER_IMAGE_CLASS} src={url} alt="" />
+              ) : (
+                <span className={COVER_EMPTY_CLASS} />
+              )}
+            </span>
+          );
+        })}
+      </span>
+    </CardLink>
+  );
+}
+
+function DynamicCard(props: { readonly collection: Collection }): JSX.Element {
+  const chips = buildQueryChips(dynamicQueryText(props.collection));
+  return (
+    <CardLink
+      collection={props.collection}
+      href={buildSearchUrl(props.collection.tags)}
+      kind={COLLECTION_KIND_SEARCH}
+      badge={BADGE_DYNAMIC}
+      meta={SAVED_SEARCH_CAPTION}
+    >
+      <span className={CHIPS_CLASS}>
+        {chips.map((chip, index) => (
+          <Chip
+            key={`${chip.variant}-${chip.label}-${String(index)}`}
+            label={chip.label}
+            variant={chip.variant}
+          />
+        ))}
+      </span>
+    </CardLink>
+  );
+}
+
+function CollectionCard(props: {
+  readonly collection: Collection;
+}): JSX.Element {
+  if (resolveCollectionKind(props.collection) === COLLECTION_KIND_POSTS) {
+    return <CustomCard collection={props.collection} />;
+  }
+  return <DynamicCard collection={props.collection} />;
+}
+
+function NewCollectionDialog(props: {
+  readonly open: boolean;
+  readonly kind: NewKind;
+  readonly name: string;
+  readonly query: string;
+  readonly error: string;
+  readonly onClose: () => void;
+  readonly onKindChange: (kind: NewKind) => void;
+  readonly onNameChange: (name: string) => void;
+  readonly onQueryChange: (query: string) => void;
+  readonly onSubmit: () => void;
+}): JSX.Element {
+  return (
+    <Dialog
+      variant="content"
+      open={props.open}
+      onClose={props.onClose}
+      title={NEW_DIALOG_TITLE}
+    >
+      <Segmented
+        label={KIND_SEGMENTED_LABEL}
+        options={NEW_KIND_OPTIONS}
+        value={props.kind}
+        onChange={(value) => {
+          if (isNewKind(value)) {
+            props.onKindChange(value);
+          }
+        }}
+      />
+      <form
+        className="rdw-dialog__fields"
+        onSubmit={(event) => {
+          event.preventDefault();
+          props.onSubmit();
+        }}
       >
-        {UI_TEXT.rename}
-      </Button>
-      <IconButton
-        label={`${UI_TEXT.delete}: ${props.collection.name}`}
-        onClick={props.onDelete}
-      >
-        <IconTrash size={14} />
-      </IconButton>
-    </div>
+        <TextField
+          id={NAME_FIELD_ID}
+          label={UI_TEXT.nameLabel}
+          value={props.name}
+          onChange={props.onNameChange}
+        />
+        {props.kind === KIND_DYNAMIC ? (
+          <TextField
+            id={QUERY_FIELD_ID}
+            label={QUERY_FIELD_LABEL}
+            placeholder={QUERY_PLACEHOLDER}
+            value={props.query}
+            onChange={props.onQueryChange}
+          />
+        ) : null}
+        {props.error.length > 0 ? (
+          <p id={FORM_ERROR_ID} className={FORM_ERROR_CLASS} role="alert">
+            {props.error}
+          </p>
+        ) : null}
+        <div className="rdw-dialog__actions">
+          <Button
+            type="button"
+            variant="secondary"
+            size="s"
+            onClick={props.onClose}
+          >
+            {UI_TEXT.cancel}
+          </Button>
+          <Button type="submit" variant="primary" size="s">
+            {CREATE_LABEL}
+          </Button>
+        </div>
+      </form>
+    </Dialog>
   );
 }
 
 export function CollectionsPage(): JSX.Element {
-  const [mode, setMode] = useState<PageMode>(sharedMode);
-  const [nameDraft, setNameDraft] = useState(sharedNameDraft);
-  const [, setTick] = useState(0);
-  const refresh = (): void => {
-    setTick((value) => value + 1);
+  const [filter, setFilter] = useState<ListFilter>(FILTER_ALL);
+  const [nameQuery, setNameQuery] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [newKind, setNewKind] = useState<NewKind>(KIND_CUSTOM);
+  const [nameDraft, setNameDraft] = useState("");
+  const [queryDraft, setQueryDraft] = useState("");
+  const [formError, setFormError] = useState("");
+  const [, setRevision] = useState(0);
+
+  const closeDialog = useCallback((): void => {
+    setDialogOpen(false);
+    setFormError("");
+    setNameDraft("");
+    setQueryDraft("");
+  }, []);
+
+  const collections = load().collections;
+  const visible = visibleCollections(collections, filter, nameQuery);
+  const emptyCopy =
+    collections.length === 0
+      ? { title: EMPTY_TITLE, description: EMPTY_DESCRIPTION }
+      : { title: FILTER_EMPTY_TITLE, description: FILTER_EMPTY_DESCRIPTION };
+
+  const openDialog = (): void => {
+    setNewKind(kindForFilter(filter));
+    setNameDraft("");
+    setQueryDraft("");
+    setFormError("");
+    setDialogOpen(true);
   };
 
-  const setModeBoth = (next: PageMode): void => {
-    sharedMode = next;
-    setMode(next);
+  const submitNew = (): void => {
+    const message = nameError(nameDraft, load().collections);
+    if (message !== null) {
+      setFormError(message);
+      return;
+    }
+    if (newKind === KIND_DYNAMIC && queryDraft.trim().length === 0) {
+      setFormError(EMPTY_QUERY_MESSAGE);
+      return;
+    }
+    const name = nameDraft.trim();
+    if (newKind === KIND_DYNAMIC) {
+      createDynamicCollection(name, queryDraft);
+    } else {
+      createPlaylist(name);
+    }
+    setFilter((current) => filterAfterCreate(newKind, current));
+    closeDialog();
+    setRevision((value) => value + 1);
   };
-  const setDraftBoth = (next: string): void => {
-    sharedNameDraft = next;
-    setNameDraft(next);
-  };
-
-  const saved = listSavedSearches();
-  const playlists = listPlaylists();
-  const searchTags = readTagsFromLocation(window.location.search);
-  const canSave = searchTags !== null && searchTags.length > 0;
 
   return (
-    <>
+    <div className={PAGE_CLASS}>
       <style>{COLLECTIONS_PAGE_CSS}</style>
-      <Card className={`${PANEL_UI_CLASS.pageCard} ${PAGE_CLASS}`}>
-        <section className="rdw-section">
-          <SectionLabel>{DYNAMIC_COLLECTIONS_HEADING}</SectionLabel>
-          {mode.kind === "save-search" ? (
-            <NameForm
-              inputId={SAVE_NAME_ID}
-              value={nameDraft}
-              onChange={setDraftBoth}
-              onSubmit={() => {
-                const tags = readTagsFromLocation(window.location.search);
-                if (tags === null || tags.length === 0) {
-                  setModeBoth({ kind: "list" });
-                  refresh();
-                  return;
-                }
-                const name = nameDraft.trim();
-                if (name.length === 0) {
-                  return;
-                }
-                addCollection(name, tags);
-                setModeBoth({ kind: "list" });
-                setDraftBoth("");
-                refresh();
-              }}
-              onCancel={() => {
-                setModeBoth({ kind: "list" });
-              }}
-            />
-          ) : (
-            <>
-              <Button
-                variant="primary"
-                disabled={!canSave}
-                onClick={() => {
-                  const tags = readTagsFromLocation(window.location.search);
-                  if (tags === null || tags.length === 0) {
-                    return;
-                  }
-                  setDraftBoth(serialize(tags));
-                  setModeBoth({ kind: "save-search" });
-                }}
-              >
-                {UI_TEXT.saveCurrent}
-              </Button>
-              {!canSave ? (
-                <p className="rdw-hint">{UI_TEXT.notOnSearchPage}</p>
-              ) : null}
-            </>
-          )}
-          {saved.length === 0 ? (
-            <p className="rdw-hint">{EMPTY_DYNAMIC_COLLECTIONS}</p>
-          ) : (
-            <ul className="rdw-list">
-              {saved.map((collection) => (
-                <li key={collection.id} className="rdw-list-item">
-                  {mode.kind === "rename" && mode.id === collection.id ? (
-                    <NameForm
-                      inputId={`rdw-rename-${collection.id}`}
-                      value={nameDraft}
-                      onChange={setDraftBoth}
-                      onSubmit={() => {
-                        const nextName = nameDraft.trim();
-                        if (nextName.length === 0) {
-                          return;
-                        }
-                        renameCollection(collection.id, nextName);
-                        setModeBoth({ kind: "list" });
-                        setDraftBoth("");
-                        refresh();
-                      }}
-                      onCancel={() => {
-                        setModeBoth({ kind: "list" });
-                      }}
-                    />
-                  ) : mode.kind === "confirm-delete" &&
-                    mode.id === collection.id ? (
-                    <>
-                      <p className="rdw-hint">
-                        {`${UI_TEXT.confirmDelete} (${collection.name})`}
-                      </p>
-                      <div className="rdw-confirm-row">
-                        <Button
-                          variant="danger"
-                          onClick={() => {
-                            deleteCollection(collection.id);
-                            setModeBoth({ kind: "list" });
-                            setDraftBoth("");
-                            refresh();
-                          }}
-                        >
-                          {UI_TEXT.confirm}
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          onClick={() => {
-                            setModeBoth({ kind: "list" });
-                          }}
-                        >
-                          {UI_TEXT.cancel}
-                        </Button>
-                      </div>
-                    </>
-                  ) : (
-                    <div className={ROW_MAIN_CLASS}>
-                      <button
-                        type="button"
-                        className="rdw-item-name"
-                        aria-label={`${UI_TEXT.openCollection}: ${collection.name}`}
-                        onClick={() => {
-                          window.location.assign(
-                            buildSearchUrl(collection.tags),
-                          );
-                        }}
-                      >
-                        {collection.name}
-                      </button>
-                      <RenameDeleteActions
-                        collection={collection}
-                        onRename={() => {
-                          setDraftBoth(collection.name);
-                          setModeBoth({ kind: "rename", id: collection.id });
-                        }}
-                        onDelete={() => {
-                          setModeBoth({
-                            kind: "confirm-delete",
-                            id: collection.id,
-                          });
-                        }}
-                      />
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <section className="rdw-section">
-          <SectionLabel>{CUSTOM_COLLECTIONS_HEADING}</SectionLabel>
-          {mode.kind === "create-playlist" ? (
-            <NameForm
-              inputId={PLAYLIST_NAME_ID}
-              value={nameDraft}
-              onChange={setDraftBoth}
-              onSubmit={() => {
-                const name = nameDraft.trim();
-                if (name.length === 0) {
-                  return;
-                }
-                createPlaylist(name);
-                setModeBoth({ kind: "list" });
-                setDraftBoth("");
-                refresh();
-              }}
-              onCancel={() => {
-                setModeBoth({ kind: "list" });
-              }}
-            />
-          ) : (
-            <Button
-              variant="primary"
-              onClick={() => {
-                setDraftBoth("");
-                setModeBoth({ kind: "create-playlist" });
-              }}
-            >
-              {NEW_CUSTOM_COLLECTION}
-            </Button>
-          )}
-          {playlists.length === 0 ? (
-            <EmptyState
-              title={EMPTY_CUSTOM_COLLECTIONS}
-              description={EMPTY_CUSTOM_COLLECTIONS_HINT}
-            />
-          ) : (
-            <ul className="rdw-list">
-              {playlists.map((playlist) => {
-                const count = playlistPostCount(playlist);
-                const queries = buildPlaylistQueries(
-                  playlist.postIds ?? [],
-                  getPlaylistChunkSize(),
-                );
-                const canOpen = count > 0 && queries.length > 0;
-                return (
-                  <li key={playlist.id} className="rdw-list-item">
-                    {mode.kind === "rename" && mode.id === playlist.id ? (
-                      <NameForm
-                        inputId={`rdw-rename-${playlist.id}`}
-                        value={nameDraft}
-                        onChange={setDraftBoth}
-                        onSubmit={() => {
-                          const nextName = nameDraft.trim();
-                          if (nextName.length === 0) {
-                            return;
-                          }
-                          renameCollection(playlist.id, nextName);
-                          setModeBoth({ kind: "list" });
-                          setDraftBoth("");
-                          refresh();
-                        }}
-                        onCancel={() => {
-                          setModeBoth({ kind: "list" });
-                        }}
-                      />
-                    ) : mode.kind === "confirm-delete" &&
-                      mode.id === playlist.id ? (
-                      <>
-                        <p className="rdw-hint">
-                          {`${UI_TEXT.confirmDelete} (${playlist.name})`}
-                        </p>
-                        <div className="rdw-confirm-row">
-                          <Button
-                            variant="danger"
-                            onClick={() => {
-                              deleteCollection(playlist.id);
-                              setModeBoth({ kind: "list" });
-                              setDraftBoth("");
-                              refresh();
-                            }}
-                          >
-                            {UI_TEXT.confirm}
-                          </Button>
-                          <Button
-                            variant="secondary"
-                            onClick={() => {
-                              setModeBoth({ kind: "list" });
-                            }}
-                          >
-                            {UI_TEXT.cancel}
-                          </Button>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className={ROW_MAIN_CLASS}>
-                          <button
-                            type="button"
-                            className="rdw-item-name"
-                            aria-label={`${OPEN_CUSTOM_COLLECTION}: ${playlist.name}`}
-                            disabled={!canOpen}
-                            onClick={() => {
-                              const first = queries[0];
-                              if (first === undefined) {
-                                return;
-                              }
-                              window.location.assign(
-                                buildUpdatesSearchUrl(first),
-                              );
-                            }}
-                          >
-                            {playlist.name}
-                          </button>
-                          <RenameDeleteActions
-                            collection={playlist}
-                            onRename={() => {
-                              setDraftBoth(playlist.name);
-                              setModeBoth({
-                                kind: "rename",
-                                id: playlist.id,
-                              });
-                            }}
-                            onDelete={() => {
-                              setModeBoth({
-                                kind: "confirm-delete",
-                                id: playlist.id,
-                              });
-                            }}
-                          />
-                        </div>
-                        <p className={PLAYLIST_META_CLASS}>
-                          {postsLabel(count)}
-                        </p>
-                        {queries.length > 1 ? (
-                          <ul
-                            className={PLAYLIST_PARTS_CLASS}
-                            aria-label={CUSTOM_COLLECTION_PARTS_LABEL}
-                          >
-                            {queries.map((query, index) => (
-                              <li key={`${playlist.id}-${String(index)}`}>
-                                <a
-                                  className={PLAYLIST_PART_CLASS}
-                                  href={buildUpdatesSearchUrl(query)}
-                                >
-                                  {String(index + 1)}
-                                </a>
-                              </li>
-                            ))}
-                          </ul>
-                        ) : null}
-                      </>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
-      </Card>
-    </>
+      <header className={HEADER_CLASS}>
+        <div className={TOOLBAR_CLASS}>
+          <Segmented
+            label={TYPE_SEGMENTED_LABEL}
+            options={FILTER_OPTIONS}
+            value={filter}
+            onChange={(value) => {
+              if (isListFilter(value)) {
+                setFilter(value);
+              }
+            }}
+          />
+          <TextField
+            id={FILTER_FIELD_ID}
+            className={FILTER_FIELD_CLASS}
+            value={nameQuery}
+            placeholder={FILTER_PLACEHOLDER}
+            aria-label={FILTER_ARIA_LABEL}
+            onChange={setNameQuery}
+          />
+          <Button type="button" variant="primary" onClick={openDialog}>
+            <IconPlus size={ICON_PX} />
+            {NEW_BUTTON_LABEL}
+          </Button>
+        </div>
+      </header>
+      {visible.length === 0 ? (
+        <EmptyState title={emptyCopy.title} description={emptyCopy.description} />
+      ) : (
+        <div className={GRID_CLASS} aria-label={GRID_LABEL}>
+          {visible.map((collection) => (
+            <CollectionCard key={collection.id} collection={collection} />
+          ))}
+        </div>
+      )}
+      <NewCollectionDialog
+        open={dialogOpen}
+        kind={newKind}
+        name={nameDraft}
+        query={queryDraft}
+        error={formError}
+        onClose={closeDialog}
+        onKindChange={(kind) => {
+          setNewKind(kind);
+          setFormError("");
+        }}
+        onNameChange={(name) => {
+          setNameDraft(name);
+          setFormError("");
+        }}
+        onQueryChange={(query) => {
+          setQueryDraft(query);
+          setFormError("");
+        }}
+        onSubmit={submitNew}
+      />
+    </div>
   );
 }
 

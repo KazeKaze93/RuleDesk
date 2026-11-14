@@ -13,7 +13,16 @@ export {
   type ChipProps,
   type ChipVariant,
 } from "./chip";
-export { Dialog, DIALOG_CSS, type DialogProps } from "./dialog";
+export {
+  Dialog,
+  DIALOG_CSS,
+  type DialogConfirmProps,
+  type DialogConfirmTone,
+  type DialogContentProps,
+  type DialogFieldValues,
+  type DialogFieldsProps,
+  type DialogProps,
+} from "./dialog";
 export {
   EmptyState,
   EMPTY_STATE_CSS,
@@ -68,4 +77,11 @@ export {
   TEXT_FIELD_CSS,
   type TextFieldProps,
 } from "./text-field";
+export {
+  Toast,
+  TOAST_AUTO_HIDE_MS,
+  TOAST_CSS,
+  type ToastAction,
+  type ToastProps,
+} from "./toast";
 export { KIT_FOCUS_CSS, KIT_MIN_TARGET_PX } from "./shared";

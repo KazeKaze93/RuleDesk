@@ -244,6 +244,34 @@ export function IconVideo(props: IconProps): JSX.Element {
   );
 }
 
+export function IconShuffle(props: IconProps): JSX.Element {
+  const size = props.size ?? DEFAULT_SIZE;
+  return (
+    <svg {...baseProps(size, props.className, props.title)}>
+      {props.title !== undefined ? <title>{props.title}</title> : null}
+      <path d="m18 14 4 4-4 4" />
+      <path d="m18 2 4 4-4 4" />
+      <path d="M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22" />
+      <path d="M2 6h1.972a4 4 0 0 1 3.6 2.2" />
+      <path d="M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45" />
+    </svg>
+  );
+}
+
+export function IconOriginalOrder(props: IconProps): JSX.Element {
+  const size = props.size ?? DEFAULT_SIZE;
+  return (
+    <svg {...baseProps(size, props.className, props.title)}>
+      {props.title !== undefined ? <title>{props.title}</title> : null}
+      <path d="M21 6H3" />
+      <path d="M7 12H3" />
+      <path d="M7 18H3" />
+      <path d="M12 18a5 5 0 0 0 9-3 4.5 4.5 0 0 0-4.5-4.5c-1.33 0-2.54.54-3.41 1.41L11 14" />
+      <path d="M11 10v4h4" />
+    </svg>
+  );
+}
+
 export function IconPalette(props: IconProps): JSX.Element {
   const size = props.size ?? DEFAULT_SIZE;
   return (
