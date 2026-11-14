@@ -14,6 +14,11 @@ export type AutocompleteFieldProps = {
   readonly onChange: (value: string) => void;
   readonly suggestions: readonly AutocompleteOption[];
   readonly onSelect?: (option: AutocompleteOption) => void;
+  /**
+   * False: picking an option only calls `onSelect`, and the caller writes the
+   * new value (multi-token fields). Default: the option replaces the value.
+   */
+  readonly replaceOnSelect?: boolean;
   readonly label?: string;
   readonly placeholder?: string;
   readonly disabled?: boolean;
@@ -138,7 +143,9 @@ export function AutocompleteField(props: AutocompleteFieldProps): JSX.Element {
   }, [listOpen]);
 
   const selectOption = (option: AutocompleteOption): void => {
-    props.onChange(option.value);
+    if (props.replaceOnSelect !== false) {
+      props.onChange(option.value);
+    }
     props.onSelect?.(option);
     setOpen(false);
     setActiveIndex(NO_ACTIVE_INDEX);

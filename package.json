@@ -1,6 +1,6 @@
 {
   "name": "ruledesk-web",
-  "version": "0.16.3",
+  "version": "0.16.4",
   "private": true,
   "type": "module",
   "description": "Userscript for rule34.xxx: collections, playlists, favorites, artist updates, page tweaks",

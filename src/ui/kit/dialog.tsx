@@ -59,6 +59,12 @@ export type DialogFieldsProps = DialogShellProps & {
   readonly cancelLabel: string;
   readonly nameLabel?: string;
   readonly queryLabel?: string;
+  /** Replaces the plain query input, e.g. with a field that autocompletes tags. */
+  readonly renderQueryField?: (field: {
+    readonly label: string;
+    readonly value: string;
+    readonly onChange: (value: string) => void;
+  }) => ComponentChildren;
   /** Show just this field. Both fields are shown when omitted. */
   readonly only?: DialogFieldKey;
 };
@@ -69,6 +75,8 @@ export type DialogProps =
   | DialogFieldsProps;
 
 const KEY_ESCAPE = "Escape";
+const ROLE_COMBOBOX = "combobox";
+const ARIA_TRUE = "true";
 const KEY_TAB = "Tab";
 const EVENT_KEYDOWN = "keydown";
 const EVENT_MOUSEDOWN = "mousedown";
@@ -190,6 +198,9 @@ function renderDialogBody(props: DialogProps): JSX.Element | null {
   if (props.variant === DIALOG_VARIANT_FIELDS) {
     const nameLabel = props.nameLabel ?? DEFAULT_NAME_LABEL;
     const queryLabel = props.queryLabel ?? DEFAULT_QUERY_LABEL;
+    const onQueryChange = (query: string): void => {
+      props.onFieldsChange({ name: props.fields.name, query });
+    };
     return (
       <form
         className="rdw-dialog__fields"
@@ -207,15 +218,20 @@ function renderDialogBody(props: DialogProps): JSX.Element | null {
             }}
           />
         ) : null}
-        {props.only !== DIALOG_FIELD_NAME ? (
+        {props.only === DIALOG_FIELD_NAME ? null : props.renderQueryField !==
+          undefined ? (
+          props.renderQueryField({
+            label: queryLabel,
+            value: props.fields.query,
+            onChange: onQueryChange,
+          })
+        ) : (
           <TextField
             label={queryLabel}
             value={props.fields.query}
-            onChange={(query) => {
-              props.onFieldsChange({ name: props.fields.name, query });
-            }}
+            onChange={onQueryChange}
           />
-        ) : null}
+        )}
         <div className="rdw-dialog__actions">
           <Button variant="secondary" size="s" type="button" onClick={props.onClose}>
             {props.cancelLabel}
@@ -229,6 +245,15 @@ function renderDialogBody(props: DialogProps): JSX.Element | null {
   }
 
   return <>{props.children}</>;
+}
+
+function isOpenCombobox(event: KeyboardEvent): boolean {
+  const origin = event.composedPath()[0];
+  return (
+    origin instanceof Element &&
+    origin.getAttribute("role") === ROLE_COMBOBOX &&
+    origin.getAttribute("aria-expanded") === ARIA_TRUE
+  );
 }
 
 export function Dialog(props: DialogProps): JSX.Element | null {
@@ -276,6 +301,10 @@ export function Dialog(props: DialogProps): JSX.Element | null {
 
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.key === KEY_ESCAPE) {
+        // An open suggestion list takes the first Escape; the next one closes the dialog.
+        if (isOpenCombobox(event)) {
+          return;
+        }
         event.preventDefault();
         event.stopPropagation();
         props.onClose();

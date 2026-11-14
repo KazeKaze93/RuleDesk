@@ -32,6 +32,7 @@ import {
   type SegmentedOption,
 } from "../ui/kit";
 import { IconPlus } from "../ui/kit/icons";
+import { QueryField } from "../ui/query-field";
 import { collectionDetailHash } from "./constants";
 
 const PAGE_CLASS = "rdw-collections-page";
@@ -596,7 +597,7 @@ function NewCollectionDialog(props: {
           onChange={props.onNameChange}
         />
         {props.kind === KIND_DYNAMIC ? (
-          <TextField
+          <QueryField
             id={QUERY_FIELD_ID}
             label={QUERY_FIELD_LABEL}
             placeholder={QUERY_PLACEHOLDER}

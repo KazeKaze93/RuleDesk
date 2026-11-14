@@ -32,6 +32,7 @@ import {
   IconShuffle,
   IconTrash,
 } from "../ui/kit/icons";
+import { QueryField } from "../ui/query-field";
 import { featureBodyClass, type Feature, type FeatureContext } from "./types";
 
 const FEATURE_ID = "playlist-bar";
@@ -567,6 +568,7 @@ function DynamicCollectionBar(props: DynamicBarProps): JSX.Element {
           nameLabel: UI_TEXT.nameLabel,
           queryLabel: TEXT_QUERY_LABEL,
           only: dialog === DIALOG_RENAME ? DIALOG_ONLY_NAME : DIALOG_ONLY_QUERY,
+          renderQueryField: (field) => h(QueryField, field),
         })
       : null,
     dialog === DIALOG_DELETE
