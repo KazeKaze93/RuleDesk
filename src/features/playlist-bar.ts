@@ -2,7 +2,11 @@ import { Fragment, h, render } from "preact";
 import type { JSX } from "preact";
 import { useState } from "preact/hooks";
 
-import { SEARCH_PARAM_TAGS, UI_TEXT } from "../config/constants";
+import {
+  SEARCH_PARAM_PID,
+  SEARCH_PARAM_TAGS,
+  UI_TEXT,
+} from "../config/constants";
 import { log } from "../log";
 import {
   buildPlaylistQueries,
@@ -19,10 +23,12 @@ import { SITE_SELECTORS } from "../site/selectors";
 import { isPlaylist, type Collection } from "../storage/schema";
 import {
   deleteCollection,
+  DYNAMIC_COVER_SIZE,
   getPlaylistChunkSize,
   listPlaylists,
   load,
   renameCollection,
+  setDynamicCover,
   updateDynamicQuery,
 } from "../storage/store";
 import { Button, Dialog, type DialogFieldValues } from "../ui/kit";
@@ -95,9 +101,10 @@ body.${BODY_CLASS} .${ROOT_CLASS} {
   max-width: 100%;
   margin: 0.5rem 0;
   padding: 0.5rem 0.65rem;
-  border: 1px solid #666;
-  border-radius: 2px;
-  background: #f7f7f7;
+  border: 1px solid var(--rdw-border);
+  border-radius: var(--rdw-radius-l);
+  background: var(--rdw-surface);
+  color: var(--rdw-text);
   box-sizing: border-box;
 }
 body.${BODY_CLASS} .${TITLE_CLASS} {
@@ -132,7 +139,7 @@ body.${BODY_CLASS} a.${PART_LINK_CLASS} {
   text-decoration: underline;
 }
 body.${BODY_CLASS} a.${PART_LINK_CLASS}:focus-visible {
-  outline: 2px solid #4c8bf5;
+  outline: 2px solid var(--rdw-accent);
   outline-offset: 2px;
 }
 body.${BODY_CLASS} .${CAPTION_CLASS} {
@@ -587,11 +594,57 @@ function DynamicCollectionBar(props: DynamicBarProps): JSX.Element {
   );
 }
 
-function mountDynamicBar(tagsParam: string): void {
+const FIRST_PAGE_PID = "0";
+
+function isFirstResultsPage(search: string): boolean {
+  const pid = new URLSearchParams(search).get(SEARCH_PARAM_PID);
+  return pid === null || pid.length === 0 || pid === FIRST_PAGE_PID;
+}
+
+/** Thumb URLs of the first posts in the grid, read from the page as it is. */
+function readFirstThumbUrls(): string[] {
+  const imageList = findImageList(document);
+  if (imageList === null) {
+    return [];
+  }
+  const urls: string[] = [];
+  const images = imageList.querySelectorAll(
+    `${SITE_SELECTORS.thumb} ${SITE_SELECTORS.previewImage}`,
+  );
+  for (const image of images) {
+    const src = image.getAttribute("src");
+    if (src === null || src.trim().length === 0) {
+      continue;
+    }
+    urls.push(src.trim());
+    if (urls.length === DYNAMIC_COVER_SIZE) {
+      break;
+    }
+  }
+  return urls;
+}
+
+/**
+ * The card cover of a dynamic collection is whatever its first results page
+ * showed last. Shuffled pages and later pages are skipped. No request is made.
+ */
+function rememberDynamicCover(
+  collectionId: string,
+  tagsParam: string,
+  search: string,
+): void {
+  if (queryHasSortRandom(tagsParam) || !isFirstResultsPage(search)) {
+    return;
+  }
+  setDynamicCover(collectionId, readFirstThumbUrls());
+}
+
+function mountDynamicBar(tagsParam: string, search: string): void {
   const collection = findDynamicCollection(tagsParam);
   if (collection === null) {
     return;
   }
+  rememberDynamicCover(collection.id, tagsParam, search);
   const bar = document.createElement("div");
   bar.id = DYNAMIC_ROOT_ID;
   bar.className = ROOT_CLASS;
@@ -622,7 +675,7 @@ function mountPlaylistBar(ctx: FeatureContext): void {
     }
   }
 
-  mountDynamicBar(tagsParam);
+  mountDynamicBar(tagsParam, ctx.search);
 }
 
 export const playlistBarFeature: Feature = {

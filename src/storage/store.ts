@@ -699,6 +699,66 @@ export function createDynamicCollection(name: string, query: string): Collection
   return collection;
 }
 
+/** How many thumbs a dynamic collection keeps for its card cover. */
+export const DYNAMIC_COVER_SIZE = 4;
+
+/**
+ * Remembers the first thumbs of a saved search for its card cover.
+ * Keeps at most {@link DYNAMIC_COVER_SIZE} non-empty URLs. Writes only when the
+ * cover changed; an empty list never clears a stored cover.
+ * Returns true when storage was written.
+ */
+export function setDynamicCover(
+  collectionId: string,
+  thumbUrls: readonly string[],
+): boolean {
+  const cover: string[] = [];
+  for (const url of thumbUrls) {
+    const trimmed = url.trim();
+    if (trimmed.length === 0) {
+      continue;
+    }
+    cover.push(trimmed);
+    if (cover.length === DYNAMIC_COVER_SIZE) {
+      break;
+    }
+  }
+  if (cover.length === 0) {
+    return false;
+  }
+  const cached = load().collections.find((item) => item.id === collectionId);
+  if (cached === undefined || isPlaylist(cached)) {
+    return false;
+  }
+  if (sameStrings(cached.cover ?? [], cover)) {
+    return false;
+  }
+  const data = reloadFromStorage();
+  const target = data.collections.find((item) => item.id === collectionId);
+  if (target === undefined || isPlaylist(target)) {
+    return false;
+  }
+  if (sameStrings(target.cover ?? [], cover)) {
+    return false;
+  }
+  target.cover = cover;
+  CollectionSchema.parse(target);
+  save(data);
+  return true;
+}
+
+function sameStrings(left: readonly string[], right: readonly string[]): boolean {
+  if (left.length !== right.length) {
+    return false;
+  }
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index] !== right[index]) {
+      return false;
+    }
+  }
+  return true;
+}
+
 /** Phase 2 HANDOFF: replaces `query` and `tags` on a saved search. Posts collections return null. */
 export function updateDynamicQuery(
   collectionId: string,
@@ -710,6 +770,10 @@ export function updateDynamicQuery(
     return null;
   }
   const trimmedQuery = query.trim();
+  if (target.query !== trimmedQuery) {
+    // The old cover shows posts of the old query.
+    delete target.cover;
+  }
   target.query = trimmedQuery;
   target.tags = parseTags(trimmedQuery);
   target.kind = COLLECTION_KIND_SEARCH;

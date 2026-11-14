@@ -26,6 +26,7 @@ import {
   getCollectionOrder,
   load,
   save,
+  setDynamicCover,
 } from "../src/storage/store";
 
 const memory = new Map<string, unknown>();
@@ -258,7 +259,7 @@ describe("createCollectionsPage", () => {
     expect(card.querySelector("img")).toBeNull();
   });
 
-  it("renders dynamic chips from the stored query and opens the saved search", () => {
+  it("shows a dynamic card with an empty cover, no tag chips, and the query as a tooltip", () => {
     createDynamicCollection("Grouped", "( cat ~ dog ) bird");
     const root = mount();
     const card = cardByName(root, "Grouped");
@@ -270,17 +271,39 @@ describe("createCollectionsPage", () => {
     expect(card.getAttribute("href")).not.toContain("#rdw/");
     expect(card.getAttribute("data-collection-kind")).toBe(COLLECTION_KIND_SEARCH);
     expect(card.querySelector("button")).toBeNull();
-    expect(card.querySelector(".rdw-collection-cover")).toBeNull();
     expect(card.textContent).toContain("Dynamic");
     expect(card.textContent).toContain("saved search");
-    const labels = Array.from(card.querySelectorAll(".rdw-chip")).map(
-      (chip) => chip.textContent?.trim(),
-    );
-    expect(labels).toEqual(["Any of 2 tags", "bird"]);
-    expect(card.querySelector(".rdw-chip--group")).not.toBeNull();
+    expect(card.querySelector(".rdw-chip")).toBeNull();
+    expect(card.textContent).not.toContain("bird");
+    expect(card.getAttribute("title")).toBe("( cat ~ dog ) bird");
+    expect(card.querySelectorAll(".rdw-collection-cover-empty")).toHaveLength(4);
+    expect(card.querySelector("img")).toBeNull();
   });
 
-  it("uses serialize(tags) when an older dynamic row has no query", () => {
+  it("fills a dynamic cover from the stored thumbs and survives a broken one", () => {
+    const created = createDynamicCollection("Birds", "bird");
+    expect(setDynamicCover(created.id, [THUMB_1, THUMB_2])).toBe(true);
+    const root = mount();
+    const card = cardByName(root, "Birds");
+    const cells = card.querySelectorAll("[data-cover-index]");
+    expect(cells).toHaveLength(4);
+    expect(cells[0]?.querySelector("img")?.getAttribute("src")).toBe(THUMB_1);
+    expect(cells[1]?.querySelector("img")?.getAttribute("src")).toBe(THUMB_2);
+    expect(cells[2]?.querySelector(".rdw-collection-cover-empty")).not.toBeNull();
+
+    const broken = cells[0]?.querySelector("img");
+    if (!(broken instanceof HTMLImageElement)) {
+      throw new Error("expected cover image");
+    }
+    act(() => {
+      broken.dispatchEvent(new Event("error"));
+    });
+    expect(
+      card.querySelectorAll("[data-cover-index]")[0]?.querySelector("img"),
+    ).toBeNull();
+  });
+
+  it("uses serialize(tags) for the tooltip when an older dynamic row has no query", () => {
     const data = load();
     data.collections.push({
       id: "legacy-search",
@@ -294,11 +317,7 @@ describe("createCollectionsPage", () => {
 
     const root = mount();
     const card = cardByName(root, "Legacy");
-    const labels = Array.from(card.querySelectorAll(".rdw-chip")).map(
-      (chip) => chip.textContent?.trim(),
-    );
-    expect(labels).toEqual(["cat", "-dog"]);
-    expect(card.querySelector(".rdw-chip--exclude")).not.toBeNull();
+    expect(card.getAttribute("title")).toBe("cat -dog");
     const stored = load().collections.find((item) => item.id === "legacy-search");
     if (stored === undefined) {
       throw new Error("expected legacy collection");
@@ -306,7 +325,7 @@ describe("createCollectionsPage", () => {
     expect(card.getAttribute("href")).toBe(buildSearchUrl(stored.tags));
   });
 
-  it("prefers a stored query over tags for chips and still opens tags", () => {
+  it("prefers a stored query over tags for the tooltip and still opens tags", () => {
     const data = load();
     data.collections.push({
       id: "queried",
@@ -319,8 +338,7 @@ describe("createCollectionsPage", () => {
 
     const root = mount();
     const card = cardByName(root, "Queried");
-    expect(card.textContent).toContain("keep");
-    expect(card.textContent).not.toContain("other");
+    expect(card.getAttribute("title")).toBe("keep");
     expect(card.getAttribute("href")).toBe(
       buildSearchUrl([{ tag: "other", type: TAG_TYPE_INCLUDE }]),
     );
@@ -425,8 +443,7 @@ describe("createCollectionsPage", () => {
     expect(stored.kind).toBe(COLLECTION_KIND_SEARCH);
     expect(stored.query).toBe("( cat ~ dog ) tail");
     const card = cardByName(root, "Birds");
-    expect(card.textContent).toContain("Any of 2 tags");
-    expect(card.textContent).toContain("tail");
+    expect(card.getAttribute("title")).toBe("( cat ~ dog ) tail");
     expect(card.getAttribute("href")).toBe(buildSearchUrl(stored.tags));
   });
 

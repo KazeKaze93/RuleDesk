@@ -5,11 +5,7 @@ import { useCallback, useState } from "preact/hooks";
 import {
   COLLECTION_KIND_POSTS,
   COLLECTION_KIND_SEARCH,
-  EXCLUDE_PREFIX,
   UI_TEXT,
-  UPDATES_OR_CLOSE,
-  UPDATES_OR_JOIN,
-  UPDATES_OR_OPEN,
 } from "../config/constants";
 import { buildSearchUrl, serialize } from "../search/query";
 import {
@@ -23,12 +19,10 @@ import {
 } from "../storage/store";
 import {
   Button,
-  Chip,
   Dialog,
   EmptyState,
   Segmented,
   TextField,
-  type ChipVariant,
   type SegmentedOption,
 } from "../ui/kit";
 import { IconPlus } from "../ui/kit/icons";
@@ -45,7 +39,6 @@ const COVER_CLASS = "rdw-collection-cover";
 const COVER_CELL_CLASS = "rdw-collection-cover-cell";
 const COVER_IMAGE_CLASS = "rdw-collection-cover-image";
 const COVER_EMPTY_CLASS = "rdw-collection-cover-empty";
-const CHIPS_CLASS = "rdw-collection-chips";
 const META_ROW_CLASS = "rdw-collection-meta-row";
 const NAME_CLASS = "rdw-collection-name";
 const BADGE_CLASS = "rdw-collection-badge";
@@ -82,8 +75,6 @@ const FILTER_EMPTY_DESCRIPTION = "Nothing matches this filter.";
 const EMPTY_NAME_MESSAGE = "Enter a name.";
 const EMPTY_QUERY_MESSAGE = "Enter a query.";
 const DUPLICATE_NAME_MESSAGE = "A collection with this name already exists.";
-const ANY_OF_LABEL_PREFIX = "Any of ";
-const ANY_OF_LABEL_SUFFIX = " tags";
 const POST_WORD_SINGULAR = "post";
 const POST_WORD_PLURAL = "posts";
 
@@ -100,8 +91,6 @@ const FILTER_FIELD_MIN_PX = 160;
 const CARD_PADDING_PX = 8;
 const CARD_GAP_PX = 8;
 const META_GAP_PX = 8;
-const CHIP_GAP_PX = 4;
-const CHIP_AREA_MAX_HEIGHT_PX = 72;
 const BADGE_FONT_PX = 10;
 const CAPTION_FONT_PX = 12;
 const ICON_PX = 14;
@@ -112,10 +101,6 @@ const QUERY_FIELD_ID = "rdw-collection-query";
 const FILTER_FIELD_ID = "rdw-collections-filter";
 const FORM_ERROR_ID = "rdw-collection-form-error";
 
-const QUERY_TOKEN_SPLIT = /\s+/;
-const CHIP_VARIANT_TOKEN: ChipVariant = "dot";
-const CHIP_VARIANT_GROUP: ChipVariant = "group";
-const CHIP_VARIANT_EXCLUDE: ChipVariant = "exclude";
 
 const FILTER_OPTIONS: readonly SegmentedOption[] = [
   { value: FILTER_ALL, label: FILTER_ALL_LABEL },
@@ -130,16 +115,6 @@ const NEW_KIND_OPTIONS: readonly SegmentedOption[] = [
 
 type ListFilter = typeof FILTER_ALL | typeof FILTER_CUSTOM | typeof FILTER_DYNAMIC;
 type NewKind = typeof KIND_CUSTOM | typeof KIND_DYNAMIC;
-
-type QueryChipModel = {
-  readonly label: string;
-  readonly variant: ChipVariant;
-};
-
-type ParenGroup = {
-  readonly memberCount: number;
-  readonly nextIndex: number;
-};
 
 export const COLLECTIONS_PAGE_CSS = `
 .${PAGE_CLASS} {
@@ -213,14 +188,6 @@ export const COLLECTIONS_PAGE_CSS = `
 .${COVER_IMAGE_CLASS} {
   object-fit: cover;
 }
-.${CHIPS_CLASS} {
-  display: flex;
-  flex-wrap: wrap;
-  align-content: flex-start;
-  gap: ${String(CHIP_GAP_PX)}px;
-  max-height: ${String(CHIP_AREA_MAX_HEIGHT_PX)}px;
-  overflow: hidden;
-}
 .${META_ROW_CLASS} {
   display: flex;
   align-items: baseline;
@@ -273,10 +240,6 @@ function postsLabel(count: number): string {
   const word =
     count === POST_COUNT_SINGULAR ? POST_WORD_SINGULAR : POST_WORD_PLURAL;
   return `${String(count)} ${word}`;
-}
-
-function anyOfLabel(count: number): string {
-  return `${ANY_OF_LABEL_PREFIX}${String(count)}${ANY_OF_LABEL_SUFFIX}`;
 }
 
 function nameError(
@@ -343,72 +306,6 @@ function filterAfterCreate(kind: NewKind, filter: ListFilter): ListFilter {
   return filter;
 }
 
-function queryTokens(query: string): string[] {
-  const trimmed = query.trim();
-  if (trimmed.length === 0) {
-    return [];
-  }
-  return trimmed.split(QUERY_TOKEN_SPLIT).filter((token) => token.length > 0);
-}
-
-function readParenGroup(
-  tokens: readonly string[],
-  start: number,
-): ParenGroup | null {
-  if (tokens[start] !== UPDATES_OR_OPEN) {
-    return null;
-  }
-  let members = 0;
-  for (let index = start + 1; index < tokens.length; index += 1) {
-    const token = tokens[index];
-    if (token === undefined || token === UPDATES_OR_OPEN) {
-      return null;
-    }
-    if (token === UPDATES_OR_CLOSE) {
-      if (members === 0) {
-        return null;
-      }
-      return { memberCount: members, nextIndex: index + 1 };
-    }
-    if (token !== UPDATES_OR_JOIN) {
-      members += 1;
-    }
-  }
-  return null;
-}
-
-function buildQueryChips(query: string): QueryChipModel[] {
-  const tokens = queryTokens(query);
-  const chips: QueryChipModel[] = [];
-  let index = 0;
-  while (index < tokens.length) {
-    const token = tokens[index];
-    if (token === undefined) {
-      break;
-    }
-    if (token === UPDATES_OR_OPEN) {
-      const group = readParenGroup(tokens, index);
-      if (group !== null) {
-        chips.push({
-          label: anyOfLabel(group.memberCount),
-          variant: CHIP_VARIANT_GROUP,
-        });
-        index = group.nextIndex;
-        continue;
-      }
-    }
-    const excluded =
-      token.startsWith(EXCLUDE_PREFIX) &&
-      token.length > EXCLUDE_PREFIX.length;
-    chips.push({
-      label: token,
-      variant: excluded ? CHIP_VARIANT_EXCLUDE : CHIP_VARIANT_TOKEN,
-    });
-    index += 1;
-  }
-  return chips;
-}
-
 function dynamicQueryText(collection: Collection): string {
   if (collection.query !== undefined) {
     return collection.query;
@@ -449,6 +346,8 @@ function CardLink(props: {
   readonly kind: string;
   readonly badge: string;
   readonly meta: string;
+  /** Native tooltip, e.g. the query of a saved search. */
+  readonly title?: string;
   readonly children: ComponentChildren;
 }): JSX.Element {
   return (
@@ -458,6 +357,7 @@ function CardLink(props: {
       aria-label={cardAriaLabel(props.collection.name, props.badge, props.meta)}
       data-collection-id={props.collection.id}
       data-collection-kind={props.kind}
+      {...(props.title === undefined ? {} : { title: props.title })}
     >
       {props.children}
       <span className={META_ROW_CLASS}>
@@ -487,10 +387,42 @@ function CoverThumb(props: { readonly url: string }): JSX.Element {
   );
 }
 
+/** 2x2 card cover. A slot without a thumb stays an empty cell. */
+function Cover(props: {
+  readonly collectionId: string;
+  readonly urls: readonly (string | null)[];
+  readonly postIds?: readonly (number | null)[];
+}): JSX.Element {
+  return (
+    <span className={COVER_CLASS}>
+      {props.urls.map((url, index) => {
+        const postId = props.postIds?.[index] ?? null;
+        return (
+          <span
+            key={`${props.collectionId}-${String(index)}`}
+            className={COVER_CELL_CLASS}
+            data-cover-index={String(index)}
+            data-post-id={postId === null ? "" : String(postId)}
+          >
+            {url !== null ? (
+              <CoverThumb url={url} />
+            ) : (
+              <span className={COVER_EMPTY_CLASS} />
+            )}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
 function CustomCard(props: { readonly collection: Collection }): JSX.Element {
   const count = props.collection.postIds?.length ?? 0;
   const meta = postsLabel(count);
   const slots = coverPostIds(props.collection);
+  const urls = slots.map((postId) =>
+    postId === null ? null : thumbUrl(props.collection, postId),
+  );
   return (
     <CardLink
       collection={props.collection}
@@ -499,31 +431,17 @@ function CustomCard(props: { readonly collection: Collection }): JSX.Element {
       badge={BADGE_CUSTOM}
       meta={meta}
     >
-      <span className={COVER_CLASS}>
-        {slots.map((postId, index) => {
-          const url = postId === null ? null : thumbUrl(props.collection, postId);
-          return (
-            <span
-              key={`${props.collection.id}-${String(index)}`}
-              className={COVER_CELL_CLASS}
-              data-cover-index={String(index)}
-              data-post-id={postId === null ? "" : String(postId)}
-            >
-              {url !== null ? (
-                <CoverThumb url={url} />
-              ) : (
-                <span className={COVER_EMPTY_CLASS} />
-              )}
-            </span>
-          );
-        })}
-      </span>
+      <Cover collectionId={props.collection.id} urls={urls} postIds={slots} />
     </CardLink>
   );
 }
 
 function DynamicCard(props: { readonly collection: Collection }): JSX.Element {
-  const chips = buildQueryChips(dynamicQueryText(props.collection));
+  const cover = props.collection.cover ?? [];
+  const slots: (string | null)[] = [];
+  for (let index = 0; index < COVER_SLOT_COUNT; index += 1) {
+    slots.push(cover[index] ?? null);
+  }
   return (
     <CardLink
       collection={props.collection}
@@ -531,16 +449,9 @@ function DynamicCard(props: { readonly collection: Collection }): JSX.Element {
       kind={COLLECTION_KIND_SEARCH}
       badge={BADGE_DYNAMIC}
       meta={SAVED_SEARCH_CAPTION}
+      title={dynamicQueryText(props.collection)}
     >
-      <span className={CHIPS_CLASS}>
-        {chips.map((chip, index) => (
-          <Chip
-            key={`${chip.variant}-${chip.label}-${String(index)}`}
-            label={chip.label}
-            variant={chip.variant}
-          />
-        ))}
-      </span>
+      <Cover collectionId={props.collection.id} urls={slots} />
     </CardLink>
   );
 }

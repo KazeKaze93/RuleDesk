@@ -39,6 +39,8 @@ export const TagEntrySchema = z.object({
  * so 0.15 blobs still parse; {@link migrateCollectionMediaFields} fills the
  * custom-collection defaults without dropping `postIds` or search tags.
  * `shuffledOrder: null` means insertion order (`postIds`).
+ * Dynamic searches may also carry `cover`: thumb URLs seen on the first
+ * page of their results, newest visit wins.
  */
 export const CollectionSchema = z.object({
   id: z.string().check(z.minLength(1)),
@@ -49,6 +51,7 @@ export const CollectionSchema = z.object({
   thumbs: z.optional(z.record(z.string(), z.string())),
   shuffledOrder: z.optional(z.nullable(z.array(z.int()))),
   query: z.optional(z.string()),
+  cover: z.optional(z.array(z.string())),
 });
 
 export const ArtistEntrySchema = z.object({

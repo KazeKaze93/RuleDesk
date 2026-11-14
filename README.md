@@ -18,6 +18,11 @@ Local build: `npm install` then `npm run build` → `dist/ruledesk-web.user.js`.
 
 Measured on Tampermonkey 5.5.1: with Dynamic, native page flash on load is typically 0/5 vs ~5/5 with UserScripts API; pages also open faster. Prefer Dynamic for RuleDesk Web.
 
+### 0.16.5 notes
+
+- **Collection bar:** the bar above search results (Custom parts and Dynamic controls) follows the theme colours instead of staying light
+- **Dynamic cards:** a 2×2 cover like Custom cards, no tag chips (the query is the card tooltip). The cover is the first four thumbs of the search's first results page, remembered when you open it; no extra requests. Empty until the first visit, reset when the query is edited
+
 ### 0.16.4 notes
 
 - **Dynamic query fields:** the Query field in New collection and in Edit query autocompletes the tag being typed (same site autocomplete as the search box: after 2 characters, debounced, one request at a time). `( ~ )` and filters like `sort:random` are left alone

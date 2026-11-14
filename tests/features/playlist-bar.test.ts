@@ -20,6 +20,7 @@ import {
   createDynamicCollection,
   load,
   save,
+  updateDynamicQuery,
 } from "../../src/storage/store";
 
 const ROOT_ID = "rdw-playlist-bar";
@@ -328,6 +329,74 @@ describe("dynamic collection bar", () => {
     const bar = document.getElementById(DYNAMIC_ROOT_ID);
     expect(bar?.querySelector(`.${NAME_CLASS}`)?.textContent).toBe("Birds");
     expect(findButton(bar ?? document.body, TEXT_ORIGINAL_ORDER)).not.toBeNull();
+  });
+
+  function addThumbs(list: HTMLElement, count: number): string[] {
+    const urls: string[] = [];
+    for (let index = 1; index <= count; index += 1) {
+      const url = `https://wimg.rule34.xxx/thumbnails/1/thumbnail_h${String(index)}.jpg?${String(index)}`;
+      urls.push(url);
+      const thumb = document.createElement("span");
+      thumb.className = "thumb";
+      thumb.id = `s${String(index)}`;
+      const link = document.createElement("a");
+      link.id = `p${String(index)}`;
+      const image = document.createElement("img");
+      image.className = "preview";
+      image.setAttribute("src", url);
+      link.append(image);
+      thumb.append(link);
+      list.append(thumb);
+    }
+    return urls;
+  }
+
+  function coverOf(collectionId: string): readonly string[] | undefined {
+    return load().collections.find((item) => item.id === collectionId)?.cover;
+  }
+
+  it("remembers the first four thumbs of the first results page as the cover", () => {
+    const created = createDynamicCollection("Birds", "cat dog");
+    const urls = addThumbs(buildListPage(), 6);
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+
+    playlistBarFeature.mount(makeCtx(tagsSearch("dog cat")));
+
+    expect(coverOf(created.id)).toEqual(urls.slice(0, 4));
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(document.querySelector("#p1 > img.preview")?.getAttribute("src")).toBe(
+      urls[0],
+    );
+  });
+
+  it("leaves the cover alone on later pages, shuffled pages, and empty grids", () => {
+    const created = createDynamicCollection("Birds", "cat");
+    addThumbs(buildListPage(), 4);
+
+    playlistBarFeature.mount(makeCtx(`${tagsSearch("cat")}&pid=42`));
+    expect(coverOf(created.id)).toBeUndefined();
+    playlistBarFeature.mount(makeCtx(tagsSearch("cat sort:random")));
+    expect(coverOf(created.id)).toBeUndefined();
+
+    playlistBarFeature.mount(makeCtx(`${tagsSearch("cat")}&pid=0`));
+    const stored = coverOf(created.id);
+    expect(stored).toHaveLength(4);
+
+    document.body.replaceChildren();
+    buildListPage();
+    playlistBarFeature.mount(makeCtx(tagsSearch("cat")));
+    expect(coverOf(created.id)).toEqual(stored);
+  });
+
+  it("drops the cover when the query is edited", () => {
+    const created = createDynamicCollection("Birds", "cat");
+    addThumbs(buildListPage(), 4);
+    playlistBarFeature.mount(makeCtx(tagsSearch("cat")));
+    expect(coverOf(created.id)).toHaveLength(4);
+
+    updateDynamicQuery(created.id, "dog");
+    expect(coverOf(created.id)).toBeUndefined();
   });
 
   it("draws nothing when the query does not match a dynamic collection", () => {
