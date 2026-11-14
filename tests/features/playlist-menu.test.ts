@@ -19,6 +19,7 @@ import { clearFavsCache } from "../../src/storage/favs";
 import {
   addPostToPlaylist,
   clearStorageCache,
+  createDynamicCollection,
   createPlaylist,
   listPlaylists,
   playlistsContaining,
@@ -322,6 +323,28 @@ describe("playlistMenuFeature", () => {
 
     expect(listPlaylists()).toHaveLength(1);
     expect(playlistsContaining(21).map((entry) => entry.id)).toEqual([existing.id]);
+  });
+
+  it("refuses a name that a dynamic collection already has", () => {
+    createDynamicCollection("Saved", "cat");
+    const thumb = buildThumb("22");
+    document.body.append(thumb);
+    playlistMenuFeature.mount(makeCtx("list", "?page=post&s=list"));
+
+    addButton(thumb).click();
+    createFromMenu("saved");
+
+    expect(listPlaylists()).toHaveLength(0);
+    expect(playlistsContaining(22)).toEqual([]);
+    expect(openMenus()[0]?.querySelector('[role="alert"]')?.textContent).toBe(
+      "A dynamic collection already has this name.",
+    );
+    const input = openMenus()[0]?.querySelector("input");
+    expect(input?.value).toBe("saved");
+
+    createFromMenu("saved 2");
+    expect(listPlaylists().map((item) => item.name)).toEqual(["saved 2"]);
+    expect(openMenus()[0]?.querySelector('[role="alert"]')).toBeNull();
   });
 
   it("takes its colours from theme tokens", () => {

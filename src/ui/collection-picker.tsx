@@ -1,11 +1,12 @@
 import type { JSX } from "preact";
 import { useState } from "preact/hooks";
 
-import type { Collection } from "../storage/schema";
+import { isPlaylist, type Collection } from "../storage/schema";
 import {
   addPostToCollection,
   createPlaylist,
   listPlaylists,
+  load,
   playlistsContaining,
   removePostFromPlaylist,
 } from "../storage/store";
@@ -22,6 +23,7 @@ const CLASS_CHECK = "rdw-collection-picker-check";
 const CLASS_NAME = "rdw-collection-picker-name";
 const CLASS_EMPTY = "rdw-collection-picker-empty";
 const CLASS_NEW_FIELD = "rdw-collection-picker-new-field";
+const CLASS_ERROR = "rdw-collection-picker-error";
 
 export const COLLECTION_PICKER_TEXT = {
   create: "Create",
@@ -30,6 +32,7 @@ export const COLLECTION_PICKER_TEXT = {
   empty: "No collections yet",
   noMatch: "No matching collections",
   togglePrefix: "Toggle collection",
+  nameTaken: "A dynamic collection already has this name.",
   list: "Custom collections",
 } as const;
 
@@ -128,6 +131,10 @@ form.${COLLECTION_PICKER_NEW_CLASS} {
   padding-top: ${String(STACK_GAP_PX)}px;
   border-top: 1px solid var(--rdw-border);
 }
+.${CLASS_ERROR} {
+  margin: 0;
+  color: var(--rdw-danger);
+}
 .${COLLECTION_PICKER_NEW_CLASS} .${CLASS_NEW_FIELD} {
   flex: 1 1 auto;
   min-width: 0;
@@ -168,11 +175,13 @@ function addPost(
 /**
  * Custom collections of one post: a checkbox row per collection with its post
  * count, and a "name + Create" row. Used by the post panel and the grid "+" menu.
- * A new name that matches an existing custom collection adds the post to it.
+ * A new name that matches an existing custom collection adds the post to it;
+ * a name held by a dynamic collection is refused, as on the Collections page.
  */
 export function CollectionPicker(props: CollectionPickerProps): JSX.Element {
   const [filter, setFilter] = useState("");
   const [newName, setNewName] = useState("");
+  const [error, setError] = useState("");
   const [, setRevision] = useState(0);
 
   const collections = listPlaylists();
@@ -203,9 +212,14 @@ export function CollectionPicker(props: CollectionPickerProps): JSX.Element {
     if (name.length === 0) {
       return;
     }
-    const existing = listPlaylists().find(
+    const sameName = load().collections.filter(
       (item) => foldName(item.name) === foldName(name),
     );
+    const existing = sameName.find((item) => isPlaylist(item));
+    if (existing === undefined && sameName.length > 0) {
+      setError(COLLECTION_PICKER_TEXT.nameTaken);
+      return;
+    }
     const target = existing ?? createPlaylist(name);
     addPost(target.id, props.postId, props.readThumbUrl);
     setNewName("");
@@ -274,7 +288,10 @@ export function CollectionPicker(props: CollectionPickerProps): JSX.Element {
         <TextField
           className={CLASS_NEW_FIELD}
           value={newName}
-          onChange={setNewName}
+          onChange={(value) => {
+            setNewName(value);
+            setError("");
+          }}
           placeholder={COLLECTION_PICKER_TEXT.newName}
           aria-label={COLLECTION_PICKER_TEXT.newName}
         />
@@ -287,6 +304,11 @@ export function CollectionPicker(props: CollectionPickerProps): JSX.Element {
           {COLLECTION_PICKER_TEXT.create}
         </Button>
       </form>
+      {error.length > 0 ? (
+        <p className={CLASS_ERROR} role="alert">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }
