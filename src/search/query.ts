@@ -461,6 +461,18 @@ function tokenCountsIgnoringSortRandom(raw: string): Map<string, number> {
   return counts;
 }
 
+/** The site's own "everything" search: `tags=all` is the plain post list. */
+export const SEARCH_ALL_TOKEN = "all";
+
+/**
+ * True for a search that narrows nothing: empty, the site's `all`, or either
+ * of them with `sort:random`.
+ */
+export function isUnfilteredQuery(raw: string): boolean {
+  const query = withoutSortRandom(raw);
+  return query.length === 0 || query === SEARCH_ALL_TOKEN;
+}
+
 /** True when `raw` contains at least one `sort:random` token. */
 export function queryHasSortRandom(raw: string): boolean {
   return searchTokens(raw).includes(SORT_RANDOM_TOKEN);

@@ -4,10 +4,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { playlistBarFeature } from "../../src/features/playlist-bar";
 import {
   readSavableQuery,
+  SAVE_SEARCH_DIALOG_TITLE,
   SAVE_SEARCH_LABEL,
   SAVE_SEARCH_TITLE,
-  SaveSearchLink,
+  SaveSearchButton,
 } from "../../src/features/save-search";
+import { buildSearchUrl, parseTags } from "../../src/search/query";
 import { clearFavsCache } from "../../src/storage/favs";
 import {
   clearStorageCache,
@@ -59,6 +61,14 @@ function nameInput(): HTMLInputElement {
   return node;
 }
 
+function queryInput(): HTMLInputElement {
+  const node = document.querySelectorAll('[role="dialog"] input')[1];
+  if (!(node instanceof HTMLInputElement)) {
+    throw new Error("query input missing");
+  }
+  return node;
+}
+
 function typeName(value: string): void {
   const node = nameInput();
   act(() => {
@@ -87,22 +97,24 @@ describe("readSavableQuery", () => {
   });
 
   it("returns the search without sort:random", () => {
-    expect(readSavableQuery(search("cat sort:random -dog"))).toBe("cat -dog");
+    expect(readSavableQuery("cat sort:random -dog")).toBe("cat -dog");
   });
 
   it("is null without real tags", () => {
-    expect(readSavableQuery("?page=post&s=list")).toBeNull();
-    expect(readSavableQuery(search(""))).toBeNull();
-    expect(readSavableQuery(search("sort:random"))).toBeNull();
-    expect(readSavableQuery(search("sort:score:desc score:>=10"))).toBeNull();
+    expect(readSavableQuery("")).toBeNull();
+    expect(readSavableQuery("")).toBeNull();
+    expect(readSavableQuery("sort:random")).toBeNull();
+    expect(readSavableQuery("all")).toBeNull();
+    expect(readSavableQuery("all sort:random")).toBeNull();
+    expect(readSavableQuery("sort:score:desc score:>=10")).toBeNull();
   });
 
   it("is null for a custom collection id list and for a saved search", () => {
-    expect(readSavableQuery(search("( id:1 ~ id:2 )"))).toBeNull();
+    expect(readSavableQuery("( id:1 ~ id:2 )")).toBeNull();
     createDynamicCollection("Cats", "cat -dog");
-    expect(readSavableQuery(search("-dog cat"))).toBeNull();
-    expect(readSavableQuery(search("-dog cat sort:random"))).toBeNull();
-    expect(readSavableQuery(search("cat"))).toBe("cat");
+    expect(readSavableQuery("-dog cat")).toBeNull();
+    expect(readSavableQuery("-dog cat sort:random")).toBeNull();
+    expect(readSavableQuery("cat")).toBe("cat");
   });
 });
 
@@ -133,9 +145,9 @@ describe("SaveSearchLink", () => {
     vi.restoreAllMocks();
   });
 
-  it("is absent when the page has no tags to save", () => {
-    openResults("");
-    host = renderKit(<SaveSearchLink />);
+  it("is absent when the field has no tags to save", () => {
+    openResults("cat");
+    host = renderKit(<SaveSearchButton tags="" />);
     expect(buttonByText(SAVE_SEARCH_LABEL)).toBeNull();
   });
 
@@ -143,7 +155,7 @@ describe("SaveSearchLink", () => {
     openResults("cat sort:random -dog");
     const fetchSpy = vi.fn();
     vi.stubGlobal("fetch", fetchSpy);
-    host = renderKit(<SaveSearchLink />);
+    host = renderKit(<SaveSearchButton tags="cat sort:random -dog" />);
     const link = buttonByText(SAVE_SEARCH_LABEL);
     if (link === null) {
       throw new Error("save link missing");
@@ -152,8 +164,9 @@ describe("SaveSearchLink", () => {
 
     fireClick(link);
     expect(document.querySelector('[role="dialog"]')?.textContent).toContain(
-      SAVE_SEARCH_TITLE,
+      SAVE_SEARCH_DIALOG_TITLE,
     );
+    expect(queryInput().value).toBe("cat -dog");
     typeName("  Cats  ");
     submitDialog();
 
@@ -168,7 +181,7 @@ describe("SaveSearchLink", () => {
   it("refuses an empty name and a name that already exists", () => {
     createPlaylist("Taken");
     openResults("cat");
-    host = renderKit(<SaveSearchLink />);
+    host = renderKit(<SaveSearchButton tags="cat" />);
     const link = buttonByText(SAVE_SEARCH_LABEL);
     if (link === null) {
       throw new Error("save link missing");
@@ -189,10 +202,56 @@ describe("SaveSearchLink", () => {
     expect(document.getElementById(DYNAMIC_BAR_ID)).toBeNull();
   });
 
+  it("saves what the field holds, not the page address, and opens that search", () => {
+    const assign = vi.fn();
+    vi.stubGlobal("location", {
+      ...window.location,
+      assign,
+      search: search("all"),
+    });
+    host = renderKit(<SaveSearchButton tags="triss_merigold blowjob" />);
+    const link = buttonByText(SAVE_SEARCH_LABEL);
+    if (link === null) {
+      throw new Error("save button missing");
+    }
+    fireClick(link);
+    typeName("Triss");
+    submitDialog();
+
+    const saved = load().collections.find((item) => item.name === "Triss");
+    expect(saved?.query).toBe("triss_merigold blowjob");
+    expect(assign).toHaveBeenCalledWith(
+      buildSearchUrl(parseTags("triss_merigold blowjob")),
+    );
+    expect(document.getElementById(DYNAMIC_BAR_ID)).toBeNull();
+  });
+
+  it("refuses a query that narrows nothing", () => {
+    openResults("cat");
+    host = renderKit(<SaveSearchButton tags="cat" />);
+    const link = buttonByText(SAVE_SEARCH_LABEL);
+    if (link === null) {
+      throw new Error("save button missing");
+    }
+    fireClick(link);
+    typeName("Everything");
+    const field = queryInput();
+    act(() => {
+      field.value = "all";
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    submitDialog();
+
+    expect(document.querySelector('[role="alert"]')?.textContent).toBe(
+      "Enter a tag search that is not saved yet.",
+    );
+    expect(load().collections).toHaveLength(0);
+  });
+
   it("does not draw the bar while the collection bar feature is off", () => {
     document.body.className = "";
     openResults("cat");
-    host = renderKit(<SaveSearchLink />);
+    host = renderKit(<SaveSearchButton tags="cat" />);
     const link = buttonByText(SAVE_SEARCH_LABEL);
     if (link === null) {
       throw new Error("save link missing");

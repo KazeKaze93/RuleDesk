@@ -18,6 +18,13 @@ Local build: `npm install` then `npm run build` → `dist/ruledesk-web.user.js`.
 
 Measured on Tampermonkey 5.5.1: with Dynamic, native page flash on load is typically 0/5 vs ~5/5 with UserScripts API; pages also open faster. Prefer Dynamic for RuleDesk Web.
 
+### 0.18.1 notes
+
+- **Search panel footer:** the hint text is gone; "Reset" and "Save as collection" are regular buttons
+- **Save as collection** saves the search in the tags field (what the panel shows as chips), not the page address. Its dialog shows the name and the query that will be stored. When the page shows another search, the saved one is opened
+- The site's `all` search is not a query: it cannot be saved, and no collection bar shows on the plain post list. A collection already saved that way says "no query" on its card; opening it from the card shows its bar so the query can be edited or the collection deleted
+- No console warning about a missing video player on image posts
+
 ### 0.18.0 notes
 
 - **Save search:** a quiet "Save search" link under "Reset search" in the search panel, shown only when the page's search has tags and is not saved yet. It asks for a name, stores a dynamic collection, and shows its bar above the results without reloading

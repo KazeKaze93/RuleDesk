@@ -357,6 +357,16 @@ describe("createCollectionsPage", () => {
     expect(cells[1]?.querySelector("img")?.getAttribute("src")).toBe(THUMB_2);
   });
 
+  it("marks a dynamic collection saved with the query all, so it can be fixed", () => {
+    const broken = createDynamicCollection("Everything", "all");
+    const root = mount();
+    const card = cardByName(root, "Everything");
+    expect(card.getAttribute("href")).toBe(
+      `${buildSearchUrl(broken.tags)}#rdw-dc=${broken.id}`,
+    );
+    expect(card.textContent).toContain("no query");
+  });
+
   it("shows the post count of a dynamic collection once it is known", () => {
     const big = createDynamicCollection("Big", "cat");
     const small = createDynamicCollection("Small", "dog");

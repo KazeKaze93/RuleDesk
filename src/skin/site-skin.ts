@@ -26,7 +26,6 @@ const ROOT_THEME_DARK = `html[${RDW_THEME_ATTR}="${APPEARANCE_THEME_DARK}"]`;
 /** search-tools mount root (id + class in src/features/search-tools.tsx). */
 const SEARCH_TOOLS_ROOT_ID = "rdw-search-tools";
 /** Reset control class (src/features/search-tools.tsx). */
-const SEARCH_TOOLS_RESET_CLASS = "rdw-search-tools-reset";
 /** Exclude our light-DOM controls from site button/input chrome. */
 const NOT_RDW_CLASS = ':not([class*="rdw-"])';
 const NOT_SEARCH_TOOLS_DESCENDANT = `:not(#${SEARCH_TOOLS_ROOT_ID} *)`;
@@ -502,25 +501,6 @@ ${ROOT} div.tag-search button[type="submit"] {
 ${ROOT} div.tag-search input[type="submit"]:hover,
 ${ROOT} div.tag-search button[type="submit"]:hover {
   filter: brightness(1.05);
-}
-
-/* Kit ghost / link-button: single line in the search-tools foot row */
-${ROOT} #${SEARCH_TOOLS_ROOT_ID} .${SEARCH_TOOLS_RESET_CLASS} {
-  flex-shrink: 0;
-  white-space: nowrap;
-  background: transparent;
-  border-color: transparent;
-  color: ${v.accent};
-  font-weight: 600;
-  padding: 0;
-  min-height: auto;
-  height: auto;
-}
-
-${ROOT} #${SEARCH_TOOLS_ROOT_ID} .${SEARCH_TOOLS_RESET_CLASS}:hover {
-  color: ${v.text};
-  background: transparent;
-  border-color: transparent;
 }
 
 ${ROOT} input[type="text"]${WHERE_NOT_OUR_CONTROL}:focus,

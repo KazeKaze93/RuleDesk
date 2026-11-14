@@ -32,6 +32,13 @@ export type RdwPage = RdwRoute | RdwCollectionDetailPage;
 export const RDW_COLLECTION_QUEUE_HASH_MARK = "#rdw-c" as const;
 export const RDW_COLLECTION_QUEUE_HASH_PREFIX = "#rdw-c=" as const;
 
+/**
+ * Mark on a results URL opened from a dynamic collection's card
+ * (`/index.php?...#rdw-dc=<collectionId>`). Needed only for a collection whose
+ * query narrows nothing: its bar must not show on the plain post list.
+ */
+export const RDW_DYNAMIC_MARK_HASH_PREFIX = "#rdw-dc=" as const;
+
 export const RDW_HASH_COLLECTIONS = `${RDW_HASH_PREFIX}${RDW_ROUTE_COLLECTIONS}`;
 export const RDW_HASH_FOLLOWING = `${RDW_HASH_PREFIX}${RDW_ROUTE_FOLLOWING}`;
 export const RDW_HASH_SETTINGS = `${RDW_HASH_PREFIX}${RDW_ROUTE_SETTINGS}`;
@@ -137,6 +144,26 @@ export function collectionDetailHash(collectionId: string): string {
 
 export function collectionQueueHash(collectionId: string): string {
   return `${RDW_COLLECTION_QUEUE_HASH_PREFIX}${encodeURIComponent(collectionId)}`;
+}
+
+export function dynamicCollectionMarkHash(collectionId: string): string {
+  return `${RDW_DYNAMIC_MARK_HASH_PREFIX}${encodeURIComponent(collectionId)}`;
+}
+
+/** Collection id from a `#rdw-dc=<id>` hash, or null for any other hash. */
+export function readDynamicCollectionMark(hash: string): string | null {
+  if (!hash.startsWith(RDW_DYNAMIC_MARK_HASH_PREFIX)) {
+    return null;
+  }
+  const raw = hash.slice(RDW_DYNAMIC_MARK_HASH_PREFIX.length);
+  if (raw.length === 0) {
+    return null;
+  }
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
 }
 
 export function rdwPageHash(page: RdwPage): string {

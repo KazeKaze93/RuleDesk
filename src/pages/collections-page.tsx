@@ -7,7 +7,7 @@ import {
   COLLECTION_KIND_SEARCH,
   UI_TEXT,
 } from "../config/constants";
-import { buildSearchUrl } from "../search/query";
+import { buildSearchUrl, isUnfilteredQuery, serialize } from "../search/query";
 import {
   resolveCollectionKind,
   type Collection,
@@ -29,7 +29,7 @@ import {
 } from "../ui/kit";
 import { IconPlus } from "../ui/kit/icons";
 import { QueryField } from "../ui/query-field";
-import { collectionDetailHash } from "./constants";
+import { collectionDetailHash, dynamicCollectionMarkHash } from "./constants";
 
 const EVENT_PAGESHOW = "pageshow";
 
@@ -71,6 +71,7 @@ const GRID_LABEL = "Collections";
 const BADGE_CUSTOM = "Custom";
 const BADGE_DYNAMIC = "Dynamic";
 const SAVED_SEARCH_CAPTION = "saved search";
+const NO_QUERY_CAPTION = "no query";
 const COUNT_LOCALE = "en-US";
 const COUNT_AT_LEAST_MARK = "+";
 const EMPTY_TITLE = "No collections yet";
@@ -433,7 +434,27 @@ function CustomCard(props: { readonly collection: Collection }): JSX.Element {
 }
 
 /** "1,234 posts", "12,516+ posts" for a lower bound, or the plain caption. */
+function dynamicQuery(collection: Collection): string {
+  return collection.query ?? serialize(collection.tags);
+}
+
+/**
+ * Results URL of a dynamic collection. A collection whose query narrows
+ * nothing carries a mark, so its bar still shows there and the query can be
+ * edited or the collection deleted.
+ */
+function dynamicHref(collection: Collection): string {
+  const url = buildSearchUrl(collection.tags);
+  if (!isUnfilteredQuery(dynamicQuery(collection))) {
+    return url;
+  }
+  return `${url}${dynamicCollectionMarkHash(collection.id)}`;
+}
+
 function dynamicMeta(collection: Collection): string {
+  if (isUnfilteredQuery(dynamicQuery(collection))) {
+    return NO_QUERY_CAPTION;
+  }
   const count = readCountMirror(collection.id) ?? collection.postCount ?? null;
   if (count === null) {
     return SAVED_SEARCH_CAPTION;
@@ -457,7 +478,7 @@ function DynamicCard(props: { readonly collection: Collection }): JSX.Element {
   return (
     <CardLink
       collection={props.collection}
-      href={buildSearchUrl(props.collection.tags)}
+      href={dynamicHref(props.collection)}
       kind={COLLECTION_KIND_SEARCH}
       badge={BADGE_DYNAMIC}
       meta={dynamicMeta(props.collection)}
@@ -600,7 +621,7 @@ export function CollectionsPage(): JSX.Element {
       setFormError(message);
       return;
     }
-    if (newKind === KIND_DYNAMIC && queryDraft.trim().length === 0) {
+    if (newKind === KIND_DYNAMIC && isUnfilteredQuery(queryDraft)) {
       setFormError(EMPTY_QUERY_MESSAGE);
       return;
     }

@@ -7,7 +7,6 @@
  */
 
 import { scheduleAfterFirstPaint } from "../boot/ready";
-import { log } from "../log";
 import {
   DEFAULT_VIDEO_PLAYER_TWEAKS_ENABLED,
   DEFAULT_VIDEO_SIZE,
@@ -40,9 +39,6 @@ export const FLUID_WRAPPER_CLASS = "fluid_video_wrapper";
 const VOLUME_MIN = 0;
 const VOLUME_MAX = 1;
 const CHROME_GAP_PX = 12;
-
-const WARN_NO_VIDEO =
-  "video-player: #gelcomVideoPlayer missing; tweaks not mounted";
 
 const BODY_CLASS = featureBodyClass(FEATURE_ID);
 const BODY_SELECTOR = `body.${BODY_CLASS}`;
@@ -297,8 +293,8 @@ function bindPlayer(ctx: FeatureContext, video: HTMLVideoElement): void {
 function mountVideoPlayer(ctx: FeatureContext): void {
   scheduleAfterFirstPaint(() => {
     const video = findVideo();
+    // A post with an image has no player: nothing to do, nothing to report.
     if (video === null) {
-      log.warn(WARN_NO_VIDEO);
       return;
     }
     bindPlayer(ctx, video);

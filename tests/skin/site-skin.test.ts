@@ -407,34 +407,8 @@ describe("site-skin CSS export", () => {
     );
   });
 
-  it("keeps Reset search as a single-line kit ghost link-button", () => {
-    expect(SITE_SKIN_CSS).toContain(
-      `#${SEARCH_TOOLS_ROOT_ID} .${SEARCH_TOOLS_RESET_CLASS}`,
-    );
-    expect(SITE_SKIN_CSS).toMatch(
-      new RegExp(
-        `#${SEARCH_TOOLS_ROOT_ID}\\s*\\.${SEARCH_TOOLS_RESET_CLASS}\\s*\\{[^}]*white-space:\\s*nowrap`,
-        "s",
-      ),
-    );
-    expect(SITE_SKIN_CSS).toMatch(
-      new RegExp(
-        `#${SEARCH_TOOLS_ROOT_ID}\\s*\\.${SEARCH_TOOLS_RESET_CLASS}\\s*\\{[^}]*flex-shrink:\\s*0`,
-        "s",
-      ),
-    );
-    expect(SITE_SKIN_CSS).toMatch(
-      new RegExp(
-        `#${SEARCH_TOOLS_ROOT_ID}\\s*\\.${SEARCH_TOOLS_RESET_CLASS}\\s*\\{[^}]*color:\\s*var\\(--rdw-accent\\)`,
-        "s",
-      ),
-    );
-    expect(SITE_SKIN_CSS).toMatch(
-      new RegExp(
-        `#${SEARCH_TOOLS_ROOT_ID}\\s*\\.${SEARCH_TOOLS_RESET_CLASS}\\s*\\{[^}]*background:\\s*transparent`,
-        "s",
-      ),
-    );
+  it("leaves the search panel Reset button to the kit", () => {
+    expect(SITE_SKIN_CSS).not.toContain(SEARCH_TOOLS_RESET_CLASS);
   });
 
   it("styles artist Follow as secondary button on theme tokens", () => {

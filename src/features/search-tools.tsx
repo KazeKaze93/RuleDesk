@@ -36,7 +36,7 @@ import {
   Segmented,
   Select,
 } from "../ui/kit";
-import { SAVE_SEARCH_CLASS, SaveSearchLink } from "./save-search";
+import { SaveSearchButton } from "./save-search";
 import { featureBodyClass, type Feature, type FeatureContext } from "./types";
 
 const FEATURE_ID = "search-tools";
@@ -72,9 +72,7 @@ const CHIP_ATTR_REMOVE = "data-chip-remove";
 const FIELD_CLASS = "rdw-search-tools-field";
 const ROW_SORT_CLASS = "rdw-search-tools-row-sort";
 const FOOT_CLASS = "rdw-search-tools-foot";
-const HINT_CLASS = "rdw-search-tools-hint";
 const RESET_CLASS = "rdw-search-tools-reset";
-const FOOT_LINKS_CLASS = "rdw-search-tools-foot-links";
 
 const TOKEN_SPLIT_RE = /\s+/;
 const MULTI_SPACE_RE = /\s+/g;
@@ -88,9 +86,8 @@ const MEDIA_VIDEO = "video";
 const MEDIA_IMAGES = `${EXCLUDE_PREFIX}${MEDIA_VIDEO}`;
 const TAG_TYPE_CLASS_PREFIX = "tag-type-";
 const SORT_HINT = "Sorts within the current search";
-const FOOT_HINT =
-  "Typing needs Search or Enter; chips and filters apply instantly";
-const RESET_LABEL = "Reset search";
+const RESET_LABEL = "Reset";
+const RESET_TITLE = "Clear the search and all filters";
 const KEY_ENTER = "Enter";
 
 const EVENT_INPUT = "input";
@@ -215,35 +212,14 @@ const FEATURE_CSS = [
   "}",
   `body.${BODY_CLASS} .${FOOT_CLASS} {`,
   "  display: flex;",
-  "  justify-content: space-between;",
-  "  align-items: center;",
+  "  flex-wrap: wrap;",
+  "  gap: 6px;",
   "  border-top: 1px solid var(--rdw-border);",
-  "  padding-top: 8px;",
+  "  padding-top: 10px;",
   "}",
-  `body.${BODY_CLASS} .${HINT_CLASS} {`,
-  "  font-size: 12px;",
-  "  color: var(--rdw-muted);",
-  "}",
-  `body.${BODY_CLASS} .${FOOT_LINKS_CLASS} {`,
-  "  display: flex;",
-  "  flex: 0 0 auto;",
-  "  flex-direction: column;",
-  "  align-items: flex-end;",
-  "  gap: 2px;",
-  "}",
-  `body.${BODY_CLASS} .${RESET_CLASS},`,
-  `body.${BODY_CLASS} .${SAVE_SEARCH_CLASS} {`,
-  "  padding: 0;",
-  "  min-height: auto;",
-  "  height: auto;",
+  `body.${BODY_CLASS} .${FOOT_CLASS} > button {`,
+  "  flex: 1 1 auto;",
   "  white-space: nowrap;",
-  "}",
-  `body.${BODY_CLASS} .${SAVE_SEARCH_CLASS} {`,
-  "  color: var(--rdw-muted);",
-  "  font-weight: 400;",
-  "}",
-  `body.${BODY_CLASS} .${SAVE_SEARCH_CLASS}:hover {`,
-  "  color: var(--rdw-accent);",
   "}",
 ].join("\n");
 
@@ -1274,18 +1250,16 @@ function SearchToolsPanel(props: SearchToolsPanelProps): JSX.Element {
         ) : null}
 
         <div className={FOOT_CLASS}>
-          <span className={HINT_CLASS}>{FOOT_HINT}</span>
-          <div className={FOOT_LINKS_CLASS}>
-            <Button
-              variant="ghost"
-              size="s"
-              className={RESET_CLASS}
-              onClick={onReset}
-            >
-              {RESET_LABEL}
-            </Button>
-            <SaveSearchLink />
-          </div>
+          <Button
+            variant="secondary"
+            size="s"
+            className={RESET_CLASS}
+            title={RESET_TITLE}
+            onClick={onReset}
+          >
+            {RESET_LABEL}
+          </Button>
+          <SaveSearchButton tags={input.value} />
         </div>
       </Card>
     </>

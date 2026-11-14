@@ -11,6 +11,7 @@ import { log } from "../log";
 import {
   buildPlaylistQueries,
   buildSearchUrl,
+  isUnfilteredQuery,
   parsePlaylistQuery,
   parseTags,
   queriesMatchIgnoringSortRandom,
@@ -19,6 +20,7 @@ import {
   withSortRandom,
   withoutSortRandom,
 } from "../search/query";
+import { readDynamicCollectionMark } from "../pages/constants";
 import { SITE_SELECTORS } from "../site/selectors";
 import {
   isPlaylist,
@@ -372,13 +374,24 @@ function storedDynamicQuery(collection: Collection): string {
 }
 
 function findDynamicCollection(tagsParam: string): Collection | null {
+  const pageUnfiltered = isUnfilteredQuery(tagsParam);
   for (const collection of load().collections) {
     if (isPlaylist(collection)) {
       continue;
     }
     const stored = storedDynamicQuery(collection);
-    // An empty saved query would match the plain post list.
-    if (withoutSortRandom(stored).length === 0) {
+    if (isUnfilteredQuery(stored)) {
+      // Such a query is the plain post list. Its bar shows only when the page
+      // was opened from the collection's own card, so the query can be fixed.
+      if (
+        pageUnfiltered &&
+        readDynamicCollectionMark(window.location.hash) === collection.id
+      ) {
+        return collection;
+      }
+      continue;
+    }
+    if (pageUnfiltered) {
       continue;
     }
     if (queriesMatchIgnoringSortRandom(tagsParam, stored)) {
@@ -447,7 +460,7 @@ function DynamicCollectionBar(props: DynamicBarProps): JSX.Element {
   }
 
   function onEditSubmit(): void {
-    if (fields.query.trim().length === 0) {
+    if (isUnfilteredQuery(fields.query)) {
       return;
     }
     const updated = updateDynamicQuery(props.collectionId, fields.query);
@@ -629,7 +642,11 @@ function rememberDynamicCover(
   tagsParam: string,
   search: string,
 ): void {
-  if (queryHasSortRandom(tagsParam) || !isFirstResultsPage(search)) {
+  if (
+    isUnfilteredQuery(tagsParam) ||
+    queryHasSortRandom(tagsParam) ||
+    !isFirstResultsPage(search)
+  ) {
     return;
   }
   setDynamicCover(collectionId, readFirstThumbUrls());

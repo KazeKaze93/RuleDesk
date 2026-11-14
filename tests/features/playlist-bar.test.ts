@@ -300,6 +300,24 @@ describe("dynamic collection bar", () => {
     expect(document.getElementById(ROOT_ID)).toBeNull();
   });
 
+  it("stays off the plain post list, even for a collection saved with the query all", () => {
+    createDynamicCollection("Cats", "cat");
+    const broken = createDynamicCollection("Everything", "all");
+    buildListPage();
+
+    playlistBarFeature.mount(makeCtx(tagsSearch("all")));
+    expect(document.getElementById(DYNAMIC_ROOT_ID)).toBeNull();
+    playlistBarFeature.mount(makeCtx("?page=post&s=list"));
+    expect(document.getElementById(DYNAMIC_ROOT_ID)).toBeNull();
+
+    window.location.hash = `#rdw-dc=${broken.id}`;
+    playlistBarFeature.mount(makeCtx(tagsSearch("all")));
+    const bar = document.getElementById(DYNAMIC_ROOT_ID);
+    window.location.hash = "";
+    expect(bar?.querySelector(`.${NAME_CLASS}`)?.textContent).toBe("Everything");
+    expect(load().collections.find((item) => item.id === broken.id)?.postCount).toBeUndefined();
+  });
+
   it("matches a legacy search that only has tags", () => {
     const data = createDefaultStorage();
     data.collections = [

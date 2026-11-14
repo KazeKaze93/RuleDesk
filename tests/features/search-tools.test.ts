@@ -22,8 +22,7 @@ const ROOT_ID = "rdw-search-tools";
 const CHIP_CLASS = "rdw-search-tools-chip";
 const CHIPS_CLASS = "rdw-search-tools-chips";
 const NAV_DEBOUNCE_MS = 400;
-const FOOT_HINT =
-  "Typing needs Search or Enter; chips and filters apply instantly";
+const FOOT_CLASS = "rdw-search-tools-foot";
 
 const memory = new Map<string, unknown>();
 
@@ -145,11 +144,11 @@ function resetButton(): HTMLButtonElement {
     if (!(node instanceof HTMLButtonElement)) {
       continue;
     }
-    if (node.textContent === "Reset search") {
+    if (node.textContent === "Reset") {
       return node;
     }
   }
-  throw new Error("Reset search button not found");
+  throw new Error("Reset button not found");
 }
 
 function mountFeature(): void {
@@ -543,33 +542,37 @@ describe("searchToolsFeature", () => {
     expect(warnSpy).toHaveBeenCalled();
   });
 
-  it("has no Save search link without tags in the page address, and no Collections control", () => {
+  it("shows only the Reset button and no hint text while the field is empty", () => {
     vi.stubGlobal("location", {
       ...window.location,
-      search: "?page=post&s=list",
+      search: "?page=post&s=list&tags=all",
     });
-    buildSearchForm("fox");
+    buildSearchForm("");
     mountFeature();
     const root = document.getElementById(ROOT_ID);
-    expect(root?.textContent).not.toContain("Save search");
+    const foot = root?.querySelector(`.${FOOT_CLASS}`);
+    const buttons = Array.from(foot?.querySelectorAll("button") ?? []);
+    expect(buttons.map((button) => button.textContent)).toEqual(["Reset"]);
+    expect(root?.textContent).not.toContain("Typing needs");
     expect(root?.textContent).not.toContain("Collections");
-    expect(root?.textContent).toContain(FOOT_HINT);
-    expect(root?.textContent).not.toContain("Applies instantly");
-    expect(root?.querySelector(`.${CHIPS_CLASS}`)).not.toBeNull();
   });
 
-  it("shows a quiet Save search link under Reset search when the page has tags", () => {
+  it("shows Reset and Save as collection buttons for a search typed into the field", () => {
     vi.stubGlobal("location", {
       ...window.location,
-      search: "?page=post&s=list&tags=fox",
+      search: "?page=post&s=list&tags=all",
     });
     buildSearchForm("fox");
     mountFeature();
-    const links = document.querySelector(`#${ROOT_ID} .rdw-search-tools-foot-links`);
-    const labels = Array.from(links?.querySelectorAll("button") ?? []).map(
-      (button) => button.textContent,
-    );
-    expect(labels).toEqual(["Reset search", "Save search"]);
+    const foot = document.querySelector(`#${ROOT_ID} .${FOOT_CLASS}`);
+    const buttons = Array.from(foot?.querySelectorAll("button") ?? []);
+    expect(buttons.map((button) => button.textContent)).toEqual([
+      "Reset",
+      "Save as collection",
+    ]);
+    for (const button of buttons) {
+      expect(button.className).toContain("rdw-btn--secondary");
+    }
   });
 
   it("omits the Tags section when there are no chips", () => {
