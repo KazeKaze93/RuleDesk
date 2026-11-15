@@ -1,16 +1,19 @@
 /**
  * Hover video preview for grid `img.preview.webm-thumb` thumbs and for the
- * favorites thumbs marked as video (`src/site/favorites-video.ts`).
+ * favorites and Comments page thumbs marked as video
+ * (`src/site/video-thumbs.ts`).
  * Loads the CDN mp4 via a <video> element only — no post-page fetches.
  */
 
 import { scheduleAfterFirstPaint } from "../boot/ready";
+import { isCommentsPage } from "../site/comments-page";
 import {
-  FAVORITE_IMAGE_SELECTOR,
+  THUMB_IMAGE_SELECTOR,
   VIDEO_THUMB_CLASS,
-} from "../site/favorites-video";
+} from "../site/video-thumbs";
 import {
   SITE_SELECTORS,
+  extractPostIdFromCommentThumb,
   extractPostIdFromThumb,
   extractPostIdFromThumbLink,
 } from "../site/selectors";
@@ -34,10 +37,12 @@ const FEATURE_LABEL = "Video preview on hover";
 export const VIDEO_PREVIEW_SETTING_CAPTION =
   "Each preview loads the video file itself.";
 
-const FEATURE_PAGES = ["list", "favorites"] as const;
+/** "other" is for the Comments page, which is recognised by its markup. */
+const FEATURE_PAGES = ["list", "favorites", "other"] as const;
 const HOVER_DELAY_MS = 200;
 const VIDEO_CLASS = "rdw-video-preview";
 const WEBM_PREVIEW_SELECTOR = "img.preview.webm-thumb";
+const THUMBS_SELECTOR = `${SITE_SELECTORS.thumb}, ${SITE_SELECTORS.commentThumb}`;
 const VIDEO_Z_INDEX = 3;
 const PRELOAD_NONE = "none";
 
@@ -119,11 +124,20 @@ function findThumbLink(thumb: HTMLElement, postId: string): HTMLAnchorElement | 
     return byId;
   }
   const byHref = thumb.querySelector(SITE_SELECTORS.thumbLink);
-  return byHref instanceof HTMLAnchorElement ? byHref : null;
+  if (byHref instanceof HTMLAnchorElement) {
+    return byHref;
+  }
+  // The link around the image, whatever its address looks like.
+  const around = thumb.querySelector(THUMB_IMAGE_SELECTOR)?.parentElement;
+  return around instanceof HTMLAnchorElement ? around : null;
 }
 
 function readPostId(thumb: HTMLElement): string | null {
-  return extractPostIdFromThumb(thumb) ?? extractPostIdFromThumbLink(thumb);
+  return (
+    extractPostIdFromThumb(thumb) ??
+    extractPostIdFromThumbLink(thumb) ??
+    extractPostIdFromCommentThumb(thumb)
+  );
 }
 
 function findWebmThumbImage(thumb: HTMLElement): HTMLImageElement | null {
@@ -134,7 +148,7 @@ function findWebmThumbImage(thumb: HTMLElement): HTMLImageElement | null {
   if (!thumb.classList.contains(VIDEO_THUMB_CLASS)) {
     return null;
   }
-  const favorite = thumb.querySelector(FAVORITE_IMAGE_SELECTOR);
+  const favorite = thumb.querySelector(THUMB_IMAGE_SELECTOR);
   return favorite instanceof HTMLImageElement ? favorite : null;
 }
 
@@ -245,7 +259,7 @@ function bindThumb(thumb: HTMLElement): void {
 }
 
 function bindThumbsInRoot(root: ParentNode): void {
-  const thumbs = root.querySelectorAll(SITE_SELECTORS.thumb);
+  const thumbs = root.querySelectorAll(THUMBS_SELECTOR);
   for (const thumb of thumbs) {
     if (thumb instanceof HTMLElement) {
       bindThumb(thumb);
@@ -279,7 +293,7 @@ export function resetVideoPreviewRuntimeState(): void {
 }
 
 function mountVideoPreview(ctx: FeatureContext): void {
-  if (ctx.pageKind !== "list" && ctx.pageKind !== "favorites") {
+  if (ctx.pageKind === "other" && !isCommentsPage()) {
     return;
   }
   scheduleAfterFirstPaint(() => {

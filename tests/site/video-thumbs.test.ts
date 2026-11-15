@@ -3,9 +3,9 @@ import { afterEach, describe, expect, it } from "vitest";
 import { videoPreviewFeature } from "../../src/features/video-preview";
 import {
   VIDEO_THUMB_CLASS,
-  markFavoriteVideoThumbs,
+  markVideoThumbs,
   titleSaysVideo,
-} from "../../src/site/favorites-video";
+} from "../../src/site/video-thumbs";
 import { extractPostIdFromThumbLink } from "../../src/site/selectors";
 import { buildVideoUrlFromThumbUrl } from "../../src/site/thumb";
 import { SITE_SKIN_CSS } from "../../src/skin/site-skin";
@@ -44,7 +44,7 @@ describe("favorites video marks", () => {
     document.body.append(video, still);
     const before = video.querySelector("a")?.outerHTML;
 
-    expect(markFavoriteVideoThumbs(document)).toBe(1);
+    expect(markVideoThumbs(document, "span.thumb")).toBe(1);
     expect(video.classList.contains(VIDEO_THUMB_CLASS)).toBe(true);
     expect(still.classList.contains(VIDEO_THUMB_CLASS)).toBe(false);
     expect(video.querySelector("a")?.outerHTML).toBe(before);
@@ -67,6 +67,6 @@ describe("favorites video marks", () => {
   });
 
   it("gives a marked thumb the outline of a video", () => {
-    expect(SITE_SKIN_CSS).toContain(`span.thumb.${VIDEO_THUMB_CLASS} > a > img,`);
+    expect(SITE_SKIN_CSS).toContain(`.${VIDEO_THUMB_CLASS} > a > img,`);
   });
 });

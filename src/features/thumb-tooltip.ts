@@ -15,17 +15,19 @@ import { featureBodyClass, type Feature, type FeatureContext } from "./types";
 
 const FEATURE_ID = "thumb-tooltip";
 const FEATURE_LABEL = "Hide tag tooltip on thumbnails";
-const FEATURE_PAGES = ["list", "favorites"] as const;
+/** "other" is for the Comments page; elsewhere the rules match nothing. */
+const FEATURE_PAGES = ["list", "favorites", "other"] as const;
 
 const BODY_CLASS = featureBodyClass(FEATURE_ID);
 /** Added when the site lays the thumb link out inline (see mount). */
 export const THUMB_TOOLTIP_INLINE_CLASS = `${BODY_CLASS}-inline`;
 
 const DISPLAY_INLINE = "inline";
-const THUMB_LINK_SELECTOR = `${SITE_SELECTORS.thumb} > a:not([onclick])`;
+const THUMB_LINK_SELECTOR = `:is(${SITE_SELECTORS.thumb}, ${SITE_SELECTORS.commentThumb}) > a:not([onclick])`;
 
 const FEATURE_CSS = `
-body.${BODY_CLASS} ${SITE_SELECTORS.thumb} > a > img {
+body.${BODY_CLASS} ${SITE_SELECTORS.thumb} > a > img,
+body.${BODY_CLASS} ${SITE_SELECTORS.commentThumb} > a > img {
   pointer-events: none;
 }
 body.${BODY_CLASS}.${THUMB_TOOLTIP_INLINE_CLASS} ${THUMB_LINK_SELECTOR} {

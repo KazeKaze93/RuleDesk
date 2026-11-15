@@ -2,6 +2,19 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.27.0
+
+The site's Comments page:
+
+- A long tag list of a post is folded to three lines, with a "Show all N tags" button under it
+- Video posts get the outline, and "Video preview on hover" works on them
+- "Hide tag tooltip on thumbnails" works there too
+
+Collections and Following:
+
+- The row with the filter and the buttons stays at the top of the window while the list scrolls
+- The filter fields are short instead of stretching across the page; the "Artist tags" field on Following starts short and grows as you type
+
 ## 0.26.0
 
 Second design pass over the site's own pages:

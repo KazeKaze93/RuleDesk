@@ -120,6 +120,10 @@ const MS_PER_SECOND = 1000;
 const COVER_AXIS_COUNT = 2;
 const ICON_PX = 14;
 const GRID_MIN_TRACK_PX = 170;
+const ADD_FIELD_WIDTH_PX = 280;
+const FILTER_FIELD_WIDTH_PX = 220;
+/** Above the cards and their corner buttons. */
+const TOOLBAR_Z_INDEX = 5;
 
 const SHOW_OPTIONS: readonly SegmentedOption[] = [
   { value: SHOW_ALL, label: "All" },
@@ -145,12 +149,41 @@ export const FOLLOWING_PAGE_CSS = `
   gap: 8px;
   align-items: flex-end;
 }
+/*
+ * The tag field starts short and grows with what is typed, up to the row.
+ * Where the browser has no field-sizing, it keeps the starting width.
+ */
 .${ADD_FORM_CLASS} .rdw-field,
-.${ADD_FORM_CLASS} .rdw-ac,
+.${ADD_FORM_CLASS} .rdw-ac {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+}
+.${ADD_FORM_CLASS} .rdw-ac__input {
+  field-sizing: content;
+  width: ${String(ADD_FIELD_WIDTH_PX)}px;
+  min-width: ${String(ADD_FIELD_WIDTH_PX)}px;
+  max-width: 100%;
+}
+@supports (field-sizing: content) {
+  .${ADD_FORM_CLASS} .rdw-ac__input {
+    width: auto;
+  }
+}
 .${TOOLBAR_CLASS} .${FILTER_CLASS} {
-  flex: 1 1 12rem;
+  flex: 0 1 ${String(FILTER_FIELD_WIDTH_PX)}px;
   min-width: 0;
   margin: 0;
+}
+/* Stays at the top of the window while the list scrolls under it. */
+.${TOOLBAR_CLASS} {
+  position: sticky;
+  top: 0;
+  z-index: ${String(TOOLBAR_Z_INDEX)};
+  padding: 8px 0;
+  margin: -8px 0;
+  background: var(--rdw-bg);
 }
 .${META_CLASS},
 .${CAPTION_CLASS} {

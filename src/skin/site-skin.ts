@@ -5,7 +5,7 @@
  */
 
 import { THUMB_ANCHOR_NAME } from "../features/types";
-import { VIDEO_THUMB_CLASS } from "../site/favorites-video";
+import { VIDEO_THUMB_CLASS } from "../site/video-thumbs";
 import {
   APPEARANCE_THEME_DARK,
   APPEARANCE_THEME_SITE,
@@ -687,7 +687,7 @@ ${ROOT} #${FAV_BULK_ROOT_ID} .${FAV_BULK_STATUS_CLASS} {
   color: ${v.muted};
 }
 
-${ROOT} span.thumb.${VIDEO_THUMB_CLASS} > a > img,
+${ROOT} .${VIDEO_THUMB_CLASS} > a > img,
 ${ROOT} .webm-thumb {
   border: 1px solid ${v.accent};
   box-sizing: border-box;

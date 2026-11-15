@@ -108,7 +108,9 @@ const GRID_GAP_PX = 12;
 const PAGE_STACK_GAP_PX = 12;
 const HEADER_GAP_PX = 12;
 const TOOLBAR_GAP_PX = 8;
-const FILTER_FIELD_MIN_PX = 160;
+const FILTER_FIELD_WIDTH_PX = 220;
+/** Above the cards and their corner marks. */
+const TOOLBAR_Z_INDEX = 5;
 const CARD_PADDING_PX = 8;
 const CARD_GAP_PX = 8;
 const META_GAP_PX = 8;
@@ -159,9 +161,18 @@ export const COLLECTIONS_PAGE_CSS = `
   gap: ${String(TOOLBAR_GAP_PX)}px;
 }
 .${TOOLBAR_CLASS} .${FILTER_FIELD_CLASS} {
-  flex: 1 1 ${String(FILTER_FIELD_MIN_PX)}px;
+  flex: 0 1 ${String(FILTER_FIELD_WIDTH_PX)}px;
   min-width: 0;
   margin: 0;
+}
+/* Stays at the top of the window while the list scrolls under it. */
+.${HEADER_CLASS} {
+  position: sticky;
+  top: 0;
+  z-index: ${String(TOOLBAR_Z_INDEX)};
+  padding: 8px 0;
+  margin: -8px 0;
+  background: var(--rdw-bg);
 }
 .${GRID_CLASS} {
   display: grid;

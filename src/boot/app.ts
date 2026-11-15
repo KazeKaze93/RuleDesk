@@ -2,8 +2,9 @@ import { runFeaturesYielding, yieldToMain } from "../features/runtime";
 import { startRdwPages } from "../pages/router";
 import { getSiteSkinCss } from "../skin/site-skin";
 import { applyAppearanceTheme } from "../skin/theme";
+import { mountCommentsPage } from "../site/comments-page";
 import { syncFavoritesPage } from "../site/favorites-page";
-import { mountFavoriteVideoMarks } from "../site/favorites-video";
+import { mountFavoriteVideoMarks } from "../site/video-thumbs";
 import { maybeResumeFavoritesSync } from "../site/favorites-sync-runner";
 import { detectPageKind } from "../site/pages";
 import { loadBackground } from "../storage/background-store";
@@ -49,6 +50,9 @@ export async function startApp(): Promise<void> {
   } else if (pageKind === "favorites") {
     syncFavoritesPage();
     mountFavoriteVideoMarks();
+    await yieldToMain();
+  } else {
+    mountCommentsPage();
     await yieldToMain();
   }
 

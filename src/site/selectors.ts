@@ -13,6 +13,12 @@ export const SITE_SELECTORS = {
   /** Number of posts with the tag, inside its sidebar row. */
   tagCount: "span.tag-count",
   imageList: "div.image-list",
+  /** Comments page: the list of posts with their comments. */
+  commentList: "div#comments div#comment-list",
+  /** Comments page: the preview cell of a post, `div#p{ID}.post > div.col1.thumb > a > img.preview`. */
+  commentThumb: "div#comments div#comment-list > div.post > div.col1.thumb",
+  /** Comments page: the whole tag list of a post, one `span` per tag. */
+  commentTags: "div#comments div#comment-list > div.post > div.col2 > div.header > div.tags",
   postListContent: "#post-list div.content",
   contentRoot: "#content",
   artistFollowButton: `button.${CSS_CLASS.artistFollow}`,
@@ -57,6 +63,23 @@ export function extractPostIdFromThumbLink(thumb: Element): string | null {
     return null;
   }
   const match = THUMB_LINK_ID_PATTERN.exec(link.id);
+  if (match === null) {
+    return null;
+  }
+  const postId = match[1];
+  return postId === undefined ? null : postId;
+}
+
+/**
+ * Post id of a Comments page preview: the cell has no id, the post around it
+ * is `div#p{ID}.post`.
+ */
+export function extractPostIdFromCommentThumb(thumb: Element): string | null {
+  const post = thumb.parentElement;
+  if (post === null) {
+    return null;
+  }
+  const match = THUMB_LINK_ID_PATTERN.exec(post.id);
   if (match === null) {
     return null;
   }
