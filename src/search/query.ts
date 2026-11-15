@@ -96,20 +96,6 @@ export function buildSearchUrl(tags: TagEntry[]): string {
   return `${SITE_ORIGIN}${SEARCH_PATH}?${query}&${SEARCH_PARAM_TAGS}=${encoded}`;
 }
 
-export function readTagsFromLocation(search: string): TagEntry[] | null {
-  const params = new URLSearchParams(search);
-  const page = params.get(SEARCH_PARAM_PAGE);
-  const section = params.get(SEARCH_PARAM_SECTION);
-  const tagsRaw = params.get(SEARCH_PARAM_TAGS);
-  if (page !== SEARCH_PAGE || section !== SEARCH_SECTION) {
-    return null;
-  }
-  if (tagsRaw === null || tagsRaw.trim().length === 0) {
-    return null;
-  }
-  return parseTags(tagsRaw);
-}
-
 function formatGroupQuery(tags: string[]): string {
   if (tags.length === 1) {
     const only = tags[0];

@@ -1108,17 +1108,6 @@ export function addArtist(tag: string): ArtistEntry {
   return entry;
 }
 
-/** Puts back an unfollowed artist with everything known about them (Undo). */
-export function restoreArtist(entry: ArtistEntry): boolean {
-  const data = reloadFromStorage();
-  if (data.artists.some((item) => item.tag === entry.tag)) {
-    return false;
-  }
-  data.artists.push(ArtistEntrySchema.parse(entry));
-  save(data);
-  return true;
-}
-
 export type AddArtistsResult = {
   readonly added: number;
   readonly duplicates: number;
@@ -1165,26 +1154,6 @@ export function removeArtists(tags: readonly string[]): number {
     save(data);
   }
   return removed;
-}
-
-/** Sets or clears (empty text) the user's note on a followed artist. */
-export function setArtistNote(tag: string, note: string): boolean {
-  const data = reloadFromStorage();
-  const target = data.artists.find((entry) => entry.tag === tag);
-  if (target === undefined) {
-    return false;
-  }
-  const trimmed = note.trim();
-  if ((target.note ?? "") === trimmed) {
-    return false;
-  }
-  if (trimmed.length === 0) {
-    delete target.note;
-  } else {
-    target.note = trimmed;
-  }
-  save(data);
-  return true;
 }
 
 export type ArtistSnapshotInput = {

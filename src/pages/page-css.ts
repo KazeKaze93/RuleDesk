@@ -149,57 +149,6 @@ export const PAGE_CONTENT_CSS = `
 .${PANEL_UI_CLASS.settingsRow} .rdw-num {
   width: 100%;
 }
-.${PANEL_UI_CLASS.artistMeta} {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.${PANEL_UI_CLASS.artistFilter} {
-  flex-shrink: 0;
-}
-.${PANEL_UI_CLASS.artistList} {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.${PANEL_UI_CLASS.artistRow} {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 4px 6px;
-  border-radius: var(--rdw-radius-s);
-}
-.${PANEL_UI_CLASS.artistRow}:hover {
-  background: var(--rdw-surface-2);
-}
-.${PANEL_UI_CLASS.artistLink} {
-  color: var(--rdw-accent);
-  text-decoration: none;
-  font-weight: 600;
-  word-break: break-word;
-  flex: 1 1 auto;
-  min-width: 0;
-}
-.${PANEL_UI_CLASS.artistLink}:hover {
-  text-decoration: underline;
-}
-.${PANEL_UI_CLASS.artistLink}:focus-visible {
-  outline: 2px solid var(--rdw-accent);
-  outline-offset: 2px;
-}
-.${PANEL_UI_CLASS.artistUndo} {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  width: 100%;
-  font-size: 12px;
-  color: var(--rdw-muted);
-}
 .${CSS_CLASS.list} {
   list-style: none;
   margin: 0;

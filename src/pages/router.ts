@@ -24,7 +24,7 @@ const HISTORY_STATE_TITLE = "";
 let routerBound = false;
 let syncGeneration = 0;
 
-export { isRdwRoute, parseRdwHash } from "./constants";
+export { parseRdwHash } from "./constants";
 
 export function ensureOwnPageStyle(): void {
   const style = ensureStyleElement(RDW_OWN_PAGE_STYLE_ID);

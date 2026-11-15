@@ -17,8 +17,6 @@ import {
   applyTokenProperties,
   buildTokensCss,
   clearCustomThemeProperties,
-  DARK_PALETTE,
-  LIGHT_PALETTE,
   type TokenPalette,
 } from "../ui/tokens";
 
@@ -32,14 +30,6 @@ export function themeEnablesSkin(theme: AppearanceTheme): boolean {
     theme === APPEARANCE_THEME_DARK ||
     theme === APPEARANCE_THEME_CUSTOM
   );
-}
-
-/**
- * Canonical palette for an Appearance (site themes → SITE_* colors).
- * Delegates to {@link resolveAppearancePalette} from skin/theme.
- */
-export function resolveTokenPalette(appearance: Appearance): TokenPalette {
-  return resolveAppearancePalette(appearance);
 }
 
 /**
@@ -160,16 +150,6 @@ export function applyAppearanceToDocument(
       backgroundImage: options.backgroundDataUrl,
     });
   }
-}
-
-export function defaultPaletteForTheme(theme: AppearanceTheme): TokenPalette {
-  if (theme === APPEARANCE_THEME_DARK || theme === APPEARANCE_THEME_SITE_DARK) {
-    return DARK_PALETTE;
-  }
-  if (theme === APPEARANCE_THEME_SITE) {
-    return resolveAppearancePalette({ theme: APPEARANCE_THEME_SITE });
-  }
-  return LIGHT_PALETTE;
 }
 
 export {

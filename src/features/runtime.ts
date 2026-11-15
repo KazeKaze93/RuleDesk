@@ -181,11 +181,6 @@ export function applyFeatureChrome(
   }
 }
 
-/** Mark a feature id as already handled (tests / reserve-only chrome). */
-export function markFeatureMounted(id: string): void {
-  mountedIds.add(id);
-}
-
 /**
  * Live-apply a cssOnly feature enable/disable: body classes + CSS injection.
  * Mounts once if not yet mounted when enabling. Does not remount on re-enable.

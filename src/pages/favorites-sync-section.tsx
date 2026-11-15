@@ -1,5 +1,4 @@
 import type { JSX } from "preact";
-import { render as preactRender } from "preact";
 import { useEffect, useState } from "preact/hooks";
 
 import { log } from "../log";
@@ -331,10 +330,3 @@ export function FavoritesSyncSection(
   );
 }
 
-export function createFavoritesSyncSection(
-  options: FavoritesSyncSectionOptions = {},
-): HTMLElement {
-  const root = document.createElement("div");
-  preactRender(<FavoritesSyncSection {...options} />, root);
-  return root;
-}

@@ -11,7 +11,6 @@ import {
   RDW_PAGE_ROOT_ID,
   RDW_ROUTE_COLLECTIONS,
   RDW_ROUTE_FOLLOWING,
-  RDW_ROUTE_SETTINGS,
   type RdwPage,
 } from "./constants";
 import { PAGE_CONTENT_CSS } from "./page-css";

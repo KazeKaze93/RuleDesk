@@ -81,8 +81,6 @@ export const ArtistEntrySchema = z.object({
   lastPostId: z.optional(z.int()),
   /** When `lastPostId` took its current value, ms since epoch. */
   lastPostSince: z.optional(z.number()),
-  /** The user's own note. */
-  note: z.optional(z.string()),
 });
 
 /** Legacy `fav` remains optional so old storage/export blobs still parse. */

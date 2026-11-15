@@ -14,7 +14,6 @@ import {
 import {
   clearFavsCache,
   extractFavIdsFromMarks,
-  loadFavSet,
   migrateMarksFavToFavs,
   parseFavsStrict,
 } from "./favs";
@@ -380,7 +379,3 @@ export async function importBackupJson(
   }
 }
 
-/** Read current fav count for UI summaries (uses live set). */
-export function currentFavCount(): number {
-  return loadFavSet().size;
-}

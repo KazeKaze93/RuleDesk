@@ -72,8 +72,6 @@ const NAME_CLASS = "rdw-artist-name";
 const NEW_BADGE_CLASS = "rdw-artist-new";
 const CAPTION_CLASS = "rdw-artist-caption";
 const PROGRESS_CLASS = "rdw-following-progress";
-const DIALOG_FORM_CLASS = "rdw-dialog__fields";
-const DIALOG_ACTIONS_CLASS = "rdw-dialog__actions";
 
 const ADD_INPUT_ID = "rdw-following-add-tag";
 const OPEN_POSTS_LABEL = "Open Posts";

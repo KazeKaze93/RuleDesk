@@ -1,0 +1,89 @@
+# Architecture
+
+RuleDesk Web is one userscript file, `dist/ruledesk-web.user.js`, built from TypeScript with Vite and `vite-plugin-monkey`. Its own interface is Preact (`preact/compat`); data is validated with `zod/mini`. It runs at `document-start` on `https://rule34.xxx/*` with two grants, `GM_getValue` and `GM_setValue`.
+
+The approach: the site's pages and markup stay. The script recolours the whole site with its own skin, adds controls to the site's pages, and adds pages of its own that open by URL hash without a request to the site.
+
+## Start-up
+
+`src/main.ts` runs three steps, ordered so the first paint is not delayed.
+
+1. `boot/early.ts`, before the DOM exists: one cheap read of the settings, then the theme CSS, so the page never shows the site's original look.
+2. `boot/layout.ts`, when the DOM is ready and before paint: the features that change layout (grid size, search panel space).
+3. `boot/app.ts`, after the first paint, loaded by dynamic import: everything else. The code of the script's own pages does not run until such a page is opened.
+
+## Source layout
+
+| Folder | Holds |
+|---|---|
+| `src/boot` | Start-up steps above |
+| `src/config` | Constants and interface texts |
+| `src/features` | Page tweaks: one module per switch in settings (see below) |
+| `src/features/post-panel` | The post page side panel |
+| `src/pages` | The script's own pages: Collections, collection detail, Following, settings and its sections; the hash router and the page host |
+| `src/search` | Building and recognising site search queries (feed groups, collection id lists, `sort:random`) |
+| `src/site` | Everything that knows the site: selectors, page readers, and all network requests |
+| `src/skin` | The CSS that recolours the site |
+| `src/storage` | Schema, the store, backup, favorites list, `localStorage` mirrors |
+| `src/ui` | Shared interface parts; `src/ui/kit` is the component kit |
+| `tests` | Vitest with jsdom, mirroring `src` |
+
+## Features
+
+A feature is an object of type `Feature` (`src/features/types.ts`): an id, a label for settings, the page kinds it runs on, a default state, a CSS text and a `mount` function. `src/features/registry.ts` lists them in mount order; `src/features/runtime.ts` adds the body class `rdw-f-<id>`, injects the CSS once and calls `mount` once per page load.
+
+- A feature's CSS is always scoped by its body class, so turning the feature off removes its effect
+- `cssOnly: true` means the settings switch applies at once; any other feature reloads the page
+- A feature may keep a small state of its own through `ctx.getState` / `ctx.setState` (stored under `settings.featureState[id]`)
+- Features talk through one event: `notifyThumbsAdded` / `onThumbsAdded` in `runtime.ts`, fired when thumbnails are appended to the grid (infinite scroll, merged feed)
+
+## Own pages
+
+`#rdw/collections`, `#rdw/collections/<id>`, `#rdw/following`, `#rdw/settings`. `src/pages/router.ts` parses the hash, `src/pages/host.tsx` mounts the page in a shadow root (`#rdw-page-root`) after the site header and hides the rest of the site until the hash is left. Back returns to the site page.
+
+Two more hash marks sit on site URLs and are not pages:
+
+- `#rdw-c=<collectionId>` on a post page: the post was opened from a custom collection; the panel shows the collection's previous / next strip
+- `#rdw-dc=<collectionId>` on a results page: the search was opened from a dynamic collection's card; only then its bar (Shuffle, Edit query, Rename, Delete) is drawn
+
+## Light DOM and shadow DOM
+
+Own pages render inside the shadow root, where the site's CSS does not reach. Controls added to site pages (search panel, collection bar, post panel, menus) render in the light DOM, where it does. The skin therefore excludes every element whose class contains `rdw-` from its rules for site buttons and inputs, and kit components carry explicit rules for the states the site styles (for example a focused text input).
+
+Colours come only from the tokens `--rdw-*` (`src/ui/tokens.ts`); no component hard-codes a colour.
+
+## Storage
+
+| Where | Key | What |
+|---|---|---|
+| Script manager | `ruledesk-web.storage` | Collections, followed artists, seen marks, settings, the feed's seen mark |
+| Script manager | `ruledesk-web.favs` | Local favorite ids |
+| Script manager | `ruledesk-web.storage.backup` | Snapshot taken before an import |
+| IndexedDB | (background store) | The custom theme's background image |
+| `localStorage` | mirrors | Followed artists; covers and counts of dynamic collections |
+| Site cookies | `tag_blacklist`, `theme` | The site's own blacklist and theme |
+
+`src/storage/schema.ts` is the single definition of the stored shape; `src/storage/store.ts` is the only module that writes it. The mirrors exist because a page restored by the Back button can get stale data from the script manager; pages that list data re-read it on `pageshow`.
+
+The backup file format is described in [data-format.md](data-format.md).
+
+## Collections
+
+- **Custom**: `kind: "posts"`, a list of post ids with their thumbnail URLs, shown on its own page. It opens on the site as `id:` searches split into parts
+- **Dynamic**: `kind: "search"` (or no kind), a saved query. Its cover and post count are taken from the first results page whenever that search is shown; no request is made for them
+
+Names are unique across both kinds, case-insensitively. A query that narrows nothing (empty, or the site's `all`) cannot be saved.
+
+## Followed artists and the feed
+
+The feed is a normal site search of the form `( artist1 ~ artist2 … )`. Artists are split into groups (`updatesGroupSize`, 400 by default). With one group the feed is that one search. With several, `src/features/feed-merge.ts` reads the other groups' pages and merges all groups into one grid, newest first: a post is shown only when every group that still has unread pages has a post buffered, so nothing newer can appear later.
+
+What Following shows about an artist (cover, exact count, newest post) is collected by `src/features/artist-snapshots.ts` from pages the user opens anyway; only the Refresh button makes requests.
+
+## Code rules
+
+- TypeScript `strict`, no `any`, no `as` except `as const`
+- No `console.*`; use `src/log.ts`
+- No magic numbers or strings: name them as constants
+- The script's own interface is built only from `src/ui/kit`
+- Read the code and reproduce a problem before fixing it

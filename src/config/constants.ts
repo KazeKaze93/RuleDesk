@@ -69,9 +69,6 @@ export const UPDATES_OR_CLOSE = ")";
 export const UPDATES_OR_JOIN = "~";
 export const UPDATES_ID_PREFIX = "id:>";
 
-export const EXPORT_FILENAME = "ruledesk-web-collections.json";
-export const EXPORT_MIME = "application/json";
-
 export const IMPORT_SCHEMA_ERROR_PREFIX =
   "File is not a RuleDesk Web export";
 
@@ -88,14 +85,8 @@ export const COLLECTION_KIND_POSTS = "posts" as const;
 
 export const PLAYLIST_ID_PREFIX = "id:";
 
-export const PANEL_ROOT_ID = "ruledesk-web-root";
 export const DOCUMENT_STYLE_ID = "ruledesk-web-document-style";
 export const UPDATES_BAR_ID = "ruledesk-web-updates-bar";
-
-export const USERSCRIPT_VERSION = "0.11.0";
-export const USERSCRIPT_UPDATE_URL =
-  "https://raw.githubusercontent.com/KazeKaze93/ruledesk-web/main/dist/ruledesk-web.user.js";
-export const USERSCRIPT_DOWNLOAD_URL = USERSCRIPT_UPDATE_URL;
 
 export const SITE_THEME_COOKIE_NAME = "theme";
 export const SITE_THEME_COOKIE_VALUE_DARK = "dark";

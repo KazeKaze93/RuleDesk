@@ -1,341 +1,96 @@
 # RuleDesk Web
 
-Userscript for [Tampermonkey](https://www.tampermonkey.net/) / [Violentmonkey](https://violentmonkey.github.io/) on `https://rule34.xxx/*`.
+A userscript for `rule34.xxx` that adds a feed of followed artists, collections, a reworked search panel and post page, themes, and a set of optional page tweaks. It runs in the browser on the site's own pages. It does not use the site API and keeps all its data on your computer.
 
-## Install / update
+- [What it adds](#what-it-adds)
+- [Install](#install)
+- [Settings](#settings)
+- [Your data](#your-data)
+- [Limits](#limits)
+- [Changelog](CHANGELOG.md)
+- [Developer documentation](docs/)
 
-Install or update from the built file on GitHub:
+## What it adds
 
-https://raw.githubusercontent.com/KazeKaze93/ruledesk-web/main/dist/ruledesk-web.user.js
+New items appear in the site's header menu: **Feed**, **Collections**, **Following**, **Favorites** and **RuleDesk** (settings).
 
-Managers that honor `@updateURL` / `@downloadURL` can auto-check that same raw URL.
+### Feed
 
-Local build: `npm install` then `npm run build` → `dist/ruledesk-web.user.js`.
+Posts of the artists you follow, newest first. New posts carry a NEW mark; "Mark all seen" clears them. When you follow more artists than one site search can hold, the feed is assembled from several searches automatically.
 
-### Tampermonkey (recommended)
+### Following
 
-**Tampermonkey → Dashboard → Settings → Security → Content Script API → UserScripts API Dynamic.**
+Every followed artist as a card with a cover, post count and a "new" mark.
 
-Measured on Tampermonkey 5.5.1: with Dynamic, native page flash on load is typically 0/5 vs ~5/5 with UserScripts API; pages also open faster. Prefer Dynamic for RuleDesk Web.
+- Follow an artist with the Follow button next to the name in the tag list, or type one or several tags into the Add field
+- Filter by name, show only artists with new posts, sort by name, post count or follow date
+- Select several cards to unfollow them at once
+- Refresh re-reads each artist's first page for a fresh cover and count
 
-### 0.22.0 notes
+### Collections
 
-- **Hide tag tooltip on thumbnails** (RuleDesk → Page, on by default): the browser tooltip with the full tag list no longer shows over a thumbnail. Turn the switch off to get it back
-- **Settings blocks fold.** A click on a block title (Appearance, Page, Blacklist, Favorites, Data) folds the block; the choice is remembered
+- **Custom collection**: posts you pick by hand with the "+" button on a thumbnail or on the post page
+- **Dynamic collection**: a saved search. Type tags in the search panel and press "Save as collection"
 
-### 0.21.2 notes
+Both kinds show a cover and a post count. A collection can be shuffled, renamed and deleted; Select on the Collections page deletes several at once. A post opened from a custom collection gets previous / next arrows that walk the collection.
 
-- **RuleDesk → Data:** the separate "Export artists" / "Import artists" block is removed. Followed artists travel in the one Export / Import file, with their covers, post counts and follow dates
-- Importing in Merge mode no longer wipes an artist's known cover and count when the file has only the tag
+### Search panel
 
-### 0.21.1 notes
+Under the site's search field: tags as chips (click to exclude, cross to remove), media type, sort order, minimum score, source (All, Feed, Favorites), AI posts on or off, Reset, and "Save as collection".
 
-- **Following:** the cross on a card asks "Unfollow …?" and removes the artist at once; there is no Undo row
-- **Add** takes several artist tags separated by spaces; the suggestion list works on the tag being typed
-- Notes on artist cards are removed: no pencil button, no note line
-- The "Import / export" button is gone from Following. **RuleDesk → Data** has "Export artists" and "Import artists": a text file with one tag per line
+### Post page
 
-### 0.21.0 notes
+Favorite, Collections, Vote, "I came" and Original as buttons; post details and comments in tabs; the site's own actions (Edit, Report, Add note) in one list. Video keeps its volume and speed and can fit the height, the width, or stay at original size.
 
-- **Following as cards.** Each followed artist is a card with a 2x2 cover, post count, a "new" mark, a "no new posts since" line and your own note
-- Cover and exact post count are remembered when you open the artist's search; the newest post is also picked up from any results page that shows the artist (feed included). No request is made for this
-- **Show All / New**, filter by name or note, sort by name, post count or follow date
-- **Select** turns cards into checkboxes for unfollowing several artists after one confirmation
-- **Refresh** reads each visible artist's first page again, one request every 1.5 seconds, after a confirmation that states the number of requests. It can be cancelled and stops at the first error
-- **Import / export**: the followed tags as one line of text to copy, or paste tags to follow them
-- Undo after a single unfollow restores the artist with cover, count and note
+### Grid
 
-### 0.20.0 notes
+Favorite star and "+" on thumbnails, three grid sizes, infinite scroll, dimming of posts you already opened, hiding of blacklisted posts, optional video preview on hover, no tag tooltip over thumbnails.
 
-- **Feed for more artists than one search holds.** Followed artists are split into groups (400 per search by default). The Feed page is the first group's search; the other groups are read one request at a time with a pause and merged into the same grid, newest post first. Further pages load as you scroll. The site pager and "Only new" are hidden on a merged feed; "Mark all seen" and NEW marks work as before. With one group nothing changes and no extra request is made
+### Favorites
 
-### 0.19.1 notes
+The local favorite list is kept in sync with the site by "Sync favorites" in settings. The Favorites page gets bulk removal.
 
-- A collection saved from the search panel has its cover and post count at once: they are taken from the results page when it already shows that search. When the tags were typed but not searched yet, saving opens that search (as the Search button would), and the cover is taken there
+### Themes
 
-### 0.19.0 notes
+Light, Dark, the site's own two themes, and Custom (light or dark base with your background image).
 
-- **Dynamic collection header** (name, Shuffle, Edit query, Rename, Delete) shows only when the collection is opened from Collections. An ordinary search that equals a saved one stays a plain search. Result pages, Shuffle and Edit query keep the header
-- **Save as collection** no longer opens anything or draws a header: the button is replaced by a "Saved to Collections" note
-- The Save button of that dialog is no longer stretched by the site's Search button style
-- **Collections:** a "Select" button turns the cards into checkboxes. "Select all" marks every card on screen, "Delete" removes the marked collections after one confirmation, "Cancel" leaves selection mode
+## Install
 
-### 0.18.2 notes
+1. Install [Tampermonkey](https://www.tampermonkey.net/) (recommended) or [Violentmonkey](https://violentmonkey.github.io/).
+2. Open this link and confirm the installation:
+   https://raw.githubusercontent.com/KazeKaze93/ruledesk-web/main/dist/ruledesk-web.user.js
+3. In Tampermonkey open Dashboard → Settings → Security → Content Script API and choose **UserScripts API Dynamic**. Without it the site's original look flashes on every page load and pages open slower.
 
-- A dynamic collection saved from a one-tag search shows the exact post count, taken from the tag's row in the sidebar. A search of several tags still shows a lower bound with "+"
+Updates arrive through the script manager from the same link.
 
-### 0.18.1 notes
+## Settings
 
-- **Search panel footer:** the hint text is gone; "Reset" and "Save as collection" are regular buttons
-- **Save as collection** saves the search in the tags field (what the panel shows as chips), not the page address. Its dialog shows the name and the query that will be stored. When the page shows another search, the saved one is opened
-- The site's `all` search is not a query: it cannot be saved, and no collection bar shows on the plain post list. A collection already saved that way says "no query" on its card; opening it from the card shows its bar so the query can be edited or the collection deleted
-- No console warning about a missing video player on image posts
+Header menu → **RuleDesk**. Every block folds with a click on its title.
 
-### 0.18.0 notes
-
-- **Save search:** a quiet "Save search" link under "Reset search" in the search panel, shown only when the page's search has tags and is not saved yet. It asks for a name, stores a dynamic collection, and shows its bar above the results without reloading
-- **Collapse tags:** flipping the setting off or on forgets which groups were collapsed, so the defaults (General and Meta collapsed) apply again
-- The "I came counter" warning no longer appears in the console
-
-### 0.17.2 notes
-
-- **Add to collection:** Create refuses any name that already exists, custom or dynamic (it used to add the post to the custom collection of that name). To add a post to an existing collection, tick its row
-
-### 0.17.1 notes
-
-- **Add to collection:** a new name that a dynamic collection already has is refused with a message, the same rule as on the Collections page
-
-### 0.17.0 notes
-
-- **Add to collection:** one compact list in both places, the Collections button on the post page and the "+" on a grid thumb: a checkbox row per custom collection with its post count, and a "New collection name + Create" row at the bottom. The grid menu now follows the theme and stays open after Create
-- A new name that matches an existing custom collection adds the post to it instead of making a duplicate. The name filter appears once there are more than 8 collections
-
-### 0.16.7 notes
-
-- **Dialogs on site pages:** a focused text field keeps the theme colours (the site painted it light yellow, hiding the text on dark themes)
-- **Dynamic cards:** the caption shows the post count once the results page has been opened: exact for a single page, "N+" otherwise (read from the pager, no extra requests)
-
-### 0.16.6 notes
-
-- **Dynamic bar:** drawn like the custom collection header: no boxed panel, larger name, plain buttons, red Delete
-- **Dynamic cards:** the cover shows up right after coming back from the results page (no refresh); the query tooltip is gone
-
-### 0.16.5 notes
-
-- **Collection bar:** the bar above search results (Custom parts and Dynamic controls) follows the theme colours instead of staying light
-- **Dynamic cards:** a 2×2 cover like Custom cards, no tag chips (the query is the card tooltip). The cover is the first four thumbs of the search's first results page, remembered when you open it; no extra requests. Empty until the first visit, reset when the query is edited
-
-### 0.16.4 notes
-
-- **Dynamic query fields:** the Query field in New collection and in Edit query autocompletes the tag being typed (same site autocomplete as the search box: after 2 characters, debounced, one request at a time). `( ~ )` and filters like `sort:random` are left alone
-
-### 0.16.3 notes
-
-- **Dynamic bar:** Rename asks for the name only, Edit query for the query only
-- **Collections page:** a cover thumb that fails to load shows the empty cell instead of a broken image
-
-### 0.16.2 notes
-
-- **Collection queue:** stepping between posts of a collection replaces the history entry, so browser Back returns to the collection page instead of the previous post
-
-### 0.16.1 notes
-
-- **Collection queue:** on a post opened from a collection, the site's own "< previous / next >" links step through the collection (shuffled order included) instead of the last search. At either end they do nothing
-- **Feed bar:** the "N new" bar follows the theme colours instead of staying white
-
-### 0.16.0 notes
-
-- **Collections page:** card grid with All / Custom / Dynamic switch, name filter and **New**. Custom cards show a 2×2 cover and post count; Dynamic cards show the query as chips. The whole card is the link
-- **Custom collection page** (`#rdw/collections/<id>`): Shuffle, Original order, Rename, Delete, and bulk remove with Select. Removal is local and shows "Removed N · Undo" instead of a dialog
-- **Collection queue:** a post opened from a collection (`#rdw-c=<id>`) shows "name · k / N ‹ ›" in the post panel and follows the current order, shuffled or not
-- **Dynamic collections:** the saved search opens the site results with a bar: Shuffle (`sort:random`), Original order, Edit query, Rename, Delete. An empty query is rejected
-- **Thumbs:** the thumb URL is stored when a post is added (from the grid, or derived from the media URL on the post page). No thumb: a tile with the post id
-
-### 0.15.1 notes
-
-- **Grid:** Default / Compact / Large only (saved Masonry becomes Default). Thumb gap is 4px on both axes; cell sizes stay 150 / site default / 250
-- **Post panel:** Info / Comments always opens on Info (the choice is not saved). Collections list is drawn outside the scrolling column
-- **Site theme:** document-start writes the theme cookie only; the desktop stylesheet swaps when its `<link>` appears (no missing-link warning before the document is parsed)
-- **Tag groups:** collapsed rows hide again under the site skin
-
-### 0.15.0 notes
-
-- **Post panel tabs:** Info / Comments tabs in the post panel (native `#post-comments` in Comments; reply form stays on the page)
-- **Video size:** Fit height (may upscale; fills under the header, not wider than the media column), Fit width, Original (pixel-perfect); default Fit height. Persist volume/mute/rate (no mouse-wheel volume)
-- **Video preview on hover:** optional grid webm preview (default off; 200 ms hover delay; each preview loads the video file itself)
-- **Skin:** stylesheet URL slash-collapse; thinner scrollbars; post panel tab styles
-
-### 0.14.0 notes
-
-- **Post comments column:** native `#post-comments` moves into the post panel (reply form stays on the page)
-- **Video player tweaks:** persist volume/mute/rate; **Video size** Fit height / Fit width / Original (default Fit height)
-- **Video preview on hover:** optional grid webm preview (default off; each preview loads the video file itself)
-- **Bulk favorites:** confirm remove uses kit Dialog; select bar above the grid
-- **Infinite scroll:** prefetch margin ~2 viewport heights ahead of the sentinel
-
-### 0.13.0 notes
-
-- **AI filter:** search-tools control to exclude AI-tagged posts
-- **Post panel:** redesigned post-page actions (Favorite, collections, Original, score, stats, More)
-- **Bulk favorites:** select and remove multiple favorites on the favorites page
-
-### 0.12.0 notes
-
-- **Faster start:** theme + site-skin CSS inject first (one cheap GM appearance read, no zod); heavy mounts and `#rdw/*` pages load after paint / on demand
-- **Feed after Follow/Back:** followed artists are mirrored in `localStorage` so Feed href / recognition stay current across bfcache
-- **Site theme palettes:** Site default / Site dark use site-matched token colors on RuleDesk chrome (not Light/Dark stand-ins)
-- **Custom background:** image lives in IndexedDB (async); first paint shows base palette only
-- **Skin polish:** Search/Go stay accent; Follow is secondary; Reset stays on one line
-
-## Own pages (site navbar)
-
-RuleDesk adds items to the site header navbar (`div#header ul#navbar`):
-
-| Menu | Hash / URL | What it is |
-|---|---|---|
-| **Collections** | `#rdw/collections` | Custom Collection (manually gathered post sets) and Dynamic Collection (saved searches) |
-| **Following** | `#rdw/following` | Followed artists; add/remove; empty state links to Posts |
-| **Favorites** | site favorites URL | Shown when a favorites user id is known; native My Favorites entry is hidden |
-| **RuleDesk** | `#rdw/settings` | Appearance, Page tweaks, Blacklist, Favorites sync, Data backup |
-
-Own pages mount in `#rdw-page-root` (Shadow DOM) after `div#header` and hide the rest of the site until you leave the hash. There is no floating RD panel.
-
-**Collections**
-
-- **Custom Collection:** named sets of post ids (`kind: "posts"`) — a manually gathered post set; create from Collections or the **+** button on thumbs / post side panel; open as `id:` searches (chunked by **Collection part size**)
-- **Dynamic Collection:** save the current `page=post&s=list` search when `tags` is non-empty (saved search); open / rename / delete
-
-## Favorites
-
-- On the post list grid, a star is anchored to `img.preview` via CSS anchor positioning (hover / focus to reveal; marked stars stay visible); the site’s link/image markup is left intact
-- Click toggles favorite: same-origin `addfav` (+ vote on new add) or favorites delete
-- Local favorite IDs live in a separate GM key (`ruledesk-web.favs`); legacy `marks.*.fav` is migrated on load
-- Favorites page: no DOM changes; IDs are read from Remove links into local favs, and Remove clicks clear the local mark
-- Settings → **Show favorite buttons in grid** (`settings.gridFavButtons`, default on)
-- Settings → **Favorites sync**: **Sync favorites** walks newest-first and stops on the first page whose ids are already local; **Full resync** walks every page (add-only; one page every 1.5 s). Resume / Stop and a stale lock can auto-resume in another tab (mode is stored)
-
-## Artists / Feed
-
-- Follow / unfollow artists from the tag sidebar (`ul#tag-sidebar`) on list and post pages, or add tags on **Following** (tag field uses site autocomplete)
-- Navbar **Feed** opens a normal site search `( artist1 ~ artist2 )` (optional `id:>N` / group size; `0` = up to 400 artists per query). With no followed artists, Feed points to `#rdw/following`
-- Feed href and “is this a Feed page?” prefer a `localStorage` artists mirror (seeded/updated with GM) so Follow + Back / bfcache stay correct
-- On a full Feed result page, a bar above `div.image-list` can **Mark all seen** (page 1 only, and only when the page has posts newer than `seenPostId`)
-- Empty Feed pages (no `image-list`) show “No new posts since #N” with a link to the same search without `id:>`
-
-No `api.rule34.xxx`. Network `fetch` runs only in `favorites.ts` (add/remove on click), `favorites-sync.ts` (explicit Sync / Resume / auto-resume), `autocomplete.ts` (tag suggestions on Following / Blacklist), and `next-page.ts` (infinite scroll page loads).
-
-Storage uses `GM_getValue` / `GM_setValue`.
-
-## Themes (Appearance)
-
-Settings → **Appearance** → **Site theme**:
-
-| Theme | What you get |
+| Block | What is there |
 |---|---|
-| **Site default** | Native rule34 look (`html.rdw-skin` off; site `theme` cookie cleared); RuleDesk chrome uses site-green token palette |
-| **Site dark** | Native site dark CSS (`theme=dark` cookie + `desktop-dark.css`); RuleDesk chrome uses site-dark tokens |
-| **Light** / **Dark** | RuleDesk site skin (`html.rdw-skin`) with the matching token palette |
-| **Custom** | RuleDesk skin with a Light or Dark base; optional background image (IndexedDB) + dim (no per-color pickers). Legacy custom accent/bg/surface/text from 0.10 are dropped; base is chosen from the old `bg` brightness |
+| Appearance | Theme and grid size |
+| Page | A switch for each page tweak, and one switch that turns all tweaks off |
+| Blacklist | The site's tag blacklist for this browser |
+| Favorites | Favorite buttons in the grid, favorites sync |
+| Data | Export and import of everything the script stores |
 
-Own pages (`#rdw/…` Shadow host) use the same palette tokens as the document (`:root` + sync onto `#rdw-page-root`). Custom background applies after first paint.
+To get the untouched site back: Appearance → Site theme → **Site default**, and Page → turn off **Enable page tweaks**.
 
-**Restore the native site look:** open **RuleDesk** (`#rdw/settings`) → Appearance → Theme → **Site default**.
+## Your data
 
-Default for new installs is **Light** (RuleDesk skin on).
+- Collections, followed artists and settings live in the script manager's storage, in this browser only. Nothing is sent anywhere
+- **Data → Export** saves one JSON file; **Import** restores it (Merge adds to what you have, Replace overwrites)
+- The blacklist and the site theme are the site's own cookies and are not part of the export
+- The script does not use the site API. It reads the pages you open and makes a request only for an action of yours: favorite a post, sync favorites, type in a tag field, scroll for the next page, open a feed that spans several searches, press Refresh on Following. Requests go one at a time with a pause
 
-## Blacklist (site cookie)
+## Limits
 
-Settings → **Blacklist** edits this browser’s `tag_blacklist` cookie (add/remove chips; add field uses site autocomplete). Changes write immediately; with **Hide blacklisted thumbs** (`blacklist-hide`) enabled, matching thumbs on list pages are hidden without a reload. Account settings on the site are not updated and may overwrite the cookie after login. Export/import and Data backup never include the blacklist cookie.
+These come from the site and cannot be fixed in the script.
 
-## Page tweaks (features)
+- The post count of a dynamic collection with several tags is a lower bound, shown with "+". The exact number is known only for a single tag
+- "No new posts since" on an artist card is the day the script first saw the artist's newest post, not the date of the post
+- The site answers "too many requests" when asked too often. Refresh and favorites sync stop at the first such answer; wait and start again
+- A cover or a count for an artist or a collection appears after its page was opened once, or after Refresh
 
-Optional list/post/favorites UI modules. Master switch **Enable page tweaks** in Settings (default on). Each module has its own checkbox or choice control. CSS-only modules apply immediately; other modules and the master tweaks switch reload the page.
-
-| Module id | Label | Default | Pages | What it does |
-|---|---|---|---|---|
-| `feed` | Feed in site menu | on | all | Adds a Feed menu item; on feed list pages mounts the updates bar and marks new thumbs |
-| `menu-cleanup` | Clean header menu | on | all | Hides unused header links |
-| `tag-groups` | Collapse tags | on | list, post | Collapse tag sidebar groups (General/Meta by default) |
-| `search-tools` | Search tools | on | list, post | Token chips, media/sort/score controls, and save-to-collection under the search form |
-| `seen-dim` | Dim seen posts | on | list, post | Marks opened posts; dims them in the grid (also restamps infinite-scroll thumbs) |
-| `playlist-menu` | Add to collection button | on | list, post | **+** on thumbs (list) and collection menu under Favorite (post side panel) |
-| `playlist-bar` | Collection header | on | list | Name / part links / post count above a collection `id:` search |
-| `blacklist-hide` | Hide blacklisted thumbs | on | list | Hides thumbs matching the site blacklist cookie (no reload) |
-| `infinite-scroll` | Infinite scroll | on | list | Loads the next page into the grid; respects site blacklist |
-| `post-actions` | Post actions | on | post | Favorite / collection / Original / Score bar (and Options proxies) on the post page |
-| `grid-density` | Grid size | on | list, favorites | compact / default / large; 4px gap on both axes (cell size unchanged) |
-| `video-player` | Video player tweaks | on | post | Persist volume/mute/rate; **Video size**: Fit height (may upscale; under header, ≤ media column), Fit width, Original (pixel-perfect) |
-| `video-preview` | Video preview on hover | off | list, favorites | Hover preview on webm thumbs after 200 ms (loads the video file itself) |
-
-**Disable a module:** open **RuleDesk** → Settings → Page → uncheck that module (or change its choice). **Disable all tweaks:** turn off **Enable page tweaks**. Removed in 0.7.0: `search-tokens`, `pager`, `followed-badge`.
-
-## Data backup
-
-Settings → **Data** exports one JSON file `ruledesk-web-backup-<YYYY-MM-DD>.json` with storage, optional favs (**Include favorites**, off by default — restore via Favorites sync), and optional background image (from IndexedDB when included). Import supports **Merge** and **Replace**; a backup without favs leaves the local fav set unchanged. Seen marks are capped to the newest ~20 000 post ids on write. This is separate from the older collections-only export format below.
-
-Example backup shape (no real data):
-
-```json
-{
-  "format": "ruledesk-web-backup",
-  "version": 1,
-  "exportedAt": "2026-11-13T03:30:00.000Z",
-  "storage": {
-    "version": 1,
-    "collections": [],
-    "artists": [{ "tag": "example_artist" }],
-    "marks": {},
-    "settings": {
-      "gridFavButtons": true,
-      "updatesGroupSize": 0,
-      "playlistChunkSize": 40,
-      "tweaksEnabled": true,
-      "appearance": { "theme": "light" }
-    },
-    "updates": { "seenPostId": 0 }
-  },
-  "favs": {
-    "version": 1,
-    "ids": [101, 202]
-  }
-}
-```
-
-(`background` is an optional string when “Include background image” is on.)
-
-## Legacy export format
-
-```json
-{
-  "version": 1,
-  "collections": [
-    {
-      "id": "uuid",
-      "name": "My search",
-      "tags": [
-        { "tag": "cat", "type": "include" },
-        { "tag": "dog", "type": "exclude" }
-      ]
-    },
-    {
-      "id": "uuid-2",
-      "name": "Watch later",
-      "kind": "posts",
-      "tags": [],
-      "postIds": [12345, 67890]
-    }
-  ],
-  "artists": [{ "tag": "nyx_x" }],
-  "marks": {
-    "12345": { "seen": true }
-  },
-  "favIds": [12345, 67890],
-  "settings": {
-    "gridFavButtons": true,
-    "tweaksEnabled": true,
-    "updatesGroupSize": 0,
-    "playlistChunkSize": 40,
-    "features": { "menu-cleanup": true },
-    "featureChoice": { "grid-density": "default" },
-    "featureState": {}
-  },
-  "updates": {
-    "seenPostId": 0
-  }
-}
-```
-
-- Collections without `kind` (or `kind: "search"`) are saved searches (Dynamic Collection); `kind: "posts"` are Custom Collections with `postIds`
-- `settings` / `updates` / `favIds` are optional; defaults are `gridFavButtons: true`, `tweaksEnabled: true`, `updatesGroupSize: 0`, `playlistChunkSize: 40`, `seenPostId: 0`
-- Import merges collections by `id`, artists by `tag`, marks by post id (including `seen`); legacy `marks.*.fav` becomes fav ids; `seenPostId` keeps the maximum of current and imported
-- Runtime fav ids are stored under `ruledesk-web.favs` (not inside the main storage key)
-- Blacklist cookie is never part of export/import or Data backup
-
-## Scripts
-
-| Command | Purpose |
-|---|---|
-| `npm run dev` | Dev server / monkey install helper |
-| `npm run build` | Typecheck + emit `dist/ruledesk-web.user.js` |
-| `npm run typecheck` | `tsc --noEmit` |
-| `npm test` | Vitest (jsdom) |
+The full list is in [docs/site.md](docs/site.md).

@@ -23,7 +23,6 @@ import {
   RDW_HASH_SETTINGS,
   RDW_ROUTE_COLLECTIONS,
   RDW_ROUTE_FOLLOWING,
-  RDW_ROUTE_SETTINGS,
   type RdwRoute,
 } from "./constants";
 

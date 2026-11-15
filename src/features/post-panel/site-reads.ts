@@ -11,12 +11,8 @@ export const POST_COMMENTS_ID = "post-comments";
 export const COMMENT_LIST_ID = "comment-list";
 
 export const ORIGINAL_LINK_TEXT = "Original image";
-export const ADD_FAVORITES_LINK_TEXT = "Add to favorites";
-
 export const ICAME_ONCLICK_PREFIX = "iCame(";
 export const ICAME_ANCHOR_SELECTOR = `a[onclick^="${ICAME_ONCLICK_PREFIX}"]`;
-export const ICAME_IMG_ALT = "I came!";
-
 export const MORE_LINK_TEXTS = [
   "Edit",
   "Resize image",

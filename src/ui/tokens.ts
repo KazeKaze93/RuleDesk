@@ -117,10 +117,6 @@ const LUMA_R = 0.2126;
 const LUMA_G = 0.7152;
 const LUMA_B = 0.0722;
 
-export function paletteForMode(mode: PaletteMode): TokenPalette {
-  return mode === "dark" ? DARK_PALETTE : LIGHT_PALETTE;
-}
-
 function channelToLinear(channel: number): number {
   const c = channel / 255;
   if (c <= SRGB_LINEAR_THRESHOLD) {
@@ -185,7 +181,6 @@ export const CONTRAST_RATIO_UI_MIN = 3;
  */
 export const SITE_LIGHT_C_BG = "#aae5a4";
 export const SITE_LIGHT_C_BG_ALT = "#89cf81";
-export const SITE_LIGHT_C_BG_DEEP = "#6fb668";
 export const SITE_LIGHT_C_BG_OVERLAY = "#98d491";
 export const SITE_LIGHT_C_TEXT = "#000000";
 export const SITE_LIGHT_C_TEXT_SOFT = "#666666";
@@ -193,7 +188,6 @@ export const SITE_LIGHT_C_LINK = "#000099";
 
 /** Site dark script-page chrome (theme=site-dark). */
 export const SITE_DARK_C_BG = "#303a30";
-export const SITE_DARK_C_SURFACE = "#293129";
 export const SITE_DARK_C_SURFACE2 = "#303030";
 export const SITE_DARK_C_BORDER = "#505a50";
 export const SITE_DARK_C_TEXT = "#c0c0c0";

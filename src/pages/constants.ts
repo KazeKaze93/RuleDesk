@@ -67,9 +67,6 @@ export const MENU_LABEL = {
 
 /** Site native favorites entry (submenu); hidden when our Favorites item is shown. */
 export const MY_FAVORITES_CONTAINER_ID = "my-favorites-container";
-export const MY_FAVORITES_LINK_SELECTOR =
-  'li#my-favorites-container a[href*="page=favorites"]';
-
 export const POSTS_LINK_TEXT = "Posts";
 export const FEED_MENU_ITEM_ID = "rdw-feed-menu";
 
@@ -77,12 +74,6 @@ export const PAGE_CONTENT_MAX_WIDTH_PX = 960;
 
 /** Shared class names for own-page section layouts (relocated from ui/panel). */
 export const PANEL_UI_CLASS = {
-  artistMeta: "rdw-artist-meta",
-  artistFilter: "rdw-artist-filter",
-  artistList: "rdw-artist-list",
-  artistRow: "rdw-artist-row",
-  artistLink: "rdw-artist-link",
-  artistUndo: "rdw-artist-undo",
   scrollRegion: "rdw-scroll-region",
   settingsGroup: "rdw-settings-group",
   settingsRow: "rdw-settings-row",
@@ -90,15 +81,10 @@ export const PANEL_UI_CLASS = {
   pageCard: "rdw-page-card",
 } as const;
 
-export const ARTISTS_FILTER_THRESHOLD = 12;
-export const UNFOLLOW_UNDO_MS = 5000;
 export const ARTISTS_EMPTY_TITLE = "No followed artists yet";
 export const ARTISTS_EMPTY_HINT =
   "Follow artists with the Follow button next to their name in the tag list.";
 export const ARTIST_FILTER_LABEL = "Filter artists";
-export const UNFOLLOW_UNDO_LABEL = "Undo";
-export const UNFOLLOWED_PREFIX = "Unfollowed ";
-
 export const FEATURE_CHECKBOX_ID_PREFIX = "rdw-feature-";
 export const FEATURE_CHOICE_ID_PREFIX = "rdw-feature-choice-";
 export const UPDATES_GROUP_SIZE_ID = "rdw-updates-group-size";
