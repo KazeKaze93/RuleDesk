@@ -748,7 +748,12 @@ function SearchToolsPanel(props: SearchToolsPanelProps): JSX.Element {
     readPanelView(input.value, window.location.search),
   );
   const [scoreDraft, setScoreDraft] = useState<number | null>(view.minScore);
-  const [aiPosts, setAiPosts] = useState<AiPostsMode | null>(null);
+  // Read at once when the site's checkbox is already in the page: the row is
+  // then part of the first render, and the panel does not grow a moment later.
+  const [aiPosts, setAiPosts] = useState<AiPostsMode | null>(() => {
+    const checkbox = findFilterAiCheckbox();
+    return checkbox === null ? null : readAiPostsMode(checkbox);
+  });
   const scoreFocusedRef = useRef(false);
   const navTimerRef = useRef<number | null>(null);
   const lastPolledValueRef = useRef(input.value);

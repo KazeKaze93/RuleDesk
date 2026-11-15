@@ -107,6 +107,10 @@ export function startEarlyLayout(): void {
   const attempt = (): boolean => {
     // The menu is complete once something after the header is parsed.
     if (!menuDone && document.getElementById(CONTENT_ID) !== null) {
+      // The site's items that the menu cleanup hides go at the same moment the
+      // script's own items come in. Done apart, the menu is two rows tall for
+      // a frame and the whole page jumps up when it shrinks back to one.
+      applyLayoutFeatures();
       menuDone = installMenuSkeleton(layout);
     }
     // The search form is complete once the tag list after it is parsed.
@@ -139,6 +143,18 @@ export function startEarlyLayout(): void {
  * panel space. Uses cached cheap layout settings (no store.load / zod).
  */
 export function applyLayoutBeforePaint(): void {
+  applyLayoutFeatures();
+  reserveSearchTools();
+}
+
+/**
+ * Body classes and CSS of the features that change the layout (menu cleanup,
+ * grid size). Safe to call again: a feature is applied once.
+ */
+function applyLayoutFeatures(): void {
+  if (document.body === null) {
+    return;
+  }
   const pageKind = detectPageKind(window.location.search);
   const search = window.location.search;
   const layout = peekLayoutSettings();
@@ -163,6 +179,4 @@ export function applyLayoutBeforePaint(): void {
       ...(choiceValue !== undefined ? { choiceValue } : {}),
     });
   }
-
-  reserveSearchTools();
 }

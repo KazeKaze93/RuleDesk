@@ -2,6 +2,11 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.32.6
+
+- The page no longer jumps up right after it appears. The site's menu items that "Clean header menu" hides were hidden a frame too late: for that frame the menu was two rows tall, then shrank to one and pulled the whole page up
+- The filter panel no longer grows a moment after it appears: its "AI posts" row is drawn together with the rest of the panel
+
 ## 0.32.5
 
 - The filter panel no longer moves up a moment after the page loads. The site's own "Filter AI" row, which the panel replaces, used to show for an instant and then disappear; it is now hidden before the page is first shown
