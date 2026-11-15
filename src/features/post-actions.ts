@@ -33,6 +33,7 @@ const PANEL_BLOCK_GAP_PX = 10;
 const PANEL_BUTTON_GAP_PX = 8;
 const PANEL_CARD_PADDING_PX = 12;
 const PANEL_STICKY_GAP_PX = 12;
+const PANEL_MEDIA_GAP_PX = 12;
 const PANEL_Z_INDEX = 100;
 const STAT_LABEL_WIDTH_PX = 62;
 const ORIGINAL_BUTTON_SIZE_PX = 34;
@@ -54,6 +55,8 @@ ${BODY_SELECTOR} div#right-col div.flexi,
 ${BODY_SELECTOR} div.flexi {
   flex-wrap: wrap;
   align-items: flex-start;
+  /* Space between the media and the panel, beside it or under it. */
+  gap: ${String(PANEL_MEDIA_GAP_PX)}px;
 }
 ${BODY_SELECTOR} #${POST_ACTIONS_ID}.${CLASS_PANEL} {
   box-sizing: border-box;

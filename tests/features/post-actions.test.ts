@@ -857,6 +857,10 @@ describe("postActionsFeature", () => {
     warnSpy.mockRestore();
   });
 
+  it("keeps a gap between the media and the panel", () => {
+    expect(postActionsFeature.css).toMatch(/div\.flexi \{[^}]*gap: 12px;/);
+  });
+
   it("has no download button on the post page: downloads belong to the manager", () => {
     vi.stubGlobal("GM_download", vi.fn());
     buildPostDom({});

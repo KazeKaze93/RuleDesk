@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.25.1
+
+- Post page: a gap between the picture and the side panel; they were touching
+
 ## 0.25.0
 
 Design pass over the site's own pages:
