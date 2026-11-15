@@ -47,6 +47,14 @@ The script works on the site's own HTML. This file holds what is known about it.
 
 - The list is headings with links, except Logout, which is a form button: `<h4><button type="submit" style="background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer;">» Logout</button></h4>`
 
+### Other pages
+
+- Upload: `div#content > div#upload-form > form > [h2, table > tbody > tr > td]`
+- Lists (artists, forum, and by the site's stylesheet the other lists): `table.highlightable > tbody > tr.tableheader > th`, rows `tr.odd` / `tr.even` (artists: `tr#artist-{ID}`); pager `div#paginator > div.pagination`. Search form above: artists `div#search-form > form`, forum `div#forum > div#search > form`
+- Forum list: `div#forum > [div#search, table.highlightable, form#new_topic > table, div#paginator]`; a topic cell holds `span.forum-topic` and, when locked, `span.locked-topic`
+- Favorites grid: `div.image-list > span > [span.thumb > a#p{ID} > img, br, a[onclick] > b]`; the last link is Remove
+- Comments: `div#comments > div#comment-list > div#p{ID}.post > [div.col1.thumb > a > img.preview, div.col2 > [div.header > [div, div.tags], div.response-list > div#c{CID}.post]]`; the "(N hidden)" link is `div#comment-list > div.content > a#ci`. The site's stylesheet fixes `div.col2` at 50em and `div.response-list > div.post > div.content` at 30em
+
 ### Addresses
 
 - Thumbnail: `https://wimg.rule34.xxx/thumbnails/<dir>/thumbnail_<hash>.jpg?<id>`

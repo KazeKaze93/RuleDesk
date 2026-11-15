@@ -2,6 +2,17 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.25.0
+
+Design pass over the site's own pages:
+
+- Text fields and selects of the site's forms have a normal height and padding; before they were thin slits next to full-size buttons
+- The "Choose File" button on the upload pages follows the theme
+- Forms (upload, add alias, artist, tag, pool) no longer have stripes across their rows
+- Lists (aliases, artists, tags, pools) get the same frame the forum list has
+- Comments and forum posts use the free width of the window instead of a narrow fixed column
+- Favorites: "Remove" under a thumbnail is small and quiet, red under the cursor
+
 ## 0.24.8
 
 - My Account: the Logout heading has the same colour as the other headings

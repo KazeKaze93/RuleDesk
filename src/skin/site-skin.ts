@@ -27,6 +27,10 @@ const ROOT_THEME_DARK = `html[${RDW_THEME_ATTR}="${APPEARANCE_THEME_DARK}"]`;
 const SEARCH_TOOLS_ROOT_ID = "rdw-search-tools";
 /** Reset control class (src/features/search-tools.tsx). */
 /** Exclude our light-DOM controls from site button/input chrome. */
+/** Height of the site's own text fields and selects, next to its buttons. */
+const SITE_CONTROL_MIN_HEIGHT_PX = 30;
+/** Widest a comment or forum post grows before the line gets too long to read. */
+const COMMENT_MAX_WIDTH_PX = 1100;
 const NOT_RDW_CLASS = ':not([class*="rdw-"])';
 const NOT_SEARCH_TOOLS_DESCENDANT = `:not(#${SEARCH_TOOLS_ROOT_ID} *)`;
 /**
@@ -876,8 +880,123 @@ ${ROOT} table tr:nth-child(odd) {
   background: ${v.surface2};
 }
 
+/* —— data tables: one frame for every list (aliases, artists, tags, pools, forum) —— */
+${ROOT} table.highlightable {
+  background: ${v.surface};
+  border: 1px solid ${v.border};
+  border-radius: ${v.radiusL};
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+}
+
+/*
+ * Favorites: "Remove" sits beside the thumb, not inside it
+ * (div.image-list > span > [span.thumb, br, a > b]). Quiet, not bold.
+ */
+${ROOT} div.image-list > span > a[onclick] {
+  color: ${v.muted};
+  font-size: 12px;
+}
+
+${ROOT} div.image-list > span > a[onclick] > b {
+  font-weight: normal;
+}
+
+${ROOT} div.image-list > span > a[onclick]:hover {
+  color: ${v.danger};
+}
+
+/*
+ * Comments and forum posts: the site gives the text columns fixed widths
+ * (50em and 30em) and leaves half the window empty. They take the width that
+ * is there, up to a readable limit.
+ */
+${ROOT} div#comments div#comment-list > div.post {
+  float: none;
+  display: flex;
+  gap: 16px;
+  max-width: ${String(COMMENT_MAX_WIDTH_PX)}px;
+}
+
+${ROOT} div#comments div#comment-list > div.post > div.col1 {
+  float: none;
+  flex: 0 0 auto;
+}
+
+${ROOT} div#comments div#comment-list > div.post > div.col2 {
+  float: none;
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+}
+
+${ROOT} div.response-list > div.post {
+  display: flex;
+  max-width: ${String(COMMENT_MAX_WIDTH_PX)}px;
+}
+
+${ROOT} div.response-list > div.post > div.author {
+  float: none;
+  flex: 0 0 auto;
+}
+
+${ROOT} div.response-list > div.post > div.content {
+  float: none;
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+}
+
+/* Forms are not data: no stripes across their rows. */
+${ROOT} table.form tr:nth-child(odd),
+${ROOT} div#upload-form table tr:nth-child(odd),
+${ROOT} div#edit-form table tr:nth-child(odd) {
+  background: transparent;
+}
+
 ${ROOT} table.form th {
   color: ${v.muted};
+}
+
+/* —— site form controls: one height, readable padding —— */
+${ROOT} input[type="text"]${WHERE_NOT_OUR_CONTROL},
+${ROOT} input[type="password"]${WHERE_NOT_OUR_CONTROL},
+${ROOT} input[type="search"]${WHERE_NOT_OUR_CONTROL},
+${ROOT} input[type="number"]${WHERE_NOT_OUR_CONTROL},
+${ROOT} select${WHERE_NOT_OUR_CONTROL} {
+  box-sizing: border-box;
+  min-height: ${String(SITE_CONTROL_MIN_HEIGHT_PX)}px;
+  padding: 4px 8px;
+  font-size: 13px;
+}
+
+${ROOT} textarea${WHERE_NOT_OUR_CONTROL} {
+  box-sizing: border-box;
+  padding: 6px 8px;
+  font-size: 13px;
+}
+
+/* "Choose File": the browser's own button, dressed as a secondary button. */
+${ROOT} input[type="file"]${WHERE_NOT_OUR_CONTROL} {
+  color: ${v.text};
+  font-size: 12px;
+}
+
+${ROOT} input[type="file"]${WHERE_NOT_OUR_CONTROL}::file-selector-button {
+  margin-right: 8px;
+  padding: 4px 10px;
+  border: 1px solid ${v.border};
+  border-radius: ${v.radiusM};
+  background: ${v.surface};
+  color: ${v.text};
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+${ROOT} input[type="file"]${WHERE_NOT_OUR_CONTROL}::file-selector-button:hover {
+  border-color: ${v.accent};
 }
 
 /* Forum tables */
