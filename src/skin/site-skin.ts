@@ -936,9 +936,14 @@ ${ROOT} div.image-list > span:has(> a[onclick]) {
   justify-items: center;
 }
 
-/* A cell whose post was removed leaves no hole in its column. */
-${ROOT} div.image-list > span:not(:has(span.thumb)) {
-  display: none;
+/*
+ * A favorites cell whose post was removed leaves no hole in its column.
+ * The :not(.thumb) part matters: on a search page the thumbs themselves are the
+ * direct children of the list, and they must never match.
+ */
+${ROOT} div.image-list > span:not(.thumb):not(:has(span.thumb)) {
+  /* The cell carries an inline display: grid. */
+  display: none !important;
 }
 
 ${ROOT} div.image-list > span > span.thumb {

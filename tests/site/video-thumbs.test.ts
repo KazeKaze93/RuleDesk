@@ -116,6 +116,20 @@ describe("favorites video marks", () => {
     expect(favoritesCountLabel(0)).toBe("");
   });
 
+  it("hides an emptied favorites cell but never a thumb of a search page", () => {
+    expect(SITE_SKIN_CSS).toContain(
+      "div.image-list > span:not(.thumb):not(:has(span.thumb)) {",
+    );
+    // The rule that hid every search thumb in 0.32.0.
+    expect(SITE_SKIN_CSS).not.toContain("div.image-list > span:not(:has(span.thumb)) {");
+
+    document.body.innerHTML =
+      '<div class="image-list"><span class="thumb" id="s1"><a id="p1"><img class="preview"></a></span>' +
+      '<span id="emptied"><br></span><span id="cell"><span class="thumb"><a id="p2"><img></a></span></span></div>';
+    const hidden = "div.image-list > span:not(.thumb):not(:has(span.thumb))";
+    expect([...document.querySelectorAll(hidden)].map((node) => node.id)).toEqual(["emptied"]);
+  });
+
   it("gives a marked thumb the outline of a video", () => {
     expect(SITE_SKIN_CSS).toContain(`.${VIDEO_THUMB_CLASS} > a > img,`);
   });
