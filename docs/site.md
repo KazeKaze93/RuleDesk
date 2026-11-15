@@ -43,6 +43,10 @@ The script works on the site's own HTML. This file holds what is known about it.
 - Previous / next in the last search: `a#prev_search_link[href="#"]`, `a#next_search_link[href="#"]`; the site's script navigates on click
 - Player: Fluid Player, `video#gelcomVideoPlayer[loop][preload=auto]` inside `div#fluid_video_wrapper_gelcomVideoPlayer.fluid_video_wrapper`
 
+### Account page (`page=account&s=home`)
+
+- The list is headings with links, except Logout, which is a form button: `<h4><button type="submit" style="background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer;">» Logout</button></h4>`
+
 ### Addresses
 
 - Thumbnail: `https://wimg.rule34.xxx/thumbnails/<dir>/thumbnail_<hash>.jpg?<id>`

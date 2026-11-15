@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.24.8
+
+- My Account: the Logout heading has the same colour as the other headings
+
 ## 0.24.7
 
 - Links have one colour: a visited link is no longer grey while an unvisited one is blue (seen on the account page, where the headings were three different colours)

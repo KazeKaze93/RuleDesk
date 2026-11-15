@@ -162,6 +162,20 @@ ${ROOT} a:active {
   text-decoration: none;
 }
 
+/*
+ * My Account: "Logout" is not a link but a form button dressed as a heading,
+ * <h4><button type="submit" style="… color: inherit …">. It takes the link
+ * colour so the list of headings is one colour; the inline style needs
+ * !important to be overridden.
+ */
+${ROOT} h4 > button[type="submit"][style*="color: inherit"] {
+  color: ${v.accent} !important;
+}
+
+${ROOT} h4 > button[type="submit"][style*="color: inherit"]:hover {
+  color: ${v.text} !important;
+}
+
 ${ROOT} a.last-page {
   color: ${v.muted};
 }
