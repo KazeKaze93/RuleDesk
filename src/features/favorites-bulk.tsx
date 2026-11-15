@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "preact/hooks";
 
 import { UI_TEXT } from "../config/constants";
 import { log } from "../log";
+import { downloadsAvailable } from "./downloads/available";
+import { isDownloadBusy, startDownload } from "./downloads/queue";
 import { removeFavorite } from "../site/favorites";
 import {
   listFavoriteThumbEntries,
@@ -41,6 +43,11 @@ export const CLASS_THUMB_CHECK = "rdw-fav-bulk-check";
 
 const TEXT_SELECT = "Select";
 const TEXT_SELECT_PAGE = "Select page";
+const TEXT_DOWNLOAD_ALL = "Download all";
+const TEXT_DOWNLOAD_ALL_TITLE =
+  "Saves the original file of every favorite in the local list; Sync favorites first if it is out of date";
+/** Name of the download job and of its folder. */
+const DOWNLOAD_JOB_NAME = "Favorites";
 const TEXT_CLEAR = "Clear";
 const TEXT_CANCEL = UI_TEXT.cancel;
 const TEXT_CONFIRM = UI_TEXT.confirm;
@@ -304,6 +311,18 @@ function findBarHost(): { parent: ParentNode; before: ChildNode | null } {
   return { parent: document.body, before: document.body.firstChild };
 }
 
+/**
+ * Starts a download of every favorite in the local list, newest first. The
+ * manager finds the files through the API by post id and shows its own panel.
+ */
+export function downloadAllFavorites(): void {
+  const ids = [...loadFavSet()].sort((a, b) => b - a);
+  if (ids.length === 0 || isDownloadBusy()) {
+    return;
+  }
+  void startDownload(DOWNLOAD_JOB_NAME, { kind: "ids", ids });
+}
+
 function removeDomCellForPost(postId: string): void {
   const entry = listFavoriteThumbEntries().find((item) => item.postId === postId);
   if (entry !== undefined) {
@@ -524,6 +543,16 @@ function FavoritesBulkBar(props: FavoritesBulkBarProps): JSX.Element {
         <Button variant="secondary" size="s" onClick={enterSelecting}>
           {TEXT_SELECT}
         </Button>
+        {downloadsAvailable() ? (
+          <Button
+            variant="secondary"
+            size="s"
+            title={TEXT_DOWNLOAD_ALL_TITLE}
+            onClick={downloadAllFavorites}
+          >
+            {TEXT_DOWNLOAD_ALL}
+          </Button>
+        ) : null}
       </div>
     );
   }

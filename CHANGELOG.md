@@ -2,6 +2,11 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.31.0
+
+- Favorites: "Download all" in the header saves the original file of every favorite, into a "Favorites" folder. It needs your API key, like the other downloads, and goes by the local list: run "Sync favorites" first if that list is out of date
+- Favorites: the pager no longer offers the empty pages past the last real one (an old site bug). This works once "Sync favorites" has finished at least once
+
 ## 0.30.1
 
 - Favorites: pictures keep their shape instead of being cropped to squares; the rows still sit close, each as tall as its tallest picture

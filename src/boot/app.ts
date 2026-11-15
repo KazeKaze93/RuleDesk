@@ -4,6 +4,7 @@ import { getSiteSkinCss } from "../skin/site-skin";
 import { applyAppearanceTheme } from "../skin/theme";
 import { mountCommentsPage } from "../site/comments-page";
 import { syncFavoritesPage } from "../site/favorites-page";
+import { mountFavoritesPager } from "../site/favorites-pager";
 import { mountFavoriteVideoMarks } from "../site/video-thumbs";
 import { maybeResumeFavoritesSync } from "../site/favorites-sync-runner";
 import { detectPageKind } from "../site/pages";
@@ -50,6 +51,7 @@ export async function startApp(): Promise<void> {
   } else if (pageKind === "favorites") {
     syncFavoritesPage();
     mountFavoriteVideoMarks();
+    mountFavoritesPager();
     await yieldToMain();
   } else {
     mountCommentsPage();
