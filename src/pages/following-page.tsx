@@ -118,10 +118,11 @@ const MS_PER_DAY = 86_400_000;
 const QUIET_AFTER_DAYS = 60;
 /** Pause between two requests of a Refresh run. */
 export const REFRESH_INTERVAL_MS = 1500;
+/** How long the line of a finished Refresh stays before it closes by itself. */
+export const REFRESH_DONE_CLOSE_MS = 2000;
 const MS_PER_SECOND = 1000;
 const COVER_AXIS_COUNT = 2;
 const ICON_PX = 14;
-const GRID_MIN_TRACK_PX = 170;
 const ADD_FIELD_WIDTH_PX = 280;
 const LIST_COVER_PX = 44;
 const FILTER_FIELD_WIDTH_PX = 220;
@@ -140,6 +141,7 @@ const SORT_OPTIONS: readonly SelectOption[] = [
 ];
 
 import { ARTIST_TERM_SEPARATOR, filterTerms, matchesAnyTerm } from "./filter-terms";
+import { PAGE_CENTRE_PADDING, TILE_MIN_WIDTH_PX } from "./view-mode";
 import {
   FOLLOWING_VIEW_STATE_ID,
   VIEW_LABEL,
@@ -215,7 +217,7 @@ export const FOLLOWING_PAGE_CSS = `
   position: sticky;
   top: 0;
   z-index: ${String(TOOLBAR_Z_INDEX)};
-  padding: 8px 0;
+  padding-block: 8px;
   margin: -8px 0;
   background: var(--rdw-bg);
 }
@@ -227,8 +229,16 @@ export const FOLLOWING_PAGE_CSS = `
 }
 .${GRID_CLASS} {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(${String(GRID_MIN_TRACK_PX)}px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(${String(TILE_MIN_WIDTH_PX)}px, 1fr));
   gap: 12px;
+}
+/*
+ * The tiles take the whole window; everything above them, and the list view,
+ * stay in the centred column.
+ */
+.${PAGE_CLASS} > :not(.${GRID_CLASS}),
+.${GRID_LIST_CLASS} {
+  padding-inline: ${PAGE_CENTRE_PADDING};
 }
 /* List view: one artist per row, a small cover, the numbers on the right. */
 .${GRID_LIST_CLASS} {
@@ -381,6 +391,8 @@ type RefreshState = {
   readonly total: number;
   readonly running: boolean;
   readonly message: string;
+  /** A finished run that went through: its line closes by itself. */
+  readonly succeeded?: boolean;
 };
 
 type CardSelect = {
@@ -669,6 +681,19 @@ export function FollowingPage(): JSX.Element {
     };
   }, []);
 
+  const refreshSucceeded = refresh?.succeeded === true;
+  useEffect(() => {
+    if (!refreshSucceeded) {
+      return undefined;
+    }
+    const timer = window.setTimeout(() => {
+      setRefresh(null);
+    }, REFRESH_DONE_CLOSE_MS);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [refreshSucceeded]);
+
   const onAdd = (): void => {
     const tags = draft.split(TAG_SPLIT).filter((tag) => tag.length > 0);
     if (tags.length === 0) {
@@ -761,6 +786,7 @@ export function FollowingPage(): JSX.Element {
       total,
       running: false,
       message: `${REFRESH_DONE_PREFIX}${String(done)} of ${String(total)}`,
+      succeeded: true,
     });
   };
 

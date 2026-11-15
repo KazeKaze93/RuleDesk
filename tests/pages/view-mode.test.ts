@@ -5,16 +5,14 @@ import {
   COLLECTIONS_VIEW_STATE_ID,
   VIEW_LIST,
   VIEW_TILES,
-  WIDE_PAGES_SETTING_ID,
   readViewMode,
-  widePagesEnabled,
   writeViewMode,
 } from "../../src/pages/view-mode";
-import { clearStorageCache, setFeatureEnabled, setFeatureState } from "../../src/storage/store";
+import { clearStorageCache, setFeatureState } from "../../src/storage/store";
 
 const memory = new Map<string, unknown>();
 
-describe("view mode and page width", () => {
+describe("view mode", () => {
   beforeEach(() => {
     memory.clear();
     clearStorageCache();
@@ -41,11 +39,5 @@ describe("view mode and page width", () => {
   it("falls back to tiles on a value it does not know", () => {
     setFeatureState(COLLECTIONS_VIEW_STATE_ID, "table");
     expect(readViewMode(COLLECTIONS_VIEW_STATE_ID)).toBe(VIEW_TILES);
-  });
-
-  it("keeps the centred column until full width is switched on", () => {
-    expect(widePagesEnabled()).toBe(false);
-    setFeatureEnabled(WIDE_PAGES_SETTING_ID, true);
-    expect(widePagesEnabled()).toBe(true);
   });
 });

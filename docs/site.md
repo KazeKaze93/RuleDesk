@@ -14,10 +14,11 @@ The script works on the site's own HTML. This file holds what is known about it.
   | `autocomplete.ts` | Typing in a tag field of the script | debounced, one at a time |
   | `next-page.ts` | Infinite scroll; other artist groups of a merged feed | 1 s |
   | `artist-snapshot.ts` | "Refresh" on Following, after a confirmation | 1.5 s per artist |
+  | `profile.ts` | "Refresh profile" on Statistics: the My Account page, then the user's profile page | two requests, 1.5 s apart |
 | `api.ts` | A download job: the list of files (`fetch` to `api.rule34.xxx`, which allows any origin; up to 1000 posts per request) | 1 s |
 | `download.ts` | A download job: the files, one at a time (`GM_download` from the CDN) | 0.4 s; one retry after 5 s |
 
-- **Cookies:** only `tag_blacklist` and `theme` are read or written. `user_id` and `pass_hash` are never read. The account settings form is never submitted.
+- **Cookies:** only `tag_blacklist` and `theme` are read or written. `user_id` and `pass_hash` are never read. One exception outside cookies, allowed by Kaze: "Refresh profile" takes the address of the "My Profile" link from the My Account page, which holds the user's id, uses it for one request and stores nothing of it. The account settings form is never submitted.
 - **Outside addresses are checked.** A file address from an API answer and a picture address from an imported file are used only when they are `https` on the site's domain (`src/site/urls.ts`).
 - **The grid link is left alone.** Nothing inside `a#p{ID}` is changed; thumbnail size is set only by `grid-density`.
 
@@ -59,6 +60,7 @@ The script works on the site's own HTML. This file holds what is known about it.
 - Aliases: `div#content > [text, div[style="color: #ff0000;"], div > form > input#query, div#aliases > table.highlightable, div#add-box[style="display: none;"] > form]`
 - Artists: `div#content > [div#search-form, table.highlightable, div#paginator, div#footer > a]`; `div#footer` holds Create, Order by Date, Order by Name
 - My Account: `div#content > div#user-index > [form > h4 > button, p, (h4 > a, p)…, br, h1 > a]`
+- Profile (`?page=account&s=profile&id={ID}`): `div > table.highlightable > tr > [td label, td value]`; rows Contact, Join Date (`YYYY-MM-DD`), Level, Favorite Tags, Posts, Deleted Posts, Favorites, Comments, Tag Edits, Note Edits, Forum Posts, Record. My Account links: `div#user-index h4 > a`, the profile one is `index.php?page=account&s=profile&id={ID}`
 - Help: `div#content > div#static-more > div > ul > [li > h4, li > a]`
 
 ### Addresses

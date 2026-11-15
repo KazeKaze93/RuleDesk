@@ -166,7 +166,7 @@ describe("createCollectionsPage", () => {
   it("exports the grid and card hover rules", () => {
     expect(COLLECTIONS_PAGE_CSS).toContain(".rdw-collections-page");
     expect(COLLECTIONS_PAGE_CSS).toContain(
-      "grid-template-columns: repeat(auto-fill, minmax(200px, 1fr))",
+      "grid-template-columns: repeat(auto-fill, minmax(170px, 1fr))",
     );
     expect(COLLECTIONS_PAGE_CSS).toContain("gap: 12px");
     expect(COLLECTIONS_PAGE_CSS).toContain(".rdw-collection-card:hover");

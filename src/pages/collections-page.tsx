@@ -105,7 +105,6 @@ const POST_COUNT_SINGULAR = 1;
 const COVER_AXIS_COUNT = 2;
 const COVER_SLOT_COUNT = COVER_AXIS_COUNT * COVER_AXIS_COUNT;
 const COVER_GAP_PX = 2;
-const GRID_MIN_TRACK_PX = 200;
 const GRID_GAP_PX = 12;
 const PAGE_STACK_GAP_PX = 12;
 const HEADER_GAP_PX = 12;
@@ -146,6 +145,7 @@ type ListFilter = typeof FILTER_ALL | typeof FILTER_CUSTOM | typeof FILTER_DYNAM
 type NewKind = typeof KIND_CUSTOM | typeof KIND_DYNAMIC;
 
 import { COLLECTION_TERM_SEPARATOR, filterTerms, matchesAnyTerm } from "./filter-terms";
+import { PAGE_CENTRE_PADDING, TILE_MIN_WIDTH_PX } from "./view-mode";
 import {
   COLLECTIONS_VIEW_STATE_ID,
   VIEW_LABEL,
@@ -197,13 +197,13 @@ export const COLLECTIONS_PAGE_CSS = `
   position: sticky;
   top: 0;
   z-index: ${String(TOOLBAR_Z_INDEX)};
-  padding: 8px 0;
+  padding-block: 8px;
   margin: -8px 0;
   background: var(--rdw-bg);
 }
 .${GRID_CLASS} {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(${String(GRID_MIN_TRACK_PX)}px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(${String(TILE_MIN_WIDTH_PX)}px, 1fr));
   gap: ${String(GRID_GAP_PX)}px;
 }
 .${CARD_CLASS} {
@@ -218,6 +218,14 @@ export const COLLECTIONS_PAGE_CSS = `
   background: var(--rdw-surface);
   border: 1px solid var(--rdw-border);
   border-radius: var(--rdw-radius-l);
+}
+/*
+ * The tiles take the whole window; everything above them, and the list view,
+ * stay in the centred column.
+ */
+.${PAGE_CLASS} > :not(.${GRID_CLASS}),
+.${GRID_LIST_CLASS} {
+  padding-inline: ${PAGE_CENTRE_PADDING};
 }
 /* List view: one collection per row, a small cover, the count on the right. */
 .${GRID_LIST_CLASS} {

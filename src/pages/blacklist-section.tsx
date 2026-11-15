@@ -109,21 +109,6 @@ export function BlacklistSection(
       <style>{BLACKLIST_SECTION_CSS}</style>
       <section className={`rdw-section ${SECTION_CLASS}`}>
         {includeHeading ? <SectionLabel>Blacklist</SectionLabel> : null}
-        <ul className={CHIPS_CLASS}>
-          {tags.map((tag) => (
-            <li key={tag}>
-              <Chip
-                label={tag}
-                onRemove={() => {
-                  const next = readSiteBlacklist().filter(
-                    (entry) => entry !== tag,
-                  );
-                  setTags(persistTags(next));
-                }}
-              />
-            </li>
-          ))}
-        </ul>
         <form
           className={ADD_ROW_CLASS}
           onSubmit={(event) => {
@@ -150,6 +135,21 @@ export function BlacklistSection(
           </Button>
         </form>
         <p className={HINT_CLASS}>{PERMANENT_HINT}</p>
+        <ul className={CHIPS_CLASS}>
+          {tags.map((tag) => (
+            <li key={tag}>
+              <Chip
+                label={tag}
+                onRemove={() => {
+                  const next = readSiteBlacklist().filter(
+                    (entry) => entry !== tag,
+                  );
+                  setTags(persistTags(next));
+                }}
+              />
+            </li>
+          ))}
+        </ul>
       </section>
     </>
   );

@@ -15,14 +15,15 @@ import {
   type RdwPage,
 } from "./constants";
 import { PAGE_CONTENT_CSS } from "./page-css";
-import { widePagesEnabled } from "./view-mode";
+import { PAGE_CENTRE_PADDING } from "./view-mode";
 
 const PAGE_SHELL_CLASS = "rdw-page-shell";
 const PAGE_TITLE_CLASS = "rdw-page-title";
-/** On the mount point: the pages start at the left edge instead of a centred column. */
+/**
+ * On the mount point of Collections and Following: the page spans the window
+ * so that its tiles can; the page itself keeps the rest in the centred column.
+ */
 export const LAYOUT_WIDE_CLASS = "rdw-layout-wide";
-/** With the wide layout: a page of text and forms keeps its narrow column. */
-export const LAYOUT_TEXT_CLASS = "rdw-layout-text";
 
 /**
  * Structural shell only — palette tokens come from applyTokenProperties on the
@@ -51,8 +52,8 @@ const PAGE_HOST_CSS = `
   margin: 0;
   padding: 16px 20px 32px;
 }
-.${LAYOUT_WIDE_CLASS}.${LAYOUT_TEXT_CLASS} .${PAGE_SHELL_CLASS} {
-  max-width: ${String(PAGE_CONTENT_MAX_WIDTH_PX)}px;
+.${LAYOUT_WIDE_CLASS} .${PAGE_TITLE_CLASS} {
+  padding-inline: ${PAGE_CENTRE_PADDING};
 }
 .${PAGE_TITLE_CLASS} {
   margin: 0;
@@ -173,25 +174,19 @@ function pageFactoryForRoute(route: RdwPage): PageFactory {
   return getSettingsFactory();
 }
 
-/** Collections, a collection and Following are grids; the rest is text and forms. */
-function isGridRoute(route: RdwPage): boolean {
-  return (
-    isCollectionDetailPage(route) ||
-    route === RDW_ROUTE_COLLECTIONS ||
-    route === RDW_ROUTE_FOLLOWING
-  );
+/** The pages whose tiles span the window. */
+function hasTiles(route: RdwPage): boolean {
+  return route === RDW_ROUTE_COLLECTIONS || route === RDW_ROUTE_FOLLOWING;
 }
 
 let shownRoute: RdwPage | null = null;
 
-/** Applies the page width setting to the page that is shown. */
-export function syncRdwPageLayout(): void {
+/** Gives the shown page its width. */
+function syncRdwPageLayout(): void {
   if (mountPoint === null || shownRoute === null) {
     return;
   }
-  const wide = widePagesEnabled();
-  mountPoint.classList.toggle(LAYOUT_WIDE_CLASS, wide);
-  mountPoint.classList.toggle(LAYOUT_TEXT_CLASS, wide && !isGridRoute(shownRoute));
+  mountPoint.classList.toggle(LAYOUT_WIDE_CLASS, hasTiles(shownRoute));
 }
 
 let hostElement: HTMLElement | null = null;

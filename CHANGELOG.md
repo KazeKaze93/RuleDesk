@@ -2,6 +2,16 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.29.0
+
+- Statistics: a "Site profile" block with a "Refresh profile" button. It reads your profile page on the site (two requests per press) and shows the account age, level, uploaded and deleted posts, comments, tag edits, note edits and forum posts
+- Collections and Following: the tiles now span the whole window, while the title, the fields and the list view stay in the centred column. The "Full-width Collections and Following" setting is removed
+- Collections and Following: tiles are the same size on both pages
+- Following: the "Refreshed N of N" line closes by itself after two seconds; an error stays until closed
+- Settings → Blacklist: the tags are listed under the field and its note, so a long list does not push the field away
+- Feed: the bar with the count of new posts is as wide as what it holds
+- Statistics: "Collections by type" instead of "by kind"
+
 ## 0.28.0
 
 - Collections and Following: a "Tiles / List" switch. The list shows one item per row with a small cover; the choice is remembered for each page

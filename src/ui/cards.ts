@@ -60,10 +60,14 @@ ${ICON_BUTTON_CSS}
   color: #5c4500;
 }
 
+/* As wide as what it holds, not the whole row. */
 .${CSS_CLASS.updatesBar} {
   display: flex;
   align-items: center;
   gap: 10px;
+  box-sizing: border-box;
+  width: fit-content;
+  max-width: 100%;
   white-space: nowrap;
 }
 
@@ -72,7 +76,6 @@ ${ICON_BUTTON_CSS}
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
-  width: 100%;
 }
 
 .${CSS_CLASS.updatesBar} .${CSS_CLASS.hint} {

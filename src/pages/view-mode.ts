@@ -1,9 +1,10 @@
-import { getFeatureEnabled, getFeatureState, setFeatureState } from "../storage/store";
+import { getFeatureState, setFeatureState } from "../storage/store";
+import { PAGE_CONTENT_MAX_WIDTH_PX } from "./constants";
 import type { SegmentedOption } from "../ui/kit";
 
 /**
  * How the Collections and Following pages show their items (tiles or a list),
- * remembered per page, and whether those pages take the whole window width.
+ * remembered per page, and the sizes those two pages share.
  */
 
 export const VIEW_TILES = "tiles";
@@ -19,10 +20,14 @@ export const VIEW_OPTIONS: readonly SegmentedOption[] = [
 export const FOLLOWING_VIEW_STATE_ID = "following-view";
 export const COLLECTIONS_VIEW_STATE_ID = "collections-view";
 
-/** Setting: Collections and Following fill the window instead of a centred column. */
-export const WIDE_PAGES_SETTING_ID = "wide-pages";
-export const WIDE_PAGES_SETTING_LABEL = "Full-width Collections and Following";
-export const WIDE_PAGES_SWITCH_ID = "rdw-wide-pages";
+/** Smallest width of a tile on Collections and Following; the same on both. */
+export const TILE_MIN_WIDTH_PX = 170;
+
+/**
+ * Side padding that keeps a full-width block's content in the centred column
+ * of the page (see host.tsx: the pages with tiles span the window).
+ */
+export const PAGE_CENTRE_PADDING = `max(0px, calc((100% - ${String(PAGE_CONTENT_MAX_WIDTH_PX)}px) / 2))`;
 
 export function isViewMode(value: unknown): value is ViewMode {
   return value === VIEW_TILES || value === VIEW_LIST;
@@ -36,8 +41,4 @@ export function readViewMode(stateId: string): ViewMode {
 
 export function writeViewMode(stateId: string, mode: ViewMode): void {
   setFeatureState(stateId, mode);
-}
-
-export function widePagesEnabled(): boolean {
-  return getFeatureEnabled(WIDE_PAGES_SETTING_ID, false);
 }

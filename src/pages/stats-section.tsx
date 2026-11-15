@@ -1,10 +1,16 @@
 import type { JSX } from "preact";
+import { useState } from "preact/hooks";
 
 import { COLLECTION_KIND_POSTS } from "../config/constants";
 import { loadFavSet } from "../storage/favs";
 import { resolveCollectionKind, type StorageData } from "../storage/schema";
 import { load } from "../storage/store";
-import { Card } from "../ui/kit";
+import {
+  readStoredProfileStats,
+  refreshProfileStats,
+  type ProfileStats,
+} from "../site/profile";
+import { Button, Card } from "../ui/kit";
 import { PANEL_UI_CLASS } from "./constants";
 
 /**
@@ -36,6 +42,7 @@ const TOP_ROW_CLASS = "rdw-stats-top-row";
 const TOP_BAR_CLASS = "rdw-stats-top-bar";
 const TOP_FILL_CLASS = "rdw-stats-top-fill";
 const HINT_CLASS = "rdw-stats-hint";
+const PROFILE_HEAD_CLASS = "rdw-stats-profile-head";
 
 const LOCALE = "en-US";
 const TOP_COLLECTIONS_LIMIT = 10;
@@ -52,14 +59,25 @@ const RING_VIEW_BOX = "0 0 42 42";
 const RING_STROKE = 5;
 const RING_TOTAL_Y = 24;
 
-const KINDS_HEADING = "Collections by kind";
+const KINDS_HEADING = "Collections by type";
 const KINDS_EMPTY = "No collections yet.";
 const KIND_CUSTOM_LABEL = "Custom";
 const KIND_DYNAMIC_LABEL = "Dynamic";
 const TOP_HEADING = "Collections by posts";
 const TOP_EMPTY = "Collections show here once they hold posts or their count is known.";
+const PROFILE_HEADING = "Site profile";
+const PROFILE_REFRESH_LABEL = "Refresh profile";
+const PROFILE_REFRESH_TITLE =
+  "Reads your profile page on the site: two requests, a moment apart";
+const PROFILE_BUSY_LABEL = "Reading…";
+const PROFILE_EMPTY = "Press Refresh profile to read these numbers from your profile page.";
+const PROFILE_READ_PREFIX = "Read on ";
+const PROFILE_FAILED_PREFIX = "Could not read the profile: ";
+const DATE_LOCALE = "en-GB";
+const MS_PER_YEAR = 31_557_600_000;
+const MONTHS_PER_YEAR = 12;
 const HINT =
-  "Counted from the script's own data in this browser. Seen posts keep only the newest marks.";
+  "Counted from the script's own data in this browser, except the site profile. Seen posts keep only the newest marks.";
 
 export const STATS_SECTION_CSS = `
 .${SECTION_CLASS} {
@@ -101,6 +119,12 @@ export const STATS_SECTION_CSS = `
   margin: 0;
   font-size: 12px;
   color: var(--rdw-muted);
+}
+.${PROFILE_HEAD_CLASS} {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
 }
 .${RING_ROW_CLASS} {
   display: flex;
@@ -338,6 +362,117 @@ function CollectionBars(props: {
   );
 }
 
+/** "7 years 2 months", "5 months", "under a month" since the day the account was made. */
+export function accountAge(joinDate: string, now: number): string | null {
+  const joined = Date.parse(`${joinDate}T00:00:00Z`);
+  if (Number.isNaN(joined) || joined > now) {
+    return null;
+  }
+  const months = Math.floor(((now - joined) / MS_PER_YEAR) * MONTHS_PER_YEAR);
+  const years = Math.floor(months / MONTHS_PER_YEAR);
+  const rest = months % MONTHS_PER_YEAR;
+  const parts: string[] = [];
+  if (years > 0) {
+    parts.push(`${String(years)} ${years === 1 ? "year" : "years"}`);
+  }
+  if (rest > 0) {
+    parts.push(`${String(rest)} ${rest === 1 ? "month" : "months"}`);
+  }
+  return parts.length > 0 ? parts.join(" ") : "under a month";
+}
+
+type ProfileTile = { readonly label: string; readonly text: string };
+
+/** The tiles of the profile block; a number the page did not give is left out. */
+export function profileTiles(profile: ProfileStats, now: number): ProfileTile[] {
+  const tiles: ProfileTile[] = [];
+  const age = profile.joinDate === undefined ? null : accountAge(profile.joinDate, now);
+  if (age !== null && profile.joinDate !== undefined) {
+    tiles.push({ label: `Account age (since ${profile.joinDate})`, text: age });
+  }
+  if (profile.level !== undefined) {
+    tiles.push({ label: "Level", text: profile.level });
+  }
+  const counts: readonly (readonly [string, number | undefined])[] = [
+    ["Posts uploaded", profile.posts],
+    ["Deleted posts", profile.deletedPosts],
+    ["Comments", profile.comments],
+    ["Tag edits", profile.tagEdits],
+    ["Note edits", profile.noteEdits],
+    ["Forum posts", profile.forumPosts],
+  ];
+  for (const [label, value] of counts) {
+    if (value !== undefined) {
+      tiles.push({ label, text: formatNumber(value) });
+    }
+  }
+  return tiles;
+}
+
+function formatDay(time: number): string {
+  return new Date(time).toLocaleDateString(DATE_LOCALE, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function ProfileBlock(): JSX.Element {
+  const [profile, setProfile] = useState<ProfileStats | null>(() => readStoredProfileStats());
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const refresh = (): void => {
+    setBusy(true);
+    setError("");
+    refreshProfileStats()
+      .then((next) => {
+        setProfile(next);
+      })
+      .catch((reason: unknown) => {
+        setError(reason instanceof Error ? reason.message : String(reason));
+      })
+      .finally(() => {
+        setBusy(false);
+      });
+  };
+
+  return (
+    <>
+      <div className={PROFILE_HEAD_CLASS}>
+        <p className={TILE_LABEL_CLASS}>{PROFILE_HEADING}</p>
+        <Button
+          variant="secondary"
+          size="s"
+          title={PROFILE_REFRESH_TITLE}
+          disabled={busy}
+          onClick={refresh}
+        >
+          {busy ? PROFILE_BUSY_LABEL : PROFILE_REFRESH_LABEL}
+        </Button>
+        {profile === null ? null : (
+          <span className={HINT_CLASS}>{`${PROFILE_READ_PREFIX}${formatDay(profile.readAt)}`}</span>
+        )}
+      </div>
+      {error.length > 0 ? (
+        <p className={HINT_CLASS} role="status">{`${PROFILE_FAILED_PREFIX}${error}`}</p>
+      ) : null}
+      {profile === null ? (
+        <p className={HINT_CLASS}>{PROFILE_EMPTY}</p>
+      ) : (
+        <div className={TILES_CLASS}>
+          {profileTiles(profile, Date.now()).map((tile) => (
+            <div key={tile.label} className={TILE_CLASS}>
+              <span className={TILE_VALUE_CLASS}>{tile.text}</span>
+              <span className={TILE_LABEL_CLASS}>{tile.label}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
 export function StatsSection(): JSX.Element {
   const stats = computeStats(load(), loadFavSet().size);
 
@@ -367,6 +502,7 @@ export function StatsSection(): JSX.Element {
           <CollectionBars collections={stats.topCollections} />
         </div>
       </div>
+      <ProfileBlock />
       <p className={HINT_CLASS}>{HINT}</p>
     </section>
   );

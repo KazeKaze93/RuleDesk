@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RuleDesk Web
 // @namespace    https://github.com/kazekaze93/ruledesk-web
-// @version      0.28.0
+// @version      0.29.0
 // @description  Collections, playlists, favorites, artist updates, and page tweaks for rule34.xxx
 // @downloadURL  https://raw.githubusercontent.com/KazeKaze93/RuleDesk/main/dist/ruledesk-web.user.js
 // @updateURL    https://raw.githubusercontent.com/KazeKaze93/RuleDesk/main/dist/ruledesk-web.user.js
@@ -15,31 +15,31 @@
 !function(){function e(e,t){return(t||"")+" (SystemJS Error#"+e+" https://github.com/systemjs/systemjs/blob/main/docs/errors.md#"+e+")"}function t(e,t){if(-1!==e.indexOf("\\")&&(e=e.replace(j,"/")),"/"===e[0]&&"/"===e[1])return t.slice(0,t.indexOf(":")+1)+e;if("."===e[0]&&("/"===e[1]||"."===e[1]&&("/"===e[2]||2===e.length&&(e+="/"))||1===e.length&&(e+="/"))||"/"===e[0]){var n,r=t.slice(0,t.indexOf(":")+1);if(n="/"===t[r.length+1]?"file:"!==r?(n=t.slice(r.length+2)).slice(n.indexOf("/")+1):t.slice(8):t.slice(r.length+("/"===t[r.length])),"/"===e[0])return t.slice(0,t.length-n.length-1)+e;for(var i=n.slice(0,n.lastIndexOf("/")+1)+e,o=[],s=-1,u=0;u<i.length;u++)-1!==s?"/"===i[u]&&(o.push(i.slice(s,u+1)),s=-1):"."===i[u]?"."!==i[u+1]||"/"!==i[u+2]&&u+2!==i.length?"/"===i[u+1]||u+1===i.length?u+=1:s=u:(o.pop(),u+=2):s=u;return-1!==s&&o.push(i.slice(s)),t.slice(0,t.length-n.length)+o.join("")}}function n(e,n){return t(e,n)||(-1!==e.indexOf(":")?e:t("./"+e,n))}function r(e,n,r,i,o){for(var s in e){var a=t(s,r)||s,f=e[s];if("string"==typeof f){var l=c(i,t(f,r)||f,o);l?n[a]=l:u("W1",s,f,"bare specifier did not resolve")}}}function i(e,t,i){var o;for(o in e.imports&&r(e.imports,i.imports,t,i,null),e.scopes||{}){var s=n(o,t);r(e.scopes[o],i.scopes[s]||(i.scopes[s]={}),t,i,s)}for(o in e.depcache||{})i.depcache[n(o,t)]=e.depcache[o];for(o in e.integrity||{})i.integrity[n(o,t)]=e.integrity[o]}function o(e,t){if(t[e])return e;var n=e.length;do{var r=e.slice(0,n+1);if(r in t)return r}while(-1!==(n=e.lastIndexOf("/",n-1)))}function s(e,t){var n=o(e,t);if(n){var r=t[n];if(null===r)return;if(!(e.length>n.length&&"/"!==r[r.length-1]))return r+e.slice(n.length);u("W2",n,r,"should have a trailing '/'")}}function u(t,n,r,i){console.warn(e(t,"Package target "+i+", resolving target '"+r+"' for "+n))}function c(e,t,n){for(var r=e.scopes,i=n&&o(n,r);i;){var u=s(t,r[i]);if(u)return u;i=o(i.slice(0,i.lastIndexOf("/")),r)}return s(t,e.imports)||-1!==t.indexOf(":")&&t}function a(){this[M]={}}function f(e){return e.id}function l(e,t,n,r){if(e.onload(n,t.id,t.d&&t.d.map(f),!!r),n)throw n}function d(t,n,r,i){var o=t[M][n];if(o)return o;var s=[],u=Object.create(null);P&&Object.defineProperty(u,P,{value:"Module"});var c=Promise.resolve().then((function(){return t.instantiate(n,r,i)})).then((function(r){if(!r)throw Error(e(2,"Module "+n+" did not instantiate"));var i=r[1]((function(e,t){o.h=!0;var n=!1;if("string"==typeof e)e in u&&u[e]===t||(u[e]=t,n=!0);else{for(var r in e)t=e[r],r in u&&u[r]===t||(u[r]=t,n=!0);e&&e.__esModule&&(u.__esModule=e.__esModule)}if(n)for(var i=0;i<s.length;i++){var c=s[i];c&&c(u)}return t}),2===r[1].length?{import:function(e,r){return t.import(e,n,r)},meta:t.createContext(n)}:void 0);return o.e=i.execute||function(){},[r[0],i.setters||[],r[2]||[]]}),(function(e){throw o.e=null,o.er=e,l(t,o,e,!0),e})),a=c.then((function(e){return Promise.all(e[0].map((function(r,i){var o=e[1][i],s=e[2][i];return Promise.resolve(t.resolve(r,n)).then((function(e){var r=d(t,e,n,s);return Promise.resolve(r.I).then((function(){return o&&(r.i.push(o),!r.h&&r.I||o(r.n)),r}))}))}))).then((function(e){o.d=e}))}));return o=t[M][n]={id:n,i:s,n:u,m:i,I:c,L:a,h:!1,d:void 0,e:void 0,er:void 0,E:void 0,C:void 0,p:void 0}}function h(e,t,n,r){if(!r[t.id])return r[t.id]=!0,Promise.resolve(t.L).then((function(){return t.p&&null!==t.p.e||(t.p=n),Promise.all(t.d.map((function(t){return h(e,t,n,r)})))})).catch((function(n){if(t.er)throw n;throw t.e=null,l(e,t,n,!1),n}))}function p(e,t){return t.C=h(e,t,t,{}).then((function(){return v(e,t,{})})).then((function(){return t.n}))}function v(e,t,n){function r(){try{var n=o.call(L);if(n)return n=n.then((function(){t.C=t.n,t.E=null,l(e,t,null,!0)}),(function(n){throw t.er=n,t.E=null,l(e,t,n,!0),n})),t.E=n;t.C=t.n,t.L=t.I=void 0}catch(r){throw t.er=r,r}finally{l(e,t,t.er,!0)}}if(!n[t.id]){if(n[t.id]=!0,!t.e){if(t.er)throw t.er;return t.E?t.E:void 0}var i,o=t.e;return t.e=null,t.d.forEach((function(r){try{var o=v(e,r,n);o&&(i=i||[]).push(o)}catch(s){throw t.er=s,l(e,t,s,!1),s}})),i?Promise.all(i).then(r):r()}}function m(){[].forEach.call(document.querySelectorAll("script"),(function(t){if(!t.sp)if("systemjs-module"===t.type){if(t.sp=!0,!t.src)return;System.import("import:"===t.src.slice(0,7)?t.src.slice(7):n(t.src,g)).catch((function(e){if(e.message.indexOf("https://github.com/systemjs/systemjs/blob/main/docs/errors.md#3")>-1){var n=document.createEvent("Event");n.initEvent("error",!1,!1),t.dispatchEvent(n)}return Promise.reject(e)}))}else if("systemjs-importmap"===t.type){t.sp=!0;var r=t.src?(System.fetch||fetch)(t.src,{integrity:t.integrity,priority:t.fetchPriority,passThrough:!0}).then((function(e){if(!e.ok)throw Error("Invalid status code: "+e.status);return e.text()})).catch((function(n){return n.message=e("W4","Error fetching systemjs-import map "+t.src)+"\n"+n.message,console.warn(n),"function"==typeof t.onerror&&t.onerror(),"{}"})):t.innerHTML;W=W.then((function(){return r})).then((function(n){!function(t,n,r){var o={};try{o=JSON.parse(n)}catch(s){console.warn(Error(e("W5","systemjs-importmap contains invalid JSON")+"\n\n"+n+"\n"))}i(o,r,t)}(N,n,t.src||g)}))}}))}var g,y="undefined"!=typeof Symbol,b="undefined"!=typeof self,S="undefined"!=typeof document,w=b?self:global;if(S){var O=document.querySelector("base[href]");O&&(g=O.href)}if(!g&&"undefined"!=typeof location){var E=(g=location.href.split("#")[0].split("?")[0]).lastIndexOf("/");-1!==E&&(g=g.slice(0,E+1))}var x,j=/\\/g,P=y&&Symbol.toStringTag,M=y?Symbol():"@",I=a.prototype;I.import=function(e,t,n){var r=this;return t&&"object"==typeof t&&(n=t,t=void 0),Promise.resolve(r.prepareImport()).then((function(){return r.resolve(e,t,n)})).then((function(e){var t=d(r,e,void 0,n);return t.C||p(r,t)}))},I.createContext=function(e){var t=this;return{url:e,resolve:function(n,r){return Promise.resolve(t.resolve(n,r||e))}}},I.onload=function(){},I.register=function(e,t,n){x=[e,t,n]},I.getRegister=function(){var e=x;return x=void 0,e};var L=Object.freeze(Object.create(null));w.System=new a;var C,R,W=Promise.resolve(),N={imports:{},scopes:{},depcache:{},integrity:{}},T=S;if(I.prepareImport=function(e){return(T||e)&&(m(),T=!1),W},I.getImportMap=function(){return JSON.parse(JSON.stringify(N))},S&&(m(),window.addEventListener("DOMContentLoaded",m)),I.addImportMap=function(e,t){i(e,t||g,N)},S){window.addEventListener("error",(function(e){J=e.filename,_=e.error}));var A=location.origin}I.createScript=function(e){var t=document.createElement("script");t.async=!0,e.indexOf(A+"/")&&(t.crossOrigin="anonymous");var n=N.integrity[e];return n&&(t.integrity=n),t.src=e,t};var J,_,k={},U=I.register;I.register=function(e,t){if(S&&"loading"===document.readyState&&"string"!=typeof e){var n=document.querySelectorAll("script[src]"),r=n[n.length-1];if(r){C=e;var i=this;R=setTimeout((function(){k[r.src]=[e,t],i.import(r.src)}))}}else C=void 0;return U.call(this,e,t)},I.instantiate=function(t,n){var r=k[t];if(r)return delete k[t],r;var i=this;return Promise.resolve(I.createScript(t)).then((function(r){return new Promise((function(o,s){r.addEventListener("error",(function(){s(Error(e(3,"Error loading "+t+(n?" from "+n:""))))})),r.addEventListener("load",(function(){if(document.head.removeChild(r),J===t)s(_);else{var e=i.getRegister(t);e&&e[0]===C&&clearTimeout(R),o(e)}})),document.head.appendChild(r)}))}))},I.shouldFetch=function(){return!1},"undefined"!=typeof fetch&&(I.fetch=fetch);var $=I.instantiate,B=/^(text|application)\/(x-)?javascript(;|$)/;I.instantiate=function(t,n,r){var i=this;return this.shouldFetch(t,n,r)?this.fetch(t,{credentials:"same-origin",integrity:N.integrity[t],meta:r}).then((function(r){if(!r.ok)throw Error(e(7,r.status+" "+r.statusText+", loading "+t+(n?" from "+n:"")));var o=r.headers.get("content-type");if(!o||!B.test(o))throw Error(e(4,'Unknown Content-Type "'+o+'", loading '+t+(n?" from "+n:"")));return r.text().then((function(e){return e.indexOf("//# sourceURL=")<0&&(e+="\n//# sourceURL="+t),(0,eval)(e),i.getRegister(t)}))})):$.apply(this,arguments)},I.resolve=function(n,r){return c(N,t(n,r=r||g)||n,r)||function(t,n){throw Error(e(8,"Unable to resolve bare specifier '"+t+(n?"' from "+n:"'")))}(n,r)};var F=I.instantiate;I.instantiate=function(e,t,n){var r=N.depcache[e];if(r)for(var i=0;i<r.length;i++)d(this,this.resolve(r[i],e),e);return F.call(this,e,t,n)},b&&"function"==typeof importScripts&&(I.instantiate=function(e){var t=this;return Promise.resolve().then((function(){return importScripts(e),t.getRegister(e)}))}),function(e){function t(t){return!e.hasOwnProperty(t)||!isNaN(t)&&t<e.length||a&&e[t]&&"undefined"!=typeof window&&e[t].parent===window}var n,r,i,o=e.System.constructor.prototype,s=o.import;o.import=function(o,u,c){return function(){for(var o in n=r=void 0,e)t(o)||(n?r||(r=o):n=o,i=o)}(),s.call(this,o,u,c)};var u=[[],function(){return{}}],c=o.getRegister;o.getRegister=function(){var o=c.call(this);if(o)return o;var s,a=function(o){var s,u,c=0;for(var a in e)if(!t(a)){if(0===c&&a!==n||1===c&&a!==r)return a;s?(i=a,u=o&&u||a):s=a===i,c++}return u}(this.firstGlobalProp);if(!a)return u;try{s=e[a]}catch(f){return u}return[[],function(e){return{execute:function(){e(s),e({default:s,__useDefault:!0})}}}]};var a="undefined"!=typeof navigator&&-1!==navigator.userAgent.indexOf("Trident")}("undefined"!=typeof self?self:global),function(e){var t=e.System.constructor.prototype,r=/^[^#?]+\.(css|html|json|wasm)([?#].*)?$/,i=t.shouldFetch.bind(t);t.shouldFetch=function(e){return i(e)||r.test(e)};var o=/^application\/json(;|$)/,s=/^text\/css(;|$)/,u=/^application\/wasm(;|$)/,c=t.fetch;t.fetch=function(t,r){return c(t,r).then((function(i){if(r.passThrough)return i;if(!i.ok)return i;var c=i.headers.get("content-type");return o.test(c)?i.json().then((function(e){return new Response(new Blob(['System.register([],function(e){return{execute:function(){e("default",'+JSON.stringify(e)+")}}})"],{type:"application/javascript"}))})):s.test(c)?i.text().then((function(e){return e=e.replace(/url\(\s*(?:(["'])((?:\\.|[^\n\\"'])+)\1|((?:\\.|[^\s,"'()\\])+))\s*\)/g,(function(e,r,i,o){return["url(",r,n(i||o,t),r,")"].join("")})),new Response(new Blob(["System.register([],function(e){return{execute:function(){var s=new CSSStyleSheet();s.replaceSync("+JSON.stringify(e)+');e("default",s)}}})'],{type:"application/javascript"}))})):u.test(c)?(WebAssembly.compileStreaming?WebAssembly.compileStreaming(i):i.arrayBuffer().then(WebAssembly.compile)).then((function(n){e.System.wasmModules||(e.System.wasmModules=Object.create(null)),e.System.wasmModules[t]=n;var r=[],i=[];return WebAssembly.Module.imports&&WebAssembly.Module.imports(n).forEach((function(e){var t=JSON.stringify(e.module);-1===r.indexOf(t)&&(r.push(t),i.push("function(m){i["+t+"]=m}"))})),new Response(new Blob(["System.register(["+r.join(",")+"],function(e){var i={};return{setters:["+i.join(",")+"],execute:function(){return WebAssembly.instantiate(System.wasmModules["+JSON.stringify(t)+"],i).then(function(m){e(m.exports)})}}})"],{type:"application/javascript"}))})):i}))}}("undefined"!=typeof self?self:global);var q="undefined"!=typeof Symbol&&Symbol.toStringTag;I.get=function(e){var t=this[M][e];if(t&&null===t.e&&!t.E)return t.er?null:t.n},I.set=function(t,n){try{new URL(t)}catch(s){console.warn(Error(e("W3",'"'+t+'" is not a valid URL to set in the module registry')))}var r;q&&"Module"===n[q]?r=n:(r=Object.assign(Object.create(null),n),q&&Object.defineProperty(r,q,{value:"Module"}));var i=Promise.resolve(r),o=this[M][t]||(this[M][t]={id:t,i:[],h:!1,d:[],e:null,er:void 0,E:void 0});return!o.e&&!o.E&&(Object.assign(o,{n:r,I:void 0,L:void 0,C:i}),r)},I.has=function(e){return!!this[M][e]},I.delete=function(e){var t=this[M],n=t[e];if(!n||n.p&&null!==n.p.e||n.E)return!1;var r=n.i;return n.d&&n.d.forEach((function(e){var t=e.i.indexOf(n);-1!==t&&e.i.splice(t,1)})),delete t[e],function(){var n=t[e];if(!n||!r||null!==n.e||n.E)return!1;r.forEach((function(e){n.i.push(e),e(n.n)})),r=null}};var D="undefined"!=typeof Symbol&&Symbol.iterator;I.entries=function(){var e,t,n=this,r=Object.keys(n[M]),i=0,o={next:function(){for(;void 0!==(t=r[i++])&&void 0===(e=n.get(t)););return{done:void 0===t,value:void 0!==t&&[t,e]}}};return o[D]=function(){return this},o}}();
 !function(t){function e(t){t.registerRegistry=Object.create(null),t.namedRegisterAliases=Object.create(null)}var r=t.System;e(r);var i,s,n=r.constructor.prototype,l=r.constructor,a=function(){l.call(this),e(this)};a.prototype=n,r.constructor=a;var o=n.register;n.register=function(t,e,r,n){if("string"!=typeof t)return o.apply(this,arguments);var l=[e,r,n];return this.registerRegistry[t]=l,i||(i=l,s=t),Promise.resolve().then((function(){i=null,s=null})),o.apply(this,[e,r,n])};var u=n.resolve;n.resolve=function(t,e){try{return u.call(this,t,e)}catch(r){if(t in this.registerRegistry)return this.namedRegisterAliases[t]||t;throw r}};var c=n.instantiate;n.instantiate=function(t,e,r){var i=this.registerRegistry[t];return i?(this.registerRegistry[t]=null,i):c.call(this,t,e,r)};var g=n.getRegister;n.getRegister=function(t){var e=g.call(this,t);s&&t&&(this.namedRegisterAliases[s]=t);var r=i||e;return i=null,s=null,r}}("undefined"!=typeof self?self:global);
 ;(typeof System!='undefined')&&(System=new System.constructor());
-System.register("./___monkey.entry.js", [],(function(exports,module){'use strict';return{execute:(function(){exports({$:$$1,D:yieldToMain,E:detectPageKind,G:mountCards,I:syncFavoritesPage,J:mountFavoriteVideoMarks,K:mountCommentsPage,L:runFeaturesYielding,O:applyAppearanceTheme,Q:Q$1,U:ensureDocumentStyles,Z:normalizeArtistTag,_:ensureStyleElement,a:getFeatureState,a$:getFeatureChoice,a1:buildOwnPageCss,a3:parseRdwHash,a4:readFavoritesSyncMode,a6:runFavoritesSync,a8:rdwPageHash,a9:createFavoritesSyncTabId,aA:IconChevronRight,aB:IconChevronDown,aC:Card,aD:P$1,aE:T,aF:A,aI:SectionLabel,aJ:Select,aM:Segmented,aP:TextField,aQ:Button,aR:clampBackgroundDim,aT:featurePanelLabel,aV:clearFeatureState,aW:applyCssOnlyFeatureEnabled,aX:isFeatureEnabled,aZ:setFeatureChoiceValue,a_:applyCssOnlyFeatureChoice,ab:readArtistsMirror,ac:listArtistTags,ad:writeArtistsMirror,ae:reloadFromStorage,af:save,ah:menuRouteForPage,ai:getSiteSkinCss,aj:d,ak:Switch,am:setTweaksEnabled,ap:setFeatureEnabled,aq:NumberField,as:setUpdatesGroupSize,at:getUpdatesGroupSize,av:setPlaylistChunkSize,aw:getPlaylistChunkSize,ay:setGridFavButtonsEnabled,az:setGridFavButtonsVisible,b0:createAutocompleteQuerier,b1:b,b2:readSiteBlacklist,b3:Chip,b4:AutocompleteField,b5:ProgressBar,b6:createDefaultCustomTheme,b8:prepareBackgroundImageFile,b9:writeSiteBlacklist,bC:hasApiCredentials,bD:getTweaksEnabled,bE:getGridFavButtonsEnabled,bF:getFeatureChoiceValue,bG:getScreenPixelSize,bH:IconPlus,bI:EmptyState,bJ:Dialog,bK:resolveCollectionKind,bL:deleteCollection,bM:QueryField,bN:isUnfilteredQuery,bO:createDynamicCollection,bP:createPlaylist,bR:collectionDetailHash,bS:readCoverMirror,bU:IconCheck,bV:readCountMirror,bW:buildSearchUrl,bX:dynamicCollectionMarkHash,bY:serialize,b_:getSeenPostId,bb:clearApiCredentials,bc:parseApiCredentials,bd:setApiCredentials,be:load,bf:createDefaultStorage,bg:clearStorageCache,bh:clearFavsCache,bi:object,bk:optional,bl:string,bn:literal,bp:isSiteUrl,bq:stripLegacyPanelWindowSize,br:migrateMarksFavToFavs,bt:createDefaultFavs,bu:parseFavsStrict,bv:setAppearance,bw:loadFavSet,by:extractFavIdsFromMarks,c5:removeArtist,c6:completeLastQueryToken,c7:readLastQueryToken,c9:IconButton,ca:IconX,cb:removeArtists,cc:rememberArtistSnapshot,cd:fetchArtistSnapshot,ce:addArtists,cf:w$1,cg:downloadsAvailable,ch:shuffleCollection,ci:resetCollectionOrder,cj:Toast,ck:getCollectionOrder,cl:listPlaylists,cm:removePostsFromCollection,cn:isDownloadBusy,co:startDownload,cp:movePostInCollection,cq:renameCollection,cs:restorePosts,cu:collectionQueueHash,e:getSyncState,g:getFeatureEnabled,j:setSyncState,n:a,o:applyTokenProperties,p:resolveAppearancePalette,q:getAppearance,r:resolveFavoritesUserId,s:setFeatureState,t:isCollectionDetailPage});var STORAGE_KEY = "ruledesk-web.storage";
+System.register("./___monkey.entry.js", [],(function(exports,module){'use strict';return{execute:(function(){exports({B:resolveFavoritesUserId,I:rdwPageHash,J:createFavoritesSyncTabId,L:readArtistsMirror,O:listArtistTags,P:writeArtistsMirror,Q:Q$1,T:reloadFromStorage,V:save,X:setSyncState,a:mountFavoriteVideoMarks,a$:getFeatureChoice,a0:a,a1:applyTokenProperties,a2:resolveAppearancePalette,a3:isCollectionDetailPage,a4:menuRouteForPage,a5:getSiteSkinCss,a6:$$1,a7:setFeatureState,aA:IconChevronRight,aB:IconChevronDown,aC:Card,aD:P$1,aE:T,aF:A,aI:SectionLabel,aJ:Select,aM:Segmented,aP:TextField,aQ:Button,aR:clampBackgroundDim,aT:featurePanelLabel,aV:clearFeatureState,aW:applyCssOnlyFeatureEnabled,aX:isFeatureEnabled,aZ:setFeatureChoiceValue,a_:applyCssOnlyFeatureChoice,ai:getFeatureState,aj:d,ak:Switch,am:setTweaksEnabled,ap:setFeatureEnabled,aq:NumberField,as:setUpdatesGroupSize,at:getUpdatesGroupSize,av:setPlaylistChunkSize,aw:getPlaylistChunkSize,ay:setGridFavButtonsEnabled,az:setGridFavButtonsVisible,b:mountCommentsPage,b0:createAutocompleteQuerier,b1:b,b2:readSiteBlacklist,b3:AutocompleteField,b4:Chip,b5:ProgressBar,b6:createDefaultCustomTheme,b8:prepareBackgroundImageFile,b9:writeSiteBlacklist,bC:hasApiCredentials,bD:getTweaksEnabled,bE:getGridFavButtonsEnabled,bF:getFeatureChoiceValue,bG:getScreenPixelSize,bH:IconPlus,bI:EmptyState,bJ:Dialog,bK:resolveCollectionKind,bL:deleteCollection,bM:QueryField,bN:isUnfilteredQuery,bO:createDynamicCollection,bP:createPlaylist,bR:collectionDetailHash,bS:readCoverMirror,bU:IconCheck,bV:readCountMirror,bW:buildSearchUrl,bX:dynamicCollectionMarkHash,bY:serialize,b_:getSeenPostId,bb:clearApiCredentials,bc:parseApiCredentials,bd:setApiCredentials,be:load,bf:createDefaultStorage,bg:clearStorageCache,bh:clearFavsCache,bi:object,bk:optional,bl:string,bn:literal,bp:isSiteUrl,bq:stripLegacyPanelWindowSize,br:migrateMarksFavToFavs,bt:createDefaultFavs,bu:parseFavsStrict,bv:setAppearance,bw:loadFavSet,by:extractFavIdsFromMarks,c:applyAppearanceTheme,c5:removeArtist,c6:completeLastQueryToken,c7:readLastQueryToken,c9:IconButton,ca:IconX,cb:removeArtists,cc:rememberArtistSnapshot,cd:fetchArtistSnapshot,ce:addArtists,cg:number,ch:int,ci:w$1,cj:downloadsAvailable,ck:shuffleCollection,cl:resetCollectionOrder,cm:Toast,cn:getCollectionOrder,co:listPlaylists,cp:removePostsFromCollection,cq:isDownloadBusy,cr:startDownload,cs:movePostInCollection,ct:renameCollection,cv:restorePosts,cx:collectionQueueHash,d:detectPageKind,e:ensureDocumentStyles,g:getAppearance,i:ensureStyleElement,j:buildOwnPageCss,m:mountCards,n:normalizeArtistTag,o:getFeatureEnabled,p:parseRdwHash,q:getSyncState,r:runFeaturesYielding,s:syncFavoritesPage,t:readFavoritesSyncMode,u:runFavoritesSync,y:yieldToMain});var STORAGE_KEY = "ruledesk-web.storage";
 var STORAGE_BACKUP_KEY = exports("bx","ruledesk-web.storage.backup");
 var FAVS_STORAGE_KEY = exports("bs","ruledesk-web.favs");
 var DEBUG_KEY = "ruledesk-web.debug";
-var APPEARANCE_BACKGROUND_KEY = exports("aa","ruledesk-web.appearance.background");
-var APPEARANCE_BACKGROUND_TOO_LARGE = exports("ag","Background image is too large (max 1.5 MB).");
+var APPEARANCE_BACKGROUND_KEY = exports("K","ruledesk-web.appearance.background");
+var APPEARANCE_BACKGROUND_TOO_LARGE = exports("ah","Background image is too large (max 1.5 MB).");
 var TOKEN_STYLE_ID = "ruledesk-web-tokens";
 var SITE_SKIN_STYLE_ID = "ruledesk-web-site-skin";
 var RDW_SKIN_CLASS = "rdw-skin";
-var RDW_THEME_ATTR = exports("u","data-rdw-theme");
-var APPEARANCE_THEME_SITE = exports("A","site");
-var APPEARANCE_THEME_SITE_DARK = exports("v","site-dark");
+var RDW_THEME_ATTR = exports("aa","data-rdw-theme");
+var APPEARANCE_THEME_SITE = exports("ab","site");
+var APPEARANCE_THEME_SITE_DARK = exports("ac","site-dark");
 var APPEARANCE_THEME_LIGHT = exports("aK","light");
 var APPEARANCE_THEME_DARK = exports("aL","dark");
 var APPEARANCE_THEME_CUSTOM = exports("aG","custom");
 var DEFAULT_APPEARANCE_THEME = APPEARANCE_THEME_LIGHT;
-var SITE_ORIGIN = exports("X","https://rule34.xxx");
-var SEARCH_PATH = exports("m","/index.php");
+var SITE_ORIGIN = exports("f","https://rule34.xxx");
+var SEARCH_PATH = exports("$","/index.php");
 var SEARCH_PAGE = exports("c1","post");
 var SEARCH_SECTION = exports("c2","list");
-var SEARCH_SECTION_VIEW = exports("ct","view");
-var SEARCH_PARAM_PAGE = exports("S","page");
-var SEARCH_PARAM_TAGS = exports("Y","tags");
-var FAVORITES_PAGE = exports("k","favorites");
-var FAVORITES_SECTION_VIEW = exports("l","view");
+var SEARCH_SECTION_VIEW = exports("cw","view");
+var SEARCH_PARAM_PAGE = exports("Y","page");
+var SEARCH_PARAM_TAGS = exports("h","tags");
+var FAVORITES_PAGE = exports("Z","favorites");
+var FAVORITES_SECTION_VIEW = exports("_","view");
 var FAVORITES_SECTION_DELETE = "delete";
 var FAVORITES_PARAM_RETURN_PID = "return_pid";
 var ADDFAV_PATH = "/public/addfav.php";
@@ -48,7 +48,7 @@ var VOTE_PARAM_PAGE = "page";
 var VOTE_PARAM_TYPE = "type";
 var VOTE_PAGE = "post";
 var VOTE_SECTION = "vote";
-var FETCH_CREDENTIALS = "same-origin";
+var FETCH_CREDENTIALS = exports("cf","same-origin");
 var TAG_TYPE_INCLUDE = exports("c8","include");
 var TAG_TYPE_EXCLUDE = "exclude";
 var UPDATES_ID_PREFIX = "id:>";
@@ -63,7 +63,7 @@ var SITE_BLACKLIST_COOKIE_NAME = "tag_blacklist";
 var SITE_THEME_STYLESHEET_DIR = "/css/";
 var SITE_THEME_STYLESHEET_LIGHT = "desktop.css";
 var SITE_THEME_STYLESHEET_DARK = "desktop-dark.css";
-var UI_TEXT = exports("a7",{
+var UI_TEXT = exports("U",{
 	nameLabel: "Name",
 	save: "Save",
 	cancel: "Cancel",
@@ -96,7 +96,7 @@ var UI_TEXT = exports("a7",{
 	updatesPartialHint: "This search covers only part of your artists. Marking as seen works when all artists are in one search (set “Artists per search” to 0).",
 	updatesBarMissingHost: "updates empty host not found; updates bar not mounted"
 });
-var CSS_CLASS = exports("w",{
+var CSS_CLASS = exports("C",{
 	section: "rdw-section",
 	list: "rdw-list",
 	listItem: "rdw-list-item",
@@ -123,7 +123,7 @@ var CSS_CLASS = exports("w",{
 });
 /** Hash routes and DOM ids for RuleDesk own pages (replaces floating panel). */
 var RDW_HASH_PREFIX = "#rdw/";
-var RDW_ROUTE_COLLECTIONS = exports("cr","collections");
+var RDW_ROUTE_COLLECTIONS = exports("cu","collections");
 var RDW_ROUTE_FOLLOWING = "following";
 var RDW_ROUTE_SETTINGS = "settings";
 var RDW_ROUTE_STATS = "stats";
@@ -142,10 +142,10 @@ var RDW_COLLECTION_QUEUE_HASH_PREFIX = "#rdw-c=";
 * query narrows nothing: its bar must not show on the plain post list.
 */
 var RDW_DYNAMIC_MARK_HASH_PREFIX = "#rdw-dc=";
-var RDW_HASH_COLLECTIONS = exports("b",`${RDW_HASH_PREFIX}${RDW_ROUTE_COLLECTIONS}`);
-var RDW_HASH_FOLLOWING = exports("d",`${RDW_HASH_PREFIX}${RDW_ROUTE_FOLLOWING}`);
-var RDW_HASH_SETTINGS = exports("i",`${RDW_HASH_PREFIX}${RDW_ROUTE_SETTINGS}`);
-var RDW_HASH_STATS = exports("f",`${RDW_HASH_PREFIX}${RDW_ROUTE_STATS}`);
+var RDW_HASH_COLLECTIONS = exports("x",`${RDW_HASH_PREFIX}${RDW_ROUTE_COLLECTIONS}`);
+var RDW_HASH_FOLLOWING = exports("A",`${RDW_HASH_PREFIX}${RDW_ROUTE_FOLLOWING}`);
+var RDW_HASH_SETTINGS = exports("G",`${RDW_HASH_PREFIX}${RDW_ROUTE_SETTINGS}`);
+var RDW_HASH_STATS = exports("D",`${RDW_HASH_PREFIX}${RDW_ROUTE_STATS}`);
 /**
 * Key in `settings.features` for showing Statistics in the site menu.
 * It is a plain switch, not a page tweak with a module.
@@ -153,14 +153,14 @@ var RDW_HASH_STATS = exports("f",`${RDW_HASH_PREFIX}${RDW_ROUTE_STATS}`);
 var STATS_MENU_SETTING_ID = exports("bB","stats-menu");
 var STATS_MENU_SETTING_LABEL = exports("an","Statistics in site menu");
 var STATS_MENU_SWITCH_ID = exports("ao","rdw-stats-menu");
-var RDW_OWN_PAGE_CLASS = exports("a2","rdw-own-page");
-var RDW_PAGE_ROOT_ID = exports("R","rdw-page-root");
+var RDW_OWN_PAGE_CLASS = exports("k","rdw-own-page");
+var RDW_PAGE_ROOT_ID = exports("v","rdw-page-root");
 /** The download manager's panel: stays visible over the script's own pages. */
 var RDW_DOWNLOADS_PANEL_ID = "rdw-downloads";
-var RDW_OWN_PAGE_STYLE_ID = exports("a0","rdw-own-page-style");
+var RDW_OWN_PAGE_STYLE_ID = exports("R","rdw-own-page-style");
 var HEADER_SELECTOR$1 = exports("H","div#header");
 var NAVBAR_SELECTOR = exports("N","div#header ul#navbar");
-var CURRENT_PAGE_CLASS$1 = exports("C","current-page");
+var CURRENT_PAGE_CLASS$1 = exports("W","current-page");
 var MENU_ITEM_ID = exports("M",{
 	collections: "rdw-nav-collections",
 	following: "rdw-nav-following",
@@ -168,7 +168,7 @@ var MENU_ITEM_ID = exports("M",{
 	stats: "rdw-nav-stats",
 	settings: "rdw-nav-settings"
 });
-var MENU_LABEL = exports("c",{
+var MENU_LABEL = exports("z",{
 	collections: "Collections",
 	following: "Following",
 	favorites: "Favorites",
@@ -176,10 +176,10 @@ var MENU_LABEL = exports("c",{
 	settings: "RuleDesk"
 });
 /** Site native favorites entry (submenu); hidden when our Favorites item is shown. */
-var MY_FAVORITES_CONTAINER_ID = exports("h","my-favorites-container");
-var FEED_MENU_ITEM_ID = exports("F","rdw-feed-menu");
+var MY_FAVORITES_CONTAINER_ID = exports("E","my-favorites-container");
+var FEED_MENU_ITEM_ID = exports("w","rdw-feed-menu");
 /** Shared class names for own-page section layouts (relocated from ui/panel). */
-var PANEL_UI_CLASS = exports("P",{
+var PANEL_UI_CLASS = exports("a8",{
 	scrollRegion: "rdw-scroll-region",
 	settingsGroup: "rdw-settings-group",
 	settingsRow: "rdw-settings-row",
@@ -298,7 +298,7 @@ function isDebugEnabled() {
 		return false;
 	}
 }
-var log = exports("W",{
+var log = exports("l",{
 	debug(message, ...details) {
 		if (!isDebugEnabled()) return;
 		console.debug(`[ruledesk-web] ${message}`, ...details);
@@ -2310,7 +2310,7 @@ function pruneMarksIfNeeded(marks, keepLimit = MARKS_KEEP_LIMIT) {
 * Design tokens for RuleDesk Web UI and site skin.
 * Light values match docs/design/mock-components.html.
 */
-var TOKEN_VAR = exports("T",{
+var TOKEN_VAR = exports("a9",{
 	bg: "--rdw-bg",
 	surface: "--rdw-surface",
 	surface2: "--rdw-surface-2",
@@ -2432,16 +2432,16 @@ var CONTRAST_OFFSET$1 = .05;
 * Hex equivalents of `docs/design/site-desktop.css` light `* { --c-* }`.
 * Script-page Site default chrome; keep in sync with skin/theme site palette.
 */
-var SITE_LIGHT_C_BG = exports("x","#aae5a4");
-var SITE_LIGHT_C_BG_ALT = exports("y","#89cf81");
+var SITE_LIGHT_C_BG = exports("ad","#aae5a4");
+var SITE_LIGHT_C_BG_ALT = exports("ae","#89cf81");
 var SITE_LIGHT_C_BG_OVERLAY = "#98d491";
 var SITE_LIGHT_C_TEXT = "#000000";
 var SITE_LIGHT_C_TEXT_SOFT = "#666666";
 var SITE_LIGHT_C_LINK = "#000099";
 /** Site dark script-page chrome (theme=site-dark). */
-var SITE_DARK_C_BG = exports("z","#303a30");
+var SITE_DARK_C_BG = exports("af","#303a30");
 var SITE_DARK_C_SURFACE2 = "#303030";
-var SITE_DARK_C_BORDER = exports("B","#505a50");
+var SITE_DARK_C_BORDER = exports("ag","#505a50");
 var SITE_DARK_C_TEXT = "#c0c0c0";
 var SITE_DARK_C_MUTED = "#878787";
 var SITE_DARK_C_ACCENT = "#b0e0b0";
@@ -4093,7 +4093,7 @@ function isBlacklisted(tags, score, rating, list) {
 	}
 	return false;
 }
-var SITE_SELECTORS = exports("V",{
+var SITE_SELECTORS = exports("S",{
 	thumb: "span.thumb",
 	thumbLink: "a[href*=\"s=view\"]",
 	previewImage: "img.preview",
@@ -7650,7 +7650,7 @@ var FAVORITES_SYNC_RETRY_DELAYS_MS = [
 	6e4
 ];
 var FAVORITES_SYNC_MODE_INCREMENTAL = exports("bA",FAVS_SYNC_MODE_INCREMENTAL);
-var FAVORITES_SYNC_MODE_FULL = exports("a5",FAVS_SYNC_MODE_FULL);
+var FAVORITES_SYNC_MODE_FULL = exports("F",FAVS_SYNC_MODE_FULL);
 var MY_FAVORITES_LINK_SELECTOR$1 = "li#my-favorites-container a[href*=\"page=favorites\"]";
 var THUMB_SELECTOR$1 = "span.thumb";
 var THUMB_POST_LINK_SELECTOR = "span.thumb a[id^=\"p\"]";
@@ -8998,10 +8998,14 @@ ${ICON_BUTTON_CSS}
   color: #5c4500;
 }
 
+/* As wide as what it holds, not the whole row. */
 .${CSS_CLASS.updatesBar} {
   display: flex;
   align-items: center;
   gap: 10px;
+  box-sizing: border-box;
+  width: fit-content;
+  max-width: 100%;
   white-space: nowrap;
 }
 
@@ -9010,7 +9014,6 @@ ${ICON_BUTTON_CSS}
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
-  width: 100%;
 }
 
 .${CSS_CLASS.updatesBar} .${CSS_CLASS.hint} {
@@ -17326,45 +17329,12 @@ bootEarly();
 whenDomReady(() => {
 	applyLayoutBeforePaint();
 	scheduleAfterFirstPaint(() => {
-		module.import('./app-D9wl0The-CiZHvaAE.js').then(function(n){return n.h}).then(({ startApp }) => {
+		module.import('./app-Cy1IrKfc-ByLCfauj.js').then(({ startApp }) => {
 			startApp();
 		});
 	});
 });})}}));
-System.register("./app-D9wl0The-CiZHvaAE.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var getFeatureEnabled,setFeatureState,getFeatureState,MENU_ITEM_ID,Q$1,RDW_PAGE_ROOT_ID,HEADER_SELECTOR$1,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,resolveFavoritesUserId,getSyncState,RDW_HASH_STATS,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,CURRENT_PAGE_CLASS$1,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,a,applyTokenProperties,resolveAppearancePalette,getAppearance,isCollectionDetailPage,$$1,PANEL_UI_CLASS,TOKEN_VAR,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,CSS_CLASS,SITE_LIGHT_C_BG,SITE_LIGHT_C_BG_ALT,SITE_DARK_C_BG,SITE_DARK_C_BORDER,yieldToMain,detectPageKind,mountCards,syncFavoritesPage,mountFavoriteVideoMarks,mountCommentsPage,runFeaturesYielding,applyAppearanceTheme,ensureDocumentStyles,SITE_SELECTORS,log,SITE_ORIGIN,SEARCH_PARAM_TAGS,normalizeArtistTag,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,RDW_OWN_PAGE_CLASS,parseRdwHash,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,runFavoritesSync,UI_TEXT,rdwPageHash,createFavoritesSyncTabId,APPEARANCE_BACKGROUND_KEY,readArtistsMirror,listArtistTags,writeArtistsMirror,reloadFromStorage,save,APPEARANCE_BACKGROUND_TOO_LARGE,menuRouteForPage,getSiteSkinCss;return{setters:[function(module){getFeatureEnabled=module.g;setFeatureState=module.s;getFeatureState=module.a;MENU_ITEM_ID=module.M;Q$1=module.Q;RDW_PAGE_ROOT_ID=module.R;HEADER_SELECTOR$1=module.H;NAVBAR_SELECTOR=module.N;FEED_MENU_ITEM_ID=module.F;RDW_HASH_COLLECTIONS=module.b;MENU_LABEL=module.c;RDW_HASH_FOLLOWING=module.d;resolveFavoritesUserId=module.r;getSyncState=module.e;RDW_HASH_STATS=module.f;MY_FAVORITES_CONTAINER_ID=module.h;RDW_HASH_SETTINGS=module.i;CURRENT_PAGE_CLASS$1=module.C;setSyncState=module.j;SEARCH_PARAM_PAGE=module.S;FAVORITES_PAGE=module.k;FAVORITES_SECTION_VIEW=module.l;SEARCH_PATH=module.m;a=module.n;applyTokenProperties=module.o;resolveAppearancePalette=module.p;getAppearance=module.q;isCollectionDetailPage=module.t;$$1=module.$;PANEL_UI_CLASS=module.P;TOKEN_VAR=module.T;RDW_THEME_ATTR=module.u;APPEARANCE_THEME_SITE=module.A;APPEARANCE_THEME_SITE_DARK=module.v;CSS_CLASS=module.w;SITE_LIGHT_C_BG=module.x;SITE_LIGHT_C_BG_ALT=module.y;SITE_DARK_C_BG=module.z;SITE_DARK_C_BORDER=module.B;yieldToMain=module.D;detectPageKind=module.E;mountCards=module.G;syncFavoritesPage=module.I;mountFavoriteVideoMarks=module.J;mountCommentsPage=module.K;runFeaturesYielding=module.L;applyAppearanceTheme=module.O;ensureDocumentStyles=module.U;SITE_SELECTORS=module.V;log=module.W;SITE_ORIGIN=module.X;SEARCH_PARAM_TAGS=module.Y;normalizeArtistTag=module.Z;ensureStyleElement=module._;RDW_OWN_PAGE_STYLE_ID=module.a0;buildOwnPageCss=module.a1;RDW_OWN_PAGE_CLASS=module.a2;parseRdwHash=module.a3;readFavoritesSyncMode=module.a4;FAVORITES_SYNC_MODE_FULL=module.a5;runFavoritesSync=module.a6;UI_TEXT=module.a7;rdwPageHash=module.a8;createFavoritesSyncTabId=module.a9;APPEARANCE_BACKGROUND_KEY=module.aa;readArtistsMirror=module.ab;listArtistTags=module.ac;writeArtistsMirror=module.ad;reloadFromStorage=module.ae;save=module.af;APPEARANCE_BACKGROUND_TOO_LARGE=module.ag;menuRouteForPage=module.ah;getSiteSkinCss=module.ai;}],execute:(function(){exports({b:saveBackground,c:clearBackground,f:isViewMode,g:writeViewMode,i:installSiteMenu,l:loadBackground,n:navigateToRdwRoute,r:readViewMode,s:syncRdwPageLayout,w:widePagesEnabled});/**
-* How the Collections and Following pages show their items (tiles or a list),
-* remembered per page, and whether those pages take the whole window width.
-*/
-var VIEW_TILES = "tiles";
-var VIEW_LIST = "list";
-var VIEW_LABEL = exports("e","View");
-var VIEW_OPTIONS = exports("V",[{
-	value: VIEW_TILES,
-	label: "Tiles"
-}, {
-	value: VIEW_LIST,
-	label: "List"
-}]);
-var FOLLOWING_VIEW_STATE_ID = exports("F","following-view");
-var COLLECTIONS_VIEW_STATE_ID = exports("C","collections-view");
-/** Setting: Collections and Following fill the window instead of a centred column. */
-var WIDE_PAGES_SETTING_ID = exports("d","wide-pages");
-var WIDE_PAGES_SETTING_LABEL = exports("W","Full-width Collections and Following");
-var WIDE_PAGES_SWITCH_ID = exports("a","rdw-wide-pages");
-function isViewMode(value) {
-	return value === "tiles" || value === "list";
-}
-/** The remembered view of a page; tiles until the user chose otherwise. */
-function readViewMode(stateId) {
-	const stored = getFeatureState(stateId);
-	return isViewMode(stored) ? stored : VIEW_TILES;
-}
-function writeViewMode(stateId, mode) {
-	setFeatureState(stateId, mode);
-}
-function widePagesEnabled() {
-	return getFeatureEnabled(WIDE_PAGES_SETTING_ID, false);
-}/** Matches host.tsx page title class (owned there; styled here for site polish). */
+System.register("./app-Cy1IrKfc-ByLCfauj.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var yieldToMain,detectPageKind,mountCards,syncFavoritesPage,mountFavoriteVideoMarks,mountCommentsPage,runFeaturesYielding,getAppearance,applyAppearanceTheme,ensureDocumentStyles,SITE_SELECTORS,log,SITE_ORIGIN,SEARCH_PARAM_TAGS,normalizeArtistTag,CSS_CLASS,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,HEADER_SELECTOR$1,RDW_OWN_PAGE_CLASS,MENU_ITEM_ID,getFeatureEnabled,parseRdwHash,getSyncState,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,runFavoritesSync,UI_TEXT,Q$1,RDW_PAGE_ROOT_ID,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,resolveFavoritesUserId,RDW_HASH_STATS,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,rdwPageHash,createFavoritesSyncTabId,APPEARANCE_BACKGROUND_KEY,readArtistsMirror,listArtistTags,writeArtistsMirror,reloadFromStorage,save,CURRENT_PAGE_CLASS$1,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,a,applyTokenProperties,resolveAppearancePalette,isCollectionDetailPage,menuRouteForPage,getSiteSkinCss,$$1,setFeatureState,PANEL_UI_CLASS,TOKEN_VAR,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,SITE_LIGHT_C_BG,SITE_LIGHT_C_BG_ALT,SITE_DARK_C_BG,SITE_DARK_C_BORDER,APPEARANCE_BACKGROUND_TOO_LARGE,getFeatureState;return{setters:[function(module){yieldToMain=module.y;detectPageKind=module.d;mountCards=module.m;syncFavoritesPage=module.s;mountFavoriteVideoMarks=module.a;mountCommentsPage=module.b;runFeaturesYielding=module.r;getAppearance=module.g;applyAppearanceTheme=module.c;ensureDocumentStyles=module.e;SITE_SELECTORS=module.S;log=module.l;SITE_ORIGIN=module.f;SEARCH_PARAM_TAGS=module.h;normalizeArtistTag=module.n;CSS_CLASS=module.C;ensureStyleElement=module.i;RDW_OWN_PAGE_STYLE_ID=module.R;buildOwnPageCss=module.j;HEADER_SELECTOR$1=module.H;RDW_OWN_PAGE_CLASS=module.k;MENU_ITEM_ID=module.M;getFeatureEnabled=module.o;parseRdwHash=module.p;getSyncState=module.q;readFavoritesSyncMode=module.t;FAVORITES_SYNC_MODE_FULL=module.F;runFavoritesSync=module.u;UI_TEXT=module.U;Q$1=module.Q;RDW_PAGE_ROOT_ID=module.v;NAVBAR_SELECTOR=module.N;FEED_MENU_ITEM_ID=module.w;RDW_HASH_COLLECTIONS=module.x;MENU_LABEL=module.z;RDW_HASH_FOLLOWING=module.A;resolveFavoritesUserId=module.B;RDW_HASH_STATS=module.D;MY_FAVORITES_CONTAINER_ID=module.E;RDW_HASH_SETTINGS=module.G;rdwPageHash=module.I;createFavoritesSyncTabId=module.J;APPEARANCE_BACKGROUND_KEY=module.K;readArtistsMirror=module.L;listArtistTags=module.O;writeArtistsMirror=module.P;reloadFromStorage=module.T;save=module.V;CURRENT_PAGE_CLASS$1=module.W;setSyncState=module.X;SEARCH_PARAM_PAGE=module.Y;FAVORITES_PAGE=module.Z;FAVORITES_SECTION_VIEW=module._;SEARCH_PATH=module.$;a=module.a0;applyTokenProperties=module.a1;resolveAppearancePalette=module.a2;isCollectionDetailPage=module.a3;menuRouteForPage=module.a4;getSiteSkinCss=module.a5;$$1=module.a6;setFeatureState=module.a7;PANEL_UI_CLASS=module.a8;TOKEN_VAR=module.a9;RDW_THEME_ATTR=module.aa;APPEARANCE_THEME_SITE=module.ab;APPEARANCE_THEME_SITE_DARK=module.ac;SITE_LIGHT_C_BG=module.ad;SITE_LIGHT_C_BG_ALT=module.ae;SITE_DARK_C_BG=module.af;SITE_DARK_C_BORDER=module.ag;APPEARANCE_BACKGROUND_TOO_LARGE=module.ah;getFeatureState=module.ai;}],execute:(function(){exports({a:installSiteMenu,f:isViewMode,i:navigateToRdwRoute,m:writeViewMode,n:loadBackground,p:readViewMode,r:saveBackground,startApp:startApp,t:clearBackground});/** Matches host.tsx page title class (owned there; styled here for site polish). */
 var PAGE_TITLE_CLASS$1 = "rdw-page-title";
 /** Matches kit SectionLabel class. */
 var SECTION_LABEL_CLASS = "rdw-section-label";
@@ -17551,12 +17521,45 @@ var PAGE_CONTENT_CSS = `
   font-size: 12px;
 }
 `.trim();
+/**
+* How the Collections and Following pages show their items (tiles or a list),
+* remembered per page, and the sizes those two pages share.
+*/
+var VIEW_TILES = "tiles";
+var VIEW_LIST = exports("u","list");
+var VIEW_LABEL = exports("l","View");
+var VIEW_OPTIONS = exports("d",[{
+	value: VIEW_TILES,
+	label: "Tiles"
+}, {
+	value: VIEW_LIST,
+	label: "List"
+}]);
+var FOLLOWING_VIEW_STATE_ID = exports("s","following-view");
+var COLLECTIONS_VIEW_STATE_ID = exports("o","collections-view");
+/**
+* Side padding that keeps a full-width block's content in the centred column
+* of the page (see host.tsx: the pages with tiles span the window).
+*/
+var PAGE_CENTRE_PADDING = exports("c",`max(0px, calc((100% - ${String(960)}px) / 2))`);
+function isViewMode(value) {
+	return value === "tiles" || value === "list";
+}
+/** The remembered view of a page; tiles until the user chose otherwise. */
+function readViewMode(stateId) {
+	const stored = getFeatureState(stateId);
+	return isViewMode(stored) ? stored : VIEW_TILES;
+}
+function writeViewMode(stateId, mode) {
+	setFeatureState(stateId, mode);
+}
 var PAGE_SHELL_CLASS = "rdw-page-shell";
 var PAGE_TITLE_CLASS = "rdw-page-title";
-/** On the mount point: the pages start at the left edge instead of a centred column. */
+/**
+* On the mount point of Collections and Following: the page spans the window
+* so that its tiles can; the page itself keeps the rest in the centred column.
+*/
 var LAYOUT_WIDE_CLASS = "rdw-layout-wide";
-/** With the wide layout: a page of text and forms keeps its narrow column. */
-var LAYOUT_TEXT_CLASS = "rdw-layout-text";
 /**
 * Structural shell only — palette tokens come from applyTokenProperties on the
 * host (same source as document :root via resolveAppearancePalette).
@@ -17584,8 +17587,8 @@ var PAGE_HOST_CSS = `
   margin: 0;
   padding: 16px 20px 32px;
 }
-.${LAYOUT_WIDE_CLASS}.${LAYOUT_TEXT_CLASS} .${PAGE_SHELL_CLASS} {
-  max-width: ${String(960)}px;
+.${LAYOUT_WIDE_CLASS} .${PAGE_TITLE_CLASS} {
+  padding-inline: ${PAGE_CENTRE_PADDING};
 }
 .${PAGE_TITLE_CLASS} {
   margin: 0;
@@ -17617,35 +17620,35 @@ var followingFactory = null;
 var statsFactory = null;
 function getSettingsFactory() {
 	if (settingsFactory === null) settingsFactory = async () => {
-		const mod = await module.import('./settings-page-CmkwV8ye-J00LwXM0.js');
+		const mod = await module.import('./settings-page-38bK3QiQ-BYDsbOs4.js');
 		return /* @__PURE__ */ a(mod.SettingsPage, {});
 	};
 	return settingsFactory;
 }
 function getCollectionsFactory() {
 	if (collectionsFactory === null) collectionsFactory = async () => {
-		const mod = await module.import('./collections-page-BZN_332y-BcZxO0Ui.js');
+		const mod = await module.import('./collections-page-CDljyVK_-ZlQ6ie52.js');
 		return /* @__PURE__ */ a(mod.CollectionsPage, {});
 	};
 	return collectionsFactory;
 }
 function getFollowingFactory() {
 	if (followingFactory === null) followingFactory = async () => {
-		const mod = await module.import('./following-page-B78717lh-DDO16eMj.js');
+		const mod = await module.import('./following-page-59AF0rM4-BisSPX3_.js');
 		return /* @__PURE__ */ a(mod.FollowingPage, {});
 	};
 	return followingFactory;
 }
 function getStatsFactory() {
 	if (statsFactory === null) statsFactory = async () => {
-		const mod = await module.import('./stats-section-DGP56jr5-C7dW1V0K.js');
+		const mod = await module.import('./stats-section-C6zyeO6p-G9-6U_fe.js');
 		return /* @__PURE__ */ a(mod.StatsPage, {});
 	};
 	return statsFactory;
 }
 function collectionDetailFactory(collectionId) {
 	return async () => {
-		const mod = await module.import('./collection-detail-page-BPDkbWxg-Ba8yQwKP.js');
+		const mod = await module.import('./collection-detail-page-DBbMlYti-DB0dxY3Y.js');
 		return /* @__PURE__ */ a(mod.CollectionDetailPage, { collectionId }, collectionId);
 	};
 }
@@ -17656,17 +17659,15 @@ function pageFactoryForRoute(route) {
 	if (route === "stats") return getStatsFactory();
 	return getSettingsFactory();
 }
-/** Collections, a collection and Following are grids; the rest is text and forms. */
-function isGridRoute(route) {
-	return isCollectionDetailPage(route) || route === "collections" || route === "following";
+/** The pages whose tiles span the window. */
+function hasTiles(route) {
+	return route === "collections" || route === "following";
 }
 var shownRoute = null;
-/** Applies the page width setting to the page that is shown. */
+/** Gives the shown page its width. */
 function syncRdwPageLayout() {
 	if (mountPoint === null || shownRoute === null) return;
-	const wide = widePagesEnabled();
-	mountPoint.classList.toggle(LAYOUT_WIDE_CLASS, wide);
-	mountPoint.classList.toggle(LAYOUT_TEXT_CLASS, wide && !isGridRoute(shownRoute));
+	mountPoint.classList.toggle(LAYOUT_WIDE_CLASS, hasTiles(shownRoute));
 }
 var hostElement = null;
 var mountPoint = null;
@@ -17894,7 +17895,8 @@ function clearOwnPageCurrentHighlight() {
 	if (savedSiteCurrent !== null && savedSiteCurrent.isConnected) savedSiteCurrent.classList.add(CURRENT_PAGE_CLASS$1);
 	savedSiteCurrent = null;
 	siteCurrentCaptured = false;
-}var EVENT_HASHCHANGE = "hashchange";
+}
+var EVENT_HASHCHANGE = "hashchange";
 var EVENT_POPSTATE = "popstate";
 var EVENT_CLICK = "click";
 var HISTORY_STATE_TITLE = "";
@@ -18382,8 +18384,8 @@ async function startApp() {
 	await startRdwPages();
 	await yieldToMain();
 	maybeResumeFavoritesSync();
-}var appD9wl0The=/*#__PURE__*/Object.freeze({__proto__:null,i:navigateToRdwRoute,n:loadBackground,r:saveBackground,startApp:startApp,t:clearBackground});exports("h",appD9wl0The);})}}));
-System.register("./settings-page-CmkwV8ye-J00LwXM0.js", ['./___monkey.entry.js','./app-D9wl0The-CiZHvaAE.js'],(function(exports){'use strict';var d,a,PANEL_UI_CLASS,Switch,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,STATS_MENU_SETTING_LABEL,STATS_MENU_SWITCH_ID,setFeatureEnabled,NumberField,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,setGridFavButtonsVisible,IconChevronRight,IconChevronDown,Card,P$1,T,A,getAppearance,applyAppearanceTheme,getSiteSkinCss,APPEARANCE_THEME_CUSTOM,KIT_FOCUS_CSS,SectionLabel,Select,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,$$1,Segmented,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,TextField,Button,clampBackgroundDim,FEATURES,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,clearFeatureState,applyCssOnlyFeatureEnabled,isFeatureEnabled,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,applyCssOnlyFeatureChoice,getFeatureChoice,createAutocompleteQuerier,b,readSiteBlacklist,Chip,AutocompleteField,ProgressBar,createDefaultCustomTheme,AppearanceThemeSchema,prepareBackgroundImageFile,setFeatureState,writeSiteBlacklist,runFavoritesSync,log,FAVORITES_SYNC_PAGE_PAUSE_MS,clearApiCredentials,parseApiCredentials,setApiCredentials,load,createDefaultStorage,clearStorageCache,clearFavsCache,getSyncState,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,isSiteUrl,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,setAppearance,loadFavSet,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,gridDensityFeature,FAVORITES_SYNC_MODE_INCREMENTAL,FAVORITES_SYNC_MODE_FULL,STATS_MENU_SETTING_ID,hasApiCredentials,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureEnabled,getFeatureChoiceValue,getFeatureState,getScreenPixelSize,installSiteMenu,WIDE_PAGES_SETTING_LABEL,WIDE_PAGES_SWITCH_ID,syncRdwPageLayout,loadBackground,clearBackground,saveBackground,WIDE_PAGES_SETTING_ID,widePagesEnabled;return{setters:[function(module){d=module.aj;a=module.n;PANEL_UI_CLASS=module.P;Switch=module.ak;UI_TEXT=module.a7;TWEAKS_SWITCH_ID=module.al;setTweaksEnabled=module.am;STATS_MENU_SETTING_LABEL=module.an;STATS_MENU_SWITCH_ID=module.ao;setFeatureEnabled=module.ap;NumberField=module.aq;UPDATES_GROUP_SIZE_ID=module.ar;setUpdatesGroupSize=module.as;getUpdatesGroupSize=module.at;PLAYLIST_CHUNK_SIZE_ID=module.au;setPlaylistChunkSize=module.av;getPlaylistChunkSize=module.aw;GRID_FAV_CHECKBOX_ID=module.ax;setGridFavButtonsEnabled=module.ay;setGridFavButtonsVisible=module.az;IconChevronRight=module.aA;IconChevronDown=module.aB;Card=module.aC;P$1=module.aD;T=module.aE;A=module.aF;getAppearance=module.q;applyAppearanceTheme=module.O;getSiteSkinCss=module.ai;APPEARANCE_THEME_CUSTOM=module.aG;KIT_FOCUS_CSS=module.aH;SectionLabel=module.aI;Select=module.aJ;APPEARANCE_THEME_SITE=module.A;APPEARANCE_THEME_SITE_DARK=module.v;APPEARANCE_THEME_LIGHT=module.aK;APPEARANCE_THEME_DARK=module.aL;$$1=module.$;Segmented=module.aM;APPEARANCE_CUSTOM_BASE_LIGHT=module.aN;APPEARANCE_CUSTOM_BASE_DARK=module.aO;TextField=module.aP;Button=module.aQ;clampBackgroundDim=module.aR;FEATURES=module.aS;featurePanelLabel=module.aT;FEATURE_CHECKBOX_ID_PREFIX=module.aU;clearFeatureState=module.aV;applyCssOnlyFeatureEnabled=module.aW;isFeatureEnabled=module.aX;FEATURE_CHOICE_ID_PREFIX=module.aY;setFeatureChoiceValue=module.aZ;applyCssOnlyFeatureChoice=module.a_;getFeatureChoice=module.a$;createAutocompleteQuerier=module.b0;b=module.b1;readSiteBlacklist=module.b2;Chip=module.b3;AutocompleteField=module.b4;ProgressBar=module.b5;createDefaultCustomTheme=module.b6;AppearanceThemeSchema=module.b7;prepareBackgroundImageFile=module.b8;setFeatureState=module.s;writeSiteBlacklist=module.b9;runFavoritesSync=module.a6;log=module.W;FAVORITES_SYNC_PAGE_PAUSE_MS=module.ba;clearApiCredentials=module.bb;parseApiCredentials=module.bc;setApiCredentials=module.bd;load=module.be;createDefaultStorage=module.bf;clearStorageCache=module.bg;clearFavsCache=module.bh;getSyncState=module.e;object=module.bi;StorageSchema=module.bj;optional=module.bk;string=module.bl;FavsSchema=module.bm;literal=module.bn;IMPORT_SCHEMA_ERROR_PREFIX=module.bo;isSiteUrl=module.bp;stripLegacyPanelWindowSize=module.bq;save=module.af;migrateMarksFavToFavs=module.br;FAVS_STORAGE_KEY=module.bs;createDefaultFavs=module.bt;parseFavsStrict=module.bu;setAppearance=module.bv;loadFavSet=module.bw;STORAGE_BACKUP_KEY=module.bx;extractFavIdsFromMarks=module.by;gridDensityFeature=module.bz;FAVORITES_SYNC_MODE_INCREMENTAL=module.bA;FAVORITES_SYNC_MODE_FULL=module.a5;STATS_MENU_SETTING_ID=module.bB;hasApiCredentials=module.bC;getTweaksEnabled=module.bD;getGridFavButtonsEnabled=module.bE;getFeatureEnabled=module.g;getFeatureChoiceValue=module.bF;getFeatureState=module.a;getScreenPixelSize=module.bG;},function(module){installSiteMenu=module.i;WIDE_PAGES_SETTING_LABEL=module.W;WIDE_PAGES_SWITCH_ID=module.a;syncRdwPageLayout=module.s;loadBackground=module.l;clearBackground=module.c;saveBackground=module.b;WIDE_PAGES_SETTING_ID=module.d;widePagesEnabled=module.w;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
+}})}}));
+System.register("./settings-page-38bK3QiQ-BYDsbOs4.js", ['./___monkey.entry.js','./app-Cy1IrKfc-ByLCfauj.js'],(function(exports){'use strict';var d,a,PANEL_UI_CLASS,Switch,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,STATS_MENU_SETTING_LABEL,STATS_MENU_SWITCH_ID,setFeatureEnabled,NumberField,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,setGridFavButtonsVisible,IconChevronRight,IconChevronDown,Card,P$1,T,A,getAppearance,applyAppearanceTheme,getSiteSkinCss,APPEARANCE_THEME_CUSTOM,KIT_FOCUS_CSS,SectionLabel,Select,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,$$1,Segmented,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,TextField,Button,clampBackgroundDim,FEATURES,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,clearFeatureState,applyCssOnlyFeatureEnabled,isFeatureEnabled,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,applyCssOnlyFeatureChoice,getFeatureChoice,createAutocompleteQuerier,b,readSiteBlacklist,AutocompleteField,Chip,ProgressBar,createDefaultCustomTheme,AppearanceThemeSchema,prepareBackgroundImageFile,setFeatureState,writeSiteBlacklist,runFavoritesSync,log,FAVORITES_SYNC_PAGE_PAUSE_MS,clearApiCredentials,parseApiCredentials,setApiCredentials,load,createDefaultStorage,clearStorageCache,clearFavsCache,getSyncState,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,isSiteUrl,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,setAppearance,loadFavSet,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,gridDensityFeature,FAVORITES_SYNC_MODE_INCREMENTAL,FAVORITES_SYNC_MODE_FULL,STATS_MENU_SETTING_ID,hasApiCredentials,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureEnabled,getFeatureChoiceValue,getFeatureState,getScreenPixelSize,installSiteMenu,loadBackground,clearBackground,saveBackground;return{setters:[function(module){d=module.aj;a=module.a0;PANEL_UI_CLASS=module.a8;Switch=module.ak;UI_TEXT=module.U;TWEAKS_SWITCH_ID=module.al;setTweaksEnabled=module.am;STATS_MENU_SETTING_LABEL=module.an;STATS_MENU_SWITCH_ID=module.ao;setFeatureEnabled=module.ap;NumberField=module.aq;UPDATES_GROUP_SIZE_ID=module.ar;setUpdatesGroupSize=module.as;getUpdatesGroupSize=module.at;PLAYLIST_CHUNK_SIZE_ID=module.au;setPlaylistChunkSize=module.av;getPlaylistChunkSize=module.aw;GRID_FAV_CHECKBOX_ID=module.ax;setGridFavButtonsEnabled=module.ay;setGridFavButtonsVisible=module.az;IconChevronRight=module.aA;IconChevronDown=module.aB;Card=module.aC;P$1=module.aD;T=module.aE;A=module.aF;getAppearance=module.g;applyAppearanceTheme=module.c;getSiteSkinCss=module.a5;APPEARANCE_THEME_CUSTOM=module.aG;KIT_FOCUS_CSS=module.aH;SectionLabel=module.aI;Select=module.aJ;APPEARANCE_THEME_SITE=module.ab;APPEARANCE_THEME_SITE_DARK=module.ac;APPEARANCE_THEME_LIGHT=module.aK;APPEARANCE_THEME_DARK=module.aL;$$1=module.a6;Segmented=module.aM;APPEARANCE_CUSTOM_BASE_LIGHT=module.aN;APPEARANCE_CUSTOM_BASE_DARK=module.aO;TextField=module.aP;Button=module.aQ;clampBackgroundDim=module.aR;FEATURES=module.aS;featurePanelLabel=module.aT;FEATURE_CHECKBOX_ID_PREFIX=module.aU;clearFeatureState=module.aV;applyCssOnlyFeatureEnabled=module.aW;isFeatureEnabled=module.aX;FEATURE_CHOICE_ID_PREFIX=module.aY;setFeatureChoiceValue=module.aZ;applyCssOnlyFeatureChoice=module.a_;getFeatureChoice=module.a$;createAutocompleteQuerier=module.b0;b=module.b1;readSiteBlacklist=module.b2;AutocompleteField=module.b3;Chip=module.b4;ProgressBar=module.b5;createDefaultCustomTheme=module.b6;AppearanceThemeSchema=module.b7;prepareBackgroundImageFile=module.b8;setFeatureState=module.a7;writeSiteBlacklist=module.b9;runFavoritesSync=module.u;log=module.l;FAVORITES_SYNC_PAGE_PAUSE_MS=module.ba;clearApiCredentials=module.bb;parseApiCredentials=module.bc;setApiCredentials=module.bd;load=module.be;createDefaultStorage=module.bf;clearStorageCache=module.bg;clearFavsCache=module.bh;getSyncState=module.q;object=module.bi;StorageSchema=module.bj;optional=module.bk;string=module.bl;FavsSchema=module.bm;literal=module.bn;IMPORT_SCHEMA_ERROR_PREFIX=module.bo;isSiteUrl=module.bp;stripLegacyPanelWindowSize=module.bq;save=module.V;migrateMarksFavToFavs=module.br;FAVS_STORAGE_KEY=module.bs;createDefaultFavs=module.bt;parseFavsStrict=module.bu;setAppearance=module.bv;loadFavSet=module.bw;STORAGE_BACKUP_KEY=module.bx;extractFavIdsFromMarks=module.by;gridDensityFeature=module.bz;FAVORITES_SYNC_MODE_INCREMENTAL=module.bA;FAVORITES_SYNC_MODE_FULL=module.F;STATS_MENU_SETTING_ID=module.bB;hasApiCredentials=module.bC;getTweaksEnabled=module.bD;getGridFavButtonsEnabled=module.bE;getFeatureEnabled=module.o;getFeatureChoiceValue=module.bF;getFeatureState=module.ai;getScreenPixelSize=module.bG;},function(module){installSiteMenu=module.a;loadBackground=module.n;clearBackground=module.t;saveBackground=module.r;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
 var THEME_OPTIONS = [
 	{
 		value: APPEARANCE_THEME_SITE,
@@ -18941,16 +18943,6 @@ function BlacklistSection(props = {}) {
 		className: `rdw-section ${SECTION_CLASS$4}`,
 		children: [
 			includeHeading ? /* @__PURE__ */ a(SectionLabel, { children: "Blacklist" }) : null,
-			/* @__PURE__ */ a("ul", {
-				className: CHIPS_CLASS,
-				children: tags.map((tag) => /* @__PURE__ */ a("li", { children: /* @__PURE__ */ a(Chip, {
-					label: tag,
-					onRemove: () => {
-						const next = readSiteBlacklist().filter((entry) => entry !== tag);
-						setTags(persistTags(next));
-					}
-				}) }, tag))
-			}),
 			/* @__PURE__ */ a("form", {
 				className: ADD_ROW_CLASS,
 				onSubmit: (event) => {
@@ -18979,6 +18971,16 @@ function BlacklistSection(props = {}) {
 			/* @__PURE__ */ a("p", {
 				className: HINT_CLASS$2,
 				children: PERMANENT_HINT
+			}),
+			/* @__PURE__ */ a("ul", {
+				className: CHIPS_CLASS,
+				children: tags.map((tag) => /* @__PURE__ */ a("li", { children: /* @__PURE__ */ a(Chip, {
+					label: tag,
+					onRemove: () => {
+						const next = readSiteBlacklist().filter((entry) => entry !== tag);
+						setTags(persistTags(next));
+					}
+				}) }, tag))
 			})
 		]
 	})] });
@@ -19931,7 +19933,6 @@ function SettingsPage() {
 	const [playlistChunk, setPlaylistChunk] = d(() => getPlaylistChunkSize());
 	const [gridFavEnabled, setGridFavEnabled] = d(() => getGridFavButtonsEnabled());
 	const [statsMenu, setStatsMenu] = d(() => getFeatureEnabled(STATS_MENU_SETTING_ID, true));
-	const [widePages, setWidePages] = d(() => widePagesEnabled());
 	const [collapsed, setCollapsed] = d(() => readCollapsedSections());
 	const toggleSection = (id) => {
 		const next = collapsed.includes(id) ? collapsed.filter((entry) => entry !== id) : [...collapsed, id];
@@ -19980,19 +19981,6 @@ function SettingsPage() {
 									setFeatureEnabled(STATS_MENU_SETTING_ID, checked);
 									setStatsMenu(checked);
 									installSiteMenu();
-								}
-							})
-						}),
-						/* @__PURE__ */ a("div", {
-							className: PANEL_UI_CLASS.settingsRow,
-							children: /* @__PURE__ */ a(Switch, {
-								id: WIDE_PAGES_SWITCH_ID,
-								label: WIDE_PAGES_SETTING_LABEL,
-								checked: widePages,
-								onChange: (checked) => {
-									setFeatureEnabled(WIDE_PAGES_SETTING_ID, checked);
-									setWidePages(checked);
-									syncRdwPageLayout();
 								}
 							})
 						}),
@@ -20058,7 +20046,7 @@ function SettingsPage() {
 		]
 	});
 }})}}));
-System.register("./collections-page-BZN_332y-BcZxO0Ui.js", ['./___monkey.entry.js','./filter-terms-Dqag3iAV-Bgq_MKCQ.js','./app-D9wl0The-CiZHvaAE.js'],(function(exports){'use strict';var d,b,A,reloadFromStorage,load,a,Segmented,TextField,$$1,Button,UI_TEXT,IconPlus,EmptyState,Dialog,resolveCollectionKind,deleteCollection,QueryField,isUnfilteredQuery,createDynamicCollection,createPlaylist,COLLECTION_KIND_POSTS,collectionDetailHash,readCoverMirror,COLLECTION_KIND_SEARCH,IconCheck,readCountMirror,buildSearchUrl,dynamicCollectionMarkHash,serialize,matchesAnyTerm,filterTerms,COLLECTION_TERM_SEPARATOR,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,COLLECTIONS_VIEW_STATE_ID,readViewMode;return{setters:[function(module){d=module.aj;b=module.b1;A=module.aF;reloadFromStorage=module.ae;load=module.be;a=module.n;Segmented=module.aM;TextField=module.aP;$$1=module.$;Button=module.aQ;UI_TEXT=module.a7;IconPlus=module.bH;EmptyState=module.bI;Dialog=module.bJ;resolveCollectionKind=module.bK;deleteCollection=module.bL;QueryField=module.bM;isUnfilteredQuery=module.bN;createDynamicCollection=module.bO;createPlaylist=module.bP;COLLECTION_KIND_POSTS=module.bQ;collectionDetailHash=module.bR;readCoverMirror=module.bS;COLLECTION_KIND_SEARCH=module.bT;IconCheck=module.bU;readCountMirror=module.bV;buildSearchUrl=module.bW;dynamicCollectionMarkHash=module.bX;serialize=module.bY;},function(module){matchesAnyTerm=module.m;filterTerms=module.f;COLLECTION_TERM_SEPARATOR=module.C;},function(module){VIEW_OPTIONS=module.V;VIEW_LABEL=module.e;isViewMode=module.f;writeViewMode=module.g;COLLECTIONS_VIEW_STATE_ID=module.C;readViewMode=module.r;}],execute:(function(){exports("CollectionsPage",CollectionsPage);var EVENT_PAGESHOW = "pageshow";
+System.register("./collections-page-CDljyVK_-ZlQ6ie52.js", ['./___monkey.entry.js','./filter-terms-Dqag3iAV-Bgq_MKCQ.js','./app-Cy1IrKfc-ByLCfauj.js'],(function(exports){'use strict';var d,b,A,reloadFromStorage,load,a,Segmented,TextField,$$1,Button,UI_TEXT,IconPlus,EmptyState,Dialog,resolveCollectionKind,deleteCollection,QueryField,isUnfilteredQuery,createDynamicCollection,createPlaylist,COLLECTION_KIND_POSTS,collectionDetailHash,readCoverMirror,COLLECTION_KIND_SEARCH,IconCheck,readCountMirror,buildSearchUrl,dynamicCollectionMarkHash,serialize,matchesAnyTerm,filterTerms,COLLECTION_TERM_SEPARATOR,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,PAGE_CENTRE_PADDING,COLLECTIONS_VIEW_STATE_ID,readViewMode;return{setters:[function(module){d=module.aj;b=module.b1;A=module.aF;reloadFromStorage=module.T;load=module.be;a=module.a0;Segmented=module.aM;TextField=module.aP;$$1=module.a6;Button=module.aQ;UI_TEXT=module.U;IconPlus=module.bH;EmptyState=module.bI;Dialog=module.bJ;resolveCollectionKind=module.bK;deleteCollection=module.bL;QueryField=module.bM;isUnfilteredQuery=module.bN;createDynamicCollection=module.bO;createPlaylist=module.bP;COLLECTION_KIND_POSTS=module.bQ;collectionDetailHash=module.bR;readCoverMirror=module.bS;COLLECTION_KIND_SEARCH=module.bT;IconCheck=module.bU;readCountMirror=module.bV;buildSearchUrl=module.bW;dynamicCollectionMarkHash=module.bX;serialize=module.bY;},function(module){matchesAnyTerm=module.m;filterTerms=module.f;COLLECTION_TERM_SEPARATOR=module.C;},function(module){VIEW_OPTIONS=module.d;VIEW_LABEL=module.l;isViewMode=module.f;writeViewMode=module.m;PAGE_CENTRE_PADDING=module.c;COLLECTIONS_VIEW_STATE_ID=module.o;readViewMode=module.p;}],execute:(function(){exports("CollectionsPage",CollectionsPage);var EVENT_PAGESHOW = "pageshow";
 var PAGE_CLASS = "rdw-collections-page";
 var HEADER_CLASS = "rdw-collections-header";
 var TOOLBAR_CLASS = "rdw-collections-toolbar";
@@ -20126,7 +20114,6 @@ var POST_COUNT_SINGULAR = 1;
 var COVER_AXIS_COUNT = 2;
 var COVER_SLOT_COUNT = 4;
 var COVER_GAP_PX = 2;
-var GRID_MIN_TRACK_PX = 200;
 var GRID_GAP_PX = 12;
 var PAGE_STACK_GAP_PX = 12;
 var HEADER_GAP_PX = 12;
@@ -20210,13 +20197,13 @@ var COLLECTIONS_PAGE_CSS = `
   position: sticky;
   top: 0;
   z-index: ${String(TOOLBAR_Z_INDEX)};
-  padding: 8px 0;
+  padding-block: 8px;
   margin: -8px 0;
   background: var(--rdw-bg);
 }
 .${GRID_CLASS} {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(${String(GRID_MIN_TRACK_PX)}px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(${String(170)}px, 1fr));
   gap: ${String(GRID_GAP_PX)}px;
 }
 .${CARD_CLASS} {
@@ -20231,6 +20218,14 @@ var COLLECTIONS_PAGE_CSS = `
   background: var(--rdw-surface);
   border: 1px solid var(--rdw-border);
   border-radius: var(--rdw-radius-l);
+}
+/*
+ * The tiles take the whole window; everything above them, and the list view,
+ * stay in the centred column.
+ */
+.${PAGE_CLASS} > :not(.${GRID_CLASS}),
+.${GRID_LIST_CLASS} {
+  padding-inline: ${PAGE_CENTRE_PADDING};
 }
 /* List view: one collection per row, a small cover, the count on the right. */
 .${GRID_LIST_CLASS} {
@@ -20846,7 +20841,7 @@ function CollectionsPage() {
 		]
 	});
 }})}}));
-System.register("./following-page-B78717lh-DDO16eMj.js", ['./___monkey.entry.js','./filter-terms-Dqag3iAV-Bgq_MKCQ.js','./app-D9wl0The-CiZHvaAE.js'],(function(exports){'use strict';var d,T,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST,A,reloadFromStorage,getSeenPostId,a,EmptyState,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,Button,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,$$1,Segmented,TextField,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,Select,UI_TEXT,ProgressBar,Dialog,removeArtist,load,completeLastQueryToken,readLastQueryToken,buildSearchUrl,TAG_TYPE_INCLUDE,IconCheck,IconButton,IconX,removeArtists,rememberArtistSnapshot,fetchArtistSnapshot,log,addArtists,AutocompleteField,filterTerms,matchesAnyTerm,ARTIST_TERM_SEPARATOR,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,FOLLOWING_VIEW_STATE_ID,readViewMode;return{setters:[function(module){d=module.aj;T=module.aE;createAutocompleteQuerier=module.b0;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.bZ;A=module.aF;reloadFromStorage=module.ae;getSeenPostId=module.b_;a=module.n;EmptyState=module.bI;ARTISTS_EMPTY_HINT=module.b$;ARTISTS_EMPTY_TITLE=module.c0;Button=module.aQ;SEARCH_PATH=module.m;SEARCH_PARAM_PAGE=module.S;SEARCH_PAGE=module.c1;SEARCH_SECTION=module.c2;$$1=module.$;Segmented=module.aM;TextField=module.aP;ARTIST_FILTER_LABEL=module.c3;ARTIST_FILTER_ID=module.c4;Select=module.aJ;UI_TEXT=module.a7;ProgressBar=module.b5;Dialog=module.bJ;removeArtist=module.c5;load=module.be;completeLastQueryToken=module.c6;readLastQueryToken=module.c7;buildSearchUrl=module.bW;TAG_TYPE_INCLUDE=module.c8;IconCheck=module.bU;IconButton=module.c9;IconX=module.ca;removeArtists=module.cb;rememberArtistSnapshot=module.cc;fetchArtistSnapshot=module.cd;log=module.W;addArtists=module.ce;AutocompleteField=module.b4;},function(module){filterTerms=module.f;matchesAnyTerm=module.m;ARTIST_TERM_SEPARATOR=module.A;},function(module){VIEW_OPTIONS=module.V;VIEW_LABEL=module.e;isViewMode=module.f;writeViewMode=module.g;FOLLOWING_VIEW_STATE_ID=module.F;readViewMode=module.r;}],execute:(function(){exports("FollowingPage",FollowingPage);var EVENT_PAGESHOW = "pageshow";
+System.register("./following-page-59AF0rM4-BisSPX3_.js", ['./___monkey.entry.js','./filter-terms-Dqag3iAV-Bgq_MKCQ.js','./app-Cy1IrKfc-ByLCfauj.js'],(function(exports){'use strict';var d,T,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST,A,reloadFromStorage,getSeenPostId,a,EmptyState,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,Button,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,$$1,Segmented,TextField,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,Select,UI_TEXT,ProgressBar,Dialog,removeArtist,load,completeLastQueryToken,readLastQueryToken,buildSearchUrl,TAG_TYPE_INCLUDE,IconCheck,IconButton,IconX,removeArtists,rememberArtistSnapshot,fetchArtistSnapshot,log,addArtists,AutocompleteField,filterTerms,matchesAnyTerm,ARTIST_TERM_SEPARATOR,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,PAGE_CENTRE_PADDING,FOLLOWING_VIEW_STATE_ID,readViewMode;return{setters:[function(module){d=module.aj;T=module.aE;createAutocompleteQuerier=module.b0;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.bZ;A=module.aF;reloadFromStorage=module.T;getSeenPostId=module.b_;a=module.a0;EmptyState=module.bI;ARTISTS_EMPTY_HINT=module.b$;ARTISTS_EMPTY_TITLE=module.c0;Button=module.aQ;SEARCH_PATH=module.$;SEARCH_PARAM_PAGE=module.Y;SEARCH_PAGE=module.c1;SEARCH_SECTION=module.c2;$$1=module.a6;Segmented=module.aM;TextField=module.aP;ARTIST_FILTER_LABEL=module.c3;ARTIST_FILTER_ID=module.c4;Select=module.aJ;UI_TEXT=module.U;ProgressBar=module.b5;Dialog=module.bJ;removeArtist=module.c5;load=module.be;completeLastQueryToken=module.c6;readLastQueryToken=module.c7;buildSearchUrl=module.bW;TAG_TYPE_INCLUDE=module.c8;IconCheck=module.bU;IconButton=module.c9;IconX=module.ca;removeArtists=module.cb;rememberArtistSnapshot=module.cc;fetchArtistSnapshot=module.cd;log=module.l;addArtists=module.ce;AutocompleteField=module.b3;},function(module){filterTerms=module.f;matchesAnyTerm=module.m;ARTIST_TERM_SEPARATOR=module.A;},function(module){VIEW_OPTIONS=module.d;VIEW_LABEL=module.l;isViewMode=module.f;writeViewMode=module.m;PAGE_CENTRE_PADDING=module.c;FOLLOWING_VIEW_STATE_ID=module.s;readViewMode=module.p;}],execute:(function(){exports("FollowingPage",FollowingPage);var EVENT_PAGESHOW = "pageshow";
 var PAGE_CLASS = "rdw-following-page";
 var ADD_FORM_CLASS = "rdw-following-add";
 var STICKY_CLASS = "rdw-following-sticky";
@@ -20908,10 +20903,11 @@ var MS_PER_DAY = 864e5;
 var QUIET_AFTER_DAYS = 60;
 /** Pause between two requests of a Refresh run. */
 var REFRESH_INTERVAL_MS = 1500;
+/** How long the line of a finished Refresh stays before it closes by itself. */
+var REFRESH_DONE_CLOSE_MS = 2e3;
 var MS_PER_SECOND = 1e3;
 var COVER_AXIS_COUNT = 2;
 var ICON_PX = 14;
-var GRID_MIN_TRACK_PX = 170;
 var ADD_FIELD_WIDTH_PX = 280;
 var LIST_COVER_PX = 44;
 var FILTER_FIELD_WIDTH_PX = 220;
@@ -21002,7 +20998,7 @@ var FOLLOWING_PAGE_CSS = `
   position: sticky;
   top: 0;
   z-index: ${String(TOOLBAR_Z_INDEX)};
-  padding: 8px 0;
+  padding-block: 8px;
   margin: -8px 0;
   background: var(--rdw-bg);
 }
@@ -21014,8 +21010,16 @@ var FOLLOWING_PAGE_CSS = `
 }
 .${GRID_CLASS} {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(${String(GRID_MIN_TRACK_PX)}px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(${String(170)}px, 1fr));
   gap: 12px;
+}
+/*
+ * The tiles take the whole window; everything above them, and the list view,
+ * stay in the centred column.
+ */
+.${PAGE_CLASS} > :not(.${GRID_CLASS}),
+.${GRID_LIST_CLASS} {
+  padding-inline: ${PAGE_CENTRE_PADDING};
 }
 /* List view: one artist per row, a small cover, the numbers on the right. */
 .${GRID_LIST_CLASS} {
@@ -21381,6 +21385,16 @@ function FollowingPage() {
 			cancelRefreshRef.current = true;
 		};
 	}, []);
+	const refreshSucceeded = refresh?.succeeded === true;
+	A(() => {
+		if (!refreshSucceeded) return;
+		const timer = window.setTimeout(() => {
+			setRefresh(null);
+		}, REFRESH_DONE_CLOSE_MS);
+		return () => {
+			window.clearTimeout(timer);
+		};
+	}, [refreshSucceeded]);
 	const onAdd = () => {
 		const tags = draft.split(TAG_SPLIT).filter((tag) => tag.length > 0);
 		if (tags.length === 0) {
@@ -21462,7 +21476,8 @@ function FollowingPage() {
 			done,
 			total,
 			running: false,
-			message: `${REFRESH_DONE_PREFIX}${String(done)} of ${String(total)}`
+			message: `${REFRESH_DONE_PREFIX}${String(done)} of ${String(total)}`,
+			succeeded: true
 		});
 	};
 	const addForm = /* @__PURE__ */ a(AddArtistForm, {
@@ -21703,7 +21718,143 @@ function matchesAnyTerm(texts, terms) {
 	const lowered = texts.map((text) => text.toLowerCase());
 	return terms.some((term) => lowered.some((text) => text.includes(term)));
 }})}}));
-System.register("./stats-section-DGP56jr5-C7dW1V0K.js", ['./___monkey.entry.js'],(function(exports){'use strict';var a,PANEL_UI_CLASS,Card,loadFavSet,load,resolveCollectionKind;return{setters:[function(module){a=module.n;PANEL_UI_CLASS=module.P;Card=module.aC;loadFavSet=module.bw;load=module.be;resolveCollectionKind=module.bK;}],execute:(function(){exports("StatsPage",StatsPage);/**
+System.register("./stats-section-C6zyeO6p-G9-6U_fe.js", ['./___monkey.entry.js'],(function(exports){'use strict';var a,PANEL_UI_CLASS,Card,loadFavSet,load,resolveCollectionKind,d,Button,$$1,setFeatureState,FETCH_CREDENTIALS,object,number,optional,string,SEARCH_PATH,SEARCH_PARAM_PAGE,int,getFeatureState;return{setters:[function(module){a=module.a0;PANEL_UI_CLASS=module.a8;Card=module.aC;loadFavSet=module.bw;load=module.be;resolveCollectionKind=module.bK;d=module.aj;Button=module.aQ;$$1=module.a6;setFeatureState=module.a7;FETCH_CREDENTIALS=module.cf;object=module.bi;number=module.cg;optional=module.bk;string=module.bl;SEARCH_PATH=module.$;SEARCH_PARAM_PAGE=module.Y;int=module.ch;getFeatureState=module.ai;}],execute:(function(){exports("StatsPage",StatsPage);/**
+* The numbers of the user's own profile page on the site, for Statistics.
+*
+* Read only when the user presses "Refresh profile": two requests with a
+* pause. The first reads the My Account page for the address of the "My
+* Profile" link, the second reads that profile. The address holds the user's
+* id; it is used for the second request and kept nowhere. Only the numbers of
+* the table are stored. Cookies are not read.
+*
+* My Account: `div#user-index h4 > a`, the profile link has `s=profile`.
+* Profile: `table.highlightable tr > [td label, td value]`.
+*/
+var PROFILE_STATE_ID = "profile-stats";
+/** Pause between the two requests of one refresh. */
+var PROFILE_REQUEST_PAUSE_MS = 1500;
+var ACCOUNT_PAGE = "account";
+var ACCOUNT_HOME_SECTION = "home";
+var PROFILE_SECTION = "profile";
+var PROFILE_LINK_SELECTOR = "div#user-index h4 > a[href*=\"s=profile\"]";
+var PROFILE_ROW_SELECTOR = "table.highlightable tr";
+var CELL_SELECTOR = ":scope > td";
+var DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+var DIGITS_PATTERN = /^\d+$/;
+var LABEL_JOIN_DATE = "Join Date";
+var LABEL_LEVEL = "Level";
+var LABEL_POSTS = "Posts";
+var LABEL_DELETED_POSTS = "Deleted Posts";
+var LABEL_COMMENTS = "Comments";
+var LABEL_TAG_EDITS = "Tag Edits";
+var LABEL_NOTE_EDITS = "Note Edits";
+var LABEL_FORUM_POSTS = "Forum Posts";
+var NOT_LOGGED_IN_ERROR = "No profile link on My Account. Log in to the site first.";
+var NO_PROFILE_TABLE_ERROR = "The profile page has no table to read.";
+var count = optional(int());
+var ProfileStatsSchema = object({
+	/** `YYYY-MM-DD`, as the site writes it. */
+	joinDate: optional(string()),
+	level: optional(string()),
+	posts: count,
+	deletedPosts: count,
+	comments: count,
+	tagEdits: count,
+	noteEdits: count,
+	forumPosts: count,
+	/** When the page was read, ms since epoch. */
+	readAt: number()
+});
+/** The stored profile numbers, or null when none were read yet. */
+function readStoredProfileStats() {
+	const parsed = ProfileStatsSchema.safeParse(getFeatureState(PROFILE_STATE_ID));
+	return parsed.success ? parsed.data : null;
+}
+function accountHomeUrl() {
+	return `${SEARCH_PATH}?${SEARCH_PARAM_PAGE}=${ACCOUNT_PAGE}&s=${ACCOUNT_HOME_SECTION}`;
+}
+/**
+* The address of the user's profile from the My Account page, or null when
+* the page has no such link (not logged in) or the link leads elsewhere.
+*/
+function readProfileUrl(accountPage, base) {
+	const href = accountPage.querySelector(PROFILE_LINK_SELECTOR)?.getAttribute("href");
+	if (href === null || href === void 0) return null;
+	let url;
+	try {
+		url = new URL(href, base);
+	} catch {
+		return null;
+	}
+	if (url.origin !== new URL(base).origin || url.searchParams.get("page") !== ACCOUNT_PAGE || url.searchParams.get("s") !== PROFILE_SECTION) return null;
+	return url.href;
+}
+function readCount(text) {
+	return text !== void 0 && DIGITS_PATTERN.test(text) ? Number(text) : void 0;
+}
+/** The numbers of a profile page, or null when it has no table rows. */
+function readProfileStats(profilePage, now) {
+	const values = /* @__PURE__ */ new Map();
+	for (const row of profilePage.querySelectorAll(PROFILE_ROW_SELECTOR)) {
+		const cells = row.querySelectorAll(CELL_SELECTOR);
+		const label = cells[0]?.textContent?.trim();
+		const value = cells[1]?.textContent?.trim();
+		if (label !== void 0 && value !== void 0 && label.length > 0) values.set(label, value);
+	}
+	if (values.size === 0) return null;
+	const joinDate = values.get(LABEL_JOIN_DATE);
+	const level = values.get(LABEL_LEVEL);
+	const stats = { readAt: now };
+	if (joinDate !== void 0 && DATE_PATTERN.test(joinDate)) stats.joinDate = joinDate;
+	if (level !== void 0 && level.length > 0) stats.level = level;
+	const counts = {
+		posts: readCount(values.get(LABEL_POSTS)),
+		deletedPosts: readCount(values.get(LABEL_DELETED_POSTS)),
+		comments: readCount(values.get(LABEL_COMMENTS)),
+		tagEdits: readCount(values.get(LABEL_TAG_EDITS)),
+		noteEdits: readCount(values.get(LABEL_NOTE_EDITS)),
+		forumPosts: readCount(values.get(LABEL_FORUM_POSTS))
+	};
+	return {
+		...stats,
+		...dropUndefined(counts)
+	};
+}
+function dropUndefined(counts) {
+	const known = {};
+	for (const [key, value] of Object.entries(counts)) if (value !== void 0) known[key] = value;
+	return known;
+}
+async function fetchPage(url) {
+	const response = await fetch(url, {
+		method: "GET",
+		credentials: FETCH_CREDENTIALS
+	});
+	if (!response.ok) throw new Error(`HTTP ${String(response.status)}`);
+	return new DOMParser().parseFromString(await response.text(), "text/html");
+}
+function sleep(ms) {
+	return new Promise((resolve) => {
+		window.setTimeout(resolve, ms);
+	});
+}
+/**
+* Reads the user's profile numbers and stores them. Two requests. Throws with
+* a readable reason on a network error, a non-OK status, a missing profile
+* link or a page without the table.
+*/
+async function refreshProfileStats() {
+	const base = window.location.href;
+	const profileUrl = readProfileUrl(await fetchPage(accountHomeUrl()), base);
+	if (profileUrl === null) throw new Error(NOT_LOGGED_IN_ERROR);
+	await sleep(PROFILE_REQUEST_PAUSE_MS);
+	const read = readProfileStats(await fetchPage(profileUrl), Date.now());
+	const parsed = ProfileStatsSchema.safeParse(read);
+	if (read === null || !parsed.success) throw new Error(NO_PROFILE_TABLE_ERROR);
+	setFeatureState(PROFILE_STATE_ID, parsed.data);
+	return parsed.data;
+}
+/**
 * Numbers about what the script stores, computed from local data when the
 * page opens. Nothing is requested from the site, so these are counts of your
 * own library, not totals of the site.
@@ -21731,6 +21882,7 @@ var TOP_ROW_CLASS = "rdw-stats-top-row";
 var TOP_BAR_CLASS = "rdw-stats-top-bar";
 var TOP_FILL_CLASS = "rdw-stats-top-fill";
 var HINT_CLASS = "rdw-stats-hint";
+var PROFILE_HEAD_CLASS = "rdw-stats-profile-head";
 var LOCALE = "en-US";
 var TOP_COLLECTIONS_LIMIT = 10;
 var BYTES_PER_KB = 1024;
@@ -21745,13 +21897,23 @@ var RING_CENTRE = 21;
 var RING_VIEW_BOX = "0 0 42 42";
 var RING_STROKE = 5;
 var RING_TOTAL_Y = 24;
-var KINDS_HEADING = "Collections by kind";
+var KINDS_HEADING = "Collections by type";
 var KINDS_EMPTY = "No collections yet.";
 var KIND_CUSTOM_LABEL = "Custom";
 var KIND_DYNAMIC_LABEL = "Dynamic";
 var TOP_HEADING = "Collections by posts";
 var TOP_EMPTY = "Collections show here once they hold posts or their count is known.";
-var HINT = "Counted from the script's own data in this browser. Seen posts keep only the newest marks.";
+var PROFILE_HEADING = "Site profile";
+var PROFILE_REFRESH_LABEL = "Refresh profile";
+var PROFILE_REFRESH_TITLE = "Reads your profile page on the site: two requests, a moment apart";
+var PROFILE_BUSY_LABEL = "Reading…";
+var PROFILE_EMPTY = "Press Refresh profile to read these numbers from your profile page.";
+var PROFILE_READ_PREFIX = "Read on ";
+var PROFILE_FAILED_PREFIX = "Could not read the profile: ";
+var DATE_LOCALE = "en-GB";
+var MS_PER_YEAR = 315576e5;
+var MONTHS_PER_YEAR = 12;
+var HINT = "Counted from the script's own data in this browser, except the site profile. Seen posts keep only the newest marks.";
 var STATS_SECTION_CSS = `
 .${SECTION_CLASS} {
   display: flex;
@@ -21792,6 +21954,12 @@ var STATS_SECTION_CSS = `
   margin: 0;
   font-size: 12px;
   color: var(--rdw-muted);
+}
+.${PROFILE_HEAD_CLASS} {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
 }
 .${RING_ROW_CLASS} {
   display: flex;
@@ -22023,6 +22191,111 @@ function CollectionBars(props) {
 		})
 	});
 }
+/** "7 years 2 months", "5 months", "under a month" since the day the account was made. */
+function accountAge(joinDate, now) {
+	const joined = Date.parse(`${joinDate}T00:00:00Z`);
+	if (Number.isNaN(joined) || joined > now) return null;
+	const months = Math.floor((now - joined) / MS_PER_YEAR * MONTHS_PER_YEAR);
+	const years = Math.floor(months / MONTHS_PER_YEAR);
+	const rest = months % MONTHS_PER_YEAR;
+	const parts = [];
+	if (years > 0) parts.push(`${String(years)} ${years === 1 ? "year" : "years"}`);
+	if (rest > 0) parts.push(`${String(rest)} ${rest === 1 ? "month" : "months"}`);
+	return parts.length > 0 ? parts.join(" ") : "under a month";
+}
+/** The tiles of the profile block; a number the page did not give is left out. */
+function profileTiles(profile, now) {
+	const tiles = [];
+	const age = profile.joinDate === void 0 ? null : accountAge(profile.joinDate, now);
+	if (age !== null && profile.joinDate !== void 0) tiles.push({
+		label: `Account age (since ${profile.joinDate})`,
+		text: age
+	});
+	if (profile.level !== void 0) tiles.push({
+		label: "Level",
+		text: profile.level
+	});
+	const counts = [
+		["Posts uploaded", profile.posts],
+		["Deleted posts", profile.deletedPosts],
+		["Comments", profile.comments],
+		["Tag edits", profile.tagEdits],
+		["Note edits", profile.noteEdits],
+		["Forum posts", profile.forumPosts]
+	];
+	for (const [label, value] of counts) if (value !== void 0) tiles.push({
+		label,
+		text: formatNumber(value)
+	});
+	return tiles;
+}
+function formatDay(time) {
+	return new Date(time).toLocaleDateString(DATE_LOCALE, {
+		day: "numeric",
+		month: "short",
+		year: "numeric"
+	});
+}
+function ProfileBlock() {
+	const [profile, setProfile] = d(() => readStoredProfileStats());
+	const [busy, setBusy] = d(false);
+	const [error, setError] = d("");
+	const refresh = () => {
+		setBusy(true);
+		setError("");
+		refreshProfileStats().then((next) => {
+			setProfile(next);
+		}).catch((reason) => {
+			setError(reason instanceof Error ? reason.message : String(reason));
+		}).finally(() => {
+			setBusy(false);
+		});
+	};
+	return /* @__PURE__ */ a($$1, { children: [
+		/* @__PURE__ */ a("div", {
+			className: PROFILE_HEAD_CLASS,
+			children: [
+				/* @__PURE__ */ a("p", {
+					className: TILE_LABEL_CLASS,
+					children: PROFILE_HEADING
+				}),
+				/* @__PURE__ */ a(Button, {
+					variant: "secondary",
+					size: "s",
+					title: PROFILE_REFRESH_TITLE,
+					disabled: busy,
+					onClick: refresh,
+					children: busy ? PROFILE_BUSY_LABEL : PROFILE_REFRESH_LABEL
+				}),
+				profile === null ? null : /* @__PURE__ */ a("span", {
+					className: HINT_CLASS,
+					children: `${PROFILE_READ_PREFIX}${formatDay(profile.readAt)}`
+				})
+			]
+		}),
+		error.length > 0 ? /* @__PURE__ */ a("p", {
+			className: HINT_CLASS,
+			role: "status",
+			children: `${PROFILE_FAILED_PREFIX}${error}`
+		}) : null,
+		profile === null ? /* @__PURE__ */ a("p", {
+			className: HINT_CLASS,
+			children: PROFILE_EMPTY
+		}) : /* @__PURE__ */ a("div", {
+			className: TILES_CLASS,
+			children: profileTiles(profile, Date.now()).map((tile) => /* @__PURE__ */ a("div", {
+				className: TILE_CLASS,
+				children: [/* @__PURE__ */ a("span", {
+					className: TILE_VALUE_CLASS,
+					children: tile.text
+				}), /* @__PURE__ */ a("span", {
+					className: TILE_LABEL_CLASS,
+					children: tile.label
+				})]
+			}, tile.label))
+		})
+	] });
+}
 function StatsSection() {
 	const stats = computeStats(load(), loadFavSet().size);
 	return /* @__PURE__ */ a("section", {
@@ -22061,6 +22334,7 @@ function StatsSection() {
 					}), /* @__PURE__ */ a(CollectionBars, { collections: stats.topCollections })]
 				})]
 			}),
+			/* @__PURE__ */ a(ProfileBlock, {}),
 			/* @__PURE__ */ a("p", {
 				className: HINT_CLASS,
 				children: HINT
@@ -22075,7 +22349,7 @@ function StatsPage() {
 		children: /* @__PURE__ */ a(StatsSection, {})
 	});
 }})}}));
-System.register("./collection-detail-page-BPDkbWxg-Ba8yQwKP.js", ['./___monkey.entry.js','./app-D9wl0The-CiZHvaAE.js'],(function(exports){'use strict';var d,T,w$1,b,downloadsAvailable,a,$$1,Button,UI_TEXT,shuffleCollection,resetCollectionOrder,EmptyState,Dialog,TextField,Toast,getCollectionOrder,listPlaylists,RDW_HASH_COLLECTIONS,removePostsFromCollection,isDownloadBusy,startDownload,movePostInCollection,renameCollection,deleteCollection,RDW_ROUTE_COLLECTIONS,restorePosts,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION_VIEW,SEARCH_PATH,collectionQueueHash,navigateToRdwRoute;return{setters:[function(module){d=module.aj;T=module.aE;w$1=module.cf;b=module.b1;downloadsAvailable=module.cg;a=module.n;$$1=module.$;Button=module.aQ;UI_TEXT=module.a7;shuffleCollection=module.ch;resetCollectionOrder=module.ci;EmptyState=module.bI;Dialog=module.bJ;TextField=module.aP;Toast=module.cj;getCollectionOrder=module.ck;listPlaylists=module.cl;RDW_HASH_COLLECTIONS=module.b;removePostsFromCollection=module.cm;isDownloadBusy=module.cn;startDownload=module.co;movePostInCollection=module.cp;renameCollection=module.cq;deleteCollection=module.bL;RDW_ROUTE_COLLECTIONS=module.cr;restorePosts=module.cs;SEARCH_PARAM_PAGE=module.S;SEARCH_PAGE=module.c1;SEARCH_SECTION_VIEW=module.ct;SEARCH_PATH=module.m;collectionQueueHash=module.cu;},function(module){navigateToRdwRoute=module.n;}],execute:(function(){exports("CollectionDetailPage",CollectionDetailPage);var CELL_SIZE_PX = 200;
+System.register("./collection-detail-page-DBbMlYti-DB0dxY3Y.js", ['./___monkey.entry.js','./app-Cy1IrKfc-ByLCfauj.js'],(function(exports){'use strict';var d,T,w$1,b,downloadsAvailable,a,$$1,Button,UI_TEXT,shuffleCollection,resetCollectionOrder,EmptyState,Dialog,TextField,Toast,getCollectionOrder,listPlaylists,RDW_HASH_COLLECTIONS,removePostsFromCollection,isDownloadBusy,startDownload,movePostInCollection,renameCollection,deleteCollection,RDW_ROUTE_COLLECTIONS,restorePosts,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION_VIEW,SEARCH_PATH,collectionQueueHash,navigateToRdwRoute;return{setters:[function(module){d=module.aj;T=module.aE;w$1=module.ci;b=module.b1;downloadsAvailable=module.cj;a=module.a0;$$1=module.a6;Button=module.aQ;UI_TEXT=module.U;shuffleCollection=module.ck;resetCollectionOrder=module.cl;EmptyState=module.bI;Dialog=module.bJ;TextField=module.aP;Toast=module.cm;getCollectionOrder=module.cn;listPlaylists=module.co;RDW_HASH_COLLECTIONS=module.x;removePostsFromCollection=module.cp;isDownloadBusy=module.cq;startDownload=module.cr;movePostInCollection=module.cs;renameCollection=module.ct;deleteCollection=module.bL;RDW_ROUTE_COLLECTIONS=module.cu;restorePosts=module.cv;SEARCH_PARAM_PAGE=module.Y;SEARCH_PAGE=module.c1;SEARCH_SECTION_VIEW=module.cw;SEARCH_PATH=module.$;collectionQueueHash=module.cx;},function(module){navigateToRdwRoute=module.i;}],execute:(function(){exports("CollectionDetailPage",CollectionDetailPage);var CELL_SIZE_PX = 200;
 var GRID_GAP_PX = 4;
 var SECTION_GAP_PX = 12;
 var ACTIONS_GAP_PX = 8;
