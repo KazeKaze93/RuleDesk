@@ -65,6 +65,8 @@ The script works on the site's own HTML. This file holds what is known about it.
 
 ### Addresses
 
+- A post a few minutes old has its preview on the main host, `https://rule34.xxx/thumbnails/<dir>/thumbnail_<hash>.jpg?<id>`, while its video is already at `https://ws-cdn-video.rule34.xxx//images/<dir>/<hash>.mp4?<id>` (measured on post 19364972). Later the preview moves to `wimg.rule34.xxx`.
+
 - Thumbnail: `https://wimg.rule34.xxx/thumbnails/<dir>/thumbnail_<hash>.jpg?<id>`
 - Sample on the post page: `https://wimg.rule34.xxx//samples/<dir>/sample_<hash>.jpg?<id>`
 - Video: `https://ws-cdn-video.rule34.xxx//images/<dir>/<hash>.mp4?<id>`

@@ -1,4 +1,5 @@
 import { THUMB_ANCHOR_NAME, THUMB_CLASS } from "../features/types";
+import { isSiteUrl } from "./urls";
 
 export const BASE_GRID_CSS = `
 .${THUMB_CLASS} {
@@ -73,7 +74,8 @@ export function ensureThumbAnchor(thumb: HTMLElement): void {
 
 /**
  * Build the CDN mp4 URL from a grid webm thumb `img.preview` src.
- * Thumb: `https://wimg.rule34.xxx/thumbnails/<dir>/thumbnail_<hash>.jpg?<id>`
+ * Thumb: `https://wimg.rule34.xxx/thumbnails/<dir>/thumbnail_<hash>.jpg?<id>`,
+ * or the same path on `rule34.xxx` for a post uploaded minutes ago
  * Video: `https://ws-cdn-video.rule34.xxx//images/<dir>/<hash>.mp4?<id>`
  * Unparseable input → null (no guessing).
  */
@@ -84,7 +86,10 @@ export function buildVideoUrlFromThumbUrl(thumbUrl: string): string | null {
   } catch {
     return null;
   }
-  if (parsed.hostname !== THUMB_IMAGE_HOST) {
+  // A post a few minutes old has its preview on the site itself
+  // (`rule34.xxx/thumbnails/…`), not yet on the preview server; its video is
+  // already on the video server under the same folder and name.
+  if (!isSiteUrl(thumbUrl)) {
     return null;
   }
   const match = THUMB_PATH_PATTERN.exec(parsed.pathname);

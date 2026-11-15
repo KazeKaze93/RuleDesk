@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.32.1
+
+- Video preview on hover now works on posts uploaded a few minutes ago. Their thumbnail is still on the site itself rather than on the thumbnail server, and the script did not build a video address from it
+
 ## 0.32.0
 
 Favorites: search, filter and endless scrolling, all without leaving the page.

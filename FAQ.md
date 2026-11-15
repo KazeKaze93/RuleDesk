@@ -41,7 +41,7 @@ Separate the names with commas. A space is part of a name here.
 "Video preview on hover" is off by default: switch it on in RuleDesk → Page. A preview loads the video file itself.
 
 **It plays on most posts but not on one.**
-A post uploaded minutes ago may not be served by the site's video server yet. The script tries that post again half a minute after a failure, when you point at it again.
+If a preview fails to load, the script tries that post again half a minute later, when you point at it again.
 
 **On Favorites and Comments some videos have no outline.**
 On those pages the site does not mark videos, so the script goes by the `video` tag of the post. A video without that tag gets no outline and no preview there.

@@ -17,6 +17,16 @@ const SAMPLE_VIDEO_URL =
   `${VIDEO_CDN_ORIGIN}//images/${SAMPLE_DIR}/${SAMPLE_HASH}.mp4?${SAMPLE_ID}`;
 
 describe("buildVideoUrlFromThumbUrl", () => {
+  it("builds the video address for a fresh post whose preview is still on the site itself", () => {
+    expect(
+      buildVideoUrlFromThumbUrl(
+        "https://rule34.xxx/thumbnails/5109/thumbnail_64123c77c267a219f9063d7817176f5c.jpg?19364972",
+      ),
+    ).toBe(
+      "https://ws-cdn-video.rule34.xxx//images/5109/64123c77c267a219f9063d7817176f5c.mp4?19364972",
+    );
+  });
+
   it("maps wimg thumbnail URL to ws-cdn-video mp4 with double-slash path", () => {
     expect(buildVideoUrlFromThumbUrl(SAMPLE_THUMB_URL)).toBe(SAMPLE_VIDEO_URL);
   });
