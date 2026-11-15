@@ -133,6 +133,18 @@ export function IconExternalLink(props: IconProps): JSX.Element {
   );
 }
 
+export function IconDownload(props: IconProps): JSX.Element {
+  const size = props.size ?? DEFAULT_SIZE;
+  return (
+    <svg {...baseProps(size, props.className, props.title)}>
+      {props.title !== undefined ? <title>{props.title}</title> : null}
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
+  );
+}
+
 export function IconDroplet(props: IconProps): JSX.Element {
   const size = props.size ?? DEFAULT_SIZE;
   return (

@@ -16,6 +16,7 @@ import {
   Segmented,
   Switch,
 } from "../ui/kit";
+import { readFileText } from "../ui/read-file";
 
 const SECTION_CLASS = "rdw-data-section";
 const ACTIONS_CLASS = "rdw-data-actions";
@@ -72,23 +73,6 @@ export const DATA_SECTION_CSS = `
 
 function formatSummary(summary: BackupImportSummary): string {
   return `Imported ${String(summary.artistCount)} artists, ${String(summary.collectionCount)} collections, ${String(summary.favCount)} favorites.`;
-}
-
-function readFileText(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        resolve(reader.result);
-        return;
-      }
-      reject(new Error("Could not read file"));
-    };
-    reader.onerror = () => {
-      reject(reader.error ?? new Error("Could not read file"));
-    };
-    reader.readAsText(file);
-  });
 }
 
 export type DataSectionProps = {

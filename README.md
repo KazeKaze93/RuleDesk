@@ -32,7 +32,7 @@ Every followed artist as a card with a cover, post count and a "new" mark.
 - **Custom collection**: posts you pick by hand with the "+" button on a thumbnail or on the post page
 - **Dynamic collection**: a saved search. Type tags in the search panel and press "Save as collection"
 
-Both kinds show a cover and a post count. A collection can be shuffled, renamed and deleted; Select on the Collections page deletes several at once. A post opened from a custom collection gets previous / next arrows that walk the collection.
+Both kinds show a cover and a post count. A collection can be shuffled, renamed and deleted; Select on the Collections page deletes or exports several at once, and Import adds collections from an exported file. In a custom collection posts are reordered by dragging, and "Download all" saves the original files. A post opened from a custom collection gets previous / next arrows that walk the collection.
 
 ### Search panel
 
@@ -40,7 +40,7 @@ Under the site's search field: tags as chips (click to exclude, cross to remove)
 
 ### Post page
 
-Favorite, Collections, Vote, "I came" and Original as buttons; post details and comments in tabs; the site's own actions (Edit, Report, Add note) in one list. Video keeps its volume and speed and can fit the height, the width, or stay at original size.
+Favorite, Collections, Vote, "I came", Original and Download original as buttons; post details and comments in tabs; the site's own actions (Edit, Report, Add note) in one list. Video keeps its volume and speed and can fit the height, the width, or stay at original size.
 
 ### Grid
 
@@ -73,6 +73,7 @@ Header menu → **RuleDesk**. Every block folds with a click on its title.
 | Page | A switch for each page tweak, and one switch that turns all tweaks off |
 | Blacklist | The site's tag blacklist for this browser |
 | Favorites | Favorite buttons in the grid, favorites sync |
+| Statistics | Counts of what the script stores, and the top followed artists |
 | Data | Export and import of everything the script stores |
 
 To get the untouched site back: Appearance → Site theme → **Site default**, and Page → turn off **Enable page tweaks**.
@@ -82,7 +83,7 @@ To get the untouched site back: Appearance → Site theme → **Site default**, 
 - Collections, followed artists and settings live in the script manager's storage, in this browser only. Nothing is sent anywhere
 - **Data → Export** saves one JSON file; **Import** restores it (Merge adds to what you have, Replace overwrites)
 - The blacklist and the site theme are the site's own cookies and are not part of the export
-- The script does not use the site API. It reads the pages you open and makes a request only for an action of yours: favorite a post, sync favorites, type in a tag field, scroll for the next page, open a feed that spans several searches, press Refresh on Following. Requests go one at a time with a pause
+- The script does not use the site API. It reads the pages you open and makes a request only for an action of yours: favorite a post, sync favorites, download a post's original or a collection, type in a tag field, scroll for the next page, open a feed that spans several searches, press Refresh on Following. Requests go one at a time with a pause
 
 ## Limits
 

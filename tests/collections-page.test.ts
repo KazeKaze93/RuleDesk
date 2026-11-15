@@ -192,6 +192,7 @@ describe("createCollectionsPage", () => {
       "All",
       "Custom",
       "Dynamic",
+      "Import",
       "New",
     ]);
     expect(root.querySelector("#rdw-collections-filter")).toBeInstanceOf(

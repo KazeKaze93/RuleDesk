@@ -857,6 +857,38 @@ describe("postActionsFeature", () => {
     warnSpy.mockRestore();
   });
 
+  it("shows no download button when the script manager cannot download", () => {
+    buildPostDom({});
+    postActionsFeature.mount(makeCtx());
+    expect(document.querySelector(".rdw-post-panel-download")).toBeNull();
+  });
+
+  it("downloads the original through the script manager on one click", async () => {
+    const download = vi.fn((details: { onload: () => void }) => {
+      details.onload();
+    });
+    vi.stubGlobal("GM_download", download);
+    buildPostDom({});
+    postActionsFeature.mount(makeCtx());
+    const button = document.querySelector(".rdw-post-panel-download");
+    if (!(button instanceof HTMLButtonElement)) {
+      throw new Error("download button missing");
+    }
+    expect(button.getAttribute("title")).toBe("Download original");
+    expect(download).not.toHaveBeenCalled();
+
+    button.click();
+
+    expect(download).toHaveBeenCalledTimes(1);
+    expect(download.mock.calls[0]?.[0]).toMatchObject({ url: ORIGINAL_HREF });
+    await vi.waitFor(() => {
+      expect(
+        document.querySelector(".rdw-post-panel-download")?.getAttribute("title"),
+      ).toBe("Downloaded");
+    });
+    vi.unstubAllGlobals();
+  });
+
   it("proxies I came click to native a[onclick^=iCame(]", () => {
     buildPostDom({ includeICame: true });
     postActionsFeature.mount(makeCtx());

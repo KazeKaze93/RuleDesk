@@ -21,6 +21,7 @@ describe("FEATURES registry", () => {
       "favorites-bulk",
       "video-player",
       "video-preview",
+      "cdn-fallback",
     ]);
     expect(ids).not.toContain("top-bar");
     expect(ids).not.toContain("dark-theme");

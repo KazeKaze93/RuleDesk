@@ -15,10 +15,10 @@ export default defineConfig({
         namespace: "https://github.com/kazekaze93/ruledesk-web",
         description:
           "Collections, playlists, favorites, artist updates, and page tweaks for rule34.xxx",
-        version: "0.22.1",
+        version: "0.23.0",
         match: ["https://rule34.xxx/*"],
         "run-at": "document-start",
-        grant: ["GM_getValue", "GM_setValue"],
+        grant: ["GM_getValue", "GM_setValue", "GM_download"],
         updateURL: USERSCRIPT_RAW_URL,
         downloadURL: USERSCRIPT_RAW_URL,
       },

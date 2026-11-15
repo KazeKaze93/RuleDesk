@@ -42,6 +42,7 @@ import {
 } from "./constants";
 import { DataSection } from "./data-section";
 import { FavoritesSyncSection } from "./favorites-sync-section";
+import { StatsSection } from "./stats-section";
 
 /** Grid density is owned by Appearance; omit from Page module list. */
 const PAGE_FEATURE_SKIP = new Set(["grid-density"]);
@@ -71,6 +72,7 @@ const SECTION_APPEARANCE = "appearance";
 const SECTION_PAGE = "page";
 const SECTION_BLACKLIST = "blacklist";
 const SECTION_FAVORITES = "favorites";
+const SECTION_STATS = "statistics";
 const SECTION_DATA = "data";
 
 const SECTION_TITLES: Readonly<Record<string, string>> = {
@@ -78,6 +80,7 @@ const SECTION_TITLES: Readonly<Record<string, string>> = {
   [SECTION_PAGE]: "Page",
   [SECTION_BLACKLIST]: "Blacklist",
   [SECTION_FAVORITES]: "Favorites",
+  [SECTION_STATS]: "Statistics",
   [SECTION_DATA]: "Data",
 };
 
@@ -330,6 +333,10 @@ export function SettingsPage(): JSX.Element {
           />
         </div>
         <FavoritesSyncSection includeHeading={false} />
+      </SettingsSection>
+
+      <SettingsSection {...section(SECTION_STATS)}>
+        <StatsSection />
       </SettingsSection>
 
       <SettingsSection {...section(SECTION_DATA)}>

@@ -1,11 +1,12 @@
 // ==UserScript==
 // @name         RuleDesk Web
 // @namespace    https://github.com/kazekaze93/ruledesk-web
-// @version      0.22.1
+// @version      0.23.0
 // @description  Collections, playlists, favorites, artist updates, and page tweaks for rule34.xxx
 // @downloadURL  https://raw.githubusercontent.com/KazeKaze93/ruledesk-web/main/dist/ruledesk-web.user.js
 // @updateURL    https://raw.githubusercontent.com/KazeKaze93/ruledesk-web/main/dist/ruledesk-web.user.js
 // @match        https://rule34.xxx/*
+// @grant        GM_download
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @run-at       document-start
@@ -14,9 +15,9 @@
 !function(){function e(e,t){return(t||"")+" (SystemJS Error#"+e+" https://github.com/systemjs/systemjs/blob/main/docs/errors.md#"+e+")"}function t(e,t){if(-1!==e.indexOf("\\")&&(e=e.replace(j,"/")),"/"===e[0]&&"/"===e[1])return t.slice(0,t.indexOf(":")+1)+e;if("."===e[0]&&("/"===e[1]||"."===e[1]&&("/"===e[2]||2===e.length&&(e+="/"))||1===e.length&&(e+="/"))||"/"===e[0]){var n,r=t.slice(0,t.indexOf(":")+1);if(n="/"===t[r.length+1]?"file:"!==r?(n=t.slice(r.length+2)).slice(n.indexOf("/")+1):t.slice(8):t.slice(r.length+("/"===t[r.length])),"/"===e[0])return t.slice(0,t.length-n.length-1)+e;for(var i=n.slice(0,n.lastIndexOf("/")+1)+e,o=[],s=-1,u=0;u<i.length;u++)-1!==s?"/"===i[u]&&(o.push(i.slice(s,u+1)),s=-1):"."===i[u]?"."!==i[u+1]||"/"!==i[u+2]&&u+2!==i.length?"/"===i[u+1]||u+1===i.length?u+=1:s=u:(o.pop(),u+=2):s=u;return-1!==s&&o.push(i.slice(s)),t.slice(0,t.length-n.length)+o.join("")}}function n(e,n){return t(e,n)||(-1!==e.indexOf(":")?e:t("./"+e,n))}function r(e,n,r,i,o){for(var s in e){var a=t(s,r)||s,f=e[s];if("string"==typeof f){var l=c(i,t(f,r)||f,o);l?n[a]=l:u("W1",s,f,"bare specifier did not resolve")}}}function i(e,t,i){var o;for(o in e.imports&&r(e.imports,i.imports,t,i,null),e.scopes||{}){var s=n(o,t);r(e.scopes[o],i.scopes[s]||(i.scopes[s]={}),t,i,s)}for(o in e.depcache||{})i.depcache[n(o,t)]=e.depcache[o];for(o in e.integrity||{})i.integrity[n(o,t)]=e.integrity[o]}function o(e,t){if(t[e])return e;var n=e.length;do{var r=e.slice(0,n+1);if(r in t)return r}while(-1!==(n=e.lastIndexOf("/",n-1)))}function s(e,t){var n=o(e,t);if(n){var r=t[n];if(null===r)return;if(!(e.length>n.length&&"/"!==r[r.length-1]))return r+e.slice(n.length);u("W2",n,r,"should have a trailing '/'")}}function u(t,n,r,i){console.warn(e(t,"Package target "+i+", resolving target '"+r+"' for "+n))}function c(e,t,n){for(var r=e.scopes,i=n&&o(n,r);i;){var u=s(t,r[i]);if(u)return u;i=o(i.slice(0,i.lastIndexOf("/")),r)}return s(t,e.imports)||-1!==t.indexOf(":")&&t}function a(){this[M]={}}function f(e){return e.id}function l(e,t,n,r){if(e.onload(n,t.id,t.d&&t.d.map(f),!!r),n)throw n}function d(t,n,r,i){var o=t[M][n];if(o)return o;var s=[],u=Object.create(null);P&&Object.defineProperty(u,P,{value:"Module"});var c=Promise.resolve().then((function(){return t.instantiate(n,r,i)})).then((function(r){if(!r)throw Error(e(2,"Module "+n+" did not instantiate"));var i=r[1]((function(e,t){o.h=!0;var n=!1;if("string"==typeof e)e in u&&u[e]===t||(u[e]=t,n=!0);else{for(var r in e)t=e[r],r in u&&u[r]===t||(u[r]=t,n=!0);e&&e.__esModule&&(u.__esModule=e.__esModule)}if(n)for(var i=0;i<s.length;i++){var c=s[i];c&&c(u)}return t}),2===r[1].length?{import:function(e,r){return t.import(e,n,r)},meta:t.createContext(n)}:void 0);return o.e=i.execute||function(){},[r[0],i.setters||[],r[2]||[]]}),(function(e){throw o.e=null,o.er=e,l(t,o,e,!0),e})),a=c.then((function(e){return Promise.all(e[0].map((function(r,i){var o=e[1][i],s=e[2][i];return Promise.resolve(t.resolve(r,n)).then((function(e){var r=d(t,e,n,s);return Promise.resolve(r.I).then((function(){return o&&(r.i.push(o),!r.h&&r.I||o(r.n)),r}))}))}))).then((function(e){o.d=e}))}));return o=t[M][n]={id:n,i:s,n:u,m:i,I:c,L:a,h:!1,d:void 0,e:void 0,er:void 0,E:void 0,C:void 0,p:void 0}}function h(e,t,n,r){if(!r[t.id])return r[t.id]=!0,Promise.resolve(t.L).then((function(){return t.p&&null!==t.p.e||(t.p=n),Promise.all(t.d.map((function(t){return h(e,t,n,r)})))})).catch((function(n){if(t.er)throw n;throw t.e=null,l(e,t,n,!1),n}))}function p(e,t){return t.C=h(e,t,t,{}).then((function(){return v(e,t,{})})).then((function(){return t.n}))}function v(e,t,n){function r(){try{var n=o.call(L);if(n)return n=n.then((function(){t.C=t.n,t.E=null,l(e,t,null,!0)}),(function(n){throw t.er=n,t.E=null,l(e,t,n,!0),n})),t.E=n;t.C=t.n,t.L=t.I=void 0}catch(r){throw t.er=r,r}finally{l(e,t,t.er,!0)}}if(!n[t.id]){if(n[t.id]=!0,!t.e){if(t.er)throw t.er;return t.E?t.E:void 0}var i,o=t.e;return t.e=null,t.d.forEach((function(r){try{var o=v(e,r,n);o&&(i=i||[]).push(o)}catch(s){throw t.er=s,l(e,t,s,!1),s}})),i?Promise.all(i).then(r):r()}}function m(){[].forEach.call(document.querySelectorAll("script"),(function(t){if(!t.sp)if("systemjs-module"===t.type){if(t.sp=!0,!t.src)return;System.import("import:"===t.src.slice(0,7)?t.src.slice(7):n(t.src,g)).catch((function(e){if(e.message.indexOf("https://github.com/systemjs/systemjs/blob/main/docs/errors.md#3")>-1){var n=document.createEvent("Event");n.initEvent("error",!1,!1),t.dispatchEvent(n)}return Promise.reject(e)}))}else if("systemjs-importmap"===t.type){t.sp=!0;var r=t.src?(System.fetch||fetch)(t.src,{integrity:t.integrity,priority:t.fetchPriority,passThrough:!0}).then((function(e){if(!e.ok)throw Error("Invalid status code: "+e.status);return e.text()})).catch((function(n){return n.message=e("W4","Error fetching systemjs-import map "+t.src)+"\n"+n.message,console.warn(n),"function"==typeof t.onerror&&t.onerror(),"{}"})):t.innerHTML;W=W.then((function(){return r})).then((function(n){!function(t,n,r){var o={};try{o=JSON.parse(n)}catch(s){console.warn(Error(e("W5","systemjs-importmap contains invalid JSON")+"\n\n"+n+"\n"))}i(o,r,t)}(N,n,t.src||g)}))}}))}var g,y="undefined"!=typeof Symbol,b="undefined"!=typeof self,S="undefined"!=typeof document,w=b?self:global;if(S){var O=document.querySelector("base[href]");O&&(g=O.href)}if(!g&&"undefined"!=typeof location){var E=(g=location.href.split("#")[0].split("?")[0]).lastIndexOf("/");-1!==E&&(g=g.slice(0,E+1))}var x,j=/\\/g,P=y&&Symbol.toStringTag,M=y?Symbol():"@",I=a.prototype;I.import=function(e,t,n){var r=this;return t&&"object"==typeof t&&(n=t,t=void 0),Promise.resolve(r.prepareImport()).then((function(){return r.resolve(e,t,n)})).then((function(e){var t=d(r,e,void 0,n);return t.C||p(r,t)}))},I.createContext=function(e){var t=this;return{url:e,resolve:function(n,r){return Promise.resolve(t.resolve(n,r||e))}}},I.onload=function(){},I.register=function(e,t,n){x=[e,t,n]},I.getRegister=function(){var e=x;return x=void 0,e};var L=Object.freeze(Object.create(null));w.System=new a;var C,R,W=Promise.resolve(),N={imports:{},scopes:{},depcache:{},integrity:{}},T=S;if(I.prepareImport=function(e){return(T||e)&&(m(),T=!1),W},I.getImportMap=function(){return JSON.parse(JSON.stringify(N))},S&&(m(),window.addEventListener("DOMContentLoaded",m)),I.addImportMap=function(e,t){i(e,t||g,N)},S){window.addEventListener("error",(function(e){J=e.filename,_=e.error}));var A=location.origin}I.createScript=function(e){var t=document.createElement("script");t.async=!0,e.indexOf(A+"/")&&(t.crossOrigin="anonymous");var n=N.integrity[e];return n&&(t.integrity=n),t.src=e,t};var J,_,k={},U=I.register;I.register=function(e,t){if(S&&"loading"===document.readyState&&"string"!=typeof e){var n=document.querySelectorAll("script[src]"),r=n[n.length-1];if(r){C=e;var i=this;R=setTimeout((function(){k[r.src]=[e,t],i.import(r.src)}))}}else C=void 0;return U.call(this,e,t)},I.instantiate=function(t,n){var r=k[t];if(r)return delete k[t],r;var i=this;return Promise.resolve(I.createScript(t)).then((function(r){return new Promise((function(o,s){r.addEventListener("error",(function(){s(Error(e(3,"Error loading "+t+(n?" from "+n:""))))})),r.addEventListener("load",(function(){if(document.head.removeChild(r),J===t)s(_);else{var e=i.getRegister(t);e&&e[0]===C&&clearTimeout(R),o(e)}})),document.head.appendChild(r)}))}))},I.shouldFetch=function(){return!1},"undefined"!=typeof fetch&&(I.fetch=fetch);var $=I.instantiate,B=/^(text|application)\/(x-)?javascript(;|$)/;I.instantiate=function(t,n,r){var i=this;return this.shouldFetch(t,n,r)?this.fetch(t,{credentials:"same-origin",integrity:N.integrity[t],meta:r}).then((function(r){if(!r.ok)throw Error(e(7,r.status+" "+r.statusText+", loading "+t+(n?" from "+n:"")));var o=r.headers.get("content-type");if(!o||!B.test(o))throw Error(e(4,'Unknown Content-Type "'+o+'", loading '+t+(n?" from "+n:"")));return r.text().then((function(e){return e.indexOf("//# sourceURL=")<0&&(e+="\n//# sourceURL="+t),(0,eval)(e),i.getRegister(t)}))})):$.apply(this,arguments)},I.resolve=function(n,r){return c(N,t(n,r=r||g)||n,r)||function(t,n){throw Error(e(8,"Unable to resolve bare specifier '"+t+(n?"' from "+n:"'")))}(n,r)};var F=I.instantiate;I.instantiate=function(e,t,n){var r=N.depcache[e];if(r)for(var i=0;i<r.length;i++)d(this,this.resolve(r[i],e),e);return F.call(this,e,t,n)},b&&"function"==typeof importScripts&&(I.instantiate=function(e){var t=this;return Promise.resolve().then((function(){return importScripts(e),t.getRegister(e)}))}),function(e){function t(t){return!e.hasOwnProperty(t)||!isNaN(t)&&t<e.length||a&&e[t]&&"undefined"!=typeof window&&e[t].parent===window}var n,r,i,o=e.System.constructor.prototype,s=o.import;o.import=function(o,u,c){return function(){for(var o in n=r=void 0,e)t(o)||(n?r||(r=o):n=o,i=o)}(),s.call(this,o,u,c)};var u=[[],function(){return{}}],c=o.getRegister;o.getRegister=function(){var o=c.call(this);if(o)return o;var s,a=function(o){var s,u,c=0;for(var a in e)if(!t(a)){if(0===c&&a!==n||1===c&&a!==r)return a;s?(i=a,u=o&&u||a):s=a===i,c++}return u}(this.firstGlobalProp);if(!a)return u;try{s=e[a]}catch(f){return u}return[[],function(e){return{execute:function(){e(s),e({default:s,__useDefault:!0})}}}]};var a="undefined"!=typeof navigator&&-1!==navigator.userAgent.indexOf("Trident")}("undefined"!=typeof self?self:global),function(e){var t=e.System.constructor.prototype,r=/^[^#?]+\.(css|html|json|wasm)([?#].*)?$/,i=t.shouldFetch.bind(t);t.shouldFetch=function(e){return i(e)||r.test(e)};var o=/^application\/json(;|$)/,s=/^text\/css(;|$)/,u=/^application\/wasm(;|$)/,c=t.fetch;t.fetch=function(t,r){return c(t,r).then((function(i){if(r.passThrough)return i;if(!i.ok)return i;var c=i.headers.get("content-type");return o.test(c)?i.json().then((function(e){return new Response(new Blob(['System.register([],function(e){return{execute:function(){e("default",'+JSON.stringify(e)+")}}})"],{type:"application/javascript"}))})):s.test(c)?i.text().then((function(e){return e=e.replace(/url\(\s*(?:(["'])((?:\\.|[^\n\\"'])+)\1|((?:\\.|[^\s,"'()\\])+))\s*\)/g,(function(e,r,i,o){return["url(",r,n(i||o,t),r,")"].join("")})),new Response(new Blob(["System.register([],function(e){return{execute:function(){var s=new CSSStyleSheet();s.replaceSync("+JSON.stringify(e)+');e("default",s)}}})'],{type:"application/javascript"}))})):u.test(c)?(WebAssembly.compileStreaming?WebAssembly.compileStreaming(i):i.arrayBuffer().then(WebAssembly.compile)).then((function(n){e.System.wasmModules||(e.System.wasmModules=Object.create(null)),e.System.wasmModules[t]=n;var r=[],i=[];return WebAssembly.Module.imports&&WebAssembly.Module.imports(n).forEach((function(e){var t=JSON.stringify(e.module);-1===r.indexOf(t)&&(r.push(t),i.push("function(m){i["+t+"]=m}"))})),new Response(new Blob(["System.register(["+r.join(",")+"],function(e){var i={};return{setters:["+i.join(",")+"],execute:function(){return WebAssembly.instantiate(System.wasmModules["+JSON.stringify(t)+"],i).then(function(m){e(m.exports)})}}})"],{type:"application/javascript"}))})):i}))}}("undefined"!=typeof self?self:global);var q="undefined"!=typeof Symbol&&Symbol.toStringTag;I.get=function(e){var t=this[M][e];if(t&&null===t.e&&!t.E)return t.er?null:t.n},I.set=function(t,n){try{new URL(t)}catch(s){console.warn(Error(e("W3",'"'+t+'" is not a valid URL to set in the module registry')))}var r;q&&"Module"===n[q]?r=n:(r=Object.assign(Object.create(null),n),q&&Object.defineProperty(r,q,{value:"Module"}));var i=Promise.resolve(r),o=this[M][t]||(this[M][t]={id:t,i:[],h:!1,d:[],e:null,er:void 0,E:void 0});return!o.e&&!o.E&&(Object.assign(o,{n:r,I:void 0,L:void 0,C:i}),r)},I.has=function(e){return!!this[M][e]},I.delete=function(e){var t=this[M],n=t[e];if(!n||n.p&&null!==n.p.e||n.E)return!1;var r=n.i;return n.d&&n.d.forEach((function(e){var t=e.i.indexOf(n);-1!==t&&e.i.splice(t,1)})),delete t[e],function(){var n=t[e];if(!n||!r||null!==n.e||n.E)return!1;r.forEach((function(e){n.i.push(e),e(n.n)})),r=null}};var D="undefined"!=typeof Symbol&&Symbol.iterator;I.entries=function(){var e,t,n=this,r=Object.keys(n[M]),i=0,o={next:function(){for(;void 0!==(t=r[i++])&&void 0===(e=n.get(t)););return{done:void 0===t,value:void 0!==t&&[t,e]}}};return o[D]=function(){return this},o}}();
 !function(t){function e(t){t.registerRegistry=Object.create(null),t.namedRegisterAliases=Object.create(null)}var r=t.System;e(r);var i,s,n=r.constructor.prototype,l=r.constructor,a=function(){l.call(this),e(this)};a.prototype=n,r.constructor=a;var o=n.register;n.register=function(t,e,r,n){if("string"!=typeof t)return o.apply(this,arguments);var l=[e,r,n];return this.registerRegistry[t]=l,i||(i=l,s=t),Promise.resolve().then((function(){i=null,s=null})),o.apply(this,[e,r,n])};var u=n.resolve;n.resolve=function(t,e){try{return u.call(this,t,e)}catch(r){if(t in this.registerRegistry)return this.namedRegisterAliases[t]||t;throw r}};var c=n.instantiate;n.instantiate=function(t,e,r){var i=this.registerRegistry[t];return i?(this.registerRegistry[t]=null,i):c.call(this,t,e,r)};var g=n.getRegister;n.getRegister=function(t){var e=g.call(this,t);s&&t&&(this.namedRegisterAliases[s]=t);var r=i||e;return i=null,s=null,r}}("undefined"!=typeof self?self:global);
 ;(typeof System!='undefined')&&(System=new System.constructor());
-System.register("./___monkey.entry.js", [],(function(exports,module){'use strict';return{execute:(function(){exports({$:isCollectionDetailPage,B:rdwPageHash,D:createFavoritesSyncTabId,G:readArtistsMirror,I:listArtistTags,J:writeArtistsMirror,K:reloadFromStorage,L:save,P:setSyncState,Q:Q$1,Y:a,Z:applyTokenProperties,_:resolveAppearancePalette,a:applyAppearanceTheme,a0:menuRouteForPage,a1:getSiteSkinCss,a2:$$1,aA:Select,aD:Segmented,aG:TextField,aH:Button,aI:clampBackgroundDim,aK:featurePanelLabel,aM:setFeatureEnabled,aN:clearFeatureState,aO:applyCssOnlyFeatureEnabled,aP:isFeatureEnabled,aR:setFeatureChoiceValue,aS:applyCssOnlyFeatureChoice,aT:getFeatureChoice,aU:createAutocompleteQuerier,aV:b,aW:readSiteBlacklist,aX:Chip,aY:AutocompleteField,aZ:ProgressBar,a_:createDefaultCustomTheme,ad:d,ae:Switch,ag:setTweaksEnabled,ah:NumberField,aj:setUpdatesGroupSize,ak:getUpdatesGroupSize,am:setPlaylistChunkSize,an:getPlaylistChunkSize,ap:setGridFavButtonsEnabled,aq:setGridFavButtonsVisible,ar:IconChevronRight,as:IconChevronDown,at:Card,au:P$1,av:T,aw:A,az:SectionLabel,b$:IconX,b0:prepareBackgroundImageFile,b1:setFeatureState,b2:writeSiteBlacklist,b4:load,b5:createDefaultStorage,b6:clearStorageCache,b7:clearFavsCache,b8:object,bA:QueryField,bB:isUnfilteredQuery,bC:createDynamicCollection,bD:createPlaylist,bF:collectionDetailHash,bG:readCoverMirror,bI:IconCheck,bJ:readCountMirror,bK:buildSearchUrl,bL:dynamicCollectionMarkHash,bM:serialize,bO:getSeenPostId,bP:completeLastQueryToken,bQ:readLastQueryToken,bX:removeArtist,bY:addArtists,b_:IconButton,ba:optional,bb:string,bd:literal,bf:stripLegacyPanelWindowSize,bg:migrateMarksFavToFavs,bi:createDefaultFavs,bj:parseFavsStrict,bk:setAppearance,bl:loadFavSet,bn:extractFavIdsFromMarks,bq:getTweaksEnabled,br:getGridFavButtonsEnabled,bs:getFeatureChoiceValue,bt:getFeatureState,bu:getScreenPixelSize,bv:IconPlus,bw:EmptyState,bx:Dialog,by:resolveCollectionKind,bz:deleteCollection,c0:removeArtists,c1:rememberArtistSnapshot,c2:fetchArtistSnapshot,c3:w$1,c4:shuffleCollection,c5:resetCollectionOrder,c6:Toast,c7:getCollectionOrder,c8:listPlaylists,c9:removePostsFromCollection,ca:renameCollection,cc:restorePosts,ce:collectionQueueHash,d:detectPageKind,e:ensureDocumentStyles,f:ensureStyleElement,g:getAppearance,h:buildOwnPageCss,j:getSyncState,k:readFavoritesSyncMode,m:mountCards,n:normalizeArtistTag,o:runFavoritesSync,p:parseRdwHash,r:runFeaturesYielding,s:syncFavoritesPage,x:resolveFavoritesUserId,y:yieldToMain});var STORAGE_KEY = "ruledesk-web.storage";
-var STORAGE_BACKUP_KEY = exports("bm","ruledesk-web.storage.backup");
-var FAVS_STORAGE_KEY = exports("bh","ruledesk-web.favs");
+System.register("./___monkey.entry.js", [],(function(exports,module){'use strict';return{execute:(function(){exports({$:isCollectionDetailPage,B:rdwPageHash,D:createFavoritesSyncTabId,G:readArtistsMirror,I:listArtistTags,J:writeArtistsMirror,K:reloadFromStorage,L:save,P:setSyncState,Q:Q$1,Y:a,Z:applyTokenProperties,_:resolveAppearancePalette,a:applyAppearanceTheme,a$:loadFavSet,a0:menuRouteForPage,a1:getSiteSkinCss,a2:$$1,aA:Select,aD:Segmented,aG:TextField,aH:Button,aI:clampBackgroundDim,aK:featurePanelLabel,aM:setFeatureEnabled,aN:clearFeatureState,aO:applyCssOnlyFeatureEnabled,aP:isFeatureEnabled,aR:setFeatureChoiceValue,aS:applyCssOnlyFeatureChoice,aT:getFeatureChoice,aU:createAutocompleteQuerier,aV:b,aW:readSiteBlacklist,aX:Chip,aY:AutocompleteField,aZ:ProgressBar,a_:getSeenPostId,ad:d,ae:Switch,ag:setTweaksEnabled,ah:NumberField,aj:setUpdatesGroupSize,ak:getUpdatesGroupSize,am:setPlaylistChunkSize,an:getPlaylistChunkSize,ap:setGridFavButtonsEnabled,aq:setGridFavButtonsVisible,ar:IconChevronRight,as:IconChevronDown,at:Card,au:P$1,av:T,aw:A,az:SectionLabel,b$:addArtists,b0:load,b1:createDefaultCustomTheme,b3:prepareBackgroundImageFile,b4:setFeatureState,b5:writeSiteBlacklist,b7:resolveCollectionKind,b8:setAppearance,bA:dynamicCollectionMarkHash,bB:serialize,bC:createDefaultStorage,bD:clearStorageCache,bE:clearFavsCache,bG:optional,bH:string,bK:stripLegacyPanelWindowSize,bL:migrateMarksFavToFavs,bN:createDefaultFavs,bO:parseFavsStrict,bQ:extractFavIdsFromMarks,bS:completeLastQueryToken,bT:readLastQueryToken,b_:removeArtist,bb:getTweaksEnabled,bc:getGridFavButtonsEnabled,bd:getFeatureChoiceValue,be:getFeatureState,bf:getScreenPixelSize,bg:IconPlus,bh:EmptyState,bi:Dialog,bj:importCollections,bk:deleteCollection,bl:QueryField,bm:isUnfilteredQuery,bn:createDynamicCollection,bo:createPlaylist,bq:collectionDetailHash,br:readCoverMirror,bt:object,bu:array,bw:literal,bx:IconCheck,by:readCountMirror,bz:buildSearchUrl,c1:IconButton,c2:IconX,c3:removeArtists,c4:rememberArtistSnapshot,c5:fetchArtistSnapshot,c6:w$1,c7:shuffleCollection,c8:resetCollectionOrder,c9:Toast,ca:getCollectionOrder,cb:listPlaylists,cc:removePostsFromCollection,cd:canDownload,ce:movePostInCollection,cf:renameCollection,cg:fetchOriginalUrl,ch:downloadOriginal,cj:restorePosts,cl:collectionQueueHash,d:detectPageKind,e:ensureDocumentStyles,f:ensureStyleElement,g:getAppearance,h:buildOwnPageCss,j:getSyncState,k:readFavoritesSyncMode,m:mountCards,n:normalizeArtistTag,o:runFavoritesSync,p:parseRdwHash,r:runFeaturesYielding,s:syncFavoritesPage,x:resolveFavoritesUserId,y:yieldToMain});var STORAGE_KEY = "ruledesk-web.storage";
+var STORAGE_BACKUP_KEY = exports("bP","ruledesk-web.storage.backup");
+var FAVS_STORAGE_KEY = exports("bM","ruledesk-web.favs");
 var DEBUG_KEY = "ruledesk-web.debug";
 var APPEARANCE_BACKGROUND_KEY = exports("E","ruledesk-web.appearance.background");
 var APPEARANCE_BACKGROUND_TOO_LARGE = exports("ac","Background image is too large (max 1.5 MB).");
@@ -32,9 +33,9 @@ var APPEARANCE_THEME_CUSTOM = exports("ax","custom");
 var DEFAULT_APPEARANCE_THEME = APPEARANCE_THEME_LIGHT;
 var SITE_ORIGIN = exports("b","https://rule34.xxx");
 var SEARCH_PATH = exports("X","/index.php");
-var SEARCH_PAGE = exports("bT","post");
-var SEARCH_SECTION = exports("bU","list");
-var SEARCH_SECTION_VIEW = exports("cd","view");
+var SEARCH_PAGE = exports("bW","post");
+var SEARCH_SECTION = exports("bX","list");
+var SEARCH_SECTION_VIEW = exports("ck","view");
 var SEARCH_PARAM_PAGE = exports("T","page");
 var SEARCH_PARAM_TAGS = exports("c","tags");
 var FAVORITES_PAGE = exports("V","favorites");
@@ -48,12 +49,12 @@ var VOTE_PARAM_TYPE = "type";
 var VOTE_PAGE = "post";
 var VOTE_SECTION = "vote";
 var FETCH_CREDENTIALS = "same-origin";
-var TAG_TYPE_INCLUDE = exports("bZ","include");
+var TAG_TYPE_INCLUDE = exports("c0","include");
 var TAG_TYPE_EXCLUDE = "exclude";
 var UPDATES_ID_PREFIX = "id:>";
-var IMPORT_SCHEMA_ERROR_PREFIX = exports("be","File is not a RuleDesk Web export");
-var COLLECTION_KIND_SEARCH = exports("bH","search");
-var COLLECTION_KIND_POSTS = exports("bE","posts");
+var IMPORT_SCHEMA_ERROR_PREFIX = exports("bJ","File is not a RuleDesk Web export");
+var COLLECTION_KIND_SEARCH = exports("bs","search");
+var COLLECTION_KIND_POSTS = exports("bp","posts");
 var DOCUMENT_STYLE_ID = "ruledesk-web-document-style";
 var UPDATES_BAR_ID = "ruledesk-web-updates-bar";
 var SITE_THEME_COOKIE_NAME = "theme";
@@ -122,7 +123,7 @@ var CSS_CLASS = exports("C",{
 });
 /** Hash routes and DOM ids for RuleDesk own pages (replaces floating panel). */
 var RDW_HASH_PREFIX = "#rdw/";
-var RDW_ROUTE_COLLECTIONS = exports("cb","collections");
+var RDW_ROUTE_COLLECTIONS = exports("ci","collections");
 var RDW_ROUTE_FOLLOWING = "following";
 var RDW_ROUTE_SETTINGS = "settings";
 var RDW_ROUTES = [
@@ -171,14 +172,14 @@ var PANEL_UI_CLASS = exports("a3",{
 	settingsCaption: "rdw-settings-caption",
 	pageCard: "rdw-page-card"
 });
-var ARTISTS_EMPTY_TITLE = exports("bS","No followed artists yet");
-var ARTISTS_EMPTY_HINT = exports("bR","Follow artists with the Follow button next to their name in the tag list.");
-var ARTIST_FILTER_LABEL = exports("bV","Filter artists");
+var ARTISTS_EMPTY_TITLE = exports("bV","No followed artists yet");
+var ARTISTS_EMPTY_HINT = exports("bU","Follow artists with the Follow button next to their name in the tag list.");
+var ARTIST_FILTER_LABEL = exports("bY","Filter artists");
 var FEATURE_CHECKBOX_ID_PREFIX = exports("aL","rdw-feature-");
 var FEATURE_CHOICE_ID_PREFIX = exports("aQ","rdw-feature-choice-");
 var UPDATES_GROUP_SIZE_ID = exports("ai","rdw-updates-group-size");
 var PLAYLIST_CHUNK_SIZE_ID = exports("al","rdw-playlist-chunk-size");
-var ARTIST_FILTER_ID = exports("bW","rdw-artist-filter");
+var ARTIST_FILTER_ID = exports("bZ","rdw-artist-filter");
 var GRID_FAV_CHECKBOX_ID = exports("ao","rdw-grid-fav-buttons");
 var TWEAKS_SWITCH_ID = exports("af","rdw-tweaks-enabled");
 var TAG_GROUPS_PANEL_LABEL = "Collapse tags";
@@ -2080,7 +2081,7 @@ var PostCountSchema = /* @__PURE__ */ object({
 	value: int(),
 	exact: /* @__PURE__ */ boolean()
 });
-var CollectionSchema = /* @__PURE__ */ object({
+var CollectionSchema = exports("bv",/* @__PURE__ */ object({
 	id: (/* @__PURE__ */ string()).check(/* @__PURE__ */ _minLength(1)),
 	name: (/* @__PURE__ */ string()).check(/* @__PURE__ */ _minLength(1)),
 	tags: /* @__PURE__ */ array(TagEntrySchema),
@@ -2091,7 +2092,7 @@ var CollectionSchema = /* @__PURE__ */ object({
 	query: /* @__PURE__ */ optional(/* @__PURE__ */ string()),
 	cover: /* @__PURE__ */ optional(/* @__PURE__ */ array(/* @__PURE__ */ string())),
 	postCount: /* @__PURE__ */ optional(PostCountSchema)
-});
+}));
 /**
 * A followed artist. Everything except `tag` is what the Following page shows
 * and is filled in as it becomes known.
@@ -2113,7 +2114,7 @@ var MarkFlagsSchema = /* @__PURE__ */ object({
 	fav: /* @__PURE__ */ optional(/* @__PURE__ */ boolean()),
 	seen: /* @__PURE__ */ optional(/* @__PURE__ */ boolean())
 });
-var AppearanceThemeSchema = exports("a$",/* @__PURE__ */ _enum([
+var AppearanceThemeSchema = exports("b2",/* @__PURE__ */ _enum([
 	APPEARANCE_THEME_SITE,
 	APPEARANCE_THEME_SITE_DARK,
 	APPEARANCE_THEME_LIGHT,
@@ -2185,7 +2186,7 @@ var SettingsSchema = /* @__PURE__ */ object({
 	appearance: /* @__PURE__ */ optional(AppearanceStoredSchema)
 });
 var UpdatesSchema = /* @__PURE__ */ object({ seenPostId: int().check(/* @__PURE__ */ _nonnegative()) });
-var StorageSchema = exports("b9",/* @__PURE__ */ object({
+var StorageSchema = exports("bF",/* @__PURE__ */ object({
 	version: /* @__PURE__ */ literal(1),
 	collections: /* @__PURE__ */ array(CollectionSchema),
 	artists: /* @__PURE__ */ array(ArtistEntrySchema),
@@ -2220,7 +2221,7 @@ var FavsSyncSchema = /* @__PURE__ */ object({
 	lock: /* @__PURE__ */ optional(FavsSyncLockSchema),
 	mode: /* @__PURE__ */ optional(FavsSyncModeSchema)
 });
-var FavsSchema = exports("bc",/* @__PURE__ */ object({
+var FavsSchema = exports("bI",/* @__PURE__ */ object({
 	version: /* @__PURE__ */ literal(1),
 	ids: /* @__PURE__ */ array(int()),
 	sync: /* @__PURE__ */ optional(FavsSyncSchema)
@@ -3535,6 +3536,69 @@ function resetCollectionOrder(collectionId) {
 	save(data);
 	return target;
 }
+/**
+* Moves one post to the place of another in the order the collection shows.
+* While the collection is shuffled the shuffled order is edited; otherwise the
+* insertion order. Returns false when nothing moved.
+*/
+function movePostInCollection(collectionId, postId, targetPostId) {
+	const data = reloadFromStorage();
+	const target = findPlaylist(data, collectionId);
+	if (target === null || postId === targetPostId) return false;
+	const order = collectionDisplayOrder(target);
+	const from = order.indexOf(postId);
+	const to = order.indexOf(targetPostId);
+	if (from < 0 || to < 0) return false;
+	order.splice(from, 1);
+	order.splice(to, 0, postId);
+	if (target.shuffledOrder === void 0 || target.shuffledOrder === null) target.postIds = order;
+	else target.shuffledOrder = order;
+	ensurePostsMedia(target);
+	CollectionSchema.parse(target);
+	save(data);
+	return true;
+}
+var IMPORT_NAME_FIRST_SUFFIX = 2;
+/** A free collection name: the wanted one, or it with " (2)", " (3)"… */
+function freeCollectionName(wanted, taken) {
+	const base = wanted.trim();
+	let name = base;
+	for (let suffix = IMPORT_NAME_FIRST_SUFFIX; taken.has(name.toLowerCase()); suffix += 1) name = `${base} (${String(suffix)})`;
+	taken.add(name.toLowerCase());
+	return name;
+}
+/**
+* Adds collections read from an export file as new ones: each gets a new id,
+* and a name that is already taken gets a number. Covers and counts of saved
+* searches are not carried (they are re-read from the site's pages).
+* Returns how many were added.
+*/
+function importCollections(incoming) {
+	if (incoming.length === 0) return 0;
+	const data = reloadFromStorage();
+	const taken = new Set(data.collections.map((item) => item.name.trim().toLowerCase()));
+	for (const source of incoming) {
+		const name = freeCollectionName(source.name, taken);
+		const isPosts = isPlaylist(source);
+		data.collections.push(CollectionSchema.parse(isPosts ? {
+			id: crypto.randomUUID(),
+			name,
+			tags: [],
+			kind: COLLECTION_KIND_POSTS,
+			postIds: [...source.postIds ?? []],
+			thumbs: { ...source.thumbs ?? {} },
+			shuffledOrder: null
+		} : {
+			id: crypto.randomUUID(),
+			name,
+			tags: source.tags,
+			kind: COLLECTION_KIND_SEARCH,
+			query: source.query ?? serialize(source.tags)
+		}));
+	}
+	save(data);
+	return incoming.length;
+}
 /** Phase 2 HANDOFF: read-only display order. Null when the id is missing or not a posts collection. */
 function getCollectionOrder(collectionId) {
 	const target = findPlaylist(load(), collectionId);
@@ -4805,6 +4869,22 @@ function IconExternalLink(props) {
 				x1: "10",
 				y1: "14",
 				x2: "21",
+				y2: "3"
+			})
+		]
+	});
+}
+function IconDownload(props) {
+	return /* @__PURE__ */ a("svg", {
+		...baseProps(props.size ?? DEFAULT_SIZE, props.className, props.title),
+		children: [
+			props.title !== void 0 ? /* @__PURE__ */ a("title", { children: props.title }) : null,
+			/* @__PURE__ */ a("path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" }),
+			/* @__PURE__ */ a("polyline", { points: "7 10 12 15 17 10" }),
+			/* @__PURE__ */ a("line", {
+				x1: "12",
+				y1: "15",
+				x2: "12",
 				y2: "3"
 			})
 		]
@@ -8287,14 +8367,14 @@ function featureBodyClass(id) {
 function featureChoiceBodyClass(id, value) {
 	return `rdw-f-${id}-${value}`;
 }
-var FEATURE_ID$13 = "grid-density";
+var FEATURE_ID$14 = "grid-density";
 var COMPACT_PX = 150;
 var LARGE_PX = 250;
 var CHOICE_DEFAULT = "default";
 var CHOICE_COMPACT = "compact";
 var CHOICE_LARGE = "large";
 function sizeCss(choiceValue, px) {
-	const bodyClass = featureChoiceBodyClass(FEATURE_ID$13, choiceValue);
+	const bodyClass = featureChoiceBodyClass(FEATURE_ID$14, choiceValue);
 	return [
 		`body.${bodyClass} span.thumb,`,
 		`body.${bodyClass} span.thumb > a {`,
@@ -8310,14 +8390,14 @@ function sizeCss(choiceValue, px) {
 /** Same gap on both axes for Default, Compact, and Large. Does not set cell size. */
 function gapCss() {
 	return [
-		`body.${featureBodyClass(FEATURE_ID$13)} div.image-list {`,
+		`body.${featureBodyClass(FEATURE_ID$14)} div.image-list {`,
 		`  column-gap: ${String(4)}px !important;`,
 		`  row-gap: ${String(4)}px !important;`,
 		`}`
 	].join("\n");
 }
-var gridDensityFeature = exports("bo",{
-	id: FEATURE_ID$13,
+var gridDensityFeature = exports("b9",{
+	id: FEATURE_ID$14,
 	label: "Grid size",
 	pages: ["list", "favorites"],
 	defaultEnabled: true,
@@ -8346,11 +8426,11 @@ var gridDensityFeature = exports("bo",{
 	].join("\n"),
 	mount: () => void 0
 });
-var FEATURE_ID$12 = "menu-cleanup";
-var FEATURE_LABEL$12 = "Clean header menu";
+var FEATURE_ID$13 = "menu-cleanup";
+var FEATURE_LABEL$13 = "Clean header menu";
 var CONTENT_ID$1 = "content";
 var HIDDEN_CLASS = "rdw-menu-hidden";
-var BODY_FEATURE_CLASS$3 = featureBodyClass(FEATURE_ID$12);
+var BODY_FEATURE_CLASS$3 = featureBodyClass(FEATURE_ID$13);
 var MISSING_MENU_WARN = "Header menu not found";
 var HIDE_LINK_TEXT_SET = /* @__PURE__ */ new Set([
 	"iCame Top 100",
@@ -8363,7 +8443,7 @@ var HIDE_LINK_TEXT_SET = /* @__PURE__ */ new Set([
 	"TOS",
 	"My Favorites"
 ]);
-var FEATURE_PAGES$12 = [
+var FEATURE_PAGES$13 = [
 	"list",
 	"post",
 	"favorites",
@@ -8402,9 +8482,9 @@ function mountMenuCleanup(_ctx) {
 	}
 }
 var menuCleanupFeature = {
-	id: FEATURE_ID$12,
-	label: FEATURE_LABEL$12,
-	pages: [...FEATURE_PAGES$12],
+	id: FEATURE_ID$13,
+	label: FEATURE_LABEL$13,
+	pages: [...FEATURE_PAGES$13],
 	defaultEnabled: true,
 	cssOnly: true,
 	css: FEATURE_CSS$12,
@@ -8531,10 +8611,10 @@ function isBlacklisted(tags, score, rating, list) {
 	}
 	return false;
 }
-var FEATURE_ID$11 = "blacklist-hide";
-var FEATURE_LABEL$11 = "Hide blacklisted posts";
-var FEATURE_PAGES$11 = ["list"];
-var BODY_FEATURE_CLASS$2 = featureBodyClass(FEATURE_ID$11);
+var FEATURE_ID$12 = "blacklist-hide";
+var FEATURE_LABEL$12 = "Hide blacklisted posts";
+var FEATURE_PAGES$12 = ["list"];
+var BODY_FEATURE_CLASS$2 = featureBodyClass(FEATURE_ID$12);
 var CLASS_BLACKLISTED$1 = "rdw-blacklisted";
 var SCORE_TOKEN_PREFIX$4 = "score:";
 var RATING_TOKEN_PREFIX$3 = "rating:";
@@ -8589,13 +8669,78 @@ function mountBlacklistHide(ctx) {
 	ensureSubscriptions();
 }
 var blacklistHideFeature = {
-	id: FEATURE_ID$11,
-	label: FEATURE_LABEL$11,
-	pages: [...FEATURE_PAGES$11],
+	id: FEATURE_ID$12,
+	label: FEATURE_LABEL$12,
+	pages: [...FEATURE_PAGES$12],
 	defaultEnabled: true,
 	cssOnly: true,
 	css: FEATURE_CSS$11,
 	mount: mountBlacklistHide
+};
+/**
+* When the image of a post fails to load, tries the same file on the site's
+* other image servers, one after another.
+*
+* The host list comes from the desktop RuleDesk, where it served API file
+* addresses. A retry happens only after a real load error, at most once per
+* host, and only for an address on one of these hosts.
+*/
+var FEATURE_ID$11 = "cdn-fallback";
+var FEATURE_LABEL$11 = "Retry a failed post image on other servers";
+var FEATURE_PAGES$11 = ["post"];
+var POST_IMAGE_SELECTOR$1 = "img#image";
+var EVENT_ERROR = "error";
+/** Image servers, in the order they are tried. */
+var CDN_IMAGE_HOSTS = [
+	"wimg.rule34.xxx",
+	"img.rule34.xxx",
+	"us.rule34.xxx",
+	"api-cdn.rule34.xxx"
+];
+/**
+* The same address on the next server that was not tried yet, or null when
+* the address is not on a known server or every server was tried.
+*/
+function nextCdnUrl(current, tried) {
+	let url;
+	try {
+		url = new URL(current, window.location.href);
+	} catch {
+		return null;
+	}
+	if (!CDN_IMAGE_HOSTS.includes(url.hostname)) return null;
+	for (const host of CDN_IMAGE_HOSTS) {
+		if (host === url.hostname || tried.has(host)) continue;
+		url.hostname = host;
+		return url.href;
+	}
+	return null;
+}
+function hostOf(address) {
+	try {
+		return new URL(address, window.location.href).hostname;
+	} catch {
+		return "";
+	}
+}
+function mountCdnFallback(_ctx) {
+	const image = document.querySelector(POST_IMAGE_SELECTOR$1);
+	if (!(image instanceof HTMLImageElement)) return;
+	const tried = /* @__PURE__ */ new Set();
+	image.addEventListener(EVENT_ERROR, () => {
+		const current = image.getAttribute("src") ?? "";
+		tried.add(hostOf(current));
+		const next = nextCdnUrl(current, tried);
+		if (next !== null) image.setAttribute("src", next);
+	});
+}
+var cdnFallbackFeature = {
+	id: FEATURE_ID$11,
+	label: FEATURE_LABEL$11,
+	pages: [...FEATURE_PAGES$11],
+	defaultEnabled: true,
+	css: "",
+	mount: mountCdnFallback
 };
 function buildAddFavUrl(postId) {
 	const params = new URLSearchParams();
@@ -8814,14 +8959,14 @@ function syncFavoritesPage(root = document, search = window.location.search) {
 	bindRemoveClickCapture();
 }
 /** Minimum pause between sequential favorites page fetches. */
-var FAVORITES_SYNC_PAGE_PAUSE_MS = exports("b3",1500);
+var FAVORITES_SYNC_PAGE_PAUSE_MS = exports("b6",1500);
 /** Pauses before each of the three retries (HTTP error / missing paginator). */
 var FAVORITES_SYNC_RETRY_DELAYS_MS = [
 	1e4,
 	3e4,
 	6e4
 ];
-var FAVORITES_SYNC_MODE_INCREMENTAL = exports("bp",FAVS_SYNC_MODE_INCREMENTAL);
+var FAVORITES_SYNC_MODE_INCREMENTAL = exports("ba",FAVS_SYNC_MODE_INCREMENTAL);
 var FAVORITES_SYNC_MODE_FULL = exports("F",FAVS_SYNC_MODE_FULL);
 var MY_FAVORITES_LINK_SELECTOR$1 = "li#my-favorites-container a[href*=\"page=favorites\"]";
 var THUMB_SELECTOR$1 = "span.thumb";
@@ -10745,7 +10890,7 @@ var MIN_REQUEST_INTERVAL_MS$1 = 1e3;
 var PREFETCH_VIEWPORT_HEIGHTS = 2;
 var FIRST_PAGE_PID$1 = "0";
 var NEXT_LINK_SELECTOR = "div.pagination a[alt=\"next\"]";
-var EMPTY_HREF = "#";
+var EMPTY_HREF$1 = "#";
 var SCORE_TOKEN_PREFIX$2 = "score:";
 var RATING_TOKEN_PREFIX$1 = "rating:";
 var TOKEN_SPLIT$1 = /\s+/;
@@ -10841,7 +10986,7 @@ function sleep$1(ms) {
 }
 function readPagerNextUrl() {
 	const href = document.querySelector(NEXT_LINK_SELECTOR)?.getAttribute("href") ?? "";
-	if (href.length === 0 || href === EMPTY_HREF) return null;
+	if (href.length === 0 || href === EMPTY_HREF$1) return null;
 	try {
 		return new URL(href, window.location.href).href;
 	} catch {
@@ -11542,7 +11687,7 @@ var infiniteScrollFeature = {
 	mount: mountInfiniteScroll
 };
 var AUTOCOMPLETE_PATH = "/public/autocomplete.php";
-var AUTOCOMPLETE_TAG_TYPE_ARTIST = exports("bN","artist");
+var AUTOCOMPLETE_TAG_TYPE_ARTIST = exports("bR","artist");
 var HTTP_TOO_MANY_REQUESTS = 429;
 var ABORT_ERROR_NAME = "AbortError";
 var AutocompleteItemSchema = object({
@@ -12765,6 +12910,92 @@ var playlistMenuFeature = {
 	css: FEATURE_CSS$6,
 	mount: mountPlaylistMenu
 };
+/**
+* Saves a post's original file through the script manager (`GM_download`).
+* The file is on the site's CDN, another origin, so a plain download link
+* cannot name or save it.
+*
+* On a post page the address of the original is on the page. For a post that
+* is not open (a collection download) its page is read first: one request per
+* post, made only by a run the user started and confirmed.
+*/
+var LINK_LIST_SELECTOR$1 = "div.link-list";
+var ORIGINAL_LINK_TEXT$1 = "Original image";
+var POST_IMAGE_SELECTOR = "img#image";
+var POST_VIDEO_SOURCE_SELECTOR = "video#gelcomVideoPlayer source[src]";
+var POST_VIDEO_SELECTOR = "video#gelcomVideoPlayer[src]";
+var EMPTY_HREF = "#";
+var NO_ORIGINAL_ERROR = "original file not found on the post page";
+var FILE_PREFIX = "rule34-";
+var DEFAULT_EXTENSION = "jpg";
+var EXTENSION_PATTERN = /\.([a-z0-9]{2,5})$/i;
+var UNKNOWN_ERROR = "unknown error";
+var TIMEOUT_ERROR = "timeout";
+/** `rule34-<postId>.<ext>`, the extension taken from the file address. */
+function downloadFileName(url, postId) {
+	let path = url;
+	try {
+		path = new URL(url, window.location.href).pathname;
+	} catch {}
+	return `${FILE_PREFIX}${postId}.${EXTENSION_PATTERN.exec(path)?.[1]?.toLowerCase() ?? DEFAULT_EXTENSION}`;
+}
+/** False when the script manager gives no download function. */
+function canDownload() {
+	return typeof GM_download === "function";
+}
+/**
+* Starts the download. Resolves when the manager reports the file saved,
+* rejects with a readable reason when it reports an error or a timeout.
+*/
+function downloadOriginal(url, postId) {
+	return new Promise((resolve, reject) => {
+		GM_download({
+			url,
+			name: downloadFileName(url, postId),
+			onload: () => {
+				resolve();
+			},
+			onerror: (event) => {
+				const reason = typeof event.error === "string" ? event.error : UNKNOWN_ERROR;
+				reject(new Error(reason));
+			},
+			ontimeout: () => {
+				reject(/* @__PURE__ */ new Error(TIMEOUT_ERROR));
+			}
+		});
+	});
+}
+function attribute(root, selector, name) {
+	const value = root.querySelector(selector)?.getAttribute(name)?.trim() ?? "";
+	return value.length > 0 ? value : null;
+}
+/**
+* Address of the original file on a post page: the "Original image" link,
+* else the video source, else the image shown. Null when none is there.
+*/
+function readOriginalUrl(root) {
+	const list = root.querySelector(LINK_LIST_SELECTOR$1) ?? root;
+	for (const link of list.querySelectorAll("a[href]")) {
+		const href = link.getAttribute("href") ?? "";
+		if (link.textContent?.trim() === ORIGINAL_LINK_TEXT$1 && href.length > 0 && href !== EMPTY_HREF) return href;
+	}
+	return attribute(root, POST_VIDEO_SOURCE_SELECTOR, "src") ?? attribute(root, POST_VIDEO_SELECTOR, "src") ?? attribute(root, POST_IMAGE_SELECTOR, "src");
+}
+/** Reads a post's page and returns the address of its original. One request. */
+async function fetchOriginalUrl(postId) {
+	const params = new URLSearchParams();
+	params.set(SEARCH_PARAM_PAGE, SEARCH_PAGE);
+	params.set("s", SEARCH_SECTION_VIEW);
+	params.set("id", String(postId));
+	const response = await fetch(`${SEARCH_PATH}?${params.toString()}`, {
+		method: "GET",
+		credentials: FETCH_CREDENTIALS
+	});
+	if (!response.ok) throw new Error(`HTTP ${String(response.status)}`);
+	const url = readOriginalUrl(new DOMParser().parseFromString(await response.text(), "text/html"));
+	if (url === null) throw new Error(NO_ORIGINAL_ERROR);
+	return new URL(url, window.location.href).href;
+}
 var CLASS_STRIP = "rdw-post-panel-collection-queue";
 var CLASS_NAME = "rdw-post-panel-collection-queue-name";
 var CLASS_POSITION = "rdw-post-panel-collection-queue-position";
@@ -13688,6 +13919,13 @@ var TEXT_INFO = "Info";
 var TEXT_POST = "Post";
 var TEXT_COMMENTS_COUNTED_SEP = " · ";
 var LABEL_ORIGINAL = "Original";
+var LABEL_DOWNLOAD = "Download original";
+var LABEL_DOWNLOADING = "Downloading…";
+var LABEL_DOWNLOADED = "Downloaded";
+var LABEL_DOWNLOAD_FAILED = "Download failed: ";
+var DOWNLOAD_IDLE = "idle";
+var DOWNLOAD_BUSY = "busy";
+var DOWNLOAD_DONE = "done";
 var LABEL_VOTE = "Vote";
 var LABEL_ICAME = "I came";
 var ARIA_PANEL_TABS = "Post details";
@@ -13699,6 +13937,7 @@ var CLASS_ACTIONS$1 = "rdw-post-panel-actions";
 var CLASS_ACTIONS_ROW = "rdw-post-panel-actions-row";
 var CLASS_FAV = "rdw-post-panel-fav";
 var CLASS_ORIGINAL = "rdw-post-panel-original";
+var CLASS_DOWNLOAD = "rdw-post-panel-download";
 var CLASS_VOTE = "rdw-post-panel-vote";
 var CLASS_STATS = "rdw-post-panel-stats";
 var CLASS_STAT_LABEL = "rdw-post-panel-stat-label";
@@ -13738,6 +13977,20 @@ function PostPanel(props) {
 	const [originalHref] = d(() => {
 		return findOriginalAnchor()?.href ?? null;
 	});
+	const [downloadState, setDownloadState] = d(DOWNLOAD_IDLE);
+	const downloadPostId = props.postId;
+	const onDownloadClick = () => {
+		if (originalHref === null || downloadPostId === null || downloadState === DOWNLOAD_BUSY) return;
+		setDownloadState(DOWNLOAD_BUSY);
+		downloadOriginal(originalHref, downloadPostId).then(() => {
+			setDownloadState(DOWNLOAD_DONE);
+		}, (error) => {
+			const reason = error instanceof Error ? error.message : String(error);
+			log.warn("post-panel: download failed", reason);
+			setDownloadState(`${LABEL_DOWNLOAD_FAILED}${reason}`);
+		});
+	};
+	const downloadLabel = downloadState === DOWNLOAD_IDLE ? LABEL_DOWNLOAD : downloadState === DOWNLOAD_BUSY ? LABEL_DOWNLOADING : downloadState === DOWNLOAD_DONE ? LABEL_DOWNLOADED : downloadState;
 	const [iCame] = d(() => findICameTarget());
 	const [hasComments] = d(() => findPostComments() !== null);
 	const [commentCount] = d(() => hasComments ? readCommentCount() : null);
@@ -13866,6 +14119,15 @@ function PostPanel(props) {
 							"aria-label": LABEL_ORIGINAL,
 							title: LABEL_ORIGINAL,
 							children: /* @__PURE__ */ a(IconExternalLink, { size: ORIGINAL_ICON_SIZE })
+						}) : null,
+						originalHref !== null && downloadPostId !== null && canDownload() ? /* @__PURE__ */ a("button", {
+							type: "button",
+							className: `${CLASS_ORIGINAL} ${CLASS_DOWNLOAD} rdw-kit-focusable`,
+							"aria-label": downloadLabel,
+							title: downloadLabel,
+							"aria-busy": downloadState === DOWNLOAD_BUSY,
+							onClick: onDownloadClick,
+							children: /* @__PURE__ */ a(IconDownload, { size: ORIGINAL_ICON_SIZE })
 						}) : null
 					]
 				}) : null]
@@ -15650,7 +15912,8 @@ var FEATURES = exports("aJ",[
 		settingsCaption: VIDEO_PREVIEW_SETTING_CAPTION,
 		css: FEATURE_CSS,
 		mount: mountVideoPreview
-	}
+	},
+	cdnFallbackFeature
 ]);
 var mountedIds = /* @__PURE__ */ new Set();
 var activePageKind = null;
@@ -15873,12 +16136,12 @@ bootEarly();
 whenDomReady(() => {
 	applyLayoutBeforePaint();
 	scheduleAfterFirstPaint(() => {
-		module.import('./app-B5PpDx25-BE1YXj8c.js').then(({ startApp }) => {
+		module.import('./app-DlEGCisE-D57tM8OZ.js').then(({ startApp }) => {
 			startApp();
 		});
 	});
 });})}}));
-System.register("./app-B5PpDx25-BE1YXj8c.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var yieldToMain,detectPageKind,mountCards,syncFavoritesPage,runFeaturesYielding,getAppearance,applyAppearanceTheme,ensureDocumentStyles,SITE_SELECTORS,log,SITE_ORIGIN,SEARCH_PARAM_TAGS,normalizeArtistTag,CSS_CLASS,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,HEADER_SELECTOR,RDW_OWN_PAGE_CLASS,MENU_ITEM_ID,parseRdwHash,getSyncState,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,runFavoritesSync,UI_TEXT,Q$1,RDW_PAGE_ROOT_ID,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,resolveFavoritesUserId,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,rdwPageHash,createFavoritesSyncTabId,APPEARANCE_BACKGROUND_KEY,readArtistsMirror,listArtistTags,writeArtistsMirror,reloadFromStorage,save,CURRENT_PAGE_CLASS,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,a,applyTokenProperties,resolveAppearancePalette,isCollectionDetailPage,menuRouteForPage,getSiteSkinCss,$$1,PANEL_UI_CLASS,TOKEN_VAR,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,SITE_LIGHT_C_BG,SITE_LIGHT_C_BG_ALT,SITE_DARK_C_BG,SITE_DARK_C_BORDER,APPEARANCE_BACKGROUND_TOO_LARGE;return{setters:[function(module){yieldToMain=module.y;detectPageKind=module.d;mountCards=module.m;syncFavoritesPage=module.s;runFeaturesYielding=module.r;getAppearance=module.g;applyAppearanceTheme=module.a;ensureDocumentStyles=module.e;SITE_SELECTORS=module.S;log=module.l;SITE_ORIGIN=module.b;SEARCH_PARAM_TAGS=module.c;normalizeArtistTag=module.n;CSS_CLASS=module.C;ensureStyleElement=module.f;RDW_OWN_PAGE_STYLE_ID=module.R;buildOwnPageCss=module.h;HEADER_SELECTOR=module.H;RDW_OWN_PAGE_CLASS=module.i;MENU_ITEM_ID=module.M;parseRdwHash=module.p;getSyncState=module.j;readFavoritesSyncMode=module.k;FAVORITES_SYNC_MODE_FULL=module.F;runFavoritesSync=module.o;UI_TEXT=module.U;Q$1=module.Q;RDW_PAGE_ROOT_ID=module.q;NAVBAR_SELECTOR=module.N;FEED_MENU_ITEM_ID=module.t;RDW_HASH_COLLECTIONS=module.u;MENU_LABEL=module.v;RDW_HASH_FOLLOWING=module.w;resolveFavoritesUserId=module.x;MY_FAVORITES_CONTAINER_ID=module.z;RDW_HASH_SETTINGS=module.A;rdwPageHash=module.B;createFavoritesSyncTabId=module.D;APPEARANCE_BACKGROUND_KEY=module.E;readArtistsMirror=module.G;listArtistTags=module.I;writeArtistsMirror=module.J;reloadFromStorage=module.K;save=module.L;CURRENT_PAGE_CLASS=module.O;setSyncState=module.P;SEARCH_PARAM_PAGE=module.T;FAVORITES_PAGE=module.V;FAVORITES_SECTION_VIEW=module.W;SEARCH_PATH=module.X;a=module.Y;applyTokenProperties=module.Z;resolveAppearancePalette=module._;isCollectionDetailPage=module.$;menuRouteForPage=module.a0;getSiteSkinCss=module.a1;$$1=module.a2;PANEL_UI_CLASS=module.a3;TOKEN_VAR=module.a4;RDW_THEME_ATTR=module.a5;APPEARANCE_THEME_SITE=module.a6;APPEARANCE_THEME_SITE_DARK=module.a7;SITE_LIGHT_C_BG=module.a8;SITE_LIGHT_C_BG_ALT=module.a9;SITE_DARK_C_BG=module.aa;SITE_DARK_C_BORDER=module.ab;APPEARANCE_BACKGROUND_TOO_LARGE=module.ac;}],execute:(function(){exports({i:navigateToRdwRoute,n:loadBackground,r:saveBackground,startApp:startApp,t:clearBackground});/** Matches host.tsx page title class (owned there; styled here for site polish). */
+System.register("./app-DlEGCisE-D57tM8OZ.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var yieldToMain,detectPageKind,mountCards,syncFavoritesPage,runFeaturesYielding,getAppearance,applyAppearanceTheme,ensureDocumentStyles,SITE_SELECTORS,log,SITE_ORIGIN,SEARCH_PARAM_TAGS,normalizeArtistTag,CSS_CLASS,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,HEADER_SELECTOR,RDW_OWN_PAGE_CLASS,MENU_ITEM_ID,parseRdwHash,getSyncState,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,runFavoritesSync,UI_TEXT,Q$1,RDW_PAGE_ROOT_ID,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,resolveFavoritesUserId,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,rdwPageHash,createFavoritesSyncTabId,APPEARANCE_BACKGROUND_KEY,readArtistsMirror,listArtistTags,writeArtistsMirror,reloadFromStorage,save,CURRENT_PAGE_CLASS,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,a,applyTokenProperties,resolveAppearancePalette,isCollectionDetailPage,menuRouteForPage,getSiteSkinCss,$$1,PANEL_UI_CLASS,TOKEN_VAR,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,SITE_LIGHT_C_BG,SITE_LIGHT_C_BG_ALT,SITE_DARK_C_BG,SITE_DARK_C_BORDER,APPEARANCE_BACKGROUND_TOO_LARGE;return{setters:[function(module){yieldToMain=module.y;detectPageKind=module.d;mountCards=module.m;syncFavoritesPage=module.s;runFeaturesYielding=module.r;getAppearance=module.g;applyAppearanceTheme=module.a;ensureDocumentStyles=module.e;SITE_SELECTORS=module.S;log=module.l;SITE_ORIGIN=module.b;SEARCH_PARAM_TAGS=module.c;normalizeArtistTag=module.n;CSS_CLASS=module.C;ensureStyleElement=module.f;RDW_OWN_PAGE_STYLE_ID=module.R;buildOwnPageCss=module.h;HEADER_SELECTOR=module.H;RDW_OWN_PAGE_CLASS=module.i;MENU_ITEM_ID=module.M;parseRdwHash=module.p;getSyncState=module.j;readFavoritesSyncMode=module.k;FAVORITES_SYNC_MODE_FULL=module.F;runFavoritesSync=module.o;UI_TEXT=module.U;Q$1=module.Q;RDW_PAGE_ROOT_ID=module.q;NAVBAR_SELECTOR=module.N;FEED_MENU_ITEM_ID=module.t;RDW_HASH_COLLECTIONS=module.u;MENU_LABEL=module.v;RDW_HASH_FOLLOWING=module.w;resolveFavoritesUserId=module.x;MY_FAVORITES_CONTAINER_ID=module.z;RDW_HASH_SETTINGS=module.A;rdwPageHash=module.B;createFavoritesSyncTabId=module.D;APPEARANCE_BACKGROUND_KEY=module.E;readArtistsMirror=module.G;listArtistTags=module.I;writeArtistsMirror=module.J;reloadFromStorage=module.K;save=module.L;CURRENT_PAGE_CLASS=module.O;setSyncState=module.P;SEARCH_PARAM_PAGE=module.T;FAVORITES_PAGE=module.V;FAVORITES_SECTION_VIEW=module.W;SEARCH_PATH=module.X;a=module.Y;applyTokenProperties=module.Z;resolveAppearancePalette=module._;isCollectionDetailPage=module.$;menuRouteForPage=module.a0;getSiteSkinCss=module.a1;$$1=module.a2;PANEL_UI_CLASS=module.a3;TOKEN_VAR=module.a4;RDW_THEME_ATTR=module.a5;APPEARANCE_THEME_SITE=module.a6;APPEARANCE_THEME_SITE_DARK=module.a7;SITE_LIGHT_C_BG=module.a8;SITE_LIGHT_C_BG_ALT=module.a9;SITE_DARK_C_BG=module.aa;SITE_DARK_C_BORDER=module.ab;APPEARANCE_BACKGROUND_TOO_LARGE=module.ac;}],execute:(function(){exports({i:navigateToRdwRoute,n:loadBackground,r:saveBackground,startApp:startApp,t:clearBackground});/** Matches host.tsx page title class (owned there; styled here for site polish). */
 var PAGE_TITLE_CLASS$1 = "rdw-page-title";
 /** Matches kit SectionLabel class. */
 var SECTION_LABEL_CLASS = "rdw-section-label";
@@ -16117,28 +16380,28 @@ var collectionsFactory = null;
 var followingFactory = null;
 function getSettingsFactory() {
 	if (settingsFactory === null) settingsFactory = async () => {
-		const mod = await module.import('./settings-page-BU-jNgL5-D8wrDHY-.js');
+		const mod = await module.import('./settings-page-CA0DsURQ-BhsWYPT-.js');
 		return /* @__PURE__ */ a(mod.SettingsPage, {});
 	};
 	return settingsFactory;
 }
 function getCollectionsFactory() {
 	if (collectionsFactory === null) collectionsFactory = async () => {
-		const mod = await module.import('./collections-page-Dd_85eDI-CxygZByi.js');
+		const mod = await module.import('./collections-page-Dj_flxLd-Ccg9BK0X.js');
 		return /* @__PURE__ */ a(mod.CollectionsPage, {});
 	};
 	return collectionsFactory;
 }
 function getFollowingFactory() {
 	if (followingFactory === null) followingFactory = async () => {
-		const mod = await module.import('./following-page-EDIZ6ryP-CAdK8u4H.js');
+		const mod = await module.import('./following-page-CuqkyO1J-sX19egqS.js');
 		return /* @__PURE__ */ a(mod.FollowingPage, {});
 	};
 	return followingFactory;
 }
 function collectionDetailFactory(collectionId) {
 	return async () => {
-		const mod = await module.import('./collection-detail-page-CXMfCwzd-DLB_gXTo.js');
+		const mod = await module.import('./collection-detail-page-IA-74Q9W-Dp1V5NeK.js');
 		return /* @__PURE__ */ a(mod.CollectionDetailPage, { collectionId }, collectionId);
 	};
 }
@@ -16840,7 +17103,7 @@ async function startApp() {
 	await yieldToMain();
 	maybeResumeFavoritesSync();
 }})}}));
-System.register("./settings-page-BU-jNgL5-D8wrDHY-.js", ['./___monkey.entry.js','./app-B5PpDx25-BE1YXj8c.js'],(function(exports){'use strict';var d,a,PANEL_UI_CLASS,Switch,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,NumberField,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,setGridFavButtonsVisible,IconChevronRight,IconChevronDown,Card,P$1,T,A,getAppearance,applyAppearanceTheme,getSiteSkinCss,APPEARANCE_THEME_CUSTOM,KIT_FOCUS_CSS,SectionLabel,Select,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,$$1,Segmented,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,TextField,Button,clampBackgroundDim,FEATURES,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,setFeatureEnabled,clearFeatureState,applyCssOnlyFeatureEnabled,isFeatureEnabled,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,applyCssOnlyFeatureChoice,getFeatureChoice,createAutocompleteQuerier,b,readSiteBlacklist,Chip,AutocompleteField,ProgressBar,createDefaultCustomTheme,AppearanceThemeSchema,prepareBackgroundImageFile,setFeatureState,writeSiteBlacklist,runFavoritesSync,log,FAVORITES_SYNC_PAGE_PAUSE_MS,load,createDefaultStorage,clearStorageCache,clearFavsCache,getSyncState,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,setAppearance,loadFavSet,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,gridDensityFeature,FAVORITES_SYNC_MODE_INCREMENTAL,FAVORITES_SYNC_MODE_FULL,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureChoiceValue,getFeatureState,getScreenPixelSize,loadBackground,clearBackground,saveBackground;return{setters:[function(module){d=module.ad;a=module.Y;PANEL_UI_CLASS=module.a3;Switch=module.ae;UI_TEXT=module.U;TWEAKS_SWITCH_ID=module.af;setTweaksEnabled=module.ag;NumberField=module.ah;UPDATES_GROUP_SIZE_ID=module.ai;setUpdatesGroupSize=module.aj;getUpdatesGroupSize=module.ak;PLAYLIST_CHUNK_SIZE_ID=module.al;setPlaylistChunkSize=module.am;getPlaylistChunkSize=module.an;GRID_FAV_CHECKBOX_ID=module.ao;setGridFavButtonsEnabled=module.ap;setGridFavButtonsVisible=module.aq;IconChevronRight=module.ar;IconChevronDown=module.as;Card=module.at;P$1=module.au;T=module.av;A=module.aw;getAppearance=module.g;applyAppearanceTheme=module.a;getSiteSkinCss=module.a1;APPEARANCE_THEME_CUSTOM=module.ax;KIT_FOCUS_CSS=module.ay;SectionLabel=module.az;Select=module.aA;APPEARANCE_THEME_SITE=module.a6;APPEARANCE_THEME_SITE_DARK=module.a7;APPEARANCE_THEME_LIGHT=module.aB;APPEARANCE_THEME_DARK=module.aC;$$1=module.a2;Segmented=module.aD;APPEARANCE_CUSTOM_BASE_LIGHT=module.aE;APPEARANCE_CUSTOM_BASE_DARK=module.aF;TextField=module.aG;Button=module.aH;clampBackgroundDim=module.aI;FEATURES=module.aJ;featurePanelLabel=module.aK;FEATURE_CHECKBOX_ID_PREFIX=module.aL;setFeatureEnabled=module.aM;clearFeatureState=module.aN;applyCssOnlyFeatureEnabled=module.aO;isFeatureEnabled=module.aP;FEATURE_CHOICE_ID_PREFIX=module.aQ;setFeatureChoiceValue=module.aR;applyCssOnlyFeatureChoice=module.aS;getFeatureChoice=module.aT;createAutocompleteQuerier=module.aU;b=module.aV;readSiteBlacklist=module.aW;Chip=module.aX;AutocompleteField=module.aY;ProgressBar=module.aZ;createDefaultCustomTheme=module.a_;AppearanceThemeSchema=module.a$;prepareBackgroundImageFile=module.b0;setFeatureState=module.b1;writeSiteBlacklist=module.b2;runFavoritesSync=module.o;log=module.l;FAVORITES_SYNC_PAGE_PAUSE_MS=module.b3;load=module.b4;createDefaultStorage=module.b5;clearStorageCache=module.b6;clearFavsCache=module.b7;getSyncState=module.j;object=module.b8;StorageSchema=module.b9;optional=module.ba;string=module.bb;FavsSchema=module.bc;literal=module.bd;IMPORT_SCHEMA_ERROR_PREFIX=module.be;stripLegacyPanelWindowSize=module.bf;save=module.L;migrateMarksFavToFavs=module.bg;FAVS_STORAGE_KEY=module.bh;createDefaultFavs=module.bi;parseFavsStrict=module.bj;setAppearance=module.bk;loadFavSet=module.bl;STORAGE_BACKUP_KEY=module.bm;extractFavIdsFromMarks=module.bn;gridDensityFeature=module.bo;FAVORITES_SYNC_MODE_INCREMENTAL=module.bp;FAVORITES_SYNC_MODE_FULL=module.F;getTweaksEnabled=module.bq;getGridFavButtonsEnabled=module.br;getFeatureChoiceValue=module.bs;getFeatureState=module.bt;getScreenPixelSize=module.bu;},function(module){loadBackground=module.n;clearBackground=module.t;saveBackground=module.r;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
+System.register("./settings-page-CA0DsURQ-BhsWYPT-.js", ['./___monkey.entry.js','./app-DlEGCisE-D57tM8OZ.js','./read-file-pF7RzBAL-CnbrLo6k.js'],(function(exports){'use strict';var d,a,PANEL_UI_CLASS,Switch,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,NumberField,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,setGridFavButtonsVisible,IconChevronRight,IconChevronDown,Card,P$1,T,A,getAppearance,applyAppearanceTheme,getSiteSkinCss,APPEARANCE_THEME_CUSTOM,KIT_FOCUS_CSS,SectionLabel,Select,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,$$1,Segmented,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,TextField,Button,clampBackgroundDim,FEATURES,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,setFeatureEnabled,clearFeatureState,applyCssOnlyFeatureEnabled,isFeatureEnabled,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,applyCssOnlyFeatureChoice,getFeatureChoice,createAutocompleteQuerier,b,readSiteBlacklist,Chip,AutocompleteField,ProgressBar,getSeenPostId,loadFavSet,load,createDefaultCustomTheme,AppearanceThemeSchema,prepareBackgroundImageFile,setFeatureState,writeSiteBlacklist,runFavoritesSync,log,FAVORITES_SYNC_PAGE_PAUSE_MS,resolveCollectionKind,getSyncState,setAppearance,gridDensityFeature,FAVORITES_SYNC_MODE_INCREMENTAL,FAVORITES_SYNC_MODE_FULL,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureChoiceValue,getFeatureState,getScreenPixelSize,loadBackground,clearBackground,saveBackground,IMPORT_MODE_MERGE,IMPORT_MODE_REPLACE,exportBackupDownload,readFileText,importBackupJson;return{setters:[function(module){d=module.ad;a=module.Y;PANEL_UI_CLASS=module.a3;Switch=module.ae;UI_TEXT=module.U;TWEAKS_SWITCH_ID=module.af;setTweaksEnabled=module.ag;NumberField=module.ah;UPDATES_GROUP_SIZE_ID=module.ai;setUpdatesGroupSize=module.aj;getUpdatesGroupSize=module.ak;PLAYLIST_CHUNK_SIZE_ID=module.al;setPlaylistChunkSize=module.am;getPlaylistChunkSize=module.an;GRID_FAV_CHECKBOX_ID=module.ao;setGridFavButtonsEnabled=module.ap;setGridFavButtonsVisible=module.aq;IconChevronRight=module.ar;IconChevronDown=module.as;Card=module.at;P$1=module.au;T=module.av;A=module.aw;getAppearance=module.g;applyAppearanceTheme=module.a;getSiteSkinCss=module.a1;APPEARANCE_THEME_CUSTOM=module.ax;KIT_FOCUS_CSS=module.ay;SectionLabel=module.az;Select=module.aA;APPEARANCE_THEME_SITE=module.a6;APPEARANCE_THEME_SITE_DARK=module.a7;APPEARANCE_THEME_LIGHT=module.aB;APPEARANCE_THEME_DARK=module.aC;$$1=module.a2;Segmented=module.aD;APPEARANCE_CUSTOM_BASE_LIGHT=module.aE;APPEARANCE_CUSTOM_BASE_DARK=module.aF;TextField=module.aG;Button=module.aH;clampBackgroundDim=module.aI;FEATURES=module.aJ;featurePanelLabel=module.aK;FEATURE_CHECKBOX_ID_PREFIX=module.aL;setFeatureEnabled=module.aM;clearFeatureState=module.aN;applyCssOnlyFeatureEnabled=module.aO;isFeatureEnabled=module.aP;FEATURE_CHOICE_ID_PREFIX=module.aQ;setFeatureChoiceValue=module.aR;applyCssOnlyFeatureChoice=module.aS;getFeatureChoice=module.aT;createAutocompleteQuerier=module.aU;b=module.aV;readSiteBlacklist=module.aW;Chip=module.aX;AutocompleteField=module.aY;ProgressBar=module.aZ;getSeenPostId=module.a_;loadFavSet=module.a$;load=module.b0;createDefaultCustomTheme=module.b1;AppearanceThemeSchema=module.b2;prepareBackgroundImageFile=module.b3;setFeatureState=module.b4;writeSiteBlacklist=module.b5;runFavoritesSync=module.o;log=module.l;FAVORITES_SYNC_PAGE_PAUSE_MS=module.b6;resolveCollectionKind=module.b7;getSyncState=module.j;setAppearance=module.b8;gridDensityFeature=module.b9;FAVORITES_SYNC_MODE_INCREMENTAL=module.ba;FAVORITES_SYNC_MODE_FULL=module.F;getTweaksEnabled=module.bb;getGridFavButtonsEnabled=module.bc;getFeatureChoiceValue=module.bd;getFeatureState=module.be;getScreenPixelSize=module.bf;},function(module){loadBackground=module.n;clearBackground=module.t;saveBackground=module.r;},function(module){IMPORT_MODE_MERGE=module.I;IMPORT_MODE_REPLACE=module.a;exportBackupDownload=module.e;readFileText=module.r;importBackupJson=module.i;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
 var THEME_OPTIONS = [
 	{
 		value: APPEARANCE_THEME_SITE,
@@ -17320,10 +17583,10 @@ function AppearanceSection(props) {
 		]
 	})] });
 }
-var SECTION_CLASS$3 = "rdw-blacklist";
+var SECTION_CLASS$4 = "rdw-blacklist";
 var CHIPS_CLASS = "rdw-blacklist-chips";
 var ADD_ROW_CLASS = "rdw-blacklist-add-row";
-var HINT_CLASS$1 = "rdw-blacklist-hint";
+var HINT_CLASS$2 = "rdw-blacklist-hint";
 var ADD_LABEL = "Add tag";
 var ADD_BUTTON = "Add";
 var PERMANENT_HINT = "Stored in this browser's site cookie. The list in your account settings is not changed and may overwrite this one after you log in again.";
@@ -17331,12 +17594,12 @@ var ADD_INPUT_ID = "rdw-blacklist-add";
 var TAG_SPLIT_PATTERN = /[, ]+/;
 /** Layout CSS for the blacklist section (chips come from kit Chip). */
 var BLACKLIST_SECTION_CSS = `
-.${SECTION_CLASS$3} {
+.${SECTION_CLASS$4} {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
-.${SECTION_CLASS$3} .${CHIPS_CLASS} {
+.${SECTION_CLASS$4} .${CHIPS_CLASS} {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -17344,18 +17607,18 @@ var BLACKLIST_SECTION_CSS = `
   padding: 0;
   list-style: none;
 }
-.${SECTION_CLASS$3} .${ADD_ROW_CLASS} {
+.${SECTION_CLASS$4} .${ADD_ROW_CLASS} {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   align-items: flex-end;
 }
-.${SECTION_CLASS$3} .${ADD_ROW_CLASS} .rdw-field,
-.${SECTION_CLASS$3} .${ADD_ROW_CLASS} .rdw-ac {
+.${SECTION_CLASS$4} .${ADD_ROW_CLASS} .rdw-field,
+.${SECTION_CLASS$4} .${ADD_ROW_CLASS} .rdw-ac {
   flex: 1 1 12rem;
   margin: 0;
 }
-.${SECTION_CLASS$3} .${HINT_CLASS$1} {
+.${SECTION_CLASS$4} .${HINT_CLASS$2} {
   margin: 0;
   color: var(--rdw-muted);
   font-size: 12px;
@@ -17395,7 +17658,7 @@ function BlacklistSection(props = {}) {
 		querierRef.current.cancel();
 	}, [draft]);
 	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("style", { children: BLACKLIST_SECTION_CSS }), /* @__PURE__ */ a("section", {
-		className: `rdw-section ${SECTION_CLASS$3}`,
+		className: `rdw-section ${SECTION_CLASS$4}`,
 		children: [
 			includeHeading ? /* @__PURE__ */ a(SectionLabel, { children: "Blacklist" }) : null,
 			/* @__PURE__ */ a("ul", {
@@ -17434,240 +17697,15 @@ function BlacklistSection(props = {}) {
 				})]
 			}),
 			/* @__PURE__ */ a("p", {
-				className: HINT_CLASS$1,
+				className: HINT_CLASS$2,
 				children: PERMANENT_HINT
 			})
 		]
 	})] });
 }
-var BACKUP_FORMAT = "ruledesk-web-backup";
-var IMPORT_MODE_MERGE = "merge";
-var IMPORT_MODE_REPLACE = "replace";
-var BackupFileSchema = object({
-	format: literal(BACKUP_FORMAT),
-	version: literal(1),
-	exportedAt: string(),
-	storage: StorageSchema,
-	favs: optional(FavsSchema),
-	background: optional(string())
-});
-function getGmGetValue() {
-	return GM_getValue;
-}
-function getGmSetValue() {
-	return GM_setValue;
-}
-function formatSchemaError(error) {
-	const issue = error.issues[0];
-	if (issue === void 0) return `${IMPORT_SCHEMA_ERROR_PREFIX}: (root): Invalid data`;
-	const path = issue.path.length === 0 ? "(root)" : issue.path.map((segment) => String(segment)).join(".");
-	return `${IMPORT_SCHEMA_ERROR_PREFIX}: ${path}: ${issue.message}`;
-}
-async function readBackgroundForBackup() {
-	const dataUrl = await loadBackground();
-	if (dataUrl === null || dataUrl.length === 0) return;
-	return dataUrl;
-}
-async function writeBackgroundForBackup(value) {
-	if (value === void 0 || value.length === 0) {
-		await clearBackground();
-		return;
-	}
-	await saveBackground(value);
-}
-function readFavsForBackup() {
-	const raw = getGmGetValue()(FAVS_STORAGE_KEY, void 0);
-	if (raw === void 0 || raw === null) return createDefaultFavs();
-	const parsed = parseFavsStrict(raw);
-	if (parsed === null) {
-		log.error("backup: invalid favs; exporting empty favs", { key: FAVS_STORAGE_KEY });
-		return createDefaultFavs();
-	}
-	return parsed;
-}
-function writeFavsForBackup(data) {
-	getGmSetValue()(FAVS_STORAGE_KEY, FavsSchema.parse(data));
-	clearFavsCache();
-}
-async function snapshotCurrentToBackupKey() {
-	const background = await readBackgroundForBackup();
-	const snapshot = {
-		format: BACKUP_FORMAT,
-		version: 1,
-		exportedAt: (/* @__PURE__ */ new Date()).toISOString(),
-		storage: load(),
-		favs: readFavsForBackup(),
-		...background !== void 0 ? { background } : {}
-	};
-	getGmSetValue()(STORAGE_BACKUP_KEY, snapshot);
-}
-function mergeArtists(current, incoming) {
-	const byTag = /* @__PURE__ */ new Map();
-	for (const entry of current) byTag.set(entry.tag, entry);
-	for (const entry of incoming) byTag.set(entry.tag, {
-		...byTag.get(entry.tag),
-		...entry
-	});
-	return Array.from(byTag.values());
-}
-function mergeCollections(current, incoming) {
-	const byId = /* @__PURE__ */ new Map();
-	for (const entry of current) byId.set(entry.id, entry);
-	for (const entry of incoming) byId.set(entry.id, entry);
-	return Array.from(byId.values());
-}
-function mergeMarks(current, incoming) {
-	const merged = { ...current };
-	for (const [postId, flags] of Object.entries(incoming)) merged[postId] = {
-		...merged[postId] ?? {},
-		...flags
-	};
-	return merged;
-}
-function mergeFavs(current, incoming) {
-	const ids = /* @__PURE__ */ new Set([...current.ids, ...incoming.ids]);
-	const next = {
-		version: incoming.version,
-		ids: Array.from(ids)
-	};
-	if (incoming.sync !== void 0) next.sync = incoming.sync;
-	else if (current.sync !== void 0) next.sync = current.sync;
-	return next;
-}
-function buildSummary(storage, favs) {
-	return {
-		artistCount: storage.artists.length,
-		collectionCount: storage.collections.length,
-		favCount: favs.ids.length
-	};
-}
-/**
-* When the backup omits favs, strip legacy marks.fav so migrateMarksFavToFavs
-* cannot enlarge the untouched local fav set.
-*/
-function storageWithoutMarkFavs(storage) {
-	const stripped = extractFavIdsFromMarks(storage.marks);
-	return {
-		...storage,
-		marks: stripped.marks
-	};
-}
-async function applyImportedState(storage, favs, background, applyBackground, applyFavs) {
-	await snapshotCurrentToBackupKey();
-	const storageToWrite = applyFavs ? storage : storageWithoutMarkFavs(storage);
-	const stripped = stripLegacyPanelWindowSize(storageToWrite);
-	save(stripped.data);
-	if (applyFavs && favs !== void 0) writeFavsForBackup(favs);
-	if (applyBackground) await writeBackgroundForBackup(background);
-	migrateMarksFavToFavs();
-	clearStorageCache();
-	clearFavsCache();
-	return buildSummary(load(), readFavsForBackup());
-}
-/** Local calendar date YYYY-MM-DD for backup filenames. */
-function backupDateStamp(date = /* @__PURE__ */ new Date()) {
-	return `${String(date.getFullYear())}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
-function buildBackupFilename(date = /* @__PURE__ */ new Date()) {
-	return `ruledesk-web-backup-${backupDateStamp(date)}.json`;
-}
-/** Build a validated backup object from current storage + optional IDB background. */
-async function buildBackupFile(options) {
-	const storage = load();
-	const file = {
-		format: BACKUP_FORMAT,
-		version: 1,
-		exportedAt: (/* @__PURE__ */ new Date()).toISOString(),
-		storage,
-		...options.includeFavorites ? { favs: readFavsForBackup() } : {}
-	};
-	if (options.includeBackground) {
-		const background = await readBackgroundForBackup();
-		if (background !== void 0) return {
-			...file,
-			background
-		};
-	}
-	return file;
-}
-function serializeBackupFile(file) {
-	return `${JSON.stringify(file, null, 2)}\n`;
-}
-/** Trigger a browser download of the JSON text (Blob + `<a download>`). */
-function downloadBackupText(json, filename) {
-	const blob = new Blob([json], { type: "application/json" });
-	const url = URL.createObjectURL(blob);
-	const anchor = document.createElement("a");
-	anchor.href = url;
-	anchor.download = filename;
-	anchor.rel = "noopener";
-	document.body.append(anchor);
-	anchor.click();
-	anchor.remove();
-	URL.revokeObjectURL(url);
-}
-async function exportBackupDownload(options) {
-	const file = await buildBackupFile(options);
-	downloadBackupText(serializeBackupFile(file), buildBackupFilename());
-	return file;
-}
-/**
-* Parse and apply a backup JSON string.
-* Invalid input leaves storage/favs/background unchanged.
-* A file without a `favs` field leaves the local fav set untouched.
-*/
-async function importBackupJson(raw, mode) {
-	let json;
-	try {
-		json = JSON.parse(raw);
-	} catch (error) {
-		return {
-			ok: false,
-			error: error instanceof Error ? error.message : "Invalid JSON"
-		};
-	}
-	const parsed = BackupFileSchema.safeParse(json);
-	if (!parsed.success) return {
-		ok: false,
-		error: formatSchemaError(parsed.error)
-	};
-	const incoming = parsed.data;
-	const hasBackgroundField = Object.prototype.hasOwnProperty.call(incoming, "background");
-	const hasFavsField = Object.prototype.hasOwnProperty.call(incoming, "favs");
-	const incomingFavs = incoming.favs;
-	try {
-		if (mode === "replace") return {
-			ok: true,
-			summary: await applyImportedState(incoming.storage, hasFavsField ? incomingFavs : void 0, hasBackgroundField ? incoming.background : void 0, true, hasFavsField)
-		};
-		const currentStorage = load();
-		const currentFavs = readFavsForBackup();
-		const mergedStorage = {
-			version: currentStorage.version,
-			collections: mergeCollections(currentStorage.collections, incoming.storage.collections),
-			artists: mergeArtists(currentStorage.artists, incoming.storage.artists),
-			marks: mergeMarks(currentStorage.marks, incoming.storage.marks),
-			settings: incoming.storage.settings,
-			updates: incoming.storage.updates ?? currentStorage.updates
-		};
-		if (mergedStorage.settings === void 0) mergedStorage.settings = createDefaultStorage().settings;
-		return {
-			ok: true,
-			summary: await applyImportedState(mergedStorage, hasFavsField && incomingFavs !== void 0 ? mergeFavs(currentFavs, incomingFavs) : void 0, incoming.background, hasBackgroundField, hasFavsField)
-		};
-	} catch (error) {
-		log.error("backup import failed after parse", error);
-		clearStorageCache();
-		clearFavsCache();
-		return {
-			ok: false,
-			error: error instanceof Error ? error.message : "Import failed unexpectedly"
-		};
-	}
-}
-var SECTION_CLASS$2 = "rdw-data-section";
+var SECTION_CLASS$3 = "rdw-data-section";
 var ACTIONS_CLASS$1 = "rdw-data-actions";
-var HINT_CLASS = "rdw-data-hint";
+var HINT_CLASS$1 = "rdw-data-hint";
 var FILE_CLASS = "rdw-data-file";
 var HEADING$1 = "Data";
 var INCLUDE_BACKGROUND_LABEL = "Include background image";
@@ -17688,23 +17726,23 @@ var MODE_OPTIONS = [{
 	label: "Replace"
 }];
 var DATA_SECTION_CSS = `
-.${SECTION_CLASS$2} {
+.${SECTION_CLASS$3} {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
-.${SECTION_CLASS$2} .${ACTIONS_CLASS$1} {
+.${SECTION_CLASS$3} .${ACTIONS_CLASS$1} {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
 }
-.${SECTION_CLASS$2} .${HINT_CLASS} {
+.${SECTION_CLASS$3} .${HINT_CLASS$1} {
   margin: 0;
   color: var(--rdw-muted);
   font-size: 12px;
 }
-.${SECTION_CLASS$2} .${FILE_CLASS} {
+.${SECTION_CLASS$3} .${FILE_CLASS} {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -17718,22 +17756,6 @@ var DATA_SECTION_CSS = `
 function formatSummary(summary) {
 	return `Imported ${String(summary.artistCount)} artists, ${String(summary.collectionCount)} collections, ${String(summary.favCount)} favorites.`;
 }
-function readFileText(file) {
-	return new Promise((resolve, reject) => {
-		const reader = new FileReader();
-		reader.onload = () => {
-			if (typeof reader.result === "string") {
-				resolve(reader.result);
-				return;
-			}
-			reject(/* @__PURE__ */ new Error("Could not read file"));
-		};
-		reader.onerror = () => {
-			reject(reader.error ?? /* @__PURE__ */ new Error("Could not read file"));
-		};
-		reader.readAsText(file);
-	});
-}
 function DataSection(props = {}) {
 	const includeHeading = props.includeHeading !== false;
 	const fileRef = T(null);
@@ -17743,7 +17765,7 @@ function DataSection(props = {}) {
 	const [error, setError] = d("");
 	const [summary, setSummary] = d("");
 	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("style", { children: DATA_SECTION_CSS }), /* @__PURE__ */ a("section", {
-		className: `rdw-section ${SECTION_CLASS$2}`,
+		className: `rdw-section ${SECTION_CLASS$3}`,
 		children: [
 			includeHeading ? /* @__PURE__ */ a(SectionLabel, { children: HEADING$1 }) : null,
 			/* @__PURE__ */ a(Switch, {
@@ -17759,7 +17781,7 @@ function DataSection(props = {}) {
 				onChange: setIncludeFavorites
 			}),
 			/* @__PURE__ */ a("p", {
-				className: HINT_CLASS,
+				className: HINT_CLASS$1,
 				children: FAVORITES_EXPORT_HINT
 			}),
 			/* @__PURE__ */ a(Segmented, {
@@ -17831,13 +17853,13 @@ function DataSection(props = {}) {
 				children: summary
 			}) : null,
 			/* @__PURE__ */ a("p", {
-				className: HINT_CLASS,
+				className: HINT_CLASS$1,
 				children: STORAGE_HINT
 			})
 		]
 	})] });
 }
-var SECTION_CLASS$1 = "rdw-favs-sync";
+var SECTION_CLASS$2 = "rdw-favs-sync";
 var STATUS_CLASS = "rdw-favs-sync-status";
 var ACTIONS_CLASS = "rdw-favs-sync-actions";
 var WARNING_CLASS = "rdw-favs-sync-warning";
@@ -17858,24 +17880,24 @@ var TEXT_ABORTED = (page, pages, total) => `Stopped at page ${String(page)} of $
 var TEXT_STARTING = "Starting sync…";
 var PAUSE_SECONDS = FAVORITES_SYNC_PAGE_PAUSE_MS / 1e3;
 var FAVORITES_SYNC_SECTION_CSS = `
-.${SECTION_CLASS$1} {
+.${SECTION_CLASS$2} {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
-.${SECTION_CLASS$1} .${STATUS_CLASS} {
+.${SECTION_CLASS$2} .${STATUS_CLASS} {
   margin: 0;
   color: var(--rdw-text);
   font-size: 12px;
 }
-.${SECTION_CLASS$1} .${ACTIONS_CLASS} {
+.${SECTION_CLASS$2} .${ACTIONS_CLASS} {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
 }
-.${SECTION_CLASS$1} .${WARNING_CLASS},
-.${SECTION_CLASS$1} .${NOTE_CLASS} {
+.${SECTION_CLASS$2} .${WARNING_CLASS},
+.${SECTION_CLASS$2} .${NOTE_CLASS} {
   margin: 0;
   color: var(--rdw-muted);
   font-size: 12px;
@@ -18020,7 +18042,7 @@ function FavoritesSyncSection(props = {}) {
 		};
 	}, []);
 	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("style", { children: FAVORITES_SYNC_SECTION_CSS }), /* @__PURE__ */ a("section", {
-		className: `rdw-section ${SECTION_CLASS$1}`,
+		className: `rdw-section ${SECTION_CLASS$2}`,
 		children: [
 			includeHeading ? /* @__PURE__ */ a(SectionLabel, { children: HEADING }) : null,
 			/* @__PURE__ */ a("p", {
@@ -18083,6 +18105,214 @@ function FavoritesSyncSection(props = {}) {
 		]
 	})] });
 }
+/**
+* Numbers about what the script stores, computed from local data when the
+* settings page opens. Nothing is requested from the site, so these are counts
+* of your own library, not totals of the site.
+*/
+var SECTION_CLASS$1 = "rdw-stats";
+var TILES_CLASS = "rdw-stats-tiles";
+var TILE_CLASS = "rdw-stats-tile";
+var TILE_VALUE_CLASS = "rdw-stats-value";
+var TILE_LABEL_CLASS = "rdw-stats-label";
+var TOP_CLASS = "rdw-stats-top";
+var TOP_ROW_CLASS = "rdw-stats-top-row";
+var TOP_BAR_CLASS = "rdw-stats-top-bar";
+var TOP_FILL_CLASS = "rdw-stats-top-fill";
+var HINT_CLASS = "rdw-stats-hint";
+var LOCALE = "en-US";
+var TOP_ARTISTS_LIMIT = 10;
+var BYTES_PER_KB = 1024;
+var PERCENT = 100;
+var MIN_BAR_PERCENT = 2;
+var TILE_MIN_PX = 130;
+var TOP_HEADING = "Top followed artists by posts";
+var TOP_EMPTY = "Open an artist's page or press Refresh on Following to fill this list.";
+var HINT = "Counted from the script's own data in this browser. Seen posts keep only the newest marks.";
+var STATS_SECTION_CSS = `
+.${SECTION_CLASS$1} {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.${TILES_CLASS} {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(${String(TILE_MIN_PX)}px, 1fr));
+  gap: 8px;
+}
+.${TILE_CLASS} {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  background: var(--rdw-surface-2);
+  border-radius: var(--rdw-radius-m);
+}
+.${TILE_VALUE_CLASS} {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--rdw-text);
+}
+.${TILE_LABEL_CLASS},
+.${HINT_CLASS} {
+  margin: 0;
+  font-size: 12px;
+  color: var(--rdw-muted);
+}
+.${TOP_CLASS} {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.${TOP_ROW_CLASS} {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.${TOP_ROW_CLASS} > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.${TOP_BAR_CLASS} {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--rdw-surface-2);
+  overflow: hidden;
+}
+.${TOP_FILL_CLASS} {
+  display: block;
+  height: 100%;
+  background: var(--rdw-accent);
+}
+`.trim();
+/** Pure: the numbers for a stored state. */
+function computeStats(data, favoriteCount, seenPostId) {
+	let custom = 0;
+	let dynamic = 0;
+	const collected = /* @__PURE__ */ new Set();
+	for (const collection of data.collections) if (resolveCollectionKind(collection) === "posts") {
+		custom += 1;
+		for (const id of collection.postIds ?? []) collected.add(id);
+	} else dynamic += 1;
+	let seenPosts = 0;
+	for (const flags of Object.values(data.marks)) if (flags.seen === true) seenPosts += 1;
+	let withNew = 0;
+	const top = [];
+	for (const artist of data.artists) {
+		if (seenPostId > 0 && (artist.lastPostId ?? 0) > seenPostId) withNew += 1;
+		if (artist.postCount !== void 0) top.push({
+			tag: artist.tag,
+			posts: artist.postCount.value
+		});
+	}
+	top.sort((a, b) => b.posts - a.posts || a.tag.localeCompare(b.tag));
+	const sizeKb = Math.ceil(JSON.stringify(data).length / BYTES_PER_KB);
+	return {
+		tiles: [
+			{
+				label: "Followed artists",
+				value: data.artists.length
+			},
+			{
+				label: "Artists with new posts",
+				value: withNew
+			},
+			{
+				label: "Custom collections",
+				value: custom
+			},
+			{
+				label: "Dynamic collections",
+				value: dynamic
+			},
+			{
+				label: "Posts in custom collections",
+				value: collected.size
+			},
+			{
+				label: "Favorites",
+				value: favoriteCount
+			},
+			{
+				label: "Seen posts",
+				value: seenPosts
+			},
+			{
+				label: "Stored data",
+				value: sizeKb,
+				unit: "KB"
+			}
+		],
+		topArtists: top.slice(0, TOP_ARTISTS_LIMIT)
+	};
+}
+function formatNumber(value) {
+	return value.toLocaleString(LOCALE);
+}
+function StatsSection() {
+	const stats = computeStats(load(), loadFavSet().size, getSeenPostId());
+	const largest = stats.topArtists[0]?.posts ?? 0;
+	return /* @__PURE__ */ a("section", {
+		className: `rdw-section ${SECTION_CLASS$1}`,
+		children: [
+			/* @__PURE__ */ a("style", { children: STATS_SECTION_CSS }),
+			/* @__PURE__ */ a("div", {
+				className: TILES_CLASS,
+				children: stats.tiles.map((tile) => /* @__PURE__ */ a("div", {
+					className: TILE_CLASS,
+					children: [/* @__PURE__ */ a("span", {
+						className: TILE_VALUE_CLASS,
+						children: tile.unit === void 0 ? formatNumber(tile.value) : `${formatNumber(tile.value)} ${tile.unit}`
+					}), /* @__PURE__ */ a("span", {
+						className: TILE_LABEL_CLASS,
+						children: tile.label
+					})]
+				}, tile.label))
+			}),
+			/* @__PURE__ */ a("p", {
+				className: TILE_LABEL_CLASS,
+				children: TOP_HEADING
+			}),
+			stats.topArtists.length === 0 ? /* @__PURE__ */ a("p", {
+				className: HINT_CLASS,
+				children: TOP_EMPTY
+			}) : /* @__PURE__ */ a("ol", {
+				className: TOP_CLASS,
+				children: stats.topArtists.map((artist) => {
+					const share = largest > 0 ? Math.max(MIN_BAR_PERCENT, Math.round(artist.posts / largest * PERCENT)) : 0;
+					return /* @__PURE__ */ a("li", {
+						className: TOP_ROW_CLASS,
+						children: [
+							/* @__PURE__ */ a("span", {
+								title: artist.tag,
+								children: artist.tag.replaceAll("_", " ")
+							}),
+							/* @__PURE__ */ a("span", {
+								className: TOP_BAR_CLASS,
+								"aria-hidden": "true",
+								children: /* @__PURE__ */ a("span", {
+									className: TOP_FILL_CLASS,
+									style: { width: `${String(share)}%` }
+								})
+							}),
+							/* @__PURE__ */ a("span", { children: formatNumber(artist.posts) })
+						]
+					}, artist.tag);
+				})
+			}),
+			/* @__PURE__ */ a("p", {
+				className: HINT_CLASS,
+				children: HINT
+			})
+		]
+	});
+}
 /** Grid density is owned by Appearance; omit from Page module list. */
 var PAGE_FEATURE_SKIP = /* @__PURE__ */ new Set(["grid-density"]);
 var APPEARANCE_FLAT_ROWS_CSS = `
@@ -18101,12 +18331,14 @@ var SECTION_APPEARANCE = "appearance";
 var SECTION_PAGE = "page";
 var SECTION_BLACKLIST = "blacklist";
 var SECTION_FAVORITES = "favorites";
+var SECTION_STATS = "statistics";
 var SECTION_DATA = "data";
 var SECTION_TITLES = {
 	[SECTION_APPEARANCE]: "Appearance",
 	[SECTION_PAGE]: "Page",
 	[SECTION_BLACKLIST]: "Blacklist",
 	[SECTION_FAVORITES]: "Favorites",
+	[SECTION_STATS]: "Statistics",
 	[SECTION_DATA]: "Data"
 };
 var SETTINGS_SECTION_CSS = `
@@ -18320,13 +18552,51 @@ function SettingsPage() {
 				}), /* @__PURE__ */ a(FavoritesSyncSection, { includeHeading: false })]
 			}),
 			/* @__PURE__ */ a(SettingsSection, {
+				...section(SECTION_STATS),
+				children: /* @__PURE__ */ a(StatsSection, {})
+			}),
+			/* @__PURE__ */ a(SettingsSection, {
 				...section(SECTION_DATA),
 				children: /* @__PURE__ */ a(DataSection, { includeHeading: false })
 			})
 		]
 	});
 }})}}));
-System.register("./collections-page-Dd_85eDI-CxygZByi.js", ['./___monkey.entry.js'],(function(exports){'use strict';var d,b,A,reloadFromStorage,load,a,Segmented,TextField,$$1,Button,UI_TEXT,IconPlus,EmptyState,Dialog,resolveCollectionKind,deleteCollection,QueryField,isUnfilteredQuery,createDynamicCollection,createPlaylist,COLLECTION_KIND_POSTS,collectionDetailHash,readCoverMirror,COLLECTION_KIND_SEARCH,IconCheck,readCountMirror,buildSearchUrl,dynamicCollectionMarkHash,serialize;return{setters:[function(module){d=module.ad;b=module.aV;A=module.aw;reloadFromStorage=module.K;load=module.b4;a=module.Y;Segmented=module.aD;TextField=module.aG;$$1=module.a2;Button=module.aH;UI_TEXT=module.U;IconPlus=module.bv;EmptyState=module.bw;Dialog=module.bx;resolveCollectionKind=module.by;deleteCollection=module.bz;QueryField=module.bA;isUnfilteredQuery=module.bB;createDynamicCollection=module.bC;createPlaylist=module.bD;COLLECTION_KIND_POSTS=module.bE;collectionDetailHash=module.bF;readCoverMirror=module.bG;COLLECTION_KIND_SEARCH=module.bH;IconCheck=module.bI;readCountMirror=module.bJ;buildSearchUrl=module.bK;dynamicCollectionMarkHash=module.bL;serialize=module.bM;}],execute:(function(){exports("CollectionsPage",CollectionsPage);var EVENT_PAGESHOW = "pageshow";
+System.register("./collections-page-Dj_flxLd-Ccg9BK0X.js", ['./___monkey.entry.js','./read-file-pF7RzBAL-CnbrLo6k.js','./app-DlEGCisE-D57tM8OZ.js'],(function(exports){'use strict';var d,T,b,A,reloadFromStorage,load,a,Segmented,TextField,$$1,Button,UI_TEXT,IconPlus,EmptyState,Dialog,resolveCollectionKind,importCollections,deleteCollection,QueryField,isUnfilteredQuery,createDynamicCollection,createPlaylist,COLLECTION_KIND_POSTS,collectionDetailHash,readCoverMirror,COLLECTION_KIND_SEARCH,object,array,CollectionSchema,literal,IconCheck,readCountMirror,buildSearchUrl,dynamicCollectionMarkHash,serialize,downloadBackupText,backupDateStamp,readFileText;return{setters:[function(module){d=module.ad;T=module.av;b=module.aV;A=module.aw;reloadFromStorage=module.K;load=module.b0;a=module.Y;Segmented=module.aD;TextField=module.aG;$$1=module.a2;Button=module.aH;UI_TEXT=module.U;IconPlus=module.bg;EmptyState=module.bh;Dialog=module.bi;resolveCollectionKind=module.b7;importCollections=module.bj;deleteCollection=module.bk;QueryField=module.bl;isUnfilteredQuery=module.bm;createDynamicCollection=module.bn;createPlaylist=module.bo;COLLECTION_KIND_POSTS=module.bp;collectionDetailHash=module.bq;readCoverMirror=module.br;COLLECTION_KIND_SEARCH=module.bs;object=module.bt;array=module.bu;CollectionSchema=module.bv;literal=module.bw;IconCheck=module.bx;readCountMirror=module.by;buildSearchUrl=module.bz;dynamicCollectionMarkHash=module.bA;serialize=module.bB;},function(module){downloadBackupText=module.d;backupDateStamp=module.b;readFileText=module.r;},null],execute:(function(){exports("CollectionsPage",CollectionsPage);/**
+* Export file for one or several collections, so a collection can be shared
+* or moved without the whole backup.
+*/
+var COLLECTIONS_FILE_FORMAT = "ruledesk-web-collections";
+var FILE_PREFIX = "ruledesk-web-collections-";
+var FILE_SUFFIX = ".json";
+var JSON_INDENT = 2;
+var CollectionsFileSchema = object({
+	format: literal(COLLECTIONS_FILE_FORMAT),
+	version: literal(1),
+	collections: array(CollectionSchema)
+});
+function collectionsFileName(dateStamp) {
+	return `${FILE_PREFIX}${dateStamp}${FILE_SUFFIX}`;
+}
+function serializeCollections(collections) {
+	return `${JSON.stringify({
+		format: COLLECTIONS_FILE_FORMAT,
+		version: 1,
+		collections
+	}, null, JSON_INDENT)}\n`;
+}
+/** The collections of an export file, or null when the text is not one. */
+function parseCollectionsFile(text) {
+	let raw;
+	try {
+		raw = JSON.parse(text);
+	} catch {
+		return null;
+	}
+	const parsed = CollectionsFileSchema.safeParse(raw);
+	return parsed.success ? parsed.data.collections : null;
+}
+var EVENT_PAGESHOW = "pageshow";
 var PAGE_CLASS = "rdw-collections-page";
 var HEADER_CLASS = "rdw-collections-header";
 var TOOLBAR_CLASS = "rdw-collections-toolbar";
@@ -18357,6 +18627,15 @@ var NEW_BUTTON_LABEL = "New";
 var SELECT_BUTTON_LABEL = "Select";
 var SELECT_BUTTON_TITLE = "Select collections to delete";
 var SELECT_ALL_LABEL = "Select all";
+var EXPORT_LABEL = "Export";
+var EXPORT_TITLE = "Save the selected collections to a file";
+var IMPORT_LABEL = "Import";
+var IMPORT_TITLE = "Add collections from an exported file";
+var IMPORT_ACCEPT = "application/json,.json";
+var IMPORT_BAD_FILE = "This file is not a collections export.";
+var IMPORT_DONE_PREFIX = "Imported collections: ";
+var FILE_INPUT_CLASS = "rdw-collections-file";
+var NOTICE_CLASS = "rdw-collections-notice";
 var SELECTED_SUFFIX = " selected";
 var DELETE_DIALOG_TITLE = "Delete collections";
 var DELETE_ONE_MESSAGE = "Delete 1 collection? This cannot be undone.";
@@ -18507,6 +18786,14 @@ var COLLECTIONS_PAGE_CSS = `
 .${CARD_SELECTED_CLASS} .${CARD_MARK_CLASS} {
   border-color: var(--rdw-accent);
   background: var(--rdw-accent);
+}
+.${FILE_INPUT_CLASS} {
+  display: none;
+}
+.${NOTICE_CLASS} {
+  margin: 0;
+  color: var(--rdw-muted);
+  font-size: ${String(CAPTION_FONT_PX)}px;
 }
 .${SELECTED_COUNT_CLASS} {
   color: var(--rdw-muted);
@@ -18864,6 +19151,8 @@ function CollectionsPage() {
 	const [selecting, setSelecting] = d(false);
 	const [selectedIds, setSelectedIds] = d([]);
 	const [confirmOpen, setConfirmOpen] = d(false);
+	const [notice, setNotice] = d("");
+	const importRef = T(null);
 	const closeDialog = b(() => {
 		setDialogOpen(false);
 		setFormError("");
@@ -18897,6 +19186,23 @@ function CollectionsPage() {
 	};
 	const toggleSelected = (id) => {
 		setSelectedIds((current) => current.includes(id) ? current.filter((entry) => entry !== id) : [...current, id]);
+	};
+	const exportSelected = () => {
+		downloadBackupText(serializeCollections(selectedVisible), collectionsFileName(backupDateStamp()));
+		stopSelecting();
+	};
+	const importFile = (file) => {
+		readFileText(file).then((text) => {
+			const parsed = parseCollectionsFile(text);
+			if (parsed === null) {
+				setNotice(IMPORT_BAD_FILE);
+				return;
+			}
+			setNotice(`${IMPORT_DONE_PREFIX}${String(importCollections(parsed))}`);
+			setRevision((value) => value + 1);
+		}, () => {
+			setNotice(IMPORT_BAD_FILE);
+		});
 	};
 	const deleteSelected = () => {
 		for (const collection of selectedVisible) deleteCollection(collection.id);
@@ -18968,6 +19274,14 @@ function CollectionsPage() {
 							}),
 							/* @__PURE__ */ a(Button, {
 								type: "button",
+								variant: "secondary",
+								title: EXPORT_TITLE,
+								disabled: selectedVisible.length === 0,
+								onClick: exportSelected,
+								children: EXPORT_LABEL
+							}),
+							/* @__PURE__ */ a(Button, {
+								type: "button",
 								variant: "danger",
 								disabled: selectedVisible.length === 0,
 								onClick: () => {
@@ -18981,23 +19295,53 @@ function CollectionsPage() {
 								onClick: stopSelecting,
 								children: UI_TEXT.cancel
 							})
-						] }) : /* @__PURE__ */ a($$1, { children: [collections.length > 0 ? /* @__PURE__ */ a(Button, {
-							type: "button",
-							variant: "secondary",
-							title: SELECT_BUTTON_TITLE,
-							onClick: () => {
-								setSelecting(true);
-							},
-							children: SELECT_BUTTON_LABEL
-						}) : null, /* @__PURE__ */ a(Button, {
-							type: "button",
-							variant: "primary",
-							onClick: openDialog,
-							children: [/* @__PURE__ */ a(IconPlus, { size: ICON_PX }), NEW_BUTTON_LABEL]
-						})] })
+						] }) : /* @__PURE__ */ a($$1, { children: [
+							collections.length > 0 ? /* @__PURE__ */ a(Button, {
+								type: "button",
+								variant: "secondary",
+								title: SELECT_BUTTON_TITLE,
+								onClick: () => {
+									setSelecting(true);
+								},
+								children: SELECT_BUTTON_LABEL
+							}) : null,
+							/* @__PURE__ */ a(Button, {
+								type: "button",
+								variant: "secondary",
+								title: IMPORT_TITLE,
+								onClick: () => {
+									importRef.current?.click();
+								},
+								children: IMPORT_LABEL
+							}),
+							/* @__PURE__ */ a("input", {
+								ref: importRef,
+								className: FILE_INPUT_CLASS,
+								type: "file",
+								accept: IMPORT_ACCEPT,
+								"aria-hidden": "true",
+								tabIndex: -1,
+								onChange: (event) => {
+									const file = event.currentTarget.files?.[0];
+									event.currentTarget.value = "";
+									if (file !== void 0) importFile(file);
+								}
+							}),
+							/* @__PURE__ */ a(Button, {
+								type: "button",
+								variant: "primary",
+								onClick: openDialog,
+								children: [/* @__PURE__ */ a(IconPlus, { size: ICON_PX }), NEW_BUTTON_LABEL]
+							})
+						] })
 					]
 				})
 			}),
+			notice.length > 0 ? /* @__PURE__ */ a("p", {
+				className: NOTICE_CLASS,
+				role: "status",
+				children: notice
+			}) : null,
 			visible.length === 0 ? /* @__PURE__ */ a(EmptyState, {
 				title: emptyCopy.title,
 				description: emptyCopy.description
@@ -19051,7 +19395,250 @@ function CollectionsPage() {
 		]
 	});
 }})}}));
-System.register("./following-page-EDIZ6ryP-CAdK8u4H.js", ['./___monkey.entry.js'],(function(exports){'use strict';var d,T,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST,A,reloadFromStorage,getSeenPostId,a,completeLastQueryToken,readLastQueryToken,EmptyState,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,Button,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,$$1,Segmented,TextField,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,Select,UI_TEXT,ProgressBar,Dialog,removeArtist,load,AutocompleteField,addArtists,buildSearchUrl,TAG_TYPE_INCLUDE,IconCheck,IconButton,IconX,removeArtists,rememberArtistSnapshot,fetchArtistSnapshot,log;return{setters:[function(module){d=module.ad;T=module.av;createAutocompleteQuerier=module.aU;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.bN;A=module.aw;reloadFromStorage=module.K;getSeenPostId=module.bO;a=module.Y;completeLastQueryToken=module.bP;readLastQueryToken=module.bQ;EmptyState=module.bw;ARTISTS_EMPTY_HINT=module.bR;ARTISTS_EMPTY_TITLE=module.bS;Button=module.aH;SEARCH_PATH=module.X;SEARCH_PARAM_PAGE=module.T;SEARCH_PAGE=module.bT;SEARCH_SECTION=module.bU;$$1=module.a2;Segmented=module.aD;TextField=module.aG;ARTIST_FILTER_LABEL=module.bV;ARTIST_FILTER_ID=module.bW;Select=module.aA;UI_TEXT=module.U;ProgressBar=module.aZ;Dialog=module.bx;removeArtist=module.bX;load=module.b4;AutocompleteField=module.aY;addArtists=module.bY;buildSearchUrl=module.bK;TAG_TYPE_INCLUDE=module.bZ;IconCheck=module.bI;IconButton=module.b_;IconX=module.b$;removeArtists=module.c0;rememberArtistSnapshot=module.c1;fetchArtistSnapshot=module.c2;log=module.l;}],execute:(function(){exports("FollowingPage",FollowingPage);var EVENT_PAGESHOW = "pageshow";
+System.register("./read-file-pF7RzBAL-CnbrLo6k.js", ['./___monkey.entry.js','./app-DlEGCisE-D57tM8OZ.js'],(function(exports){'use strict';var load,createDefaultStorage,log,clearStorageCache,clearFavsCache,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,loadBackground,clearBackground,saveBackground;return{setters:[function(module){load=module.b0;createDefaultStorage=module.bC;log=module.l;clearStorageCache=module.bD;clearFavsCache=module.bE;object=module.bt;StorageSchema=module.bF;optional=module.bG;string=module.bH;FavsSchema=module.bI;literal=module.bw;IMPORT_SCHEMA_ERROR_PREFIX=module.bJ;stripLegacyPanelWindowSize=module.bK;save=module.L;migrateMarksFavToFavs=module.bL;FAVS_STORAGE_KEY=module.bM;createDefaultFavs=module.bN;parseFavsStrict=module.bO;STORAGE_BACKUP_KEY=module.bP;extractFavIdsFromMarks=module.bQ;},function(module){loadBackground=module.n;clearBackground=module.t;saveBackground=module.r;}],execute:(function(){exports({b:backupDateStamp,d:downloadBackupText,e:exportBackupDownload,i:importBackupJson,r:readFileText});var BACKUP_FORMAT = "ruledesk-web-backup";
+var IMPORT_MODE_MERGE = exports("I","merge");
+var IMPORT_MODE_REPLACE = exports("a","replace");
+var BackupFileSchema = object({
+	format: literal(BACKUP_FORMAT),
+	version: literal(1),
+	exportedAt: string(),
+	storage: StorageSchema,
+	favs: optional(FavsSchema),
+	background: optional(string())
+});
+function getGmGetValue() {
+	return GM_getValue;
+}
+function getGmSetValue() {
+	return GM_setValue;
+}
+function formatSchemaError(error) {
+	const issue = error.issues[0];
+	if (issue === void 0) return `${IMPORT_SCHEMA_ERROR_PREFIX}: (root): Invalid data`;
+	const path = issue.path.length === 0 ? "(root)" : issue.path.map((segment) => String(segment)).join(".");
+	return `${IMPORT_SCHEMA_ERROR_PREFIX}: ${path}: ${issue.message}`;
+}
+async function readBackgroundForBackup() {
+	const dataUrl = await loadBackground();
+	if (dataUrl === null || dataUrl.length === 0) return;
+	return dataUrl;
+}
+async function writeBackgroundForBackup(value) {
+	if (value === void 0 || value.length === 0) {
+		await clearBackground();
+		return;
+	}
+	await saveBackground(value);
+}
+function readFavsForBackup() {
+	const raw = getGmGetValue()(FAVS_STORAGE_KEY, void 0);
+	if (raw === void 0 || raw === null) return createDefaultFavs();
+	const parsed = parseFavsStrict(raw);
+	if (parsed === null) {
+		log.error("backup: invalid favs; exporting empty favs", { key: FAVS_STORAGE_KEY });
+		return createDefaultFavs();
+	}
+	return parsed;
+}
+function writeFavsForBackup(data) {
+	getGmSetValue()(FAVS_STORAGE_KEY, FavsSchema.parse(data));
+	clearFavsCache();
+}
+async function snapshotCurrentToBackupKey() {
+	const background = await readBackgroundForBackup();
+	const snapshot = {
+		format: BACKUP_FORMAT,
+		version: 1,
+		exportedAt: (/* @__PURE__ */ new Date()).toISOString(),
+		storage: load(),
+		favs: readFavsForBackup(),
+		...background !== void 0 ? { background } : {}
+	};
+	getGmSetValue()(STORAGE_BACKUP_KEY, snapshot);
+}
+function mergeArtists(current, incoming) {
+	const byTag = /* @__PURE__ */ new Map();
+	for (const entry of current) byTag.set(entry.tag, entry);
+	for (const entry of incoming) byTag.set(entry.tag, {
+		...byTag.get(entry.tag),
+		...entry
+	});
+	return Array.from(byTag.values());
+}
+function mergeCollections(current, incoming) {
+	const byId = /* @__PURE__ */ new Map();
+	for (const entry of current) byId.set(entry.id, entry);
+	for (const entry of incoming) byId.set(entry.id, entry);
+	return Array.from(byId.values());
+}
+function mergeMarks(current, incoming) {
+	const merged = { ...current };
+	for (const [postId, flags] of Object.entries(incoming)) merged[postId] = {
+		...merged[postId] ?? {},
+		...flags
+	};
+	return merged;
+}
+function mergeFavs(current, incoming) {
+	const ids = /* @__PURE__ */ new Set([...current.ids, ...incoming.ids]);
+	const next = {
+		version: incoming.version,
+		ids: Array.from(ids)
+	};
+	if (incoming.sync !== void 0) next.sync = incoming.sync;
+	else if (current.sync !== void 0) next.sync = current.sync;
+	return next;
+}
+function buildSummary(storage, favs) {
+	return {
+		artistCount: storage.artists.length,
+		collectionCount: storage.collections.length,
+		favCount: favs.ids.length
+	};
+}
+/**
+* When the backup omits favs, strip legacy marks.fav so migrateMarksFavToFavs
+* cannot enlarge the untouched local fav set.
+*/
+function storageWithoutMarkFavs(storage) {
+	const stripped = extractFavIdsFromMarks(storage.marks);
+	return {
+		...storage,
+		marks: stripped.marks
+	};
+}
+async function applyImportedState(storage, favs, background, applyBackground, applyFavs) {
+	await snapshotCurrentToBackupKey();
+	const storageToWrite = applyFavs ? storage : storageWithoutMarkFavs(storage);
+	const stripped = stripLegacyPanelWindowSize(storageToWrite);
+	save(stripped.data);
+	if (applyFavs && favs !== void 0) writeFavsForBackup(favs);
+	if (applyBackground) await writeBackgroundForBackup(background);
+	migrateMarksFavToFavs();
+	clearStorageCache();
+	clearFavsCache();
+	return buildSummary(load(), readFavsForBackup());
+}
+/** Local calendar date YYYY-MM-DD for backup filenames. */
+function backupDateStamp(date = /* @__PURE__ */ new Date()) {
+	return `${String(date.getFullYear())}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+function buildBackupFilename(date = /* @__PURE__ */ new Date()) {
+	return `ruledesk-web-backup-${backupDateStamp(date)}.json`;
+}
+/** Build a validated backup object from current storage + optional IDB background. */
+async function buildBackupFile(options) {
+	const storage = load();
+	const file = {
+		format: BACKUP_FORMAT,
+		version: 1,
+		exportedAt: (/* @__PURE__ */ new Date()).toISOString(),
+		storage,
+		...options.includeFavorites ? { favs: readFavsForBackup() } : {}
+	};
+	if (options.includeBackground) {
+		const background = await readBackgroundForBackup();
+		if (background !== void 0) return {
+			...file,
+			background
+		};
+	}
+	return file;
+}
+function serializeBackupFile(file) {
+	return `${JSON.stringify(file, null, 2)}\n`;
+}
+/** Trigger a browser download of the JSON text (Blob + `<a download>`). */
+function downloadBackupText(json, filename) {
+	const blob = new Blob([json], { type: "application/json" });
+	const url = URL.createObjectURL(blob);
+	const anchor = document.createElement("a");
+	anchor.href = url;
+	anchor.download = filename;
+	anchor.rel = "noopener";
+	document.body.append(anchor);
+	anchor.click();
+	anchor.remove();
+	URL.revokeObjectURL(url);
+}
+async function exportBackupDownload(options) {
+	const file = await buildBackupFile(options);
+	downloadBackupText(serializeBackupFile(file), buildBackupFilename());
+	return file;
+}
+/**
+* Parse and apply a backup JSON string.
+* Invalid input leaves storage/favs/background unchanged.
+* A file without a `favs` field leaves the local fav set untouched.
+*/
+async function importBackupJson(raw, mode) {
+	let json;
+	try {
+		json = JSON.parse(raw);
+	} catch (error) {
+		return {
+			ok: false,
+			error: error instanceof Error ? error.message : "Invalid JSON"
+		};
+	}
+	const parsed = BackupFileSchema.safeParse(json);
+	if (!parsed.success) return {
+		ok: false,
+		error: formatSchemaError(parsed.error)
+	};
+	const incoming = parsed.data;
+	const hasBackgroundField = Object.prototype.hasOwnProperty.call(incoming, "background");
+	const hasFavsField = Object.prototype.hasOwnProperty.call(incoming, "favs");
+	const incomingFavs = incoming.favs;
+	try {
+		if (mode === "replace") return {
+			ok: true,
+			summary: await applyImportedState(incoming.storage, hasFavsField ? incomingFavs : void 0, hasBackgroundField ? incoming.background : void 0, true, hasFavsField)
+		};
+		const currentStorage = load();
+		const currentFavs = readFavsForBackup();
+		const mergedStorage = {
+			version: currentStorage.version,
+			collections: mergeCollections(currentStorage.collections, incoming.storage.collections),
+			artists: mergeArtists(currentStorage.artists, incoming.storage.artists),
+			marks: mergeMarks(currentStorage.marks, incoming.storage.marks),
+			settings: incoming.storage.settings,
+			updates: incoming.storage.updates ?? currentStorage.updates
+		};
+		if (mergedStorage.settings === void 0) mergedStorage.settings = createDefaultStorage().settings;
+		return {
+			ok: true,
+			summary: await applyImportedState(mergedStorage, hasFavsField && incomingFavs !== void 0 ? mergeFavs(currentFavs, incomingFavs) : void 0, incoming.background, hasBackgroundField, hasFavsField)
+		};
+	} catch (error) {
+		log.error("backup import failed after parse", error);
+		clearStorageCache();
+		clearFavsCache();
+		return {
+			ok: false,
+			error: error instanceof Error ? error.message : "Import failed unexpectedly"
+		};
+	}
+}
+var READ_ERROR = "Could not read file";
+/** Text of a file the user picked. */
+function readFileText(file) {
+	return new Promise((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onload = () => {
+			if (typeof reader.result === "string") {
+				resolve(reader.result);
+				return;
+			}
+			reject(/* @__PURE__ */ new Error(READ_ERROR));
+		};
+		reader.onerror = () => {
+			reject(reader.error ?? /* @__PURE__ */ new Error(READ_ERROR));
+		};
+		reader.readAsText(file);
+	});
+}})}}));
+System.register("./following-page-CuqkyO1J-sX19egqS.js", ['./___monkey.entry.js'],(function(exports){'use strict';var d,T,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST,A,reloadFromStorage,getSeenPostId,a,completeLastQueryToken,readLastQueryToken,EmptyState,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,Button,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,$$1,Segmented,TextField,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,Select,UI_TEXT,ProgressBar,Dialog,removeArtist,load,AutocompleteField,addArtists,buildSearchUrl,TAG_TYPE_INCLUDE,IconCheck,IconButton,IconX,removeArtists,rememberArtistSnapshot,fetchArtistSnapshot,log;return{setters:[function(module){d=module.ad;T=module.av;createAutocompleteQuerier=module.aU;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.bR;A=module.aw;reloadFromStorage=module.K;getSeenPostId=module.a_;a=module.Y;completeLastQueryToken=module.bS;readLastQueryToken=module.bT;EmptyState=module.bh;ARTISTS_EMPTY_HINT=module.bU;ARTISTS_EMPTY_TITLE=module.bV;Button=module.aH;SEARCH_PATH=module.X;SEARCH_PARAM_PAGE=module.T;SEARCH_PAGE=module.bW;SEARCH_SECTION=module.bX;$$1=module.a2;Segmented=module.aD;TextField=module.aG;ARTIST_FILTER_LABEL=module.bY;ARTIST_FILTER_ID=module.bZ;Select=module.aA;UI_TEXT=module.U;ProgressBar=module.aZ;Dialog=module.bi;removeArtist=module.b_;load=module.b0;AutocompleteField=module.aY;addArtists=module.b$;buildSearchUrl=module.bz;TAG_TYPE_INCLUDE=module.c0;IconCheck=module.bx;IconButton=module.c1;IconX=module.c2;removeArtists=module.c3;rememberArtistSnapshot=module.c4;fetchArtistSnapshot=module.c5;log=module.l;}],execute:(function(){exports("FollowingPage",FollowingPage);var EVENT_PAGESHOW = "pageshow";
 var PAGE_CLASS = "rdw-following-page";
 var ADD_FORM_CLASS = "rdw-following-add";
 var TOOLBAR_CLASS = "rdw-following-toolbar";
@@ -19786,7 +20373,7 @@ function FollowingPage() {
 		]
 	});
 }})}}));
-System.register("./collection-detail-page-CXMfCwzd-DLB_gXTo.js", ['./___monkey.entry.js','./app-B5PpDx25-BE1YXj8c.js'],(function(exports){'use strict';var d,T,w$1,b,a,$$1,Button,UI_TEXT,shuffleCollection,resetCollectionOrder,EmptyState,Dialog,TextField,Toast,getCollectionOrder,listPlaylists,RDW_HASH_COLLECTIONS,removePostsFromCollection,renameCollection,deleteCollection,RDW_ROUTE_COLLECTIONS,restorePosts,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION_VIEW,SEARCH_PATH,collectionQueueHash,navigateToRdwRoute;return{setters:[function(module){d=module.ad;T=module.av;w$1=module.c3;b=module.aV;a=module.Y;$$1=module.a2;Button=module.aH;UI_TEXT=module.U;shuffleCollection=module.c4;resetCollectionOrder=module.c5;EmptyState=module.bw;Dialog=module.bx;TextField=module.aG;Toast=module.c6;getCollectionOrder=module.c7;listPlaylists=module.c8;RDW_HASH_COLLECTIONS=module.u;removePostsFromCollection=module.c9;renameCollection=module.ca;deleteCollection=module.bz;RDW_ROUTE_COLLECTIONS=module.cb;restorePosts=module.cc;SEARCH_PARAM_PAGE=module.T;SEARCH_PAGE=module.bT;SEARCH_SECTION_VIEW=module.cd;SEARCH_PATH=module.X;collectionQueueHash=module.ce;},function(module){navigateToRdwRoute=module.i;}],execute:(function(){exports("CollectionDetailPage",CollectionDetailPage);var CELL_SIZE_PX = 200;
+System.register("./collection-detail-page-IA-74Q9W-Dp1V5NeK.js", ['./___monkey.entry.js','./app-DlEGCisE-D57tM8OZ.js'],(function(exports){'use strict';var d,T,A,w$1,b,a,$$1,Button,UI_TEXT,shuffleCollection,resetCollectionOrder,ProgressBar,EmptyState,Dialog,TextField,Toast,getCollectionOrder,listPlaylists,RDW_HASH_COLLECTIONS,removePostsFromCollection,canDownload,movePostInCollection,renameCollection,fetchOriginalUrl,downloadOriginal,log,deleteCollection,RDW_ROUTE_COLLECTIONS,restorePosts,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION_VIEW,SEARCH_PATH,collectionQueueHash,navigateToRdwRoute;return{setters:[function(module){d=module.ad;T=module.av;A=module.aw;w$1=module.c6;b=module.aV;a=module.Y;$$1=module.a2;Button=module.aH;UI_TEXT=module.U;shuffleCollection=module.c7;resetCollectionOrder=module.c8;ProgressBar=module.aZ;EmptyState=module.bh;Dialog=module.bi;TextField=module.aG;Toast=module.c9;getCollectionOrder=module.ca;listPlaylists=module.cb;RDW_HASH_COLLECTIONS=module.u;removePostsFromCollection=module.cc;canDownload=module.cd;movePostInCollection=module.ce;renameCollection=module.cf;fetchOriginalUrl=module.cg;downloadOriginal=module.ch;log=module.l;deleteCollection=module.bk;RDW_ROUTE_COLLECTIONS=module.ci;restorePosts=module.cj;SEARCH_PARAM_PAGE=module.T;SEARCH_PAGE=module.bW;SEARCH_SECTION_VIEW=module.ck;SEARCH_PATH=module.X;collectionQueueHash=module.cl;},function(module){navigateToRdwRoute=module.i;}],execute:(function(){exports("CollectionDetailPage",CollectionDetailPage);var CELL_SIZE_PX = 200;
 var GRID_GAP_PX = 4;
 var SECTION_GAP_PX = 12;
 var ACTIONS_GAP_PX = 8;
@@ -19794,6 +20381,12 @@ var HEADING_GAP_PX = 8;
 var NAME_MIN_LENGTH = 1;
 var POST_COUNT_SINGULAR = 1;
 var MOUSE_BUTTON_PRIMARY = 0;
+/** Pause between two posts of a collection download. */
+var DOWNLOAD_INTERVAL_MS = 1500;
+var MS_PER_SECOND = 1e3;
+var REQUESTS_PER_POST = 2;
+var DRAG_EFFECT_MOVE = "move";
+var DRAGGING_OPACITY = "0.4";
 var OBJECT_FIT_CONTAIN = "contain";
 var IMG_LOADING_LAZY = "lazy";
 /** Same mark chrome as favorites bulk select. */
@@ -19824,6 +20417,20 @@ var LABEL_BACK = "← Collections";
 var LABEL_SHUFFLE = "Shuffle";
 var LABEL_ORIGINAL_ORDER = "Original order";
 var LABEL_SELECT = "Select";
+var LABEL_DOWNLOAD_ALL = "Download all";
+var LABEL_DOWNLOAD = "Download";
+var DOWNLOAD_SELECTED_PREFIX = "Download selected (";
+var DOWNLOAD_SELECTED_SUFFIX = ")";
+var DOWNLOAD_DIALOG_TITLE = "Download posts";
+var DOWNLOAD_PROGRESS_PREFIX = "Downloading: ";
+var DOWNLOAD_DONE_PREFIX = "Downloaded ";
+var DOWNLOAD_STOPPED_PREFIX = "Stopped at post #";
+var LABEL_CLOSE = "Close";
+var DRAG_HINT = "Drag a post onto another to change the order.";
+var CLASS_PROGRESS = "rdw-collection-progress";
+var CLASS_DRAGGING = "rdw-collection-cell--dragging";
+var CLASS_DROP_TARGET = "rdw-collection-cell--drop";
+var CLASS_HINT = "rdw-collection-hint";
 var LABEL_SELECT_ALL = "Select all";
 var LABEL_CLEAR = "Clear";
 var LABEL_CANCEL = UI_TEXT.cancel;
@@ -19873,6 +20480,26 @@ var COLLECTION_DETAIL_CSS = `
   display: flex;
   flex-wrap: wrap;
   gap: ${String(ACTIONS_GAP_PX)}px;
+}
+.${CLASS_PROGRESS} {
+  display: flex;
+  align-items: center;
+  gap: ${String(ACTIONS_GAP_PX)}px;
+}
+.${CLASS_PROGRESS} .rdw-progress {
+  flex: 1 1 auto;
+}
+.${CLASS_HINT} {
+  margin: 0;
+  color: var(--rdw-muted);
+  font-size: 12px;
+}
+.${CLASS_DRAGGING} {
+  opacity: ${DRAGGING_OPACITY};
+}
+.${CLASS_DROP_TARGET} {
+  outline: 2px dashed var(--rdw-accent);
+  outline-offset: -2px;
 }
 .${CLASS_GRID} {
   display: grid;
@@ -19949,6 +20576,18 @@ function removedPostsMessage(count) {
 function removeSelectedLabel(count) {
 	return `${REMOVE_SELECTED_PREFIX}${String(count)}${REMOVE_SELECTED_SUFFIX}`;
 }
+function downloadSelectedLabel(count) {
+	return `${DOWNLOAD_SELECTED_PREFIX}${String(count)}${DOWNLOAD_SELECTED_SUFFIX}`;
+}
+function downloadMessage(count) {
+	const seconds = Math.ceil(count * DOWNLOAD_INTERVAL_MS / MS_PER_SECOND);
+	return `Download ${String(count)} ${count === POST_COUNT_SINGULAR ? POST_NOUN_SINGULAR : POST_NOUN_PLURAL}? Each post's page is read and its file saved: ${String(count * REQUESTS_PER_POST)} requests, one post every ${String(DOWNLOAD_INTERVAL_MS / MS_PER_SECOND)} seconds (about ${String(seconds)} s). It stops at the first error.`;
+}
+function sleep(ms) {
+	return new Promise((resolve) => {
+		window.setTimeout(resolve, ms);
+	});
+}
 function fallbackLabel(postId) {
 	return `${FALLBACK_PREFIX}${String(postId)}`;
 }
@@ -19994,12 +20633,37 @@ function PostCell(props) {
 		node.addEventListener("error", markFailed);
 	}, [markFailed]);
 	const showImage = thumbUrl !== null && !failed;
-	const className = [CLASS_CELL, props.selected ? CLASS_MARK_SELECTED : ""].filter((part) => part.length > 0).join(" ");
+	const drag = props.drag;
+	const className = [
+		CLASS_CELL,
+		props.selected ? CLASS_MARK_SELECTED : "",
+		drag?.draggingId === props.postId ? CLASS_DRAGGING : "",
+		drag !== null && drag.overId === props.postId && drag.draggingId !== props.postId ? CLASS_DROP_TARGET : ""
+	].filter((part) => part.length > 0).join(" ");
 	return /* @__PURE__ */ a("a", {
 		className,
 		href: collectionPostHref(props.collectionId, props.postId),
 		"aria-label": `${POST_LINK_LABEL_PREFIX}${String(props.postId)}`,
 		...props.selecting ? { "aria-pressed": props.selected } : {},
+		draggable: drag !== null,
+		onDragStart: (event) => {
+			if (drag === null) return;
+			if (event.dataTransfer !== null) event.dataTransfer.effectAllowed = DRAG_EFFECT_MOVE;
+			drag.onStart(props.postId);
+		},
+		onDragOver: (event) => {
+			if (drag === null || drag.draggingId === null) return;
+			event.preventDefault();
+			drag.onOver(props.postId);
+		},
+		onDrop: (event) => {
+			if (drag === null || drag.draggingId === null) return;
+			event.preventDefault();
+			drag.onDrop(props.postId);
+		},
+		onDragEnd: () => {
+			drag?.onEnd();
+		},
 		onClick: (event) => {
 			if (!props.selecting || isModifiedClick(event)) return;
 			event.preventDefault();
@@ -20037,6 +20701,14 @@ function CollectionDetailPage(props) {
 	const [toast, setToast] = d(null);
 	const toastRef = T(null);
 	const toastIdRef = T(0);
+	const [draggingId, setDraggingId] = d(null);
+	const [overId, setOverId] = d(null);
+	const [downloadIds, setDownloadIds] = d(null);
+	const [download, setDownload] = d(null);
+	const cancelDownloadRef = T(false);
+	A(() => () => {
+		cancelDownloadRef.current = true;
+	}, []);
 	const detail = w$1(() => readCollectionDetail(props.collectionId), [props.collectionId, revision]);
 	const refresh = b(() => {
 		setRevision((value) => value + 1);
@@ -20064,6 +20736,69 @@ function CollectionDetailPage(props) {
 		toastRef.current = next;
 		setToast(next);
 	}
+	const drag = {
+		draggingId,
+		overId,
+		onStart: setDraggingId,
+		onOver: setOverId,
+		onDrop: (targetId) => {
+			if (draggingId !== null) movePostInCollection(props.collectionId, draggingId, targetId);
+			setDraggingId(null);
+			setOverId(null);
+			refresh();
+		},
+		onEnd: () => {
+			setDraggingId(null);
+			setOverId(null);
+		}
+	};
+	async function runDownload(ids) {
+		cancelDownloadRef.current = false;
+		const total = ids.length;
+		setDownload({
+			done: 0,
+			total,
+			running: true,
+			message: ""
+		});
+		let done = 0;
+		for (const postId of ids) {
+			if (cancelDownloadRef.current) break;
+			if (done > 0) {
+				await sleep(DOWNLOAD_INTERVAL_MS);
+				if (cancelDownloadRef.current) break;
+			}
+			try {
+				const url = await fetchOriginalUrl(postId);
+				await downloadOriginal(url, String(postId));
+			} catch (error) {
+				const reason = error instanceof Error ? error.message : String(error);
+				log.warn("collection: download failed", postId, reason);
+				setDownload({
+					done,
+					total,
+					running: false,
+					message: `${DOWNLOAD_STOPPED_PREFIX}${String(postId)}: ${reason}`
+				});
+				return;
+			}
+			done += 1;
+			setDownload({
+				done,
+				total,
+				running: true,
+				message: ""
+			});
+		}
+		setDownload({
+			done,
+			total,
+			running: false,
+			message: `${DOWNLOAD_DONE_PREFIX}${String(done)} of ${String(total)}`
+		});
+	}
+	const downloading = download !== null && download.running;
+	const downloadAvailable = canDownload();
 	function leaveSelectMode() {
 		setSelecting(false);
 		setSelected(/* @__PURE__ */ new Set());
@@ -20154,6 +20889,15 @@ function CollectionDetailPage(props) {
 							onClick: removeSelected,
 							children: removeSelectedLabel(selected.size)
 						}),
+						downloadAvailable ? /* @__PURE__ */ a(Button, {
+							variant: "secondary",
+							size: "s",
+							disabled: selected.size === 0 || downloading,
+							onClick: () => {
+								setDownloadIds(detail.order.filter((id) => selected.has(id)));
+							},
+							children: downloadSelectedLabel(selected.size)
+						}) : null,
 						/* @__PURE__ */ a(Button, {
 							variant: "secondary",
 							size: "s",
@@ -20188,6 +20932,15 @@ function CollectionDetailPage(props) {
 							},
 							children: LABEL_SELECT
 						}),
+						downloadAvailable && detail.order.length > 0 ? /* @__PURE__ */ a(Button, {
+							variant: "secondary",
+							size: "s",
+							disabled: downloading,
+							onClick: () => {
+								setDownloadIds(detail.order);
+							},
+							children: LABEL_DOWNLOAD_ALL
+						}) : null,
 						/* @__PURE__ */ a(Button, {
 							variant: "secondary",
 							size: "s",
@@ -20204,6 +20957,29 @@ function CollectionDetailPage(props) {
 						})
 					] })
 				}),
+				download === null ? null : /* @__PURE__ */ a("div", {
+					className: CLASS_PROGRESS,
+					role: "status",
+					children: [/* @__PURE__ */ a(ProgressBar, {
+						value: download.total === 0 ? 0 : download.done / download.total,
+						label: download.running ? `${DOWNLOAD_PROGRESS_PREFIX}${String(download.done)} of ${String(download.total)}` : download.message
+					}), /* @__PURE__ */ a(Button, {
+						variant: "secondary",
+						size: "s",
+						onClick: () => {
+							if (download.running) {
+								cancelDownloadRef.current = true;
+								return;
+							}
+							setDownload(null);
+						},
+						children: download.running ? LABEL_CANCEL : LABEL_CLOSE
+					})]
+				}),
+				!selecting && detail.order.length > POST_COUNT_SINGULAR ? /* @__PURE__ */ a("p", {
+					className: CLASS_HINT,
+					children: DRAG_HINT
+				}) : null,
 				detail.order.length === 0 ? /* @__PURE__ */ a(EmptyState, {
 					title: EMPTY_COLLECTION_TITLE,
 					description: EMPTY_COLLECTION_HINT
@@ -20216,7 +20992,8 @@ function CollectionDetailPage(props) {
 						thumbUrl: thumbUrlFor(detail.thumbs, postId),
 						selecting,
 						selected: selected.has(postId),
-						onToggle: togglePost
+						onToggle: togglePost,
+						drag: selecting ? null : drag
 					}, postId))
 				}),
 				/* @__PURE__ */ a(Dialog, {
@@ -20252,6 +21029,23 @@ function CollectionDetailPage(props) {
 							})]
 						})]
 					})
+				}),
+				/* @__PURE__ */ a(Dialog, {
+					variant: "confirm",
+					open: downloadIds !== null,
+					onClose: () => {
+						setDownloadIds(null);
+					},
+					title: DOWNLOAD_DIALOG_TITLE,
+					message: downloadMessage(downloadIds?.length ?? 0),
+					confirmLabel: LABEL_DOWNLOAD,
+					cancelLabel: UI_TEXT.cancel,
+					onConfirm: () => {
+						const ids = downloadIds ?? [];
+						setDownloadIds(null);
+						leaveSelectMode();
+						runDownload(ids);
+					}
 				}),
 				/* @__PURE__ */ a(Dialog, {
 					variant: "confirm",

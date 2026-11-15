@@ -1,6 +1,6 @@
 import type { ComponentChildren, JSX } from "preact";
 import { render as preactRender } from "preact";
-import { useCallback, useEffect, useState } from "preact/hooks";
+import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 
 import {
   COLLECTION_KIND_POSTS,
@@ -12,11 +12,18 @@ import {
   resolveCollectionKind,
   type Collection,
 } from "../storage/schema";
+import { backupDateStamp, downloadBackupText } from "../storage/backup";
+import {
+  collectionsFileName,
+  parseCollectionsFile,
+  serializeCollections,
+} from "../storage/collection-transfer";
 import { readCountMirror, readCoverMirror } from "../storage/cover-mirror";
 import {
   createDynamicCollection,
   createPlaylist,
   deleteCollection,
+  importCollections,
   load,
   reloadFromStorage,
 } from "../storage/store";
@@ -30,6 +37,7 @@ import {
 } from "../ui/kit";
 import { IconCheck, IconPlus } from "../ui/kit/icons";
 import { QueryField } from "../ui/query-field";
+import { readFileText } from "../ui/read-file";
 import { collectionDetailHash, dynamicCollectionMarkHash } from "./constants";
 
 const EVENT_PAGESHOW = "pageshow";
@@ -66,6 +74,15 @@ const NEW_BUTTON_LABEL = "New";
 const SELECT_BUTTON_LABEL = "Select";
 const SELECT_BUTTON_TITLE = "Select collections to delete";
 const SELECT_ALL_LABEL = "Select all";
+const EXPORT_LABEL = "Export";
+const EXPORT_TITLE = "Save the selected collections to a file";
+const IMPORT_LABEL = "Import";
+const IMPORT_TITLE = "Add collections from an exported file";
+const IMPORT_ACCEPT = "application/json,.json";
+const IMPORT_BAD_FILE = "This file is not a collections export.";
+const IMPORT_DONE_PREFIX = "Imported collections: ";
+const FILE_INPUT_CLASS = "rdw-collections-file";
+const NOTICE_CLASS = "rdw-collections-notice";
 const SELECTED_SUFFIX = " selected";
 const DELETE_DIALOG_TITLE = "Delete collections";
 const DELETE_ONE_MESSAGE = "Delete 1 collection? This cannot be undone.";
@@ -214,6 +231,14 @@ export const COLLECTIONS_PAGE_CSS = `
 .${CARD_SELECTED_CLASS} .${CARD_MARK_CLASS} {
   border-color: var(--rdw-accent);
   background: var(--rdw-accent);
+}
+.${FILE_INPUT_CLASS} {
+  display: none;
+}
+.${NOTICE_CLASS} {
+  margin: 0;
+  color: var(--rdw-muted);
+  font-size: ${String(CAPTION_FONT_PX)}px;
 }
 .${SELECTED_COUNT_CLASS} {
   color: var(--rdw-muted);
@@ -679,6 +704,8 @@ export function CollectionsPage(): JSX.Element {
   const [selecting, setSelecting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<readonly string[]>([]);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [notice, setNotice] = useState("");
+  const importRef = useRef<HTMLInputElement>(null);
 
   const closeDialog = useCallback((): void => {
     setDialogOpen(false);
@@ -722,6 +749,31 @@ export function CollectionsPage(): JSX.Element {
       current.includes(id)
         ? current.filter((entry) => entry !== id)
         : [...current, id],
+    );
+  };
+
+  const exportSelected = (): void => {
+    downloadBackupText(
+      serializeCollections(selectedVisible),
+      collectionsFileName(backupDateStamp()),
+    );
+    stopSelecting();
+  };
+
+  const importFile = (file: File): void => {
+    void readFileText(file).then(
+      (text) => {
+        const parsed = parseCollectionsFile(text);
+        if (parsed === null) {
+          setNotice(IMPORT_BAD_FILE);
+          return;
+        }
+        setNotice(`${IMPORT_DONE_PREFIX}${String(importCollections(parsed))}`);
+        setRevision((value) => value + 1);
+      },
+      () => {
+        setNotice(IMPORT_BAD_FILE);
+      },
     );
   };
 
@@ -801,6 +853,15 @@ export function CollectionsPage(): JSX.Element {
               </Button>
               <Button
                 type="button"
+                variant="secondary"
+                title={EXPORT_TITLE}
+                disabled={selectedVisible.length === 0}
+                onClick={exportSelected}
+              >
+                {EXPORT_LABEL}
+              </Button>
+              <Button
+                type="button"
                 variant="danger"
                 disabled={selectedVisible.length === 0}
                 onClick={() => {
@@ -827,6 +888,31 @@ export function CollectionsPage(): JSX.Element {
                   {SELECT_BUTTON_LABEL}
                 </Button>
               ) : null}
+              <Button
+                type="button"
+                variant="secondary"
+                title={IMPORT_TITLE}
+                onClick={() => {
+                  importRef.current?.click();
+                }}
+              >
+                {IMPORT_LABEL}
+              </Button>
+              <input
+                ref={importRef}
+                className={FILE_INPUT_CLASS}
+                type="file"
+                accept={IMPORT_ACCEPT}
+                aria-hidden="true"
+                tabIndex={-1}
+                onChange={(event) => {
+                  const file = event.currentTarget.files?.[0];
+                  event.currentTarget.value = "";
+                  if (file !== undefined) {
+                    importFile(file);
+                  }
+                }}
+              />
               <Button type="button" variant="primary" onClick={openDialog}>
                 <IconPlus size={ICON_PX} />
                 {NEW_BUTTON_LABEL}
@@ -835,6 +921,11 @@ export function CollectionsPage(): JSX.Element {
           )}
         </div>
       </header>
+      {notice.length > 0 ? (
+        <p className={NOTICE_CLASS} role="status">
+          {notice}
+        </p>
+      ) : null}
       {visible.length === 0 ? (
         <EmptyState title={emptyCopy.title} description={emptyCopy.description} />
       ) : (

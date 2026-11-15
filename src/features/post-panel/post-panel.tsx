@@ -10,6 +10,7 @@ import {
 
 import { UI_TEXT } from "../../config/constants";
 import { log } from "../../log";
+import { canDownload, downloadOriginal } from "../../site/download";
 import { addFavorite, removeFavorite, voteUp } from "../../site/favorites";
 import { addFav, isFav, removeFav } from "../../storage/favs";
 import {
@@ -17,6 +18,7 @@ import {
   Card,
   IconArrowUp,
   IconDroplet,
+  IconDownload,
   IconExternalLink,
   IconStar,
   IconStarFilled,
@@ -60,6 +62,13 @@ const TEXT_INFO = "Info";
 const TEXT_POST = "Post";
 const TEXT_COMMENTS_COUNTED_SEP = " · ";
 const LABEL_ORIGINAL = "Original";
+const LABEL_DOWNLOAD = "Download original";
+const LABEL_DOWNLOADING = "Downloading…";
+const LABEL_DOWNLOADED = "Downloaded";
+const LABEL_DOWNLOAD_FAILED = "Download failed: ";
+const DOWNLOAD_IDLE = "idle";
+const DOWNLOAD_BUSY = "busy";
+const DOWNLOAD_DONE = "done";
 const LABEL_VOTE = "Vote";
 const LABEL_ICAME = "I came";
 const ARIA_PANEL_TABS = "Post details";
@@ -73,6 +82,7 @@ const CLASS_ACTIONS = "rdw-post-panel-actions";
 const CLASS_ACTIONS_ROW = "rdw-post-panel-actions-row";
 const CLASS_FAV = "rdw-post-panel-fav";
 const CLASS_ORIGINAL = "rdw-post-panel-original";
+export const CLASS_DOWNLOAD = "rdw-post-panel-download";
 const CLASS_VOTE = "rdw-post-panel-vote";
 const CLASS_STATS = "rdw-post-panel-stats";
 const CLASS_STAT_LABEL = "rdw-post-panel-stat-label";
@@ -131,6 +141,36 @@ export function PostPanel(props: PostPanelProps): JSX.Element {
     const anchor = findOriginalAnchor();
     return anchor?.href ?? null;
   });
+  const [downloadState, setDownloadState] = useState<string>(DOWNLOAD_IDLE);
+  const downloadPostId = props.postId;
+  const onDownloadClick = (): void => {
+    if (
+      originalHref === null ||
+      downloadPostId === null ||
+      downloadState === DOWNLOAD_BUSY
+    ) {
+      return;
+    }
+    setDownloadState(DOWNLOAD_BUSY);
+    void downloadOriginal(originalHref, downloadPostId).then(
+      () => {
+        setDownloadState(DOWNLOAD_DONE);
+      },
+      (error: unknown) => {
+        const reason = error instanceof Error ? error.message : String(error);
+        log.warn("post-panel: download failed", reason);
+        setDownloadState(`${LABEL_DOWNLOAD_FAILED}${reason}`);
+      },
+    );
+  };
+  const downloadLabel =
+    downloadState === DOWNLOAD_IDLE
+      ? LABEL_DOWNLOAD
+      : downloadState === DOWNLOAD_BUSY
+        ? LABEL_DOWNLOADING
+        : downloadState === DOWNLOAD_DONE
+          ? LABEL_DOWNLOADED
+          : downloadState;
   const [iCame] = useState<ICameTarget | null>(() => findICameTarget());
   const [hasComments] = useState(() => findPostComments() !== null);
   const [commentCount] = useState<number | null>(() =>
@@ -300,6 +340,19 @@ export function PostPanel(props: PostPanelProps): JSX.Element {
               >
                 <IconExternalLink size={ORIGINAL_ICON_SIZE} />
               </a>
+            ) : null}
+
+            {originalHref !== null && downloadPostId !== null && canDownload() ? (
+              <button
+                type="button"
+                className={`${CLASS_ORIGINAL} ${CLASS_DOWNLOAD} rdw-kit-focusable`}
+                aria-label={downloadLabel}
+                title={downloadLabel}
+                aria-busy={downloadState === DOWNLOAD_BUSY}
+                onClick={onDownloadClick}
+              >
+                <IconDownload size={ORIGINAL_ICON_SIZE} />
+              </button>
             ) : null}
           </div>
         ) : null}

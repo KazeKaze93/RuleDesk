@@ -1,4 +1,5 @@
 import { blacklistHideFeature } from "./blacklist-hide";
+import { cdnFallbackFeature } from "./cdn-fallback";
 import { favoritesBulkFeature } from "./favorites-bulk";
 import { feedFeature } from "./feed";
 import { gridDensityFeature } from "./grid-density";
@@ -31,4 +32,5 @@ export const FEATURES: Feature[] = [
   favoritesBulkFeature,
   videoPlayerFeature,
   videoPreviewFeature,
+  cdnFallbackFeature,
 ];

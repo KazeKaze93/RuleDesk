@@ -2,6 +2,15 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.23.0
+
+- **Download original** on the post page: a button next to "Original" saves the full file as `rule34-<post id>.<ext>` through the script manager. The script asks for one more permission, `GM_download`; the manager shows it when the update installs
+- **Download a custom collection.** "Download all" on a collection page, or "Download selected" in Select mode. For each post its page is read and the file saved, one post every 1.5 seconds, after a confirmation that states the number of requests. It can be cancelled and stops at the first error
+- **Reorder a custom collection** by dragging a post onto another
+- **Export and import collections.** Collections → Select → Export saves the chosen collections to a file; Import adds collections from such a file as new ones
+- **A failed post image is retried on the site's other image servers** (RuleDesk → Page, on by default)
+- **Statistics** block in RuleDesk settings: followed artists, artists with new posts, collections, posts in custom collections, favorites, seen posts, size of the stored data, and the top followed artists by post count. Counted from local data, no requests
+
 ## 0.22.1
 
 - No change in behaviour. Unused code removed; documentation rebuilt: `README.md` for users, `docs/` for developers, this file for release notes
