@@ -37,7 +37,7 @@ Both kinds show a cover and a post count. A collection can be shuffled, renamed 
 
 ### Search panel
 
-Under the site's search field: tags as chips (click to exclude, cross to remove), media type, sort order, minimum score, source (All, Feed, Favorites), AI posts on or off, Reset, and "Save as collection".
+Under the site's search field: tags as chips (click to exclude, cross to remove), media type, sort order, minimum score, AI posts on or off, Reset, and "Save as collection".
 
 ### Post page
 

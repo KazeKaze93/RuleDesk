@@ -52,9 +52,10 @@ const BODY_CLASS = featureBodyClass(FEATURE_ID);
 const BODY_SELECTOR = `body.${BODY_CLASS}`;
 
 /*
- * On Favorites the top right corner of a thumb belongs to Remove, so the
- * button sits in the top left one, and is out of the way while posts are
- * being selected.
+ * On Favorites the button sits where it does on Posts: in the top right
+ * corner, under the first button (there the star, here the bin of Remove).
+ * A favorites thumb is exactly as large as its picture, so plain offsets do.
+ * The button is out of the way while posts are being selected.
  */
 const FEATURE_CSS = `
 ${BODY_SELECTOR} .${CLASS_ADD} {
@@ -85,9 +86,8 @@ ${BODY_SELECTOR} .${CLASS_ADD} {
   opacity: 0;
 }
 ${BODY_SELECTOR} ${FAVORITE_THUMB_SELECTOR} > .${CLASS_ADD} {
-  top: ${String(BUTTON_OFFSET_PX)}px;
-  right: auto;
-  left: ${String(BUTTON_OFFSET_PX)}px;
+  top: ${String(BUTTON_BELOW_FAV_TOP_PX)}px;
+  right: ${String(BUTTON_OFFSET_PX)}px;
 }
 ${BODY_SELECTOR}.${FAVORITES_SELECTING_BODY_CLASS} ${FAVORITE_THUMB_SELECTOR} > .${CLASS_ADD} {
   display: none;

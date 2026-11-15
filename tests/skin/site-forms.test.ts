@@ -51,7 +51,7 @@ describe("site skin: forms, tables and text columns", () => {
     expect(ruleFor("div.image-list > span > span.thumb > a > img {\n    anchor-name")).toContain(
       "anchor-name: --rdw-img, --rdw-fav-img",
     );
-    expect(SITE_SKIN_CSS).toContain("div.image-list > span:hover > a[onclick],");
+    expect(SITE_SKIN_CSS).toContain("div.image-list > span:hover > a[onclick] {");
     expect(SITE_SKIN_CSS).toContain("div.image-list > span > a[onclick] {\n    display: none");
   });
 

@@ -36,6 +36,13 @@ const COMMENT_MAX_WIDTH_PX = 1100;
 /** Anchor of a favorites preview, visible to the Remove link beside its thumb. */
 const FAV_REMOVE_ANCHOR_NAME = "--rdw-fav-img";
 const FAV_REMOVE_INSET_PX = 6;
+/** The same square as the buttons on a Posts thumb. */
+const FAV_REMOVE_SIZE_PX = 28;
+const FAV_REMOVE_ICON_PX = 16;
+/** Width of a column of the favorites grid: the site's own cell width. */
+const FAV_CELL_WIDTH_PX = 250;
+/** A bin, drawn as a mask so that it takes the colour of the rule. */
+const FAV_REMOVE_ICON_MASK = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 6h18'/%3E%3Cpath d='M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6'/%3E%3Cpath d='M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2'/%3E%3Cpath d='M10 11v6'/%3E%3Cpath d='M14 11v6'/%3E%3C/svg%3E") center / contain no-repeat`;
 /** Above the hover video preview. */
 const FAV_REMOVE_Z_INDEX = 4;
 const ACCOUNT_CARD_MAX_WIDTH_PX = 640;
@@ -919,41 +926,42 @@ ${ROOT} div.image-list > span > a[onclick]:hover {
 }
 
 /*
- * Favorites: every thumb is a square tile. The picture fills its cell and is
- * cropped around its centre, like a cover on Collections; before, pictures of
- * different shapes hung in the middle of their cells with gaps between rows.
- * The hover video is cropped the same way, so it covers the picture exactly.
+ * Favorites: a picture keeps its shape and the rows sit close. The site gives
+ * every thumb a fixed square cell and centres the picture in it, which leaves
+ * gaps between rows. Here the column keeps its width, the thumb is exactly as
+ * large as its picture, and a row is as tall as its tallest picture.
  */
+${ROOT} div.image-list > span:has(> a[onclick]) {
+  width: ${String(FAV_CELL_WIDTH_PX)}px;
+  justify-items: center;
+}
+
 ${ROOT} div.image-list > span > span.thumb {
   position: relative;
   display: block;
-  overflow: hidden;
-  border-radius: ${v.radiusL};
+  width: fit-content;
+  height: auto;
+  max-width: 100%;
 }
 
 ${ROOT} div.image-list > span > span.thumb > a {
   display: block;
-  width: 100%;
-  height: 100%;
 }
 
 ${ROOT} div.image-list > span > span.thumb > a > img {
   display: block;
   box-sizing: border-box;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-${ROOT} div.image-list > span > span.thumb > video {
-  object-fit: cover;
+  max-width: ${String(FAV_CELL_WIDTH_PX)}px;
+  height: auto;
 }
 
 /*
- * Favorites: "Remove" lies on the preview, in its top right corner, and shows
- * while the pointer is over the post. The link stays where the site put it in
- * the page; it is only positioned against the image. The row the site kept
- * for it under the thumb goes away. Hidden while posts are being selected.
+ * Favorites: "Remove" is a small bin button in the top right corner of the
+ * picture, where Posts has the favorite star, and shows while the pointer is
+ * over the post. The link stays where the site put it in the page; it is only
+ * positioned against the image, and its text is kept for screen readers. The
+ * row the site kept for it under the thumb goes away. Hidden while posts are
+ * being selected.
  */
 @supports (anchor-name: --a) {
   ${ROOT} div.image-list > span:has(> a[onclick]) {
@@ -975,18 +983,41 @@ ${ROOT} div.image-list > span > span.thumb > video {
     top: calc(anchor(top) + ${String(FAV_REMOVE_INSET_PX)}px);
     right: calc(anchor(right) + ${String(FAV_REMOVE_INSET_PX)}px);
     z-index: ${String(FAV_REMOVE_Z_INDEX)};
-    padding: 3px 8px;
-    border: 1px solid ${v.border};
-    border-radius: ${v.radiusS};
-    background: ${v.surface};
-    color: ${v.text};
-    line-height: 1.3;
+    box-sizing: border-box;
+    display: grid;
+    place-items: center;
+    width: ${String(FAV_REMOVE_SIZE_PX)}px;
+    height: ${String(FAV_REMOVE_SIZE_PX)}px;
+    padding: 0;
+    border: 1px solid rgba(0, 0, 0, 0.13);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.93);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    font-size: 0;
+    line-height: 0;
     text-decoration: none;
     opacity: 0;
     transition: opacity 0.12s ease;
   }
 
-  ${ROOT} div.image-list > span:hover > a[onclick],
+  ${ROOT} div.image-list > span > a[onclick]::before {
+    content: "";
+    width: ${String(FAV_REMOVE_ICON_PX)}px;
+    height: ${String(FAV_REMOVE_ICON_PX)}px;
+    background: rgb(28, 34, 40);
+    -webkit-mask: ${FAV_REMOVE_ICON_MASK};
+    mask: ${FAV_REMOVE_ICON_MASK};
+  }
+
+  ${ROOT} div.image-list > span > a[onclick]:hover::before {
+    background: ${v.danger};
+  }
+
+  ${ROOT} div.image-list > span:hover > a[onclick] {
+    opacity: 0.65;
+  }
+
+  ${ROOT} div.image-list > span > a[onclick]:hover,
   ${ROOT} div.image-list > span > a[onclick]:focus-visible {
     opacity: 1;
   }

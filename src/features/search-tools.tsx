@@ -4,8 +4,6 @@ import { useEffect, useRef, useState } from "preact/hooks";
 
 import {
   EXCLUDE_PREFIX,
-  FAVORITES_PAGE,
-  SEARCH_PARAM_PAGE,
   SEARCH_PARAM_TAGS,
   SITE_ORIGIN,
   TAG_SEPARATOR,
@@ -15,11 +13,9 @@ import {
 } from "../config/constants";
 import { log } from "../log";
 import {
-  buildFeedUrl,
   buildSearchUrl,
   findFeedGroupIndex,
   isFullUpdatesQuery,
-  isPartialUpdatesQuery,
   parsePlaylistQuery,
   parseTags,
 } from "../search/query";
@@ -46,7 +42,7 @@ const FEATURE_LABEL = "Search tools";
 const FEATURE_PAGES = ["list", "post"] as const;
 
 /**
- * Followed artists for Feed chip / source detection (read-only).
+ * Followed artists for the Feed chip (read-only).
  * Mirror first — GM snapshots on bfcache pages can omit recent follows.
  */
 function resolveFollowedArtistTags(): string[] {
@@ -59,8 +55,6 @@ function resolveFollowedArtistTags(): string[] {
 
 const TAGS_INPUT_SELECTOR = 'input[name="tags"]';
 const TAG_SIDEBAR_SELECTOR = "ul#tag-sidebar";
-const MY_FAVORITES_LINK_SELECTOR =
-  'li#my-favorites-container a[href*="page=favorites"]';
 
 const ROOT_ID = "rdw-search-tools";
 const ROOT_CLASS = "rdw-search-tools";
@@ -134,7 +128,6 @@ function isTagType(value: string): value is TagType {
 
 type MediaMode = "all" | "images" | "videos";
 type SortMode = "newest" | "oldest" | "score" | "updated" | "random";
-type SourceMode = "all" | "feed" | "favorites";
 type AiPostsMode = "show" | "hide";
 
 const MEDIA_OPTIONS = [
@@ -165,12 +158,6 @@ const SORT_OPTIONS: ReadonlyArray<{
   },
   { value: "random", label: "Random", token: "sort:random" },
 ];
-
-const SOURCE_OPTIONS = [
-  { value: "all", label: "All" },
-  { value: "feed", label: "Feed" },
-  { value: "favorites", label: "Favorites" },
-] as const;
 
 const SORT_TOKEN_TO_MODE = new Map<string, SortMode>();
 for (const option of SORT_OPTIONS) {
@@ -252,7 +239,6 @@ type PanelView = {
   readonly media: MediaMode;
   readonly sort: SortMode;
   readonly minScore: number | null;
-  readonly source: SourceMode;
 };
 
 function findTagsInput(): HTMLInputElement | null {
@@ -505,18 +491,6 @@ function buildSidebarTagTypes(): Map<string, TagType> {
   return map;
 }
 
-function findFavoritesHref(): string | null {
-  const anchor = document.querySelector(MY_FAVORITES_LINK_SELECTOR);
-  if (!(anchor instanceof HTMLAnchorElement)) {
-    return null;
-  }
-  const href = anchor.getAttribute("href");
-  if (href === null || href.trim().length === 0) {
-    return null;
-  }
-  return href;
-}
-
 function findFilterAiCheckbox(): HTMLInputElement | null {
   const node = document.querySelector(SITE_SELECTORS.filterAiCheckbox);
   return node instanceof HTMLInputElement ? node : null;
@@ -573,23 +547,6 @@ function waitForFilterAiCheckbox(
 
 function readAiPostsMode(checkbox: HTMLInputElement): AiPostsMode {
   return checkbox.checked ? "hide" : "show";
-}
-
-function detectSourceMode(search: string): SourceMode {
-  const params = new URLSearchParams(search);
-  if (params.get(SEARCH_PARAM_PAGE) === FAVORITES_PAGE) {
-    return "favorites";
-  }
-  const tagsRaw = params.get(SEARCH_PARAM_TAGS) ?? "";
-  const artists = resolveFollowedArtistTags();
-  if (
-    isFullUpdatesQuery(tagsRaw, artists) ||
-    isPartialUpdatesQuery(tagsRaw, artists) ||
-    findFeedGroupIndex(tagsRaw, artists, getUpdatesGroupSize()) >= 0
-  ) {
-    return "feed";
-  }
-  return "all";
 }
 
 function tryParseParenGroup(
@@ -754,7 +711,6 @@ function readPanelView(inputValue: string, search: string): PanelView {
     media: readMediaMode(tokens),
     sort: readSortMode(tokens),
     minScore: readMinScore(tokens),
-    source: detectSourceMode(search),
   };
 }
 
@@ -818,8 +774,7 @@ function SearchToolsPanel(props: SearchToolsPanelProps): JSX.Element {
         chipsUnchanged &&
         next.media === prev.media &&
         next.sort === prev.sort &&
-        next.minScore === prev.minScore &&
-        next.source === prev.source
+        next.minScore === prev.minScore
       ) {
         return prev;
       }
@@ -1022,43 +977,6 @@ function SearchToolsPanel(props: SearchToolsPanelProps): JSX.Element {
     );
   };
 
-  const onSourceChange = (value: string): void => {
-    const source = SOURCE_OPTIONS.find((entry) => entry.value === value)?.value;
-    if (source === undefined) {
-      return;
-    }
-    if (source === "feed") {
-      const artists = resolveFollowedArtistTags();
-      if (artists.length === 0) {
-        setView((prev) => ({ ...prev, source: detectSourceMode(window.location.search) }));
-        return;
-      }
-      clearNavTimer();
-      navTimerRef.current = window.setTimeout(() => {
-        navTimerRef.current = null;
-        window.location.assign(buildFeedUrl(artists, getUpdatesGroupSize()));
-      }, NAV_DEBOUNCE_MS);
-      setView((prev) => ({ ...prev, source }));
-      return;
-    }
-    if (source === "favorites") {
-      const href = findFavoritesHref();
-      if (href === null) {
-        setView((prev) => ({ ...prev, source: detectSourceMode(window.location.search) }));
-        return;
-      }
-      clearNavTimer();
-      navTimerRef.current = window.setTimeout(() => {
-        navTimerRef.current = null;
-        window.location.assign(href);
-      }, NAV_DEBOUNCE_MS);
-      setView((prev) => ({ ...prev, source }));
-      return;
-    }
-    setView((prev) => ({ ...prev, source: "all" }));
-    scheduleNavigate(parseTokens(input.value));
-  };
-
   const onAiPostsChange = (value: string): void => {
     const mode = AI_POSTS_OPTIONS.find((entry) => entry.value === value)?.value;
     if (mode === undefined) {
@@ -1225,19 +1143,6 @@ function SearchToolsPanel(props: SearchToolsPanelProps): JSX.Element {
               onChange={setScoreDraft}
             />
           </div>
-        </div>
-
-        <div className={FIELD_CLASS}>
-          <SectionLabel>Source</SectionLabel>
-          <Segmented
-            label="Source"
-            options={SOURCE_OPTIONS.map((entry) => ({
-              value: entry.value,
-              label: entry.label,
-            }))}
-            value={view.source}
-            onChange={onSourceChange}
-          />
         </div>
 
         {aiPosts !== null ? (

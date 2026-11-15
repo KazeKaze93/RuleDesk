@@ -2,6 +2,12 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.30.1
+
+- Favorites: pictures keep their shape instead of being cropped to squares; the rows still sit close, each as tall as its tallest picture
+- Favorites: the buttons on a thumbnail look and sit as on Posts. "Remove" is a bin button in the top right corner, "+" is under it
+- Search panel: the "Source" block (All / Feed / Favorites) is removed. It did not filter anything, it only opened the Feed or the Favorites page, and the header menu already does that
+
 ## 0.30.0
 
 Favorites, first part of the rework:

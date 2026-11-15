@@ -683,7 +683,7 @@ describe("searchToolsFeature", () => {
     expect(SEARCH_TOOLS_AI_ROW_BODY_CLASS).toBe("rdw-search-tools-ai-posts");
   });
 
-  it("mirrors #chkFilterAI into AI posts Show/Hide under Source", () => {
+  it("mirrors #chkFilterAI into AI posts Show/Hide and has no Source block", () => {
     mountFilterAiCheckbox(false);
     buildSearchForm("cat");
     mountFeature();
@@ -692,6 +692,9 @@ describe("searchToolsFeature", () => {
       `#${ROOT_ID} [role="radiogroup"][aria-label="AI posts"]`,
     );
     expect(group).not.toBeNull();
+    expect(
+      document.querySelector(`#${ROOT_ID} [role="radiogroup"][aria-label="Source"]`),
+    ).toBeNull();
     expect(
       document.body.classList.contains(SEARCH_TOOLS_AI_ROW_BODY_CLASS),
     ).toBe(true);
