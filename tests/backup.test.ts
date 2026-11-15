@@ -20,6 +20,7 @@ import { clearFavsCache, loadFavSet } from "../src/storage/favs";
 import { createDefaultFavs, createDefaultStorage } from "../src/storage/schema";
 import {
   addArtist,
+  rememberArtistSnapshot,
   addCollection,
   addPostToCollection,
   clearStorageCache,
@@ -317,6 +318,31 @@ describe("backup export/import", () => {
       version: 1,
       ids: [99, 100],
     });
+  });
+
+  it("carries artist covers and counts in the file, and a merge does not wipe known ones", async () => {
+    addArtist("alpha");
+    rememberArtistSnapshot("alpha", {
+      cover: ["https://example.test/a.jpg"],
+      postCount: { value: 12, exact: true },
+      lastPostId: 40,
+    });
+    const file = await buildBackupFile({
+      includeBackground: false,
+      includeFavorites: false,
+    });
+    expect(file.storage.artists[0]?.cover).toEqual(["https://example.test/a.jpg"]);
+    expect(file.storage.artists[0]?.postCount).toEqual({ value: 12, exact: true });
+
+    // An older file knows the tag only: what is known here must stay.
+    file.storage = { ...file.storage, artists: [{ tag: "alpha" }, { tag: "beta" }] };
+    const result = await importBackupJson(serializeBackupFile(file), IMPORT_MODE_MERGE);
+
+    expect(result.ok).toBe(true);
+    const alpha = load().artists.find((entry) => entry.tag === "alpha");
+    expect(alpha?.cover).toEqual(["https://example.test/a.jpg"]);
+    expect(alpha?.postCount).toEqual({ value: 12, exact: true });
+    expect(load().artists.map((entry) => entry.tag).sort()).toEqual(["alpha", "beta"]);
   });
 
   it("merge keeps existing artists and unions favs; settings come from file", async () => {

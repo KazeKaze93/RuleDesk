@@ -18,6 +18,11 @@ Local build: `npm install` then `npm run build` → `dist/ruledesk-web.user.js`.
 
 Measured on Tampermonkey 5.5.1: with Dynamic, native page flash on load is typically 0/5 vs ~5/5 with UserScripts API; pages also open faster. Prefer Dynamic for RuleDesk Web.
 
+### 0.21.2 notes
+
+- **RuleDesk → Data:** the separate "Export artists" / "Import artists" block is removed. Followed artists travel in the one Export / Import file, with their covers, post counts and follow dates
+- Importing in Merge mode no longer wipes an artist's known cover and count when the file has only the tag
+
 ### 0.21.1 notes
 
 - **Following:** the cross on a card asks "Unfollow …?" and removes the artist at once; there is no Undo row

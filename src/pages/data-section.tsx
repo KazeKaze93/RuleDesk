@@ -3,8 +3,6 @@ import { useRef, useState } from "preact/hooks";
 
 import { UI_TEXT } from "../config/constants";
 import {
-  backupDateStamp,
-  downloadBackupText,
   exportBackupDownload,
   importBackupJson,
   IMPORT_MODE_MERGE,
@@ -12,7 +10,6 @@ import {
   type BackupImportMode,
   type BackupImportSummary,
 } from "../storage/backup";
-import { addArtists, listArtistTags } from "../storage/store";
 import {
   Button,
   SectionLabel,
@@ -37,20 +34,7 @@ const EXPORT_LABEL = UI_TEXT.export;
 const IMPORT_LABEL = UI_TEXT.import;
 const EXPORT_ERROR_PREFIX = "Export failed:";
 const STORAGE_HINT =
-  "Collections, artists, and settings live in Tampermonkey storage. Favorites are optional in this file. Blacklist and site theme are browser cookies and are not included.";
-
-const ARTISTS_HEADING = "Followed artists";
-const ARTISTS_EXPORT_LABEL = "Export artists";
-const ARTISTS_IMPORT_LABEL = "Import artists";
-const ARTISTS_HINT =
-  "A text file with one artist tag per line. Import follows the tags you do not follow yet. Covers and post counts travel only with the full export above.";
-const ARTISTS_FILE_PREFIX = "ruledesk-artists-";
-const ARTISTS_FILE_SUFFIX = ".txt";
-const ARTISTS_MIME = "text/plain";
-const ARTISTS_ACCEPT = "text/plain,.txt";
-const ARTISTS_EMPTY_MESSAGE = "No followed artists to export.";
-const LINE_BREAK = "\n";
-const TAG_SPLIT = /\s+/;
+  "The file holds collections, followed artists (with covers and post counts) and settings. Favorites are optional. Blacklist and site theme are browser cookies and are not included.";
 
 const MODE_OPTIONS = [
   { value: IMPORT_MODE_MERGE, label: "Merge" },
@@ -90,20 +74,6 @@ function formatSummary(summary: BackupImportSummary): string {
   return `Imported ${String(summary.artistCount)} artists, ${String(summary.collectionCount)} collections, ${String(summary.favCount)} favorites.`;
 }
 
-/** Followed artist tags as text, one per line, in name order. */
-export function artistsExportText(tags: readonly string[]): string {
-  const sorted = [...tags].sort((a, b) => a.localeCompare(b));
-  return `${sorted.join(LINE_BREAK)}${LINE_BREAK}`;
-}
-
-function artistsImportSummary(result: {
-  readonly added: number;
-  readonly duplicates: number;
-  readonly invalid: number;
-}): string {
-  return `Followed ${String(result.added)} new artists, already followed ${String(result.duplicates)}, invalid ${String(result.invalid)}.`;
-}
-
 function readFileText(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -128,9 +98,6 @@ export type DataSectionProps = {
 export function DataSection(props: DataSectionProps = {}): JSX.Element {
   const includeHeading = props.includeHeading !== false;
   const fileRef = useRef<HTMLInputElement>(null);
-  const artistsFileRef = useRef<HTMLInputElement>(null);
-  const [artistsError, setArtistsError] = useState("");
-  const [artistsSummary, setArtistsSummary] = useState("");
   const [includeBackground, setIncludeBackground] = useState(false);
   const [includeFavorites, setIncludeFavorites] = useState(false);
   const [mode, setMode] = useState<BackupImportMode>(IMPORT_MODE_MERGE);
@@ -233,70 +200,6 @@ export function DataSection(props: DataSectionProps = {}): JSX.Element {
         {error.length > 0 ? <p className="rdw-error">{error}</p> : null}
         {summary.length > 0 ? <p className="rdw-hint">{summary}</p> : null}
         <p className={HINT_CLASS}>{STORAGE_HINT}</p>
-      </section>
-      <section className={`rdw-section ${SECTION_CLASS}`}>
-        <SectionLabel>{ARTISTS_HEADING}</SectionLabel>
-        <div className={ACTIONS_CLASS}>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              setArtistsSummary("");
-              const tags = listArtistTags();
-              if (tags.length === 0) {
-                setArtistsError(ARTISTS_EMPTY_MESSAGE);
-                return;
-              }
-              setArtistsError("");
-              downloadBackupText(
-                artistsExportText(tags),
-                `${ARTISTS_FILE_PREFIX}${backupDateStamp()}${ARTISTS_FILE_SUFFIX}`,
-                ARTISTS_MIME,
-              );
-            }}
-          >
-            {ARTISTS_EXPORT_LABEL}
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              artistsFileRef.current?.click();
-            }}
-          >
-            {ARTISTS_IMPORT_LABEL}
-          </Button>
-          <input
-            ref={artistsFileRef}
-            className={FILE_CLASS}
-            type="file"
-            accept={ARTISTS_ACCEPT}
-            aria-hidden="true"
-            tabIndex={-1}
-            onChange={(event) => {
-              const file = event.currentTarget.files?.[0];
-              event.currentTarget.value = "";
-              if (file === undefined) {
-                return;
-              }
-              setArtistsError("");
-              setArtistsSummary("");
-              void readFileText(file)
-                .then((text) => {
-                  const tags = text.split(TAG_SPLIT).filter((tag) => tag.length > 0);
-                  setArtistsSummary(artistsImportSummary(addArtists(tags)));
-                })
-                .catch((caught: unknown) => {
-                  const message =
-                    caught instanceof Error ? caught.message : "Could not read file";
-                  setArtistsError(`${UI_TEXT.importErrorPrefix} ${message}`);
-                });
-            }}
-          />
-        </div>
-        {artistsError.length > 0 ? <p className="rdw-error">{artistsError}</p> : null}
-        {artistsSummary.length > 0 ? (
-          <p className="rdw-hint">{artistsSummary}</p>
-        ) : null}
-        <p className={HINT_CLASS}>{ARTISTS_HINT}</p>
       </section>
     </>
   );
