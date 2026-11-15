@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RuleDesk Web
 // @namespace    https://github.com/kazekaze93/ruledesk-web
-// @version      0.20.0
+// @version      0.21.0
 // @description  Collections, playlists, favorites, artist updates, and page tweaks for rule34.xxx
 // @downloadURL  https://raw.githubusercontent.com/KazeKaze93/ruledesk-web/main/dist/ruledesk-web.user.js
 // @updateURL    https://raw.githubusercontent.com/KazeKaze93/ruledesk-web/main/dist/ruledesk-web.user.js
@@ -14,7 +14,7 @@
 !function(){function e(e,t){return(t||"")+" (SystemJS Error#"+e+" https://github.com/systemjs/systemjs/blob/main/docs/errors.md#"+e+")"}function t(e,t){if(-1!==e.indexOf("\\")&&(e=e.replace(j,"/")),"/"===e[0]&&"/"===e[1])return t.slice(0,t.indexOf(":")+1)+e;if("."===e[0]&&("/"===e[1]||"."===e[1]&&("/"===e[2]||2===e.length&&(e+="/"))||1===e.length&&(e+="/"))||"/"===e[0]){var n,r=t.slice(0,t.indexOf(":")+1);if(n="/"===t[r.length+1]?"file:"!==r?(n=t.slice(r.length+2)).slice(n.indexOf("/")+1):t.slice(8):t.slice(r.length+("/"===t[r.length])),"/"===e[0])return t.slice(0,t.length-n.length-1)+e;for(var i=n.slice(0,n.lastIndexOf("/")+1)+e,o=[],s=-1,u=0;u<i.length;u++)-1!==s?"/"===i[u]&&(o.push(i.slice(s,u+1)),s=-1):"."===i[u]?"."!==i[u+1]||"/"!==i[u+2]&&u+2!==i.length?"/"===i[u+1]||u+1===i.length?u+=1:s=u:(o.pop(),u+=2):s=u;return-1!==s&&o.push(i.slice(s)),t.slice(0,t.length-n.length)+o.join("")}}function n(e,n){return t(e,n)||(-1!==e.indexOf(":")?e:t("./"+e,n))}function r(e,n,r,i,o){for(var s in e){var a=t(s,r)||s,f=e[s];if("string"==typeof f){var l=c(i,t(f,r)||f,o);l?n[a]=l:u("W1",s,f,"bare specifier did not resolve")}}}function i(e,t,i){var o;for(o in e.imports&&r(e.imports,i.imports,t,i,null),e.scopes||{}){var s=n(o,t);r(e.scopes[o],i.scopes[s]||(i.scopes[s]={}),t,i,s)}for(o in e.depcache||{})i.depcache[n(o,t)]=e.depcache[o];for(o in e.integrity||{})i.integrity[n(o,t)]=e.integrity[o]}function o(e,t){if(t[e])return e;var n=e.length;do{var r=e.slice(0,n+1);if(r in t)return r}while(-1!==(n=e.lastIndexOf("/",n-1)))}function s(e,t){var n=o(e,t);if(n){var r=t[n];if(null===r)return;if(!(e.length>n.length&&"/"!==r[r.length-1]))return r+e.slice(n.length);u("W2",n,r,"should have a trailing '/'")}}function u(t,n,r,i){console.warn(e(t,"Package target "+i+", resolving target '"+r+"' for "+n))}function c(e,t,n){for(var r=e.scopes,i=n&&o(n,r);i;){var u=s(t,r[i]);if(u)return u;i=o(i.slice(0,i.lastIndexOf("/")),r)}return s(t,e.imports)||-1!==t.indexOf(":")&&t}function a(){this[M]={}}function f(e){return e.id}function l(e,t,n,r){if(e.onload(n,t.id,t.d&&t.d.map(f),!!r),n)throw n}function d(t,n,r,i){var o=t[M][n];if(o)return o;var s=[],u=Object.create(null);P&&Object.defineProperty(u,P,{value:"Module"});var c=Promise.resolve().then((function(){return t.instantiate(n,r,i)})).then((function(r){if(!r)throw Error(e(2,"Module "+n+" did not instantiate"));var i=r[1]((function(e,t){o.h=!0;var n=!1;if("string"==typeof e)e in u&&u[e]===t||(u[e]=t,n=!0);else{for(var r in e)t=e[r],r in u&&u[r]===t||(u[r]=t,n=!0);e&&e.__esModule&&(u.__esModule=e.__esModule)}if(n)for(var i=0;i<s.length;i++){var c=s[i];c&&c(u)}return t}),2===r[1].length?{import:function(e,r){return t.import(e,n,r)},meta:t.createContext(n)}:void 0);return o.e=i.execute||function(){},[r[0],i.setters||[],r[2]||[]]}),(function(e){throw o.e=null,o.er=e,l(t,o,e,!0),e})),a=c.then((function(e){return Promise.all(e[0].map((function(r,i){var o=e[1][i],s=e[2][i];return Promise.resolve(t.resolve(r,n)).then((function(e){var r=d(t,e,n,s);return Promise.resolve(r.I).then((function(){return o&&(r.i.push(o),!r.h&&r.I||o(r.n)),r}))}))}))).then((function(e){o.d=e}))}));return o=t[M][n]={id:n,i:s,n:u,m:i,I:c,L:a,h:!1,d:void 0,e:void 0,er:void 0,E:void 0,C:void 0,p:void 0}}function h(e,t,n,r){if(!r[t.id])return r[t.id]=!0,Promise.resolve(t.L).then((function(){return t.p&&null!==t.p.e||(t.p=n),Promise.all(t.d.map((function(t){return h(e,t,n,r)})))})).catch((function(n){if(t.er)throw n;throw t.e=null,l(e,t,n,!1),n}))}function p(e,t){return t.C=h(e,t,t,{}).then((function(){return v(e,t,{})})).then((function(){return t.n}))}function v(e,t,n){function r(){try{var n=o.call(L);if(n)return n=n.then((function(){t.C=t.n,t.E=null,l(e,t,null,!0)}),(function(n){throw t.er=n,t.E=null,l(e,t,n,!0),n})),t.E=n;t.C=t.n,t.L=t.I=void 0}catch(r){throw t.er=r,r}finally{l(e,t,t.er,!0)}}if(!n[t.id]){if(n[t.id]=!0,!t.e){if(t.er)throw t.er;return t.E?t.E:void 0}var i,o=t.e;return t.e=null,t.d.forEach((function(r){try{var o=v(e,r,n);o&&(i=i||[]).push(o)}catch(s){throw t.er=s,l(e,t,s,!1),s}})),i?Promise.all(i).then(r):r()}}function m(){[].forEach.call(document.querySelectorAll("script"),(function(t){if(!t.sp)if("systemjs-module"===t.type){if(t.sp=!0,!t.src)return;System.import("import:"===t.src.slice(0,7)?t.src.slice(7):n(t.src,g)).catch((function(e){if(e.message.indexOf("https://github.com/systemjs/systemjs/blob/main/docs/errors.md#3")>-1){var n=document.createEvent("Event");n.initEvent("error",!1,!1),t.dispatchEvent(n)}return Promise.reject(e)}))}else if("systemjs-importmap"===t.type){t.sp=!0;var r=t.src?(System.fetch||fetch)(t.src,{integrity:t.integrity,priority:t.fetchPriority,passThrough:!0}).then((function(e){if(!e.ok)throw Error("Invalid status code: "+e.status);return e.text()})).catch((function(n){return n.message=e("W4","Error fetching systemjs-import map "+t.src)+"\n"+n.message,console.warn(n),"function"==typeof t.onerror&&t.onerror(),"{}"})):t.innerHTML;W=W.then((function(){return r})).then((function(n){!function(t,n,r){var o={};try{o=JSON.parse(n)}catch(s){console.warn(Error(e("W5","systemjs-importmap contains invalid JSON")+"\n\n"+n+"\n"))}i(o,r,t)}(N,n,t.src||g)}))}}))}var g,y="undefined"!=typeof Symbol,b="undefined"!=typeof self,S="undefined"!=typeof document,w=b?self:global;if(S){var O=document.querySelector("base[href]");O&&(g=O.href)}if(!g&&"undefined"!=typeof location){var E=(g=location.href.split("#")[0].split("?")[0]).lastIndexOf("/");-1!==E&&(g=g.slice(0,E+1))}var x,j=/\\/g,P=y&&Symbol.toStringTag,M=y?Symbol():"@",I=a.prototype;I.import=function(e,t,n){var r=this;return t&&"object"==typeof t&&(n=t,t=void 0),Promise.resolve(r.prepareImport()).then((function(){return r.resolve(e,t,n)})).then((function(e){var t=d(r,e,void 0,n);return t.C||p(r,t)}))},I.createContext=function(e){var t=this;return{url:e,resolve:function(n,r){return Promise.resolve(t.resolve(n,r||e))}}},I.onload=function(){},I.register=function(e,t,n){x=[e,t,n]},I.getRegister=function(){var e=x;return x=void 0,e};var L=Object.freeze(Object.create(null));w.System=new a;var C,R,W=Promise.resolve(),N={imports:{},scopes:{},depcache:{},integrity:{}},T=S;if(I.prepareImport=function(e){return(T||e)&&(m(),T=!1),W},I.getImportMap=function(){return JSON.parse(JSON.stringify(N))},S&&(m(),window.addEventListener("DOMContentLoaded",m)),I.addImportMap=function(e,t){i(e,t||g,N)},S){window.addEventListener("error",(function(e){J=e.filename,_=e.error}));var A=location.origin}I.createScript=function(e){var t=document.createElement("script");t.async=!0,e.indexOf(A+"/")&&(t.crossOrigin="anonymous");var n=N.integrity[e];return n&&(t.integrity=n),t.src=e,t};var J,_,k={},U=I.register;I.register=function(e,t){if(S&&"loading"===document.readyState&&"string"!=typeof e){var n=document.querySelectorAll("script[src]"),r=n[n.length-1];if(r){C=e;var i=this;R=setTimeout((function(){k[r.src]=[e,t],i.import(r.src)}))}}else C=void 0;return U.call(this,e,t)},I.instantiate=function(t,n){var r=k[t];if(r)return delete k[t],r;var i=this;return Promise.resolve(I.createScript(t)).then((function(r){return new Promise((function(o,s){r.addEventListener("error",(function(){s(Error(e(3,"Error loading "+t+(n?" from "+n:""))))})),r.addEventListener("load",(function(){if(document.head.removeChild(r),J===t)s(_);else{var e=i.getRegister(t);e&&e[0]===C&&clearTimeout(R),o(e)}})),document.head.appendChild(r)}))}))},I.shouldFetch=function(){return!1},"undefined"!=typeof fetch&&(I.fetch=fetch);var $=I.instantiate,B=/^(text|application)\/(x-)?javascript(;|$)/;I.instantiate=function(t,n,r){var i=this;return this.shouldFetch(t,n,r)?this.fetch(t,{credentials:"same-origin",integrity:N.integrity[t],meta:r}).then((function(r){if(!r.ok)throw Error(e(7,r.status+" "+r.statusText+", loading "+t+(n?" from "+n:"")));var o=r.headers.get("content-type");if(!o||!B.test(o))throw Error(e(4,'Unknown Content-Type "'+o+'", loading '+t+(n?" from "+n:"")));return r.text().then((function(e){return e.indexOf("//# sourceURL=")<0&&(e+="\n//# sourceURL="+t),(0,eval)(e),i.getRegister(t)}))})):$.apply(this,arguments)},I.resolve=function(n,r){return c(N,t(n,r=r||g)||n,r)||function(t,n){throw Error(e(8,"Unable to resolve bare specifier '"+t+(n?"' from "+n:"'")))}(n,r)};var F=I.instantiate;I.instantiate=function(e,t,n){var r=N.depcache[e];if(r)for(var i=0;i<r.length;i++)d(this,this.resolve(r[i],e),e);return F.call(this,e,t,n)},b&&"function"==typeof importScripts&&(I.instantiate=function(e){var t=this;return Promise.resolve().then((function(){return importScripts(e),t.getRegister(e)}))}),function(e){function t(t){return!e.hasOwnProperty(t)||!isNaN(t)&&t<e.length||a&&e[t]&&"undefined"!=typeof window&&e[t].parent===window}var n,r,i,o=e.System.constructor.prototype,s=o.import;o.import=function(o,u,c){return function(){for(var o in n=r=void 0,e)t(o)||(n?r||(r=o):n=o,i=o)}(),s.call(this,o,u,c)};var u=[[],function(){return{}}],c=o.getRegister;o.getRegister=function(){var o=c.call(this);if(o)return o;var s,a=function(o){var s,u,c=0;for(var a in e)if(!t(a)){if(0===c&&a!==n||1===c&&a!==r)return a;s?(i=a,u=o&&u||a):s=a===i,c++}return u}(this.firstGlobalProp);if(!a)return u;try{s=e[a]}catch(f){return u}return[[],function(e){return{execute:function(){e(s),e({default:s,__useDefault:!0})}}}]};var a="undefined"!=typeof navigator&&-1!==navigator.userAgent.indexOf("Trident")}("undefined"!=typeof self?self:global),function(e){var t=e.System.constructor.prototype,r=/^[^#?]+\.(css|html|json|wasm)([?#].*)?$/,i=t.shouldFetch.bind(t);t.shouldFetch=function(e){return i(e)||r.test(e)};var o=/^application\/json(;|$)/,s=/^text\/css(;|$)/,u=/^application\/wasm(;|$)/,c=t.fetch;t.fetch=function(t,r){return c(t,r).then((function(i){if(r.passThrough)return i;if(!i.ok)return i;var c=i.headers.get("content-type");return o.test(c)?i.json().then((function(e){return new Response(new Blob(['System.register([],function(e){return{execute:function(){e("default",'+JSON.stringify(e)+")}}})"],{type:"application/javascript"}))})):s.test(c)?i.text().then((function(e){return e=e.replace(/url\(\s*(?:(["'])((?:\\.|[^\n\\"'])+)\1|((?:\\.|[^\s,"'()\\])+))\s*\)/g,(function(e,r,i,o){return["url(",r,n(i||o,t),r,")"].join("")})),new Response(new Blob(["System.register([],function(e){return{execute:function(){var s=new CSSStyleSheet();s.replaceSync("+JSON.stringify(e)+');e("default",s)}}})'],{type:"application/javascript"}))})):u.test(c)?(WebAssembly.compileStreaming?WebAssembly.compileStreaming(i):i.arrayBuffer().then(WebAssembly.compile)).then((function(n){e.System.wasmModules||(e.System.wasmModules=Object.create(null)),e.System.wasmModules[t]=n;var r=[],i=[];return WebAssembly.Module.imports&&WebAssembly.Module.imports(n).forEach((function(e){var t=JSON.stringify(e.module);-1===r.indexOf(t)&&(r.push(t),i.push("function(m){i["+t+"]=m}"))})),new Response(new Blob(["System.register(["+r.join(",")+"],function(e){var i={};return{setters:["+i.join(",")+"],execute:function(){return WebAssembly.instantiate(System.wasmModules["+JSON.stringify(t)+"],i).then(function(m){e(m.exports)})}}})"],{type:"application/javascript"}))})):i}))}}("undefined"!=typeof self?self:global);var q="undefined"!=typeof Symbol&&Symbol.toStringTag;I.get=function(e){var t=this[M][e];if(t&&null===t.e&&!t.E)return t.er?null:t.n},I.set=function(t,n){try{new URL(t)}catch(s){console.warn(Error(e("W3",'"'+t+'" is not a valid URL to set in the module registry')))}var r;q&&"Module"===n[q]?r=n:(r=Object.assign(Object.create(null),n),q&&Object.defineProperty(r,q,{value:"Module"}));var i=Promise.resolve(r),o=this[M][t]||(this[M][t]={id:t,i:[],h:!1,d:[],e:null,er:void 0,E:void 0});return!o.e&&!o.E&&(Object.assign(o,{n:r,I:void 0,L:void 0,C:i}),r)},I.has=function(e){return!!this[M][e]},I.delete=function(e){var t=this[M],n=t[e];if(!n||n.p&&null!==n.p.e||n.E)return!1;var r=n.i;return n.d&&n.d.forEach((function(e){var t=e.i.indexOf(n);-1!==t&&e.i.splice(t,1)})),delete t[e],function(){var n=t[e];if(!n||!r||null!==n.e||n.E)return!1;r.forEach((function(e){n.i.push(e),e(n.n)})),r=null}};var D="undefined"!=typeof Symbol&&Symbol.iterator;I.entries=function(){var e,t,n=this,r=Object.keys(n[M]),i=0,o={next:function(){for(;void 0!==(t=r[i++])&&void 0===(e=n.get(t)););return{done:void 0===t,value:void 0!==t&&[t,e]}}};return o[D]=function(){return this},o}}();
 !function(t){function e(t){t.registerRegistry=Object.create(null),t.namedRegisterAliases=Object.create(null)}var r=t.System;e(r);var i,s,n=r.constructor.prototype,l=r.constructor,a=function(){l.call(this),e(this)};a.prototype=n,r.constructor=a;var o=n.register;n.register=function(t,e,r,n){if("string"!=typeof t)return o.apply(this,arguments);var l=[e,r,n];return this.registerRegistry[t]=l,i||(i=l,s=t),Promise.resolve().then((function(){i=null,s=null})),o.apply(this,[e,r,n])};var u=n.resolve;n.resolve=function(t,e){try{return u.call(this,t,e)}catch(r){if(t in this.registerRegistry)return this.namedRegisterAliases[t]||t;throw r}};var c=n.instantiate;n.instantiate=function(t,e,r){var i=this.registerRegistry[t];return i?(this.registerRegistry[t]=null,i):c.call(this,t,e,r)};var g=n.getRegister;n.getRegister=function(t){var e=g.call(this,t);s&&t&&(this.namedRegisterAliases[s]=t);var r=i||e;return i=null,s=null,r}}("undefined"!=typeof self?self:global);
 ;(typeof System!='undefined')&&(System=new System.constructor());
-System.register("./___monkey.entry.js", [],(function(exports,module){'use strict';return{execute:(function(){exports({$:isCollectionDetailPage,B:rdwPageHash,D:createFavoritesSyncTabId,G:readArtistsMirror,I:listArtistTags,J:writeArtistsMirror,K:reloadFromStorage,L:save,P:setSyncState,Q:Q$1,Y:a,Z:applyTokenProperties,_:resolveAppearancePalette,a:applyAppearanceTheme,a$:writeSiteBlacklist,a0:menuRouteForPage,a1:getSiteSkinCss,a2:$$1,aB:Segmented,aE:TextField,aF:Button,aG:clampBackgroundDim,aI:featurePanelLabel,aK:setFeatureEnabled,aL:clearFeatureState,aM:applyCssOnlyFeatureEnabled,aN:isFeatureEnabled,aP:setFeatureChoiceValue,aQ:applyCssOnlyFeatureChoice,aR:getFeatureChoice,aS:createAutocompleteQuerier,aT:b,aU:readSiteBlacklist,aV:Chip,aW:AutocompleteField,aX:ProgressBar,aY:createDefaultCustomTheme,a_:prepareBackgroundImageFile,ad:d,ae:Card,af:SectionLabel,ag:Switch,ai:setTweaksEnabled,aj:NumberField,al:setUpdatesGroupSize,am:getUpdatesGroupSize,ao:setPlaylistChunkSize,ap:getPlaylistChunkSize,ar:setGridFavButtonsEnabled,as:setGridFavButtonsVisible,at:P$1,au:T,av:A,ay:Select,b$:shuffleCollection,b1:load,b2:createDefaultStorage,b3:clearStorageCache,b4:clearFavsCache,b5:object,b7:optional,b8:string,bB:collectionDetailHash,bC:readCoverMirror,bE:IconCheck,bF:readCountMirror,bG:buildSearchUrl,bH:dynamicCollectionMarkHash,bI:serialize,bK:getSeenPostId,bU:IconButton,bV:IconX,bW:isFollowingArtist,bX:addArtist,bY:removeArtist,b_:w$1,ba:literal,bc:stripLegacyPanelWindowSize,bd:migrateMarksFavToFavs,bf:createDefaultFavs,bg:parseFavsStrict,bh:setAppearance,bi:loadFavSet,bk:extractFavIdsFromMarks,bn:getTweaksEnabled,bo:getGridFavButtonsEnabled,bp:getFeatureChoiceValue,bq:getScreenPixelSize,br:IconPlus,bs:EmptyState,bt:Dialog,bu:resolveCollectionKind,bv:deleteCollection,bw:QueryField,bx:isUnfilteredQuery,by:createDynamicCollection,bz:createPlaylist,c0:resetCollectionOrder,c1:Toast,c2:getCollectionOrder,c3:listPlaylists,c4:removePostsFromCollection,c5:renameCollection,c7:restorePosts,c9:collectionQueueHash,d:detectPageKind,e:ensureDocumentStyles,f:ensureStyleElement,g:getAppearance,h:buildOwnPageCss,j:getSyncState,k:readFavoritesSyncMode,m:mountCards,n:normalizeArtistTag,o:runFavoritesSync,p:parseRdwHash,r:runFeaturesYielding,s:syncFavoritesPage,x:resolveFavoritesUserId,y:yieldToMain});var STORAGE_KEY = "ruledesk-web.storage";
+System.register("./___monkey.entry.js", [],(function(exports,module){'use strict';return{execute:(function(){exports({$:isCollectionDetailPage,B:rdwPageHash,D:createFavoritesSyncTabId,G:readArtistsMirror,I:listArtistTags,J:writeArtistsMirror,K:reloadFromStorage,L:save,P:setSyncState,Q:Q$1,Y:a,Z:applyTokenProperties,_:resolveAppearancePalette,a:applyAppearanceTheme,a$:writeSiteBlacklist,a0:menuRouteForPage,a1:getSiteSkinCss,a2:$$1,aB:Segmented,aE:TextField,aF:Button,aG:clampBackgroundDim,aI:featurePanelLabel,aK:setFeatureEnabled,aL:clearFeatureState,aM:applyCssOnlyFeatureEnabled,aN:isFeatureEnabled,aP:setFeatureChoiceValue,aQ:applyCssOnlyFeatureChoice,aR:getFeatureChoice,aS:createAutocompleteQuerier,aT:b,aU:readSiteBlacklist,aV:Chip,aW:AutocompleteField,aX:ProgressBar,aY:createDefaultCustomTheme,a_:prepareBackgroundImageFile,ad:d,ae:Card,af:SectionLabel,ag:Switch,ai:setTweaksEnabled,aj:NumberField,al:setUpdatesGroupSize,am:getUpdatesGroupSize,ao:setPlaylistChunkSize,ap:getPlaylistChunkSize,ar:setGridFavButtonsEnabled,as:setGridFavButtonsVisible,at:P$1,au:T,av:A,ay:Select,b1:load,b2:createDefaultStorage,b3:clearStorageCache,b4:clearFavsCache,b5:object,b7:optional,b8:string,bB:collectionDetailHash,bC:readCoverMirror,bE:IconCheck,bF:readCountMirror,bG:buildSearchUrl,bH:dynamicCollectionMarkHash,bI:serialize,bK:getSeenPostId,bT:isFollowingArtist,bU:addArtist,bV:restoreArtist,bX:IconButton,bY:IconPencil,bZ:IconX,b_:removeArtist,ba:literal,bc:stripLegacyPanelWindowSize,bd:migrateMarksFavToFavs,bf:createDefaultFavs,bg:parseFavsStrict,bh:setAppearance,bi:loadFavSet,bk:extractFavIdsFromMarks,bn:getTweaksEnabled,bo:getGridFavButtonsEnabled,bp:getFeatureChoiceValue,bq:getScreenPixelSize,br:IconPlus,bs:EmptyState,bt:Dialog,bu:resolveCollectionKind,bv:deleteCollection,bw:QueryField,bx:isUnfilteredQuery,by:createDynamicCollection,bz:createPlaylist,c0:removeArtists,c1:rememberArtistSnapshot,c2:fetchArtistSnapshot,c3:setArtistNote,c4:addArtists,c5:w$1,c6:shuffleCollection,c7:resetCollectionOrder,c8:Toast,c9:getCollectionOrder,ca:listPlaylists,cb:removePostsFromCollection,cc:renameCollection,ce:restorePosts,cg:collectionQueueHash,d:detectPageKind,e:ensureDocumentStyles,f:ensureStyleElement,g:getAppearance,h:buildOwnPageCss,j:getSyncState,k:readFavoritesSyncMode,m:mountCards,n:normalizeArtistTag,o:runFavoritesSync,p:parseRdwHash,r:runFeaturesYielding,s:syncFavoritesPage,x:resolveFavoritesUserId,y:yieldToMain});var STORAGE_KEY = "ruledesk-web.storage";
 var STORAGE_BACKUP_KEY = exports("bj","ruledesk-web.storage.backup");
 var FAVS_STORAGE_KEY = exports("be","ruledesk-web.favs");
 var DEBUG_KEY = "ruledesk-web.debug";
@@ -34,7 +34,7 @@ var SITE_ORIGIN = exports("b","https://rule34.xxx");
 var SEARCH_PATH = exports("X","/index.php");
 var SEARCH_PAGE = exports("bN","post");
 var SEARCH_SECTION = exports("bO","list");
-var SEARCH_SECTION_VIEW = exports("c8","view");
+var SEARCH_SECTION_VIEW = exports("cf","view");
 var SEARCH_PARAM_PAGE = exports("T","page");
 var SEARCH_PARAM_TAGS = exports("c","tags");
 var FAVORITES_PAGE = exports("V","favorites");
@@ -48,7 +48,7 @@ var VOTE_PARAM_TYPE = "type";
 var VOTE_PAGE = "post";
 var VOTE_SECTION = "vote";
 var FETCH_CREDENTIALS = "same-origin";
-var TAG_TYPE_INCLUDE = exports("bT","include");
+var TAG_TYPE_INCLUDE = exports("bW","include");
 var TAG_TYPE_EXCLUDE = "exclude";
 var UPDATES_ID_PREFIX = "id:>";
 var IMPORT_SCHEMA_ERROR_PREFIX = exports("bb","File is not a RuleDesk Web export");
@@ -123,7 +123,7 @@ var CSS_CLASS = exports("C",{
 });
 /** Hash routes and DOM ids for RuleDesk own pages (replaces floating panel). */
 var RDW_HASH_PREFIX = "#rdw/";
-var RDW_ROUTE_COLLECTIONS = exports("c6","collections");
+var RDW_ROUTE_COLLECTIONS = exports("cd","collections");
 var RDW_ROUTE_FOLLOWING = "following";
 var RDW_ROUTE_SETTINGS = "settings";
 var RDW_ROUTES = [
@@ -178,7 +178,7 @@ var PANEL_UI_CLASS = exports("a3",{
 	settingsCaption: "rdw-settings-caption",
 	pageCard: "rdw-page-card"
 });
-var UNFOLLOW_UNDO_MS = exports("bZ",5e3);
+var UNFOLLOW_UNDO_MS = exports("b$",5e3);
 var ARTISTS_EMPTY_TITLE = exports("bM","No followed artists yet");
 var ARTISTS_EMPTY_HINT = exports("bL","Follow artists with the Follow button next to their name in the tag list.");
 var ARTIST_FILTER_LABEL = exports("bP","Filter artists");
@@ -2102,7 +2102,24 @@ var CollectionSchema = /* @__PURE__ */ object({
 	cover: /* @__PURE__ */ optional(/* @__PURE__ */ array(/* @__PURE__ */ string())),
 	postCount: /* @__PURE__ */ optional(PostCountSchema)
 });
-var ArtistEntrySchema = /* @__PURE__ */ object({ tag: (/* @__PURE__ */ string()).check(/* @__PURE__ */ _minLength(1)) });
+/**
+* A followed artist. Everything except `tag` is what the Following page shows
+* and is filled in as it becomes known.
+*/
+var ArtistEntrySchema = /* @__PURE__ */ object({
+	tag: (/* @__PURE__ */ string()).check(/* @__PURE__ */ _minLength(1)),
+	/** When the artist was followed, ms since epoch. Absent for older entries. */
+	addedAt: /* @__PURE__ */ optional(/* @__PURE__ */ number()),
+	/** First thumbs of the artist's results page, for the card cover. */
+	cover: /* @__PURE__ */ optional(/* @__PURE__ */ array(/* @__PURE__ */ string())),
+	postCount: /* @__PURE__ */ optional(PostCountSchema),
+	/** Newest post id of the artist seen so far. */
+	lastPostId: /* @__PURE__ */ optional(int()),
+	/** When `lastPostId` took its current value, ms since epoch. */
+	lastPostSince: /* @__PURE__ */ optional(/* @__PURE__ */ number()),
+	/** The user's own note. */
+	note: /* @__PURE__ */ optional(/* @__PURE__ */ string())
+});
 /** Legacy `fav` remains optional so old storage/export blobs still parse. */
 var MarkFlagsSchema = /* @__PURE__ */ object({
 	fav: /* @__PURE__ */ optional(/* @__PURE__ */ boolean()),
@@ -3799,10 +3816,119 @@ function addArtist(tag) {
 	if (normalized === null) throw new Error("Invalid artist tag");
 	const data = reloadFromStorage();
 	if (data.artists.some((entry) => entry.tag === normalized)) throw new Error("Duplicate artist tag");
-	const entry = ArtistEntrySchema.parse({ tag: normalized });
+	const entry = ArtistEntrySchema.parse({
+		tag: normalized,
+		addedAt: Date.now()
+	});
 	data.artists.push(entry);
 	save(data);
 	return entry;
+}
+/** Puts back an unfollowed artist with everything known about them (Undo). */
+function restoreArtist(entry) {
+	const data = reloadFromStorage();
+	if (data.artists.some((item) => item.tag === entry.tag)) return false;
+	data.artists.push(ArtistEntrySchema.parse(entry));
+	save(data);
+	return true;
+}
+/** Follows several artist tags in one write. Unknown shapes are counted, not thrown. */
+function addArtists(tags) {
+	const data = reloadFromStorage();
+	const known = new Set(data.artists.map((entry) => entry.tag));
+	let added = 0;
+	let duplicates = 0;
+	let invalid = 0;
+	for (const raw of tags) {
+		const normalized = normalizeArtistTag(raw);
+		if (normalized === null) {
+			invalid += 1;
+			continue;
+		}
+		if (known.has(normalized)) {
+			duplicates += 1;
+			continue;
+		}
+		known.add(normalized);
+		data.artists.push(ArtistEntrySchema.parse({
+			tag: normalized,
+			addedAt: Date.now()
+		}));
+		added += 1;
+	}
+	if (added > 0) save(data);
+	return {
+		added,
+		duplicates,
+		invalid
+	};
+}
+/** Unfollows several artists in one write. Returns how many were removed. */
+function removeArtists(tags) {
+	const doomed = new Set(tags);
+	const data = reloadFromStorage();
+	const next = data.artists.filter((entry) => !doomed.has(entry.tag));
+	const removed = data.artists.length - next.length;
+	if (removed > 0) {
+		data.artists = next;
+		save(data);
+	}
+	return removed;
+}
+/** Sets or clears (empty text) the user's note on a followed artist. */
+function setArtistNote(tag, note) {
+	const data = reloadFromStorage();
+	const target = data.artists.find((entry) => entry.tag === tag);
+	if (target === void 0) return false;
+	const trimmed = note.trim();
+	if ((target.note ?? "") === trimmed) return false;
+	if (trimmed.length === 0) delete target.note;
+	else target.note = trimmed;
+	save(data);
+	return true;
+}
+/** A newer post than the remembered one: keep it and when it was first seen. */
+function applyLastPost(target, postId, now) {
+	if (postId <= 0 || postId <= (target.lastPostId ?? 0)) return false;
+	target.lastPostId = postId;
+	target.lastPostSince = now;
+	return true;
+}
+/**
+* Remembers what an artist's first results page showed. An empty cover or a
+* missing count never clears a stored one. Writes only when something changed.
+*/
+function rememberArtistSnapshot(tag, snapshot, now = Date.now()) {
+	const data = reloadFromStorage();
+	const target = data.artists.find((entry) => entry.tag === tag);
+	if (target === void 0) return false;
+	let changed = false;
+	if (snapshot.cover.length > 0 && !sameStrings(target.cover ?? [], snapshot.cover)) {
+		target.cover = [...snapshot.cover];
+		changed = true;
+	}
+	const count = snapshot.postCount;
+	if (count !== null && (target.postCount?.value !== count.value || target.postCount.exact !== count.exact)) {
+		target.postCount = {
+			value: count.value,
+			exact: count.exact
+		};
+		changed = true;
+	}
+	if (applyLastPost(target, snapshot.lastPostId, now)) changed = true;
+	if (changed) save(data);
+	return changed;
+}
+/** Remembers the newest post seen per artist tag, in one write. */
+function rememberArtistLastPosts(newest, now = Date.now()) {
+	const data = reloadFromStorage();
+	let changed = false;
+	for (const target of data.artists) {
+		const postId = newest.get(target.tag);
+		if (postId !== void 0 && applyLastPost(target, postId, now)) changed = true;
+	}
+	if (changed) save(data);
+	return changed;
 }
 function removeArtist(tag) {
 	const normalized = normalizeArtistTag(tag);
@@ -6226,8 +6352,7 @@ function extractPostIdFromFavoritesDeleteOnclick(onclick) {
 	if (match === null) return null;
 	const postId = match[1];
 	return postId === void 0 ? null : postId;
-}
-/**
+}/**
 * Site chrome CSS for html.rdw-skin (light / dark / custom themes).
 * Colors only via --rdw-* tokens. Does not change .thumb 200×200 cell size.
 * Injected via applyAppearanceTheme → injectSiteSkinHook(getSiteSkinCss()).
@@ -8455,8 +8580,8 @@ var FEATURE_LABEL$10 = "Hide blacklisted posts";
 var FEATURE_PAGES$10 = ["list"];
 var BODY_FEATURE_CLASS$2 = featureBodyClass(FEATURE_ID$10);
 var CLASS_BLACKLISTED$1 = "rdw-blacklisted";
-var SCORE_TOKEN_PREFIX$3 = "score:";
-var RATING_TOKEN_PREFIX$2 = "rating:";
+var SCORE_TOKEN_PREFIX$4 = "score:";
+var RATING_TOKEN_PREFIX$3 = "rating:";
 var WHITESPACE_SPLIT = /\s+/;
 var FEATURE_CSS$10 = `
 body.${BODY_FEATURE_CLASS$2} span.thumb.${CLASS_BLACKLISTED$1} {
@@ -8470,7 +8595,7 @@ function parseAltTags(alt) {
 	for (const token of alt.trim().split(WHITESPACE_SPLIT)) {
 		if (token.length === 0) continue;
 		const lower = token.toLowerCase();
-		if (lower.startsWith(SCORE_TOKEN_PREFIX$3) || lower.startsWith(RATING_TOKEN_PREFIX$2)) continue;
+		if (lower.startsWith(SCORE_TOKEN_PREFIX$4) || lower.startsWith(RATING_TOKEN_PREFIX$3)) continue;
 		tags.push(token);
 	}
 	return tags;
@@ -8478,7 +8603,7 @@ function parseAltTags(alt) {
 function parseTitleRating(title) {
 	for (const token of title.trim().split(WHITESPACE_SPLIT)) {
 		if (token.length === 0) continue;
-		if (token.toLowerCase().startsWith(RATING_TOKEN_PREFIX$2)) return token.slice(7);
+		if (token.toLowerCase().startsWith(RATING_TOKEN_PREFIX$3)) return token.slice(7);
 	}
 	return "";
 }
@@ -10402,6 +10527,203 @@ function mountUpdatesBar(root = document, search = window.location.search, optio
 	}
 	mountFullBar(imageList, search, tagsParam, merged);
 }
+/**
+* Readers for a results page (`page=post&s=list`): the live document or one
+* parsed from a fetched page. They only read; nothing here makes a request.
+*/
+var QUERY_MARK = "?";
+var PID_PATTERN = /^\d+$/;
+var EXCLUDE_MARK = "-";
+var FILTER_MARK$2 = ":";
+var OR_MARKS = [
+	"(",
+	")",
+	"~"
+];
+var NON_DIGITS = /\D/g;
+var TOKEN_SPLIT$2 = /\s+/;
+var SCORE_TOKEN_PREFIX$3 = "score:";
+var RATING_TOKEN_PREFIX$2 = "rating:";
+/** Thumb URLs of the first `limit` posts in the grid, in page order. */
+function readFirstThumbUrls(root, limit) {
+	const imageList = root.querySelector(SITE_SELECTORS.imageList);
+	if (imageList === null) return [];
+	const urls = [];
+	const images = imageList.querySelectorAll(`${SITE_SELECTORS.thumb} ${SITE_SELECTORS.previewImage}`);
+	for (const image of images) {
+		const src = image.getAttribute("src");
+		if (src === null || src.trim().length === 0) continue;
+		urls.push(src.trim());
+		if (urls.length === limit) break;
+	}
+	return urls;
+}
+/** Largest post id among the thumbs of the grid, or 0 without thumbs. */
+function readNewestPostId(root) {
+	let newest = 0;
+	for (const thumb of root.querySelectorAll(SITE_SELECTORS.thumb)) {
+		const raw = extractPostIdFromThumb(thumb);
+		const id = raw === null ? NaN : Number(raw);
+		if (Number.isFinite(id) && id > newest) newest = id;
+	}
+	return newest;
+}
+/** Tags of a thumb, from its preview image title, without score and rating. */
+function readThumbTags(thumb) {
+	const image = thumb.querySelector(SITE_SELECTORS.previewImage);
+	const title = image?.getAttribute("title")?.trim() ?? "";
+	const text = title.length > 0 ? title : image?.getAttribute("alt")?.trim() ?? "";
+	const tags = [];
+	for (const token of text.split(TOKEN_SPLIT$2)) {
+		const lower = token.toLowerCase();
+		if (token.length === 0 || lower.startsWith(SCORE_TOKEN_PREFIX$3) || lower.startsWith(RATING_TOKEN_PREFIX$2)) continue;
+		tags.push(lower);
+	}
+	return tags;
+}
+function readPidFromLink(link) {
+	const href = link.getAttribute("href");
+	if (href === null) return null;
+	const query = href.slice(href.indexOf(QUERY_MARK) + 1);
+	const raw = new URLSearchParams(query).get("pid");
+	if (raw === null || !PID_PATTERN.test(raw)) return null;
+	return Number(raw);
+}
+/** The tag of a search that is exactly one plain tag, else null. */
+function readSingleTag(tagsParam) {
+	const tokens = withoutSortRandom(tagsParam).split(" ");
+	const tag = tokens[0];
+	if (tokens.length !== 1 || tag === void 0 || tag.length === 0) return null;
+	if (tag.startsWith(EXCLUDE_MARK) || tag.includes(FILTER_MARK$2) || OR_MARKS.includes(tag)) return null;
+	return tag.toLowerCase();
+}
+function rowLinksToTag(row, tag) {
+	for (const link of row.querySelectorAll("a[href]")) {
+		const href = link.getAttribute("href") ?? "";
+		const mark = href.indexOf(QUERY_MARK);
+		if (mark < 0) continue;
+		const linked = new URLSearchParams(href.slice(mark + 1)).get(SEARCH_PARAM_TAGS);
+		if (linked !== null && linked.trim().toLowerCase() === tag) return true;
+	}
+	return false;
+}
+/**
+* For a search of one tag the sidebar row of that tag shows the site's own
+* total, which is exact. Null when the row or its number is not on the page.
+*/
+function readSingleTagCount(root, tagsParam) {
+	const tag = readSingleTag(tagsParam);
+	if (tag === null) return null;
+	for (const row of root.querySelectorAll(SITE_SELECTORS.tagSidebarRow)) {
+		if (!rowLinksToTag(row, tag)) continue;
+		const digits = (row.querySelector(SITE_SELECTORS.tagCount)?.textContent ?? "").replace(NON_DIGITS, "");
+		if (digits.length === 0) return null;
+		return {
+			value: Number(digits),
+			exact: true
+		};
+	}
+	return null;
+}
+/**
+* Size of the search a first results page shows.
+* A search of one tag takes the exact total from the tag's sidebar row.
+* With a last-page link: at least its offset (`pid`), so the count is a lower
+* bound. With other page links only: the largest offset among them. With no
+* page links: the number of thumbs on the page, exact. No grid: null.
+*/
+function readResultCount(root, tagsParam) {
+	const tagCount = readSingleTagCount(root, tagsParam);
+	if (tagCount !== null) return tagCount;
+	const last = root.querySelector(SITE_SELECTORS.paginationLastPage);
+	if (last !== null) {
+		const pid = readPidFromLink(last);
+		if (pid !== null) return {
+			value: pid,
+			exact: false
+		};
+	}
+	let largest = null;
+	for (const link of root.querySelectorAll(SITE_SELECTORS.paginationPageLink)) {
+		const pid = readPidFromLink(link);
+		if (pid !== null && (largest === null || pid > largest)) largest = pid;
+	}
+	if (largest !== null) return {
+		value: largest,
+		exact: false
+	};
+	const imageList = root.querySelector(SITE_SELECTORS.imageList);
+	if (imageList === null) return null;
+	return {
+		value: imageList.querySelectorAll(SITE_SELECTORS.thumb).length,
+		exact: true
+	};
+}
+/** What a results page of one artist tag tells about the artist. */
+function readArtistSnapshot(root, tag) {
+	return {
+		cover: readFirstThumbUrls(root, 4),
+		postCount: readResultCount(root, tag),
+		lastPostId: readNewestPostId(root)
+	};
+}
+/**
+* Reads the first results page of one artist tag. One request.
+* Only the "Refresh" run of the Following page calls it, started by the user,
+* one artist at a time with a pause. Throws on a network error or a non-OK
+* status (the site answers 429 when asked too often).
+*/
+async function fetchArtistSnapshot(tag) {
+	const url = buildSearchUrl([{
+		tag,
+		type: TAG_TYPE_INCLUDE
+	}]);
+	const response = await fetch(url, {
+		method: "GET",
+		credentials: FETCH_CREDENTIALS
+	});
+	if (!response.ok) throw new Error(`HTTP ${String(response.status)}`);
+	const html = await response.text();
+	return readArtistSnapshot(new DOMParser().parseFromString(html, "text/html"), tag);
+}
+/**
+* Keeps what the Following page shows about each followed artist (cover, post
+* count, newest post) up to date from pages the user opens anyway.
+* Nothing here makes a request.
+*/
+var FIRST_PAGE_PID$2 = "0";
+var unsubscribe;
+/**
+* Newest post per followed artist among the thumbs under `root`.
+* A thumb's tags come from its preview title, so any results page counts:
+* the feed, a search, pages appended while scrolling.
+*/
+function rememberFromThumbs(root, followed) {
+	const newest = /* @__PURE__ */ new Map();
+	for (const thumb of root.querySelectorAll(SITE_SELECTORS.thumb)) {
+		const raw = extractPostIdFromThumb(thumb);
+		const id = raw === null ? NaN : Number(raw);
+		if (!Number.isFinite(id)) continue;
+		for (const tag of readThumbTags(thumb)) if (followed.has(tag) && id > (newest.get(tag) ?? 0)) newest.set(tag, id);
+	}
+	if (newest.size > 0) rememberArtistLastPosts(newest);
+}
+function isFirstPage(search) {
+	const pid = new URLSearchParams(search).get("pid");
+	return pid === null || pid.length === 0 || pid === FIRST_PAGE_PID$2;
+}
+/** Call once per results page. Does nothing while no artist is followed. */
+function rememberArtistsFromPage(search) {
+	const followed = new Set(listArtistTags());
+	if (followed.size === 0) return;
+	const tagsParam = new URLSearchParams(search).get("tags") ?? "";
+	const single = readSingleTag(tagsParam);
+	if (single !== null && followed.has(single) && isFirstPage(search) && !queryHasSortRandom(tagsParam)) rememberArtistSnapshot(single, readArtistSnapshot(document, single));
+	rememberFromThumbs(document, followed);
+	if (unsubscribe === void 0) unsubscribe = onThumbsAdded((root) => {
+		rememberFromThumbs(root, new Set(listArtistTags()));
+	});
+}
 var IMAGE_LIST_SELECTOR = SITE_SELECTORS.imageList;
 var THUMB_SELECTOR = SITE_SELECTORS.thumb;
 var PAGINATION_SELECTOR = "div.pagination";
@@ -10894,6 +11216,7 @@ function mountFeed(ctx) {
 	reloadStoragePreservingArtistsMirror();
 	const onFeed = isFeedPage(ctx.search, artistTags);
 	applyCurrentPageHighlight(feedItem, onFeed, ctx.pageKind);
+	if (ctx.pageKind === "list") rememberArtistsFromPage(ctx.search);
 	if (!onFeed || ctx.pageKind !== "list") return;
 	markNewThumbs(document, getSeenPostId());
 	ensureNewThumbsSubscription();
@@ -11391,7 +11714,7 @@ function createAutocompleteQuerier(options = {}) {
 	};
 }
 /** `sort:random`, `score:>=10`, `id:>5`: a filter, not a tag name. */
-var FILTER_MARK$2 = ":";
+var FILTER_MARK$1 = ":";
 var TRAILING_SPACE = /\s$/;
 var LAST_TOKEN = /(\S+)$/;
 var SYNTAX_TOKENS = [
@@ -11409,7 +11732,7 @@ function readLastQueryToken(query) {
 	const match = LAST_TOKEN.exec(query);
 	const token = match?.[1];
 	if (match === null || token === void 0) return null;
-	if (SYNTAX_TOKENS.includes(token) || token.includes(FILTER_MARK$2)) return null;
+	if (SYNTAX_TOKENS.includes(token) || token.includes(FILTER_MARK$1)) return null;
 	const prefix = token.startsWith("-") && token.length > 1 ? "-" : "";
 	const stem = token.slice(prefix.length);
 	if (stem === "-") return null;
@@ -11872,25 +12195,9 @@ function DynamicCollectionBar(props) {
 	}) : null);
 }
 var FIRST_PAGE_PID = "0";
-var QUERY_MARK = "?";
-var PID_PATTERN = /^\d+$/;
 function isFirstResultsPage(search) {
 	const pid = new URLSearchParams(search).get("pid");
 	return pid === null || pid.length === 0 || pid === FIRST_PAGE_PID;
-}
-/** Thumb URLs of the first posts in the grid, read from the page as it is. */
-function readFirstThumbUrls() {
-	const imageList = findImageList(document);
-	if (imageList === null) return [];
-	const urls = [];
-	const images = imageList.querySelectorAll(`${SITE_SELECTORS.thumb} ${SITE_SELECTORS.previewImage}`);
-	for (const image of images) {
-		const src = image.getAttribute("src");
-		if (src === null || src.trim().length === 0) continue;
-		urls.push(src.trim());
-		if (urls.length === 4) break;
-	}
-	return urls;
 }
 /**
 * The card cover of a dynamic collection is whatever its first results page
@@ -11898,95 +12205,9 @@ function readFirstThumbUrls() {
 */
 function rememberDynamicCover(collectionId, tagsParam, search) {
 	if (isUnfilteredQuery(tagsParam) || queryHasSortRandom(tagsParam) || !isFirstResultsPage(search)) return;
-	setDynamicCover(collectionId, readFirstThumbUrls());
-	const count = readResultCount(tagsParam);
+	setDynamicCover(collectionId, readFirstThumbUrls(document, 4));
+	const count = readResultCount(document, tagsParam);
 	if (count !== null) setDynamicPostCount(collectionId, count);
-}
-function readPidFromLink(link) {
-	const href = link.getAttribute("href");
-	if (href === null) return null;
-	const query = href.slice(href.indexOf(QUERY_MARK) + 1);
-	const raw = new URLSearchParams(query).get("pid");
-	if (raw === null || !PID_PATTERN.test(raw)) return null;
-	return Number(raw);
-}
-var EXCLUDE_MARK = "-";
-var FILTER_MARK$1 = ":";
-var OR_MARKS = [
-	"(",
-	")",
-	"~"
-];
-var NON_DIGITS = /\D/g;
-/** The tag of a search that is exactly one plain tag, else null. */
-function readSingleTag(tagsParam) {
-	const tokens = withoutSortRandom(tagsParam).split(" ");
-	const tag = tokens[0];
-	if (tokens.length !== 1 || tag === void 0 || tag.length === 0) return null;
-	if (tag.startsWith(EXCLUDE_MARK) || tag.includes(FILTER_MARK$1) || OR_MARKS.includes(tag)) return null;
-	return tag.toLowerCase();
-}
-function rowLinksToTag(row, tag) {
-	for (const link of row.querySelectorAll("a[href]")) {
-		const href = link.getAttribute("href") ?? "";
-		const mark = href.indexOf(QUERY_MARK);
-		if (mark < 0) continue;
-		const linked = new URLSearchParams(href.slice(mark + 1)).get(SEARCH_PARAM_TAGS);
-		if (linked !== null && linked.trim().toLowerCase() === tag) return true;
-	}
-	return false;
-}
-/**
-* For a search of one tag the sidebar row of that tag shows the site's own
-* total, which is exact. Null when the row or its number is not on the page.
-*/
-function readSingleTagCount(tagsParam) {
-	const tag = readSingleTag(tagsParam);
-	if (tag === null) return null;
-	for (const row of document.querySelectorAll(SITE_SELECTORS.tagSidebarRow)) {
-		if (!rowLinksToTag(row, tag)) continue;
-		const digits = (row.querySelector(SITE_SELECTORS.tagCount)?.textContent ?? "").replace(NON_DIGITS, "");
-		if (digits.length === 0) return null;
-		return {
-			value: Number(digits),
-			exact: true
-		};
-	}
-	return null;
-}
-/**
-* Size of the current search, read from the first results page.
-* A search of one tag takes the exact total from the tag's sidebar row.
-* With a last-page link: at least its offset (`pid`), so the count is a lower
-* bound. With other page links only: the largest offset among them. With no
-* page links: the number of thumbs on the page, exact. No grid: null.
-*/
-function readResultCount(tagsParam) {
-	const tagCount = readSingleTagCount(tagsParam);
-	if (tagCount !== null) return tagCount;
-	const last = document.querySelector(SITE_SELECTORS.paginationLastPage);
-	if (last !== null) {
-		const pid = readPidFromLink(last);
-		if (pid !== null) return {
-			value: pid,
-			exact: false
-		};
-	}
-	let largest = null;
-	for (const link of document.querySelectorAll(SITE_SELECTORS.paginationPageLink)) {
-		const pid = readPidFromLink(link);
-		if (pid !== null && (largest === null || pid > largest)) largest = pid;
-	}
-	if (largest !== null) return {
-		value: largest,
-		exact: false
-	};
-	const imageList = findImageList(document);
-	if (imageList === null) return null;
-	return {
-		value: imageList.querySelectorAll(SITE_SELECTORS.thumb).length,
-		exact: true
-	};
 }
 function mountDynamicBar(tagsParam, search) {
 	const opened = findOpenedCollection(tagsParam);
@@ -15650,12 +15871,12 @@ bootEarly();
 whenDomReady(() => {
 	applyLayoutBeforePaint();
 	scheduleAfterFirstPaint(() => {
-		module.import('./app-DTUrPwnU-C0xbUzEq.js').then(({ startApp }) => {
+		module.import('./app-y2ahCiKG-vs0j2tHG.js').then(({ startApp }) => {
 			startApp();
 		});
 	});
 });})}}));
-System.register("./app-DTUrPwnU-C0xbUzEq.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var yieldToMain,detectPageKind,mountCards,syncFavoritesPage,runFeaturesYielding,getAppearance,applyAppearanceTheme,ensureDocumentStyles,SITE_SELECTORS,log,SITE_ORIGIN,SEARCH_PARAM_TAGS,normalizeArtistTag,CSS_CLASS,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,HEADER_SELECTOR,RDW_OWN_PAGE_CLASS,MENU_ITEM_ID,parseRdwHash,getSyncState,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,runFavoritesSync,UI_TEXT,Q$1,RDW_PAGE_ROOT_ID,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,resolveFavoritesUserId,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,rdwPageHash,createFavoritesSyncTabId,APPEARANCE_BACKGROUND_KEY,readArtistsMirror,listArtistTags,writeArtistsMirror,reloadFromStorage,save,CURRENT_PAGE_CLASS,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,a,applyTokenProperties,resolveAppearancePalette,isCollectionDetailPage,menuRouteForPage,getSiteSkinCss,$$1,PANEL_UI_CLASS,TOKEN_VAR,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,SITE_LIGHT_C_BG,SITE_LIGHT_C_BG_ALT,SITE_DARK_C_BG,SITE_DARK_C_BORDER,APPEARANCE_BACKGROUND_TOO_LARGE;return{setters:[function(module){yieldToMain=module.y;detectPageKind=module.d;mountCards=module.m;syncFavoritesPage=module.s;runFeaturesYielding=module.r;getAppearance=module.g;applyAppearanceTheme=module.a;ensureDocumentStyles=module.e;SITE_SELECTORS=module.S;log=module.l;SITE_ORIGIN=module.b;SEARCH_PARAM_TAGS=module.c;normalizeArtistTag=module.n;CSS_CLASS=module.C;ensureStyleElement=module.f;RDW_OWN_PAGE_STYLE_ID=module.R;buildOwnPageCss=module.h;HEADER_SELECTOR=module.H;RDW_OWN_PAGE_CLASS=module.i;MENU_ITEM_ID=module.M;parseRdwHash=module.p;getSyncState=module.j;readFavoritesSyncMode=module.k;FAVORITES_SYNC_MODE_FULL=module.F;runFavoritesSync=module.o;UI_TEXT=module.U;Q$1=module.Q;RDW_PAGE_ROOT_ID=module.q;NAVBAR_SELECTOR=module.N;FEED_MENU_ITEM_ID=module.t;RDW_HASH_COLLECTIONS=module.u;MENU_LABEL=module.v;RDW_HASH_FOLLOWING=module.w;resolveFavoritesUserId=module.x;MY_FAVORITES_CONTAINER_ID=module.z;RDW_HASH_SETTINGS=module.A;rdwPageHash=module.B;createFavoritesSyncTabId=module.D;APPEARANCE_BACKGROUND_KEY=module.E;readArtistsMirror=module.G;listArtistTags=module.I;writeArtistsMirror=module.J;reloadFromStorage=module.K;save=module.L;CURRENT_PAGE_CLASS=module.O;setSyncState=module.P;SEARCH_PARAM_PAGE=module.T;FAVORITES_PAGE=module.V;FAVORITES_SECTION_VIEW=module.W;SEARCH_PATH=module.X;a=module.Y;applyTokenProperties=module.Z;resolveAppearancePalette=module._;isCollectionDetailPage=module.$;menuRouteForPage=module.a0;getSiteSkinCss=module.a1;$$1=module.a2;PANEL_UI_CLASS=module.a3;TOKEN_VAR=module.a4;RDW_THEME_ATTR=module.a5;APPEARANCE_THEME_SITE=module.a6;APPEARANCE_THEME_SITE_DARK=module.a7;SITE_LIGHT_C_BG=module.a8;SITE_LIGHT_C_BG_ALT=module.a9;SITE_DARK_C_BG=module.aa;SITE_DARK_C_BORDER=module.ab;APPEARANCE_BACKGROUND_TOO_LARGE=module.ac;}],execute:(function(){exports({i:navigateToRdwRoute,n:loadBackground,r:saveBackground,startApp:startApp,t:clearBackground});/** Matches host.tsx page title class (owned there; styled here for site polish). */
+System.register("./app-y2ahCiKG-vs0j2tHG.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var yieldToMain,detectPageKind,mountCards,syncFavoritesPage,runFeaturesYielding,getAppearance,applyAppearanceTheme,ensureDocumentStyles,SITE_SELECTORS,log,SITE_ORIGIN,SEARCH_PARAM_TAGS,normalizeArtistTag,CSS_CLASS,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,HEADER_SELECTOR,RDW_OWN_PAGE_CLASS,MENU_ITEM_ID,parseRdwHash,getSyncState,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,runFavoritesSync,UI_TEXT,Q$1,RDW_PAGE_ROOT_ID,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,resolveFavoritesUserId,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,rdwPageHash,createFavoritesSyncTabId,APPEARANCE_BACKGROUND_KEY,readArtistsMirror,listArtistTags,writeArtistsMirror,reloadFromStorage,save,CURRENT_PAGE_CLASS,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,a,applyTokenProperties,resolveAppearancePalette,isCollectionDetailPage,menuRouteForPage,getSiteSkinCss,$$1,PANEL_UI_CLASS,TOKEN_VAR,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,SITE_LIGHT_C_BG,SITE_LIGHT_C_BG_ALT,SITE_DARK_C_BG,SITE_DARK_C_BORDER,APPEARANCE_BACKGROUND_TOO_LARGE;return{setters:[function(module){yieldToMain=module.y;detectPageKind=module.d;mountCards=module.m;syncFavoritesPage=module.s;runFeaturesYielding=module.r;getAppearance=module.g;applyAppearanceTheme=module.a;ensureDocumentStyles=module.e;SITE_SELECTORS=module.S;log=module.l;SITE_ORIGIN=module.b;SEARCH_PARAM_TAGS=module.c;normalizeArtistTag=module.n;CSS_CLASS=module.C;ensureStyleElement=module.f;RDW_OWN_PAGE_STYLE_ID=module.R;buildOwnPageCss=module.h;HEADER_SELECTOR=module.H;RDW_OWN_PAGE_CLASS=module.i;MENU_ITEM_ID=module.M;parseRdwHash=module.p;getSyncState=module.j;readFavoritesSyncMode=module.k;FAVORITES_SYNC_MODE_FULL=module.F;runFavoritesSync=module.o;UI_TEXT=module.U;Q$1=module.Q;RDW_PAGE_ROOT_ID=module.q;NAVBAR_SELECTOR=module.N;FEED_MENU_ITEM_ID=module.t;RDW_HASH_COLLECTIONS=module.u;MENU_LABEL=module.v;RDW_HASH_FOLLOWING=module.w;resolveFavoritesUserId=module.x;MY_FAVORITES_CONTAINER_ID=module.z;RDW_HASH_SETTINGS=module.A;rdwPageHash=module.B;createFavoritesSyncTabId=module.D;APPEARANCE_BACKGROUND_KEY=module.E;readArtistsMirror=module.G;listArtistTags=module.I;writeArtistsMirror=module.J;reloadFromStorage=module.K;save=module.L;CURRENT_PAGE_CLASS=module.O;setSyncState=module.P;SEARCH_PARAM_PAGE=module.T;FAVORITES_PAGE=module.V;FAVORITES_SECTION_VIEW=module.W;SEARCH_PATH=module.X;a=module.Y;applyTokenProperties=module.Z;resolveAppearancePalette=module._;isCollectionDetailPage=module.$;menuRouteForPage=module.a0;getSiteSkinCss=module.a1;$$1=module.a2;PANEL_UI_CLASS=module.a3;TOKEN_VAR=module.a4;RDW_THEME_ATTR=module.a5;APPEARANCE_THEME_SITE=module.a6;APPEARANCE_THEME_SITE_DARK=module.a7;SITE_LIGHT_C_BG=module.a8;SITE_LIGHT_C_BG_ALT=module.a9;SITE_DARK_C_BG=module.aa;SITE_DARK_C_BORDER=module.ab;APPEARANCE_BACKGROUND_TOO_LARGE=module.ac;}],execute:(function(){exports({i:navigateToRdwRoute,n:loadBackground,r:saveBackground,startApp:startApp,t:clearBackground});/** Matches host.tsx page title class (owned there; styled here for site polish). */
 var PAGE_TITLE_CLASS$1 = "rdw-page-title";
 /** Matches kit SectionLabel class. */
 var SECTION_LABEL_CLASS = "rdw-section-label";
@@ -15945,28 +16166,28 @@ var collectionsFactory = null;
 var followingFactory = null;
 function getSettingsFactory() {
 	if (settingsFactory === null) settingsFactory = async () => {
-		const mod = await module.import('./settings-page-DItcr0m9-Bu7-WqGV.js');
+		const mod = await module.import('./settings-page-cNKoG0Uv-DA4SlwIi.js');
 		return /* @__PURE__ */ a(mod.SettingsPage, {});
 	};
 	return settingsFactory;
 }
 function getCollectionsFactory() {
 	if (collectionsFactory === null) collectionsFactory = async () => {
-		const mod = await module.import('./collections-page-Bqtgy3X2-C7qQf3m5.js');
+		const mod = await module.import('./collections-page-Cz9p40wf-C7qQf3m5.js');
 		return /* @__PURE__ */ a(mod.CollectionsPage, {});
 	};
 	return collectionsFactory;
 }
 function getFollowingFactory() {
 	if (followingFactory === null) followingFactory = async () => {
-		const mod = await module.import('./following-page-Bf050a3h-FGUOCziL.js');
+		const mod = await module.import('./following-page-DY5FuZ99-DsUnvCMn.js');
 		return /* @__PURE__ */ a(mod.FollowingPage, {});
 	};
 	return followingFactory;
 }
 function collectionDetailFactory(collectionId) {
 	return async () => {
-		const mod = await module.import('./collection-detail-page-C8j0UwUH-DJXsIj9e.js');
+		const mod = await module.import('./collection-detail-page-Bk69tfts-Bgpu1yal.js');
 		return /* @__PURE__ */ a(mod.CollectionDetailPage, { collectionId }, collectionId);
 	};
 }
@@ -16668,7 +16889,7 @@ async function startApp() {
 	await yieldToMain();
 	maybeResumeFavoritesSync();
 }})}}));
-System.register("./settings-page-DItcr0m9-Bu7-WqGV.js", ['./___monkey.entry.js','./app-DTUrPwnU-C0xbUzEq.js'],(function(exports){'use strict';var d,a,PANEL_UI_CLASS,Card,SectionLabel,Switch,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,NumberField,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,setGridFavButtonsVisible,P$1,T,A,getAppearance,applyAppearanceTheme,getSiteSkinCss,APPEARANCE_THEME_CUSTOM,KIT_FOCUS_CSS,Select,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,$$1,Segmented,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,TextField,Button,clampBackgroundDim,FEATURES,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,setFeatureEnabled,clearFeatureState,applyCssOnlyFeatureEnabled,isFeatureEnabled,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,applyCssOnlyFeatureChoice,getFeatureChoice,createAutocompleteQuerier,b,readSiteBlacklist,Chip,AutocompleteField,ProgressBar,createDefaultCustomTheme,AppearanceThemeSchema,prepareBackgroundImageFile,writeSiteBlacklist,runFavoritesSync,log,FAVORITES_SYNC_PAGE_PAUSE_MS,load,createDefaultStorage,clearStorageCache,clearFavsCache,getSyncState,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,setAppearance,loadFavSet,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,gridDensityFeature,FAVORITES_SYNC_MODE_INCREMENTAL,FAVORITES_SYNC_MODE_FULL,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureChoiceValue,getScreenPixelSize,loadBackground,clearBackground,saveBackground;return{setters:[function(module){d=module.ad;a=module.Y;PANEL_UI_CLASS=module.a3;Card=module.ae;SectionLabel=module.af;Switch=module.ag;UI_TEXT=module.U;TWEAKS_SWITCH_ID=module.ah;setTweaksEnabled=module.ai;NumberField=module.aj;UPDATES_GROUP_SIZE_ID=module.ak;setUpdatesGroupSize=module.al;getUpdatesGroupSize=module.am;PLAYLIST_CHUNK_SIZE_ID=module.an;setPlaylistChunkSize=module.ao;getPlaylistChunkSize=module.ap;GRID_FAV_CHECKBOX_ID=module.aq;setGridFavButtonsEnabled=module.ar;setGridFavButtonsVisible=module.as;P$1=module.at;T=module.au;A=module.av;getAppearance=module.g;applyAppearanceTheme=module.a;getSiteSkinCss=module.a1;APPEARANCE_THEME_CUSTOM=module.aw;KIT_FOCUS_CSS=module.ax;Select=module.ay;APPEARANCE_THEME_SITE=module.a6;APPEARANCE_THEME_SITE_DARK=module.a7;APPEARANCE_THEME_LIGHT=module.az;APPEARANCE_THEME_DARK=module.aA;$$1=module.a2;Segmented=module.aB;APPEARANCE_CUSTOM_BASE_LIGHT=module.aC;APPEARANCE_CUSTOM_BASE_DARK=module.aD;TextField=module.aE;Button=module.aF;clampBackgroundDim=module.aG;FEATURES=module.aH;featurePanelLabel=module.aI;FEATURE_CHECKBOX_ID_PREFIX=module.aJ;setFeatureEnabled=module.aK;clearFeatureState=module.aL;applyCssOnlyFeatureEnabled=module.aM;isFeatureEnabled=module.aN;FEATURE_CHOICE_ID_PREFIX=module.aO;setFeatureChoiceValue=module.aP;applyCssOnlyFeatureChoice=module.aQ;getFeatureChoice=module.aR;createAutocompleteQuerier=module.aS;b=module.aT;readSiteBlacklist=module.aU;Chip=module.aV;AutocompleteField=module.aW;ProgressBar=module.aX;createDefaultCustomTheme=module.aY;AppearanceThemeSchema=module.aZ;prepareBackgroundImageFile=module.a_;writeSiteBlacklist=module.a$;runFavoritesSync=module.o;log=module.l;FAVORITES_SYNC_PAGE_PAUSE_MS=module.b0;load=module.b1;createDefaultStorage=module.b2;clearStorageCache=module.b3;clearFavsCache=module.b4;getSyncState=module.j;object=module.b5;StorageSchema=module.b6;optional=module.b7;string=module.b8;FavsSchema=module.b9;literal=module.ba;IMPORT_SCHEMA_ERROR_PREFIX=module.bb;stripLegacyPanelWindowSize=module.bc;save=module.L;migrateMarksFavToFavs=module.bd;FAVS_STORAGE_KEY=module.be;createDefaultFavs=module.bf;parseFavsStrict=module.bg;setAppearance=module.bh;loadFavSet=module.bi;STORAGE_BACKUP_KEY=module.bj;extractFavIdsFromMarks=module.bk;gridDensityFeature=module.bl;FAVORITES_SYNC_MODE_INCREMENTAL=module.bm;FAVORITES_SYNC_MODE_FULL=module.F;getTweaksEnabled=module.bn;getGridFavButtonsEnabled=module.bo;getFeatureChoiceValue=module.bp;getScreenPixelSize=module.bq;},function(module){loadBackground=module.n;clearBackground=module.t;saveBackground=module.r;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
+System.register("./settings-page-cNKoG0Uv-DA4SlwIi.js", ['./___monkey.entry.js','./app-y2ahCiKG-vs0j2tHG.js'],(function(exports){'use strict';var d,a,PANEL_UI_CLASS,Card,SectionLabel,Switch,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,NumberField,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,setGridFavButtonsVisible,P$1,T,A,getAppearance,applyAppearanceTheme,getSiteSkinCss,APPEARANCE_THEME_CUSTOM,KIT_FOCUS_CSS,Select,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,$$1,Segmented,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,TextField,Button,clampBackgroundDim,FEATURES,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,setFeatureEnabled,clearFeatureState,applyCssOnlyFeatureEnabled,isFeatureEnabled,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,applyCssOnlyFeatureChoice,getFeatureChoice,createAutocompleteQuerier,b,readSiteBlacklist,Chip,AutocompleteField,ProgressBar,createDefaultCustomTheme,AppearanceThemeSchema,prepareBackgroundImageFile,writeSiteBlacklist,runFavoritesSync,log,FAVORITES_SYNC_PAGE_PAUSE_MS,load,createDefaultStorage,clearStorageCache,clearFavsCache,getSyncState,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,setAppearance,loadFavSet,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,gridDensityFeature,FAVORITES_SYNC_MODE_INCREMENTAL,FAVORITES_SYNC_MODE_FULL,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureChoiceValue,getScreenPixelSize,loadBackground,clearBackground,saveBackground;return{setters:[function(module){d=module.ad;a=module.Y;PANEL_UI_CLASS=module.a3;Card=module.ae;SectionLabel=module.af;Switch=module.ag;UI_TEXT=module.U;TWEAKS_SWITCH_ID=module.ah;setTweaksEnabled=module.ai;NumberField=module.aj;UPDATES_GROUP_SIZE_ID=module.ak;setUpdatesGroupSize=module.al;getUpdatesGroupSize=module.am;PLAYLIST_CHUNK_SIZE_ID=module.an;setPlaylistChunkSize=module.ao;getPlaylistChunkSize=module.ap;GRID_FAV_CHECKBOX_ID=module.aq;setGridFavButtonsEnabled=module.ar;setGridFavButtonsVisible=module.as;P$1=module.at;T=module.au;A=module.av;getAppearance=module.g;applyAppearanceTheme=module.a;getSiteSkinCss=module.a1;APPEARANCE_THEME_CUSTOM=module.aw;KIT_FOCUS_CSS=module.ax;Select=module.ay;APPEARANCE_THEME_SITE=module.a6;APPEARANCE_THEME_SITE_DARK=module.a7;APPEARANCE_THEME_LIGHT=module.az;APPEARANCE_THEME_DARK=module.aA;$$1=module.a2;Segmented=module.aB;APPEARANCE_CUSTOM_BASE_LIGHT=module.aC;APPEARANCE_CUSTOM_BASE_DARK=module.aD;TextField=module.aE;Button=module.aF;clampBackgroundDim=module.aG;FEATURES=module.aH;featurePanelLabel=module.aI;FEATURE_CHECKBOX_ID_PREFIX=module.aJ;setFeatureEnabled=module.aK;clearFeatureState=module.aL;applyCssOnlyFeatureEnabled=module.aM;isFeatureEnabled=module.aN;FEATURE_CHOICE_ID_PREFIX=module.aO;setFeatureChoiceValue=module.aP;applyCssOnlyFeatureChoice=module.aQ;getFeatureChoice=module.aR;createAutocompleteQuerier=module.aS;b=module.aT;readSiteBlacklist=module.aU;Chip=module.aV;AutocompleteField=module.aW;ProgressBar=module.aX;createDefaultCustomTheme=module.aY;AppearanceThemeSchema=module.aZ;prepareBackgroundImageFile=module.a_;writeSiteBlacklist=module.a$;runFavoritesSync=module.o;log=module.l;FAVORITES_SYNC_PAGE_PAUSE_MS=module.b0;load=module.b1;createDefaultStorage=module.b2;clearStorageCache=module.b3;clearFavsCache=module.b4;getSyncState=module.j;object=module.b5;StorageSchema=module.b6;optional=module.b7;string=module.b8;FavsSchema=module.b9;literal=module.ba;IMPORT_SCHEMA_ERROR_PREFIX=module.bb;stripLegacyPanelWindowSize=module.bc;save=module.L;migrateMarksFavToFavs=module.bd;FAVS_STORAGE_KEY=module.be;createDefaultFavs=module.bf;parseFavsStrict=module.bg;setAppearance=module.bh;loadFavSet=module.bi;STORAGE_BACKUP_KEY=module.bj;extractFavIdsFromMarks=module.bk;gridDensityFeature=module.bl;FAVORITES_SYNC_MODE_INCREMENTAL=module.bm;FAVORITES_SYNC_MODE_FULL=module.F;getTweaksEnabled=module.bn;getGridFavButtonsEnabled=module.bo;getFeatureChoiceValue=module.bp;getScreenPixelSize=module.bq;},function(module){loadBackground=module.n;clearBackground=module.t;saveBackground=module.r;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
 var THEME_OPTIONS = [
 	{
 		value: APPEARANCE_THEME_SITE,
@@ -18062,7 +18283,7 @@ function SettingsPage() {
 		]
 	});
 }})}}));
-System.register("./collections-page-Bqtgy3X2-C7qQf3m5.js", ['./___monkey.entry.js'],(function(exports){'use strict';var d,b,A,reloadFromStorage,load,a,Segmented,TextField,$$1,Button,UI_TEXT,IconPlus,EmptyState,Dialog,resolveCollectionKind,deleteCollection,QueryField,isUnfilteredQuery,createDynamicCollection,createPlaylist,COLLECTION_KIND_POSTS,collectionDetailHash,readCoverMirror,COLLECTION_KIND_SEARCH,IconCheck,readCountMirror,buildSearchUrl,dynamicCollectionMarkHash,serialize;return{setters:[function(module){d=module.ad;b=module.aT;A=module.av;reloadFromStorage=module.K;load=module.b1;a=module.Y;Segmented=module.aB;TextField=module.aE;$$1=module.a2;Button=module.aF;UI_TEXT=module.U;IconPlus=module.br;EmptyState=module.bs;Dialog=module.bt;resolveCollectionKind=module.bu;deleteCollection=module.bv;QueryField=module.bw;isUnfilteredQuery=module.bx;createDynamicCollection=module.by;createPlaylist=module.bz;COLLECTION_KIND_POSTS=module.bA;collectionDetailHash=module.bB;readCoverMirror=module.bC;COLLECTION_KIND_SEARCH=module.bD;IconCheck=module.bE;readCountMirror=module.bF;buildSearchUrl=module.bG;dynamicCollectionMarkHash=module.bH;serialize=module.bI;}],execute:(function(){exports("CollectionsPage",CollectionsPage);var EVENT_PAGESHOW = "pageshow";
+System.register("./collections-page-Cz9p40wf-C7qQf3m5.js", ['./___monkey.entry.js'],(function(exports){'use strict';var d,b,A,reloadFromStorage,load,a,Segmented,TextField,$$1,Button,UI_TEXT,IconPlus,EmptyState,Dialog,resolveCollectionKind,deleteCollection,QueryField,isUnfilteredQuery,createDynamicCollection,createPlaylist,COLLECTION_KIND_POSTS,collectionDetailHash,readCoverMirror,COLLECTION_KIND_SEARCH,IconCheck,readCountMirror,buildSearchUrl,dynamicCollectionMarkHash,serialize;return{setters:[function(module){d=module.ad;b=module.aT;A=module.av;reloadFromStorage=module.K;load=module.b1;a=module.Y;Segmented=module.aB;TextField=module.aE;$$1=module.a2;Button=module.aF;UI_TEXT=module.U;IconPlus=module.br;EmptyState=module.bs;Dialog=module.bt;resolveCollectionKind=module.bu;deleteCollection=module.bv;QueryField=module.bw;isUnfilteredQuery=module.bx;createDynamicCollection=module.by;createPlaylist=module.bz;COLLECTION_KIND_POSTS=module.bA;collectionDetailHash=module.bB;readCoverMirror=module.bC;COLLECTION_KIND_SEARCH=module.bD;IconCheck=module.bE;readCountMirror=module.bF;buildSearchUrl=module.bG;dynamicCollectionMarkHash=module.bH;serialize=module.bI;}],execute:(function(){exports("CollectionsPage",CollectionsPage);var EVENT_PAGESHOW = "pageshow";
 var PAGE_CLASS = "rdw-collections-page";
 var HEADER_CLASS = "rdw-collections-header";
 var TOOLBAR_CLASS = "rdw-collections-toolbar";
@@ -18787,23 +19008,262 @@ function CollectionsPage() {
 		]
 	});
 }})}}));
-System.register("./following-page-Bf050a3h-FGUOCziL.js", ['./___monkey.entry.js'],(function(exports){'use strict';var d,T,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST,A,getSeenPostId,a,Card,PANEL_UI_CLASS,UI_TEXT,$$1,EmptyState,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,Button,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,TextField,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,UNFOLLOWED_PREFIX,UNFOLLOW_UNDO_LABEL,buildSearchUrl,TAG_TYPE_INCLUDE,IconButton,IconX,AutocompleteField,normalizeArtistTag,isFollowingArtist,addArtist,log,removeArtist,UNFOLLOW_UNDO_MS,load;return{setters:[function(module){d=module.ad;T=module.au;createAutocompleteQuerier=module.aS;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.bJ;A=module.av;getSeenPostId=module.bK;a=module.Y;Card=module.ae;PANEL_UI_CLASS=module.a3;UI_TEXT=module.U;$$1=module.a2;EmptyState=module.bs;ARTISTS_EMPTY_HINT=module.bL;ARTISTS_EMPTY_TITLE=module.bM;Button=module.aF;SEARCH_PATH=module.X;SEARCH_PARAM_PAGE=module.T;SEARCH_PAGE=module.bN;SEARCH_SECTION=module.bO;TextField=module.aE;ARTIST_FILTER_LABEL=module.bP;ARTIST_FILTER_ID=module.bQ;UNFOLLOWED_PREFIX=module.bR;UNFOLLOW_UNDO_LABEL=module.bS;buildSearchUrl=module.bG;TAG_TYPE_INCLUDE=module.bT;IconButton=module.bU;IconX=module.bV;AutocompleteField=module.aW;normalizeArtistTag=module.n;isFollowingArtist=module.bW;addArtist=module.bX;log=module.l;removeArtist=module.bY;UNFOLLOW_UNDO_MS=module.bZ;load=module.b1;}],execute:(function(){exports("FollowingPage",FollowingPage);var ADD_FORM_CLASS = "rdw-following-add";
+System.register("./following-page-DY5FuZ99-DsUnvCMn.js", ['./___monkey.entry.js'],(function(exports){'use strict';var d,T,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST,A,reloadFromStorage,getSeenPostId,a,EmptyState,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,$$1,Button,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,Segmented,TextField,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,Select,UI_TEXT,ProgressBar,UNFOLLOWED_PREFIX,UNFOLLOW_UNDO_LABEL,Dialog,load,AutocompleteField,normalizeArtistTag,isFollowingArtist,addArtist,restoreArtist,log,buildSearchUrl,TAG_TYPE_INCLUDE,IconCheck,IconButton,IconPencil,IconX,removeArtist,UNFOLLOW_UNDO_MS,removeArtists,rememberArtistSnapshot,fetchArtistSnapshot,setArtistNote,addArtists;return{setters:[function(module){d=module.ad;T=module.au;createAutocompleteQuerier=module.aS;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.bJ;A=module.av;reloadFromStorage=module.K;getSeenPostId=module.bK;a=module.Y;EmptyState=module.bs;ARTISTS_EMPTY_HINT=module.bL;ARTISTS_EMPTY_TITLE=module.bM;$$1=module.a2;Button=module.aF;SEARCH_PATH=module.X;SEARCH_PARAM_PAGE=module.T;SEARCH_PAGE=module.bN;SEARCH_SECTION=module.bO;Segmented=module.aB;TextField=module.aE;ARTIST_FILTER_LABEL=module.bP;ARTIST_FILTER_ID=module.bQ;Select=module.ay;UI_TEXT=module.U;ProgressBar=module.aX;UNFOLLOWED_PREFIX=module.bR;UNFOLLOW_UNDO_LABEL=module.bS;Dialog=module.bt;load=module.b1;AutocompleteField=module.aW;normalizeArtistTag=module.n;isFollowingArtist=module.bT;addArtist=module.bU;restoreArtist=module.bV;log=module.l;buildSearchUrl=module.bG;TAG_TYPE_INCLUDE=module.bW;IconCheck=module.bE;IconButton=module.bX;IconPencil=module.bY;IconX=module.bZ;removeArtist=module.b_;UNFOLLOW_UNDO_MS=module.b$;removeArtists=module.c0;rememberArtistSnapshot=module.c1;fetchArtistSnapshot=module.c2;setArtistNote=module.c3;addArtists=module.c4;}],execute:(function(){exports("FollowingPage",FollowingPage);var EVENT_PAGESHOW = "pageshow";
+var PAGE_CLASS = "rdw-following-page";
+var ADD_FORM_CLASS = "rdw-following-add";
+var TOOLBAR_CLASS = "rdw-following-toolbar";
+var FILTER_CLASS = "rdw-following-filter";
+var META_CLASS = "rdw-following-meta";
+var GRID_CLASS = "rdw-following-grid";
+var CARD_CLASS = "rdw-artist-card";
+var CARD_SELECTED_CLASS = "rdw-artist-card--selected";
+var CARD_LINK_CLASS = "rdw-artist-card-link";
+var CARD_MARK_CLASS = "rdw-artist-card-mark";
+var CARD_ACTIONS_CLASS = "rdw-artist-card-actions";
+var CARD_UNDO_CLASS = "rdw-artist-card-undo";
+var COVER_CLASS = "rdw-artist-cover";
+var COVER_CELL_CLASS = "rdw-artist-cover-cell";
+var COVER_IMAGE_CLASS = "rdw-artist-cover-image";
+var NAME_ROW_CLASS = "rdw-artist-name-row";
+var NAME_CLASS = "rdw-artist-name";
+var NEW_BADGE_CLASS = "rdw-artist-new";
+var CAPTION_CLASS = "rdw-artist-caption";
+var NOTE_CLASS = "rdw-artist-note";
+var PROGRESS_CLASS = "rdw-following-progress";
+var DIALOG_FORM_CLASS = "rdw-dialog__fields";
+var DIALOG_ACTIONS_CLASS = "rdw-dialog__actions";
 var ADD_INPUT_ID = "rdw-following-add-tag";
 var OPEN_POSTS_LABEL = "Open Posts";
 var OPEN_POSTS_HREF = `${SEARCH_PATH}?${SEARCH_PARAM_PAGE}=${SEARCH_PAGE}&s=${SEARCH_SECTION}`;
+var SHOW_ALL = "all";
+var SHOW_NEW = "new";
+var SORT_NAME = "name";
+var SORT_POSTS = "posts";
+var SORT_ADDED = "added";
+var SHOW_LABEL = "Show";
+var SORT_LABEL = "Sort";
+var NEW_BADGE = "new";
+var SELECT_LABEL = "Select";
+var SELECT_ALL_LABEL = "Select all";
+var SELECTED_SUFFIX = " selected";
+var UNFOLLOW_LABEL = "Unfollow";
+var REFRESH_LABEL = "Refresh";
+var REFRESH_TITLE = "Read each artist's first page again: cover, post count, newest post";
+var TRANSFER_LABEL = "Import / export";
+var TRANSFER_TITLE = "Import or export followed artists";
+var TRANSFER_FIELD_LABEL = "Artist tags, separated by spaces";
+var COPY_LABEL = "Copy";
+var COPIED_LABEL = "Copied";
+var IMPORT_LABEL = "Import";
+var CLOSE_LABEL = "Close";
+var NOTE_TITLE_PREFIX = "Note for ";
+var NOTE_FIELD_LABEL = "Note";
+var NOT_OPENED_CAPTION = "not opened yet";
+var QUIET_PREFIX = "no new posts since ";
+var POST_WORD_SINGULAR = "post";
+var POST_WORD_PLURAL = "posts";
+var COUNT_AT_LEAST_MARK = "+";
+var NO_MATCH_TITLE = "No matching artists";
+var NO_MATCH_DESCRIPTION = "Nothing matches this filter.";
+var UNFOLLOW_DIALOG_TITLE = "Unfollow artists";
+var REFRESH_DIALOG_TITLE = "Refresh artists";
+var REFRESH_STOPPED_PREFIX = "Stopped at ";
+var REFRESH_DONE_PREFIX = "Refreshed ";
+var ROLE_CHECKBOX = "checkbox";
+var LOCALE = "en-US";
+var DATE_LOCALE = "en-GB";
+var SINGLE = 1;
+var MS_PER_DAY = 864e5;
+/** An artist whose newest post has not changed for this long is marked quiet. */
+var QUIET_AFTER_DAYS = 60;
+/** Pause between two requests of a Refresh run. */
+var REFRESH_INTERVAL_MS = 1500;
+var MS_PER_SECOND = 1e3;
+var COVER_AXIS_COUNT = 2;
+var ICON_PX = 14;
+var GRID_MIN_TRACK_PX = 170;
+var SHOW_OPTIONS = [{
+	value: SHOW_ALL,
+	label: "All"
+}, {
+	value: SHOW_NEW,
+	label: "New"
+}];
+var SORT_OPTIONS = [
+	{
+		value: SORT_NAME,
+		label: "Name"
+	},
+	{
+		value: SORT_POSTS,
+		label: "Posts"
+	},
+	{
+		value: SORT_ADDED,
+		label: "Recently followed"
+	}
+];
 var FOLLOWING_PAGE_CSS = `
-.${ADD_FORM_CLASS} {
+.${PAGE_CLASS} {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.${ADD_FORM_CLASS},
+.${TOOLBAR_CLASS} {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   align-items: flex-end;
 }
 .${ADD_FORM_CLASS} .rdw-field,
-.${ADD_FORM_CLASS} .rdw-ac {
+.${ADD_FORM_CLASS} .rdw-ac,
+.${TOOLBAR_CLASS} .${FILTER_CLASS} {
   flex: 1 1 12rem;
+  min-width: 0;
   margin: 0;
 }
+.${META_CLASS},
+.${CAPTION_CLASS},
+.${NOTE_CLASS} {
+  margin: 0;
+  color: var(--rdw-muted);
+  font-size: 12px;
+}
+.${NOTE_CLASS} {
+  color: var(--rdw-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.${GRID_CLASS} {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(${String(GRID_MIN_TRACK_PX)}px, 1fr));
+  gap: 12px;
+}
+.${CARD_CLASS} {
+  position: relative;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 8px;
+  background: var(--rdw-surface);
+  border: 1px solid var(--rdw-border);
+  border-radius: var(--rdw-radius-l);
+}
+.${CARD_CLASS}:hover,
+.${CARD_CLASS}:focus-within,
+.${CARD_SELECTED_CLASS} {
+  border-color: var(--rdw-accent);
+}
+.${CARD_SELECTED_CLASS} {
+  box-shadow: 0 0 0 1px var(--rdw-accent);
+}
+.${CARD_LINK_CLASS} {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  color: var(--rdw-text);
+  text-decoration: none;
+  outline: none;
+}
+.${COVER_CLASS} {
+  display: grid;
+  grid-template-columns: repeat(${String(COVER_AXIS_COUNT)}, minmax(0, 1fr));
+  grid-template-rows: repeat(${String(COVER_AXIS_COUNT)}, minmax(0, 1fr));
+  aspect-ratio: 1;
+  gap: 2px;
+  border-radius: var(--rdw-radius-m);
+  overflow: hidden;
+}
+.${COVER_CELL_CLASS} {
+  min-width: 0;
+  min-height: 0;
+  background: var(--rdw-surface-2);
+}
+.${COVER_IMAGE_CLASS} {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.${NAME_ROW_CLASS} {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+.${NAME_CLASS} {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.${NEW_BADGE_CLASS} {
+  flex: none;
+  padding: 0 6px;
+  border-radius: 9px;
+  background: var(--rdw-accent);
+  color: var(--rdw-surface);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.${CARD_ACTIONS_CLASS} {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  gap: 4px;
+}
+.${CARD_ACTIONS_CLASS} .rdw-icon-btn {
+  background: var(--rdw-surface);
+  border: 1px solid var(--rdw-border);
+}
+.${CARD_MARK_CLASS} {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--rdw-border);
+  border-radius: var(--rdw-radius-m);
+  background: var(--rdw-surface);
+  color: var(--rdw-surface);
+}
+.${CARD_SELECTED_CLASS} .${CARD_MARK_CLASS} {
+  border-color: var(--rdw-accent);
+  background: var(--rdw-accent);
+}
+.${CARD_UNDO_CLASS} {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 8px;
+  height: 100%;
+  color: var(--rdw-muted);
+}
+.${PROGRESS_CLASS} {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.${PROGRESS_CLASS} .rdw-progress {
+  flex: 1 1 auto;
+}
 `.trim();
+function isShowMode(value) {
+	return value === SHOW_ALL || value === SHOW_NEW;
+}
+function isSortMode(value) {
+	return value === SORT_NAME || value === SORT_POSTS || value === SORT_ADDED;
+}
 function displayArtistName(tag) {
 	return tag.replaceAll("_", " ");
 }
@@ -18812,6 +19272,152 @@ function compareArtistTags(a, b) {
 }
 function readArtists() {
 	return [...load().artists];
+}
+/** True when the artist's newest known post is newer than the feed's seen mark. */
+function artistHasNew(artist, seenPostId) {
+	return seenPostId > 0 && (artist.lastPostId ?? 0) > seenPostId;
+}
+/** The day the artist's newest post was first noticed, when that is long ago. */
+function quietSince(artist, now) {
+	const since = artist.lastPostSince;
+	if (since === void 0 || now - since < QUIET_AFTER_DAYS * MS_PER_DAY) return null;
+	return since;
+}
+function postsCaption(artist) {
+	const count = artist.postCount;
+	if (count === void 0) return NOT_OPENED_CAPTION;
+	const number = count.value.toLocaleString(LOCALE);
+	if (!count.exact) return `${number}${COUNT_AT_LEAST_MARK} ${POST_WORD_PLURAL}`;
+	return `${number} ${count.value === SINGLE ? POST_WORD_SINGULAR : POST_WORD_PLURAL}`;
+}
+function formatDay(time) {
+	return new Date(time).toLocaleDateString(DATE_LOCALE, {
+		day: "numeric",
+		month: "short",
+		year: "numeric"
+	});
+}
+function sortArtists(artists, mode) {
+	const sorted = [...artists].sort((a, b) => compareArtistTags(a.tag, b.tag));
+	if (mode === SORT_POSTS) sorted.sort((a, b) => (b.postCount?.value ?? -1) - (a.postCount?.value ?? -1));
+	else if (mode === SORT_ADDED) sorted.sort((a, b) => (b.addedAt ?? 0) - (a.addedAt ?? 0));
+	return sorted;
+}
+function unfollowMessage(count) {
+	return count === SINGLE ? "Unfollow 1 artist? This cannot be undone." : `Unfollow ${String(count)} artists? This cannot be undone.`;
+}
+function refreshMessage(count) {
+	const seconds = Math.ceil(count * REFRESH_INTERVAL_MS / MS_PER_SECOND);
+	return `This makes ${count === SINGLE ? "1 request" : `${String(count)} requests`} to the site, one every ${String(REFRESH_INTERVAL_MS / MS_PER_SECOND)} seconds (about ${String(seconds)} s). It stops at the first error.`;
+}
+function sleep(ms) {
+	return new Promise((resolve) => {
+		window.setTimeout(resolve, ms);
+	});
+}
+function CoverThumb(props) {
+	const [failedUrl, setFailedUrl] = d(null);
+	if (failedUrl === props.url) return null;
+	return /* @__PURE__ */ a("img", {
+		className: COVER_IMAGE_CLASS,
+		src: props.url,
+		alt: "",
+		loading: "lazy",
+		onError: () => {
+			setFailedUrl(props.url);
+		}
+	});
+}
+function ArtistCover(props) {
+	const cover = props.artist.cover ?? [];
+	const cells = [];
+	for (let index = 0; index < 4; index += 1) {
+		const url = cover[index];
+		cells.push(/* @__PURE__ */ a("span", {
+			className: COVER_CELL_CLASS,
+			children: url === void 0 ? null : /* @__PURE__ */ a(CoverThumb, { url })
+		}, index));
+	}
+	return /* @__PURE__ */ a("span", {
+		className: COVER_CLASS,
+		children: cells
+	});
+}
+function ArtistCard(props) {
+	const { artist, select } = props;
+	const quiet = quietSince(artist, props.now);
+	const note = artist.note ?? "";
+	const body = /* @__PURE__ */ a($$1, { children: [
+		/* @__PURE__ */ a(ArtistCover, { artist }),
+		/* @__PURE__ */ a("span", {
+			className: NAME_ROW_CLASS,
+			children: [/* @__PURE__ */ a("span", {
+				className: NAME_CLASS,
+				title: artist.tag,
+				children: displayArtistName(artist.tag)
+			}), props.hasNew ? /* @__PURE__ */ a("span", {
+				className: NEW_BADGE_CLASS,
+				children: NEW_BADGE
+			}) : null]
+		}),
+		/* @__PURE__ */ a("span", {
+			className: CAPTION_CLASS,
+			children: postsCaption(artist)
+		}),
+		quiet === null ? null : /* @__PURE__ */ a("span", {
+			className: CAPTION_CLASS,
+			children: `${QUIET_PREFIX}${formatDay(quiet)}`
+		}),
+		note.length > 0 ? /* @__PURE__ */ a("span", {
+			className: NOTE_CLASS,
+			title: note,
+			children: note
+		}) : null
+	] });
+	const href = buildSearchUrl([{
+		tag: artist.tag,
+		type: TAG_TYPE_INCLUDE
+	}]);
+	if (select !== null) return /* @__PURE__ */ a("div", {
+		className: select.selected ? `${CARD_CLASS} ${CARD_SELECTED_CLASS}` : CARD_CLASS,
+		"data-tag": artist.tag,
+		children: [/* @__PURE__ */ a("a", {
+			className: CARD_LINK_CLASS,
+			href,
+			role: ROLE_CHECKBOX,
+			"aria-checked": select.selected,
+			"aria-label": artist.tag,
+			onClick: (event) => {
+				event.preventDefault();
+				select.onToggle();
+			},
+			children: body
+		}), /* @__PURE__ */ a("span", {
+			className: CARD_MARK_CLASS,
+			"aria-hidden": "true",
+			children: select.selected ? /* @__PURE__ */ a(IconCheck, { size: ICON_PX }) : null
+		})]
+	});
+	return /* @__PURE__ */ a("div", {
+		className: CARD_CLASS,
+		"data-tag": artist.tag,
+		children: [/* @__PURE__ */ a("a", {
+			className: CARD_LINK_CLASS,
+			href,
+			children: body
+		}), /* @__PURE__ */ a("div", {
+			className: CARD_ACTIONS_CLASS,
+			children: [/* @__PURE__ */ a(IconButton, {
+				label: `Note for ${artist.tag}`,
+				onClick: props.onEditNote,
+				children: /* @__PURE__ */ a(IconPencil, { size: ICON_PX })
+			}), /* @__PURE__ */ a(IconButton, {
+				label: `Unfollow ${artist.tag}`,
+				onClick: props.onUnfollow,
+				children: /* @__PURE__ */ a(IconX, { size: ICON_PX })
+			})]
+		})]
+	});
 }
 function AddArtistForm(props) {
 	return /* @__PURE__ */ a("form", {
@@ -18845,46 +19451,64 @@ function FollowingPage() {
 	const [artists, setArtists] = d(() => readArtists());
 	const [pending, setPending] = d([]);
 	const [filter, setFilter] = d("");
+	const [show, setShow] = d(SHOW_ALL);
+	const [sort, setSort] = d(SORT_NAME);
 	const [draft, setDraft] = d("");
 	const [addError, setAddError] = d("");
 	const [suggestions, setSuggestions] = d([]);
+	const [selecting, setSelecting] = d(false);
+	const [selectedTags, setSelectedTags] = d([]);
+	const [confirmUnfollow, setConfirmUnfollow] = d(false);
+	const [confirmRefresh, setConfirmRefresh] = d(false);
+	const [refresh, setRefresh] = d(null);
+	const [noteTag, setNoteTag] = d(null);
+	const [noteDraft, setNoteDraft] = d("");
+	const [transferOpen, setTransferOpen] = d(false);
+	const [transferDraft, setTransferDraft] = d("");
+	const [transferMessage, setTransferMessage] = d("");
 	const pendingRef = T(pending);
 	pendingRef.current = pending;
+	const cancelRefreshRef = T(false);
 	const querierRef = T(createAutocompleteQuerier({ preferType: AUTOCOMPLETE_TAG_TYPE_ARTIST }));
 	A(() => {
 		const querier = querierRef.current;
+		const onPageShow = () => {
+			reloadFromStorage();
+			setArtists(readArtists());
+		};
+		window.addEventListener(EVENT_PAGESHOW, onPageShow);
 		return () => {
+			window.removeEventListener(EVENT_PAGESHOW, onPageShow);
 			querier.cancel();
+			cancelRefreshRef.current = true;
 			for (const entry of pendingRef.current) clearTimeout(entry.timer);
 		};
 	}, []);
 	const clearPendingUnfollow = (tag) => {
 		setPending((current) => {
-			const index = current.findIndex((entry) => entry.tag === tag);
-			if (index < 0) return current;
-			const removed = current[index];
-			if (removed !== void 0) clearTimeout(removed.timer);
-			return current.filter((entry) => entry.tag !== tag);
+			const found = current.find((entry) => entry.entry.tag === tag);
+			if (found === void 0) return current;
+			clearTimeout(found.timer);
+			return current.filter((entry) => entry.entry.tag !== tag);
 		});
 	};
-	const onUnfollow = (tag) => {
-		const existing = pendingRef.current.find((entry) => entry.tag === tag);
+	const onUnfollow = (artist) => {
+		const existing = pendingRef.current.find((entry) => entry.entry.tag === artist.tag);
 		if (existing !== void 0) clearTimeout(existing.timer);
-		removeArtist(tag);
+		removeArtist(artist.tag);
 		const timer = setTimeout(() => {
-			clearPendingUnfollow(tag);
-			setArtists(readArtists());
+			clearPendingUnfollow(artist.tag);
 		}, UNFOLLOW_UNDO_MS);
-		setPending([...pendingRef.current.filter((entry) => entry.tag !== tag), {
-			tag,
+		setPending([...pendingRef.current.filter((entry) => entry.entry.tag !== artist.tag), {
+			entry: artist,
 			timer
 		}]);
 		setArtists(readArtists());
 	};
-	const onUndo = (tag) => {
-		clearPendingUnfollow(tag);
+	const onUndo = (entry) => {
+		clearPendingUnfollow(entry.tag);
 		try {
-			addArtist(tag);
+			restoreArtist(entry);
 		} catch (error) {
 			log.warn("Undo unfollow failed", error);
 		}
@@ -18913,116 +19537,409 @@ function FollowingPage() {
 		querierRef.current.cancel();
 		setArtists(readArtists());
 	};
-	const pendingTags = new Set(pending.map((entry) => entry.tag));
-	const sorted = [...artists].sort((a, b) => compareArtistTags(a.tag, b.tag));
-	const showFilter = sorted.length + pending.length > 12;
-	const filterValue = showFilter ? filter.trim().toLowerCase() : "";
-	A(() => {
-		if (!showFilter && filter.length > 0) setFilter("");
-	}, [showFilter, filter]);
-	const matchesFilter = (tag) => {
-		if (filterValue.length === 0) return true;
-		return tag.toLowerCase().includes(filterValue) || displayArtistName(tag).toLowerCase().includes(filterValue);
-	};
-	const pendingSorted = [...pending].sort((a, b) => compareArtistTags(a.tag, b.tag));
 	const seen = getSeenPostId();
+	const now = Date.now();
+	const needle = filter.trim().toLowerCase();
+	const matches = (artist) => {
+		if (show === SHOW_NEW && !artistHasNew(artist, seen)) return false;
+		if (needle.length === 0) return true;
+		return artist.tag.toLowerCase().includes(needle) || displayArtistName(artist.tag).toLowerCase().includes(needle) || (artist.note ?? "").toLowerCase().includes(needle);
+	};
+	const visible = sortArtists(artists, sort).filter(matches);
+	const selectedVisible = visible.filter((artist) => selectedTags.includes(artist.tag));
 	const count = artists.length;
-	const empty = sorted.length === 0 && pending.length === 0;
-	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("style", { children: FOLLOWING_PAGE_CSS }), /* @__PURE__ */ a(Card, {
-		className: PANEL_UI_CLASS.pageCard,
-		children: /* @__PURE__ */ a("div", {
-			className: PANEL_UI_CLASS.scrollRegion,
-			children: [
+	const empty = count === 0 && pending.length === 0;
+	const busy = refresh !== null && refresh.running;
+	const stopSelecting = () => {
+		setSelecting(false);
+		setSelectedTags([]);
+		setConfirmUnfollow(false);
+	};
+	const toggleSelected = (tag) => {
+		setSelectedTags((current) => current.includes(tag) ? current.filter((entry) => entry !== tag) : [...current, tag]);
+	};
+	const unfollowSelected = () => {
+		removeArtists(selectedVisible.map((artist) => artist.tag));
+		stopSelecting();
+		setArtists(readArtists());
+	};
+	const runRefresh = async (targets) => {
+		cancelRefreshRef.current = false;
+		const total = targets.length;
+		setRefresh({
+			done: 0,
+			total,
+			running: true,
+			message: ""
+		});
+		let done = 0;
+		for (const artist of targets) {
+			if (cancelRefreshRef.current) break;
+			if (done > 0) {
+				await sleep(REFRESH_INTERVAL_MS);
+				if (cancelRefreshRef.current) break;
+			}
+			try {
+				rememberArtistSnapshot(artist.tag, await fetchArtistSnapshot(artist.tag));
+			} catch (error) {
+				const reason = error instanceof Error ? error.message : String(error);
+				log.warn("following: refresh failed", artist.tag, error);
+				setArtists(readArtists());
+				setRefresh({
+					done,
+					total,
+					running: false,
+					message: `${REFRESH_STOPPED_PREFIX}${artist.tag}: ${reason}`
+				});
+				return;
+			}
+			done += 1;
+			setArtists(readArtists());
+			setRefresh({
+				done,
+				total,
+				running: true,
+				message: ""
+			});
+		}
+		setRefresh({
+			done,
+			total,
+			running: false,
+			message: `${REFRESH_DONE_PREFIX}${String(done)} of ${String(total)}`
+		});
+	};
+	const openNote = (artist) => {
+		setNoteDraft(artist.note ?? "");
+		setNoteTag(artist.tag);
+	};
+	const submitNote = () => {
+		if (noteTag !== null) {
+			setArtistNote(noteTag, noteDraft);
+			setArtists(readArtists());
+		}
+		setNoteTag(null);
+	};
+	const openTransfer = () => {
+		setTransferDraft(sortArtists(artists, SORT_NAME).map((artist) => artist.tag).join(" "));
+		setTransferMessage("");
+		setTransferOpen(true);
+	};
+	const importTransfer = () => {
+		const tags = transferDraft.split(/\s+/).filter((tag) => tag.length > 0);
+		const result = addArtists(tags);
+		setArtists(readArtists());
+		setTransferMessage(`Added ${String(result.added)}, already followed ${String(result.duplicates)}, invalid ${String(result.invalid)}`);
+	};
+	const copyTransfer = () => {
+		navigator.clipboard.writeText(transferDraft).then(() => {
+			setTransferMessage(COPIED_LABEL);
+		}, (error) => {
+			log.warn("following: copy failed", error);
+		});
+	};
+	return /* @__PURE__ */ a("div", {
+		className: PAGE_CLASS,
+		children: [
+			/* @__PURE__ */ a("style", { children: FOLLOWING_PAGE_CSS }),
+			/* @__PURE__ */ a(AddArtistForm, {
+				draft,
+				error: addError,
+				suggestions,
+				onDraftChange: (value) => {
+					setDraft(value);
+					if (addError.length > 0) setAddError("");
+					querierRef.current.query(value, setSuggestions);
+				},
+				onSuggestionSelect: () => {
+					querierRef.current.cancel();
+					setSuggestions([]);
+				},
+				onSubmit: onAdd
+			}),
+			empty ? /* @__PURE__ */ a(EmptyState, {
+				title: ARTISTS_EMPTY_TITLE,
+				description: ARTISTS_EMPTY_HINT,
+				action: /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a(Button, {
+					variant: "secondary",
+					onClick: () => {
+						window.location.assign(OPEN_POSTS_HREF);
+					},
+					children: OPEN_POSTS_LABEL
+				}), /* @__PURE__ */ a(Button, {
+					variant: "secondary",
+					title: TRANSFER_TITLE,
+					onClick: openTransfer,
+					children: TRANSFER_LABEL
+				})] })
+			}) : /* @__PURE__ */ a($$1, { children: [
 				/* @__PURE__ */ a("div", {
-					className: PANEL_UI_CLASS.artistMeta,
-					children: [/* @__PURE__ */ a("p", {
-						className: "rdw-hint",
-						children: `${String(count)} artist${count === 1 ? "" : "s"}`
-					}), /* @__PURE__ */ a("p", {
-						className: "rdw-hint",
-						children: seen > 0 ? `${UI_TEXT.seenUpTo}${String(seen)}` : UI_TEXT.seenNothing
+					className: TOOLBAR_CLASS,
+					children: [
+						/* @__PURE__ */ a(Segmented, {
+							label: SHOW_LABEL,
+							options: SHOW_OPTIONS,
+							value: show,
+							onChange: (value) => {
+								if (isShowMode(value)) setShow(value);
+							}
+						}),
+						/* @__PURE__ */ a(TextField, {
+							id: ARTIST_FILTER_ID,
+							className: FILTER_CLASS,
+							value: filter,
+							placeholder: ARTIST_FILTER_LABEL,
+							"aria-label": ARTIST_FILTER_LABEL,
+							onChange: setFilter
+						}),
+						/* @__PURE__ */ a(Select, {
+							label: SORT_LABEL,
+							options: SORT_OPTIONS,
+							value: sort,
+							onChange: (value) => {
+								if (isSortMode(value)) setSort(value);
+							}
+						}),
+						selecting ? /* @__PURE__ */ a($$1, { children: [
+							/* @__PURE__ */ a("span", {
+								className: META_CLASS,
+								"aria-live": "polite",
+								children: `${String(selectedVisible.length)}${SELECTED_SUFFIX}`
+							}),
+							/* @__PURE__ */ a(Button, {
+								variant: "secondary",
+								onClick: () => {
+									setSelectedTags(visible.map((artist) => artist.tag));
+								},
+								children: SELECT_ALL_LABEL
+							}),
+							/* @__PURE__ */ a(Button, {
+								variant: "danger",
+								disabled: selectedVisible.length === 0,
+								onClick: () => {
+									setConfirmUnfollow(true);
+								},
+								children: UNFOLLOW_LABEL
+							}),
+							/* @__PURE__ */ a(Button, {
+								variant: "secondary",
+								onClick: stopSelecting,
+								children: UI_TEXT.cancel
+							})
+						] }) : /* @__PURE__ */ a($$1, { children: [
+							/* @__PURE__ */ a(Button, {
+								variant: "secondary",
+								disabled: busy,
+								onClick: () => {
+									setSelecting(true);
+								},
+								children: SELECT_LABEL
+							}),
+							/* @__PURE__ */ a(Button, {
+								variant: "secondary",
+								title: REFRESH_TITLE,
+								disabled: busy || visible.length === 0,
+								onClick: () => {
+									setConfirmRefresh(true);
+								},
+								children: REFRESH_LABEL
+							}),
+							/* @__PURE__ */ a(Button, {
+								variant: "secondary",
+								title: TRANSFER_TITLE,
+								onClick: openTransfer,
+								children: TRANSFER_LABEL
+							})
+						] })
+					]
+				}),
+				/* @__PURE__ */ a("p", {
+					className: META_CLASS,
+					children: `${String(count)} artist${count === SINGLE ? "" : "s"} · ${seen > 0 ? `${UI_TEXT.seenUpTo}${String(seen)}` : UI_TEXT.seenNothing}`
+				}),
+				refresh === null ? null : /* @__PURE__ */ a("div", {
+					className: PROGRESS_CLASS,
+					role: "status",
+					children: [/* @__PURE__ */ a(ProgressBar, {
+						value: refresh.total === 0 ? 0 : refresh.done / refresh.total,
+						label: refresh.running ? `${REFRESH_LABEL}: ${String(refresh.done)} of ${String(refresh.total)}` : refresh.message
+					}), refresh.running ? /* @__PURE__ */ a(Button, {
+						variant: "secondary",
+						size: "s",
+						onClick: () => {
+							cancelRefreshRef.current = true;
+						},
+						children: UI_TEXT.cancel
+					}) : /* @__PURE__ */ a(Button, {
+						variant: "secondary",
+						size: "s",
+						onClick: () => {
+							setRefresh(null);
+						},
+						children: CLOSE_LABEL
 					})]
 				}),
-				/* @__PURE__ */ a(AddArtistForm, {
-					draft,
-					error: addError,
-					suggestions,
-					onDraftChange: (value) => {
-						setDraft(value);
-						if (addError.length > 0) setAddError("");
-						querierRef.current.query(value, setSuggestions);
-					},
-					onSuggestionSelect: () => {
-						querierRef.current.cancel();
-						setSuggestions([]);
-					},
-					onSubmit: onAdd
-				}),
-				empty ? /* @__PURE__ */ a($$1, { children: /* @__PURE__ */ a(EmptyState, {
-					title: ARTISTS_EMPTY_TITLE,
-					description: ARTISTS_EMPTY_HINT,
-					action: /* @__PURE__ */ a(Button, {
-						variant: "secondary",
-						onClick: () => {
-							window.location.assign(OPEN_POSTS_HREF);
+				visible.length === 0 && pending.length === 0 ? /* @__PURE__ */ a(EmptyState, {
+					title: NO_MATCH_TITLE,
+					description: NO_MATCH_DESCRIPTION
+				}) : /* @__PURE__ */ a("div", {
+					className: GRID_CLASS,
+					children: [pending.map((entry) => /* @__PURE__ */ a("div", {
+						className: CARD_CLASS,
+						"data-tag": entry.entry.tag,
+						children: /* @__PURE__ */ a("div", {
+							className: CARD_UNDO_CLASS,
+							children: [/* @__PURE__ */ a("span", { children: `${UNFOLLOWED_PREFIX}${displayArtistName(entry.entry.tag)}` }), /* @__PURE__ */ a(Button, {
+								variant: "secondary",
+								size: "s",
+								onClick: () => {
+									onUndo(entry.entry);
+								},
+								children: UNFOLLOW_UNDO_LABEL
+							})]
+						})
+					}, `undo-${entry.entry.tag}`)), visible.map((artist) => /* @__PURE__ */ a(ArtistCard, {
+						artist,
+						hasNew: artistHasNew(artist, seen),
+						now,
+						select: selecting ? {
+							selected: selectedTags.includes(artist.tag),
+							onToggle: () => {
+								toggleSelected(artist.tag);
+							}
+						} : null,
+						onUnfollow: () => {
+							onUnfollow(artist);
 						},
-						children: OPEN_POSTS_LABEL
-					})
-				}) }) : /* @__PURE__ */ a($$1, { children: [showFilter ? /* @__PURE__ */ a("div", {
-					className: PANEL_UI_CLASS.artistFilter,
-					children: /* @__PURE__ */ a(TextField, {
-						id: ARTIST_FILTER_ID,
-						label: ARTIST_FILTER_LABEL,
-						value: filter,
-						onChange: setFilter
-					})
-				}) : null, /* @__PURE__ */ a("ul", {
-					className: PANEL_UI_CLASS.artistList,
-					children: [pendingSorted.map((entry) => {
-						if (!matchesFilter(entry.tag)) return null;
-						return /* @__PURE__ */ a("li", {
-							className: PANEL_UI_CLASS.artistRow,
-							"data-tag": entry.tag,
-							children: /* @__PURE__ */ a("div", {
-								className: PANEL_UI_CLASS.artistUndo,
-								children: [/* @__PURE__ */ a("span", { children: `${UNFOLLOWED_PREFIX}${displayArtistName(entry.tag)}` }), /* @__PURE__ */ a(Button, {
+						onEditNote: () => {
+							openNote(artist);
+						}
+					}, artist.tag))]
+				})
+			] }),
+			/* @__PURE__ */ a(Dialog, {
+				variant: "confirm",
+				open: confirmUnfollow,
+				title: UNFOLLOW_DIALOG_TITLE,
+				message: unfollowMessage(selectedVisible.length),
+				confirmLabel: UNFOLLOW_LABEL,
+				cancelLabel: UI_TEXT.cancel,
+				confirmTone: "danger",
+				onConfirm: unfollowSelected,
+				onClose: () => {
+					setConfirmUnfollow(false);
+				}
+			}),
+			/* @__PURE__ */ a(Dialog, {
+				variant: "confirm",
+				open: confirmRefresh,
+				title: REFRESH_DIALOG_TITLE,
+				message: refreshMessage(visible.length),
+				confirmLabel: REFRESH_LABEL,
+				cancelLabel: UI_TEXT.cancel,
+				onConfirm: () => {
+					setConfirmRefresh(false);
+					runRefresh(visible);
+				},
+				onClose: () => {
+					setConfirmRefresh(false);
+				}
+			}),
+			/* @__PURE__ */ a(Dialog, {
+				open: noteTag !== null,
+				title: `${NOTE_TITLE_PREFIX}${displayArtistName(noteTag ?? "")}`,
+				onClose: () => {
+					setNoteTag(null);
+				},
+				children: /* @__PURE__ */ a("form", {
+					className: DIALOG_FORM_CLASS,
+					onSubmit: (event) => {
+						event.preventDefault();
+						submitNote();
+					},
+					children: [/* @__PURE__ */ a(TextField, {
+						label: NOTE_FIELD_LABEL,
+						value: noteDraft,
+						onChange: setNoteDraft
+					}), /* @__PURE__ */ a("div", {
+						className: DIALOG_ACTIONS_CLASS,
+						children: [/* @__PURE__ */ a(Button, {
+							type: "button",
+							variant: "secondary",
+							size: "s",
+							onClick: () => {
+								setNoteTag(null);
+							},
+							children: UI_TEXT.cancel
+						}), /* @__PURE__ */ a(Button, {
+							type: "submit",
+							variant: "primary",
+							size: "s",
+							children: UI_TEXT.save
+						})]
+					})]
+				})
+			}),
+			/* @__PURE__ */ a(Dialog, {
+				open: transferOpen,
+				title: TRANSFER_TITLE,
+				onClose: () => {
+					setTransferOpen(false);
+				},
+				children: /* @__PURE__ */ a("form", {
+					className: DIALOG_FORM_CLASS,
+					onSubmit: (event) => {
+						event.preventDefault();
+						importTransfer();
+					},
+					children: [
+						/* @__PURE__ */ a(TextField, {
+							label: TRANSFER_FIELD_LABEL,
+							value: transferDraft,
+							onChange: (value) => {
+								setTransferDraft(value);
+								setTransferMessage("");
+							}
+						}),
+						transferMessage.length > 0 ? /* @__PURE__ */ a("p", {
+							className: META_CLASS,
+							role: "status",
+							children: transferMessage
+						}) : null,
+						/* @__PURE__ */ a("div", {
+							className: DIALOG_ACTIONS_CLASS,
+							children: [
+								/* @__PURE__ */ a(Button, {
+									type: "button",
 									variant: "secondary",
 									size: "s",
 									onClick: () => {
-										onUndo(entry.tag);
+										setTransferOpen(false);
 									},
-									children: UNFOLLOW_UNDO_LABEL
-								})]
-							})
-						}, `undo-${entry.tag}`);
-					}), sorted.map((artist) => {
-						if (pendingTags.has(artist.tag) || !matchesFilter(artist.tag)) return null;
-						return /* @__PURE__ */ a("li", {
-							className: PANEL_UI_CLASS.artistRow,
-							"data-tag": artist.tag,
-							children: [/* @__PURE__ */ a("a", {
-								className: PANEL_UI_CLASS.artistLink,
-								href: buildSearchUrl([{
-									tag: artist.tag,
-									type: TAG_TYPE_INCLUDE
-								}]),
-								title: artist.tag,
-								children: displayArtistName(artist.tag)
-							}), /* @__PURE__ */ a(IconButton, {
-								label: `Unfollow ${artist.tag}`,
-								onClick: () => {
-									onUnfollow(artist.tag);
-								},
-								children: /* @__PURE__ */ a(IconX, { size: 14 })
-							})]
-						}, artist.tag);
-					})]
-				})] })
-			]
-		})
-	})] });
+									children: CLOSE_LABEL
+								}),
+								/* @__PURE__ */ a(Button, {
+									type: "button",
+									variant: "secondary",
+									size: "s",
+									onClick: copyTransfer,
+									children: COPY_LABEL
+								}),
+								/* @__PURE__ */ a(Button, {
+									type: "submit",
+									variant: "primary",
+									size: "s",
+									children: IMPORT_LABEL
+								})
+							]
+						})
+					]
+				})
+			})
+		]
+	});
 }})}}));
-System.register("./collection-detail-page-C8j0UwUH-DJXsIj9e.js", ['./___monkey.entry.js','./app-DTUrPwnU-C0xbUzEq.js'],(function(exports){'use strict';var d,T,w$1,b,a,$$1,Button,UI_TEXT,shuffleCollection,resetCollectionOrder,EmptyState,Dialog,TextField,Toast,getCollectionOrder,listPlaylists,RDW_HASH_COLLECTIONS,removePostsFromCollection,renameCollection,deleteCollection,RDW_ROUTE_COLLECTIONS,restorePosts,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION_VIEW,SEARCH_PATH,collectionQueueHash,navigateToRdwRoute;return{setters:[function(module){d=module.ad;T=module.au;w$1=module.b_;b=module.aT;a=module.Y;$$1=module.a2;Button=module.aF;UI_TEXT=module.U;shuffleCollection=module.b$;resetCollectionOrder=module.c0;EmptyState=module.bs;Dialog=module.bt;TextField=module.aE;Toast=module.c1;getCollectionOrder=module.c2;listPlaylists=module.c3;RDW_HASH_COLLECTIONS=module.u;removePostsFromCollection=module.c4;renameCollection=module.c5;deleteCollection=module.bv;RDW_ROUTE_COLLECTIONS=module.c6;restorePosts=module.c7;SEARCH_PARAM_PAGE=module.T;SEARCH_PAGE=module.bN;SEARCH_SECTION_VIEW=module.c8;SEARCH_PATH=module.X;collectionQueueHash=module.c9;},function(module){navigateToRdwRoute=module.i;}],execute:(function(){exports("CollectionDetailPage",CollectionDetailPage);var CELL_SIZE_PX = 200;
+System.register("./collection-detail-page-Bk69tfts-Bgpu1yal.js", ['./___monkey.entry.js','./app-y2ahCiKG-vs0j2tHG.js'],(function(exports){'use strict';var d,T,w$1,b,a,$$1,Button,UI_TEXT,shuffleCollection,resetCollectionOrder,EmptyState,Dialog,TextField,Toast,getCollectionOrder,listPlaylists,RDW_HASH_COLLECTIONS,removePostsFromCollection,renameCollection,deleteCollection,RDW_ROUTE_COLLECTIONS,restorePosts,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION_VIEW,SEARCH_PATH,collectionQueueHash,navigateToRdwRoute;return{setters:[function(module){d=module.ad;T=module.au;w$1=module.c5;b=module.aT;a=module.Y;$$1=module.a2;Button=module.aF;UI_TEXT=module.U;shuffleCollection=module.c6;resetCollectionOrder=module.c7;EmptyState=module.bs;Dialog=module.bt;TextField=module.aE;Toast=module.c8;getCollectionOrder=module.c9;listPlaylists=module.ca;RDW_HASH_COLLECTIONS=module.u;removePostsFromCollection=module.cb;renameCollection=module.cc;deleteCollection=module.bv;RDW_ROUTE_COLLECTIONS=module.cd;restorePosts=module.ce;SEARCH_PARAM_PAGE=module.T;SEARCH_PAGE=module.bN;SEARCH_SECTION_VIEW=module.cf;SEARCH_PATH=module.X;collectionQueueHash=module.cg;},function(module){navigateToRdwRoute=module.i;}],execute:(function(){exports("CollectionDetailPage",CollectionDetailPage);var CELL_SIZE_PX = 200;
 var GRID_GAP_PX = 4;
 var SECTION_GAP_PX = 12;
 var ACTIONS_GAP_PX = 8;

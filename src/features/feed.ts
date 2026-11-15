@@ -27,6 +27,7 @@ import {
 } from "../storage/store";
 import { ensureDocumentStyles } from "../ui/cards";
 import { mountUpdatesBar } from "../ui/updates-bar";
+import { rememberArtistsFromPage } from "./artist-snapshots";
 import { FEED_MERGE_CSS, isMergedFeedPage, mountFeedMerge } from "./feed-merge";
 import { onThumbsAdded } from "./runtime";
 import {
@@ -317,6 +318,11 @@ function mountFeed(ctx: FeatureContext): void {
   reloadStoragePreservingArtistsMirror();
   const onFeed = isFeedPage(ctx.search, artistTags);
   applyCurrentPageHighlight(feedItem, onFeed, ctx.pageKind);
+
+  if (ctx.pageKind === "list") {
+    // Cover, count and newest post of followed artists, for the Following page.
+    rememberArtistsFromPage(ctx.search);
+  }
 
   if (!onFeed || ctx.pageKind !== "list") {
     return;

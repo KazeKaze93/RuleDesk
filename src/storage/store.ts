@@ -1102,10 +1102,160 @@ export function addArtist(tag: string): ArtistEntry {
   if (data.artists.some((entry) => entry.tag === normalized)) {
     throw new Error("Duplicate artist tag");
   }
-  const entry = ArtistEntrySchema.parse({ tag: normalized });
+  const entry = ArtistEntrySchema.parse({ tag: normalized, addedAt: Date.now() });
   data.artists.push(entry);
   save(data);
   return entry;
+}
+
+/** Puts back an unfollowed artist with everything known about them (Undo). */
+export function restoreArtist(entry: ArtistEntry): boolean {
+  const data = reloadFromStorage();
+  if (data.artists.some((item) => item.tag === entry.tag)) {
+    return false;
+  }
+  data.artists.push(ArtistEntrySchema.parse(entry));
+  save(data);
+  return true;
+}
+
+export type AddArtistsResult = {
+  readonly added: number;
+  readonly duplicates: number;
+  readonly invalid: number;
+};
+
+/** Follows several artist tags in one write. Unknown shapes are counted, not thrown. */
+export function addArtists(tags: readonly string[]): AddArtistsResult {
+  const data = reloadFromStorage();
+  const known = new Set(data.artists.map((entry) => entry.tag));
+  let added = 0;
+  let duplicates = 0;
+  let invalid = 0;
+  for (const raw of tags) {
+    const normalized = normalizeArtistTag(raw);
+    if (normalized === null) {
+      invalid += 1;
+      continue;
+    }
+    if (known.has(normalized)) {
+      duplicates += 1;
+      continue;
+    }
+    known.add(normalized);
+    data.artists.push(
+      ArtistEntrySchema.parse({ tag: normalized, addedAt: Date.now() }),
+    );
+    added += 1;
+  }
+  if (added > 0) {
+    save(data);
+  }
+  return { added, duplicates, invalid };
+}
+
+/** Unfollows several artists in one write. Returns how many were removed. */
+export function removeArtists(tags: readonly string[]): number {
+  const doomed = new Set(tags);
+  const data = reloadFromStorage();
+  const next = data.artists.filter((entry) => !doomed.has(entry.tag));
+  const removed = data.artists.length - next.length;
+  if (removed > 0) {
+    data.artists = next;
+    save(data);
+  }
+  return removed;
+}
+
+/** Sets or clears (empty text) the user's note on a followed artist. */
+export function setArtistNote(tag: string, note: string): boolean {
+  const data = reloadFromStorage();
+  const target = data.artists.find((entry) => entry.tag === tag);
+  if (target === undefined) {
+    return false;
+  }
+  const trimmed = note.trim();
+  if ((target.note ?? "") === trimmed) {
+    return false;
+  }
+  if (trimmed.length === 0) {
+    delete target.note;
+  } else {
+    target.note = trimmed;
+  }
+  save(data);
+  return true;
+}
+
+export type ArtistSnapshotInput = {
+  readonly cover: readonly string[];
+  readonly postCount: PostCount | null;
+  readonly lastPostId: number;
+};
+
+/** A newer post than the remembered one: keep it and when it was first seen. */
+function applyLastPost(target: ArtistEntry, postId: number, now: number): boolean {
+  if (postId <= 0 || postId <= (target.lastPostId ?? 0)) {
+    return false;
+  }
+  target.lastPostId = postId;
+  target.lastPostSince = now;
+  return true;
+}
+
+/**
+ * Remembers what an artist's first results page showed. An empty cover or a
+ * missing count never clears a stored one. Writes only when something changed.
+ */
+export function rememberArtistSnapshot(
+  tag: string,
+  snapshot: ArtistSnapshotInput,
+  now: number = Date.now(),
+): boolean {
+  const data = reloadFromStorage();
+  const target = data.artists.find((entry) => entry.tag === tag);
+  if (target === undefined) {
+    return false;
+  }
+  let changed = false;
+  if (snapshot.cover.length > 0 && !sameStrings(target.cover ?? [], snapshot.cover)) {
+    target.cover = [...snapshot.cover];
+    changed = true;
+  }
+  const count = snapshot.postCount;
+  if (
+    count !== null &&
+    (target.postCount?.value !== count.value || target.postCount.exact !== count.exact)
+  ) {
+    target.postCount = { value: count.value, exact: count.exact };
+    changed = true;
+  }
+  if (applyLastPost(target, snapshot.lastPostId, now)) {
+    changed = true;
+  }
+  if (changed) {
+    save(data);
+  }
+  return changed;
+}
+
+/** Remembers the newest post seen per artist tag, in one write. */
+export function rememberArtistLastPosts(
+  newest: ReadonlyMap<string, number>,
+  now: number = Date.now(),
+): boolean {
+  const data = reloadFromStorage();
+  let changed = false;
+  for (const target of data.artists) {
+    const postId = newest.get(target.tag);
+    if (postId !== undefined && applyLastPost(target, postId, now)) {
+      changed = true;
+    }
+  }
+  if (changed) {
+    save(data);
+  }
+  return changed;
 }
 
 export function removeArtist(tag: string): boolean {

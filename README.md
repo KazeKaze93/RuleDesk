@@ -18,6 +18,16 @@ Local build: `npm install` then `npm run build` → `dist/ruledesk-web.user.js`.
 
 Measured on Tampermonkey 5.5.1: with Dynamic, native page flash on load is typically 0/5 vs ~5/5 with UserScripts API; pages also open faster. Prefer Dynamic for RuleDesk Web.
 
+### 0.21.0 notes
+
+- **Following as cards.** Each followed artist is a card with a 2x2 cover, post count, a "new" mark, a "no new posts since" line and your own note
+- Cover and exact post count are remembered when you open the artist's search; the newest post is also picked up from any results page that shows the artist (feed included). No request is made for this
+- **Show All / New**, filter by name or note, sort by name, post count or follow date
+- **Select** turns cards into checkboxes for unfollowing several artists after one confirmation
+- **Refresh** reads each visible artist's first page again, one request every 1.5 seconds, after a confirmation that states the number of requests. It can be cancelled and stops at the first error
+- **Import / export**: the followed tags as one line of text to copy, or paste tags to follow them
+- Undo after a single unfollow restores the artist with cover, count and note
+
 ### 0.20.0 notes
 
 - **Feed for more artists than one search holds.** Followed artists are split into groups (400 per search by default). The Feed page is the first group's search; the other groups are read one request at a time with a pause and merged into the same grid, newest post first. Further pages load as you scroll. The site pager and "Only new" are hidden on a merged feed; "Mark all seen" and NEW marks work as before. With one group nothing changes and no extra request is made

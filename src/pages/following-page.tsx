@@ -13,6 +13,7 @@ import {
 } from "../config/constants";
 import { log } from "../log";
 import { buildSearchUrl, normalizeArtistTag } from "../search/query";
+import { ARTIST_COVER_SIZE, fetchArtistSnapshot } from "../site/artist-snapshot";
 import {
   AUTOCOMPLETE_TAG_TYPE_ARTIST,
   createAutocompleteQuerier,
@@ -21,56 +22,315 @@ import {
 import type { ArtistEntry } from "../storage/schema";
 import {
   addArtist,
+  addArtists,
   getSeenPostId,
   isFollowingArtist,
   load,
+  reloadFromStorage,
+  rememberArtistSnapshot,
   removeArtist,
+  removeArtists,
+  restoreArtist,
+  setArtistNote,
 } from "../storage/store";
 import {
   AutocompleteField,
   Button,
-  Card,
+  Dialog,
   EmptyState,
   IconButton,
+  ProgressBar,
+  Segmented,
+  Select,
   TextField,
+  type SegmentedOption,
+  type SelectOption,
 } from "../ui/kit";
-import { IconX } from "../ui/kit/icons";
+import { IconCheck, IconPencil, IconX } from "../ui/kit/icons";
 import {
   ARTIST_FILTER_ID,
   ARTIST_FILTER_LABEL,
   ARTISTS_EMPTY_HINT,
   ARTISTS_EMPTY_TITLE,
-  ARTISTS_FILTER_THRESHOLD,
-  PANEL_UI_CLASS,
   UNFOLLOW_UNDO_LABEL,
   UNFOLLOW_UNDO_MS,
   UNFOLLOWED_PREFIX,
 } from "./constants";
 
+const EVENT_PAGESHOW = "pageshow";
+
+const PAGE_CLASS = "rdw-following-page";
 const ADD_FORM_CLASS = "rdw-following-add";
+const TOOLBAR_CLASS = "rdw-following-toolbar";
+const FILTER_CLASS = "rdw-following-filter";
+const META_CLASS = "rdw-following-meta";
+const GRID_CLASS = "rdw-following-grid";
+const CARD_CLASS = "rdw-artist-card";
+const CARD_SELECTED_CLASS = "rdw-artist-card--selected";
+const CARD_LINK_CLASS = "rdw-artist-card-link";
+const CARD_MARK_CLASS = "rdw-artist-card-mark";
+const CARD_ACTIONS_CLASS = "rdw-artist-card-actions";
+const CARD_UNDO_CLASS = "rdw-artist-card-undo";
+const COVER_CLASS = "rdw-artist-cover";
+const COVER_CELL_CLASS = "rdw-artist-cover-cell";
+const COVER_IMAGE_CLASS = "rdw-artist-cover-image";
+const NAME_ROW_CLASS = "rdw-artist-name-row";
+const NAME_CLASS = "rdw-artist-name";
+const NEW_BADGE_CLASS = "rdw-artist-new";
+const CAPTION_CLASS = "rdw-artist-caption";
+const NOTE_CLASS = "rdw-artist-note";
+const PROGRESS_CLASS = "rdw-following-progress";
+const DIALOG_FORM_CLASS = "rdw-dialog__fields";
+const DIALOG_ACTIONS_CLASS = "rdw-dialog__actions";
+
 const ADD_INPUT_ID = "rdw-following-add-tag";
 const OPEN_POSTS_LABEL = "Open Posts";
-
 const OPEN_POSTS_HREF = `${SEARCH_PATH}?${SEARCH_PARAM_PAGE}=${SEARCH_PAGE}&${SEARCH_PARAM_SECTION}=${SEARCH_SECTION}`;
 
-const FOLLOWING_PAGE_CSS = `
-.${ADD_FORM_CLASS} {
+const SHOW_ALL = "all";
+const SHOW_NEW = "new";
+const SORT_NAME = "name";
+const SORT_POSTS = "posts";
+const SORT_ADDED = "added";
+
+const SHOW_LABEL = "Show";
+const SORT_LABEL = "Sort";
+const NEW_BADGE = "new";
+const SELECT_LABEL = "Select";
+const SELECT_ALL_LABEL = "Select all";
+const SELECTED_SUFFIX = " selected";
+const UNFOLLOW_LABEL = "Unfollow";
+const REFRESH_LABEL = "Refresh";
+const REFRESH_TITLE = "Read each artist's first page again: cover, post count, newest post";
+const TRANSFER_LABEL = "Import / export";
+const TRANSFER_TITLE = "Import or export followed artists";
+const TRANSFER_FIELD_LABEL = "Artist tags, separated by spaces";
+const COPY_LABEL = "Copy";
+const COPIED_LABEL = "Copied";
+const IMPORT_LABEL = "Import";
+const CLOSE_LABEL = "Close";
+const NOTE_TITLE_PREFIX = "Note for ";
+const NOTE_FIELD_LABEL = "Note";
+const NOT_OPENED_CAPTION = "not opened yet";
+const QUIET_PREFIX = "no new posts since ";
+const POST_WORD_SINGULAR = "post";
+const POST_WORD_PLURAL = "posts";
+const COUNT_AT_LEAST_MARK = "+";
+const NO_MATCH_TITLE = "No matching artists";
+const NO_MATCH_DESCRIPTION = "Nothing matches this filter.";
+const UNFOLLOW_DIALOG_TITLE = "Unfollow artists";
+const REFRESH_DIALOG_TITLE = "Refresh artists";
+const REFRESH_STOPPED_PREFIX = "Stopped at ";
+const REFRESH_DONE_PREFIX = "Refreshed ";
+const ROLE_CHECKBOX = "checkbox";
+const LOCALE = "en-US";
+const DATE_LOCALE = "en-GB";
+
+const SINGLE = 1;
+const MS_PER_DAY = 86_400_000;
+/** An artist whose newest post has not changed for this long is marked quiet. */
+const QUIET_AFTER_DAYS = 60;
+/** Pause between two requests of a Refresh run. */
+export const REFRESH_INTERVAL_MS = 1500;
+const MS_PER_SECOND = 1000;
+const COVER_AXIS_COUNT = 2;
+const ICON_PX = 14;
+const GRID_MIN_TRACK_PX = 170;
+
+const SHOW_OPTIONS: readonly SegmentedOption[] = [
+  { value: SHOW_ALL, label: "All" },
+  { value: SHOW_NEW, label: "New" },
+];
+
+const SORT_OPTIONS: readonly SelectOption[] = [
+  { value: SORT_NAME, label: "Name" },
+  { value: SORT_POSTS, label: "Posts" },
+  { value: SORT_ADDED, label: "Recently followed" },
+];
+
+export const FOLLOWING_PAGE_CSS = `
+.${PAGE_CLASS} {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.${ADD_FORM_CLASS},
+.${TOOLBAR_CLASS} {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   align-items: flex-end;
 }
 .${ADD_FORM_CLASS} .rdw-field,
-.${ADD_FORM_CLASS} .rdw-ac {
+.${ADD_FORM_CLASS} .rdw-ac,
+.${TOOLBAR_CLASS} .${FILTER_CLASS} {
   flex: 1 1 12rem;
+  min-width: 0;
   margin: 0;
+}
+.${META_CLASS},
+.${CAPTION_CLASS},
+.${NOTE_CLASS} {
+  margin: 0;
+  color: var(--rdw-muted);
+  font-size: 12px;
+}
+.${NOTE_CLASS} {
+  color: var(--rdw-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.${GRID_CLASS} {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(${String(GRID_MIN_TRACK_PX)}px, 1fr));
+  gap: 12px;
+}
+.${CARD_CLASS} {
+  position: relative;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 8px;
+  background: var(--rdw-surface);
+  border: 1px solid var(--rdw-border);
+  border-radius: var(--rdw-radius-l);
+}
+.${CARD_CLASS}:hover,
+.${CARD_CLASS}:focus-within,
+.${CARD_SELECTED_CLASS} {
+  border-color: var(--rdw-accent);
+}
+.${CARD_SELECTED_CLASS} {
+  box-shadow: 0 0 0 1px var(--rdw-accent);
+}
+.${CARD_LINK_CLASS} {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  color: var(--rdw-text);
+  text-decoration: none;
+  outline: none;
+}
+.${COVER_CLASS} {
+  display: grid;
+  grid-template-columns: repeat(${String(COVER_AXIS_COUNT)}, minmax(0, 1fr));
+  grid-template-rows: repeat(${String(COVER_AXIS_COUNT)}, minmax(0, 1fr));
+  aspect-ratio: 1;
+  gap: 2px;
+  border-radius: var(--rdw-radius-m);
+  overflow: hidden;
+}
+.${COVER_CELL_CLASS} {
+  min-width: 0;
+  min-height: 0;
+  background: var(--rdw-surface-2);
+}
+.${COVER_IMAGE_CLASS} {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.${NAME_ROW_CLASS} {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+.${NAME_CLASS} {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.${NEW_BADGE_CLASS} {
+  flex: none;
+  padding: 0 6px;
+  border-radius: 9px;
+  background: var(--rdw-accent);
+  color: var(--rdw-surface);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.${CARD_ACTIONS_CLASS} {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  gap: 4px;
+}
+.${CARD_ACTIONS_CLASS} .rdw-icon-btn {
+  background: var(--rdw-surface);
+  border: 1px solid var(--rdw-border);
+}
+.${CARD_MARK_CLASS} {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--rdw-border);
+  border-radius: var(--rdw-radius-m);
+  background: var(--rdw-surface);
+  color: var(--rdw-surface);
+}
+.${CARD_SELECTED_CLASS} .${CARD_MARK_CLASS} {
+  border-color: var(--rdw-accent);
+  background: var(--rdw-accent);
+}
+.${CARD_UNDO_CLASS} {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 8px;
+  height: 100%;
+  color: var(--rdw-muted);
+}
+.${PROGRESS_CLASS} {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.${PROGRESS_CLASS} .rdw-progress {
+  flex: 1 1 auto;
 }
 `.trim();
 
+type ShowMode = typeof SHOW_ALL | typeof SHOW_NEW;
+type SortMode = typeof SORT_NAME | typeof SORT_POSTS | typeof SORT_ADDED;
+
 type PendingUnfollow = {
-  readonly tag: string;
+  readonly entry: ArtistEntry;
   readonly timer: ReturnType<typeof setTimeout>;
 };
+
+type RefreshState = {
+  readonly done: number;
+  readonly total: number;
+  readonly running: boolean;
+  readonly message: string;
+};
+
+type CardSelect = {
+  readonly selected: boolean;
+  readonly onToggle: () => void;
+};
+
+function isShowMode(value: string): value is ShowMode {
+  return value === SHOW_ALL || value === SHOW_NEW;
+}
+
+function isSortMode(value: string): value is SortMode {
+  return value === SORT_NAME || value === SORT_POSTS || value === SORT_ADDED;
+}
 
 function displayArtistName(tag: string): string {
   return tag.replaceAll("_", " ");
@@ -82,6 +342,183 @@ function compareArtistTags(a: string, b: string): number {
 
 function readArtists(): ArtistEntry[] {
   return [...load().artists];
+}
+
+/** True when the artist's newest known post is newer than the feed's seen mark. */
+export function artistHasNew(artist: ArtistEntry, seenPostId: number): boolean {
+  return seenPostId > 0 && (artist.lastPostId ?? 0) > seenPostId;
+}
+
+/** The day the artist's newest post was first noticed, when that is long ago. */
+export function quietSince(artist: ArtistEntry, now: number): number | null {
+  const since = artist.lastPostSince;
+  if (since === undefined || now - since < QUIET_AFTER_DAYS * MS_PER_DAY) {
+    return null;
+  }
+  return since;
+}
+
+function postsCaption(artist: ArtistEntry): string {
+  const count = artist.postCount;
+  if (count === undefined) {
+    return NOT_OPENED_CAPTION;
+  }
+  const number = count.value.toLocaleString(LOCALE);
+  if (!count.exact) {
+    return `${number}${COUNT_AT_LEAST_MARK} ${POST_WORD_PLURAL}`;
+  }
+  return `${number} ${count.value === SINGLE ? POST_WORD_SINGULAR : POST_WORD_PLURAL}`;
+}
+
+function formatDay(time: number): string {
+  return new Date(time).toLocaleDateString(DATE_LOCALE, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+export function sortArtists(
+  artists: readonly ArtistEntry[],
+  mode: SortMode,
+): ArtistEntry[] {
+  const sorted = [...artists].sort((a, b) => compareArtistTags(a.tag, b.tag));
+  if (mode === SORT_POSTS) {
+    // Unknown counts go last; the name order above breaks ties.
+    sorted.sort((a, b) => (b.postCount?.value ?? -1) - (a.postCount?.value ?? -1));
+  } else if (mode === SORT_ADDED) {
+    sorted.sort((a, b) => (b.addedAt ?? 0) - (a.addedAt ?? 0));
+  }
+  return sorted;
+}
+
+function unfollowMessage(count: number): string {
+  return count === SINGLE
+    ? "Unfollow 1 artist? This cannot be undone."
+    : `Unfollow ${String(count)} artists? This cannot be undone.`;
+}
+
+function refreshMessage(count: number): string {
+  const seconds = Math.ceil((count * REFRESH_INTERVAL_MS) / MS_PER_SECOND);
+  const requests = count === SINGLE ? "1 request" : `${String(count)} requests`;
+  return `This makes ${requests} to the site, one every ${String(REFRESH_INTERVAL_MS / MS_PER_SECOND)} seconds (about ${String(seconds)} s). It stops at the first error.`;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+function CoverThumb(props: { readonly url: string }): JSX.Element | null {
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  if (failedUrl === props.url) {
+    return null;
+  }
+  return (
+    <img
+      className={COVER_IMAGE_CLASS}
+      src={props.url}
+      alt=""
+      loading="lazy"
+      onError={() => {
+        setFailedUrl(props.url);
+      }}
+    />
+  );
+}
+
+function ArtistCover(props: { readonly artist: ArtistEntry }): JSX.Element {
+  const cover = props.artist.cover ?? [];
+  const cells: JSX.Element[] = [];
+  for (let index = 0; index < ARTIST_COVER_SIZE; index += 1) {
+    const url = cover[index];
+    cells.push(
+      <span key={index} className={COVER_CELL_CLASS}>
+        {url === undefined ? null : <CoverThumb url={url} />}
+      </span>,
+    );
+  }
+  return <span className={COVER_CLASS}>{cells}</span>;
+}
+
+function ArtistCard(props: {
+  readonly artist: ArtistEntry;
+  readonly hasNew: boolean;
+  readonly now: number;
+  readonly select: CardSelect | null;
+  readonly onUnfollow: () => void;
+  readonly onEditNote: () => void;
+}): JSX.Element {
+  const { artist, select } = props;
+  const quiet = quietSince(artist, props.now);
+  const note = artist.note ?? "";
+  const body = (
+    <>
+      <ArtistCover artist={artist} />
+      <span className={NAME_ROW_CLASS}>
+        <span className={NAME_CLASS} title={artist.tag}>
+          {displayArtistName(artist.tag)}
+        </span>
+        {props.hasNew ? <span className={NEW_BADGE_CLASS}>{NEW_BADGE}</span> : null}
+      </span>
+      <span className={CAPTION_CLASS}>{postsCaption(artist)}</span>
+      {quiet === null ? null : (
+        <span className={CAPTION_CLASS}>{`${QUIET_PREFIX}${formatDay(quiet)}`}</span>
+      )}
+      {note.length > 0 ? (
+        <span className={NOTE_CLASS} title={note}>
+          {note}
+        </span>
+      ) : null}
+    </>
+  );
+  const href = buildSearchUrl([{ tag: artist.tag, type: TAG_TYPE_INCLUDE }]);
+
+  if (select !== null) {
+    // While selecting, the card is a checkbox: a click marks it and opens nothing.
+    return (
+      <div
+        className={
+          select.selected ? `${CARD_CLASS} ${CARD_SELECTED_CLASS}` : CARD_CLASS
+        }
+        data-tag={artist.tag}
+      >
+        <a
+          className={CARD_LINK_CLASS}
+          href={href}
+          role={ROLE_CHECKBOX}
+          aria-checked={select.selected}
+          aria-label={artist.tag}
+          onClick={(event) => {
+            event.preventDefault();
+            select.onToggle();
+          }}
+        >
+          {body}
+        </a>
+        <span className={CARD_MARK_CLASS} aria-hidden="true">
+          {select.selected ? <IconCheck size={ICON_PX} /> : null}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className={CARD_CLASS} data-tag={artist.tag}>
+      <a className={CARD_LINK_CLASS} href={href}>
+        {body}
+      </a>
+      <div className={CARD_ACTIONS_CLASS}>
+        <IconButton label={`Note for ${artist.tag}`} onClick={props.onEditNote}>
+          <IconPencil size={ICON_PX} />
+        </IconButton>
+        <IconButton label={`Unfollow ${artist.tag}`} onClick={props.onUnfollow}>
+          <IconX size={ICON_PX} />
+        </IconButton>
+      </div>
+    </div>
+  );
 }
 
 function AddArtistForm(props: {
@@ -111,9 +548,7 @@ function AddArtistForm(props: {
       <Button type="submit" variant="primary">
         {UI_TEXT.artistAdd}
       </Button>
-      {props.error.length > 0 ? (
-        <p className="rdw-error">{props.error}</p>
-      ) : null}
+      {props.error.length > 0 ? <p className="rdw-error">{props.error}</p> : null}
     </form>
   );
 }
@@ -122,21 +557,42 @@ export function FollowingPage(): JSX.Element {
   const [artists, setArtists] = useState<ArtistEntry[]>(() => readArtists());
   const [pending, setPending] = useState<PendingUnfollow[]>([]);
   const [filter, setFilter] = useState("");
+  const [show, setShow] = useState<ShowMode>(SHOW_ALL);
+  const [sort, setSort] = useState<SortMode>(SORT_NAME);
   const [draft, setDraft] = useState("");
   const [addError, setAddError] = useState("");
   const [suggestions, setSuggestions] = useState<
     readonly AutocompleteSuggestion[]
   >([]);
+  const [selecting, setSelecting] = useState(false);
+  const [selectedTags, setSelectedTags] = useState<readonly string[]>([]);
+  const [confirmUnfollow, setConfirmUnfollow] = useState(false);
+  const [confirmRefresh, setConfirmRefresh] = useState(false);
+  const [refresh, setRefresh] = useState<RefreshState | null>(null);
+  const [noteTag, setNoteTag] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState("");
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [transferDraft, setTransferDraft] = useState("");
+  const [transferMessage, setTransferMessage] = useState("");
   const pendingRef = useRef(pending);
   pendingRef.current = pending;
+  const cancelRefreshRef = useRef(false);
   const querierRef = useRef(
     createAutocompleteQuerier({ preferType: AUTOCOMPLETE_TAG_TYPE_ARTIST }),
   );
 
   useEffect(() => {
     const querier = querierRef.current;
+    // Back from an artist's page restores this page as it was: read the data again.
+    const onPageShow = (): void => {
+      reloadFromStorage();
+      setArtists(readArtists());
+    };
+    window.addEventListener(EVENT_PAGESHOW, onPageShow);
     return () => {
+      window.removeEventListener(EVENT_PAGESHOW, onPageShow);
       querier.cancel();
+      cancelRefreshRef.current = true;
       for (const entry of pendingRef.current) {
         clearTimeout(entry.timer);
       }
@@ -145,39 +601,37 @@ export function FollowingPage(): JSX.Element {
 
   const clearPendingUnfollow = (tag: string): void => {
     setPending((current) => {
-      const index = current.findIndex((entry) => entry.tag === tag);
-      if (index < 0) {
+      const found = current.find((entry) => entry.entry.tag === tag);
+      if (found === undefined) {
         return current;
       }
-      const removed = current[index];
-      if (removed !== undefined) {
-        clearTimeout(removed.timer);
-      }
-      return current.filter((entry) => entry.tag !== tag);
+      clearTimeout(found.timer);
+      return current.filter((entry) => entry.entry.tag !== tag);
     });
   };
 
-  const onUnfollow = (tag: string): void => {
-    const existing = pendingRef.current.find((entry) => entry.tag === tag);
+  const onUnfollow = (artist: ArtistEntry): void => {
+    const existing = pendingRef.current.find(
+      (entry) => entry.entry.tag === artist.tag,
+    );
     if (existing !== undefined) {
       clearTimeout(existing.timer);
     }
-    removeArtist(tag);
+    removeArtist(artist.tag);
     const timer = setTimeout(() => {
-      clearPendingUnfollow(tag);
-      setArtists(readArtists());
+      clearPendingUnfollow(artist.tag);
     }, UNFOLLOW_UNDO_MS);
     setPending([
-      ...pendingRef.current.filter((entry) => entry.tag !== tag),
-      { tag, timer },
+      ...pendingRef.current.filter((entry) => entry.entry.tag !== artist.tag),
+      { entry: artist, timer },
     ]);
     setArtists(readArtists());
   };
 
-  const onUndo = (tag: string): void => {
-    clearPendingUnfollow(tag);
+  const onUndo = (entry: ArtistEntry): void => {
+    clearPendingUnfollow(entry.tag);
     try {
-      addArtist(tag);
+      restoreArtist(entry);
     } catch (error) {
       log.warn("Undo unfollow failed", error);
     }
@@ -213,166 +667,458 @@ export function FollowingPage(): JSX.Element {
     setArtists(readArtists());
   };
 
-  const pendingTags = new Set(pending.map((entry) => entry.tag));
-  const sorted = [...artists].sort((a, b) => compareArtistTags(a.tag, b.tag));
-  const showFilter =
-    sorted.length + pending.length > ARTISTS_FILTER_THRESHOLD;
-  const filterValue = showFilter ? filter.trim().toLowerCase() : "";
-
-  useEffect(() => {
-    if (!showFilter && filter.length > 0) {
-      setFilter("");
+  const seen = getSeenPostId();
+  const now = Date.now();
+  const needle = filter.trim().toLowerCase();
+  const matches = (artist: ArtistEntry): boolean => {
+    if (show === SHOW_NEW && !artistHasNew(artist, seen)) {
+      return false;
     }
-  }, [showFilter, filter]);
-
-  const matchesFilter = (tag: string): boolean => {
-    if (filterValue.length === 0) {
+    if (needle.length === 0) {
       return true;
     }
     return (
-      tag.toLowerCase().includes(filterValue) ||
-      displayArtistName(tag).toLowerCase().includes(filterValue)
+      artist.tag.toLowerCase().includes(needle) ||
+      displayArtistName(artist.tag).toLowerCase().includes(needle) ||
+      (artist.note ?? "").toLowerCase().includes(needle)
+    );
+  };
+  const visible = sortArtists(artists, sort).filter(matches);
+  // Only cards on screen count: a filter never hides a card that is acted on.
+  const selectedVisible = visible.filter((artist) =>
+    selectedTags.includes(artist.tag),
+  );
+  const count = artists.length;
+  const empty = count === 0 && pending.length === 0;
+  const busy = refresh !== null && refresh.running;
+
+  const stopSelecting = (): void => {
+    setSelecting(false);
+    setSelectedTags([]);
+    setConfirmUnfollow(false);
+  };
+
+  const toggleSelected = (tag: string): void => {
+    setSelectedTags((current) =>
+      current.includes(tag)
+        ? current.filter((entry) => entry !== tag)
+        : [...current, tag],
     );
   };
 
-  const pendingSorted = [...pending].sort((a, b) =>
-    compareArtistTags(a.tag, b.tag),
-  );
+  const unfollowSelected = (): void => {
+    removeArtists(selectedVisible.map((artist) => artist.tag));
+    stopSelecting();
+    setArtists(readArtists());
+  };
 
-  const seen = getSeenPostId();
-  const count = artists.length;
-  const empty = sorted.length === 0 && pending.length === 0;
+  const runRefresh = async (targets: readonly ArtistEntry[]): Promise<void> => {
+    cancelRefreshRef.current = false;
+    const total = targets.length;
+    setRefresh({ done: 0, total, running: true, message: "" });
+    let done = 0;
+    for (const artist of targets) {
+      if (cancelRefreshRef.current) {
+        break;
+      }
+      if (done > 0) {
+        await sleep(REFRESH_INTERVAL_MS);
+        if (cancelRefreshRef.current) {
+          break;
+        }
+      }
+      try {
+        rememberArtistSnapshot(artist.tag, await fetchArtistSnapshot(artist.tag));
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        log.warn("following: refresh failed", artist.tag, error);
+        setArtists(readArtists());
+        setRefresh({
+          done,
+          total,
+          running: false,
+          message: `${REFRESH_STOPPED_PREFIX}${artist.tag}: ${reason}`,
+        });
+        return;
+      }
+      done += 1;
+      setArtists(readArtists());
+      setRefresh({ done, total, running: true, message: "" });
+    }
+    setRefresh({
+      done,
+      total,
+      running: false,
+      message: `${REFRESH_DONE_PREFIX}${String(done)} of ${String(total)}`,
+    });
+  };
+
+  const openNote = (artist: ArtistEntry): void => {
+    setNoteDraft(artist.note ?? "");
+    setNoteTag(artist.tag);
+  };
+
+  const submitNote = (): void => {
+    if (noteTag !== null) {
+      setArtistNote(noteTag, noteDraft);
+      setArtists(readArtists());
+    }
+    setNoteTag(null);
+  };
+
+  const openTransfer = (): void => {
+    setTransferDraft(sortArtists(artists, SORT_NAME).map((artist) => artist.tag).join(" "));
+    setTransferMessage("");
+    setTransferOpen(true);
+  };
+
+  const importTransfer = (): void => {
+    const tags = transferDraft.split(/\s+/).filter((tag) => tag.length > 0);
+    const result = addArtists(tags);
+    setArtists(readArtists());
+    setTransferMessage(
+      `Added ${String(result.added)}, already followed ${String(result.duplicates)}, invalid ${String(result.invalid)}`,
+    );
+  };
+
+  const copyTransfer = (): void => {
+    void navigator.clipboard.writeText(transferDraft).then(
+      () => {
+        setTransferMessage(COPIED_LABEL);
+      },
+      (error: unknown) => {
+        log.warn("following: copy failed", error);
+      },
+    );
+  };
 
   return (
-    <>
+    <div className={PAGE_CLASS}>
       <style>{FOLLOWING_PAGE_CSS}</style>
-      <Card className={PANEL_UI_CLASS.pageCard}>
-        <div className={PANEL_UI_CLASS.scrollRegion}>
-          <div className={PANEL_UI_CLASS.artistMeta}>
-            <p className="rdw-hint">
-              {`${String(count)} artist${count === 1 ? "" : "s"}`}
-            </p>
-            <p className="rdw-hint">
-              {seen > 0
-                ? `${UI_TEXT.seenUpTo}${String(seen)}`
-                : UI_TEXT.seenNothing}
-            </p>
+      <AddArtistForm
+        draft={draft}
+        error={addError}
+        suggestions={suggestions}
+        onDraftChange={(value) => {
+          setDraft(value);
+          if (addError.length > 0) {
+            setAddError("");
+          }
+          querierRef.current.query(value, setSuggestions);
+        }}
+        onSuggestionSelect={() => {
+          querierRef.current.cancel();
+          setSuggestions([]);
+        }}
+        onSubmit={onAdd}
+      />
+
+      {empty ? (
+        <EmptyState
+          title={ARTISTS_EMPTY_TITLE}
+          description={ARTISTS_EMPTY_HINT}
+          action={
+            <>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  window.location.assign(OPEN_POSTS_HREF);
+                }}
+              >
+                {OPEN_POSTS_LABEL}
+              </Button>
+              <Button variant="secondary" title={TRANSFER_TITLE} onClick={openTransfer}>
+                {TRANSFER_LABEL}
+              </Button>
+            </>
+          }
+        />
+      ) : (
+        <>
+          <div className={TOOLBAR_CLASS}>
+            <Segmented
+              label={SHOW_LABEL}
+              options={SHOW_OPTIONS}
+              value={show}
+              onChange={(value) => {
+                if (isShowMode(value)) {
+                  setShow(value);
+                }
+              }}
+            />
+            <TextField
+              id={ARTIST_FILTER_ID}
+              className={FILTER_CLASS}
+              value={filter}
+              placeholder={ARTIST_FILTER_LABEL}
+              aria-label={ARTIST_FILTER_LABEL}
+              onChange={setFilter}
+            />
+            <Select
+              label={SORT_LABEL}
+              options={SORT_OPTIONS}
+              value={sort}
+              onChange={(value) => {
+                if (isSortMode(value)) {
+                  setSort(value);
+                }
+              }}
+            />
+            {selecting ? (
+              <>
+                <span className={META_CLASS} aria-live="polite">
+                  {`${String(selectedVisible.length)}${SELECTED_SUFFIX}`}
+                </span>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setSelectedTags(visible.map((artist) => artist.tag));
+                  }}
+                >
+                  {SELECT_ALL_LABEL}
+                </Button>
+                <Button
+                  variant="danger"
+                  disabled={selectedVisible.length === 0}
+                  onClick={() => {
+                    setConfirmUnfollow(true);
+                  }}
+                >
+                  {UNFOLLOW_LABEL}
+                </Button>
+                <Button variant="secondary" onClick={stopSelecting}>
+                  {UI_TEXT.cancel}
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="secondary"
+                  disabled={busy}
+                  onClick={() => {
+                    setSelecting(true);
+                  }}
+                >
+                  {SELECT_LABEL}
+                </Button>
+                <Button
+                  variant="secondary"
+                  title={REFRESH_TITLE}
+                  disabled={busy || visible.length === 0}
+                  onClick={() => {
+                    setConfirmRefresh(true);
+                  }}
+                >
+                  {REFRESH_LABEL}
+                </Button>
+                <Button variant="secondary" title={TRANSFER_TITLE} onClick={openTransfer}>
+                  {TRANSFER_LABEL}
+                </Button>
+              </>
+            )}
           </div>
 
-          <AddArtistForm
-            draft={draft}
-            error={addError}
-            suggestions={suggestions}
-            onDraftChange={(value) => {
-              setDraft(value);
-              if (addError.length > 0) {
-                setAddError("");
-              }
-              querierRef.current.query(value, setSuggestions);
-            }}
-            onSuggestionSelect={() => {
-              querierRef.current.cancel();
-              setSuggestions([]);
-            }}
-            onSubmit={onAdd}
-          />
+          <p className={META_CLASS}>
+            {`${String(count)} artist${count === SINGLE ? "" : "s"} · ${
+              seen > 0 ? `${UI_TEXT.seenUpTo}${String(seen)}` : UI_TEXT.seenNothing
+            }`}
+          </p>
 
-          {empty ? (
-            <>
-              <EmptyState
-                title={ARTISTS_EMPTY_TITLE}
-                description={ARTISTS_EMPTY_HINT}
-                action={
-                  <Button
-                    variant="secondary"
-                    onClick={() => {
-                      window.location.assign(OPEN_POSTS_HREF);
-                    }}
-                  >
-                    {OPEN_POSTS_LABEL}
-                  </Button>
+          {refresh === null ? null : (
+            <div className={PROGRESS_CLASS} role="status">
+              <ProgressBar
+                value={refresh.total === 0 ? 0 : refresh.done / refresh.total}
+                label={
+                  refresh.running
+                    ? `${REFRESH_LABEL}: ${String(refresh.done)} of ${String(refresh.total)}`
+                    : refresh.message
                 }
               />
-            </>
-          ) : (
-            <>
-              {showFilter ? (
-                <div className={PANEL_UI_CLASS.artistFilter}>
-                  <TextField
-                    id={ARTIST_FILTER_ID}
-                    label={ARTIST_FILTER_LABEL}
-                    value={filter}
-                    onChange={setFilter}
-                  />
-                </div>
-              ) : null}
-              <ul className={PANEL_UI_CLASS.artistList}>
-                {pendingSorted.map((entry) => {
-                  if (!matchesFilter(entry.tag)) {
-                    return null;
-                  }
-                  return (
-                    <li
-                      key={`undo-${entry.tag}`}
-                      className={PANEL_UI_CLASS.artistRow}
-                      data-tag={entry.tag}
-                    >
-                      <div className={PANEL_UI_CLASS.artistUndo}>
-                        <span>
-                          {`${UNFOLLOWED_PREFIX}${displayArtistName(entry.tag)}`}
-                        </span>
-                        <Button
-                          variant="secondary"
-                          size="s"
-                          onClick={() => {
-                            onUndo(entry.tag);
-                          }}
-                        >
-                          {UNFOLLOW_UNDO_LABEL}
-                        </Button>
-                      </div>
-                    </li>
-                  );
-                })}
-                {sorted.map((artist) => {
-                  if (
-                    pendingTags.has(artist.tag) ||
-                    !matchesFilter(artist.tag)
-                  ) {
-                    return null;
-                  }
-                  return (
-                    <li
-                      key={artist.tag}
-                      className={PANEL_UI_CLASS.artistRow}
-                      data-tag={artist.tag}
-                    >
-                      <a
-                        className={PANEL_UI_CLASS.artistLink}
-                        href={buildSearchUrl([
-                          { tag: artist.tag, type: TAG_TYPE_INCLUDE },
-                        ])}
-                        title={artist.tag}
-                      >
-                        {displayArtistName(artist.tag)}
-                      </a>
-                      <IconButton
-                        label={`Unfollow ${artist.tag}`}
-                        onClick={() => {
-                          onUnfollow(artist.tag);
-                        }}
-                      >
-                        <IconX size={14} />
-                      </IconButton>
-                    </li>
-                  );
-                })}
-              </ul>
-            </>
+              {refresh.running ? (
+                <Button
+                  variant="secondary"
+                  size="s"
+                  onClick={() => {
+                    cancelRefreshRef.current = true;
+                  }}
+                >
+                  {UI_TEXT.cancel}
+                </Button>
+              ) : (
+                <Button
+                  variant="secondary"
+                  size="s"
+                  onClick={() => {
+                    setRefresh(null);
+                  }}
+                >
+                  {CLOSE_LABEL}
+                </Button>
+              )}
+            </div>
           )}
-        </div>
-      </Card>
-    </>
+
+          {visible.length === 0 && pending.length === 0 ? (
+            <EmptyState title={NO_MATCH_TITLE} description={NO_MATCH_DESCRIPTION} />
+          ) : (
+            <div className={GRID_CLASS}>
+              {pending.map((entry) => (
+                <div
+                  key={`undo-${entry.entry.tag}`}
+                  className={CARD_CLASS}
+                  data-tag={entry.entry.tag}
+                >
+                  <div className={CARD_UNDO_CLASS}>
+                    <span>{`${UNFOLLOWED_PREFIX}${displayArtistName(entry.entry.tag)}`}</span>
+                    <Button
+                      variant="secondary"
+                      size="s"
+                      onClick={() => {
+                        onUndo(entry.entry);
+                      }}
+                    >
+                      {UNFOLLOW_UNDO_LABEL}
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              {visible.map((artist) => (
+                <ArtistCard
+                  key={artist.tag}
+                  artist={artist}
+                  hasNew={artistHasNew(artist, seen)}
+                  now={now}
+                  select={
+                    selecting
+                      ? {
+                          selected: selectedTags.includes(artist.tag),
+                          onToggle: () => {
+                            toggleSelected(artist.tag);
+                          },
+                        }
+                      : null
+                  }
+                  onUnfollow={() => {
+                    onUnfollow(artist);
+                  }}
+                  onEditNote={() => {
+                    openNote(artist);
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      <Dialog
+        variant="confirm"
+        open={confirmUnfollow}
+        title={UNFOLLOW_DIALOG_TITLE}
+        message={unfollowMessage(selectedVisible.length)}
+        confirmLabel={UNFOLLOW_LABEL}
+        cancelLabel={UI_TEXT.cancel}
+        confirmTone="danger"
+        onConfirm={unfollowSelected}
+        onClose={() => {
+          setConfirmUnfollow(false);
+        }}
+      />
+      <Dialog
+        variant="confirm"
+        open={confirmRefresh}
+        title={REFRESH_DIALOG_TITLE}
+        message={refreshMessage(visible.length)}
+        confirmLabel={REFRESH_LABEL}
+        cancelLabel={UI_TEXT.cancel}
+        onConfirm={() => {
+          setConfirmRefresh(false);
+          void runRefresh(visible);
+        }}
+        onClose={() => {
+          setConfirmRefresh(false);
+        }}
+      />
+      <Dialog
+        open={noteTag !== null}
+        title={`${NOTE_TITLE_PREFIX}${displayArtistName(noteTag ?? "")}`}
+        onClose={() => {
+          setNoteTag(null);
+        }}
+      >
+        <form
+          className={DIALOG_FORM_CLASS}
+          onSubmit={(event) => {
+            event.preventDefault();
+            submitNote();
+          }}
+        >
+          <TextField label={NOTE_FIELD_LABEL} value={noteDraft} onChange={setNoteDraft} />
+          <div className={DIALOG_ACTIONS_CLASS}>
+            <Button
+              type="button"
+              variant="secondary"
+              size="s"
+              onClick={() => {
+                setNoteTag(null);
+              }}
+            >
+              {UI_TEXT.cancel}
+            </Button>
+            <Button type="submit" variant="primary" size="s">
+              {UI_TEXT.save}
+            </Button>
+          </div>
+        </form>
+      </Dialog>
+      <Dialog
+        open={transferOpen}
+        title={TRANSFER_TITLE}
+        onClose={() => {
+          setTransferOpen(false);
+        }}
+      >
+        <form
+          className={DIALOG_FORM_CLASS}
+          onSubmit={(event) => {
+            event.preventDefault();
+            importTransfer();
+          }}
+        >
+          <TextField
+            label={TRANSFER_FIELD_LABEL}
+            value={transferDraft}
+            onChange={(value) => {
+              setTransferDraft(value);
+              setTransferMessage("");
+            }}
+          />
+          {transferMessage.length > 0 ? (
+            <p className={META_CLASS} role="status">
+              {transferMessage}
+            </p>
+          ) : null}
+          <div className={DIALOG_ACTIONS_CLASS}>
+            <Button
+              type="button"
+              variant="secondary"
+              size="s"
+              onClick={() => {
+                setTransferOpen(false);
+              }}
+            >
+              {CLOSE_LABEL}
+            </Button>
+            <Button type="button" variant="secondary" size="s" onClick={copyTransfer}>
+              {COPY_LABEL}
+            </Button>
+            <Button type="submit" variant="primary" size="s">
+              {IMPORT_LABEL}
+            </Button>
+          </div>
+        </form>
+      </Dialog>
+    </div>
   );
 }
 

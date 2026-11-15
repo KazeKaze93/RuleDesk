@@ -66,8 +66,23 @@ export const CollectionSchema = z.object({
   postCount: z.optional(PostCountSchema),
 });
 
+/**
+ * A followed artist. Everything except `tag` is what the Following page shows
+ * and is filled in as it becomes known.
+ */
 export const ArtistEntrySchema = z.object({
   tag: z.string().check(z.minLength(1)),
+  /** When the artist was followed, ms since epoch. Absent for older entries. */
+  addedAt: z.optional(z.number()),
+  /** First thumbs of the artist's results page, for the card cover. */
+  cover: z.optional(z.array(z.string())),
+  postCount: z.optional(PostCountSchema),
+  /** Newest post id of the artist seen so far. */
+  lastPostId: z.optional(z.int()),
+  /** When `lastPostId` took its current value, ms since epoch. */
+  lastPostSince: z.optional(z.number()),
+  /** The user's own note. */
+  note: z.optional(z.string()),
 });
 
 /** Legacy `fav` remains optional so old storage/export blobs still parse. */

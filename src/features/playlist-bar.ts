@@ -24,12 +24,9 @@ import {
   dynamicCollectionMarkHash,
   readDynamicCollectionMark,
 } from "../pages/constants";
+import { readFirstThumbUrls, readResultCount } from "../site/result-page";
 import { SITE_SELECTORS } from "../site/selectors";
-import {
-  isPlaylist,
-  type Collection,
-  type PostCount,
-} from "../storage/schema";
+import { isPlaylist, type Collection } from "../storage/schema";
 import {
   deleteCollection,
   DYNAMIC_COVER_SIZE,
@@ -638,35 +635,10 @@ function DynamicCollectionBar(props: DynamicBarProps): JSX.Element {
 }
 
 const FIRST_PAGE_PID = "0";
-const QUERY_MARK = "?";
-const PID_PATTERN = /^\d+$/;
 
 function isFirstResultsPage(search: string): boolean {
   const pid = new URLSearchParams(search).get(SEARCH_PARAM_PID);
   return pid === null || pid.length === 0 || pid === FIRST_PAGE_PID;
-}
-
-/** Thumb URLs of the first posts in the grid, read from the page as it is. */
-function readFirstThumbUrls(): string[] {
-  const imageList = findImageList(document);
-  if (imageList === null) {
-    return [];
-  }
-  const urls: string[] = [];
-  const images = imageList.querySelectorAll(
-    `${SITE_SELECTORS.thumb} ${SITE_SELECTORS.previewImage}`,
-  );
-  for (const image of images) {
-    const src = image.getAttribute("src");
-    if (src === null || src.trim().length === 0) {
-      continue;
-    }
-    urls.push(src.trim());
-    if (urls.length === DYNAMIC_COVER_SIZE) {
-      break;
-    }
-  }
-  return urls;
 }
 
 /**
@@ -685,126 +657,11 @@ function rememberDynamicCover(
   ) {
     return;
   }
-  setDynamicCover(collectionId, readFirstThumbUrls());
-  const count = readResultCount(tagsParam);
+  setDynamicCover(collectionId, readFirstThumbUrls(document, DYNAMIC_COVER_SIZE));
+  const count = readResultCount(document, tagsParam);
   if (count !== null) {
     setDynamicPostCount(collectionId, count);
   }
-}
-
-function readPidFromLink(link: Element): number | null {
-  const href = link.getAttribute("href");
-  if (href === null) {
-    return null;
-  }
-  const query = href.slice(href.indexOf(QUERY_MARK) + QUERY_MARK.length);
-  const raw = new URLSearchParams(query).get(SEARCH_PARAM_PID);
-  if (raw === null || !PID_PATTERN.test(raw)) {
-    return null;
-  }
-  return Number(raw);
-}
-
-const EXCLUDE_MARK = "-";
-const FILTER_MARK = ":";
-const OR_MARKS: readonly string[] = ["(", ")", "~"];
-const NON_DIGITS = /\D/g;
-
-/** The tag of a search that is exactly one plain tag, else null. */
-function readSingleTag(tagsParam: string): string | null {
-  const tokens = withoutSortRandom(tagsParam).split(" ");
-  const tag = tokens[0];
-  if (tokens.length !== 1 || tag === undefined || tag.length === 0) {
-    return null;
-  }
-  if (
-    tag.startsWith(EXCLUDE_MARK) ||
-    tag.includes(FILTER_MARK) ||
-    OR_MARKS.includes(tag)
-  ) {
-    return null;
-  }
-  return tag.toLowerCase();
-}
-
-function rowLinksToTag(row: Element, tag: string): boolean {
-  for (const link of row.querySelectorAll("a[href]")) {
-    const href = link.getAttribute("href") ?? "";
-    const mark = href.indexOf(QUERY_MARK);
-    if (mark < 0) {
-      continue;
-    }
-    const linked = new URLSearchParams(href.slice(mark + QUERY_MARK.length)).get(
-      SEARCH_PARAM_TAGS,
-    );
-    if (linked !== null && linked.trim().toLowerCase() === tag) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/**
- * For a search of one tag the sidebar row of that tag shows the site's own
- * total, which is exact. Null when the row or its number is not on the page.
- */
-function readSingleTagCount(tagsParam: string): PostCount | null {
-  const tag = readSingleTag(tagsParam);
-  if (tag === null) {
-    return null;
-  }
-  for (const row of document.querySelectorAll(SITE_SELECTORS.tagSidebarRow)) {
-    if (!rowLinksToTag(row, tag)) {
-      continue;
-    }
-    const digits = (
-      row.querySelector(SITE_SELECTORS.tagCount)?.textContent ?? ""
-    ).replace(NON_DIGITS, "");
-    if (digits.length === 0) {
-      return null;
-    }
-    return { value: Number(digits), exact: true };
-  }
-  return null;
-}
-
-/**
- * Size of the current search, read from the first results page.
- * A search of one tag takes the exact total from the tag's sidebar row.
- * With a last-page link: at least its offset (`pid`), so the count is a lower
- * bound. With other page links only: the largest offset among them. With no
- * page links: the number of thumbs on the page, exact. No grid: null.
- */
-function readResultCount(tagsParam: string): PostCount | null {
-  const tagCount = readSingleTagCount(tagsParam);
-  if (tagCount !== null) {
-    return tagCount;
-  }
-  const last = document.querySelector(SITE_SELECTORS.paginationLastPage);
-  if (last !== null) {
-    const pid = readPidFromLink(last);
-    if (pid !== null) {
-      return { value: pid, exact: false };
-    }
-  }
-  let largest: number | null = null;
-  for (const link of document.querySelectorAll(SITE_SELECTORS.paginationPageLink)) {
-    const pid = readPidFromLink(link);
-    if (pid !== null && (largest === null || pid > largest)) {
-      largest = pid;
-    }
-  }
-  if (largest !== null) {
-    return { value: largest, exact: false };
-  }
-  const imageList = findImageList(document);
-  if (imageList === null) {
-    return null;
-  }
-  return {
-    value: imageList.querySelectorAll(SITE_SELECTORS.thumb).length,
-    exact: true,
-  };
 }
 
 function mountDynamicBar(tagsParam: string, search: string): void {
