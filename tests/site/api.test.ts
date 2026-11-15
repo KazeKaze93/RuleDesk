@@ -5,6 +5,7 @@ import {
   collectPostFiles,
   parseApiPosts,
   queryForWalk,
+  readResponseText,
 } from "../../src/site/api";
 
 const CREDENTIALS = { userId: "42", apiKey: "secret-key" };
@@ -53,6 +54,31 @@ describe("site API for downloads", () => {
     ]);
     expect(parseApiPosts("")).toEqual([]);
     expect(parseApiPosts("  \n")).toEqual([]);
+  });
+
+  it("finds the body of an answer wherever the script manager puts it", () => {
+    expect(readResponseText({ responseText: "[1]" })).toBe("[1]");
+    expect(readResponseText({ response: "[2]" })).toBe("[2]");
+    expect(readResponseText({ response: [{ id: 5 }] })).toBe('[{"id":5}]');
+    expect(readResponseText({ responseText: "", response: "x" })).toBe("");
+    expect(readResponseText({})).toBeNull();
+    expect(readResponseText({ response: null })).toBeNull();
+  });
+
+  it("reads posts when the manager gives only `response`, not `responseText`", async () => {
+    vi.stubGlobal(
+      "GM_xmlhttpRequest",
+      (request: { onload: (response: { status: number; response: unknown }) => void }) => {
+        request.onload({ status: 200, response: [post(5)] });
+      },
+    );
+    const files = await settle(
+      collectPostFiles(
+        { kind: "ids", ids: [5] },
+        { credentials: CREDENTIALS, onProgress: () => {}, isCancelled: () => false },
+      ),
+    );
+    expect(files).toEqual([{ postId: 5, url: "https://wimg.rule34.xxx//images/1/5.jpg" }]);
   });
 
   it("turns a refusal in words into an error with those words", () => {

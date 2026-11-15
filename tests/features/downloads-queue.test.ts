@@ -193,6 +193,18 @@ describe("download manager", () => {
     expect(getDownloadState().phase).toBe("done");
   });
 
+  it("says so when the API finds no files, instead of finishing with nothing", async () => {
+    setApiCredentials("42", "key");
+    stubDownload();
+    stubApi([]);
+    const run = startDownload("Pics", { kind: "ids", ids: [1] });
+    await vi.advanceTimersByTimeAsync(LONG_MS);
+    await run;
+    expect(getDownloadState()).toMatchObject({ phase: "error" });
+    expect(getDownloadState().message).toContain("no files");
+    expect(memory.has(DOWNLOADS_JOB_KEY)).toBe(false);
+  });
+
   it("reports an API refusal instead of starting, and Cancel clears it", async () => {
     setApiCredentials("42", "wrong");
     stubDownload();

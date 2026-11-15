@@ -2,6 +2,11 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.24.2
+
+- Fixed: a download stopped with "Cannot read properties of undefined (reading 'trim')". The script now reads the API answer in every form the script manager gives it
+- A download for which the API returns no files says so instead of finishing with nothing
+
 ## 0.24.1
 
 - **Downloads settings: one field.** Paste the whole line the site shows (`&api_key=…&user_id=…`); the script splits it into the key and the user ID itself

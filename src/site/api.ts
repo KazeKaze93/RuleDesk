@@ -54,17 +54,46 @@ function buildApiUrl(tags: string, credentials: ApiCredentials): string {
   return `${API_URL}?${params.toString()}`;
 }
 
+const NO_BODY_ERROR = "API answer has no readable body";
+
+/**
+ * The body of an answer as text. Script managers differ: the text may be in
+ * `responseText`, or only in `response` (as text, or already parsed).
+ */
+export function readResponseText(response: {
+  readonly responseText?: unknown;
+  readonly response?: unknown;
+}): string | null {
+  if (typeof response.responseText === "string") {
+    return response.responseText;
+  }
+  const body = response.response;
+  if (typeof body === "string") {
+    return body;
+  }
+  if (body !== null && typeof body === "object") {
+    return JSON.stringify(body);
+  }
+  return null;
+}
+
 function requestText(url: string): Promise<string> {
   return new Promise((resolve, reject) => {
     GM_xmlhttpRequest({
       method: "GET",
       url,
+      responseType: "text",
       onload: (response) => {
         if (response.status !== HTTP_OK) {
           reject(new Error(`API HTTP ${String(response.status)}`));
           return;
         }
-        resolve(response.responseText);
+        const text = readResponseText(response);
+        if (text === null) {
+          reject(new Error(NO_BODY_ERROR));
+          return;
+        }
+        resolve(text);
       },
       onerror: () => {
         reject(new Error("API request failed"));

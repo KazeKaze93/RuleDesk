@@ -30,6 +30,9 @@ export const FILE_INTERVAL_MS = 400;
 /** Wait before the one retry of a failed file. */
 export const RETRY_DELAY_MS = 5000;
 
+const NO_FILES_MESSAGE =
+  "The API returned no files for this. Deleted posts have none.";
+
 const JobSchema = z.object({
   label: z.string(),
   folder: z.string(),
@@ -244,6 +247,10 @@ export async function startDownload(label: string, source: DownloadSource): Prom
     return;
   }
   if (token !== runToken) {
+    return;
+  }
+  if (files.length === 0) {
+    emit({ ...IDLE, phase: "error", label, message: NO_FILES_MESSAGE });
     return;
   }
   job = { label, folder: downloadFolder(label), files };
