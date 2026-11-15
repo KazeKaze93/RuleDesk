@@ -7,6 +7,7 @@ A userscript for `rule34.xxx` that adds a feed of followed artists, collections,
 - [Settings](#settings)
 - [Your data](#your-data)
 - [Limits](#limits)
+- [Questions and answers](FAQ.md)
 - [Changelog](CHANGELOG.md)
 - [Developer documentation](docs/)
 
@@ -22,7 +23,7 @@ Posts of the artists you follow, newest first. New posts carry a NEW mark; "Mark
 
 Every followed artist as a card with a cover, post count and a "new" mark.
 
-- Follow an artist with the Follow button next to the name in the tag list, or type one or several tags into the Add field
+- Follow an artist with the Follow button next to the name in the tag list, or press "Add artists" and type one or several tags
 - Filter by name, show only artists with new posts, sort by name, post count or follow date
 - Select several cards to unfollow them at once
 - Refresh re-reads each artist's first page for a fresh cover and count

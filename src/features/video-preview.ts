@@ -40,6 +40,8 @@ export const VIDEO_PREVIEW_SETTING_CAPTION =
 /** "other" is for the Comments page, which is recognised by its markup. */
 const FEATURE_PAGES = ["list", "favorites", "other"] as const;
 const HOVER_DELAY_MS = 200;
+/** How long a post is left alone after its preview failed to load. */
+const RETRY_AFTER_MS = 30_000;
 const VIDEO_CLASS = "rdw-video-preview";
 const WEBM_PREVIEW_SELECTOR = "img.preview.webm-thumb";
 const THUMBS_SELECTOR = `${SITE_SELECTORS.thumb}, ${SITE_SELECTORS.commentThumb}`;
@@ -87,7 +89,25 @@ type ActivePreview = {
   readonly onError: () => void;
 };
 
-const failedPostIds = new Set<string>();
+/** Post id → when its preview last failed to load, ms since epoch. */
+const failedPostIds = new Map<string, number>();
+
+/**
+ * A post whose preview failed is left alone for a while and then tried
+ * again: a file just uploaded may not be served yet, and one stray error
+ * should not switch the preview of that post off until the page is reloaded.
+ */
+function failedRecently(postId: string): boolean {
+  const failedAt = failedPostIds.get(postId);
+  if (failedAt === undefined) {
+    return false;
+  }
+  if (Date.now() - failedAt < RETRY_AFTER_MS) {
+    return true;
+  }
+  failedPostIds.delete(postId);
+  return false;
+}
 const boundThumbGeneration = new WeakMap<HTMLElement, number>();
 
 let bindGeneration = 0;
@@ -154,7 +174,7 @@ function findWebmThumbImage(thumb: HTMLElement): HTMLImageElement | null {
 
 function startPreview(thumb: HTMLElement): void {
   const postId = readPostId(thumb);
-  if (postId === null || failedPostIds.has(postId)) {
+  if (postId === null || failedRecently(postId)) {
     return;
   }
   const img = findWebmThumbImage(thumb);
@@ -184,7 +204,7 @@ function startPreview(thumb: HTMLElement): void {
   video.setAttribute("aria-hidden", "true");
 
   const onError = (): void => {
-    failedPostIds.add(postId);
+    failedPostIds.set(postId, Date.now());
     if (activePreview?.video === video) {
       tearDownActive();
     } else {
@@ -215,7 +235,7 @@ function onThumbPointerEnter(event: Event): void {
     return;
   }
   const postId = readPostId(thumb);
-  if (postId === null || failedPostIds.has(postId)) {
+  if (postId === null || failedRecently(postId)) {
     return;
   }
   if (findWebmThumbImage(thumb) === null) {
@@ -311,4 +331,4 @@ export const videoPreviewFeature: Feature = {
   mount: mountVideoPreview,
 };
 
-export { HOVER_DELAY_MS, VIDEO_CLASS, WEBM_PREVIEW_SELECTOR };
+export { HOVER_DELAY_MS, RETRY_AFTER_MS, VIDEO_CLASS, WEBM_PREVIEW_SELECTOR };

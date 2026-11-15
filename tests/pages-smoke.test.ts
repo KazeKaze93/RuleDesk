@@ -95,7 +95,7 @@ describe("own pages smoke", () => {
     expect(shadowRoot().querySelector(`.${PANEL_UI_CLASS.pageCard}`)).not.toBeNull();
   });
 
-  it("mounts Following empty state with add field and Open Posts", async () => {
+  it("mounts Following empty state with the Add artists button and Open Posts", async () => {
     const header = document.getElementById("header");
     if (!(header instanceof HTMLElement)) {
       throw new Error("header missing");
@@ -105,9 +105,10 @@ describe("own pages smoke", () => {
     const text = shadow.textContent ?? "";
     expect(text).toContain("No followed artists yet");
     expect(text).toContain("Follow");
-    expect(text).toContain(UI_TEXT.artistTagLabel);
+    expect(text).toContain("Add artists");
     expect(text).toContain("Open Posts");
-    expect(shadow.querySelector("#rdw-following-add-tag")).not.toBeNull();
+    // The tag field is in the window behind the button, not on the page.
+    expect(shadow.querySelector("#rdw-following-add-tag")).toBeNull();
   });
 
   it("mounts the collections list without Save current search", async () => {

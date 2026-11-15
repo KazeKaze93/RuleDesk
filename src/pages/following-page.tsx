@@ -42,7 +42,7 @@ import {
   type SegmentedOption,
   type SelectOption,
 } from "../ui/kit";
-import { IconCheck, IconX } from "../ui/kit/icons";
+import { IconCheck, IconPlus, IconX } from "../ui/kit/icons";
 import { completeLastQueryToken, readLastQueryToken } from "../ui/query-field";
 import {
   ARTIST_FILTER_ID,
@@ -54,7 +54,6 @@ import {
 const EVENT_PAGESHOW = "pageshow";
 
 const PAGE_CLASS = "rdw-following-page";
-const ADD_FORM_CLASS = "rdw-following-add";
 const STICKY_CLASS = "rdw-following-sticky";
 const TOOLBAR_CLASS = "rdw-following-toolbar";
 const FILTER_CLASS = "rdw-following-filter";
@@ -95,6 +94,8 @@ const UNFOLLOW_LABEL = "Unfollow";
 const REFRESH_LABEL = "Refresh";
 const REFRESH_TITLE = "Read each artist's first page again: cover, post count, newest post";
 const ADD_FIELD_LABEL = "Artist tags, separated by spaces";
+const ADD_BUTTON_LABEL = "Add artists";
+const ADD_DIALOG_TITLE = "Follow artists";
 const TAG_SPLIT = /\s+/;
 const CLOSE_LABEL = "Close";
 const NOT_OPENED_CAPTION = "not opened yet";
@@ -123,7 +124,6 @@ export const REFRESH_DONE_CLOSE_MS = 2000;
 const MS_PER_SECOND = 1000;
 const COVER_AXIS_COUNT = 2;
 const ICON_PX = 14;
-const ADD_FIELD_WIDTH_PX = 280;
 const LIST_COVER_PX = 44;
 const FILTER_FIELD_WIDTH_PX = 220;
 /** Above the cards and their corner buttons. */
@@ -159,34 +159,11 @@ export const FOLLOWING_PAGE_CSS = `
   flex-direction: column;
   gap: 12px;
 }
-.${ADD_FORM_CLASS},
 .${TOOLBAR_CLASS} {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   align-items: flex-end;
-}
-/*
- * The tag field starts short and grows with what is typed, up to the row.
- * Where the browser has no field-sizing, it keeps the starting width.
- */
-.${ADD_FORM_CLASS} .rdw-field,
-.${ADD_FORM_CLASS} .rdw-ac {
-  flex: 0 1 auto;
-  min-width: 0;
-  max-width: 100%;
-  margin: 0;
-}
-.${ADD_FORM_CLASS} .rdw-ac__input {
-  field-sizing: content;
-  width: ${String(ADD_FIELD_WIDTH_PX)}px;
-  min-width: ${String(ADD_FIELD_WIDTH_PX)}px;
-  max-width: 100%;
-}
-@supports (field-sizing: content) {
-  .${ADD_FORM_CLASS} .rdw-ac__input {
-    width: auto;
-  }
 }
 .${TOOLBAR_CLASS} .${FILTER_CLASS} {
   flex: 0 1 auto;
@@ -207,8 +184,8 @@ export const FOLLOWING_PAGE_CSS = `
   }
 }
 /*
- * The Add row and the filter row stay at the top of the window while the
- * list scrolls under them.
+ * The row with the filter and the buttons stays at the top of the window
+ * while the list scrolls under it.
  */
 .${STICKY_CLASS} {
   display: flex;
@@ -609,38 +586,60 @@ function ArtistCard(props: {
   );
 }
 
-function AddArtistForm(props: {
+/**
+ * The window behind "Add artists": one field for several tags. It closes when
+ * every tag was added; when some were skipped it stays and says which.
+ */
+function AddArtistDialog(props: {
+  readonly open: boolean;
   readonly draft: string;
   readonly error: string;
   readonly suggestions: readonly AutocompleteSuggestion[];
   readonly onDraftChange: (value: string) => void;
   readonly onSuggestionSelect: (tag: string) => void;
   readonly onSubmit: () => void;
+  readonly onClose: () => void;
 }): JSX.Element {
   return (
-    <form
-      className={ADD_FORM_CLASS}
-      onSubmit={(event) => {
-        event.preventDefault();
-        props.onSubmit();
-      }}
+    <Dialog
+      variant="content"
+      open={props.open}
+      onClose={props.onClose}
+      title={ADD_DIALOG_TITLE}
     >
-      <AutocompleteField
-        id={ADD_INPUT_ID}
-        label={ADD_FIELD_LABEL}
-        value={props.draft}
-        suggestions={props.suggestions}
-        replaceOnSelect={false}
-        onChange={props.onDraftChange}
-        onSelect={(option) => {
-          props.onSuggestionSelect(option.value);
+      <form
+        className="rdw-dialog__fields"
+        onSubmit={(event) => {
+          event.preventDefault();
+          props.onSubmit();
         }}
-      />
-      <Button type="submit" variant="primary">
-        {UI_TEXT.artistAdd}
-      </Button>
-      {props.error.length > 0 ? <p className="rdw-error">{props.error}</p> : null}
-    </form>
+      >
+        <AutocompleteField
+          id={ADD_INPUT_ID}
+          label={ADD_FIELD_LABEL}
+          value={props.draft}
+          suggestions={props.suggestions}
+          replaceOnSelect={false}
+          onChange={props.onDraftChange}
+          onSelect={(option) => {
+            props.onSuggestionSelect(option.value);
+          }}
+        />
+        {props.error.length > 0 ? (
+          <p className="rdw-error" role="alert">
+            {props.error}
+          </p>
+        ) : null}
+        <div className="rdw-dialog__actions">
+          <Button type="button" variant="secondary" size="s" onClick={props.onClose}>
+            {UI_TEXT.cancel}
+          </Button>
+          <Button type="submit" variant="primary" size="s">
+            {UI_TEXT.artistAdd}
+          </Button>
+        </div>
+      </form>
+    </Dialog>
   );
 }
 
@@ -652,6 +651,7 @@ export function FollowingPage(): JSX.Element {
   const [view, setView] = useState<ViewMode>(() => readViewMode(FOLLOWING_VIEW_STATE_ID));
   const [draft, setDraft] = useState("");
   const [addError, setAddError] = useState("");
+  const [adding, setAdding] = useState(false);
   const [suggestions, setSuggestions] = useState<
     readonly AutocompleteSuggestion[]
   >([]);
@@ -701,9 +701,13 @@ export function FollowingPage(): JSX.Element {
       return;
     }
     const result = addArtists(tags);
-    setAddError(addSummary(result));
+    const summary = addSummary(result);
+    setAddError(summary);
     if (result.added > 0) {
       setDraft("");
+    }
+    if (summary.length === 0) {
+      setAdding(false);
     }
     setSuggestions([]);
     querierRef.current.cancel();
@@ -790,8 +794,27 @@ export function FollowingPage(): JSX.Element {
     });
   };
 
-  const addForm = (
-      <AddArtistForm
+  const closeAdding = (): void => {
+    setAdding(false);
+    setAddError("");
+    setSuggestions([]);
+    querierRef.current.cancel();
+  };
+  const addButton = (
+    <Button
+      variant="primary"
+      onClick={() => {
+        setAdding(true);
+      }}
+    >
+      <IconPlus size={ICON_PX} />
+      {ADD_BUTTON_LABEL}
+    </Button>
+  );
+  const addDialog = (
+      <AddArtistDialog
+        open={adding}
+        onClose={closeAdding}
         draft={draft}
         error={addError}
         suggestions={suggestions}
@@ -821,27 +844,28 @@ export function FollowingPage(): JSX.Element {
   return (
     <div className={PAGE_CLASS}>
       <style>{FOLLOWING_PAGE_CSS}</style>
-      {empty ? addForm : null}
 
       {empty ? (
         <EmptyState
           title={ARTISTS_EMPTY_TITLE}
           description={ARTISTS_EMPTY_HINT}
           action={
-            <Button
-              variant="secondary"
-              onClick={() => {
-                window.location.assign(OPEN_POSTS_HREF);
-              }}
-            >
-              {OPEN_POSTS_LABEL}
-            </Button>
+            <>
+              {addButton}
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  window.location.assign(OPEN_POSTS_HREF);
+                }}
+              >
+                {OPEN_POSTS_LABEL}
+              </Button>
+            </>
           }
         />
       ) : (
         <>
           <div className={STICKY_CLASS}>
-          {addForm}
           <div className={TOOLBAR_CLASS}>
             <Segmented
               label={SHOW_LABEL}
@@ -929,6 +953,7 @@ export function FollowingPage(): JSX.Element {
                 >
                   {REFRESH_LABEL}
                 </Button>
+                {addButton}
               </>
             )}
           </div>
@@ -1006,6 +1031,7 @@ export function FollowingPage(): JSX.Element {
         </>
       )}
 
+      {addDialog}
       <Dialog
         variant="confirm"
         open={confirmUnfollow}

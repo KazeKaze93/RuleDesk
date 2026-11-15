@@ -301,8 +301,9 @@ describe("FollowingPage", () => {
     const root = mount();
     expect(hasButton(root, "Import / export")).toBe(false);
 
+    click(button(root, "Add artists"));
     setInput(root.querySelector("#rdw-following-add-tag"), "nyx_x nero100  Sultry_Kiyomi ( ");
-    click(button(root, "Add"));
+    click(button(dialog(root), "Add"));
 
     expect(artistTags()).toEqual(["nyx_x", "nero100", "sultry_kiyomi"]);
     expect(root.textContent).toContain("Added 2, already followed 1, invalid 1.");
@@ -311,13 +312,18 @@ describe("FollowingPage", () => {
 
   it("adds one artist without a message and says when it is already followed", () => {
     const root = mount();
+    // The field is not on the page: it is in the window behind the button.
+    expect(root.querySelector("#rdw-following-add-tag")).toBeNull();
+    click(button(root, "Add artists"));
     setInput(root.querySelector("#rdw-following-add-tag"), "nyx_x");
-    click(button(root, "Add"));
+    click(button(dialog(root), "Add"));
     expect(artistTags()).toEqual(["nyx_x"]);
-    expect(root.querySelector(".rdw-error")).toBeNull();
+    // Everything was added: the window closes by itself.
+    expect(root.querySelector('[role="dialog"]')).toBeNull();
 
+    click(button(root, "Add artists"));
     setInput(root.querySelector("#rdw-following-add-tag"), "nyx_x");
-    click(button(root, "Add"));
+    click(button(dialog(root), "Add"));
     expect(root.querySelector(".rdw-error")?.textContent).toBe(
       "Already following this artist.",
     );

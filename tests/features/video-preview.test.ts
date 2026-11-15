@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   HOVER_DELAY_MS,
+  RETRY_AFTER_MS,
   VIDEO_CLASS,
   VIDEO_PREVIEW_FEATURE_ID,
   VIDEO_PREVIEW_SETTING_CAPTION,
@@ -205,7 +206,7 @@ describe("videoPreviewFeature", () => {
     expect(document.querySelectorAll(`video.${VIDEO_CLASS}`)).toHaveLength(1);
   });
 
-  it("on error removes video and never retries that post id", () => {
+  it("on error removes the video, leaves the post alone for a while, then tries again", () => {
     const thumb = buildWebmThumb(POST_ID_A, DIR_A, HASH_A);
     document.body.append(thumb);
     mountFeature();
@@ -223,6 +224,12 @@ describe("videoPreviewFeature", () => {
     dispatchPointer(thumb, "pointerenter");
     vi.advanceTimersByTime(HOVER_DELAY_MS);
     expect(thumb.querySelector(`video.${VIDEO_CLASS}`)).toBeNull();
+    dispatchPointer(thumb, "pointerleave");
+
+    vi.advanceTimersByTime(RETRY_AFTER_MS);
+    dispatchPointer(thumb, "pointerenter");
+    vi.advanceTimersByTime(HOVER_DELAY_MS);
+    expect(thumb.querySelector(`video.${VIDEO_CLASS}`)).toBeInstanceOf(HTMLVideoElement);
   });
 
   it("ignores non-webm thumbs and cancels pending preview on leave", () => {
