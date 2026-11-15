@@ -149,13 +149,10 @@ ${ROOT} body textarea {
   font-family: ${v.font};
 }
 
-${ROOT} a:link {
-  color: ${v.accent};
-  text-decoration: none;
-}
-
+/* A visited link looks like any other link: one colour for links on a page. */
+${ROOT} a:link,
 ${ROOT} a:visited {
-  color: ${v.muted};
+  color: ${v.accent};
   text-decoration: none;
 }
 
@@ -1188,10 +1185,6 @@ ${ROOT} .blacklisted-tags-disabled {
 }
 
 /* —— dark theme contrast (tokens already dark; keep chrome readable) —— */
-${ROOT_DARK} a:visited {
-  color: ${v.muted};
-}
-
 ${ROOT_DARK} a:hover,
 ${ROOT_DARK} a:active {
   color: ${v.text};
