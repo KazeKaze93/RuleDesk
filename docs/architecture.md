@@ -1,6 +1,6 @@
 # Architecture
 
-RuleDesk Web is one userscript file, `dist/ruledesk-web.user.js`, built from TypeScript with Vite and `vite-plugin-monkey`. Its own interface is Preact (`preact/compat`); data is validated with `zod/mini`. It runs at `document-start` on `https://rule34.xxx/*` with three grants: `GM_getValue`, `GM_setValue` and `GM_download`.
+RuleDesk Web is one userscript file, `dist/ruledesk-web.user.js`, built from TypeScript with Vite and `vite-plugin-monkey`. Its own interface is Preact (`preact/compat`); data is validated with `zod/mini`. It runs at `document-start` on `https://rule34.xxx/*` with four grants: `GM_getValue`, `GM_setValue`, and for the download manager `GM_download` and `GM_xmlhttpRequest` (connect: `api.rule34.xxx`).
 
 The approach: the site's pages and markup stay. The script recolours the whole site with its own skin, adds controls to the site's pages, and adds pages of its own that open by URL hash without a request to the site.
 
@@ -59,6 +59,8 @@ Colours come only from the tokens `--rdw-*` (`src/ui/tokens.ts`); no component h
 | Script manager | `ruledesk-web.storage` | Collections, followed artists, seen marks, settings, the feed's seen mark |
 | Script manager | `ruledesk-web.favs` | Local favorite ids |
 | Script manager | `ruledesk-web.storage.backup` | Snapshot taken before an import |
+| Script manager | `ruledesk-web.api` | The user's API credentials for downloads; never exported |
+| Script manager | `ruledesk-web.downloads`, `.position` | The current download job and how far it got |
 | IndexedDB | (background store) | The custom theme's background image |
 | `localStorage` | mirrors | Followed artists; covers and counts of dynamic collections |
 | Site cookies | `tag_blacklist`, `theme` | The site's own blacklist and theme |
@@ -79,6 +81,12 @@ Names are unique across both kinds, case-insensitively. A query that narrows not
 The feed is a normal site search of the form `( artist1 ~ artist2 … )`. Artists are split into groups (`updatesGroupSize`, 400 by default). With one group the feed is that one search. With several, `src/features/feed-merge.ts` reads the other groups' pages and merges all groups into one grid, newest first: a post is shown only when every group that still has unread pages has a post buffered, so nothing newer can appear later.
 
 What Following shows about an artist (cover, exact count, newest post) is collected by `src/features/artist-snapshots.ts` from pages the user opens anyway; only the Refresh button makes requests.
+
+## Download manager
+
+`src/features/downloads/queue.ts` holds one job at a time. `startDownload(label, source)` first collects the files through `src/site/api.ts` (a search is walked with an id cursor; explicit post ids are asked for in groups), then saves them one by one with `GM_download` into `RuleDesk/<label>`. The job and its position are stored, so a page change does not lose it: the tab that was running it (marked in `sessionStorage`) continues by itself, any other tab shows it paused. `panel.tsx` draws the corner panel on every page; `search-controls.tsx` adds the buttons under the search panel; `grid-select.ts` lets posts be picked on a results page by marking `span.thumb`. Buttons appear only when `downloadsAvailable()` is true, which needs a stored API key.
+
+The storage keys and the userscript's name and namespace keep the old `ruledesk-web` spelling on purpose: they identify the script and its data to the manager.
 
 ## Code rules
 

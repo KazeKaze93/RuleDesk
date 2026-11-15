@@ -56,6 +56,8 @@ export const STATS_MENU_SWITCH_ID = "rdw-stats-menu";
 
 export const RDW_OWN_PAGE_CLASS = "rdw-own-page";
 export const RDW_PAGE_ROOT_ID = "rdw-page-root";
+/** The download manager's panel: stays visible over the script's own pages. */
+export const RDW_DOWNLOADS_PANEL_ID = "rdw-downloads";
 export const RDW_OWN_PAGE_STYLE_ID = "rdw-own-page-style";
 
 export const HEADER_SELECTOR = "div#header";
@@ -222,7 +224,7 @@ export function parseRdwHash(hash: string): RdwPage | null {
 /** CSS: hide site siblings after header while own page is open. */
 export function buildOwnPageCss(): string {
   return `
-html.${RDW_OWN_PAGE_CLASS} ${HEADER_SELECTOR} ~ *:not(#${RDW_PAGE_ROOT_ID}) {
+html.${RDW_OWN_PAGE_CLASS} ${HEADER_SELECTOR} ~ *:not(#${RDW_PAGE_ROOT_ID}):not(#${RDW_DOWNLOADS_PANEL_ID}) {
   display: none !important;
 }
 #${RDW_PAGE_ROOT_ID} {

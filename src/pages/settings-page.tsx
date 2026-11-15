@@ -45,6 +45,7 @@ import {
   UPDATES_GROUP_SIZE_ID,
 } from "./constants";
 import { DataSection } from "./data-section";
+import { DownloadsSection } from "./downloads-section";
 import { FavoritesSyncSection } from "./favorites-sync-section";
 import { installSiteMenu } from "./menu";
 
@@ -76,6 +77,7 @@ const SECTION_APPEARANCE = "appearance";
 const SECTION_PAGE = "page";
 const SECTION_BLACKLIST = "blacklist";
 const SECTION_FAVORITES = "favorites";
+const SECTION_DOWNLOADS = "downloads";
 const SECTION_DATA = "data";
 
 const SECTION_TITLES: Readonly<Record<string, string>> = {
@@ -83,6 +85,7 @@ const SECTION_TITLES: Readonly<Record<string, string>> = {
   [SECTION_PAGE]: "Page",
   [SECTION_BLACKLIST]: "Blacklist",
   [SECTION_FAVORITES]: "Favorites",
+  [SECTION_DOWNLOADS]: "Downloads",
   [SECTION_DATA]: "Data",
 };
 
@@ -351,6 +354,10 @@ export function SettingsPage(): JSX.Element {
           />
         </div>
         <FavoritesSyncSection includeHeading={false} />
+      </SettingsSection>
+
+      <SettingsSection {...section(SECTION_DOWNLOADS)}>
+        <DownloadsSection />
       </SettingsSection>
 
       <SettingsSection {...section(SECTION_DATA)}>

@@ -2,6 +2,14 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.24.0
+
+- **Download manager.** With your own API key in RuleDesk → Downloads, download buttons appear: "Download all" and "Download selected" on a custom collection, "Download results" and "Select posts" under the search panel on a results page. The files are found through the site API (one request per up to 1000 posts) and saved one by one into `RuleDesk/<name>`
+- A panel in the corner of every page shows the job with Pause, Resume and Cancel. The job survives a page change; a file that fails is retried once, counted and skipped
+- The single "Download original" button on the post page is removed, and so is reading post pages for a collection download
+- The script asks for one more permission: requests to `api.rule34.xxx`. It is used only by the download manager and only when a key is stored
+- The repository is now `KazeKaze93/RuleDesk`; the install and update address changed with it. The old address still answers
+
 ## 0.23.1
 
 - **Statistics is its own page** in the site menu, after Favorites. RuleDesk → Page → "Statistics in site menu" hides it (on by default). The block in settings is gone

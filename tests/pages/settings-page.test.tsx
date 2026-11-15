@@ -99,7 +99,7 @@ describe("SettingsPage flat rows", () => {
       Array.from(root?.querySelectorAll("button[data-settings-section]") ?? []).map(
         (node) => node.textContent,
       ),
-    ).toEqual(["Appearance", "Page", "Blacklist", "Favorites", "Data"]);
+    ).toEqual(["Appearance", "Page", "Blacklist", "Favorites", "Downloads", "Data"]);
 
     act(() => {
       header.click();

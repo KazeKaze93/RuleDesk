@@ -37,6 +37,7 @@ import {
   Segmented,
   Select,
 } from "../ui/kit";
+import { DownloadControls } from "./downloads/search-controls";
 import { SaveSearchButton } from "./save-search";
 import { featureBodyClass, type Feature, type FeatureContext } from "./types";
 
@@ -1265,6 +1266,7 @@ function SearchToolsPanel(props: SearchToolsPanelProps): JSX.Element {
             {RESET_LABEL}
           </Button>
           <SaveSearchButton tags={input.value} />
+          <DownloadControls />
         </div>
       </Card>
     </>

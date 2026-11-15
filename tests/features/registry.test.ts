@@ -22,6 +22,7 @@ describe("FEATURES registry", () => {
       "video-player",
       "video-preview",
       "cdn-fallback",
+      "downloads",
     ]);
     expect(ids).not.toContain("top-bar");
     expect(ids).not.toContain("dark-theme");

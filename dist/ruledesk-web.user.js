@@ -1,23 +1,25 @@
 // ==UserScript==
 // @name         RuleDesk Web
 // @namespace    https://github.com/kazekaze93/ruledesk-web
-// @version      0.23.1
+// @version      0.24.0
 // @description  Collections, playlists, favorites, artist updates, and page tweaks for rule34.xxx
-// @downloadURL  https://raw.githubusercontent.com/KazeKaze93/ruledesk-web/main/dist/ruledesk-web.user.js
-// @updateURL    https://raw.githubusercontent.com/KazeKaze93/ruledesk-web/main/dist/ruledesk-web.user.js
+// @downloadURL  https://raw.githubusercontent.com/KazeKaze93/RuleDesk/main/dist/ruledesk-web.user.js
+// @updateURL    https://raw.githubusercontent.com/KazeKaze93/RuleDesk/main/dist/ruledesk-web.user.js
 // @match        https://rule34.xxx/*
+// @connect      api.rule34.xxx
 // @grant        GM_download
 // @grant        GM_getValue
 // @grant        GM_setValue
+// @grant        GM_xmlhttpRequest
 // @run-at       document-start
 // ==/UserScript==
 
 !function(){function e(e,t){return(t||"")+" (SystemJS Error#"+e+" https://github.com/systemjs/systemjs/blob/main/docs/errors.md#"+e+")"}function t(e,t){if(-1!==e.indexOf("\\")&&(e=e.replace(j,"/")),"/"===e[0]&&"/"===e[1])return t.slice(0,t.indexOf(":")+1)+e;if("."===e[0]&&("/"===e[1]||"."===e[1]&&("/"===e[2]||2===e.length&&(e+="/"))||1===e.length&&(e+="/"))||"/"===e[0]){var n,r=t.slice(0,t.indexOf(":")+1);if(n="/"===t[r.length+1]?"file:"!==r?(n=t.slice(r.length+2)).slice(n.indexOf("/")+1):t.slice(8):t.slice(r.length+("/"===t[r.length])),"/"===e[0])return t.slice(0,t.length-n.length-1)+e;for(var i=n.slice(0,n.lastIndexOf("/")+1)+e,o=[],s=-1,u=0;u<i.length;u++)-1!==s?"/"===i[u]&&(o.push(i.slice(s,u+1)),s=-1):"."===i[u]?"."!==i[u+1]||"/"!==i[u+2]&&u+2!==i.length?"/"===i[u+1]||u+1===i.length?u+=1:s=u:(o.pop(),u+=2):s=u;return-1!==s&&o.push(i.slice(s)),t.slice(0,t.length-n.length)+o.join("")}}function n(e,n){return t(e,n)||(-1!==e.indexOf(":")?e:t("./"+e,n))}function r(e,n,r,i,o){for(var s in e){var a=t(s,r)||s,f=e[s];if("string"==typeof f){var l=c(i,t(f,r)||f,o);l?n[a]=l:u("W1",s,f,"bare specifier did not resolve")}}}function i(e,t,i){var o;for(o in e.imports&&r(e.imports,i.imports,t,i,null),e.scopes||{}){var s=n(o,t);r(e.scopes[o],i.scopes[s]||(i.scopes[s]={}),t,i,s)}for(o in e.depcache||{})i.depcache[n(o,t)]=e.depcache[o];for(o in e.integrity||{})i.integrity[n(o,t)]=e.integrity[o]}function o(e,t){if(t[e])return e;var n=e.length;do{var r=e.slice(0,n+1);if(r in t)return r}while(-1!==(n=e.lastIndexOf("/",n-1)))}function s(e,t){var n=o(e,t);if(n){var r=t[n];if(null===r)return;if(!(e.length>n.length&&"/"!==r[r.length-1]))return r+e.slice(n.length);u("W2",n,r,"should have a trailing '/'")}}function u(t,n,r,i){console.warn(e(t,"Package target "+i+", resolving target '"+r+"' for "+n))}function c(e,t,n){for(var r=e.scopes,i=n&&o(n,r);i;){var u=s(t,r[i]);if(u)return u;i=o(i.slice(0,i.lastIndexOf("/")),r)}return s(t,e.imports)||-1!==t.indexOf(":")&&t}function a(){this[M]={}}function f(e){return e.id}function l(e,t,n,r){if(e.onload(n,t.id,t.d&&t.d.map(f),!!r),n)throw n}function d(t,n,r,i){var o=t[M][n];if(o)return o;var s=[],u=Object.create(null);P&&Object.defineProperty(u,P,{value:"Module"});var c=Promise.resolve().then((function(){return t.instantiate(n,r,i)})).then((function(r){if(!r)throw Error(e(2,"Module "+n+" did not instantiate"));var i=r[1]((function(e,t){o.h=!0;var n=!1;if("string"==typeof e)e in u&&u[e]===t||(u[e]=t,n=!0);else{for(var r in e)t=e[r],r in u&&u[r]===t||(u[r]=t,n=!0);e&&e.__esModule&&(u.__esModule=e.__esModule)}if(n)for(var i=0;i<s.length;i++){var c=s[i];c&&c(u)}return t}),2===r[1].length?{import:function(e,r){return t.import(e,n,r)},meta:t.createContext(n)}:void 0);return o.e=i.execute||function(){},[r[0],i.setters||[],r[2]||[]]}),(function(e){throw o.e=null,o.er=e,l(t,o,e,!0),e})),a=c.then((function(e){return Promise.all(e[0].map((function(r,i){var o=e[1][i],s=e[2][i];return Promise.resolve(t.resolve(r,n)).then((function(e){var r=d(t,e,n,s);return Promise.resolve(r.I).then((function(){return o&&(r.i.push(o),!r.h&&r.I||o(r.n)),r}))}))}))).then((function(e){o.d=e}))}));return o=t[M][n]={id:n,i:s,n:u,m:i,I:c,L:a,h:!1,d:void 0,e:void 0,er:void 0,E:void 0,C:void 0,p:void 0}}function h(e,t,n,r){if(!r[t.id])return r[t.id]=!0,Promise.resolve(t.L).then((function(){return t.p&&null!==t.p.e||(t.p=n),Promise.all(t.d.map((function(t){return h(e,t,n,r)})))})).catch((function(n){if(t.er)throw n;throw t.e=null,l(e,t,n,!1),n}))}function p(e,t){return t.C=h(e,t,t,{}).then((function(){return v(e,t,{})})).then((function(){return t.n}))}function v(e,t,n){function r(){try{var n=o.call(L);if(n)return n=n.then((function(){t.C=t.n,t.E=null,l(e,t,null,!0)}),(function(n){throw t.er=n,t.E=null,l(e,t,n,!0),n})),t.E=n;t.C=t.n,t.L=t.I=void 0}catch(r){throw t.er=r,r}finally{l(e,t,t.er,!0)}}if(!n[t.id]){if(n[t.id]=!0,!t.e){if(t.er)throw t.er;return t.E?t.E:void 0}var i,o=t.e;return t.e=null,t.d.forEach((function(r){try{var o=v(e,r,n);o&&(i=i||[]).push(o)}catch(s){throw t.er=s,l(e,t,s,!1),s}})),i?Promise.all(i).then(r):r()}}function m(){[].forEach.call(document.querySelectorAll("script"),(function(t){if(!t.sp)if("systemjs-module"===t.type){if(t.sp=!0,!t.src)return;System.import("import:"===t.src.slice(0,7)?t.src.slice(7):n(t.src,g)).catch((function(e){if(e.message.indexOf("https://github.com/systemjs/systemjs/blob/main/docs/errors.md#3")>-1){var n=document.createEvent("Event");n.initEvent("error",!1,!1),t.dispatchEvent(n)}return Promise.reject(e)}))}else if("systemjs-importmap"===t.type){t.sp=!0;var r=t.src?(System.fetch||fetch)(t.src,{integrity:t.integrity,priority:t.fetchPriority,passThrough:!0}).then((function(e){if(!e.ok)throw Error("Invalid status code: "+e.status);return e.text()})).catch((function(n){return n.message=e("W4","Error fetching systemjs-import map "+t.src)+"\n"+n.message,console.warn(n),"function"==typeof t.onerror&&t.onerror(),"{}"})):t.innerHTML;W=W.then((function(){return r})).then((function(n){!function(t,n,r){var o={};try{o=JSON.parse(n)}catch(s){console.warn(Error(e("W5","systemjs-importmap contains invalid JSON")+"\n\n"+n+"\n"))}i(o,r,t)}(N,n,t.src||g)}))}}))}var g,y="undefined"!=typeof Symbol,b="undefined"!=typeof self,S="undefined"!=typeof document,w=b?self:global;if(S){var O=document.querySelector("base[href]");O&&(g=O.href)}if(!g&&"undefined"!=typeof location){var E=(g=location.href.split("#")[0].split("?")[0]).lastIndexOf("/");-1!==E&&(g=g.slice(0,E+1))}var x,j=/\\/g,P=y&&Symbol.toStringTag,M=y?Symbol():"@",I=a.prototype;I.import=function(e,t,n){var r=this;return t&&"object"==typeof t&&(n=t,t=void 0),Promise.resolve(r.prepareImport()).then((function(){return r.resolve(e,t,n)})).then((function(e){var t=d(r,e,void 0,n);return t.C||p(r,t)}))},I.createContext=function(e){var t=this;return{url:e,resolve:function(n,r){return Promise.resolve(t.resolve(n,r||e))}}},I.onload=function(){},I.register=function(e,t,n){x=[e,t,n]},I.getRegister=function(){var e=x;return x=void 0,e};var L=Object.freeze(Object.create(null));w.System=new a;var C,R,W=Promise.resolve(),N={imports:{},scopes:{},depcache:{},integrity:{}},T=S;if(I.prepareImport=function(e){return(T||e)&&(m(),T=!1),W},I.getImportMap=function(){return JSON.parse(JSON.stringify(N))},S&&(m(),window.addEventListener("DOMContentLoaded",m)),I.addImportMap=function(e,t){i(e,t||g,N)},S){window.addEventListener("error",(function(e){J=e.filename,_=e.error}));var A=location.origin}I.createScript=function(e){var t=document.createElement("script");t.async=!0,e.indexOf(A+"/")&&(t.crossOrigin="anonymous");var n=N.integrity[e];return n&&(t.integrity=n),t.src=e,t};var J,_,k={},U=I.register;I.register=function(e,t){if(S&&"loading"===document.readyState&&"string"!=typeof e){var n=document.querySelectorAll("script[src]"),r=n[n.length-1];if(r){C=e;var i=this;R=setTimeout((function(){k[r.src]=[e,t],i.import(r.src)}))}}else C=void 0;return U.call(this,e,t)},I.instantiate=function(t,n){var r=k[t];if(r)return delete k[t],r;var i=this;return Promise.resolve(I.createScript(t)).then((function(r){return new Promise((function(o,s){r.addEventListener("error",(function(){s(Error(e(3,"Error loading "+t+(n?" from "+n:""))))})),r.addEventListener("load",(function(){if(document.head.removeChild(r),J===t)s(_);else{var e=i.getRegister(t);e&&e[0]===C&&clearTimeout(R),o(e)}})),document.head.appendChild(r)}))}))},I.shouldFetch=function(){return!1},"undefined"!=typeof fetch&&(I.fetch=fetch);var $=I.instantiate,B=/^(text|application)\/(x-)?javascript(;|$)/;I.instantiate=function(t,n,r){var i=this;return this.shouldFetch(t,n,r)?this.fetch(t,{credentials:"same-origin",integrity:N.integrity[t],meta:r}).then((function(r){if(!r.ok)throw Error(e(7,r.status+" "+r.statusText+", loading "+t+(n?" from "+n:"")));var o=r.headers.get("content-type");if(!o||!B.test(o))throw Error(e(4,'Unknown Content-Type "'+o+'", loading '+t+(n?" from "+n:"")));return r.text().then((function(e){return e.indexOf("//# sourceURL=")<0&&(e+="\n//# sourceURL="+t),(0,eval)(e),i.getRegister(t)}))})):$.apply(this,arguments)},I.resolve=function(n,r){return c(N,t(n,r=r||g)||n,r)||function(t,n){throw Error(e(8,"Unable to resolve bare specifier '"+t+(n?"' from "+n:"'")))}(n,r)};var F=I.instantiate;I.instantiate=function(e,t,n){var r=N.depcache[e];if(r)for(var i=0;i<r.length;i++)d(this,this.resolve(r[i],e),e);return F.call(this,e,t,n)},b&&"function"==typeof importScripts&&(I.instantiate=function(e){var t=this;return Promise.resolve().then((function(){return importScripts(e),t.getRegister(e)}))}),function(e){function t(t){return!e.hasOwnProperty(t)||!isNaN(t)&&t<e.length||a&&e[t]&&"undefined"!=typeof window&&e[t].parent===window}var n,r,i,o=e.System.constructor.prototype,s=o.import;o.import=function(o,u,c){return function(){for(var o in n=r=void 0,e)t(o)||(n?r||(r=o):n=o,i=o)}(),s.call(this,o,u,c)};var u=[[],function(){return{}}],c=o.getRegister;o.getRegister=function(){var o=c.call(this);if(o)return o;var s,a=function(o){var s,u,c=0;for(var a in e)if(!t(a)){if(0===c&&a!==n||1===c&&a!==r)return a;s?(i=a,u=o&&u||a):s=a===i,c++}return u}(this.firstGlobalProp);if(!a)return u;try{s=e[a]}catch(f){return u}return[[],function(e){return{execute:function(){e(s),e({default:s,__useDefault:!0})}}}]};var a="undefined"!=typeof navigator&&-1!==navigator.userAgent.indexOf("Trident")}("undefined"!=typeof self?self:global),function(e){var t=e.System.constructor.prototype,r=/^[^#?]+\.(css|html|json|wasm)([?#].*)?$/,i=t.shouldFetch.bind(t);t.shouldFetch=function(e){return i(e)||r.test(e)};var o=/^application\/json(;|$)/,s=/^text\/css(;|$)/,u=/^application\/wasm(;|$)/,c=t.fetch;t.fetch=function(t,r){return c(t,r).then((function(i){if(r.passThrough)return i;if(!i.ok)return i;var c=i.headers.get("content-type");return o.test(c)?i.json().then((function(e){return new Response(new Blob(['System.register([],function(e){return{execute:function(){e("default",'+JSON.stringify(e)+")}}})"],{type:"application/javascript"}))})):s.test(c)?i.text().then((function(e){return e=e.replace(/url\(\s*(?:(["'])((?:\\.|[^\n\\"'])+)\1|((?:\\.|[^\s,"'()\\])+))\s*\)/g,(function(e,r,i,o){return["url(",r,n(i||o,t),r,")"].join("")})),new Response(new Blob(["System.register([],function(e){return{execute:function(){var s=new CSSStyleSheet();s.replaceSync("+JSON.stringify(e)+');e("default",s)}}})'],{type:"application/javascript"}))})):u.test(c)?(WebAssembly.compileStreaming?WebAssembly.compileStreaming(i):i.arrayBuffer().then(WebAssembly.compile)).then((function(n){e.System.wasmModules||(e.System.wasmModules=Object.create(null)),e.System.wasmModules[t]=n;var r=[],i=[];return WebAssembly.Module.imports&&WebAssembly.Module.imports(n).forEach((function(e){var t=JSON.stringify(e.module);-1===r.indexOf(t)&&(r.push(t),i.push("function(m){i["+t+"]=m}"))})),new Response(new Blob(["System.register(["+r.join(",")+"],function(e){var i={};return{setters:["+i.join(",")+"],execute:function(){return WebAssembly.instantiate(System.wasmModules["+JSON.stringify(t)+"],i).then(function(m){e(m.exports)})}}})"],{type:"application/javascript"}))})):i}))}}("undefined"!=typeof self?self:global);var q="undefined"!=typeof Symbol&&Symbol.toStringTag;I.get=function(e){var t=this[M][e];if(t&&null===t.e&&!t.E)return t.er?null:t.n},I.set=function(t,n){try{new URL(t)}catch(s){console.warn(Error(e("W3",'"'+t+'" is not a valid URL to set in the module registry')))}var r;q&&"Module"===n[q]?r=n:(r=Object.assign(Object.create(null),n),q&&Object.defineProperty(r,q,{value:"Module"}));var i=Promise.resolve(r),o=this[M][t]||(this[M][t]={id:t,i:[],h:!1,d:[],e:null,er:void 0,E:void 0});return!o.e&&!o.E&&(Object.assign(o,{n:r,I:void 0,L:void 0,C:i}),r)},I.has=function(e){return!!this[M][e]},I.delete=function(e){var t=this[M],n=t[e];if(!n||n.p&&null!==n.p.e||n.E)return!1;var r=n.i;return n.d&&n.d.forEach((function(e){var t=e.i.indexOf(n);-1!==t&&e.i.splice(t,1)})),delete t[e],function(){var n=t[e];if(!n||!r||null!==n.e||n.E)return!1;r.forEach((function(e){n.i.push(e),e(n.n)})),r=null}};var D="undefined"!=typeof Symbol&&Symbol.iterator;I.entries=function(){var e,t,n=this,r=Object.keys(n[M]),i=0,o={next:function(){for(;void 0!==(t=r[i++])&&void 0===(e=n.get(t)););return{done:void 0===t,value:void 0!==t&&[t,e]}}};return o[D]=function(){return this},o}}();
 !function(t){function e(t){t.registerRegistry=Object.create(null),t.namedRegisterAliases=Object.create(null)}var r=t.System;e(r);var i,s,n=r.constructor.prototype,l=r.constructor,a=function(){l.call(this),e(this)};a.prototype=n,r.constructor=a;var o=n.register;n.register=function(t,e,r,n){if("string"!=typeof t)return o.apply(this,arguments);var l=[e,r,n];return this.registerRegistry[t]=l,i||(i=l,s=t),Promise.resolve().then((function(){i=null,s=null})),o.apply(this,[e,r,n])};var u=n.resolve;n.resolve=function(t,e){try{return u.call(this,t,e)}catch(r){if(t in this.registerRegistry)return this.namedRegisterAliases[t]||t;throw r}};var c=n.instantiate;n.instantiate=function(t,e,r){var i=this.registerRegistry[t];return i?(this.registerRegistry[t]=null,i):c.call(this,t,e,r)};var g=n.getRegister;n.getRegister=function(t){var e=g.call(this,t);s&&t&&(this.namedRegisterAliases[s]=t);var r=i||e;return i=null,s=null,r}}("undefined"!=typeof self?self:global);
 ;(typeof System!='undefined')&&(System=new System.constructor());
-System.register("./___monkey.entry.js", [],(function(exports,module){'use strict';return{execute:(function(){exports({$:applyTokenProperties,E:rdwPageHash,G:createFavoritesSyncTabId,J:readArtistsMirror,K:listArtistTags,L:writeArtistsMirror,O:reloadFromStorage,P:save,Q:Q$1,V:setSyncState,_:a,a:applyAppearanceTheme,a$:Chip,a0:resolveAppearancePalette,a1:isCollectionDetailPage,a2:menuRouteForPage,a3:getSiteSkinCss,a4:$$1,aA:T,aB:A,aE:SectionLabel,aF:Select,aI:Segmented,aL:TextField,aM:Button,aN:clampBackgroundDim,aP:featurePanelLabel,aR:clearFeatureState,aS:applyCssOnlyFeatureEnabled,aT:isFeatureEnabled,aV:setFeatureChoiceValue,aW:applyCssOnlyFeatureChoice,aX:getFeatureChoice,aY:createAutocompleteQuerier,aZ:b,a_:readSiteBlacklist,af:d,ag:Switch,ai:setTweaksEnabled,al:setFeatureEnabled,am:NumberField,ao:setUpdatesGroupSize,ap:getUpdatesGroupSize,ar:setPlaylistChunkSize,as:getPlaylistChunkSize,au:setGridFavButtonsEnabled,av:setGridFavButtonsVisible,aw:IconChevronRight,ax:IconChevronDown,ay:Card,az:P$1,b0:AutocompleteField,b1:ProgressBar,b2:createDefaultCustomTheme,b4:prepareBackgroundImageFile,b5:setFeatureState,b6:writeSiteBlacklist,b8:load,b9:createDefaultStorage,bA:IconPlus,bB:EmptyState,bC:Dialog,bD:resolveCollectionKind,bE:deleteCollection,bF:QueryField,bG:isUnfilteredQuery,bH:createDynamicCollection,bI:createPlaylist,bK:collectionDetailHash,bL:readCoverMirror,bN:IconCheck,bO:readCountMirror,bP:buildSearchUrl,bQ:dynamicCollectionMarkHash,bR:serialize,bT:getSeenPostId,bU:completeLastQueryToken,bV:readLastQueryToken,ba:clearStorageCache,bb:clearFavsCache,bc:object,be:optional,bf:string,bh:literal,bj:stripLegacyPanelWindowSize,bk:migrateMarksFavToFavs,bm:createDefaultFavs,bn:parseFavsStrict,bo:setAppearance,bp:loadFavSet,br:extractFavIdsFromMarks,bv:getTweaksEnabled,bw:getGridFavButtonsEnabled,bx:getFeatureChoiceValue,by:getFeatureState,bz:getScreenPixelSize,c0:removeArtist,c1:addArtists,c3:IconButton,c4:IconX,c5:removeArtists,c6:rememberArtistSnapshot,c7:fetchArtistSnapshot,c8:w$1,c9:shuffleCollection,ca:resetCollectionOrder,cb:Toast,cc:getCollectionOrder,cd:listPlaylists,ce:removePostsFromCollection,cf:canDownload,cg:movePostInCollection,ch:renameCollection,ci:fetchOriginalUrl,cj:downloadOriginal,cl:restorePosts,cn:collectionQueueHash,d:detectPageKind,e:ensureDocumentStyles,f:ensureStyleElement,g:getAppearance,h:buildOwnPageCss,j:getFeatureEnabled,k:getSyncState,m:mountCards,n:normalizeArtistTag,o:readFavoritesSyncMode,p:parseRdwHash,q:runFavoritesSync,r:runFeaturesYielding,s:syncFavoritesPage,y:yieldToMain,z:resolveFavoritesUserId});var STORAGE_KEY = "ruledesk-web.storage";
-var STORAGE_BACKUP_KEY = exports("bq","ruledesk-web.storage.backup");
-var FAVS_STORAGE_KEY = exports("bl","ruledesk-web.favs");
+System.register("./___monkey.entry.js", [],(function(exports,module){'use strict';return{execute:(function(){exports({$:applyTokenProperties,E:rdwPageHash,G:createFavoritesSyncTabId,J:readArtistsMirror,K:listArtistTags,L:writeArtistsMirror,O:reloadFromStorage,P:save,Q:Q$1,V:setSyncState,_:a,a:applyAppearanceTheme,a$:Chip,a0:resolveAppearancePalette,a1:isCollectionDetailPage,a2:menuRouteForPage,a3:getSiteSkinCss,a4:$$1,aA:T,aB:A,aE:SectionLabel,aF:Select,aI:Segmented,aL:TextField,aM:Button,aN:clampBackgroundDim,aP:featurePanelLabel,aR:clearFeatureState,aS:applyCssOnlyFeatureEnabled,aT:isFeatureEnabled,aV:setFeatureChoiceValue,aW:applyCssOnlyFeatureChoice,aX:getFeatureChoice,aY:createAutocompleteQuerier,aZ:b,a_:readSiteBlacklist,af:d,ag:Switch,ai:setTweaksEnabled,al:setFeatureEnabled,am:NumberField,ao:setUpdatesGroupSize,ap:getUpdatesGroupSize,ar:setPlaylistChunkSize,as:getPlaylistChunkSize,au:setGridFavButtonsEnabled,av:setGridFavButtonsVisible,aw:IconChevronRight,ax:IconChevronDown,ay:Card,az:P$1,b0:AutocompleteField,b1:ProgressBar,b2:createDefaultCustomTheme,b4:prepareBackgroundImageFile,b5:setFeatureState,b6:writeSiteBlacklist,b8:clearApiCredentials,b9:setApiCredentials,bA:getFeatureChoiceValue,bB:getFeatureState,bC:getScreenPixelSize,bD:IconPlus,bE:EmptyState,bF:Dialog,bG:resolveCollectionKind,bH:deleteCollection,bI:QueryField,bJ:isUnfilteredQuery,bK:createDynamicCollection,bL:createPlaylist,bN:collectionDetailHash,bO:readCoverMirror,bQ:IconCheck,bR:readCountMirror,bS:buildSearchUrl,bT:dynamicCollectionMarkHash,bU:serialize,bW:getSeenPostId,bX:completeLastQueryToken,bY:readLastQueryToken,ba:load,bb:createDefaultStorage,bc:clearStorageCache,bd:clearFavsCache,be:object,bg:optional,bh:string,bj:literal,bl:stripLegacyPanelWindowSize,bm:migrateMarksFavToFavs,bo:createDefaultFavs,bp:parseFavsStrict,bq:setAppearance,br:loadFavSet,bt:extractFavIdsFromMarks,bx:getApiCredentials,by:getTweaksEnabled,bz:getGridFavButtonsEnabled,c3:removeArtist,c4:addArtists,c6:IconButton,c7:IconX,c8:removeArtists,c9:rememberArtistSnapshot,ca:fetchArtistSnapshot,cb:w$1,cc:downloadsAvailable,cd:shuffleCollection,ce:resetCollectionOrder,cf:Toast,cg:getCollectionOrder,ch:listPlaylists,ci:removePostsFromCollection,cj:isDownloadBusy,ck:startDownload,cl:movePostInCollection,cm:renameCollection,co:restorePosts,cq:collectionQueueHash,d:detectPageKind,e:ensureDocumentStyles,f:ensureStyleElement,g:getAppearance,h:buildOwnPageCss,j:getFeatureEnabled,k:getSyncState,m:mountCards,n:normalizeArtistTag,o:readFavoritesSyncMode,p:parseRdwHash,q:runFavoritesSync,r:runFeaturesYielding,s:syncFavoritesPage,y:yieldToMain,z:resolveFavoritesUserId});var STORAGE_KEY = "ruledesk-web.storage";
+var STORAGE_BACKUP_KEY = exports("bs","ruledesk-web.storage.backup");
+var FAVS_STORAGE_KEY = exports("bn","ruledesk-web.favs");
 var DEBUG_KEY = "ruledesk-web.debug";
 var APPEARANCE_BACKGROUND_KEY = exports("I","ruledesk-web.appearance.background");
 var APPEARANCE_BACKGROUND_TOO_LARGE = exports("ae","Background image is too large (max 1.5 MB).");
@@ -33,9 +35,9 @@ var APPEARANCE_THEME_CUSTOM = exports("aC","custom");
 var DEFAULT_APPEARANCE_THEME = APPEARANCE_THEME_LIGHT;
 var SITE_ORIGIN = exports("b","https://rule34.xxx");
 var SEARCH_PATH = exports("Z","/index.php");
-var SEARCH_PAGE = exports("bY","post");
-var SEARCH_SECTION = exports("bZ","list");
-var SEARCH_SECTION_VIEW = exports("cm","view");
+var SEARCH_PAGE = exports("b$","post");
+var SEARCH_SECTION = exports("c0","list");
+var SEARCH_SECTION_VIEW = exports("cp","view");
 var SEARCH_PARAM_PAGE = exports("W","page");
 var SEARCH_PARAM_TAGS = exports("c","tags");
 var FAVORITES_PAGE = exports("X","favorites");
@@ -49,12 +51,12 @@ var VOTE_PARAM_TYPE = "type";
 var VOTE_PAGE = "post";
 var VOTE_SECTION = "vote";
 var FETCH_CREDENTIALS = "same-origin";
-var TAG_TYPE_INCLUDE = exports("c2","include");
+var TAG_TYPE_INCLUDE = exports("c5","include");
 var TAG_TYPE_EXCLUDE = "exclude";
 var UPDATES_ID_PREFIX = "id:>";
-var IMPORT_SCHEMA_ERROR_PREFIX = exports("bi","File is not a RuleDesk Web export");
-var COLLECTION_KIND_SEARCH = exports("bM","search");
-var COLLECTION_KIND_POSTS = exports("bJ","posts");
+var IMPORT_SCHEMA_ERROR_PREFIX = exports("bk","File is not a RuleDesk Web export");
+var COLLECTION_KIND_SEARCH = exports("bP","search");
+var COLLECTION_KIND_POSTS = exports("bM","posts");
 var DOCUMENT_STYLE_ID = "ruledesk-web-document-style";
 var UPDATES_BAR_ID = "ruledesk-web-updates-bar";
 var SITE_THEME_COOKIE_NAME = "theme";
@@ -123,7 +125,7 @@ var CSS_CLASS = exports("C",{
 });
 /** Hash routes and DOM ids for RuleDesk own pages (replaces floating panel). */
 var RDW_HASH_PREFIX = "#rdw/";
-var RDW_ROUTE_COLLECTIONS = exports("ck","collections");
+var RDW_ROUTE_COLLECTIONS = exports("cn","collections");
 var RDW_ROUTE_FOLLOWING = "following";
 var RDW_ROUTE_SETTINGS = "settings";
 var RDW_ROUTE_STATS = "stats";
@@ -150,11 +152,13 @@ var RDW_HASH_STATS = exports("A",`${RDW_HASH_PREFIX}${RDW_ROUTE_STATS}`);
 * Key in `settings.features` for showing Statistics in the site menu.
 * It is a plain switch, not a page tweak with a module.
 */
-var STATS_MENU_SETTING_ID = exports("bu","stats-menu");
+var STATS_MENU_SETTING_ID = exports("bw","stats-menu");
 var STATS_MENU_SETTING_LABEL = exports("aj","Statistics in site menu");
 var STATS_MENU_SWITCH_ID = exports("ak","rdw-stats-menu");
 var RDW_OWN_PAGE_CLASS = exports("i","rdw-own-page");
 var RDW_PAGE_ROOT_ID = exports("t","rdw-page-root");
+/** The download manager's panel: stays visible over the script's own pages. */
+var RDW_DOWNLOADS_PANEL_ID = "rdw-downloads";
 var RDW_OWN_PAGE_STYLE_ID = exports("R","rdw-own-page-style");
 var HEADER_SELECTOR$1 = exports("H","div#header");
 var NAVBAR_SELECTOR = exports("N","div#header ul#navbar");
@@ -184,14 +188,14 @@ var PANEL_UI_CLASS = exports("a5",{
 	settingsCaption: "rdw-settings-caption",
 	pageCard: "rdw-page-card"
 });
-var ARTISTS_EMPTY_TITLE = exports("bX","No followed artists yet");
-var ARTISTS_EMPTY_HINT = exports("bW","Follow artists with the Follow button next to their name in the tag list.");
-var ARTIST_FILTER_LABEL = exports("b_","Filter artists");
+var ARTISTS_EMPTY_TITLE = exports("b_","No followed artists yet");
+var ARTISTS_EMPTY_HINT = exports("bZ","Follow artists with the Follow button next to their name in the tag list.");
+var ARTIST_FILTER_LABEL = exports("c1","Filter artists");
 var FEATURE_CHECKBOX_ID_PREFIX = exports("aQ","rdw-feature-");
 var FEATURE_CHOICE_ID_PREFIX = exports("aU","rdw-feature-choice-");
 var UPDATES_GROUP_SIZE_ID = exports("an","rdw-updates-group-size");
 var PLAYLIST_CHUNK_SIZE_ID = exports("aq","rdw-playlist-chunk-size");
-var ARTIST_FILTER_ID = exports("b$","rdw-artist-filter");
+var ARTIST_FILTER_ID = exports("c2","rdw-artist-filter");
 var GRID_FAV_CHECKBOX_ID = exports("at","rdw-grid-fav-buttons");
 var TWEAKS_SWITCH_ID = exports("ah","rdw-tweaks-enabled");
 var TAG_GROUPS_PANEL_LABEL = "Collapse tags";
@@ -269,7 +273,7 @@ function parseRdwHash(hash) {
 /** CSS: hide site siblings after header while own page is open. */
 function buildOwnPageCss() {
 	return `
-html.${RDW_OWN_PAGE_CLASS} ${HEADER_SELECTOR$1} ~ *:not(#${RDW_PAGE_ROOT_ID}) {
+html.${RDW_OWN_PAGE_CLASS} ${HEADER_SELECTOR$1} ~ *:not(#${RDW_PAGE_ROOT_ID}):not(#${RDW_DOWNLOADS_PANEL_ID}) {
   display: none !important;
 }
 #${RDW_PAGE_ROOT_ID} {
@@ -2198,7 +2202,7 @@ var SettingsSchema = /* @__PURE__ */ object({
 	appearance: /* @__PURE__ */ optional(AppearanceStoredSchema)
 });
 var UpdatesSchema = /* @__PURE__ */ object({ seenPostId: int().check(/* @__PURE__ */ _nonnegative()) });
-var StorageSchema = exports("bd",/* @__PURE__ */ object({
+var StorageSchema = exports("bf",/* @__PURE__ */ object({
 	version: /* @__PURE__ */ literal(1),
 	collections: /* @__PURE__ */ array(CollectionSchema),
 	artists: /* @__PURE__ */ array(ArtistEntrySchema),
@@ -2233,7 +2237,7 @@ var FavsSyncSchema = /* @__PURE__ */ object({
 	lock: /* @__PURE__ */ optional(FavsSyncLockSchema),
 	mode: /* @__PURE__ */ optional(FavsSyncModeSchema)
 });
-var FavsSchema = exports("bg",/* @__PURE__ */ object({
+var FavsSchema = exports("bi",/* @__PURE__ */ object({
 	version: /* @__PURE__ */ literal(1),
 	ids: /* @__PURE__ */ array(int()),
 	sync: /* @__PURE__ */ optional(FavsSyncSchema)
@@ -4845,22 +4849,6 @@ function IconExternalLink(props) {
 		]
 	});
 }
-function IconDownload(props) {
-	return /* @__PURE__ */ a("svg", {
-		...baseProps(props.size ?? DEFAULT_SIZE, props.className, props.title),
-		children: [
-			props.title !== void 0 ? /* @__PURE__ */ a("title", { children: props.title }) : null,
-			/* @__PURE__ */ a("path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" }),
-			/* @__PURE__ */ a("polyline", { points: "7 10 12 15 17 10" }),
-			/* @__PURE__ */ a("line", {
-				x1: "12",
-				y1: "15",
-				x2: "12",
-				y2: "3"
-			})
-		]
-	});
-}
 function IconDroplet(props) {
 	return /* @__PURE__ */ a("svg", {
 		...baseProps(props.size ?? DEFAULT_SIZE, props.className, props.title),
@@ -5073,7 +5061,18 @@ function TextField(props) {
 			className: "rdw-field__label",
 			htmlFor: inputId,
 			children: props.label
-		}) : null, /* @__PURE__ */ a("input", {
+		}) : null, props.type === "password" ? /* @__PURE__ */ a("input", {
+			id: inputId,
+			className: "rdw-field__input rdw-kit-focusable",
+			type: "password",
+			value: props.value,
+			placeholder: props.placeholder,
+			disabled: props.disabled,
+			"aria-label": props["aria-label"] ?? props.label,
+			onInput: (event) => {
+				props.onChange(event.currentTarget.value);
+			}
+		}) : /* @__PURE__ */ a("input", {
 			id: inputId,
 			className: "rdw-field__input rdw-kit-focusable",
 			type: "text",
@@ -8338,14 +8337,14 @@ function featureBodyClass(id) {
 function featureChoiceBodyClass(id, value) {
 	return `rdw-f-${id}-${value}`;
 }
-var FEATURE_ID$14 = "grid-density";
+var FEATURE_ID$15 = "grid-density";
 var COMPACT_PX = 150;
 var LARGE_PX = 250;
 var CHOICE_DEFAULT = "default";
 var CHOICE_COMPACT = "compact";
 var CHOICE_LARGE = "large";
 function sizeCss(choiceValue, px) {
-	const bodyClass = featureChoiceBodyClass(FEATURE_ID$14, choiceValue);
+	const bodyClass = featureChoiceBodyClass(FEATURE_ID$15, choiceValue);
 	return [
 		`body.${bodyClass} span.thumb,`,
 		`body.${bodyClass} span.thumb > a {`,
@@ -8361,14 +8360,14 @@ function sizeCss(choiceValue, px) {
 /** Same gap on both axes for Default, Compact, and Large. Does not set cell size. */
 function gapCss() {
 	return [
-		`body.${featureBodyClass(FEATURE_ID$14)} div.image-list {`,
+		`body.${featureBodyClass(FEATURE_ID$15)} div.image-list {`,
 		`  column-gap: ${String(4)}px !important;`,
 		`  row-gap: ${String(4)}px !important;`,
 		`}`
 	].join("\n");
 }
-var gridDensityFeature = exports("bs",{
-	id: FEATURE_ID$14,
+var gridDensityFeature = exports("bu",{
+	id: FEATURE_ID$15,
 	label: "Grid size",
 	pages: ["list", "favorites"],
 	defaultEnabled: true,
@@ -8397,11 +8396,11 @@ var gridDensityFeature = exports("bs",{
 	].join("\n"),
 	mount: () => void 0
 });
-var FEATURE_ID$13 = "menu-cleanup";
-var FEATURE_LABEL$13 = "Clean header menu";
+var FEATURE_ID$14 = "menu-cleanup";
+var FEATURE_LABEL$14 = "Clean header menu";
 var CONTENT_ID$1 = "content";
 var HIDDEN_CLASS = "rdw-menu-hidden";
-var BODY_FEATURE_CLASS$3 = featureBodyClass(FEATURE_ID$13);
+var BODY_FEATURE_CLASS$3 = featureBodyClass(FEATURE_ID$14);
 var MISSING_MENU_WARN = "Header menu not found";
 var HIDE_LINK_TEXT_SET = /* @__PURE__ */ new Set([
 	"iCame Top 100",
@@ -8414,13 +8413,13 @@ var HIDE_LINK_TEXT_SET = /* @__PURE__ */ new Set([
 	"TOS",
 	"My Favorites"
 ]);
-var FEATURE_PAGES$13 = [
+var FEATURE_PAGES$14 = [
 	"list",
 	"post",
 	"favorites",
 	"other"
 ];
-var FEATURE_CSS$12 = `body.${BODY_FEATURE_CLASS$3} li.${HIDDEN_CLASS} { display:none !important; }`;
+var FEATURE_CSS$13 = `body.${BODY_FEATURE_CLASS$3} li.${HIDDEN_CLASS} { display:none !important; }`;
 function isHeaderMenuLink(anchor, content) {
 	const listItem = anchor.closest("li");
 	if (listItem === null) return false;
@@ -8453,12 +8452,12 @@ function mountMenuCleanup(_ctx) {
 	}
 }
 var menuCleanupFeature = {
-	id: FEATURE_ID$13,
-	label: FEATURE_LABEL$13,
-	pages: [...FEATURE_PAGES$13],
+	id: FEATURE_ID$14,
+	label: FEATURE_LABEL$14,
+	pages: [...FEATURE_PAGES$14],
 	defaultEnabled: true,
 	cssOnly: true,
-	css: FEATURE_CSS$12,
+	css: FEATURE_CSS$13,
 	mount: mountMenuCleanup
 };
 function detectPageKind(search) {
@@ -8582,15 +8581,15 @@ function isBlacklisted(tags, score, rating, list) {
 	}
 	return false;
 }
-var FEATURE_ID$12 = "blacklist-hide";
-var FEATURE_LABEL$12 = "Hide blacklisted posts";
-var FEATURE_PAGES$12 = ["list"];
-var BODY_FEATURE_CLASS$2 = featureBodyClass(FEATURE_ID$12);
+var FEATURE_ID$13 = "blacklist-hide";
+var FEATURE_LABEL$13 = "Hide blacklisted posts";
+var FEATURE_PAGES$13 = ["list"];
+var BODY_FEATURE_CLASS$2 = featureBodyClass(FEATURE_ID$13);
 var CLASS_BLACKLISTED$1 = "rdw-blacklisted";
 var SCORE_TOKEN_PREFIX$4 = "score:";
 var RATING_TOKEN_PREFIX$3 = "rating:";
 var WHITESPACE_SPLIT = /\s+/;
-var FEATURE_CSS$11 = `
+var FEATURE_CSS$12 = `
 body.${BODY_FEATURE_CLASS$2} span.thumb.${CLASS_BLACKLISTED$1} {
   display: none !important;
 }
@@ -8640,12 +8639,12 @@ function mountBlacklistHide(ctx) {
 	ensureSubscriptions();
 }
 var blacklistHideFeature = {
-	id: FEATURE_ID$12,
-	label: FEATURE_LABEL$12,
-	pages: [...FEATURE_PAGES$12],
+	id: FEATURE_ID$13,
+	label: FEATURE_LABEL$13,
+	pages: [...FEATURE_PAGES$13],
 	defaultEnabled: true,
 	cssOnly: true,
-	css: FEATURE_CSS$11,
+	css: FEATURE_CSS$12,
 	mount: mountBlacklistHide
 };
 /**
@@ -8656,10 +8655,10 @@ var blacklistHideFeature = {
 * addresses. A retry happens only after a real load error, at most once per
 * host, and only for an address on one of these hosts.
 */
-var FEATURE_ID$11 = "cdn-fallback";
-var FEATURE_LABEL$11 = "Retry a failed post image on other servers";
-var FEATURE_PAGES$11 = ["post"];
-var POST_IMAGE_SELECTOR$1 = "img#image";
+var FEATURE_ID$12 = "cdn-fallback";
+var FEATURE_LABEL$12 = "Retry a failed post image on other servers";
+var FEATURE_PAGES$12 = ["post"];
+var POST_IMAGE_SELECTOR = "img#image";
 var EVENT_ERROR = "error";
 /** Image servers, in the order they are tried. */
 var CDN_IMAGE_HOSTS = [
@@ -8695,7 +8694,7 @@ function hostOf(address) {
 	}
 }
 function mountCdnFallback(_ctx) {
-	const image = document.querySelector(POST_IMAGE_SELECTOR$1);
+	const image = document.querySelector(POST_IMAGE_SELECTOR);
 	if (!(image instanceof HTMLImageElement)) return;
 	const tried = /* @__PURE__ */ new Set();
 	image.addEventListener(EVENT_ERROR, () => {
@@ -8706,12 +8705,688 @@ function mountCdnFallback(_ctx) {
 	});
 }
 var cdnFallbackFeature = {
+	id: FEATURE_ID$12,
+	label: FEATURE_LABEL$12,
+	pages: [...FEATURE_PAGES$12],
+	defaultEnabled: true,
+	css: "",
+	mount: mountCdnFallback
+};
+/**
+* Saves one file through the script manager (`GM_download`). The files are on
+* the site's CDN, another origin, so a plain download link cannot name or
+* save them. The download manager calls this for one file at a time.
+*/
+var FILE_PREFIX = "rule34-";
+var DEFAULT_EXTENSION = "jpg";
+var EXTENSION_PATTERN = /\.([a-z0-9]{2,5})$/i;
+var UNKNOWN_ERROR = "unknown error";
+var TIMEOUT_ERROR = "timeout";
+var FOLDER_ROOT = "RuleDesk";
+var FOLDER_FALLBACK = "downloads";
+var FOLDER_MAX_LENGTH = 60;
+/** Characters a file system does not take in a folder name. */
+var FOLDER_FORBIDDEN = /[\\/:*?"<>|]+/g;
+var FOLDER_SPACES = /\s+/g;
+var FOLDER_EDGE = /^[. ]+|[. ]+$/g;
+/** `rule34-<postId>.<ext>`, the extension taken from the file address. */
+function downloadFileName(url, postId) {
+	let path = url;
+	try {
+		path = new URL(url, window.location.href).pathname;
+	} catch {}
+	const extension = EXTENSION_PATTERN.exec(path)?.[1]?.toLowerCase() ?? DEFAULT_EXTENSION;
+	return `${FILE_PREFIX}${String(postId)}.${extension}`;
+}
+/** `RuleDesk/<label>` with the label made safe for a folder name. */
+function downloadFolder(label) {
+	const safe = label.replace(FOLDER_FORBIDDEN, " ").replace(FOLDER_SPACES, " ").slice(0, FOLDER_MAX_LENGTH).replace(FOLDER_EDGE, "");
+	return `${FOLDER_ROOT}/${safe.length > 0 ? safe : FOLDER_FALLBACK}`;
+}
+/** False when the script manager gives no download function. */
+function canDownload() {
+	return typeof GM_download === "function";
+}
+/**
+* Starts one download. Resolves when the manager reports the file saved,
+* rejects with a readable reason when it reports an error or a timeout.
+*/
+function downloadFile(url, name) {
+	return new Promise((resolve, reject) => {
+		GM_download({
+			url,
+			name,
+			onload: () => {
+				resolve();
+			},
+			onerror: (event) => {
+				const reason = typeof event.error === "string" ? event.error : UNKNOWN_ERROR;
+				reject(new Error(reason));
+			},
+			ontimeout: () => {
+				reject(/* @__PURE__ */ new Error(TIMEOUT_ERROR));
+			}
+		});
+	});
+}
+/**
+* The user's own API credentials for the download manager.
+*
+* They are typed in by the user in settings (generated on the site's account
+* options page) and kept under their own key in the script manager's storage,
+* apart from the main data, so they never get into an export file.
+* Nothing else in the script uses the API.
+*/
+var API_CREDENTIALS_KEY = "ruledesk-web.api";
+var ApiCredentialsSchema = object({
+	userId: string().check(_minLength(1)),
+	apiKey: string().check(_minLength(1))
+});
+function getApiCredentials() {
+	const parsed = ApiCredentialsSchema.safeParse(GM_getValue(API_CREDENTIALS_KEY));
+	return parsed.success ? parsed.data : null;
+}
+function hasApiCredentials() {
+	return getApiCredentials() !== null;
+}
+/** Stores trimmed credentials. Returns false when either part is empty. */
+function setApiCredentials(userId, apiKey) {
+	const parsed = ApiCredentialsSchema.safeParse({
+		userId: userId.trim(),
+		apiKey: apiKey.trim()
+	});
+	if (!parsed.success) return false;
+	GM_setValue(API_CREDENTIALS_KEY, parsed.data);
+	return true;
+}
+function clearApiCredentials() {
+	GM_setValue(API_CREDENTIALS_KEY, null);
+}
+/** Id of the download manager among the page tweaks. */
+var DOWNLOADS_FEATURE_ID = "downloads";
+/**
+* True when download buttons may be shown: the manager is switched on, the
+* script manager can download and make API requests, and the user has put an
+* API key into settings. Without a key there is no download manager at all.
+*/
+function downloadsAvailable() {
+	return getTweaksEnabled() && getFeatureEnabled("downloads", true) && canDownload() && typeof GM_xmlhttpRequest === "function" && hasApiCredentials();
+}
+/**
+* Picking posts on a results page for the download manager. While it is on, a
+* click on a thumbnail marks the post instead of opening it. Only a class on
+* `span.thumb` changes; nothing inside the post link is touched.
+*/
+var GRID_SELECT_BODY_CLASS = "rdw-dl-select";
+var GRID_SELECTED_CLASS = "rdw-dl-selected";
+var EVENT_CLICK$3 = "click";
+var GRID_SELECT_CSS = `
+body.${GRID_SELECT_BODY_CLASS} ${SITE_SELECTORS.thumb} {
+  cursor: pointer;
+}
+body.${GRID_SELECT_BODY_CLASS} ${SITE_SELECTORS.thumb}.${GRID_SELECTED_CLASS} {
+  outline: 3px solid var(--rdw-accent);
+  outline-offset: -3px;
+  border-radius: var(--rdw-radius-m);
+}
+`.trim();
+var onCountChange = null;
+/** Ids of the marked posts, in page order. */
+function readSelectedPostIds() {
+	const ids = [];
+	for (const thumb of document.querySelectorAll(`${SITE_SELECTORS.thumb}.${GRID_SELECTED_CLASS}`)) {
+		const raw = extractPostIdFromThumb(thumb);
+		const id = raw === null ? NaN : Number(raw);
+		if (Number.isFinite(id)) ids.push(id);
+	}
+	return ids;
+}
+function onGridClick(event) {
+	const target = event.target;
+	if (!(target instanceof Element)) return;
+	const thumb = target.closest(SITE_SELECTORS.thumb);
+	if (thumb === null || target.closest("button") !== null) return;
+	event.preventDefault();
+	event.stopPropagation();
+	thumb.classList.toggle(GRID_SELECTED_CLASS);
+	onCountChange?.(readSelectedPostIds().length);
+}
+function isGridSelecting() {
+	return document.body.classList.contains(GRID_SELECT_BODY_CLASS);
+}
+/** Turns picking on. `onChange` gets the number of marked posts after each click. */
+function startGridSelect(onChange) {
+	if (isGridSelecting()) return;
+	onCountChange = onChange;
+	document.body.classList.add(GRID_SELECT_BODY_CLASS);
+	document.addEventListener(EVENT_CLICK$3, onGridClick, true);
+}
+/** Turns picking off and clears the marks. */
+function stopGridSelect() {
+	document.removeEventListener(EVENT_CLICK$3, onGridClick, true);
+	document.body.classList.remove(GRID_SELECT_BODY_CLASS);
+	for (const thumb of document.querySelectorAll(`.${GRID_SELECTED_CLASS}`)) thumb.classList.remove(GRID_SELECTED_CLASS);
+	onCountChange = null;
+}
+/**
+* The site API, used for one thing only: finding the original files of posts
+* for the download manager. It works with the user's own key from settings
+* and is never called without one. One request returns up to 1000 posts with
+* the addresses of their files, so no post page has to be read.
+*/
+var API_URL = "https://api.rule34.xxx/index.php";
+var POSTS_PER_REQUEST = 1e3;
+/** Post ids per `( id:1 ~ id:2 … )` request; well under the site's group limit. */
+var IDS_PER_REQUEST = 100;
+/** Pause between two API requests of one collection run. */
+var API_REQUEST_INTERVAL_MS = 1e3;
+var HTTP_OK = 200;
+var ERROR_TEXT_LIMIT = 120;
+var SORT_TOKEN_PREFIX$1 = "sort:";
+var ID_BELOW_PREFIX = "id:<";
+var TOKEN_SPLIT$3 = /\s+/;
+var ALL_QUERY = "all";
+var ApiPostSchema = object({
+	id: int(),
+	file_url: string().check(_minLength(1))
+});
+function buildApiUrl(tags, credentials) {
+	const params = new URLSearchParams();
+	params.set("page", "dapi");
+	params.set("s", "post");
+	params.set("q", "index");
+	params.set("json", "1");
+	params.set("limit", String(POSTS_PER_REQUEST));
+	params.set("pid", "0");
+	if (tags.length > 0 && tags !== ALL_QUERY) params.set("tags", tags);
+	params.set("user_id", credentials.userId);
+	params.set("api_key", credentials.apiKey);
+	return `${API_URL}?${params.toString()}`;
+}
+function requestText(url) {
+	return new Promise((resolve, reject) => {
+		GM_xmlhttpRequest({
+			method: "GET",
+			url,
+			onload: (response) => {
+				if (response.status !== HTTP_OK) {
+					reject(/* @__PURE__ */ new Error(`API HTTP ${String(response.status)}`));
+					return;
+				}
+				resolve(response.responseText);
+			},
+			onerror: () => {
+				reject(/* @__PURE__ */ new Error("API request failed"));
+			},
+			ontimeout: () => {
+				reject(/* @__PURE__ */ new Error("API request timed out"));
+			}
+		});
+	});
+}
+/**
+* Posts of one API answer. An empty body is an empty result. A body that is
+* not a list (the API answers a wrong key with a sentence) is an error whose
+* text is shown to the user.
+*/
+function parseApiPosts(body) {
+	const text = body.trim();
+	if (text.length === 0) return [];
+	let raw;
+	try {
+		raw = JSON.parse(text);
+	} catch {
+		throw new Error(`API: ${text.slice(0, ERROR_TEXT_LIMIT)}`);
+	}
+	if (!Array.isArray(raw)) throw new Error(`API: ${text.slice(0, ERROR_TEXT_LIMIT)}`);
+	const files = [];
+	for (const item of raw) {
+		const parsed = ApiPostSchema.safeParse(item);
+		if (parsed.success) files.push({
+			postId: parsed.data.id,
+			url: parsed.data.file_url
+		});
+	}
+	return files;
+}
+/** The search without sort tokens: the walk below needs newest-first order. */
+function queryForWalk(tags) {
+	return tags.trim().split(TOKEN_SPLIT$3).filter((token) => token.length > 0 && !token.startsWith(SORT_TOKEN_PREFIX$1)).join(" ");
+}
+function sleep$3(ms) {
+	return new Promise((resolve) => {
+		window.setTimeout(resolve, ms);
+	});
+}
+/**
+* Every post of a search. The API stops answering deep page numbers, so the
+* walk asks for the first page again and again with `id:<N`, N being the
+* lowest id seen, until an answer is empty.
+*/
+async function collectQuery(tags, options) {
+	const base = queryForWalk(tags);
+	const files = [];
+	let below = null;
+	for (;;) {
+		if (options.isCancelled()) return files;
+		const cursor = below === null ? "" : `${ID_BELOW_PREFIX}${String(below)}`;
+		const batch = parseApiPosts(await requestText(buildApiUrl([base === ALL_QUERY ? "" : base, cursor].filter((part) => part.length > 0).join(" "), options.credentials)));
+		if (batch.length === 0) return files;
+		let lowest = batch[0]?.postId ?? 0;
+		for (const file of batch) {
+			files.push(file);
+			lowest = Math.min(lowest, file.postId);
+		}
+		options.onProgress(files.length);
+		if (below !== null && lowest >= below) return files;
+		below = lowest;
+		await sleep$3(API_REQUEST_INTERVAL_MS);
+	}
+}
+/** The given posts, asked for in groups of ids, in the order of `ids`. */
+async function collectIds(ids, options) {
+	const byId = /* @__PURE__ */ new Map();
+	const queries = buildPlaylistQueries([...ids], IDS_PER_REQUEST);
+	for (let index = 0; index < queries.length; index += 1) {
+		if (options.isCancelled()) break;
+		if (index > 0) await sleep$3(API_REQUEST_INTERVAL_MS);
+		const query = queries[index] ?? "";
+		for (const file of parseApiPosts(await requestText(buildApiUrl(query, options.credentials)))) byId.set(file.postId, file.url);
+		options.onProgress(byId.size);
+	}
+	const files = [];
+	for (const id of ids) {
+		const url = byId.get(id);
+		if (url !== void 0) files.push({
+			postId: id,
+			url
+		});
+	}
+	return files;
+}
+/** Finds the original files of everything a source names. */
+function collectPostFiles(source, options) {
+	return source.kind === "query" ? collectQuery(source.tags, options) : collectIds(source.ids, options);
+}
+/**
+* The download queue. One job at a time: first the files of the job are found
+* through the API, then they are saved one after another.
+*
+* The job is stored, so it survives a page change: the site reloads the page
+* on every navigation, and the tab that was downloading picks the job up
+* again by itself. A stored job in another tab, or after the browser was
+* closed, waits paused until Resume is pressed.
+*/
+var DOWNLOADS_JOB_KEY = "ruledesk-web.downloads";
+var DOWNLOADS_POSITION_KEY = "ruledesk-web.downloads.position";
+/** Set in the tab that runs the queue, so only that tab resumes by itself. */
+var RUNNING_TAB_KEY = "ruledesk-web.downloads.running";
+var RUNNING_TAB_VALUE = "1";
+/** Wait before the one retry of a failed file. */
+var RETRY_DELAY_MS = 5e3;
+var JobSchema = object({
+	label: string(),
+	folder: string(),
+	files: array(object({
+		postId: int(),
+		url: string()
+	}))
+});
+var PositionSchema = object({
+	next: int(),
+	failed: array(int())
+});
+var IDLE = {
+	phase: "idle",
+	label: "",
+	total: 0,
+	done: 0,
+	failed: 0,
+	message: ""
+};
+var state = IDLE;
+var job = null;
+var next = 0;
+var failed = [];
+/** Bumped on every start, pause and cancel: a loop of an older run stops. */
+var runToken = 0;
+var listeners = /* @__PURE__ */ new Set();
+function emit(nextState) {
+	state = nextState;
+	for (const listener of listeners) listener(state);
+}
+function sleep$2(ms) {
+	return new Promise((resolve) => {
+		window.setTimeout(resolve, ms);
+	});
+}
+function markRunningTab(running) {
+	try {
+		if (running) window.sessionStorage.setItem(RUNNING_TAB_KEY, RUNNING_TAB_VALUE);
+		else window.sessionStorage.removeItem(RUNNING_TAB_KEY);
+	} catch (error) {
+		log.warn("downloads: session storage unavailable", error);
+	}
+}
+function isRunningTab() {
+	try {
+		return window.sessionStorage.getItem(RUNNING_TAB_KEY) === RUNNING_TAB_VALUE;
+	} catch {
+		return false;
+	}
+}
+function savePosition() {
+	GM_setValue(DOWNLOADS_POSITION_KEY, {
+		next,
+		failed
+	});
+}
+function clearStored() {
+	GM_setValue(DOWNLOADS_JOB_KEY, null);
+	GM_setValue(DOWNLOADS_POSITION_KEY, null);
+	markRunningTab(false);
+}
+function progress(phase, message = "") {
+	return {
+		phase,
+		label: job?.label ?? state.label,
+		total: job?.files.length ?? state.total,
+		done: next - failed.length,
+		failed: failed.length,
+		message
+	};
+}
+async function saveOne(file, folder) {
+	const name = `${folder}/${downloadFileName(file.url, file.postId)}`;
+	try {
+		await downloadFile(file.url, name);
+		return true;
+	} catch (first) {
+		log.warn("downloads: file failed, retrying once", file.postId, first);
+	}
+	await sleep$2(RETRY_DELAY_MS);
+	try {
+		await downloadFile(file.url, name);
+		return true;
+	} catch (second) {
+		log.warn("downloads: file failed", file.postId, second);
+		return false;
+	}
+}
+async function run() {
+	const current = job;
+	if (current === null) return;
+	runToken += 1;
+	const token = runToken;
+	markRunningTab(true);
+	emit(progress("running"));
+	while (next < current.files.length) {
+		const file = current.files[next];
+		if (file === void 0) break;
+		const saved = await saveOne(file, current.folder);
+		if (token !== runToken) return;
+		if (!saved) failed.push(file.postId);
+		next += 1;
+		savePosition();
+		emit(progress("running"));
+		if (next < current.files.length) {
+			await sleep$2(400);
+			if (token !== runToken) return;
+		}
+	}
+	clearStored();
+	emit(progress("done"));
+}
+function getDownloadState() {
+	return state;
+}
+function subscribeDownloads(listener) {
+	listeners.add(listener);
+	return () => {
+		listeners.delete(listener);
+	};
+}
+/** True while a job is being collected, saved, or waits paused. */
+function isDownloadBusy() {
+	return state.phase === "collecting" || state.phase === "running" || state.phase === "paused";
+}
+/**
+* Starts a job: asks the API for the files, then saves them into
+* `RuleDesk/<label>`. Does nothing while another job is busy or when no API
+* key is stored.
+*/
+async function startDownload(label, source) {
+	const credentials = getApiCredentials();
+	if (credentials === null || isDownloadBusy()) return;
+	runToken += 1;
+	const token = runToken;
+	job = null;
+	next = 0;
+	failed = [];
+	emit({
+		...IDLE,
+		phase: "collecting",
+		label
+	});
+	let files;
+	try {
+		files = await collectPostFiles(source, {
+			credentials,
+			onProgress: (found) => {
+				if (token === runToken) emit({
+					...IDLE,
+					phase: "collecting",
+					label,
+					total: found
+				});
+			},
+			isCancelled: () => token !== runToken
+		});
+	} catch (error) {
+		if (token !== runToken) return;
+		const reason = error instanceof Error ? error.message : String(error);
+		log.warn("downloads: collecting failed", reason);
+		emit({
+			...IDLE,
+			phase: "error",
+			label,
+			message: reason
+		});
+		return;
+	}
+	if (token !== runToken) return;
+	job = {
+		label,
+		folder: downloadFolder(label),
+		files
+	};
+	GM_setValue(DOWNLOADS_JOB_KEY, job);
+	savePosition();
+	await run();
+}
+/** Stops after the file in flight; the job stays stored. */
+function pauseDownload() {
+	if (state.phase !== "running") return;
+	runToken += 1;
+	markRunningTab(false);
+	emit(progress("paused"));
+}
+function resumeDownload() {
+	if (state.phase !== "paused" || job === null) return;
+	run();
+}
+/** Drops the job, or closes the finished one. Saved files stay. */
+function cancelDownload() {
+	runToken += 1;
+	job = null;
+	next = 0;
+	failed = [];
+	clearStored();
+	emit(IDLE);
+}
+/**
+* Call once per page load. Picks a stored job up: the tab that was running
+* it continues, any other tab shows it paused.
+*/
+function restoreDownloads() {
+	if (state.phase !== "idle") return;
+	const storedJob = JobSchema.safeParse(GM_getValue(DOWNLOADS_JOB_KEY));
+	if (!storedJob.success) return;
+	const position = PositionSchema.safeParse(GM_getValue(DOWNLOADS_POSITION_KEY));
+	job = storedJob.data;
+	next = position.success ? Math.min(position.data.next, job.files.length) : 0;
+	failed = position.success ? [...position.data.failed] : [];
+	if (isRunningTab()) {
+		run();
+		return;
+	}
+	emit(progress("paused"));
+}
+/**
+* The download manager's panel: a small box in the corner of every page
+* while a job exists. It shows what is being saved and holds Pause, Resume
+* and Cancel.
+*/
+var FEATURE_ID$11 = DOWNLOADS_FEATURE_ID;
+var FEATURE_LABEL$11 = "Download manager";
+var FEATURE_PAGES$11 = [
+	"list",
+	"post",
+	"favorites",
+	"other"
+];
+var DOWNLOADS_PANEL_ID = RDW_DOWNLOADS_PANEL_ID;
+var TITLE_CLASS$1 = "rdw-downloads-title";
+var TEXT_CLASS = "rdw-downloads-text";
+var ACTIONS_CLASS$1 = "rdw-downloads-actions";
+var PANEL_WIDTH_PX$1 = 280;
+var PANEL_INSET_PX = 16;
+var PANEL_Z_INDEX$1 = 30;
+var TEXT_COLLECTING = "Finding files: ";
+var TEXT_PAUSED = "Paused";
+var TEXT_DONE = "Finished";
+var TEXT_FAILED_JOIN = ", failed ";
+var LABEL_PAUSE = "Pause";
+var LABEL_RESUME = "Resume";
+var LABEL_CANCEL = "Cancel";
+var LABEL_CLOSE = "Close";
+var FEATURE_CSS$11 = `
+#${DOWNLOADS_PANEL_ID} {
+  position: fixed;
+  right: ${String(PANEL_INSET_PX)}px;
+  bottom: ${String(PANEL_INSET_PX)}px;
+  z-index: ${String(PANEL_Z_INDEX$1)};
+  width: ${String(PANEL_WIDTH_PX$1)}px;
+  max-width: calc(100vw - ${String(32)}px);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--rdw-surface);
+  border: 1px solid var(--rdw-border);
+  border-radius: var(--rdw-radius-l);
+  box-shadow: var(--rdw-shadow-2);
+  color: var(--rdw-text);
+  font: 12.5px/1.4 var(--rdw-font);
+}
+#${DOWNLOADS_PANEL_ID}:empty {
+  display: none;
+}
+#${DOWNLOADS_PANEL_ID} .${TITLE_CLASS$1} {
+  margin: 0;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#${DOWNLOADS_PANEL_ID} .${TEXT_CLASS} {
+  margin: 0;
+  color: var(--rdw-muted);
+  word-break: break-word;
+}
+#${DOWNLOADS_PANEL_ID} .${ACTIONS_CLASS$1} {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+`.trim();
+/** "12 / 340" with ", failed 2" when some files did not save. */
+function downloadCountText(state) {
+	const counted = `${String(state.done)} / ${String(state.total)}`;
+	return state.failed > 0 ? `${counted}${TEXT_FAILED_JOIN}${String(state.failed)}` : counted;
+}
+function statusText(state) {
+	if (state.phase === "collecting") return `${TEXT_COLLECTING}${String(state.total)}`;
+	if (state.phase === "error") return state.message;
+	if (state.phase === "paused") return `${TEXT_PAUSED} · ${downloadCountText(state)}`;
+	if (state.phase === "done") return `${TEXT_DONE} · ${downloadCountText(state)}`;
+	return downloadCountText(state);
+}
+function DownloadsPanel() {
+	const [state, setState] = d(() => getDownloadState());
+	A(() => subscribeDownloads(setState), []);
+	if (state.phase === "idle") return null;
+	const finished = state.phase === "done" || state.phase === "error";
+	const processed = state.done + state.failed;
+	return /* @__PURE__ */ a($$1, { children: [
+		/* @__PURE__ */ a("p", {
+			className: TITLE_CLASS$1,
+			title: state.label,
+			children: state.label
+		}),
+		state.phase === "collecting" ? /* @__PURE__ */ a(ProgressBar, {
+			waiting: true,
+			label: statusText(state)
+		}) : state.phase === "error" ? /* @__PURE__ */ a("p", {
+			className: TEXT_CLASS,
+			role: "alert",
+			children: statusText(state)
+		}) : /* @__PURE__ */ a(ProgressBar, {
+			value: state.total === 0 ? 0 : processed / state.total,
+			label: statusText(state)
+		}),
+		/* @__PURE__ */ a("div", {
+			className: ACTIONS_CLASS$1,
+			children: [
+				state.phase === "running" ? /* @__PURE__ */ a(Button, {
+					variant: "secondary",
+					size: "s",
+					onClick: pauseDownload,
+					children: LABEL_PAUSE
+				}) : null,
+				state.phase === "paused" ? /* @__PURE__ */ a(Button, {
+					variant: "primary",
+					size: "s",
+					onClick: resumeDownload,
+					children: LABEL_RESUME
+				}) : null,
+				/* @__PURE__ */ a(Button, {
+					variant: "secondary",
+					size: "s",
+					onClick: cancelDownload,
+					children: finished ? LABEL_CLOSE : LABEL_CANCEL
+				})
+			]
+		})
+	] });
+}
+function mountDownloads(_ctx) {
+	if (document.getElementById(DOWNLOADS_PANEL_ID) !== null) return;
+	const host = document.createElement("div");
+	host.id = DOWNLOADS_PANEL_ID;
+	document.body.append(host);
+	Q$1(/* @__PURE__ */ a(DownloadsPanel, {}), host);
+	restoreDownloads();
+}
+var downloadsFeature = {
 	id: FEATURE_ID$11,
 	label: FEATURE_LABEL$11,
 	pages: [...FEATURE_PAGES$11],
 	defaultEnabled: true,
-	css: "",
-	mount: mountCdnFallback
+	css: `${FEATURE_CSS$11}
+${GRID_SELECT_CSS}`,
+	mount: mountDownloads
 };
 function buildAddFavUrl(postId) {
 	const params = new URLSearchParams();
@@ -8937,7 +9612,7 @@ var FAVORITES_SYNC_RETRY_DELAYS_MS = [
 	3e4,
 	6e4
 ];
-var FAVORITES_SYNC_MODE_INCREMENTAL = exports("bt",FAVS_SYNC_MODE_INCREMENTAL);
+var FAVORITES_SYNC_MODE_INCREMENTAL = exports("bv",FAVS_SYNC_MODE_INCREMENTAL);
 var FAVORITES_SYNC_MODE_FULL = exports("F",FAVS_SYNC_MODE_FULL);
 var MY_FAVORITES_LINK_SELECTOR$1 = "li#my-favorites-container a[href*=\"page=favorites\"]";
 var THUMB_SELECTOR$1 = "span.thumb";
@@ -10861,7 +11536,7 @@ var MIN_REQUEST_INTERVAL_MS$1 = 1e3;
 var PREFETCH_VIEWPORT_HEIGHTS = 2;
 var FIRST_PAGE_PID$1 = "0";
 var NEXT_LINK_SELECTOR = "div.pagination a[alt=\"next\"]";
-var EMPTY_HREF$1 = "#";
+var EMPTY_HREF = "#";
 var SCORE_TOKEN_PREFIX$2 = "score:";
 var RATING_TOKEN_PREFIX$1 = "rating:";
 var TOKEN_SPLIT$1 = /\s+/;
@@ -10957,7 +11632,7 @@ function sleep$1(ms) {
 }
 function readPagerNextUrl() {
 	const href = document.querySelector(NEXT_LINK_SELECTOR)?.getAttribute("href") ?? "";
-	if (href.length === 0 || href === EMPTY_HREF$1) return null;
+	if (href.length === 0 || href === EMPTY_HREF) return null;
 	try {
 		return new URL(href, window.location.href).href;
 	} catch {
@@ -11658,7 +12333,7 @@ var infiniteScrollFeature = {
 	mount: mountInfiniteScroll
 };
 var AUTOCOMPLETE_PATH = "/public/autocomplete.php";
-var AUTOCOMPLETE_TAG_TYPE_ARTIST = exports("bS","artist");
+var AUTOCOMPLETE_TAG_TYPE_ARTIST = exports("bV","artist");
 var HTTP_TOO_MANY_REQUESTS = 429;
 var ABORT_ERROR_NAME = "AbortError";
 var AutocompleteItemSchema = object({
@@ -12881,92 +13556,6 @@ var playlistMenuFeature = {
 	css: FEATURE_CSS$6,
 	mount: mountPlaylistMenu
 };
-/**
-* Saves a post's original file through the script manager (`GM_download`).
-* The file is on the site's CDN, another origin, so a plain download link
-* cannot name or save it.
-*
-* On a post page the address of the original is on the page. For a post that
-* is not open (a collection download) its page is read first: one request per
-* post, made only by a run the user started and confirmed.
-*/
-var LINK_LIST_SELECTOR$1 = "div.link-list";
-var ORIGINAL_LINK_TEXT$1 = "Original image";
-var POST_IMAGE_SELECTOR = "img#image";
-var POST_VIDEO_SOURCE_SELECTOR = "video#gelcomVideoPlayer source[src]";
-var POST_VIDEO_SELECTOR = "video#gelcomVideoPlayer[src]";
-var EMPTY_HREF = "#";
-var NO_ORIGINAL_ERROR = "original file not found on the post page";
-var FILE_PREFIX = "rule34-";
-var DEFAULT_EXTENSION = "jpg";
-var EXTENSION_PATTERN = /\.([a-z0-9]{2,5})$/i;
-var UNKNOWN_ERROR = "unknown error";
-var TIMEOUT_ERROR = "timeout";
-/** `rule34-<postId>.<ext>`, the extension taken from the file address. */
-function downloadFileName(url, postId) {
-	let path = url;
-	try {
-		path = new URL(url, window.location.href).pathname;
-	} catch {}
-	return `${FILE_PREFIX}${postId}.${EXTENSION_PATTERN.exec(path)?.[1]?.toLowerCase() ?? DEFAULT_EXTENSION}`;
-}
-/** False when the script manager gives no download function. */
-function canDownload() {
-	return typeof GM_download === "function";
-}
-/**
-* Starts the download. Resolves when the manager reports the file saved,
-* rejects with a readable reason when it reports an error or a timeout.
-*/
-function downloadOriginal(url, postId) {
-	return new Promise((resolve, reject) => {
-		GM_download({
-			url,
-			name: downloadFileName(url, postId),
-			onload: () => {
-				resolve();
-			},
-			onerror: (event) => {
-				const reason = typeof event.error === "string" ? event.error : UNKNOWN_ERROR;
-				reject(new Error(reason));
-			},
-			ontimeout: () => {
-				reject(/* @__PURE__ */ new Error(TIMEOUT_ERROR));
-			}
-		});
-	});
-}
-function attribute(root, selector, name) {
-	const value = root.querySelector(selector)?.getAttribute(name)?.trim() ?? "";
-	return value.length > 0 ? value : null;
-}
-/**
-* Address of the original file on a post page: the "Original image" link,
-* else the video source, else the image shown. Null when none is there.
-*/
-function readOriginalUrl(root) {
-	const list = root.querySelector(LINK_LIST_SELECTOR$1) ?? root;
-	for (const link of list.querySelectorAll("a[href]")) {
-		const href = link.getAttribute("href") ?? "";
-		if (link.textContent?.trim() === ORIGINAL_LINK_TEXT$1 && href.length > 0 && href !== EMPTY_HREF) return href;
-	}
-	return attribute(root, POST_VIDEO_SOURCE_SELECTOR, "src") ?? attribute(root, POST_VIDEO_SELECTOR, "src") ?? attribute(root, POST_IMAGE_SELECTOR, "src");
-}
-/** Reads a post's page and returns the address of its original. One request. */
-async function fetchOriginalUrl(postId) {
-	const params = new URLSearchParams();
-	params.set(SEARCH_PARAM_PAGE, SEARCH_PAGE);
-	params.set("s", SEARCH_SECTION_VIEW);
-	params.set("id", String(postId));
-	const response = await fetch(`${SEARCH_PATH}?${params.toString()}`, {
-		method: "GET",
-		credentials: FETCH_CREDENTIALS
-	});
-	if (!response.ok) throw new Error(`HTTP ${String(response.status)}`);
-	const url = readOriginalUrl(new DOMParser().parseFromString(await response.text(), "text/html"));
-	if (url === null) throw new Error(NO_ORIGINAL_ERROR);
-	return new URL(url, window.location.href).href;
-}
 var CLASS_STRIP = "rdw-post-panel-collection-queue";
 var CLASS_NAME = "rdw-post-panel-collection-queue-name";
 var CLASS_POSITION = "rdw-post-panel-collection-queue-position";
@@ -13890,13 +14479,6 @@ var TEXT_INFO = "Info";
 var TEXT_POST = "Post";
 var TEXT_COMMENTS_COUNTED_SEP = " · ";
 var LABEL_ORIGINAL = "Original";
-var LABEL_DOWNLOAD = "Download original";
-var LABEL_DOWNLOADING = "Downloading…";
-var LABEL_DOWNLOADED = "Downloaded";
-var LABEL_DOWNLOAD_FAILED = "Download failed: ";
-var DOWNLOAD_IDLE = "idle";
-var DOWNLOAD_BUSY = "busy";
-var DOWNLOAD_DONE = "done";
 var LABEL_VOTE = "Vote";
 var LABEL_ICAME = "I came";
 var ARIA_PANEL_TABS = "Post details";
@@ -13908,7 +14490,6 @@ var CLASS_ACTIONS$1 = "rdw-post-panel-actions";
 var CLASS_ACTIONS_ROW = "rdw-post-panel-actions-row";
 var CLASS_FAV = "rdw-post-panel-fav";
 var CLASS_ORIGINAL = "rdw-post-panel-original";
-var CLASS_DOWNLOAD = "rdw-post-panel-download";
 var CLASS_VOTE = "rdw-post-panel-vote";
 var CLASS_STATS = "rdw-post-panel-stats";
 var CLASS_STAT_LABEL = "rdw-post-panel-stat-label";
@@ -13948,20 +14529,6 @@ function PostPanel(props) {
 	const [originalHref] = d(() => {
 		return findOriginalAnchor()?.href ?? null;
 	});
-	const [downloadState, setDownloadState] = d(DOWNLOAD_IDLE);
-	const downloadPostId = props.postId;
-	const onDownloadClick = () => {
-		if (originalHref === null || downloadPostId === null || downloadState === DOWNLOAD_BUSY) return;
-		setDownloadState(DOWNLOAD_BUSY);
-		downloadOriginal(originalHref, downloadPostId).then(() => {
-			setDownloadState(DOWNLOAD_DONE);
-		}, (error) => {
-			const reason = error instanceof Error ? error.message : String(error);
-			log.warn("post-panel: download failed", reason);
-			setDownloadState(`${LABEL_DOWNLOAD_FAILED}${reason}`);
-		});
-	};
-	const downloadLabel = downloadState === DOWNLOAD_IDLE ? LABEL_DOWNLOAD : downloadState === DOWNLOAD_BUSY ? LABEL_DOWNLOADING : downloadState === DOWNLOAD_DONE ? LABEL_DOWNLOADED : downloadState;
 	const [iCame] = d(() => findICameTarget());
 	const [hasComments] = d(() => findPostComments() !== null);
 	const [commentCount] = d(() => hasComments ? readCommentCount() : null);
@@ -14090,15 +14657,6 @@ function PostPanel(props) {
 							"aria-label": LABEL_ORIGINAL,
 							title: LABEL_ORIGINAL,
 							children: /* @__PURE__ */ a(IconExternalLink, { size: ORIGINAL_ICON_SIZE })
-						}) : null,
-						originalHref !== null && downloadPostId !== null && canDownload() ? /* @__PURE__ */ a("button", {
-							type: "button",
-							className: `${CLASS_ORIGINAL} ${CLASS_DOWNLOAD} rdw-kit-focusable`,
-							"aria-label": downloadLabel,
-							title: downloadLabel,
-							"aria-busy": downloadState === DOWNLOAD_BUSY,
-							onClick: onDownloadClick,
-							children: /* @__PURE__ */ a(IconDownload, { size: ORIGINAL_ICON_SIZE })
 						}) : null
 					]
 				}) : null]
@@ -14435,6 +14993,113 @@ var postActionsFeature = {
 	css: FEATURE_CSS$4,
 	mount: mountPostActions
 };
+/**
+* Download buttons of the search panel, on results pages only: the whole
+* search, or posts picked on the page. Rendered only when the download
+* manager is available (see {@link downloadsAvailable}).
+*/
+var LABEL_DOWNLOAD_RESULTS = "Download results";
+var TITLE_DOWNLOAD_RESULTS = "Download every post of this search";
+var LABEL_SELECT = "Select posts";
+var TITLE_SELECT = "Pick posts on this page to download";
+var DOWNLOAD_SELECTED_PREFIX = "Download selected (";
+var DOWNLOAD_SELECTED_SUFFIX = ")";
+var DIALOG_TITLE = "Download results";
+var CONFIRM_LABEL = "Download";
+var SELECTION_LABEL_SUFFIX = " (selected)";
+var UNNAMED_SELECTION = "selected posts";
+var CONFIRM_PREFIX = "Download every post of “";
+var CONFIRM_SUFFIX = "”? The list is read through the API first, then the files are saved one by one. A large search takes a long time; it can be paused or cancelled in the panel.";
+function pageQuery(search) {
+	return withoutSortRandom(new URLSearchParams(search).get("tags") ?? "");
+}
+function isResultsPage(search) {
+	return new URLSearchParams(search).get("s") === SEARCH_SECTION;
+}
+/** The collection's name when the page was opened from its card, else the query. */
+function jobLabel(query) {
+	const markedId = readDynamicCollectionMark(window.location.hash);
+	if (markedId !== null) {
+		const collection = load().collections.find((item) => item.id === markedId);
+		if (collection !== void 0) return collection.name;
+	}
+	return query;
+}
+function DownloadControls() {
+	const [selecting, setSelecting] = d(false);
+	const [count, setCount] = d(0);
+	const [confirmOpen, setConfirmOpen] = d(false);
+	A(() => () => {
+		stopGridSelect();
+	}, []);
+	const search = window.location.search;
+	if (!isResultsPage(search) || !downloadsAvailable()) return null;
+	const query = pageQuery(search);
+	const label = jobLabel(query);
+	const leaveSelect = () => {
+		stopGridSelect();
+		setSelecting(false);
+		setCount(0);
+	};
+	if (selecting) return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a(Button, {
+		variant: "primary",
+		size: "s",
+		disabled: count === 0,
+		onClick: () => {
+			const ids = readSelectedPostIds();
+			leaveSelect();
+			if (ids.length > 0 && !isDownloadBusy()) startDownload(label.length > 0 ? `${label}${SELECTION_LABEL_SUFFIX}` : UNNAMED_SELECTION, {
+				kind: "ids",
+				ids
+			});
+		},
+		children: `${DOWNLOAD_SELECTED_PREFIX}${String(count)}${DOWNLOAD_SELECTED_SUFFIX}`
+	}), /* @__PURE__ */ a(Button, {
+		variant: "secondary",
+		size: "s",
+		onClick: leaveSelect,
+		children: UI_TEXT.cancel
+	})] });
+	return /* @__PURE__ */ a($$1, { children: [
+		isUnfilteredQuery(query) ? null : /* @__PURE__ */ a(Button, {
+			variant: "secondary",
+			size: "s",
+			title: TITLE_DOWNLOAD_RESULTS,
+			onClick: () => {
+				setConfirmOpen(true);
+			},
+			children: LABEL_DOWNLOAD_RESULTS
+		}),
+		/* @__PURE__ */ a(Button, {
+			variant: "secondary",
+			size: "s",
+			title: TITLE_SELECT,
+			onClick: () => {
+				startGridSelect(setCount);
+				setSelecting(true);
+			},
+			children: LABEL_SELECT
+		}),
+		/* @__PURE__ */ a(Dialog, {
+			variant: "confirm",
+			open: confirmOpen,
+			title: DIALOG_TITLE,
+			message: `${CONFIRM_PREFIX}${label}${CONFIRM_SUFFIX}`,
+			confirmLabel: CONFIRM_LABEL,
+			cancelLabel: UI_TEXT.cancel,
+			onConfirm: () => {
+				setConfirmOpen(false);
+				if (!isDownloadBusy()) startDownload(label, {
+					kind: "query",
+					tags: query
+				});
+			},
+			onClose: () => {
+				setConfirmOpen(false);
+			}
+		})
+	] });
+}
 var SAVE_SEARCH_LABEL = "Save as collection";
 var SAVE_SEARCH_TITLE = "Save this search as a dynamic collection";
 var SAVE_SEARCH_DIALOG_TITLE = "New dynamic collection";
@@ -15499,14 +16164,18 @@ function SearchToolsPanel(props) {
 			}) : null,
 			/* @__PURE__ */ a("div", {
 				className: FOOT_CLASS,
-				children: [/* @__PURE__ */ a(Button, {
-					variant: "secondary",
-					size: "s",
-					className: RESET_CLASS,
-					title: RESET_TITLE,
-					onClick: onReset,
-					children: RESET_LABEL
-				}), /* @__PURE__ */ a(SaveSearchButton, { tags: input.value })]
+				children: [
+					/* @__PURE__ */ a(Button, {
+						variant: "secondary",
+						size: "s",
+						className: RESET_CLASS,
+						title: RESET_TITLE,
+						onClick: onReset,
+						children: RESET_LABEL
+					}),
+					/* @__PURE__ */ a(SaveSearchButton, { tags: input.value }),
+					/* @__PURE__ */ a(DownloadControls, {})
+				]
 			})
 		]
 	})] });
@@ -15884,7 +16553,8 @@ var FEATURES = exports("aO",[
 		css: FEATURE_CSS,
 		mount: mountVideoPreview
 	},
-	cdnFallbackFeature
+	cdnFallbackFeature,
+	downloadsFeature
 ]);
 var mountedIds = /* @__PURE__ */ new Set();
 var activePageKind = null;
@@ -16107,12 +16777,12 @@ bootEarly();
 whenDomReady(() => {
 	applyLayoutBeforePaint();
 	scheduleAfterFirstPaint(() => {
-		module.import('./app-C6Dzathm-2J5jAc9i.js').then(({ startApp }) => {
+		module.import('./app-CrfiTk0M-NaWWYzDe.js').then(({ startApp }) => {
 			startApp();
 		});
 	});
 });})}}));
-System.register("./app-C6Dzathm-2J5jAc9i.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var yieldToMain,detectPageKind,mountCards,syncFavoritesPage,runFeaturesYielding,getAppearance,applyAppearanceTheme,ensureDocumentStyles,SITE_SELECTORS,log,SITE_ORIGIN,SEARCH_PARAM_TAGS,normalizeArtistTag,CSS_CLASS,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,HEADER_SELECTOR,RDW_OWN_PAGE_CLASS,MENU_ITEM_ID,getFeatureEnabled,parseRdwHash,getSyncState,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,runFavoritesSync,UI_TEXT,Q$1,RDW_PAGE_ROOT_ID,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,resolveFavoritesUserId,RDW_HASH_STATS,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,rdwPageHash,createFavoritesSyncTabId,APPEARANCE_BACKGROUND_KEY,readArtistsMirror,listArtistTags,writeArtistsMirror,reloadFromStorage,save,CURRENT_PAGE_CLASS,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,a,applyTokenProperties,resolveAppearancePalette,isCollectionDetailPage,menuRouteForPage,getSiteSkinCss,$$1,PANEL_UI_CLASS,TOKEN_VAR,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,SITE_LIGHT_C_BG,SITE_LIGHT_C_BG_ALT,SITE_DARK_C_BG,SITE_DARK_C_BORDER,APPEARANCE_BACKGROUND_TOO_LARGE;return{setters:[function(module){yieldToMain=module.y;detectPageKind=module.d;mountCards=module.m;syncFavoritesPage=module.s;runFeaturesYielding=module.r;getAppearance=module.g;applyAppearanceTheme=module.a;ensureDocumentStyles=module.e;SITE_SELECTORS=module.S;log=module.l;SITE_ORIGIN=module.b;SEARCH_PARAM_TAGS=module.c;normalizeArtistTag=module.n;CSS_CLASS=module.C;ensureStyleElement=module.f;RDW_OWN_PAGE_STYLE_ID=module.R;buildOwnPageCss=module.h;HEADER_SELECTOR=module.H;RDW_OWN_PAGE_CLASS=module.i;MENU_ITEM_ID=module.M;getFeatureEnabled=module.j;parseRdwHash=module.p;getSyncState=module.k;readFavoritesSyncMode=module.o;FAVORITES_SYNC_MODE_FULL=module.F;runFavoritesSync=module.q;UI_TEXT=module.U;Q$1=module.Q;RDW_PAGE_ROOT_ID=module.t;NAVBAR_SELECTOR=module.N;FEED_MENU_ITEM_ID=module.u;RDW_HASH_COLLECTIONS=module.v;MENU_LABEL=module.w;RDW_HASH_FOLLOWING=module.x;resolveFavoritesUserId=module.z;RDW_HASH_STATS=module.A;MY_FAVORITES_CONTAINER_ID=module.B;RDW_HASH_SETTINGS=module.D;rdwPageHash=module.E;createFavoritesSyncTabId=module.G;APPEARANCE_BACKGROUND_KEY=module.I;readArtistsMirror=module.J;listArtistTags=module.K;writeArtistsMirror=module.L;reloadFromStorage=module.O;save=module.P;CURRENT_PAGE_CLASS=module.T;setSyncState=module.V;SEARCH_PARAM_PAGE=module.W;FAVORITES_PAGE=module.X;FAVORITES_SECTION_VIEW=module.Y;SEARCH_PATH=module.Z;a=module._;applyTokenProperties=module.$;resolveAppearancePalette=module.a0;isCollectionDetailPage=module.a1;menuRouteForPage=module.a2;getSiteSkinCss=module.a3;$$1=module.a4;PANEL_UI_CLASS=module.a5;TOKEN_VAR=module.a6;RDW_THEME_ATTR=module.a7;APPEARANCE_THEME_SITE=module.a8;APPEARANCE_THEME_SITE_DARK=module.a9;SITE_LIGHT_C_BG=module.aa;SITE_LIGHT_C_BG_ALT=module.ab;SITE_DARK_C_BG=module.ac;SITE_DARK_C_BORDER=module.ad;APPEARANCE_BACKGROUND_TOO_LARGE=module.ae;}],execute:(function(){exports({a:installSiteMenu,i:navigateToRdwRoute,n:loadBackground,r:saveBackground,startApp:startApp,t:clearBackground});/** Matches host.tsx page title class (owned there; styled here for site polish). */
+System.register("./app-CrfiTk0M-NaWWYzDe.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var yieldToMain,detectPageKind,mountCards,syncFavoritesPage,runFeaturesYielding,getAppearance,applyAppearanceTheme,ensureDocumentStyles,SITE_SELECTORS,log,SITE_ORIGIN,SEARCH_PARAM_TAGS,normalizeArtistTag,CSS_CLASS,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,HEADER_SELECTOR,RDW_OWN_PAGE_CLASS,MENU_ITEM_ID,getFeatureEnabled,parseRdwHash,getSyncState,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,runFavoritesSync,UI_TEXT,Q$1,RDW_PAGE_ROOT_ID,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,resolveFavoritesUserId,RDW_HASH_STATS,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,rdwPageHash,createFavoritesSyncTabId,APPEARANCE_BACKGROUND_KEY,readArtistsMirror,listArtistTags,writeArtistsMirror,reloadFromStorage,save,CURRENT_PAGE_CLASS,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,a,applyTokenProperties,resolveAppearancePalette,isCollectionDetailPage,menuRouteForPage,getSiteSkinCss,$$1,PANEL_UI_CLASS,TOKEN_VAR,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,SITE_LIGHT_C_BG,SITE_LIGHT_C_BG_ALT,SITE_DARK_C_BG,SITE_DARK_C_BORDER,APPEARANCE_BACKGROUND_TOO_LARGE;return{setters:[function(module){yieldToMain=module.y;detectPageKind=module.d;mountCards=module.m;syncFavoritesPage=module.s;runFeaturesYielding=module.r;getAppearance=module.g;applyAppearanceTheme=module.a;ensureDocumentStyles=module.e;SITE_SELECTORS=module.S;log=module.l;SITE_ORIGIN=module.b;SEARCH_PARAM_TAGS=module.c;normalizeArtistTag=module.n;CSS_CLASS=module.C;ensureStyleElement=module.f;RDW_OWN_PAGE_STYLE_ID=module.R;buildOwnPageCss=module.h;HEADER_SELECTOR=module.H;RDW_OWN_PAGE_CLASS=module.i;MENU_ITEM_ID=module.M;getFeatureEnabled=module.j;parseRdwHash=module.p;getSyncState=module.k;readFavoritesSyncMode=module.o;FAVORITES_SYNC_MODE_FULL=module.F;runFavoritesSync=module.q;UI_TEXT=module.U;Q$1=module.Q;RDW_PAGE_ROOT_ID=module.t;NAVBAR_SELECTOR=module.N;FEED_MENU_ITEM_ID=module.u;RDW_HASH_COLLECTIONS=module.v;MENU_LABEL=module.w;RDW_HASH_FOLLOWING=module.x;resolveFavoritesUserId=module.z;RDW_HASH_STATS=module.A;MY_FAVORITES_CONTAINER_ID=module.B;RDW_HASH_SETTINGS=module.D;rdwPageHash=module.E;createFavoritesSyncTabId=module.G;APPEARANCE_BACKGROUND_KEY=module.I;readArtistsMirror=module.J;listArtistTags=module.K;writeArtistsMirror=module.L;reloadFromStorage=module.O;save=module.P;CURRENT_PAGE_CLASS=module.T;setSyncState=module.V;SEARCH_PARAM_PAGE=module.W;FAVORITES_PAGE=module.X;FAVORITES_SECTION_VIEW=module.Y;SEARCH_PATH=module.Z;a=module._;applyTokenProperties=module.$;resolveAppearancePalette=module.a0;isCollectionDetailPage=module.a1;menuRouteForPage=module.a2;getSiteSkinCss=module.a3;$$1=module.a4;PANEL_UI_CLASS=module.a5;TOKEN_VAR=module.a6;RDW_THEME_ATTR=module.a7;APPEARANCE_THEME_SITE=module.a8;APPEARANCE_THEME_SITE_DARK=module.a9;SITE_LIGHT_C_BG=module.aa;SITE_LIGHT_C_BG_ALT=module.ab;SITE_DARK_C_BG=module.ac;SITE_DARK_C_BORDER=module.ad;APPEARANCE_BACKGROUND_TOO_LARGE=module.ae;}],execute:(function(){exports({a:installSiteMenu,i:navigateToRdwRoute,n:loadBackground,r:saveBackground,startApp:startApp,t:clearBackground});/** Matches host.tsx page title class (owned there; styled here for site polish). */
 var PAGE_TITLE_CLASS$1 = "rdw-page-title";
 /** Matches kit SectionLabel class. */
 var SECTION_LABEL_CLASS = "rdw-section-label";
@@ -16353,35 +17023,35 @@ var followingFactory = null;
 var statsFactory = null;
 function getSettingsFactory() {
 	if (settingsFactory === null) settingsFactory = async () => {
-		const mod = await module.import('./settings-page-Buhoe4eb-Ca9nBgu3.js');
+		const mod = await module.import('./settings-page-DdN3xIyq-PGVouEJZ.js');
 		return /* @__PURE__ */ a(mod.SettingsPage, {});
 	};
 	return settingsFactory;
 }
 function getCollectionsFactory() {
 	if (collectionsFactory === null) collectionsFactory = async () => {
-		const mod = await module.import('./collections-page-C8ub3jj7-CjO62Fdk.js');
+		const mod = await module.import('./collections-page-B28pT7pW-tDuc-yKP.js');
 		return /* @__PURE__ */ a(mod.CollectionsPage, {});
 	};
 	return collectionsFactory;
 }
 function getFollowingFactory() {
 	if (followingFactory === null) followingFactory = async () => {
-		const mod = await module.import('./following-page-DoW7kafj-C2MFQBb7.js');
+		const mod = await module.import('./following-page-BRzyYNMC-sOTEL6PT.js');
 		return /* @__PURE__ */ a(mod.FollowingPage, {});
 	};
 	return followingFactory;
 }
 function getStatsFactory() {
 	if (statsFactory === null) statsFactory = async () => {
-		const mod = await module.import('./stats-section-DwZ4YteG-CSkORKzf.js');
+		const mod = await module.import('./stats-section-p5V1Li_6-CIL6Vid-.js');
 		return /* @__PURE__ */ a(mod.StatsPage, {});
 	};
 	return statsFactory;
 }
 function collectionDetailFactory(collectionId) {
 	return async () => {
-		const mod = await module.import('./collection-detail-page-r9CUNMOW-BjNMrWLf.js');
+		const mod = await module.import('./collection-detail-page-BQOK0pxN-B2HZz7yk.js');
 		return /* @__PURE__ */ a(mod.CollectionDetailPage, { collectionId }, collectionId);
 	};
 }
@@ -17091,7 +17761,7 @@ async function startApp() {
 	await yieldToMain();
 	maybeResumeFavoritesSync();
 }})}}));
-System.register("./settings-page-Buhoe4eb-Ca9nBgu3.js", ['./___monkey.entry.js','./app-C6Dzathm-2J5jAc9i.js'],(function(exports){'use strict';var d,a,PANEL_UI_CLASS,Switch,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,STATS_MENU_SETTING_LABEL,STATS_MENU_SWITCH_ID,setFeatureEnabled,NumberField,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,setGridFavButtonsVisible,IconChevronRight,IconChevronDown,Card,P$1,T,A,getAppearance,applyAppearanceTheme,getSiteSkinCss,APPEARANCE_THEME_CUSTOM,KIT_FOCUS_CSS,SectionLabel,Select,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,$$1,Segmented,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,TextField,Button,clampBackgroundDim,FEATURES,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,clearFeatureState,applyCssOnlyFeatureEnabled,isFeatureEnabled,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,applyCssOnlyFeatureChoice,getFeatureChoice,createAutocompleteQuerier,b,readSiteBlacklist,Chip,AutocompleteField,ProgressBar,createDefaultCustomTheme,AppearanceThemeSchema,prepareBackgroundImageFile,setFeatureState,writeSiteBlacklist,runFavoritesSync,log,FAVORITES_SYNC_PAGE_PAUSE_MS,load,createDefaultStorage,clearStorageCache,clearFavsCache,getSyncState,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,setAppearance,loadFavSet,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,gridDensityFeature,FAVORITES_SYNC_MODE_INCREMENTAL,FAVORITES_SYNC_MODE_FULL,STATS_MENU_SETTING_ID,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureEnabled,getFeatureChoiceValue,getFeatureState,getScreenPixelSize,installSiteMenu,loadBackground,clearBackground,saveBackground;return{setters:[function(module){d=module.af;a=module._;PANEL_UI_CLASS=module.a5;Switch=module.ag;UI_TEXT=module.U;TWEAKS_SWITCH_ID=module.ah;setTweaksEnabled=module.ai;STATS_MENU_SETTING_LABEL=module.aj;STATS_MENU_SWITCH_ID=module.ak;setFeatureEnabled=module.al;NumberField=module.am;UPDATES_GROUP_SIZE_ID=module.an;setUpdatesGroupSize=module.ao;getUpdatesGroupSize=module.ap;PLAYLIST_CHUNK_SIZE_ID=module.aq;setPlaylistChunkSize=module.ar;getPlaylistChunkSize=module.as;GRID_FAV_CHECKBOX_ID=module.at;setGridFavButtonsEnabled=module.au;setGridFavButtonsVisible=module.av;IconChevronRight=module.aw;IconChevronDown=module.ax;Card=module.ay;P$1=module.az;T=module.aA;A=module.aB;getAppearance=module.g;applyAppearanceTheme=module.a;getSiteSkinCss=module.a3;APPEARANCE_THEME_CUSTOM=module.aC;KIT_FOCUS_CSS=module.aD;SectionLabel=module.aE;Select=module.aF;APPEARANCE_THEME_SITE=module.a8;APPEARANCE_THEME_SITE_DARK=module.a9;APPEARANCE_THEME_LIGHT=module.aG;APPEARANCE_THEME_DARK=module.aH;$$1=module.a4;Segmented=module.aI;APPEARANCE_CUSTOM_BASE_LIGHT=module.aJ;APPEARANCE_CUSTOM_BASE_DARK=module.aK;TextField=module.aL;Button=module.aM;clampBackgroundDim=module.aN;FEATURES=module.aO;featurePanelLabel=module.aP;FEATURE_CHECKBOX_ID_PREFIX=module.aQ;clearFeatureState=module.aR;applyCssOnlyFeatureEnabled=module.aS;isFeatureEnabled=module.aT;FEATURE_CHOICE_ID_PREFIX=module.aU;setFeatureChoiceValue=module.aV;applyCssOnlyFeatureChoice=module.aW;getFeatureChoice=module.aX;createAutocompleteQuerier=module.aY;b=module.aZ;readSiteBlacklist=module.a_;Chip=module.a$;AutocompleteField=module.b0;ProgressBar=module.b1;createDefaultCustomTheme=module.b2;AppearanceThemeSchema=module.b3;prepareBackgroundImageFile=module.b4;setFeatureState=module.b5;writeSiteBlacklist=module.b6;runFavoritesSync=module.q;log=module.l;FAVORITES_SYNC_PAGE_PAUSE_MS=module.b7;load=module.b8;createDefaultStorage=module.b9;clearStorageCache=module.ba;clearFavsCache=module.bb;getSyncState=module.k;object=module.bc;StorageSchema=module.bd;optional=module.be;string=module.bf;FavsSchema=module.bg;literal=module.bh;IMPORT_SCHEMA_ERROR_PREFIX=module.bi;stripLegacyPanelWindowSize=module.bj;save=module.P;migrateMarksFavToFavs=module.bk;FAVS_STORAGE_KEY=module.bl;createDefaultFavs=module.bm;parseFavsStrict=module.bn;setAppearance=module.bo;loadFavSet=module.bp;STORAGE_BACKUP_KEY=module.bq;extractFavIdsFromMarks=module.br;gridDensityFeature=module.bs;FAVORITES_SYNC_MODE_INCREMENTAL=module.bt;FAVORITES_SYNC_MODE_FULL=module.F;STATS_MENU_SETTING_ID=module.bu;getTweaksEnabled=module.bv;getGridFavButtonsEnabled=module.bw;getFeatureEnabled=module.j;getFeatureChoiceValue=module.bx;getFeatureState=module.by;getScreenPixelSize=module.bz;},function(module){installSiteMenu=module.a;loadBackground=module.n;clearBackground=module.t;saveBackground=module.r;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
+System.register("./settings-page-DdN3xIyq-PGVouEJZ.js", ['./___monkey.entry.js','./app-CrfiTk0M-NaWWYzDe.js'],(function(exports){'use strict';var d,a,PANEL_UI_CLASS,Switch,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,STATS_MENU_SETTING_LABEL,STATS_MENU_SWITCH_ID,setFeatureEnabled,NumberField,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,setGridFavButtonsVisible,IconChevronRight,IconChevronDown,Card,P$1,T,A,getAppearance,applyAppearanceTheme,getSiteSkinCss,APPEARANCE_THEME_CUSTOM,KIT_FOCUS_CSS,SectionLabel,Select,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,$$1,Segmented,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,TextField,Button,clampBackgroundDim,FEATURES,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,clearFeatureState,applyCssOnlyFeatureEnabled,isFeatureEnabled,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,applyCssOnlyFeatureChoice,getFeatureChoice,createAutocompleteQuerier,b,readSiteBlacklist,Chip,AutocompleteField,ProgressBar,createDefaultCustomTheme,AppearanceThemeSchema,prepareBackgroundImageFile,setFeatureState,writeSiteBlacklist,runFavoritesSync,log,FAVORITES_SYNC_PAGE_PAUSE_MS,clearApiCredentials,setApiCredentials,load,createDefaultStorage,clearStorageCache,clearFavsCache,getSyncState,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,setAppearance,loadFavSet,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,gridDensityFeature,FAVORITES_SYNC_MODE_INCREMENTAL,FAVORITES_SYNC_MODE_FULL,STATS_MENU_SETTING_ID,getApiCredentials,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureEnabled,getFeatureChoiceValue,getFeatureState,getScreenPixelSize,installSiteMenu,loadBackground,clearBackground,saveBackground;return{setters:[function(module){d=module.af;a=module._;PANEL_UI_CLASS=module.a5;Switch=module.ag;UI_TEXT=module.U;TWEAKS_SWITCH_ID=module.ah;setTweaksEnabled=module.ai;STATS_MENU_SETTING_LABEL=module.aj;STATS_MENU_SWITCH_ID=module.ak;setFeatureEnabled=module.al;NumberField=module.am;UPDATES_GROUP_SIZE_ID=module.an;setUpdatesGroupSize=module.ao;getUpdatesGroupSize=module.ap;PLAYLIST_CHUNK_SIZE_ID=module.aq;setPlaylistChunkSize=module.ar;getPlaylistChunkSize=module.as;GRID_FAV_CHECKBOX_ID=module.at;setGridFavButtonsEnabled=module.au;setGridFavButtonsVisible=module.av;IconChevronRight=module.aw;IconChevronDown=module.ax;Card=module.ay;P$1=module.az;T=module.aA;A=module.aB;getAppearance=module.g;applyAppearanceTheme=module.a;getSiteSkinCss=module.a3;APPEARANCE_THEME_CUSTOM=module.aC;KIT_FOCUS_CSS=module.aD;SectionLabel=module.aE;Select=module.aF;APPEARANCE_THEME_SITE=module.a8;APPEARANCE_THEME_SITE_DARK=module.a9;APPEARANCE_THEME_LIGHT=module.aG;APPEARANCE_THEME_DARK=module.aH;$$1=module.a4;Segmented=module.aI;APPEARANCE_CUSTOM_BASE_LIGHT=module.aJ;APPEARANCE_CUSTOM_BASE_DARK=module.aK;TextField=module.aL;Button=module.aM;clampBackgroundDim=module.aN;FEATURES=module.aO;featurePanelLabel=module.aP;FEATURE_CHECKBOX_ID_PREFIX=module.aQ;clearFeatureState=module.aR;applyCssOnlyFeatureEnabled=module.aS;isFeatureEnabled=module.aT;FEATURE_CHOICE_ID_PREFIX=module.aU;setFeatureChoiceValue=module.aV;applyCssOnlyFeatureChoice=module.aW;getFeatureChoice=module.aX;createAutocompleteQuerier=module.aY;b=module.aZ;readSiteBlacklist=module.a_;Chip=module.a$;AutocompleteField=module.b0;ProgressBar=module.b1;createDefaultCustomTheme=module.b2;AppearanceThemeSchema=module.b3;prepareBackgroundImageFile=module.b4;setFeatureState=module.b5;writeSiteBlacklist=module.b6;runFavoritesSync=module.q;log=module.l;FAVORITES_SYNC_PAGE_PAUSE_MS=module.b7;clearApiCredentials=module.b8;setApiCredentials=module.b9;load=module.ba;createDefaultStorage=module.bb;clearStorageCache=module.bc;clearFavsCache=module.bd;getSyncState=module.k;object=module.be;StorageSchema=module.bf;optional=module.bg;string=module.bh;FavsSchema=module.bi;literal=module.bj;IMPORT_SCHEMA_ERROR_PREFIX=module.bk;stripLegacyPanelWindowSize=module.bl;save=module.P;migrateMarksFavToFavs=module.bm;FAVS_STORAGE_KEY=module.bn;createDefaultFavs=module.bo;parseFavsStrict=module.bp;setAppearance=module.bq;loadFavSet=module.br;STORAGE_BACKUP_KEY=module.bs;extractFavIdsFromMarks=module.bt;gridDensityFeature=module.bu;FAVORITES_SYNC_MODE_INCREMENTAL=module.bv;FAVORITES_SYNC_MODE_FULL=module.F;STATS_MENU_SETTING_ID=module.bw;getApiCredentials=module.bx;getTweaksEnabled=module.by;getGridFavButtonsEnabled=module.bz;getFeatureEnabled=module.j;getFeatureChoiceValue=module.bA;getFeatureState=module.bB;getScreenPixelSize=module.bC;},function(module){installSiteMenu=module.a;loadBackground=module.n;clearBackground=module.t;saveBackground=module.r;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
 var THEME_OPTIONS = [
 	{
 		value: APPEARANCE_THEME_SITE,
@@ -17144,7 +17814,7 @@ var BG_IMAGE_HINT = "From a link or a file";
 var BG_URL_PLACEHOLDER = "https://… or data URL";
 var BG_DIM_LABEL = "Dim";
 var CHOOSE_LABEL = "Choose…";
-var REMOVE_LABEL = "Remove";
+var REMOVE_LABEL$1 = "Remove";
 var RESET_LABEL = "Reset to defaults";
 var GRID_ROW_LABEL = "Grid";
 var SCREEN_HINT_PREFIX = "For this screen use at least ";
@@ -17484,7 +18154,7 @@ function AppearanceSection(props) {
 										variant: "ghost",
 										size: "s",
 										onClick: onRemoveBackground,
-										children: REMOVE_LABEL
+										children: REMOVE_LABEL$1
 									}) : null,
 									/* @__PURE__ */ a("input", {
 										ref: fileRef,
@@ -17571,10 +18241,10 @@ function AppearanceSection(props) {
 		]
 	})] });
 }
-var SECTION_CLASS$3 = "rdw-blacklist";
+var SECTION_CLASS$4 = "rdw-blacklist";
 var CHIPS_CLASS = "rdw-blacklist-chips";
 var ADD_ROW_CLASS = "rdw-blacklist-add-row";
-var HINT_CLASS$1 = "rdw-blacklist-hint";
+var HINT_CLASS$2 = "rdw-blacklist-hint";
 var ADD_LABEL = "Add tag";
 var ADD_BUTTON = "Add";
 var PERMANENT_HINT = "Stored in this browser's site cookie. The list in your account settings is not changed and may overwrite this one after you log in again.";
@@ -17582,12 +18252,12 @@ var ADD_INPUT_ID = "rdw-blacklist-add";
 var TAG_SPLIT_PATTERN = /[, ]+/;
 /** Layout CSS for the blacklist section (chips come from kit Chip). */
 var BLACKLIST_SECTION_CSS = `
-.${SECTION_CLASS$3} {
+.${SECTION_CLASS$4} {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
-.${SECTION_CLASS$3} .${CHIPS_CLASS} {
+.${SECTION_CLASS$4} .${CHIPS_CLASS} {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -17595,18 +18265,18 @@ var BLACKLIST_SECTION_CSS = `
   padding: 0;
   list-style: none;
 }
-.${SECTION_CLASS$3} .${ADD_ROW_CLASS} {
+.${SECTION_CLASS$4} .${ADD_ROW_CLASS} {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   align-items: flex-end;
 }
-.${SECTION_CLASS$3} .${ADD_ROW_CLASS} .rdw-field,
-.${SECTION_CLASS$3} .${ADD_ROW_CLASS} .rdw-ac {
+.${SECTION_CLASS$4} .${ADD_ROW_CLASS} .rdw-field,
+.${SECTION_CLASS$4} .${ADD_ROW_CLASS} .rdw-ac {
   flex: 1 1 12rem;
   margin: 0;
 }
-.${SECTION_CLASS$3} .${HINT_CLASS$1} {
+.${SECTION_CLASS$4} .${HINT_CLASS$2} {
   margin: 0;
   color: var(--rdw-muted);
   font-size: 12px;
@@ -17646,7 +18316,7 @@ function BlacklistSection(props = {}) {
 		querierRef.current.cancel();
 	}, [draft]);
 	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("style", { children: BLACKLIST_SECTION_CSS }), /* @__PURE__ */ a("section", {
-		className: `rdw-section ${SECTION_CLASS$3}`,
+		className: `rdw-section ${SECTION_CLASS$4}`,
 		children: [
 			includeHeading ? /* @__PURE__ */ a(SectionLabel, { children: "Blacklist" }) : null,
 			/* @__PURE__ */ a("ul", {
@@ -17685,7 +18355,7 @@ function BlacklistSection(props = {}) {
 				})]
 			}),
 			/* @__PURE__ */ a("p", {
-				className: HINT_CLASS$1,
+				className: HINT_CLASS$2,
 				children: PERMANENT_HINT
 			})
 		]
@@ -17934,9 +18604,9 @@ function readFileText(file) {
 		reader.readAsText(file);
 	});
 }
-var SECTION_CLASS$2 = "rdw-data-section";
-var ACTIONS_CLASS$1 = "rdw-data-actions";
-var HINT_CLASS = "rdw-data-hint";
+var SECTION_CLASS$3 = "rdw-data-section";
+var ACTIONS_CLASS$2 = "rdw-data-actions";
+var HINT_CLASS$1 = "rdw-data-hint";
 var FILE_CLASS = "rdw-data-file";
 var HEADING$1 = "Data";
 var INCLUDE_BACKGROUND_LABEL = "Include background image";
@@ -17957,23 +18627,23 @@ var MODE_OPTIONS = [{
 	label: "Replace"
 }];
 var DATA_SECTION_CSS = `
-.${SECTION_CLASS$2} {
+.${SECTION_CLASS$3} {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
-.${SECTION_CLASS$2} .${ACTIONS_CLASS$1} {
+.${SECTION_CLASS$3} .${ACTIONS_CLASS$2} {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
 }
-.${SECTION_CLASS$2} .${HINT_CLASS} {
+.${SECTION_CLASS$3} .${HINT_CLASS$1} {
   margin: 0;
   color: var(--rdw-muted);
   font-size: 12px;
 }
-.${SECTION_CLASS$2} .${FILE_CLASS} {
+.${SECTION_CLASS$3} .${FILE_CLASS} {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -17996,7 +18666,7 @@ function DataSection(props = {}) {
 	const [error, setError] = d("");
 	const [summary, setSummary] = d("");
 	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("style", { children: DATA_SECTION_CSS }), /* @__PURE__ */ a("section", {
-		className: `rdw-section ${SECTION_CLASS$2}`,
+		className: `rdw-section ${SECTION_CLASS$3}`,
 		children: [
 			includeHeading ? /* @__PURE__ */ a(SectionLabel, { children: HEADING$1 }) : null,
 			/* @__PURE__ */ a(Switch, {
@@ -18012,7 +18682,7 @@ function DataSection(props = {}) {
 				onChange: setIncludeFavorites
 			}),
 			/* @__PURE__ */ a("p", {
-				className: HINT_CLASS,
+				className: HINT_CLASS$1,
 				children: FAVORITES_EXPORT_HINT
 			}),
 			/* @__PURE__ */ a(Segmented, {
@@ -18024,7 +18694,7 @@ function DataSection(props = {}) {
 				}
 			}),
 			/* @__PURE__ */ a("div", {
-				className: ACTIONS_CLASS$1,
+				className: ACTIONS_CLASS$2,
 				children: [
 					/* @__PURE__ */ a(Button, {
 						variant: "secondary",
@@ -18084,11 +18754,135 @@ function DataSection(props = {}) {
 				children: summary
 			}) : null,
 			/* @__PURE__ */ a("p", {
-				className: HINT_CLASS,
+				className: HINT_CLASS$1,
 				children: STORAGE_HINT
 			})
 		]
 	})] });
+}
+/**
+* Settings for the download manager: the user's own API credentials.
+* The manager exists only while they are stored.
+*/
+var SECTION_CLASS$2 = "rdw-downloads-settings";
+var ACTIONS_CLASS$1 = "rdw-downloads-settings-actions";
+var HINT_CLASS = "rdw-downloads-settings-hint";
+var USER_ID_FIELD_ID = "rdw-api-user-id";
+var API_KEY_FIELD_ID = "rdw-api-key";
+var USER_ID_LABEL = "User ID";
+var API_KEY_LABEL = "API key";
+var REMOVE_LABEL = "Remove key";
+var OPTIONS_URL = "https://rule34.xxx/index.php?page=account&s=options";
+var OPTIONS_LINK_TEXT = "account options page";
+var HINT_BEFORE = "The download manager finds files through the site API with your own key. Generate it on the ";
+var HINT_AFTER = " and paste it here. The key stays in this browser and is not part of the Data export. Without a key there are no download buttons.";
+var STATUS_SAVED = "Saved. Download buttons appear on collection pages and under the search panel.";
+var STATUS_REMOVED = "Key removed.";
+var STATUS_EMPTY = "Enter both the user ID and the API key.";
+var STATUS_STORED = "A key is stored.";
+var DOWNLOADS_SECTION_CSS = `
+.${SECTION_CLASS$2} {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.${SECTION_CLASS$2} .${ACTIONS_CLASS$1} {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.${SECTION_CLASS$2} .${HINT_CLASS} {
+  margin: 0;
+  color: var(--rdw-muted);
+  font-size: 12px;
+}
+.${SECTION_CLASS$2} .${HINT_CLASS} a {
+  color: var(--rdw-accent);
+}
+`.trim();
+function DownloadsSection() {
+	const [stored, setStored] = d(() => getApiCredentials() !== null);
+	const [userId, setUserId] = d(() => getApiCredentials()?.userId ?? "");
+	const [apiKey, setApiKey] = d("");
+	const [status, setStatus] = d("");
+	const save = () => {
+		if (!setApiCredentials(userId, apiKey)) {
+			setStatus(STATUS_EMPTY);
+			return;
+		}
+		setApiKey("");
+		setStored(true);
+		setStatus(STATUS_SAVED);
+	};
+	const remove = () => {
+		clearApiCredentials();
+		setUserId("");
+		setApiKey("");
+		setStored(false);
+		setStatus(STATUS_REMOVED);
+	};
+	return /* @__PURE__ */ a("section", {
+		className: `rdw-section ${SECTION_CLASS$2}`,
+		children: [
+			/* @__PURE__ */ a("style", { children: DOWNLOADS_SECTION_CSS }),
+			/* @__PURE__ */ a("form", {
+				className: SECTION_CLASS$2,
+				onSubmit: (event) => {
+					event.preventDefault();
+					save();
+				},
+				children: [
+					/* @__PURE__ */ a(TextField, {
+						id: USER_ID_FIELD_ID,
+						label: USER_ID_LABEL,
+						value: userId,
+						onChange: setUserId
+					}),
+					/* @__PURE__ */ a(TextField, {
+						id: API_KEY_FIELD_ID,
+						label: API_KEY_LABEL,
+						type: "password",
+						value: apiKey,
+						placeholder: stored ? STATUS_STORED : "",
+						onChange: setApiKey
+					}),
+					/* @__PURE__ */ a("div", {
+						className: ACTIONS_CLASS$1,
+						children: [/* @__PURE__ */ a(Button, {
+							type: "submit",
+							variant: "primary",
+							size: "s",
+							children: UI_TEXT.save
+						}), stored ? /* @__PURE__ */ a(Button, {
+							type: "button",
+							variant: "secondary",
+							size: "s",
+							onClick: remove,
+							children: REMOVE_LABEL
+						}) : null]
+					})
+				]
+			}),
+			status.length > 0 ? /* @__PURE__ */ a("p", {
+				className: HINT_CLASS,
+				role: "status",
+				children: status
+			}) : null,
+			/* @__PURE__ */ a("p", {
+				className: HINT_CLASS,
+				children: [
+					HINT_BEFORE,
+					/* @__PURE__ */ a("a", {
+						href: OPTIONS_URL,
+						target: "_blank",
+						rel: "noopener",
+						children: OPTIONS_LINK_TEXT
+					}),
+					HINT_AFTER
+				]
+			})
+		]
+	});
 }
 var SECTION_CLASS$1 = "rdw-favs-sync";
 var STATUS_CLASS = "rdw-favs-sync-status";
@@ -18354,12 +19148,14 @@ var SECTION_APPEARANCE = "appearance";
 var SECTION_PAGE = "page";
 var SECTION_BLACKLIST = "blacklist";
 var SECTION_FAVORITES = "favorites";
+var SECTION_DOWNLOADS = "downloads";
 var SECTION_DATA = "data";
 var SECTION_TITLES = {
 	[SECTION_APPEARANCE]: "Appearance",
 	[SECTION_PAGE]: "Page",
 	[SECTION_BLACKLIST]: "Blacklist",
 	[SECTION_FAVORITES]: "Favorites",
+	[SECTION_DOWNLOADS]: "Downloads",
 	[SECTION_DATA]: "Data"
 };
 var SETTINGS_SECTION_CSS = `
@@ -18587,13 +19383,17 @@ function SettingsPage() {
 				}), /* @__PURE__ */ a(FavoritesSyncSection, { includeHeading: false })]
 			}),
 			/* @__PURE__ */ a(SettingsSection, {
+				...section(SECTION_DOWNLOADS),
+				children: /* @__PURE__ */ a(DownloadsSection, {})
+			}),
+			/* @__PURE__ */ a(SettingsSection, {
 				...section(SECTION_DATA),
 				children: /* @__PURE__ */ a(DataSection, { includeHeading: false })
 			})
 		]
 	});
 }})}}));
-System.register("./collections-page-C8ub3jj7-CjO62Fdk.js", ['./___monkey.entry.js'],(function(exports){'use strict';var d,b,A,reloadFromStorage,load,a,Segmented,TextField,$$1,Button,UI_TEXT,IconPlus,EmptyState,Dialog,resolveCollectionKind,deleteCollection,QueryField,isUnfilteredQuery,createDynamicCollection,createPlaylist,COLLECTION_KIND_POSTS,collectionDetailHash,readCoverMirror,COLLECTION_KIND_SEARCH,IconCheck,readCountMirror,buildSearchUrl,dynamicCollectionMarkHash,serialize;return{setters:[function(module){d=module.af;b=module.aZ;A=module.aB;reloadFromStorage=module.O;load=module.b8;a=module._;Segmented=module.aI;TextField=module.aL;$$1=module.a4;Button=module.aM;UI_TEXT=module.U;IconPlus=module.bA;EmptyState=module.bB;Dialog=module.bC;resolveCollectionKind=module.bD;deleteCollection=module.bE;QueryField=module.bF;isUnfilteredQuery=module.bG;createDynamicCollection=module.bH;createPlaylist=module.bI;COLLECTION_KIND_POSTS=module.bJ;collectionDetailHash=module.bK;readCoverMirror=module.bL;COLLECTION_KIND_SEARCH=module.bM;IconCheck=module.bN;readCountMirror=module.bO;buildSearchUrl=module.bP;dynamicCollectionMarkHash=module.bQ;serialize=module.bR;}],execute:(function(){exports("CollectionsPage",CollectionsPage);var EVENT_PAGESHOW = "pageshow";
+System.register("./collections-page-B28pT7pW-tDuc-yKP.js", ['./___monkey.entry.js'],(function(exports){'use strict';var d,b,A,reloadFromStorage,load,a,Segmented,TextField,$$1,Button,UI_TEXT,IconPlus,EmptyState,Dialog,resolveCollectionKind,deleteCollection,QueryField,isUnfilteredQuery,createDynamicCollection,createPlaylist,COLLECTION_KIND_POSTS,collectionDetailHash,readCoverMirror,COLLECTION_KIND_SEARCH,IconCheck,readCountMirror,buildSearchUrl,dynamicCollectionMarkHash,serialize;return{setters:[function(module){d=module.af;b=module.aZ;A=module.aB;reloadFromStorage=module.O;load=module.ba;a=module._;Segmented=module.aI;TextField=module.aL;$$1=module.a4;Button=module.aM;UI_TEXT=module.U;IconPlus=module.bD;EmptyState=module.bE;Dialog=module.bF;resolveCollectionKind=module.bG;deleteCollection=module.bH;QueryField=module.bI;isUnfilteredQuery=module.bJ;createDynamicCollection=module.bK;createPlaylist=module.bL;COLLECTION_KIND_POSTS=module.bM;collectionDetailHash=module.bN;readCoverMirror=module.bO;COLLECTION_KIND_SEARCH=module.bP;IconCheck=module.bQ;readCountMirror=module.bR;buildSearchUrl=module.bS;dynamicCollectionMarkHash=module.bT;serialize=module.bU;}],execute:(function(){exports("CollectionsPage",CollectionsPage);var EVENT_PAGESHOW = "pageshow";
 var PAGE_CLASS = "rdw-collections-page";
 var HEADER_CLASS = "rdw-collections-header";
 var TOOLBAR_CLASS = "rdw-collections-toolbar";
@@ -19318,7 +20118,7 @@ function CollectionsPage() {
 		]
 	});
 }})}}));
-System.register("./following-page-DoW7kafj-C2MFQBb7.js", ['./___monkey.entry.js'],(function(exports){'use strict';var d,T,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST,A,reloadFromStorage,getSeenPostId,a,completeLastQueryToken,readLastQueryToken,EmptyState,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,Button,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,$$1,Segmented,TextField,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,Select,UI_TEXT,ProgressBar,Dialog,removeArtist,load,AutocompleteField,addArtists,buildSearchUrl,TAG_TYPE_INCLUDE,IconCheck,IconButton,IconX,removeArtists,rememberArtistSnapshot,fetchArtistSnapshot,log;return{setters:[function(module){d=module.af;T=module.aA;createAutocompleteQuerier=module.aY;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.bS;A=module.aB;reloadFromStorage=module.O;getSeenPostId=module.bT;a=module._;completeLastQueryToken=module.bU;readLastQueryToken=module.bV;EmptyState=module.bB;ARTISTS_EMPTY_HINT=module.bW;ARTISTS_EMPTY_TITLE=module.bX;Button=module.aM;SEARCH_PATH=module.Z;SEARCH_PARAM_PAGE=module.W;SEARCH_PAGE=module.bY;SEARCH_SECTION=module.bZ;$$1=module.a4;Segmented=module.aI;TextField=module.aL;ARTIST_FILTER_LABEL=module.b_;ARTIST_FILTER_ID=module.b$;Select=module.aF;UI_TEXT=module.U;ProgressBar=module.b1;Dialog=module.bC;removeArtist=module.c0;load=module.b8;AutocompleteField=module.b0;addArtists=module.c1;buildSearchUrl=module.bP;TAG_TYPE_INCLUDE=module.c2;IconCheck=module.bN;IconButton=module.c3;IconX=module.c4;removeArtists=module.c5;rememberArtistSnapshot=module.c6;fetchArtistSnapshot=module.c7;log=module.l;}],execute:(function(){exports("FollowingPage",FollowingPage);var EVENT_PAGESHOW = "pageshow";
+System.register("./following-page-BRzyYNMC-sOTEL6PT.js", ['./___monkey.entry.js'],(function(exports){'use strict';var d,T,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST,A,reloadFromStorage,getSeenPostId,a,completeLastQueryToken,readLastQueryToken,EmptyState,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,Button,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,$$1,Segmented,TextField,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,Select,UI_TEXT,ProgressBar,Dialog,removeArtist,load,AutocompleteField,addArtists,buildSearchUrl,TAG_TYPE_INCLUDE,IconCheck,IconButton,IconX,removeArtists,rememberArtistSnapshot,fetchArtistSnapshot,log;return{setters:[function(module){d=module.af;T=module.aA;createAutocompleteQuerier=module.aY;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.bV;A=module.aB;reloadFromStorage=module.O;getSeenPostId=module.bW;a=module._;completeLastQueryToken=module.bX;readLastQueryToken=module.bY;EmptyState=module.bE;ARTISTS_EMPTY_HINT=module.bZ;ARTISTS_EMPTY_TITLE=module.b_;Button=module.aM;SEARCH_PATH=module.Z;SEARCH_PARAM_PAGE=module.W;SEARCH_PAGE=module.b$;SEARCH_SECTION=module.c0;$$1=module.a4;Segmented=module.aI;TextField=module.aL;ARTIST_FILTER_LABEL=module.c1;ARTIST_FILTER_ID=module.c2;Select=module.aF;UI_TEXT=module.U;ProgressBar=module.b1;Dialog=module.bF;removeArtist=module.c3;load=module.ba;AutocompleteField=module.b0;addArtists=module.c4;buildSearchUrl=module.bS;TAG_TYPE_INCLUDE=module.c5;IconCheck=module.bQ;IconButton=module.c6;IconX=module.c7;removeArtists=module.c8;rememberArtistSnapshot=module.c9;fetchArtistSnapshot=module.ca;log=module.l;}],execute:(function(){exports("FollowingPage",FollowingPage);var EVENT_PAGESHOW = "pageshow";
 var PAGE_CLASS = "rdw-following-page";
 var ADD_FORM_CLASS = "rdw-following-add";
 var TOOLBAR_CLASS = "rdw-following-toolbar";
@@ -20053,7 +20853,7 @@ function FollowingPage() {
 		]
 	});
 }})}}));
-System.register("./stats-section-DwZ4YteG-CSkORKzf.js", ['./___monkey.entry.js'],(function(exports){'use strict';var a,PANEL_UI_CLASS,Card,getSeenPostId,loadFavSet,load,resolveCollectionKind;return{setters:[function(module){a=module._;PANEL_UI_CLASS=module.a5;Card=module.ay;getSeenPostId=module.bT;loadFavSet=module.bp;load=module.b8;resolveCollectionKind=module.bD;}],execute:(function(){exports("StatsPage",StatsPage);/**
+System.register("./stats-section-p5V1Li_6-CIL6Vid-.js", ['./___monkey.entry.js'],(function(exports){'use strict';var a,PANEL_UI_CLASS,Card,getSeenPostId,loadFavSet,load,resolveCollectionKind;return{setters:[function(module){a=module._;PANEL_UI_CLASS=module.a5;Card=module.ay;getSeenPostId=module.bW;loadFavSet=module.br;load=module.ba;resolveCollectionKind=module.bG;}],execute:(function(){exports("StatsPage",StatsPage);/**
 * Numbers about what the script stores, computed from local data when the
 * settings page opens. Nothing is requested from the site, so these are counts
 * of your own library, not totals of the site.
@@ -20268,7 +21068,7 @@ function StatsPage() {
 		children: /* @__PURE__ */ a(StatsSection, {})
 	});
 }})}}));
-System.register("./collection-detail-page-r9CUNMOW-BjNMrWLf.js", ['./___monkey.entry.js','./app-C6Dzathm-2J5jAc9i.js'],(function(exports){'use strict';var d,T,A,w$1,b,a,$$1,Button,UI_TEXT,shuffleCollection,resetCollectionOrder,ProgressBar,EmptyState,Dialog,TextField,Toast,getCollectionOrder,listPlaylists,RDW_HASH_COLLECTIONS,removePostsFromCollection,canDownload,movePostInCollection,renameCollection,fetchOriginalUrl,downloadOriginal,log,deleteCollection,RDW_ROUTE_COLLECTIONS,restorePosts,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION_VIEW,SEARCH_PATH,collectionQueueHash,navigateToRdwRoute;return{setters:[function(module){d=module.af;T=module.aA;A=module.aB;w$1=module.c8;b=module.aZ;a=module._;$$1=module.a4;Button=module.aM;UI_TEXT=module.U;shuffleCollection=module.c9;resetCollectionOrder=module.ca;ProgressBar=module.b1;EmptyState=module.bB;Dialog=module.bC;TextField=module.aL;Toast=module.cb;getCollectionOrder=module.cc;listPlaylists=module.cd;RDW_HASH_COLLECTIONS=module.v;removePostsFromCollection=module.ce;canDownload=module.cf;movePostInCollection=module.cg;renameCollection=module.ch;fetchOriginalUrl=module.ci;downloadOriginal=module.cj;log=module.l;deleteCollection=module.bE;RDW_ROUTE_COLLECTIONS=module.ck;restorePosts=module.cl;SEARCH_PARAM_PAGE=module.W;SEARCH_PAGE=module.bY;SEARCH_SECTION_VIEW=module.cm;SEARCH_PATH=module.Z;collectionQueueHash=module.cn;},function(module){navigateToRdwRoute=module.i;}],execute:(function(){exports("CollectionDetailPage",CollectionDetailPage);var CELL_SIZE_PX = 200;
+System.register("./collection-detail-page-BQOK0pxN-B2HZz7yk.js", ['./___monkey.entry.js','./app-CrfiTk0M-NaWWYzDe.js'],(function(exports){'use strict';var d,T,w$1,b,downloadsAvailable,a,$$1,Button,UI_TEXT,shuffleCollection,resetCollectionOrder,EmptyState,Dialog,TextField,Toast,getCollectionOrder,listPlaylists,RDW_HASH_COLLECTIONS,removePostsFromCollection,isDownloadBusy,startDownload,movePostInCollection,renameCollection,deleteCollection,RDW_ROUTE_COLLECTIONS,restorePosts,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION_VIEW,SEARCH_PATH,collectionQueueHash,navigateToRdwRoute;return{setters:[function(module){d=module.af;T=module.aA;w$1=module.cb;b=module.aZ;downloadsAvailable=module.cc;a=module._;$$1=module.a4;Button=module.aM;UI_TEXT=module.U;shuffleCollection=module.cd;resetCollectionOrder=module.ce;EmptyState=module.bE;Dialog=module.bF;TextField=module.aL;Toast=module.cf;getCollectionOrder=module.cg;listPlaylists=module.ch;RDW_HASH_COLLECTIONS=module.v;removePostsFromCollection=module.ci;isDownloadBusy=module.cj;startDownload=module.ck;movePostInCollection=module.cl;renameCollection=module.cm;deleteCollection=module.bH;RDW_ROUTE_COLLECTIONS=module.cn;restorePosts=module.co;SEARCH_PARAM_PAGE=module.W;SEARCH_PAGE=module.b$;SEARCH_SECTION_VIEW=module.cp;SEARCH_PATH=module.Z;collectionQueueHash=module.cq;},function(module){navigateToRdwRoute=module.i;}],execute:(function(){exports("CollectionDetailPage",CollectionDetailPage);var CELL_SIZE_PX = 200;
 var GRID_GAP_PX = 4;
 var SECTION_GAP_PX = 12;
 var ACTIONS_GAP_PX = 8;
@@ -20276,10 +21076,6 @@ var HEADING_GAP_PX = 8;
 var NAME_MIN_LENGTH = 1;
 var POST_COUNT_SINGULAR = 1;
 var MOUSE_BUTTON_PRIMARY = 0;
-/** Pause between two posts of a collection download. */
-var DOWNLOAD_INTERVAL_MS = 1500;
-var MS_PER_SECOND = 1e3;
-var REQUESTS_PER_POST = 2;
 var DRAG_EFFECT_MOVE = "move";
 var DRAGGING_OPACITY = "0.4";
 var OBJECT_FIT_CONTAIN = "contain";
@@ -20313,16 +21109,9 @@ var LABEL_SHUFFLE = "Shuffle";
 var LABEL_ORIGINAL_ORDER = "Original order";
 var LABEL_SELECT = "Select";
 var LABEL_DOWNLOAD_ALL = "Download all";
-var LABEL_DOWNLOAD = "Download";
 var DOWNLOAD_SELECTED_PREFIX = "Download selected (";
 var DOWNLOAD_SELECTED_SUFFIX = ")";
-var DOWNLOAD_DIALOG_TITLE = "Download posts";
-var DOWNLOAD_PROGRESS_PREFIX = "Downloading: ";
-var DOWNLOAD_DONE_PREFIX = "Downloaded ";
-var DOWNLOAD_STOPPED_PREFIX = "Stopped at post #";
-var LABEL_CLOSE = "Close";
 var DRAG_HINT = "Drag a post onto another to change the order.";
-var CLASS_PROGRESS = "rdw-collection-progress";
 var CLASS_DRAGGING = "rdw-collection-cell--dragging";
 var CLASS_DROP_TARGET = "rdw-collection-cell--drop";
 var CLASS_HINT = "rdw-collection-hint";
@@ -20375,14 +21164,6 @@ var COLLECTION_DETAIL_CSS = `
   display: flex;
   flex-wrap: wrap;
   gap: ${String(ACTIONS_GAP_PX)}px;
-}
-.${CLASS_PROGRESS} {
-  display: flex;
-  align-items: center;
-  gap: ${String(ACTIONS_GAP_PX)}px;
-}
-.${CLASS_PROGRESS} .rdw-progress {
-  flex: 1 1 auto;
 }
 .${CLASS_HINT} {
   margin: 0;
@@ -20473,15 +21254,6 @@ function removeSelectedLabel(count) {
 }
 function downloadSelectedLabel(count) {
 	return `${DOWNLOAD_SELECTED_PREFIX}${String(count)}${DOWNLOAD_SELECTED_SUFFIX}`;
-}
-function downloadMessage(count) {
-	const seconds = Math.ceil(count * DOWNLOAD_INTERVAL_MS / MS_PER_SECOND);
-	return `Download ${String(count)} ${count === POST_COUNT_SINGULAR ? POST_NOUN_SINGULAR : POST_NOUN_PLURAL}? Each post's page is read and its file saved: ${String(count * REQUESTS_PER_POST)} requests, one post every ${String(DOWNLOAD_INTERVAL_MS / MS_PER_SECOND)} seconds (about ${String(seconds)} s). It stops at the first error.`;
-}
-function sleep(ms) {
-	return new Promise((resolve) => {
-		window.setTimeout(resolve, ms);
-	});
 }
 function fallbackLabel(postId) {
 	return `${FALLBACK_PREFIX}${String(postId)}`;
@@ -20598,12 +21370,6 @@ function CollectionDetailPage(props) {
 	const toastIdRef = T(0);
 	const [draggingId, setDraggingId] = d(null);
 	const [overId, setOverId] = d(null);
-	const [downloadIds, setDownloadIds] = d(null);
-	const [download, setDownload] = d(null);
-	const cancelDownloadRef = T(false);
-	A(() => () => {
-		cancelDownloadRef.current = true;
-	}, []);
 	const detail = w$1(() => readCollectionDetail(props.collectionId), [props.collectionId, revision]);
 	const refresh = b(() => {
 		setRevision((value) => value + 1);
@@ -20647,53 +21413,14 @@ function CollectionDetailPage(props) {
 			setOverId(null);
 		}
 	};
-	async function runDownload(ids) {
-		cancelDownloadRef.current = false;
-		const total = ids.length;
-		setDownload({
-			done: 0,
-			total,
-			running: true,
-			message: ""
-		});
-		let done = 0;
-		for (const postId of ids) {
-			if (cancelDownloadRef.current) break;
-			if (done > 0) {
-				await sleep(DOWNLOAD_INTERVAL_MS);
-				if (cancelDownloadRef.current) break;
-			}
-			try {
-				const url = await fetchOriginalUrl(postId);
-				await downloadOriginal(url, String(postId));
-			} catch (error) {
-				const reason = error instanceof Error ? error.message : String(error);
-				log.warn("collection: download failed", postId, reason);
-				setDownload({
-					done,
-					total,
-					running: false,
-					message: `${DOWNLOAD_STOPPED_PREFIX}${String(postId)}: ${reason}`
-				});
-				return;
-			}
-			done += 1;
-			setDownload({
-				done,
-				total,
-				running: true,
-				message: ""
-			});
-		}
-		setDownload({
-			done,
-			total,
-			running: false,
-			message: `${DOWNLOAD_DONE_PREFIX}${String(done)} of ${String(total)}`
+	function download(name, ids) {
+		if (ids.length === 0 || isDownloadBusy()) return;
+		startDownload(name, {
+			kind: "ids",
+			ids
 		});
 	}
-	const downloading = download !== null && download.running;
-	const downloadAvailable = canDownload();
+	const downloadAvailable = downloadsAvailable();
 	function leaveSelectMode() {
 		setSelecting(false);
 		setSelected(/* @__PURE__ */ new Set());
@@ -20787,9 +21514,10 @@ function CollectionDetailPage(props) {
 						downloadAvailable ? /* @__PURE__ */ a(Button, {
 							variant: "secondary",
 							size: "s",
-							disabled: selected.size === 0 || downloading,
+							disabled: selected.size === 0,
 							onClick: () => {
-								setDownloadIds(detail.order.filter((id) => selected.has(id)));
+								download(detail.name, detail.order.filter((id) => selected.has(id)));
+								leaveSelectMode();
 							},
 							children: downloadSelectedLabel(selected.size)
 						}) : null,
@@ -20830,9 +21558,8 @@ function CollectionDetailPage(props) {
 						downloadAvailable && detail.order.length > 0 ? /* @__PURE__ */ a(Button, {
 							variant: "secondary",
 							size: "s",
-							disabled: downloading,
 							onClick: () => {
-								setDownloadIds(detail.order);
+								download(detail.name, detail.order);
 							},
 							children: LABEL_DOWNLOAD_ALL
 						}) : null,
@@ -20851,25 +21578,6 @@ function CollectionDetailPage(props) {
 							children: UI_TEXT.delete
 						})
 					] })
-				}),
-				download === null ? null : /* @__PURE__ */ a("div", {
-					className: CLASS_PROGRESS,
-					role: "status",
-					children: [/* @__PURE__ */ a(ProgressBar, {
-						value: download.total === 0 ? 0 : download.done / download.total,
-						label: download.running ? `${DOWNLOAD_PROGRESS_PREFIX}${String(download.done)} of ${String(download.total)}` : download.message
-					}), /* @__PURE__ */ a(Button, {
-						variant: "secondary",
-						size: "s",
-						onClick: () => {
-							if (download.running) {
-								cancelDownloadRef.current = true;
-								return;
-							}
-							setDownload(null);
-						},
-						children: download.running ? LABEL_CANCEL : LABEL_CLOSE
-					})]
 				}),
 				!selecting && detail.order.length > POST_COUNT_SINGULAR ? /* @__PURE__ */ a("p", {
 					className: CLASS_HINT,
@@ -20924,23 +21632,6 @@ function CollectionDetailPage(props) {
 							})]
 						})]
 					})
-				}),
-				/* @__PURE__ */ a(Dialog, {
-					variant: "confirm",
-					open: downloadIds !== null,
-					onClose: () => {
-						setDownloadIds(null);
-					},
-					title: DOWNLOAD_DIALOG_TITLE,
-					message: downloadMessage(downloadIds?.length ?? 0),
-					confirmLabel: LABEL_DOWNLOAD,
-					cancelLabel: UI_TEXT.cancel,
-					onConfirm: () => {
-						const ids = downloadIds ?? [];
-						setDownloadIds(null);
-						leaveSelectMode();
-						runDownload(ids);
-					}
 				}),
 				/* @__PURE__ */ a(Dialog, {
 					variant: "confirm",

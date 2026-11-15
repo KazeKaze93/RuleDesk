@@ -1,5 +1,5 @@
 import type { JSX, TargetedMouseEvent, TargetedSubmitEvent } from "preact";
-import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
+import { useCallback, useMemo, useRef, useState } from "preact/hooks";
 
 import {
   SEARCH_PAGE,
@@ -10,8 +10,8 @@ import {
   SEARCH_SECTION_VIEW,
   UI_TEXT,
 } from "../config/constants";
-import { log } from "../log";
-import { canDownload, downloadOriginal, fetchOriginalUrl } from "../site/download";
+import { downloadsAvailable } from "../features/downloads/available";
+import { isDownloadBusy, startDownload } from "../features/downloads/queue";
 import type { CollectionPostsSnapshot } from "../storage/store";
 import {
   deleteCollection,
@@ -28,7 +28,6 @@ import {
   Button,
   Dialog,
   EmptyState,
-  ProgressBar,
   TextField,
   Toast,
 } from "../ui/kit";
@@ -47,10 +46,6 @@ const HEADING_GAP_PX = 8;
 const NAME_MIN_LENGTH = 1;
 const POST_COUNT_SINGULAR = 1;
 const MOUSE_BUTTON_PRIMARY = 0;
-/** Pause between two posts of a collection download. */
-export const DOWNLOAD_INTERVAL_MS = 1500;
-const MS_PER_SECOND = 1000;
-const REQUESTS_PER_POST = 2;
 const DRAG_EFFECT_MOVE = "move";
 const DRAGGING_OPACITY = "0.4";
 const OBJECT_FIT_CONTAIN = "contain";
@@ -87,16 +82,9 @@ const LABEL_SHUFFLE = "Shuffle";
 const LABEL_ORIGINAL_ORDER = "Original order";
 const LABEL_SELECT = "Select";
 const LABEL_DOWNLOAD_ALL = "Download all";
-const LABEL_DOWNLOAD = "Download";
 const DOWNLOAD_SELECTED_PREFIX = "Download selected (";
 const DOWNLOAD_SELECTED_SUFFIX = ")";
-const DOWNLOAD_DIALOG_TITLE = "Download posts";
-const DOWNLOAD_PROGRESS_PREFIX = "Downloading: ";
-const DOWNLOAD_DONE_PREFIX = "Downloaded ";
-const DOWNLOAD_STOPPED_PREFIX = "Stopped at post #";
-const LABEL_CLOSE = "Close";
 const DRAG_HINT = "Drag a post onto another to change the order.";
-const CLASS_PROGRESS = "rdw-collection-progress";
 const CLASS_DRAGGING = "rdw-collection-cell--dragging";
 const CLASS_DROP_TARGET = "rdw-collection-cell--drop";
 const CLASS_HINT = "rdw-collection-hint";
@@ -151,14 +139,6 @@ const COLLECTION_DETAIL_CSS = `
   display: flex;
   flex-wrap: wrap;
   gap: ${String(ACTIONS_GAP_PX)}px;
-}
-.${CLASS_PROGRESS} {
-  display: flex;
-  align-items: center;
-  gap: ${String(ACTIONS_GAP_PX)}px;
-}
-.${CLASS_PROGRESS} .rdw-progress {
-  flex: 1 1 auto;
 }
 .${CLASS_HINT} {
   margin: 0;
@@ -274,24 +254,6 @@ function removeSelectedLabel(count: number): string {
 function downloadSelectedLabel(count: number): string {
   return `${DOWNLOAD_SELECTED_PREFIX}${String(count)}${DOWNLOAD_SELECTED_SUFFIX}`;
 }
-
-function downloadMessage(count: number): string {
-  const seconds = Math.ceil((count * DOWNLOAD_INTERVAL_MS) / MS_PER_SECOND);
-  return `Download ${String(count)} ${count === POST_COUNT_SINGULAR ? POST_NOUN_SINGULAR : POST_NOUN_PLURAL}? Each post's page is read and its file saved: ${String(count * REQUESTS_PER_POST)} requests, one post every ${String(DOWNLOAD_INTERVAL_MS / MS_PER_SECOND)} seconds (about ${String(seconds)} s). It stops at the first error.`;
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, ms);
-  });
-}
-
-type DownloadState = {
-  readonly done: number;
-  readonly total: number;
-  readonly running: boolean;
-  readonly message: string;
-};
 
 type PostDrag = {
   readonly draggingId: number | null;
@@ -479,16 +441,7 @@ export function CollectionDetailPage(
   const toastIdRef = useRef(0);
   const [draggingId, setDraggingId] = useState<number | null>(null);
   const [overId, setOverId] = useState<number | null>(null);
-  const [downloadIds, setDownloadIds] = useState<readonly number[] | null>(null);
-  const [download, setDownload] = useState<DownloadState | null>(null);
-  const cancelDownloadRef = useRef(false);
 
-  useEffect(
-    () => (): void => {
-      cancelDownloadRef.current = true;
-    },
-    [],
-  );
 
   const detail = useMemo(
     () => readCollectionDetail(props.collectionId),
@@ -548,48 +501,15 @@ export function CollectionDetailPage(
     },
   };
 
-  async function runDownload(ids: readonly number[]): Promise<void> {
-    cancelDownloadRef.current = false;
-    const total = ids.length;
-    setDownload({ done: 0, total, running: true, message: "" });
-    let done = 0;
-    for (const postId of ids) {
-      if (cancelDownloadRef.current) {
-        break;
-      }
-      if (done > 0) {
-        await sleep(DOWNLOAD_INTERVAL_MS);
-        if (cancelDownloadRef.current) {
-          break;
-        }
-      }
-      try {
-        const url = await fetchOriginalUrl(postId);
-        await downloadOriginal(url, String(postId));
-      } catch (error) {
-        const reason = error instanceof Error ? error.message : String(error);
-        log.warn("collection: download failed", postId, reason);
-        setDownload({
-          done,
-          total,
-          running: false,
-          message: `${DOWNLOAD_STOPPED_PREFIX}${String(postId)}: ${reason}`,
-        });
-        return;
-      }
-      done += 1;
-      setDownload({ done, total, running: true, message: "" });
+  // The download manager shows progress in its own panel on every page.
+  function download(name: string, ids: readonly number[]): void {
+    if (ids.length === 0 || isDownloadBusy()) {
+      return;
     }
-    setDownload({
-      done,
-      total,
-      running: false,
-      message: `${DOWNLOAD_DONE_PREFIX}${String(done)} of ${String(total)}`,
-    });
+    void startDownload(name, { kind: "ids", ids });
   }
 
-  const downloading = download !== null && download.running;
-  const downloadAvailable = canDownload();
+  const downloadAvailable = downloadsAvailable();
 
   function leaveSelectMode(): void {
     setSelecting(false);
@@ -700,9 +620,10 @@ export function CollectionDetailPage(
                   <Button
                     variant="secondary"
                     size="s"
-                    disabled={selected.size === 0 || downloading}
+                    disabled={selected.size === 0}
                     onClick={() => {
-                      setDownloadIds(detail.order.filter((id) => selected.has(id)));
+                      download(detail.name, detail.order.filter((id) => selected.has(id)));
+                      leaveSelectMode();
                     }}
                   >
                     {downloadSelectedLabel(selected.size)}
@@ -750,9 +671,8 @@ export function CollectionDetailPage(
                   <Button
                     variant="secondary"
                     size="s"
-                    disabled={downloading}
                     onClick={() => {
-                      setDownloadIds(detail.order);
+                      download(detail.name, detail.order);
                     }}
                   >
                     {LABEL_DOWNLOAD_ALL}
@@ -773,31 +693,6 @@ export function CollectionDetailPage(
               </>
             )}
           </div>
-          {download === null ? null : (
-            <div className={CLASS_PROGRESS} role="status">
-              <ProgressBar
-                value={download.total === 0 ? 0 : download.done / download.total}
-                label={
-                  download.running
-                    ? `${DOWNLOAD_PROGRESS_PREFIX}${String(download.done)} of ${String(download.total)}`
-                    : download.message
-                }
-              />
-              <Button
-                variant="secondary"
-                size="s"
-                onClick={() => {
-                  if (download.running) {
-                    cancelDownloadRef.current = true;
-                    return;
-                  }
-                  setDownload(null);
-                }}
-              >
-                {download.running ? LABEL_CANCEL : LABEL_CLOSE}
-              </Button>
-            </div>
-          )}
           {!selecting && detail.order.length > POST_COUNT_SINGULAR ? (
             <p className={CLASS_HINT}>{DRAG_HINT}</p>
           ) : null}
@@ -854,23 +749,6 @@ export function CollectionDetailPage(
               </div>
             </form>
           </Dialog>
-          <Dialog
-            variant="confirm"
-            open={downloadIds !== null}
-            onClose={() => {
-              setDownloadIds(null);
-            }}
-            title={DOWNLOAD_DIALOG_TITLE}
-            message={downloadMessage(downloadIds?.length ?? 0)}
-            confirmLabel={LABEL_DOWNLOAD}
-            cancelLabel={UI_TEXT.cancel}
-            onConfirm={() => {
-              const ids = downloadIds ?? [];
-              setDownloadIds(null);
-              leaveSelectMode();
-              void runDownload(ids);
-            }}
-          />
           <Dialog
             variant="confirm"
             open={deleteOpen}

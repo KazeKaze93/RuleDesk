@@ -12,7 +12,7 @@
 
 ## Release
 
-There is one branch, `main`. Users install and update from the built file in it, so the build is committed.
+The repository is `KazeKaze93/RuleDesk` (called `ruledesk-web` until 0.24.0). There is one branch, `main`. Users install and update from the built file in it, so the build is committed.
 
 1. Bump the version in `package.json` and in `vite.config.ts` (the userscript header). Run `npm install --package-lock-only` so `package-lock.json` follows.
 2. Add an entry at the top of `CHANGELOG.md`: what changed for the user, not how.

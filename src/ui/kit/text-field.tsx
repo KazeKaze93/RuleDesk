@@ -12,6 +12,8 @@ export type TextFieldProps = {
   readonly className?: string;
   readonly id?: string;
   readonly "aria-label"?: string;
+  /** "password" hides what is typed. Default "text". */
+  readonly type?: "text" | "password";
 };
 
 export const TEXT_FIELD_CSS = `
@@ -71,18 +73,33 @@ export function TextField(props: TextFieldProps): JSX.Element {
             {props.label}
           </label>
         ) : null}
-        <input
-          id={inputId}
-          className="rdw-field__input rdw-kit-focusable"
-          type="text"
-          value={props.value}
-          placeholder={props.placeholder}
-          disabled={props.disabled}
-          aria-label={props["aria-label"] ?? props.label}
-          onInput={(event) => {
-            props.onChange(event.currentTarget.value);
-          }}
-        />
+        {props.type === "password" ? (
+          <input
+            id={inputId}
+            className="rdw-field__input rdw-kit-focusable"
+            type="password"
+            value={props.value}
+            placeholder={props.placeholder}
+            disabled={props.disabled}
+            aria-label={props["aria-label"] ?? props.label}
+            onInput={(event) => {
+              props.onChange(event.currentTarget.value);
+            }}
+          />
+        ) : (
+          <input
+            id={inputId}
+            className="rdw-field__input rdw-kit-focusable"
+            type="text"
+            value={props.value}
+            placeholder={props.placeholder}
+            disabled={props.disabled}
+            aria-label={props["aria-label"] ?? props.label}
+            onInput={(event) => {
+              props.onChange(event.currentTarget.value);
+            }}
+          />
+        )}
       </div>
     </>
   );

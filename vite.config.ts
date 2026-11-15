@@ -3,7 +3,7 @@ import { defineConfig } from "vitest/config";
 import monkey from "vite-plugin-monkey";
 
 const USERSCRIPT_RAW_URL =
-  "https://raw.githubusercontent.com/KazeKaze93/ruledesk-web/main/dist/ruledesk-web.user.js";
+  "https://raw.githubusercontent.com/KazeKaze93/RuleDesk/main/dist/ruledesk-web.user.js";
 
 export default defineConfig({
   plugins: [
@@ -12,13 +12,17 @@ export default defineConfig({
       entry: "src/main.ts",
       userscript: {
         name: "RuleDesk Web",
+        // Name and namespace identify the script to the manager: changing either
+        // makes it a different script with empty storage. They stay as they were
+        // when the repository was still called ruledesk-web.
         namespace: "https://github.com/kazekaze93/ruledesk-web",
         description:
           "Collections, playlists, favorites, artist updates, and page tweaks for rule34.xxx",
-        version: "0.23.1",
+        version: "0.24.0",
         match: ["https://rule34.xxx/*"],
         "run-at": "document-start",
-        grant: ["GM_getValue", "GM_setValue", "GM_download"],
+        grant: ["GM_getValue", "GM_setValue", "GM_download", "GM_xmlhttpRequest"],
+        connect: ["api.rule34.xxx"],
         updateURL: USERSCRIPT_RAW_URL,
         downloadURL: USERSCRIPT_RAW_URL,
       },

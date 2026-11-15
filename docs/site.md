@@ -4,8 +4,8 @@ The script works on the site's own HTML. This file holds what is known about it.
 
 ## Rules the script follows
 
-- **No site API.** Only the pages a browser gets.
-- **Requests only for a user action, one at a time, with a pause.** The site rate-limits quickly (HTTP 429). A new kind of request needs the maintainer's consent. All `fetch` and `GM_download` calls are in `src/site/`:
+- **No site API, with one exception: the download manager.** It asks `api.rule34.xxx` for the file addresses of posts, with the user's own key typed into settings (`src/site/api.ts`). Nothing else may use the API, and the manager does not exist without a key.
+- **Requests only for a user action, one at a time, with a pause.** The site rate-limits quickly (HTTP 429). A new kind of request needs the maintainer's consent. All `fetch`, `GM_xmlhttpRequest` and `GM_download` calls are in `src/site/`:
 
   | File | When it asks | Pause |
   |---|---|---|
@@ -14,8 +14,8 @@ The script works on the site's own HTML. This file holds what is known about it.
   | `autocomplete.ts` | Typing in a tag field of the script | debounced, one at a time |
   | `next-page.ts` | Infinite scroll; other artist groups of a merged feed | 1 s |
   | `artist-snapshot.ts` | "Refresh" on Following, after a confirmation | 1.5 s per artist |
-| `download.ts` | "Download original" on a post page (`GM_download`, one file from the CDN) | none, one per click |
-| `download.ts` | "Download all" / "Download selected" in a custom collection, after a confirmation: the post page, then its file | 1.5 s per post |
+| `api.ts` | A download job: the list of files (`GM_xmlhttpRequest` to `api.rule34.xxx`, up to 1000 posts per request) | 1 s |
+| `download.ts` | A download job: the files, one at a time (`GM_download` from the CDN) | 0.4 s; one retry after 5 s |
 
 - **Cookies:** only `tag_blacklist` and `theme` are read or written. `user_id` and `pass_hash` are never read. The account settings form is never submitted.
 - **The grid link is left alone.** Nothing inside `a#p{ID}` is changed; thumbnail size is set only by `grid-density`.
@@ -70,7 +70,8 @@ The script works on the site's own HTML. This file holds what is known about it.
 | No post date in the grid | Following shows when the script first saw an artist's newest post, not when it was posted |
 | One OR-group per search | More followed artists than one group are merged from several searches (`feed-merge.ts`). "Only new" is not offered on a merged feed. The merge needs a results grid on the first group's page |
 | The pager is the only way to keep a URL mark | A dynamic collection's bar depends on `#rdw-dc=<id>` in the address. Paging by the manual page-number form drops it |
-| The original file's address is only on the post page | A collection download reads every post's page first: two requests per post. The desktop app got the addresses from the API, which the script does not use |
+| The original file's address is only on the post page or in the API | The download manager takes addresses from the API; that is why it needs the user's key |
+| The API stops answering deep pages | Reliable only for the first few `pid` values. A search is walked by asking for the first page with `id:<N`, N being the lowest id seen |
 | Image servers | `wimg`, `img`, `us`, `api-cdn` (`.rule34.xxx`) are tried in turn when a post image fails to load (`cdn-fallback.ts`). The list comes from the desktop app; that the mirrors serve the site's sample paths is not confirmed |
 | Thumbnail quality | Thumbnails are small JPEGs; the Masonry grid was removed for that reason |
 | `title` tooltip on thumbnails | The attribute cannot be removed (the site's scripts read it); the tooltip is suppressed by taking the pointer off the image. A right click on a thumbnail gives the link menu, not the image menu |

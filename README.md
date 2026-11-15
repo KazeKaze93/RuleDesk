@@ -1,6 +1,6 @@
-# RuleDesk Web
+# RuleDesk
 
-A userscript for `rule34.xxx` that adds a feed of followed artists, collections, a reworked search panel and post page, themes, and a set of optional page tweaks. It runs in the browser on the site's own pages. It does not use the site API and keeps all its data on your computer.
+A userscript for `rule34.xxx` that adds a feed of followed artists, collections, a reworked search panel and post page, themes, and a set of optional page tweaks. It runs in the browser on the site's own pages. It keeps all its data on your computer. The site API is used for one thing only, the download manager, and only with your own key.
 
 - [What it adds](#what-it-adds)
 - [Install](#install)
@@ -32,7 +32,7 @@ Every followed artist as a card with a cover, post count and a "new" mark.
 - **Custom collection**: posts you pick by hand with the "+" button on a thumbnail or on the post page
 - **Dynamic collection**: a saved search. Type tags in the search panel and press "Save as collection"
 
-Both kinds show a cover and a post count. A collection can be shuffled, renamed and deleted; Select on the Collections page deletes several at once. In a custom collection posts are reordered by dragging, and "Download all" saves the original files. A post opened from a custom collection gets previous / next arrows that walk the collection.
+Both kinds show a cover and a post count. A collection can be shuffled, renamed and deleted; Select on the Collections page deletes several at once. In a custom collection posts are reordered by dragging. A post opened from a custom collection gets previous / next arrows that walk the collection.
 
 ### Search panel
 
@@ -40,7 +40,7 @@ Under the site's search field: tags as chips (click to exclude, cross to remove)
 
 ### Post page
 
-Favorite, Collections, Vote, "I came", Original and Download original as buttons; post details and comments in tabs; the site's own actions (Edit, Report, Add note) in one list. Video keeps its volume and speed and can fit the height, the width, or stay at original size.
+Favorite, Collections, Vote, "I came" and Original as buttons; post details and comments in tabs; the site's own actions (Edit, Report, Add note) in one list. Video keeps its volume and speed and can fit the height, the width, or stay at original size.
 
 ### Grid
 
@@ -49,6 +49,12 @@ Favorite star and "+" on thumbnails, three grid sizes, infinite scroll, dimming 
 ### Favorites
 
 The local favorite list is kept in sync with the site by "Sync favorites" in settings. The Favorites page gets bulk removal.
+
+### Download manager
+
+Saves the original files of a custom collection (all or selected posts), of a whole search, or of posts picked on a results page. Files go to `RuleDesk/<collection or search>` in your downloads folder as `rule34-<post id>.<ext>`. A panel in the corner shows progress and has Pause, Resume and Cancel; the job survives a page change.
+
+The manager needs your own API key: generate it on the site's account options page and paste it into RuleDesk → Downloads. Without a key there are no download buttons.
 
 ### Statistics
 
@@ -62,7 +68,7 @@ Light, Dark, the site's own two themes, and Custom (light or dark base with your
 
 1. Install [Tampermonkey](https://www.tampermonkey.net/) (recommended) or [Violentmonkey](https://violentmonkey.github.io/).
 2. Open this link and confirm the installation:
-   https://raw.githubusercontent.com/KazeKaze93/ruledesk-web/main/dist/ruledesk-web.user.js
+   https://raw.githubusercontent.com/KazeKaze93/RuleDesk/main/dist/ruledesk-web.user.js
 3. In Tampermonkey open Dashboard → Settings → Security → Content Script API and choose **UserScripts API Dynamic**. Without it the site's original look flashes on every page load and pages open slower.
 
 Updates arrive through the script manager from the same link.
@@ -77,6 +83,7 @@ Header menu → **RuleDesk**. Every block folds with a click on its title.
 | Page | A switch for each page tweak, and one switch that turns all tweaks off |
 | Blacklist | The site's tag blacklist for this browser |
 | Favorites | Favorite buttons in the grid, favorites sync |
+| Downloads | Your API key for the download manager |
 | Data | Export and import of everything the script stores |
 
 To get the untouched site back: Appearance → Site theme → **Site default**, and Page → turn off **Enable page tweaks**.
@@ -85,8 +92,8 @@ To get the untouched site back: Appearance → Site theme → **Site default**, 
 
 - Collections, followed artists and settings live in the script manager's storage, in this browser only. Nothing is sent anywhere
 - **Data → Export** saves one JSON file; **Import** restores it (Merge adds to what you have, Replace overwrites)
-- The blacklist and the site theme are the site's own cookies and are not part of the export
-- The script does not use the site API. It reads the pages you open and makes a request only for an action of yours: favorite a post, sync favorites, download a post's original or a collection, type in a tag field, scroll for the next page, open a feed that spans several searches, press Refresh on Following. Requests go one at a time with a pause
+- The blacklist and the site theme are the site's own cookies and are not part of the export. Neither is the API key
+- The script reads the pages you open and makes a request only for an action of yours: favorite a post, sync favorites, start a download, type in a tag field, scroll for the next page, open a feed that spans several searches, press Refresh on Following. Requests go one at a time with a pause
 
 ## Limits
 
