@@ -1,4 +1,5 @@
 import {
+  SEARCH_TOOLS_AI_ROW_BODY_CLASS,
   SEARCH_TOOLS_MOUNTED_CLASS,
   rememberSearchToolsHeight,
 } from "../boot/search-tools-reserve";
@@ -103,7 +104,7 @@ const BODY_CLASS = featureBodyClass(FEATURE_ID);
  * Set on document.body while the panel's «AI posts» row is rendered.
  * Site-skin (HANDOFF G) must hide native Filter AI only under this class.
  */
-export const SEARCH_TOOLS_AI_ROW_BODY_CLASS = "rdw-search-tools-ai-posts";
+export { SEARCH_TOOLS_AI_ROW_BODY_CLASS };
 
 const FILTER_AI_WAIT_TIMEOUT_MS = 4000;
 const FILTER_AI_OBSERVER_OPTIONS: MutationObserverInit = {

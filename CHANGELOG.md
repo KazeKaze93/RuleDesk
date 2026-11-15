@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.32.5
+
+- The filter panel no longer moves up a moment after the page loads. The site's own "Filter AI" row, which the panel replaces, used to show for an instant and then disappear; it is now hidden before the page is first shown
+
 ## 0.32.4
 
 - Favorites: the grid looks as on Posts again: a square cell with the picture in its middle. The bin and "+" sit in the top right corner of the picture itself

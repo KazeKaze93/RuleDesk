@@ -12,6 +12,13 @@ const DEFAULT_HEIGHT_PX = 168;
 const HEIGHT_LIMIT_PX = 2000;
 
 export const SEARCH_TOOLS_HEIGHT_KEY = "ruledesk-web.search-tools-height";
+/**
+ * Body class that hides the site's own "Filter AI" row, which the panel
+ * replaces with its "AI posts" switch. It is set before the first paint:
+ * otherwise the site's row shows for a moment under the panel on every load
+ * and the page shifts when it goes away.
+ */
+export const SEARCH_TOOLS_AI_ROW_BODY_CLASS = "rdw-search-tools-ai-posts";
 /** On the panel root once the panel is rendered: the reserve is dropped. */
 export const SEARCH_TOOLS_MOUNTED_CLASS = "rdw-search-tools--mounted";
 

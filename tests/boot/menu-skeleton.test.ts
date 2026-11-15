@@ -1,8 +1,10 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { BootLayoutSettings } from "../../src/boot/cheap-appearance";
+import { reserveSearchTools } from "../../src/boot/layout";
 import { installMenuSkeleton } from "../../src/boot/menu-skeleton";
 import {
+  SEARCH_TOOLS_AI_ROW_BODY_CLASS,
   SEARCH_TOOLS_HEIGHT_KEY,
   readSearchToolsReserveHeight,
   rememberSearchToolsHeight,
@@ -82,6 +84,19 @@ describe("menu skeleton", () => {
       "Comments",
       "RuleDesk",
     ]);
+  });
+
+  it("hides the site's Filter AI row before the panel mounts", () => {
+    window.history.replaceState(null, "", "?page=post&s=list&tags=cat");
+    vi.stubGlobal("GM_getValue", (_key: string, fallback?: unknown): unknown => fallback);
+    document.body.innerHTML =
+      '<div class="tag-search"><form><input name="tags" type="text"></form></div>';
+    expect(reserveSearchTools()).toBe(true);
+    expect(document.body.classList.contains(SEARCH_TOOLS_AI_ROW_BODY_CLASS)).toBe(true);
+    expect(document.getElementById("rdw-search-tools")).not.toBeNull();
+    document.body.className = "";
+    window.history.replaceState(null, "", "/");
+    vi.unstubAllGlobals();
   });
 
   it("reserves the remembered height of the search panel, or a default", () => {

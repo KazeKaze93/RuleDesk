@@ -16,6 +16,7 @@ import { featureBodyClass, type Feature } from "../features/types";
 import { detectPageKind } from "../site/pages";
 import { installMenuSkeleton } from "./menu-skeleton";
 import {
+  SEARCH_TOOLS_AI_ROW_BODY_CLASS,
   SEARCH_TOOLS_MOUNTED_CLASS,
   readSearchToolsReserveHeight,
 } from "./search-tools-reserve";
@@ -86,6 +87,8 @@ export function reserveSearchTools(): boolean {
   }
   const bodyClass = featureBodyClass(SEARCH_TOOLS_FEATURE_ID);
   document.body.classList.add(bodyClass);
+  // The panel takes over the site's "Filter AI" row: hide it from the start.
+  document.body.classList.add(SEARCH_TOOLS_AI_ROW_BODY_CLASS);
   const style = ensureStyleElement(SEARCH_TOOLS_RESERVE_STYLE_ID);
   style.textContent = buildSearchReserveCss(bodyClass);
   ensureSearchToolsPlaceholder();
