@@ -4,7 +4,8 @@ import { useState } from "preact/hooks";
 import { UI_TEXT } from "../config/constants";
 import {
   clearApiCredentials,
-  getApiCredentials,
+  hasApiCredentials,
+  parseApiCredentials,
   setApiCredentials,
 } from "../storage/api-credentials";
 import { Button, TextField } from "../ui/kit";
@@ -12,26 +13,29 @@ import { Button, TextField } from "../ui/kit";
 /**
  * Settings for the download manager: the user's own API credentials.
  * The manager exists only while they are stored.
+ *
+ * The site shows the credentials as one string, `&api_key=…&user_id=…`.
+ * That string is pasted whole into one field and split here.
  */
 
 const SECTION_CLASS = "rdw-downloads-settings";
 const ACTIONS_CLASS = "rdw-downloads-settings-actions";
 const HINT_CLASS = "rdw-downloads-settings-hint";
 
-const USER_ID_FIELD_ID = "rdw-api-user-id";
-const API_KEY_FIELD_ID = "rdw-api-key";
-const USER_ID_LABEL = "User ID";
-const API_KEY_LABEL = "API key";
+const API_FIELD_ID = "rdw-api-credentials";
+const API_FIELD_LABEL = "API credentials";
+const API_FIELD_PLACEHOLDER = "&api_key=…&user_id=…";
 const REMOVE_LABEL = "Remove key";
 const OPTIONS_URL = "https://rule34.xxx/index.php?page=account&s=options";
 const OPTIONS_LINK_TEXT = "account options page";
-const HINT_BEFORE = "The download manager finds files through the site API with your own key. Generate it on the ";
+const HINT_BEFORE =
+  "The download manager finds files through the site API with your own key. Generate it on the ";
 const HINT_AFTER =
-  " and paste it here. The key stays in this browser and is not part of the Data export. Without a key there are no download buttons.";
+  ", copy the whole line it shows and paste it here. The key stays in this browser and is not part of the Data export. Without a key there are no download buttons.";
 const STATUS_SAVED = "Saved. Download buttons appear on collection pages and under the search panel.";
 const STATUS_REMOVED = "Key removed.";
-const STATUS_EMPTY = "Enter both the user ID and the API key.";
-const STATUS_STORED = "A key is stored.";
+const STATUS_INVALID = "Paste the whole line from the site: it must hold both api_key and user_id.";
+const STATUS_STORED = "A key is stored. Paste a new line to replace it.";
 
 export const DOWNLOADS_SECTION_CSS = `
 .${SECTION_CLASS} {
@@ -55,26 +59,25 @@ export const DOWNLOADS_SECTION_CSS = `
 `.trim();
 
 export function DownloadsSection(): JSX.Element {
-  const [stored, setStored] = useState(() => getApiCredentials() !== null);
-  const [userId, setUserId] = useState(() => getApiCredentials()?.userId ?? "");
+  const [stored, setStored] = useState(() => hasApiCredentials());
   // The stored key is never put back into the field.
-  const [apiKey, setApiKey] = useState("");
+  const [draft, setDraft] = useState("");
   const [status, setStatus] = useState("");
 
   const save = (): void => {
-    if (!setApiCredentials(userId, apiKey)) {
-      setStatus(STATUS_EMPTY);
+    const parsed = parseApiCredentials(draft);
+    if (parsed === null || !setApiCredentials(parsed.userId, parsed.apiKey)) {
+      setStatus(STATUS_INVALID);
       return;
     }
-    setApiKey("");
+    setDraft("");
     setStored(true);
     setStatus(STATUS_SAVED);
   };
 
   const remove = (): void => {
     clearApiCredentials();
-    setUserId("");
-    setApiKey("");
+    setDraft("");
     setStored(false);
     setStatus(STATUS_REMOVED);
   };
@@ -90,18 +93,15 @@ export function DownloadsSection(): JSX.Element {
         }}
       >
         <TextField
-          id={USER_ID_FIELD_ID}
-          label={USER_ID_LABEL}
-          value={userId}
-          onChange={setUserId}
-        />
-        <TextField
-          id={API_KEY_FIELD_ID}
-          label={API_KEY_LABEL}
+          id={API_FIELD_ID}
+          label={API_FIELD_LABEL}
           type="password"
-          value={apiKey}
-          placeholder={stored ? STATUS_STORED : ""}
-          onChange={setApiKey}
+          value={draft}
+          placeholder={stored ? STATUS_STORED : API_FIELD_PLACEHOLDER}
+          onChange={(value) => {
+            setDraft(value);
+            setStatus("");
+          }}
         />
         <div className={ACTIONS_CLASS}>
           <Button type="submit" variant="primary" size="s">

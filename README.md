@@ -54,7 +54,7 @@ The local favorite list is kept in sync with the site by "Sync favorites" in set
 
 Saves the original files of a custom collection (all or selected posts), of a whole search, or of posts picked on a results page. Files go to `RuleDesk/<collection or search>` in your downloads folder as `rule34-<post id>.<ext>`. A panel in the corner shows progress and has Pause, Resume and Cancel; the job survives a page change.
 
-The manager needs your own API key: generate it on the site's account options page and paste it into RuleDesk → Downloads. Without a key there are no download buttons.
+The manager needs your own API key: generate it on the site's account options page and paste the whole line it shows into RuleDesk → Downloads. Without a key there are no download buttons.
 
 ### Statistics
 

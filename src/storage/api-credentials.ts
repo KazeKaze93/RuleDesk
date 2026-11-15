@@ -43,3 +43,33 @@ export function setApiCredentials(userId: string, apiKey: string): boolean {
 export function clearApiCredentials(): void {
   GM_setValue(API_CREDENTIALS_KEY, null);
 }
+
+const USER_ID_PARAM = /(?:^|[?&\s])user_id=([^&\s#]+)/i;
+const API_KEY_PARAM = /(?:^|[?&\s])api_key=([^&\s#]+)/i;
+
+function decodePart(raw: string): string {
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
+}
+
+/**
+ * Splits the line the site shows on its account options page,
+ * `&api_key=KEY&user_id=123`, into its two parts. The order of the parts and
+ * anything around them (a full address, spaces) do not matter.
+ * Null when either part is missing.
+ */
+export function parseApiCredentials(text: string): ApiCredentials | null {
+  const userId = USER_ID_PARAM.exec(text)?.[1];
+  const apiKey = API_KEY_PARAM.exec(text)?.[1];
+  if (userId === undefined || apiKey === undefined) {
+    return null;
+  }
+  const parsed = ApiCredentialsSchema.safeParse({
+    userId: decodePart(userId).trim(),
+    apiKey: decodePart(apiKey).trim(),
+  });
+  return parsed.success ? parsed.data : null;
+}

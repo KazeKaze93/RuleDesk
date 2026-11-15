@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.24.1
+
+- **Downloads settings: one field.** Paste the whole line the site shows (`&api_key=…&user_id=…`); the script splits it into the key and the user ID itself
+
 ## 0.24.0
 
 - **Download manager.** With your own API key in RuleDesk → Downloads, download buttons appear: "Download all" and "Download selected" on a custom collection, "Download results" and "Select posts" under the search panel on a results page. The files are found through the site API (one request per up to 1000 posts) and saved one by one into `RuleDesk/<name>`

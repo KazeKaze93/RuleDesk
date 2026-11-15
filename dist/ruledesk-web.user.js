@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RuleDesk Web
 // @namespace    https://github.com/kazekaze93/ruledesk-web
-// @version      0.24.0
+// @version      0.24.1
 // @description  Collections, playlists, favorites, artist updates, and page tweaks for rule34.xxx
 // @downloadURL  https://raw.githubusercontent.com/KazeKaze93/RuleDesk/main/dist/ruledesk-web.user.js
 // @updateURL    https://raw.githubusercontent.com/KazeKaze93/RuleDesk/main/dist/ruledesk-web.user.js
@@ -17,9 +17,9 @@
 !function(){function e(e,t){return(t||"")+" (SystemJS Error#"+e+" https://github.com/systemjs/systemjs/blob/main/docs/errors.md#"+e+")"}function t(e,t){if(-1!==e.indexOf("\\")&&(e=e.replace(j,"/")),"/"===e[0]&&"/"===e[1])return t.slice(0,t.indexOf(":")+1)+e;if("."===e[0]&&("/"===e[1]||"."===e[1]&&("/"===e[2]||2===e.length&&(e+="/"))||1===e.length&&(e+="/"))||"/"===e[0]){var n,r=t.slice(0,t.indexOf(":")+1);if(n="/"===t[r.length+1]?"file:"!==r?(n=t.slice(r.length+2)).slice(n.indexOf("/")+1):t.slice(8):t.slice(r.length+("/"===t[r.length])),"/"===e[0])return t.slice(0,t.length-n.length-1)+e;for(var i=n.slice(0,n.lastIndexOf("/")+1)+e,o=[],s=-1,u=0;u<i.length;u++)-1!==s?"/"===i[u]&&(o.push(i.slice(s,u+1)),s=-1):"."===i[u]?"."!==i[u+1]||"/"!==i[u+2]&&u+2!==i.length?"/"===i[u+1]||u+1===i.length?u+=1:s=u:(o.pop(),u+=2):s=u;return-1!==s&&o.push(i.slice(s)),t.slice(0,t.length-n.length)+o.join("")}}function n(e,n){return t(e,n)||(-1!==e.indexOf(":")?e:t("./"+e,n))}function r(e,n,r,i,o){for(var s in e){var a=t(s,r)||s,f=e[s];if("string"==typeof f){var l=c(i,t(f,r)||f,o);l?n[a]=l:u("W1",s,f,"bare specifier did not resolve")}}}function i(e,t,i){var o;for(o in e.imports&&r(e.imports,i.imports,t,i,null),e.scopes||{}){var s=n(o,t);r(e.scopes[o],i.scopes[s]||(i.scopes[s]={}),t,i,s)}for(o in e.depcache||{})i.depcache[n(o,t)]=e.depcache[o];for(o in e.integrity||{})i.integrity[n(o,t)]=e.integrity[o]}function o(e,t){if(t[e])return e;var n=e.length;do{var r=e.slice(0,n+1);if(r in t)return r}while(-1!==(n=e.lastIndexOf("/",n-1)))}function s(e,t){var n=o(e,t);if(n){var r=t[n];if(null===r)return;if(!(e.length>n.length&&"/"!==r[r.length-1]))return r+e.slice(n.length);u("W2",n,r,"should have a trailing '/'")}}function u(t,n,r,i){console.warn(e(t,"Package target "+i+", resolving target '"+r+"' for "+n))}function c(e,t,n){for(var r=e.scopes,i=n&&o(n,r);i;){var u=s(t,r[i]);if(u)return u;i=o(i.slice(0,i.lastIndexOf("/")),r)}return s(t,e.imports)||-1!==t.indexOf(":")&&t}function a(){this[M]={}}function f(e){return e.id}function l(e,t,n,r){if(e.onload(n,t.id,t.d&&t.d.map(f),!!r),n)throw n}function d(t,n,r,i){var o=t[M][n];if(o)return o;var s=[],u=Object.create(null);P&&Object.defineProperty(u,P,{value:"Module"});var c=Promise.resolve().then((function(){return t.instantiate(n,r,i)})).then((function(r){if(!r)throw Error(e(2,"Module "+n+" did not instantiate"));var i=r[1]((function(e,t){o.h=!0;var n=!1;if("string"==typeof e)e in u&&u[e]===t||(u[e]=t,n=!0);else{for(var r in e)t=e[r],r in u&&u[r]===t||(u[r]=t,n=!0);e&&e.__esModule&&(u.__esModule=e.__esModule)}if(n)for(var i=0;i<s.length;i++){var c=s[i];c&&c(u)}return t}),2===r[1].length?{import:function(e,r){return t.import(e,n,r)},meta:t.createContext(n)}:void 0);return o.e=i.execute||function(){},[r[0],i.setters||[],r[2]||[]]}),(function(e){throw o.e=null,o.er=e,l(t,o,e,!0),e})),a=c.then((function(e){return Promise.all(e[0].map((function(r,i){var o=e[1][i],s=e[2][i];return Promise.resolve(t.resolve(r,n)).then((function(e){var r=d(t,e,n,s);return Promise.resolve(r.I).then((function(){return o&&(r.i.push(o),!r.h&&r.I||o(r.n)),r}))}))}))).then((function(e){o.d=e}))}));return o=t[M][n]={id:n,i:s,n:u,m:i,I:c,L:a,h:!1,d:void 0,e:void 0,er:void 0,E:void 0,C:void 0,p:void 0}}function h(e,t,n,r){if(!r[t.id])return r[t.id]=!0,Promise.resolve(t.L).then((function(){return t.p&&null!==t.p.e||(t.p=n),Promise.all(t.d.map((function(t){return h(e,t,n,r)})))})).catch((function(n){if(t.er)throw n;throw t.e=null,l(e,t,n,!1),n}))}function p(e,t){return t.C=h(e,t,t,{}).then((function(){return v(e,t,{})})).then((function(){return t.n}))}function v(e,t,n){function r(){try{var n=o.call(L);if(n)return n=n.then((function(){t.C=t.n,t.E=null,l(e,t,null,!0)}),(function(n){throw t.er=n,t.E=null,l(e,t,n,!0),n})),t.E=n;t.C=t.n,t.L=t.I=void 0}catch(r){throw t.er=r,r}finally{l(e,t,t.er,!0)}}if(!n[t.id]){if(n[t.id]=!0,!t.e){if(t.er)throw t.er;return t.E?t.E:void 0}var i,o=t.e;return t.e=null,t.d.forEach((function(r){try{var o=v(e,r,n);o&&(i=i||[]).push(o)}catch(s){throw t.er=s,l(e,t,s,!1),s}})),i?Promise.all(i).then(r):r()}}function m(){[].forEach.call(document.querySelectorAll("script"),(function(t){if(!t.sp)if("systemjs-module"===t.type){if(t.sp=!0,!t.src)return;System.import("import:"===t.src.slice(0,7)?t.src.slice(7):n(t.src,g)).catch((function(e){if(e.message.indexOf("https://github.com/systemjs/systemjs/blob/main/docs/errors.md#3")>-1){var n=document.createEvent("Event");n.initEvent("error",!1,!1),t.dispatchEvent(n)}return Promise.reject(e)}))}else if("systemjs-importmap"===t.type){t.sp=!0;var r=t.src?(System.fetch||fetch)(t.src,{integrity:t.integrity,priority:t.fetchPriority,passThrough:!0}).then((function(e){if(!e.ok)throw Error("Invalid status code: "+e.status);return e.text()})).catch((function(n){return n.message=e("W4","Error fetching systemjs-import map "+t.src)+"\n"+n.message,console.warn(n),"function"==typeof t.onerror&&t.onerror(),"{}"})):t.innerHTML;W=W.then((function(){return r})).then((function(n){!function(t,n,r){var o={};try{o=JSON.parse(n)}catch(s){console.warn(Error(e("W5","systemjs-importmap contains invalid JSON")+"\n\n"+n+"\n"))}i(o,r,t)}(N,n,t.src||g)}))}}))}var g,y="undefined"!=typeof Symbol,b="undefined"!=typeof self,S="undefined"!=typeof document,w=b?self:global;if(S){var O=document.querySelector("base[href]");O&&(g=O.href)}if(!g&&"undefined"!=typeof location){var E=(g=location.href.split("#")[0].split("?")[0]).lastIndexOf("/");-1!==E&&(g=g.slice(0,E+1))}var x,j=/\\/g,P=y&&Symbol.toStringTag,M=y?Symbol():"@",I=a.prototype;I.import=function(e,t,n){var r=this;return t&&"object"==typeof t&&(n=t,t=void 0),Promise.resolve(r.prepareImport()).then((function(){return r.resolve(e,t,n)})).then((function(e){var t=d(r,e,void 0,n);return t.C||p(r,t)}))},I.createContext=function(e){var t=this;return{url:e,resolve:function(n,r){return Promise.resolve(t.resolve(n,r||e))}}},I.onload=function(){},I.register=function(e,t,n){x=[e,t,n]},I.getRegister=function(){var e=x;return x=void 0,e};var L=Object.freeze(Object.create(null));w.System=new a;var C,R,W=Promise.resolve(),N={imports:{},scopes:{},depcache:{},integrity:{}},T=S;if(I.prepareImport=function(e){return(T||e)&&(m(),T=!1),W},I.getImportMap=function(){return JSON.parse(JSON.stringify(N))},S&&(m(),window.addEventListener("DOMContentLoaded",m)),I.addImportMap=function(e,t){i(e,t||g,N)},S){window.addEventListener("error",(function(e){J=e.filename,_=e.error}));var A=location.origin}I.createScript=function(e){var t=document.createElement("script");t.async=!0,e.indexOf(A+"/")&&(t.crossOrigin="anonymous");var n=N.integrity[e];return n&&(t.integrity=n),t.src=e,t};var J,_,k={},U=I.register;I.register=function(e,t){if(S&&"loading"===document.readyState&&"string"!=typeof e){var n=document.querySelectorAll("script[src]"),r=n[n.length-1];if(r){C=e;var i=this;R=setTimeout((function(){k[r.src]=[e,t],i.import(r.src)}))}}else C=void 0;return U.call(this,e,t)},I.instantiate=function(t,n){var r=k[t];if(r)return delete k[t],r;var i=this;return Promise.resolve(I.createScript(t)).then((function(r){return new Promise((function(o,s){r.addEventListener("error",(function(){s(Error(e(3,"Error loading "+t+(n?" from "+n:""))))})),r.addEventListener("load",(function(){if(document.head.removeChild(r),J===t)s(_);else{var e=i.getRegister(t);e&&e[0]===C&&clearTimeout(R),o(e)}})),document.head.appendChild(r)}))}))},I.shouldFetch=function(){return!1},"undefined"!=typeof fetch&&(I.fetch=fetch);var $=I.instantiate,B=/^(text|application)\/(x-)?javascript(;|$)/;I.instantiate=function(t,n,r){var i=this;return this.shouldFetch(t,n,r)?this.fetch(t,{credentials:"same-origin",integrity:N.integrity[t],meta:r}).then((function(r){if(!r.ok)throw Error(e(7,r.status+" "+r.statusText+", loading "+t+(n?" from "+n:"")));var o=r.headers.get("content-type");if(!o||!B.test(o))throw Error(e(4,'Unknown Content-Type "'+o+'", loading '+t+(n?" from "+n:"")));return r.text().then((function(e){return e.indexOf("//# sourceURL=")<0&&(e+="\n//# sourceURL="+t),(0,eval)(e),i.getRegister(t)}))})):$.apply(this,arguments)},I.resolve=function(n,r){return c(N,t(n,r=r||g)||n,r)||function(t,n){throw Error(e(8,"Unable to resolve bare specifier '"+t+(n?"' from "+n:"'")))}(n,r)};var F=I.instantiate;I.instantiate=function(e,t,n){var r=N.depcache[e];if(r)for(var i=0;i<r.length;i++)d(this,this.resolve(r[i],e),e);return F.call(this,e,t,n)},b&&"function"==typeof importScripts&&(I.instantiate=function(e){var t=this;return Promise.resolve().then((function(){return importScripts(e),t.getRegister(e)}))}),function(e){function t(t){return!e.hasOwnProperty(t)||!isNaN(t)&&t<e.length||a&&e[t]&&"undefined"!=typeof window&&e[t].parent===window}var n,r,i,o=e.System.constructor.prototype,s=o.import;o.import=function(o,u,c){return function(){for(var o in n=r=void 0,e)t(o)||(n?r||(r=o):n=o,i=o)}(),s.call(this,o,u,c)};var u=[[],function(){return{}}],c=o.getRegister;o.getRegister=function(){var o=c.call(this);if(o)return o;var s,a=function(o){var s,u,c=0;for(var a in e)if(!t(a)){if(0===c&&a!==n||1===c&&a!==r)return a;s?(i=a,u=o&&u||a):s=a===i,c++}return u}(this.firstGlobalProp);if(!a)return u;try{s=e[a]}catch(f){return u}return[[],function(e){return{execute:function(){e(s),e({default:s,__useDefault:!0})}}}]};var a="undefined"!=typeof navigator&&-1!==navigator.userAgent.indexOf("Trident")}("undefined"!=typeof self?self:global),function(e){var t=e.System.constructor.prototype,r=/^[^#?]+\.(css|html|json|wasm)([?#].*)?$/,i=t.shouldFetch.bind(t);t.shouldFetch=function(e){return i(e)||r.test(e)};var o=/^application\/json(;|$)/,s=/^text\/css(;|$)/,u=/^application\/wasm(;|$)/,c=t.fetch;t.fetch=function(t,r){return c(t,r).then((function(i){if(r.passThrough)return i;if(!i.ok)return i;var c=i.headers.get("content-type");return o.test(c)?i.json().then((function(e){return new Response(new Blob(['System.register([],function(e){return{execute:function(){e("default",'+JSON.stringify(e)+")}}})"],{type:"application/javascript"}))})):s.test(c)?i.text().then((function(e){return e=e.replace(/url\(\s*(?:(["'])((?:\\.|[^\n\\"'])+)\1|((?:\\.|[^\s,"'()\\])+))\s*\)/g,(function(e,r,i,o){return["url(",r,n(i||o,t),r,")"].join("")})),new Response(new Blob(["System.register([],function(e){return{execute:function(){var s=new CSSStyleSheet();s.replaceSync("+JSON.stringify(e)+');e("default",s)}}})'],{type:"application/javascript"}))})):u.test(c)?(WebAssembly.compileStreaming?WebAssembly.compileStreaming(i):i.arrayBuffer().then(WebAssembly.compile)).then((function(n){e.System.wasmModules||(e.System.wasmModules=Object.create(null)),e.System.wasmModules[t]=n;var r=[],i=[];return WebAssembly.Module.imports&&WebAssembly.Module.imports(n).forEach((function(e){var t=JSON.stringify(e.module);-1===r.indexOf(t)&&(r.push(t),i.push("function(m){i["+t+"]=m}"))})),new Response(new Blob(["System.register(["+r.join(",")+"],function(e){var i={};return{setters:["+i.join(",")+"],execute:function(){return WebAssembly.instantiate(System.wasmModules["+JSON.stringify(t)+"],i).then(function(m){e(m.exports)})}}})"],{type:"application/javascript"}))})):i}))}}("undefined"!=typeof self?self:global);var q="undefined"!=typeof Symbol&&Symbol.toStringTag;I.get=function(e){var t=this[M][e];if(t&&null===t.e&&!t.E)return t.er?null:t.n},I.set=function(t,n){try{new URL(t)}catch(s){console.warn(Error(e("W3",'"'+t+'" is not a valid URL to set in the module registry')))}var r;q&&"Module"===n[q]?r=n:(r=Object.assign(Object.create(null),n),q&&Object.defineProperty(r,q,{value:"Module"}));var i=Promise.resolve(r),o=this[M][t]||(this[M][t]={id:t,i:[],h:!1,d:[],e:null,er:void 0,E:void 0});return!o.e&&!o.E&&(Object.assign(o,{n:r,I:void 0,L:void 0,C:i}),r)},I.has=function(e){return!!this[M][e]},I.delete=function(e){var t=this[M],n=t[e];if(!n||n.p&&null!==n.p.e||n.E)return!1;var r=n.i;return n.d&&n.d.forEach((function(e){var t=e.i.indexOf(n);-1!==t&&e.i.splice(t,1)})),delete t[e],function(){var n=t[e];if(!n||!r||null!==n.e||n.E)return!1;r.forEach((function(e){n.i.push(e),e(n.n)})),r=null}};var D="undefined"!=typeof Symbol&&Symbol.iterator;I.entries=function(){var e,t,n=this,r=Object.keys(n[M]),i=0,o={next:function(){for(;void 0!==(t=r[i++])&&void 0===(e=n.get(t)););return{done:void 0===t,value:void 0!==t&&[t,e]}}};return o[D]=function(){return this},o}}();
 !function(t){function e(t){t.registerRegistry=Object.create(null),t.namedRegisterAliases=Object.create(null)}var r=t.System;e(r);var i,s,n=r.constructor.prototype,l=r.constructor,a=function(){l.call(this),e(this)};a.prototype=n,r.constructor=a;var o=n.register;n.register=function(t,e,r,n){if("string"!=typeof t)return o.apply(this,arguments);var l=[e,r,n];return this.registerRegistry[t]=l,i||(i=l,s=t),Promise.resolve().then((function(){i=null,s=null})),o.apply(this,[e,r,n])};var u=n.resolve;n.resolve=function(t,e){try{return u.call(this,t,e)}catch(r){if(t in this.registerRegistry)return this.namedRegisterAliases[t]||t;throw r}};var c=n.instantiate;n.instantiate=function(t,e,r){var i=this.registerRegistry[t];return i?(this.registerRegistry[t]=null,i):c.call(this,t,e,r)};var g=n.getRegister;n.getRegister=function(t){var e=g.call(this,t);s&&t&&(this.namedRegisterAliases[s]=t);var r=i||e;return i=null,s=null,r}}("undefined"!=typeof self?self:global);
 ;(typeof System!='undefined')&&(System=new System.constructor());
-System.register("./___monkey.entry.js", [],(function(exports,module){'use strict';return{execute:(function(){exports({$:applyTokenProperties,E:rdwPageHash,G:createFavoritesSyncTabId,J:readArtistsMirror,K:listArtistTags,L:writeArtistsMirror,O:reloadFromStorage,P:save,Q:Q$1,V:setSyncState,_:a,a:applyAppearanceTheme,a$:Chip,a0:resolveAppearancePalette,a1:isCollectionDetailPage,a2:menuRouteForPage,a3:getSiteSkinCss,a4:$$1,aA:T,aB:A,aE:SectionLabel,aF:Select,aI:Segmented,aL:TextField,aM:Button,aN:clampBackgroundDim,aP:featurePanelLabel,aR:clearFeatureState,aS:applyCssOnlyFeatureEnabled,aT:isFeatureEnabled,aV:setFeatureChoiceValue,aW:applyCssOnlyFeatureChoice,aX:getFeatureChoice,aY:createAutocompleteQuerier,aZ:b,a_:readSiteBlacklist,af:d,ag:Switch,ai:setTweaksEnabled,al:setFeatureEnabled,am:NumberField,ao:setUpdatesGroupSize,ap:getUpdatesGroupSize,ar:setPlaylistChunkSize,as:getPlaylistChunkSize,au:setGridFavButtonsEnabled,av:setGridFavButtonsVisible,aw:IconChevronRight,ax:IconChevronDown,ay:Card,az:P$1,b0:AutocompleteField,b1:ProgressBar,b2:createDefaultCustomTheme,b4:prepareBackgroundImageFile,b5:setFeatureState,b6:writeSiteBlacklist,b8:clearApiCredentials,b9:setApiCredentials,bA:getFeatureChoiceValue,bB:getFeatureState,bC:getScreenPixelSize,bD:IconPlus,bE:EmptyState,bF:Dialog,bG:resolveCollectionKind,bH:deleteCollection,bI:QueryField,bJ:isUnfilteredQuery,bK:createDynamicCollection,bL:createPlaylist,bN:collectionDetailHash,bO:readCoverMirror,bQ:IconCheck,bR:readCountMirror,bS:buildSearchUrl,bT:dynamicCollectionMarkHash,bU:serialize,bW:getSeenPostId,bX:completeLastQueryToken,bY:readLastQueryToken,ba:load,bb:createDefaultStorage,bc:clearStorageCache,bd:clearFavsCache,be:object,bg:optional,bh:string,bj:literal,bl:stripLegacyPanelWindowSize,bm:migrateMarksFavToFavs,bo:createDefaultFavs,bp:parseFavsStrict,bq:setAppearance,br:loadFavSet,bt:extractFavIdsFromMarks,bx:getApiCredentials,by:getTweaksEnabled,bz:getGridFavButtonsEnabled,c3:removeArtist,c4:addArtists,c6:IconButton,c7:IconX,c8:removeArtists,c9:rememberArtistSnapshot,ca:fetchArtistSnapshot,cb:w$1,cc:downloadsAvailable,cd:shuffleCollection,ce:resetCollectionOrder,cf:Toast,cg:getCollectionOrder,ch:listPlaylists,ci:removePostsFromCollection,cj:isDownloadBusy,ck:startDownload,cl:movePostInCollection,cm:renameCollection,co:restorePosts,cq:collectionQueueHash,d:detectPageKind,e:ensureDocumentStyles,f:ensureStyleElement,g:getAppearance,h:buildOwnPageCss,j:getFeatureEnabled,k:getSyncState,m:mountCards,n:normalizeArtistTag,o:readFavoritesSyncMode,p:parseRdwHash,q:runFavoritesSync,r:runFeaturesYielding,s:syncFavoritesPage,y:yieldToMain,z:resolveFavoritesUserId});var STORAGE_KEY = "ruledesk-web.storage";
-var STORAGE_BACKUP_KEY = exports("bs","ruledesk-web.storage.backup");
-var FAVS_STORAGE_KEY = exports("bn","ruledesk-web.favs");
+System.register("./___monkey.entry.js", [],(function(exports,module){'use strict';return{execute:(function(){exports({$:applyTokenProperties,E:rdwPageHash,G:createFavoritesSyncTabId,J:readArtistsMirror,K:listArtistTags,L:writeArtistsMirror,O:reloadFromStorage,P:save,Q:Q$1,V:setSyncState,_:a,a:applyAppearanceTheme,a$:Chip,a0:resolveAppearancePalette,a1:isCollectionDetailPage,a2:menuRouteForPage,a3:getSiteSkinCss,a4:$$1,aA:T,aB:A,aE:SectionLabel,aF:Select,aI:Segmented,aL:TextField,aM:Button,aN:clampBackgroundDim,aP:featurePanelLabel,aR:clearFeatureState,aS:applyCssOnlyFeatureEnabled,aT:isFeatureEnabled,aV:setFeatureChoiceValue,aW:applyCssOnlyFeatureChoice,aX:getFeatureChoice,aY:createAutocompleteQuerier,aZ:b,a_:readSiteBlacklist,af:d,ag:Switch,ai:setTweaksEnabled,al:setFeatureEnabled,am:NumberField,ao:setUpdatesGroupSize,ap:getUpdatesGroupSize,ar:setPlaylistChunkSize,as:getPlaylistChunkSize,au:setGridFavButtonsEnabled,av:setGridFavButtonsVisible,aw:IconChevronRight,ax:IconChevronDown,ay:Card,az:P$1,b0:AutocompleteField,b1:ProgressBar,b2:createDefaultCustomTheme,b4:prepareBackgroundImageFile,b5:setFeatureState,b6:writeSiteBlacklist,b8:clearApiCredentials,b9:parseApiCredentials,bA:getGridFavButtonsEnabled,bB:getFeatureChoiceValue,bC:getFeatureState,bD:getScreenPixelSize,bE:IconPlus,bF:EmptyState,bG:Dialog,bH:resolveCollectionKind,bI:deleteCollection,bJ:QueryField,bK:isUnfilteredQuery,bL:createDynamicCollection,bM:createPlaylist,bO:collectionDetailHash,bP:readCoverMirror,bR:IconCheck,bS:readCountMirror,bT:buildSearchUrl,bU:dynamicCollectionMarkHash,bV:serialize,bX:getSeenPostId,bY:completeLastQueryToken,bZ:readLastQueryToken,ba:setApiCredentials,bb:load,bc:createDefaultStorage,bd:clearStorageCache,be:clearFavsCache,bf:object,bh:optional,bi:string,bk:literal,bm:stripLegacyPanelWindowSize,bn:migrateMarksFavToFavs,bp:createDefaultFavs,bq:parseFavsStrict,br:setAppearance,bs:loadFavSet,bu:extractFavIdsFromMarks,by:hasApiCredentials,bz:getTweaksEnabled,c4:removeArtist,c5:addArtists,c7:IconButton,c8:IconX,c9:removeArtists,ca:rememberArtistSnapshot,cb:fetchArtistSnapshot,cc:w$1,cd:downloadsAvailable,ce:shuffleCollection,cf:resetCollectionOrder,cg:Toast,ch:getCollectionOrder,ci:listPlaylists,cj:removePostsFromCollection,ck:isDownloadBusy,cl:startDownload,cm:movePostInCollection,cn:renameCollection,cp:restorePosts,cr:collectionQueueHash,d:detectPageKind,e:ensureDocumentStyles,f:ensureStyleElement,g:getAppearance,h:buildOwnPageCss,j:getFeatureEnabled,k:getSyncState,m:mountCards,n:normalizeArtistTag,o:readFavoritesSyncMode,p:parseRdwHash,q:runFavoritesSync,r:runFeaturesYielding,s:syncFavoritesPage,y:yieldToMain,z:resolveFavoritesUserId});var STORAGE_KEY = "ruledesk-web.storage";
+var STORAGE_BACKUP_KEY = exports("bt","ruledesk-web.storage.backup");
+var FAVS_STORAGE_KEY = exports("bo","ruledesk-web.favs");
 var DEBUG_KEY = "ruledesk-web.debug";
 var APPEARANCE_BACKGROUND_KEY = exports("I","ruledesk-web.appearance.background");
 var APPEARANCE_BACKGROUND_TOO_LARGE = exports("ae","Background image is too large (max 1.5 MB).");
@@ -35,9 +35,9 @@ var APPEARANCE_THEME_CUSTOM = exports("aC","custom");
 var DEFAULT_APPEARANCE_THEME = APPEARANCE_THEME_LIGHT;
 var SITE_ORIGIN = exports("b","https://rule34.xxx");
 var SEARCH_PATH = exports("Z","/index.php");
-var SEARCH_PAGE = exports("b$","post");
-var SEARCH_SECTION = exports("c0","list");
-var SEARCH_SECTION_VIEW = exports("cp","view");
+var SEARCH_PAGE = exports("c0","post");
+var SEARCH_SECTION = exports("c1","list");
+var SEARCH_SECTION_VIEW = exports("cq","view");
 var SEARCH_PARAM_PAGE = exports("W","page");
 var SEARCH_PARAM_TAGS = exports("c","tags");
 var FAVORITES_PAGE = exports("X","favorites");
@@ -51,12 +51,12 @@ var VOTE_PARAM_TYPE = "type";
 var VOTE_PAGE = "post";
 var VOTE_SECTION = "vote";
 var FETCH_CREDENTIALS = "same-origin";
-var TAG_TYPE_INCLUDE = exports("c5","include");
+var TAG_TYPE_INCLUDE = exports("c6","include");
 var TAG_TYPE_EXCLUDE = "exclude";
 var UPDATES_ID_PREFIX = "id:>";
-var IMPORT_SCHEMA_ERROR_PREFIX = exports("bk","File is not a RuleDesk Web export");
-var COLLECTION_KIND_SEARCH = exports("bP","search");
-var COLLECTION_KIND_POSTS = exports("bM","posts");
+var IMPORT_SCHEMA_ERROR_PREFIX = exports("bl","File is not a RuleDesk Web export");
+var COLLECTION_KIND_SEARCH = exports("bQ","search");
+var COLLECTION_KIND_POSTS = exports("bN","posts");
 var DOCUMENT_STYLE_ID = "ruledesk-web-document-style";
 var UPDATES_BAR_ID = "ruledesk-web-updates-bar";
 var SITE_THEME_COOKIE_NAME = "theme";
@@ -125,7 +125,7 @@ var CSS_CLASS = exports("C",{
 });
 /** Hash routes and DOM ids for RuleDesk own pages (replaces floating panel). */
 var RDW_HASH_PREFIX = "#rdw/";
-var RDW_ROUTE_COLLECTIONS = exports("cn","collections");
+var RDW_ROUTE_COLLECTIONS = exports("co","collections");
 var RDW_ROUTE_FOLLOWING = "following";
 var RDW_ROUTE_SETTINGS = "settings";
 var RDW_ROUTE_STATS = "stats";
@@ -152,7 +152,7 @@ var RDW_HASH_STATS = exports("A",`${RDW_HASH_PREFIX}${RDW_ROUTE_STATS}`);
 * Key in `settings.features` for showing Statistics in the site menu.
 * It is a plain switch, not a page tweak with a module.
 */
-var STATS_MENU_SETTING_ID = exports("bw","stats-menu");
+var STATS_MENU_SETTING_ID = exports("bx","stats-menu");
 var STATS_MENU_SETTING_LABEL = exports("aj","Statistics in site menu");
 var STATS_MENU_SWITCH_ID = exports("ak","rdw-stats-menu");
 var RDW_OWN_PAGE_CLASS = exports("i","rdw-own-page");
@@ -188,14 +188,14 @@ var PANEL_UI_CLASS = exports("a5",{
 	settingsCaption: "rdw-settings-caption",
 	pageCard: "rdw-page-card"
 });
-var ARTISTS_EMPTY_TITLE = exports("b_","No followed artists yet");
-var ARTISTS_EMPTY_HINT = exports("bZ","Follow artists with the Follow button next to their name in the tag list.");
-var ARTIST_FILTER_LABEL = exports("c1","Filter artists");
+var ARTISTS_EMPTY_TITLE = exports("b$","No followed artists yet");
+var ARTISTS_EMPTY_HINT = exports("b_","Follow artists with the Follow button next to their name in the tag list.");
+var ARTIST_FILTER_LABEL = exports("c2","Filter artists");
 var FEATURE_CHECKBOX_ID_PREFIX = exports("aQ","rdw-feature-");
 var FEATURE_CHOICE_ID_PREFIX = exports("aU","rdw-feature-choice-");
 var UPDATES_GROUP_SIZE_ID = exports("an","rdw-updates-group-size");
 var PLAYLIST_CHUNK_SIZE_ID = exports("aq","rdw-playlist-chunk-size");
-var ARTIST_FILTER_ID = exports("c2","rdw-artist-filter");
+var ARTIST_FILTER_ID = exports("c3","rdw-artist-filter");
 var GRID_FAV_CHECKBOX_ID = exports("at","rdw-grid-fav-buttons");
 var TWEAKS_SWITCH_ID = exports("ah","rdw-tweaks-enabled");
 var TAG_GROUPS_PANEL_LABEL = "Collapse tags";
@@ -2202,7 +2202,7 @@ var SettingsSchema = /* @__PURE__ */ object({
 	appearance: /* @__PURE__ */ optional(AppearanceStoredSchema)
 });
 var UpdatesSchema = /* @__PURE__ */ object({ seenPostId: int().check(/* @__PURE__ */ _nonnegative()) });
-var StorageSchema = exports("bf",/* @__PURE__ */ object({
+var StorageSchema = exports("bg",/* @__PURE__ */ object({
 	version: /* @__PURE__ */ literal(1),
 	collections: /* @__PURE__ */ array(CollectionSchema),
 	artists: /* @__PURE__ */ array(ArtistEntrySchema),
@@ -2237,7 +2237,7 @@ var FavsSyncSchema = /* @__PURE__ */ object({
 	lock: /* @__PURE__ */ optional(FavsSyncLockSchema),
 	mode: /* @__PURE__ */ optional(FavsSyncModeSchema)
 });
-var FavsSchema = exports("bi",/* @__PURE__ */ object({
+var FavsSchema = exports("bj",/* @__PURE__ */ object({
 	version: /* @__PURE__ */ literal(1),
 	ids: /* @__PURE__ */ array(int()),
 	sync: /* @__PURE__ */ optional(FavsSyncSchema)
@@ -8366,7 +8366,7 @@ function gapCss() {
 		`}`
 	].join("\n");
 }
-var gridDensityFeature = exports("bu",{
+var gridDensityFeature = exports("bv",{
 	id: FEATURE_ID$15,
 	label: "Grid size",
 	pages: ["list", "favorites"],
@@ -8801,6 +8801,31 @@ function setApiCredentials(userId, apiKey) {
 }
 function clearApiCredentials() {
 	GM_setValue(API_CREDENTIALS_KEY, null);
+}
+var USER_ID_PARAM = /(?:^|[?&\s])user_id=([^&\s#]+)/i;
+var API_KEY_PARAM = /(?:^|[?&\s])api_key=([^&\s#]+)/i;
+function decodePart(raw) {
+	try {
+		return decodeURIComponent(raw);
+	} catch {
+		return raw;
+	}
+}
+/**
+* Splits the line the site shows on its account options page,
+* `&api_key=KEY&user_id=123`, into its two parts. The order of the parts and
+* anything around them (a full address, spaces) do not matter.
+* Null when either part is missing.
+*/
+function parseApiCredentials(text) {
+	const userId = USER_ID_PARAM.exec(text)?.[1];
+	const apiKey = API_KEY_PARAM.exec(text)?.[1];
+	if (userId === void 0 || apiKey === void 0) return null;
+	const parsed = ApiCredentialsSchema.safeParse({
+		userId: decodePart(userId).trim(),
+		apiKey: decodePart(apiKey).trim()
+	});
+	return parsed.success ? parsed.data : null;
 }
 /** Id of the download manager among the page tweaks. */
 var DOWNLOADS_FEATURE_ID = "downloads";
@@ -9612,7 +9637,7 @@ var FAVORITES_SYNC_RETRY_DELAYS_MS = [
 	3e4,
 	6e4
 ];
-var FAVORITES_SYNC_MODE_INCREMENTAL = exports("bv",FAVS_SYNC_MODE_INCREMENTAL);
+var FAVORITES_SYNC_MODE_INCREMENTAL = exports("bw",FAVS_SYNC_MODE_INCREMENTAL);
 var FAVORITES_SYNC_MODE_FULL = exports("F",FAVS_SYNC_MODE_FULL);
 var MY_FAVORITES_LINK_SELECTOR$1 = "li#my-favorites-container a[href*=\"page=favorites\"]";
 var THUMB_SELECTOR$1 = "span.thumb";
@@ -12333,7 +12358,7 @@ var infiniteScrollFeature = {
 	mount: mountInfiniteScroll
 };
 var AUTOCOMPLETE_PATH = "/public/autocomplete.php";
-var AUTOCOMPLETE_TAG_TYPE_ARTIST = exports("bV","artist");
+var AUTOCOMPLETE_TAG_TYPE_ARTIST = exports("bW","artist");
 var HTTP_TOO_MANY_REQUESTS = 429;
 var ABORT_ERROR_NAME = "AbortError";
 var AutocompleteItemSchema = object({
@@ -16777,12 +16802,12 @@ bootEarly();
 whenDomReady(() => {
 	applyLayoutBeforePaint();
 	scheduleAfterFirstPaint(() => {
-		module.import('./app-CrfiTk0M-NaWWYzDe.js').then(({ startApp }) => {
+		module.import('./app-CJCUbrZ1-CdVYu896.js').then(({ startApp }) => {
 			startApp();
 		});
 	});
 });})}}));
-System.register("./app-CrfiTk0M-NaWWYzDe.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var yieldToMain,detectPageKind,mountCards,syncFavoritesPage,runFeaturesYielding,getAppearance,applyAppearanceTheme,ensureDocumentStyles,SITE_SELECTORS,log,SITE_ORIGIN,SEARCH_PARAM_TAGS,normalizeArtistTag,CSS_CLASS,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,HEADER_SELECTOR,RDW_OWN_PAGE_CLASS,MENU_ITEM_ID,getFeatureEnabled,parseRdwHash,getSyncState,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,runFavoritesSync,UI_TEXT,Q$1,RDW_PAGE_ROOT_ID,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,resolveFavoritesUserId,RDW_HASH_STATS,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,rdwPageHash,createFavoritesSyncTabId,APPEARANCE_BACKGROUND_KEY,readArtistsMirror,listArtistTags,writeArtistsMirror,reloadFromStorage,save,CURRENT_PAGE_CLASS,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,a,applyTokenProperties,resolveAppearancePalette,isCollectionDetailPage,menuRouteForPage,getSiteSkinCss,$$1,PANEL_UI_CLASS,TOKEN_VAR,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,SITE_LIGHT_C_BG,SITE_LIGHT_C_BG_ALT,SITE_DARK_C_BG,SITE_DARK_C_BORDER,APPEARANCE_BACKGROUND_TOO_LARGE;return{setters:[function(module){yieldToMain=module.y;detectPageKind=module.d;mountCards=module.m;syncFavoritesPage=module.s;runFeaturesYielding=module.r;getAppearance=module.g;applyAppearanceTheme=module.a;ensureDocumentStyles=module.e;SITE_SELECTORS=module.S;log=module.l;SITE_ORIGIN=module.b;SEARCH_PARAM_TAGS=module.c;normalizeArtistTag=module.n;CSS_CLASS=module.C;ensureStyleElement=module.f;RDW_OWN_PAGE_STYLE_ID=module.R;buildOwnPageCss=module.h;HEADER_SELECTOR=module.H;RDW_OWN_PAGE_CLASS=module.i;MENU_ITEM_ID=module.M;getFeatureEnabled=module.j;parseRdwHash=module.p;getSyncState=module.k;readFavoritesSyncMode=module.o;FAVORITES_SYNC_MODE_FULL=module.F;runFavoritesSync=module.q;UI_TEXT=module.U;Q$1=module.Q;RDW_PAGE_ROOT_ID=module.t;NAVBAR_SELECTOR=module.N;FEED_MENU_ITEM_ID=module.u;RDW_HASH_COLLECTIONS=module.v;MENU_LABEL=module.w;RDW_HASH_FOLLOWING=module.x;resolveFavoritesUserId=module.z;RDW_HASH_STATS=module.A;MY_FAVORITES_CONTAINER_ID=module.B;RDW_HASH_SETTINGS=module.D;rdwPageHash=module.E;createFavoritesSyncTabId=module.G;APPEARANCE_BACKGROUND_KEY=module.I;readArtistsMirror=module.J;listArtistTags=module.K;writeArtistsMirror=module.L;reloadFromStorage=module.O;save=module.P;CURRENT_PAGE_CLASS=module.T;setSyncState=module.V;SEARCH_PARAM_PAGE=module.W;FAVORITES_PAGE=module.X;FAVORITES_SECTION_VIEW=module.Y;SEARCH_PATH=module.Z;a=module._;applyTokenProperties=module.$;resolveAppearancePalette=module.a0;isCollectionDetailPage=module.a1;menuRouteForPage=module.a2;getSiteSkinCss=module.a3;$$1=module.a4;PANEL_UI_CLASS=module.a5;TOKEN_VAR=module.a6;RDW_THEME_ATTR=module.a7;APPEARANCE_THEME_SITE=module.a8;APPEARANCE_THEME_SITE_DARK=module.a9;SITE_LIGHT_C_BG=module.aa;SITE_LIGHT_C_BG_ALT=module.ab;SITE_DARK_C_BG=module.ac;SITE_DARK_C_BORDER=module.ad;APPEARANCE_BACKGROUND_TOO_LARGE=module.ae;}],execute:(function(){exports({a:installSiteMenu,i:navigateToRdwRoute,n:loadBackground,r:saveBackground,startApp:startApp,t:clearBackground});/** Matches host.tsx page title class (owned there; styled here for site polish). */
+System.register("./app-CJCUbrZ1-CdVYu896.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var yieldToMain,detectPageKind,mountCards,syncFavoritesPage,runFeaturesYielding,getAppearance,applyAppearanceTheme,ensureDocumentStyles,SITE_SELECTORS,log,SITE_ORIGIN,SEARCH_PARAM_TAGS,normalizeArtistTag,CSS_CLASS,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,HEADER_SELECTOR,RDW_OWN_PAGE_CLASS,MENU_ITEM_ID,getFeatureEnabled,parseRdwHash,getSyncState,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,runFavoritesSync,UI_TEXT,Q$1,RDW_PAGE_ROOT_ID,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,resolveFavoritesUserId,RDW_HASH_STATS,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,rdwPageHash,createFavoritesSyncTabId,APPEARANCE_BACKGROUND_KEY,readArtistsMirror,listArtistTags,writeArtistsMirror,reloadFromStorage,save,CURRENT_PAGE_CLASS,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,a,applyTokenProperties,resolveAppearancePalette,isCollectionDetailPage,menuRouteForPage,getSiteSkinCss,$$1,PANEL_UI_CLASS,TOKEN_VAR,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,SITE_LIGHT_C_BG,SITE_LIGHT_C_BG_ALT,SITE_DARK_C_BG,SITE_DARK_C_BORDER,APPEARANCE_BACKGROUND_TOO_LARGE;return{setters:[function(module){yieldToMain=module.y;detectPageKind=module.d;mountCards=module.m;syncFavoritesPage=module.s;runFeaturesYielding=module.r;getAppearance=module.g;applyAppearanceTheme=module.a;ensureDocumentStyles=module.e;SITE_SELECTORS=module.S;log=module.l;SITE_ORIGIN=module.b;SEARCH_PARAM_TAGS=module.c;normalizeArtistTag=module.n;CSS_CLASS=module.C;ensureStyleElement=module.f;RDW_OWN_PAGE_STYLE_ID=module.R;buildOwnPageCss=module.h;HEADER_SELECTOR=module.H;RDW_OWN_PAGE_CLASS=module.i;MENU_ITEM_ID=module.M;getFeatureEnabled=module.j;parseRdwHash=module.p;getSyncState=module.k;readFavoritesSyncMode=module.o;FAVORITES_SYNC_MODE_FULL=module.F;runFavoritesSync=module.q;UI_TEXT=module.U;Q$1=module.Q;RDW_PAGE_ROOT_ID=module.t;NAVBAR_SELECTOR=module.N;FEED_MENU_ITEM_ID=module.u;RDW_HASH_COLLECTIONS=module.v;MENU_LABEL=module.w;RDW_HASH_FOLLOWING=module.x;resolveFavoritesUserId=module.z;RDW_HASH_STATS=module.A;MY_FAVORITES_CONTAINER_ID=module.B;RDW_HASH_SETTINGS=module.D;rdwPageHash=module.E;createFavoritesSyncTabId=module.G;APPEARANCE_BACKGROUND_KEY=module.I;readArtistsMirror=module.J;listArtistTags=module.K;writeArtistsMirror=module.L;reloadFromStorage=module.O;save=module.P;CURRENT_PAGE_CLASS=module.T;setSyncState=module.V;SEARCH_PARAM_PAGE=module.W;FAVORITES_PAGE=module.X;FAVORITES_SECTION_VIEW=module.Y;SEARCH_PATH=module.Z;a=module._;applyTokenProperties=module.$;resolveAppearancePalette=module.a0;isCollectionDetailPage=module.a1;menuRouteForPage=module.a2;getSiteSkinCss=module.a3;$$1=module.a4;PANEL_UI_CLASS=module.a5;TOKEN_VAR=module.a6;RDW_THEME_ATTR=module.a7;APPEARANCE_THEME_SITE=module.a8;APPEARANCE_THEME_SITE_DARK=module.a9;SITE_LIGHT_C_BG=module.aa;SITE_LIGHT_C_BG_ALT=module.ab;SITE_DARK_C_BG=module.ac;SITE_DARK_C_BORDER=module.ad;APPEARANCE_BACKGROUND_TOO_LARGE=module.ae;}],execute:(function(){exports({a:installSiteMenu,i:navigateToRdwRoute,n:loadBackground,r:saveBackground,startApp:startApp,t:clearBackground});/** Matches host.tsx page title class (owned there; styled here for site polish). */
 var PAGE_TITLE_CLASS$1 = "rdw-page-title";
 /** Matches kit SectionLabel class. */
 var SECTION_LABEL_CLASS = "rdw-section-label";
@@ -17023,35 +17048,35 @@ var followingFactory = null;
 var statsFactory = null;
 function getSettingsFactory() {
 	if (settingsFactory === null) settingsFactory = async () => {
-		const mod = await module.import('./settings-page-DdN3xIyq-PGVouEJZ.js');
+		const mod = await module.import('./settings-page-4OKCd7_H-DkrVsSqP.js');
 		return /* @__PURE__ */ a(mod.SettingsPage, {});
 	};
 	return settingsFactory;
 }
 function getCollectionsFactory() {
 	if (collectionsFactory === null) collectionsFactory = async () => {
-		const mod = await module.import('./collections-page-B28pT7pW-tDuc-yKP.js');
+		const mod = await module.import('./collections-page-Bdj-8MTa-CX0KoL1E.js');
 		return /* @__PURE__ */ a(mod.CollectionsPage, {});
 	};
 	return collectionsFactory;
 }
 function getFollowingFactory() {
 	if (followingFactory === null) followingFactory = async () => {
-		const mod = await module.import('./following-page-BRzyYNMC-sOTEL6PT.js');
+		const mod = await module.import('./following-page-wCIEOtIW-Cg2bdSIK.js');
 		return /* @__PURE__ */ a(mod.FollowingPage, {});
 	};
 	return followingFactory;
 }
 function getStatsFactory() {
 	if (statsFactory === null) statsFactory = async () => {
-		const mod = await module.import('./stats-section-p5V1Li_6-CIL6Vid-.js');
+		const mod = await module.import('./stats-section-p5V1Li_6-Y8-qHukl.js');
 		return /* @__PURE__ */ a(mod.StatsPage, {});
 	};
 	return statsFactory;
 }
 function collectionDetailFactory(collectionId) {
 	return async () => {
-		const mod = await module.import('./collection-detail-page-BQOK0pxN-B2HZz7yk.js');
+		const mod = await module.import('./collection-detail-page-YTqI9xw4-BXoXq1CN.js');
 		return /* @__PURE__ */ a(mod.CollectionDetailPage, { collectionId }, collectionId);
 	};
 }
@@ -17761,7 +17786,7 @@ async function startApp() {
 	await yieldToMain();
 	maybeResumeFavoritesSync();
 }})}}));
-System.register("./settings-page-DdN3xIyq-PGVouEJZ.js", ['./___monkey.entry.js','./app-CrfiTk0M-NaWWYzDe.js'],(function(exports){'use strict';var d,a,PANEL_UI_CLASS,Switch,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,STATS_MENU_SETTING_LABEL,STATS_MENU_SWITCH_ID,setFeatureEnabled,NumberField,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,setGridFavButtonsVisible,IconChevronRight,IconChevronDown,Card,P$1,T,A,getAppearance,applyAppearanceTheme,getSiteSkinCss,APPEARANCE_THEME_CUSTOM,KIT_FOCUS_CSS,SectionLabel,Select,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,$$1,Segmented,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,TextField,Button,clampBackgroundDim,FEATURES,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,clearFeatureState,applyCssOnlyFeatureEnabled,isFeatureEnabled,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,applyCssOnlyFeatureChoice,getFeatureChoice,createAutocompleteQuerier,b,readSiteBlacklist,Chip,AutocompleteField,ProgressBar,createDefaultCustomTheme,AppearanceThemeSchema,prepareBackgroundImageFile,setFeatureState,writeSiteBlacklist,runFavoritesSync,log,FAVORITES_SYNC_PAGE_PAUSE_MS,clearApiCredentials,setApiCredentials,load,createDefaultStorage,clearStorageCache,clearFavsCache,getSyncState,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,setAppearance,loadFavSet,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,gridDensityFeature,FAVORITES_SYNC_MODE_INCREMENTAL,FAVORITES_SYNC_MODE_FULL,STATS_MENU_SETTING_ID,getApiCredentials,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureEnabled,getFeatureChoiceValue,getFeatureState,getScreenPixelSize,installSiteMenu,loadBackground,clearBackground,saveBackground;return{setters:[function(module){d=module.af;a=module._;PANEL_UI_CLASS=module.a5;Switch=module.ag;UI_TEXT=module.U;TWEAKS_SWITCH_ID=module.ah;setTweaksEnabled=module.ai;STATS_MENU_SETTING_LABEL=module.aj;STATS_MENU_SWITCH_ID=module.ak;setFeatureEnabled=module.al;NumberField=module.am;UPDATES_GROUP_SIZE_ID=module.an;setUpdatesGroupSize=module.ao;getUpdatesGroupSize=module.ap;PLAYLIST_CHUNK_SIZE_ID=module.aq;setPlaylistChunkSize=module.ar;getPlaylistChunkSize=module.as;GRID_FAV_CHECKBOX_ID=module.at;setGridFavButtonsEnabled=module.au;setGridFavButtonsVisible=module.av;IconChevronRight=module.aw;IconChevronDown=module.ax;Card=module.ay;P$1=module.az;T=module.aA;A=module.aB;getAppearance=module.g;applyAppearanceTheme=module.a;getSiteSkinCss=module.a3;APPEARANCE_THEME_CUSTOM=module.aC;KIT_FOCUS_CSS=module.aD;SectionLabel=module.aE;Select=module.aF;APPEARANCE_THEME_SITE=module.a8;APPEARANCE_THEME_SITE_DARK=module.a9;APPEARANCE_THEME_LIGHT=module.aG;APPEARANCE_THEME_DARK=module.aH;$$1=module.a4;Segmented=module.aI;APPEARANCE_CUSTOM_BASE_LIGHT=module.aJ;APPEARANCE_CUSTOM_BASE_DARK=module.aK;TextField=module.aL;Button=module.aM;clampBackgroundDim=module.aN;FEATURES=module.aO;featurePanelLabel=module.aP;FEATURE_CHECKBOX_ID_PREFIX=module.aQ;clearFeatureState=module.aR;applyCssOnlyFeatureEnabled=module.aS;isFeatureEnabled=module.aT;FEATURE_CHOICE_ID_PREFIX=module.aU;setFeatureChoiceValue=module.aV;applyCssOnlyFeatureChoice=module.aW;getFeatureChoice=module.aX;createAutocompleteQuerier=module.aY;b=module.aZ;readSiteBlacklist=module.a_;Chip=module.a$;AutocompleteField=module.b0;ProgressBar=module.b1;createDefaultCustomTheme=module.b2;AppearanceThemeSchema=module.b3;prepareBackgroundImageFile=module.b4;setFeatureState=module.b5;writeSiteBlacklist=module.b6;runFavoritesSync=module.q;log=module.l;FAVORITES_SYNC_PAGE_PAUSE_MS=module.b7;clearApiCredentials=module.b8;setApiCredentials=module.b9;load=module.ba;createDefaultStorage=module.bb;clearStorageCache=module.bc;clearFavsCache=module.bd;getSyncState=module.k;object=module.be;StorageSchema=module.bf;optional=module.bg;string=module.bh;FavsSchema=module.bi;literal=module.bj;IMPORT_SCHEMA_ERROR_PREFIX=module.bk;stripLegacyPanelWindowSize=module.bl;save=module.P;migrateMarksFavToFavs=module.bm;FAVS_STORAGE_KEY=module.bn;createDefaultFavs=module.bo;parseFavsStrict=module.bp;setAppearance=module.bq;loadFavSet=module.br;STORAGE_BACKUP_KEY=module.bs;extractFavIdsFromMarks=module.bt;gridDensityFeature=module.bu;FAVORITES_SYNC_MODE_INCREMENTAL=module.bv;FAVORITES_SYNC_MODE_FULL=module.F;STATS_MENU_SETTING_ID=module.bw;getApiCredentials=module.bx;getTweaksEnabled=module.by;getGridFavButtonsEnabled=module.bz;getFeatureEnabled=module.j;getFeatureChoiceValue=module.bA;getFeatureState=module.bB;getScreenPixelSize=module.bC;},function(module){installSiteMenu=module.a;loadBackground=module.n;clearBackground=module.t;saveBackground=module.r;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
+System.register("./settings-page-4OKCd7_H-DkrVsSqP.js", ['./___monkey.entry.js','./app-CJCUbrZ1-CdVYu896.js'],(function(exports){'use strict';var d,a,PANEL_UI_CLASS,Switch,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,STATS_MENU_SETTING_LABEL,STATS_MENU_SWITCH_ID,setFeatureEnabled,NumberField,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,setGridFavButtonsVisible,IconChevronRight,IconChevronDown,Card,P$1,T,A,getAppearance,applyAppearanceTheme,getSiteSkinCss,APPEARANCE_THEME_CUSTOM,KIT_FOCUS_CSS,SectionLabel,Select,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,$$1,Segmented,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,TextField,Button,clampBackgroundDim,FEATURES,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,clearFeatureState,applyCssOnlyFeatureEnabled,isFeatureEnabled,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,applyCssOnlyFeatureChoice,getFeatureChoice,createAutocompleteQuerier,b,readSiteBlacklist,Chip,AutocompleteField,ProgressBar,createDefaultCustomTheme,AppearanceThemeSchema,prepareBackgroundImageFile,setFeatureState,writeSiteBlacklist,runFavoritesSync,log,FAVORITES_SYNC_PAGE_PAUSE_MS,clearApiCredentials,parseApiCredentials,setApiCredentials,load,createDefaultStorage,clearStorageCache,clearFavsCache,getSyncState,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,setAppearance,loadFavSet,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,gridDensityFeature,FAVORITES_SYNC_MODE_INCREMENTAL,FAVORITES_SYNC_MODE_FULL,STATS_MENU_SETTING_ID,hasApiCredentials,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureEnabled,getFeatureChoiceValue,getFeatureState,getScreenPixelSize,installSiteMenu,loadBackground,clearBackground,saveBackground;return{setters:[function(module){d=module.af;a=module._;PANEL_UI_CLASS=module.a5;Switch=module.ag;UI_TEXT=module.U;TWEAKS_SWITCH_ID=module.ah;setTweaksEnabled=module.ai;STATS_MENU_SETTING_LABEL=module.aj;STATS_MENU_SWITCH_ID=module.ak;setFeatureEnabled=module.al;NumberField=module.am;UPDATES_GROUP_SIZE_ID=module.an;setUpdatesGroupSize=module.ao;getUpdatesGroupSize=module.ap;PLAYLIST_CHUNK_SIZE_ID=module.aq;setPlaylistChunkSize=module.ar;getPlaylistChunkSize=module.as;GRID_FAV_CHECKBOX_ID=module.at;setGridFavButtonsEnabled=module.au;setGridFavButtonsVisible=module.av;IconChevronRight=module.aw;IconChevronDown=module.ax;Card=module.ay;P$1=module.az;T=module.aA;A=module.aB;getAppearance=module.g;applyAppearanceTheme=module.a;getSiteSkinCss=module.a3;APPEARANCE_THEME_CUSTOM=module.aC;KIT_FOCUS_CSS=module.aD;SectionLabel=module.aE;Select=module.aF;APPEARANCE_THEME_SITE=module.a8;APPEARANCE_THEME_SITE_DARK=module.a9;APPEARANCE_THEME_LIGHT=module.aG;APPEARANCE_THEME_DARK=module.aH;$$1=module.a4;Segmented=module.aI;APPEARANCE_CUSTOM_BASE_LIGHT=module.aJ;APPEARANCE_CUSTOM_BASE_DARK=module.aK;TextField=module.aL;Button=module.aM;clampBackgroundDim=module.aN;FEATURES=module.aO;featurePanelLabel=module.aP;FEATURE_CHECKBOX_ID_PREFIX=module.aQ;clearFeatureState=module.aR;applyCssOnlyFeatureEnabled=module.aS;isFeatureEnabled=module.aT;FEATURE_CHOICE_ID_PREFIX=module.aU;setFeatureChoiceValue=module.aV;applyCssOnlyFeatureChoice=module.aW;getFeatureChoice=module.aX;createAutocompleteQuerier=module.aY;b=module.aZ;readSiteBlacklist=module.a_;Chip=module.a$;AutocompleteField=module.b0;ProgressBar=module.b1;createDefaultCustomTheme=module.b2;AppearanceThemeSchema=module.b3;prepareBackgroundImageFile=module.b4;setFeatureState=module.b5;writeSiteBlacklist=module.b6;runFavoritesSync=module.q;log=module.l;FAVORITES_SYNC_PAGE_PAUSE_MS=module.b7;clearApiCredentials=module.b8;parseApiCredentials=module.b9;setApiCredentials=module.ba;load=module.bb;createDefaultStorage=module.bc;clearStorageCache=module.bd;clearFavsCache=module.be;getSyncState=module.k;object=module.bf;StorageSchema=module.bg;optional=module.bh;string=module.bi;FavsSchema=module.bj;literal=module.bk;IMPORT_SCHEMA_ERROR_PREFIX=module.bl;stripLegacyPanelWindowSize=module.bm;save=module.P;migrateMarksFavToFavs=module.bn;FAVS_STORAGE_KEY=module.bo;createDefaultFavs=module.bp;parseFavsStrict=module.bq;setAppearance=module.br;loadFavSet=module.bs;STORAGE_BACKUP_KEY=module.bt;extractFavIdsFromMarks=module.bu;gridDensityFeature=module.bv;FAVORITES_SYNC_MODE_INCREMENTAL=module.bw;FAVORITES_SYNC_MODE_FULL=module.F;STATS_MENU_SETTING_ID=module.bx;hasApiCredentials=module.by;getTweaksEnabled=module.bz;getGridFavButtonsEnabled=module.bA;getFeatureEnabled=module.j;getFeatureChoiceValue=module.bB;getFeatureState=module.bC;getScreenPixelSize=module.bD;},function(module){installSiteMenu=module.a;loadBackground=module.n;clearBackground=module.t;saveBackground=module.r;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
 var THEME_OPTIONS = [
 	{
 		value: APPEARANCE_THEME_SITE,
@@ -18763,23 +18788,25 @@ function DataSection(props = {}) {
 /**
 * Settings for the download manager: the user's own API credentials.
 * The manager exists only while they are stored.
+*
+* The site shows the credentials as one string, `&api_key=…&user_id=…`.
+* That string is pasted whole into one field and split here.
 */
 var SECTION_CLASS$2 = "rdw-downloads-settings";
 var ACTIONS_CLASS$1 = "rdw-downloads-settings-actions";
 var HINT_CLASS = "rdw-downloads-settings-hint";
-var USER_ID_FIELD_ID = "rdw-api-user-id";
-var API_KEY_FIELD_ID = "rdw-api-key";
-var USER_ID_LABEL = "User ID";
-var API_KEY_LABEL = "API key";
+var API_FIELD_ID = "rdw-api-credentials";
+var API_FIELD_LABEL = "API credentials";
+var API_FIELD_PLACEHOLDER = "&api_key=…&user_id=…";
 var REMOVE_LABEL = "Remove key";
 var OPTIONS_URL = "https://rule34.xxx/index.php?page=account&s=options";
 var OPTIONS_LINK_TEXT = "account options page";
 var HINT_BEFORE = "The download manager finds files through the site API with your own key. Generate it on the ";
-var HINT_AFTER = " and paste it here. The key stays in this browser and is not part of the Data export. Without a key there are no download buttons.";
+var HINT_AFTER = ", copy the whole line it shows and paste it here. The key stays in this browser and is not part of the Data export. Without a key there are no download buttons.";
 var STATUS_SAVED = "Saved. Download buttons appear on collection pages and under the search panel.";
 var STATUS_REMOVED = "Key removed.";
-var STATUS_EMPTY = "Enter both the user ID and the API key.";
-var STATUS_STORED = "A key is stored.";
+var STATUS_INVALID = "Paste the whole line from the site: it must hold both api_key and user_id.";
+var STATUS_STORED = "A key is stored. Paste a new line to replace it.";
 var DOWNLOADS_SECTION_CSS = `
 .${SECTION_CLASS$2} {
   display: flex;
@@ -18801,23 +18828,22 @@ var DOWNLOADS_SECTION_CSS = `
 }
 `.trim();
 function DownloadsSection() {
-	const [stored, setStored] = d(() => getApiCredentials() !== null);
-	const [userId, setUserId] = d(() => getApiCredentials()?.userId ?? "");
-	const [apiKey, setApiKey] = d("");
+	const [stored, setStored] = d(() => hasApiCredentials());
+	const [draft, setDraft] = d("");
 	const [status, setStatus] = d("");
 	const save = () => {
-		if (!setApiCredentials(userId, apiKey)) {
-			setStatus(STATUS_EMPTY);
+		const parsed = parseApiCredentials(draft);
+		if (parsed === null || !setApiCredentials(parsed.userId, parsed.apiKey)) {
+			setStatus(STATUS_INVALID);
 			return;
 		}
-		setApiKey("");
+		setDraft("");
 		setStored(true);
 		setStatus(STATUS_SAVED);
 	};
 	const remove = () => {
 		clearApiCredentials();
-		setUserId("");
-		setApiKey("");
+		setDraft("");
 		setStored(false);
 		setStatus(STATUS_REMOVED);
 	};
@@ -18831,37 +18857,31 @@ function DownloadsSection() {
 					event.preventDefault();
 					save();
 				},
-				children: [
-					/* @__PURE__ */ a(TextField, {
-						id: USER_ID_FIELD_ID,
-						label: USER_ID_LABEL,
-						value: userId,
-						onChange: setUserId
-					}),
-					/* @__PURE__ */ a(TextField, {
-						id: API_KEY_FIELD_ID,
-						label: API_KEY_LABEL,
-						type: "password",
-						value: apiKey,
-						placeholder: stored ? STATUS_STORED : "",
-						onChange: setApiKey
-					}),
-					/* @__PURE__ */ a("div", {
-						className: ACTIONS_CLASS$1,
-						children: [/* @__PURE__ */ a(Button, {
-							type: "submit",
-							variant: "primary",
-							size: "s",
-							children: UI_TEXT.save
-						}), stored ? /* @__PURE__ */ a(Button, {
-							type: "button",
-							variant: "secondary",
-							size: "s",
-							onClick: remove,
-							children: REMOVE_LABEL
-						}) : null]
-					})
-				]
+				children: [/* @__PURE__ */ a(TextField, {
+					id: API_FIELD_ID,
+					label: API_FIELD_LABEL,
+					type: "password",
+					value: draft,
+					placeholder: stored ? STATUS_STORED : API_FIELD_PLACEHOLDER,
+					onChange: (value) => {
+						setDraft(value);
+						setStatus("");
+					}
+				}), /* @__PURE__ */ a("div", {
+					className: ACTIONS_CLASS$1,
+					children: [/* @__PURE__ */ a(Button, {
+						type: "submit",
+						variant: "primary",
+						size: "s",
+						children: UI_TEXT.save
+					}), stored ? /* @__PURE__ */ a(Button, {
+						type: "button",
+						variant: "secondary",
+						size: "s",
+						onClick: remove,
+						children: REMOVE_LABEL
+					}) : null]
+				})]
 			}),
 			status.length > 0 ? /* @__PURE__ */ a("p", {
 				className: HINT_CLASS,
@@ -19393,7 +19413,7 @@ function SettingsPage() {
 		]
 	});
 }})}}));
-System.register("./collections-page-B28pT7pW-tDuc-yKP.js", ['./___monkey.entry.js'],(function(exports){'use strict';var d,b,A,reloadFromStorage,load,a,Segmented,TextField,$$1,Button,UI_TEXT,IconPlus,EmptyState,Dialog,resolveCollectionKind,deleteCollection,QueryField,isUnfilteredQuery,createDynamicCollection,createPlaylist,COLLECTION_KIND_POSTS,collectionDetailHash,readCoverMirror,COLLECTION_KIND_SEARCH,IconCheck,readCountMirror,buildSearchUrl,dynamicCollectionMarkHash,serialize;return{setters:[function(module){d=module.af;b=module.aZ;A=module.aB;reloadFromStorage=module.O;load=module.ba;a=module._;Segmented=module.aI;TextField=module.aL;$$1=module.a4;Button=module.aM;UI_TEXT=module.U;IconPlus=module.bD;EmptyState=module.bE;Dialog=module.bF;resolveCollectionKind=module.bG;deleteCollection=module.bH;QueryField=module.bI;isUnfilteredQuery=module.bJ;createDynamicCollection=module.bK;createPlaylist=module.bL;COLLECTION_KIND_POSTS=module.bM;collectionDetailHash=module.bN;readCoverMirror=module.bO;COLLECTION_KIND_SEARCH=module.bP;IconCheck=module.bQ;readCountMirror=module.bR;buildSearchUrl=module.bS;dynamicCollectionMarkHash=module.bT;serialize=module.bU;}],execute:(function(){exports("CollectionsPage",CollectionsPage);var EVENT_PAGESHOW = "pageshow";
+System.register("./collections-page-Bdj-8MTa-CX0KoL1E.js", ['./___monkey.entry.js'],(function(exports){'use strict';var d,b,A,reloadFromStorage,load,a,Segmented,TextField,$$1,Button,UI_TEXT,IconPlus,EmptyState,Dialog,resolveCollectionKind,deleteCollection,QueryField,isUnfilteredQuery,createDynamicCollection,createPlaylist,COLLECTION_KIND_POSTS,collectionDetailHash,readCoverMirror,COLLECTION_KIND_SEARCH,IconCheck,readCountMirror,buildSearchUrl,dynamicCollectionMarkHash,serialize;return{setters:[function(module){d=module.af;b=module.aZ;A=module.aB;reloadFromStorage=module.O;load=module.bb;a=module._;Segmented=module.aI;TextField=module.aL;$$1=module.a4;Button=module.aM;UI_TEXT=module.U;IconPlus=module.bE;EmptyState=module.bF;Dialog=module.bG;resolveCollectionKind=module.bH;deleteCollection=module.bI;QueryField=module.bJ;isUnfilteredQuery=module.bK;createDynamicCollection=module.bL;createPlaylist=module.bM;COLLECTION_KIND_POSTS=module.bN;collectionDetailHash=module.bO;readCoverMirror=module.bP;COLLECTION_KIND_SEARCH=module.bQ;IconCheck=module.bR;readCountMirror=module.bS;buildSearchUrl=module.bT;dynamicCollectionMarkHash=module.bU;serialize=module.bV;}],execute:(function(){exports("CollectionsPage",CollectionsPage);var EVENT_PAGESHOW = "pageshow";
 var PAGE_CLASS = "rdw-collections-page";
 var HEADER_CLASS = "rdw-collections-header";
 var TOOLBAR_CLASS = "rdw-collections-toolbar";
@@ -20118,7 +20138,7 @@ function CollectionsPage() {
 		]
 	});
 }})}}));
-System.register("./following-page-BRzyYNMC-sOTEL6PT.js", ['./___monkey.entry.js'],(function(exports){'use strict';var d,T,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST,A,reloadFromStorage,getSeenPostId,a,completeLastQueryToken,readLastQueryToken,EmptyState,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,Button,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,$$1,Segmented,TextField,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,Select,UI_TEXT,ProgressBar,Dialog,removeArtist,load,AutocompleteField,addArtists,buildSearchUrl,TAG_TYPE_INCLUDE,IconCheck,IconButton,IconX,removeArtists,rememberArtistSnapshot,fetchArtistSnapshot,log;return{setters:[function(module){d=module.af;T=module.aA;createAutocompleteQuerier=module.aY;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.bV;A=module.aB;reloadFromStorage=module.O;getSeenPostId=module.bW;a=module._;completeLastQueryToken=module.bX;readLastQueryToken=module.bY;EmptyState=module.bE;ARTISTS_EMPTY_HINT=module.bZ;ARTISTS_EMPTY_TITLE=module.b_;Button=module.aM;SEARCH_PATH=module.Z;SEARCH_PARAM_PAGE=module.W;SEARCH_PAGE=module.b$;SEARCH_SECTION=module.c0;$$1=module.a4;Segmented=module.aI;TextField=module.aL;ARTIST_FILTER_LABEL=module.c1;ARTIST_FILTER_ID=module.c2;Select=module.aF;UI_TEXT=module.U;ProgressBar=module.b1;Dialog=module.bF;removeArtist=module.c3;load=module.ba;AutocompleteField=module.b0;addArtists=module.c4;buildSearchUrl=module.bS;TAG_TYPE_INCLUDE=module.c5;IconCheck=module.bQ;IconButton=module.c6;IconX=module.c7;removeArtists=module.c8;rememberArtistSnapshot=module.c9;fetchArtistSnapshot=module.ca;log=module.l;}],execute:(function(){exports("FollowingPage",FollowingPage);var EVENT_PAGESHOW = "pageshow";
+System.register("./following-page-wCIEOtIW-Cg2bdSIK.js", ['./___monkey.entry.js'],(function(exports){'use strict';var d,T,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST,A,reloadFromStorage,getSeenPostId,a,completeLastQueryToken,readLastQueryToken,EmptyState,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,Button,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,$$1,Segmented,TextField,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,Select,UI_TEXT,ProgressBar,Dialog,removeArtist,load,AutocompleteField,addArtists,buildSearchUrl,TAG_TYPE_INCLUDE,IconCheck,IconButton,IconX,removeArtists,rememberArtistSnapshot,fetchArtistSnapshot,log;return{setters:[function(module){d=module.af;T=module.aA;createAutocompleteQuerier=module.aY;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.bW;A=module.aB;reloadFromStorage=module.O;getSeenPostId=module.bX;a=module._;completeLastQueryToken=module.bY;readLastQueryToken=module.bZ;EmptyState=module.bF;ARTISTS_EMPTY_HINT=module.b_;ARTISTS_EMPTY_TITLE=module.b$;Button=module.aM;SEARCH_PATH=module.Z;SEARCH_PARAM_PAGE=module.W;SEARCH_PAGE=module.c0;SEARCH_SECTION=module.c1;$$1=module.a4;Segmented=module.aI;TextField=module.aL;ARTIST_FILTER_LABEL=module.c2;ARTIST_FILTER_ID=module.c3;Select=module.aF;UI_TEXT=module.U;ProgressBar=module.b1;Dialog=module.bG;removeArtist=module.c4;load=module.bb;AutocompleteField=module.b0;addArtists=module.c5;buildSearchUrl=module.bT;TAG_TYPE_INCLUDE=module.c6;IconCheck=module.bR;IconButton=module.c7;IconX=module.c8;removeArtists=module.c9;rememberArtistSnapshot=module.ca;fetchArtistSnapshot=module.cb;log=module.l;}],execute:(function(){exports("FollowingPage",FollowingPage);var EVENT_PAGESHOW = "pageshow";
 var PAGE_CLASS = "rdw-following-page";
 var ADD_FORM_CLASS = "rdw-following-add";
 var TOOLBAR_CLASS = "rdw-following-toolbar";
@@ -20853,7 +20873,7 @@ function FollowingPage() {
 		]
 	});
 }})}}));
-System.register("./stats-section-p5V1Li_6-CIL6Vid-.js", ['./___monkey.entry.js'],(function(exports){'use strict';var a,PANEL_UI_CLASS,Card,getSeenPostId,loadFavSet,load,resolveCollectionKind;return{setters:[function(module){a=module._;PANEL_UI_CLASS=module.a5;Card=module.ay;getSeenPostId=module.bW;loadFavSet=module.br;load=module.ba;resolveCollectionKind=module.bG;}],execute:(function(){exports("StatsPage",StatsPage);/**
+System.register("./stats-section-p5V1Li_6-Y8-qHukl.js", ['./___monkey.entry.js'],(function(exports){'use strict';var a,PANEL_UI_CLASS,Card,getSeenPostId,loadFavSet,load,resolveCollectionKind;return{setters:[function(module){a=module._;PANEL_UI_CLASS=module.a5;Card=module.ay;getSeenPostId=module.bX;loadFavSet=module.bs;load=module.bb;resolveCollectionKind=module.bH;}],execute:(function(){exports("StatsPage",StatsPage);/**
 * Numbers about what the script stores, computed from local data when the
 * settings page opens. Nothing is requested from the site, so these are counts
 * of your own library, not totals of the site.
@@ -21068,7 +21088,7 @@ function StatsPage() {
 		children: /* @__PURE__ */ a(StatsSection, {})
 	});
 }})}}));
-System.register("./collection-detail-page-BQOK0pxN-B2HZz7yk.js", ['./___monkey.entry.js','./app-CrfiTk0M-NaWWYzDe.js'],(function(exports){'use strict';var d,T,w$1,b,downloadsAvailable,a,$$1,Button,UI_TEXT,shuffleCollection,resetCollectionOrder,EmptyState,Dialog,TextField,Toast,getCollectionOrder,listPlaylists,RDW_HASH_COLLECTIONS,removePostsFromCollection,isDownloadBusy,startDownload,movePostInCollection,renameCollection,deleteCollection,RDW_ROUTE_COLLECTIONS,restorePosts,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION_VIEW,SEARCH_PATH,collectionQueueHash,navigateToRdwRoute;return{setters:[function(module){d=module.af;T=module.aA;w$1=module.cb;b=module.aZ;downloadsAvailable=module.cc;a=module._;$$1=module.a4;Button=module.aM;UI_TEXT=module.U;shuffleCollection=module.cd;resetCollectionOrder=module.ce;EmptyState=module.bE;Dialog=module.bF;TextField=module.aL;Toast=module.cf;getCollectionOrder=module.cg;listPlaylists=module.ch;RDW_HASH_COLLECTIONS=module.v;removePostsFromCollection=module.ci;isDownloadBusy=module.cj;startDownload=module.ck;movePostInCollection=module.cl;renameCollection=module.cm;deleteCollection=module.bH;RDW_ROUTE_COLLECTIONS=module.cn;restorePosts=module.co;SEARCH_PARAM_PAGE=module.W;SEARCH_PAGE=module.b$;SEARCH_SECTION_VIEW=module.cp;SEARCH_PATH=module.Z;collectionQueueHash=module.cq;},function(module){navigateToRdwRoute=module.i;}],execute:(function(){exports("CollectionDetailPage",CollectionDetailPage);var CELL_SIZE_PX = 200;
+System.register("./collection-detail-page-YTqI9xw4-BXoXq1CN.js", ['./___monkey.entry.js','./app-CJCUbrZ1-CdVYu896.js'],(function(exports){'use strict';var d,T,w$1,b,downloadsAvailable,a,$$1,Button,UI_TEXT,shuffleCollection,resetCollectionOrder,EmptyState,Dialog,TextField,Toast,getCollectionOrder,listPlaylists,RDW_HASH_COLLECTIONS,removePostsFromCollection,isDownloadBusy,startDownload,movePostInCollection,renameCollection,deleteCollection,RDW_ROUTE_COLLECTIONS,restorePosts,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION_VIEW,SEARCH_PATH,collectionQueueHash,navigateToRdwRoute;return{setters:[function(module){d=module.af;T=module.aA;w$1=module.cc;b=module.aZ;downloadsAvailable=module.cd;a=module._;$$1=module.a4;Button=module.aM;UI_TEXT=module.U;shuffleCollection=module.ce;resetCollectionOrder=module.cf;EmptyState=module.bF;Dialog=module.bG;TextField=module.aL;Toast=module.cg;getCollectionOrder=module.ch;listPlaylists=module.ci;RDW_HASH_COLLECTIONS=module.v;removePostsFromCollection=module.cj;isDownloadBusy=module.ck;startDownload=module.cl;movePostInCollection=module.cm;renameCollection=module.cn;deleteCollection=module.bI;RDW_ROUTE_COLLECTIONS=module.co;restorePosts=module.cp;SEARCH_PARAM_PAGE=module.W;SEARCH_PAGE=module.c0;SEARCH_SECTION_VIEW=module.cq;SEARCH_PATH=module.Z;collectionQueueHash=module.cr;},function(module){navigateToRdwRoute=module.i;}],execute:(function(){exports("CollectionDetailPage",CollectionDetailPage);var CELL_SIZE_PX = 200;
 var GRID_GAP_PX = 4;
 var SECTION_GAP_PX = 12;
 var ACTIONS_GAP_PX = 8;
