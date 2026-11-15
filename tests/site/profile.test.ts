@@ -17,7 +17,7 @@ const NOW = Date.UTC(2026, 10, 15);
 const ACCOUNT_HTML = `
 <div id="content"><div id="user-index">
   <form><h4><button type="submit">» Logout</button></h4></form>
-  <h4><a href="index.php?page=account&amp;s=profile&amp;id=77">» My Profile</a></h4>
+  <h4><a href="index.php?page=account&amp;s=profile&amp;id=5559">» My Profile</a></h4>
   <h4><a href="index.php?page=gmail&amp;s=list">» My Mail</a></h4>
 </div></div>`;
 
@@ -62,12 +62,12 @@ describe("site profile", () => {
 
   it("finds the profile address on My Account and refuses any other link", () => {
     expect(readProfileUrl(parse(ACCOUNT_HTML), BASE)).toBe(
-      "https://rule34.xxx/index.php?page=account&s=profile&id=77",
+      "https://rule34.xxx/index.php?page=account&s=profile&id=5559",
     );
     expect(readProfileUrl(parse("<div id='user-index'></div>"), BASE)).toBeNull();
     const foreign = ACCOUNT_HTML.replace(
-      "index.php?page=account&amp;s=profile&amp;id=77",
-      "https://example.test/index.php?page=account&amp;s=profile&amp;id=77",
+      "index.php?page=account&amp;s=profile&amp;id=5559",
+      "https://example.test/index.php?page=account&amp;s=profile&amp;id=5559",
     );
     expect(readProfileUrl(parse(foreign), BASE)).toBeNull();
   });
@@ -89,6 +89,8 @@ describe("site profile", () => {
 
   it("makes two requests with a pause and stores only the numbers", async () => {
     vi.useFakeTimers();
+    // A fixed clock: the stored time must not hold the digits of the id by chance.
+    vi.setSystemTime(NOW);
     const urls: string[] = [];
     vi.stubGlobal("fetch", (url: string): Promise<Response> => {
       urls.push(url);
@@ -102,11 +104,11 @@ describe("site profile", () => {
     const stats = await run;
 
     expect(urls).toHaveLength(2);
-    expect(urls[1]).toContain("page=account&s=profile&id=77");
+    expect(urls[1]).toContain("page=account&s=profile&id=5559");
     expect(stats.posts).toBe(2753);
     expect(readStoredProfileStats()?.tagEdits).toBe(666);
     // The id from the profile address is kept nowhere.
-    expect(JSON.stringify([...memory.values()])).not.toContain("77");
+    expect(JSON.stringify([...memory.values()])).not.toContain("5559");
   });
 
   it("says so when the account page has no profile link", async () => {

@@ -135,8 +135,8 @@ const SHOW_OPTIONS: readonly SegmentedOption[] = [
 ];
 
 const SORT_OPTIONS: readonly SelectOption[] = [
-  { value: SORT_NAME, label: "Name" },
-  { value: SORT_POSTS, label: "Posts" },
+  { value: SORT_NAME, label: "By name" },
+  { value: SORT_POSTS, label: "By posts" },
   { value: SORT_ADDED, label: "Recently followed" },
 ];
 
@@ -170,6 +170,18 @@ export const FOLLOWING_PAGE_CSS = `
   min-width: 0;
   max-width: 100%;
   margin: 0;
+}
+/*
+ * The caption over the sort list made the row taller than the one on
+ * Collections. It stays for screen readers; the options say what they sort by.
+ */
+.${TOOLBAR_CLASS} .rdw-select__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 /* Starts short and grows with what is typed, up to the row. */
 .${FILTER_CLASS} .rdw-field__input {

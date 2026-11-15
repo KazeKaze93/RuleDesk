@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.29.3
+
+- Following: the row of buttons sits as close to the title as on Collections. The "Sort" caption over the list is gone; its options now read "By name", "By posts", "Recently followed"
+
 ## 0.29.2
 
 - The switches with several options (All / New, Tiles / List and the like) are the same height as the buttons and fields next to them; before they were taller
