@@ -26,10 +26,13 @@ ${KIT_FOCUS_CSS}
   border-radius: var(--rdw-radius-m);
   padding: 2px;
   gap: 2px;
+  /* The whole control is as tall as a button or a field beside it. */
+  box-sizing: border-box;
+  height: ${KIT_MIN_TARGET_PX}px;
 }
 .rdw-seg__btn {
-  min-height: ${KIT_MIN_TARGET_PX}px;
-  height: ${KIT_MIN_TARGET_PX}px;
+  min-height: 0;
+  height: 100%;
   display: grid;
   place-items: center;
   border: 0;

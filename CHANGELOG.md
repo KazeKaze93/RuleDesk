@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.29.2
+
+- The switches with several options (All / New, Tiles / List and the like) are the same height as the buttons and fields next to them; before they were taller
+
 ## 0.29.1
 
 - Following: the "Artist tags" row is replaced by an "Add artists" button that opens a window, like "New" on Collections. The window closes when every tag was added and stays open with a note when some were skipped

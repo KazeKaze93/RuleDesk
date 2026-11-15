@@ -7,7 +7,7 @@ A userscript for `rule34.xxx` that adds a feed of followed artists, collections,
 - [Settings](#settings)
 - [Your data](#your-data)
 - [Limits](#limits)
-- [Questions and answers](FAQ.md)
+- [FAQ](FAQ.md)
 - [Changelog](CHANGELOG.md)
 - [Developer documentation](docs/)
 

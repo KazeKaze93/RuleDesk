@@ -1,4 +1,4 @@
-# RuleDesk: questions and answers
+# RuleDesk FAQ
 
 Short answers to what comes up most often. What the script does is in the [README](README.md); what changed in each version is in the [changelog](CHANGELOG.md).
 
