@@ -43,6 +43,18 @@ describe("site skin: forms, tables and text columns", () => {
     );
   });
 
+  it("lays the favorites Remove link on the preview and shows it under the pointer", () => {
+    const rule = ruleFor("div.image-list > span > a[onclick] {\n    position: absolute");
+    expect(rule).toContain("position-anchor: --rdw-fav-img");
+    expect(rule).toContain("top: calc(anchor(top) + 6px)");
+    expect(rule).toContain("opacity: 0");
+    expect(ruleFor("div.image-list > span > span.thumb > a > img {\n    anchor-name")).toContain(
+      "anchor-name: --rdw-img, --rdw-fav-img",
+    );
+    expect(SITE_SKIN_CSS).toContain("div.image-list > span:hover > a[onclick],");
+    expect(SITE_SKIN_CSS).toContain("div.image-list > span > a[onclick] {\n    display: none");
+  });
+
   it("makes the favorites Remove link quiet", () => {
     expect(ruleFor("div.image-list > span > a[onclick] > b")).toContain("font-weight: normal");
   });

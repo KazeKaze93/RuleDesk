@@ -102,12 +102,15 @@ const KEY_SELECTORS = [
   `span.thumb > a[onclick]`,
 ] as const;
 
+const SUPPORTS_OPENING = /@supports[^{]*\{/g;
+
 function stripComments(css: string): string {
   return css.replace(COMMENT_BLOCK, "");
 }
 
 function ruleSelectors(css: string): string[] {
-  const bare = stripComments(css);
+  // The opening of an `@supports` block is not a selector; its rules are.
+  const bare = stripComments(css).replace(SUPPORTS_OPENING, "");
   const selectors: string[] = [];
   for (const chunk of bare.split("}")) {
     const open = chunk.indexOf("{");

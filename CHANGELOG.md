@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.25.3
+
+- Favorites: "Remove" is now a small button in the top right corner of the preview, shown while the pointer is over the post. The separate line under each thumbnail is gone, so the rows sit closer. The button is hidden while posts are being selected
+
 ## 0.25.2
 
 - Favorites: video posts get the same outline as on the Posts page, and "Video preview on hover" works there. The site does not mark videos on that page, so the script reads the `video` tag from the thumbnail

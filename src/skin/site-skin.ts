@@ -4,6 +4,7 @@
  * Injected via applyAppearanceTheme → injectSiteSkinHook(getSiteSkinCss()).
  */
 
+import { THUMB_ANCHOR_NAME } from "../features/types";
 import { VIDEO_THUMB_CLASS } from "../site/favorites-video";
 import {
   APPEARANCE_THEME_DARK,
@@ -32,6 +33,11 @@ const SEARCH_TOOLS_ROOT_ID = "rdw-search-tools";
 const SITE_CONTROL_MIN_HEIGHT_PX = 30;
 /** Widest a comment or forum post grows before the line gets too long to read. */
 const COMMENT_MAX_WIDTH_PX = 1100;
+/** Anchor of a favorites preview, visible to the Remove link beside its thumb. */
+const FAV_REMOVE_ANCHOR_NAME = "--rdw-fav-img";
+const FAV_REMOVE_INSET_PX = 6;
+/** Above the hover video preview. */
+const FAV_REMOVE_Z_INDEX = 4;
 const NOT_RDW_CLASS = ':not([class*="rdw-"])';
 const NOT_SEARCH_TOOLS_DESCENDANT = `:not(#${SEARCH_TOOLS_ROOT_ID} *)`;
 /**
@@ -908,6 +914,53 @@ ${ROOT} div.image-list > span > a[onclick] > b {
 
 ${ROOT} div.image-list > span > a[onclick]:hover {
   color: ${v.danger};
+}
+
+/*
+ * Favorites: "Remove" lies on the preview, in its top right corner, and shows
+ * while the pointer is over the post. The link stays where the site put it in
+ * the page; it is only positioned against the image. The row the site kept
+ * for it under the thumb goes away. Hidden while posts are being selected.
+ */
+@supports (anchor-name: --a) {
+  ${ROOT} div.image-list > span:has(> a[onclick]) {
+    anchor-scope: ${FAV_REMOVE_ANCHOR_NAME};
+    grid-template-rows: auto !important;
+  }
+
+  ${ROOT} div.image-list > span:has(> a[onclick]) > br {
+    display: none;
+  }
+
+  ${ROOT} div.image-list > span > span.thumb > a > img {
+    anchor-name: ${THUMB_ANCHOR_NAME}, ${FAV_REMOVE_ANCHOR_NAME};
+  }
+
+  ${ROOT} div.image-list > span > a[onclick] {
+    position: absolute;
+    position-anchor: ${FAV_REMOVE_ANCHOR_NAME};
+    top: calc(anchor(top) + ${String(FAV_REMOVE_INSET_PX)}px);
+    right: calc(anchor(right) + ${String(FAV_REMOVE_INSET_PX)}px);
+    z-index: ${String(FAV_REMOVE_Z_INDEX)};
+    padding: 3px 8px;
+    border: 1px solid ${v.border};
+    border-radius: ${v.radiusS};
+    background: ${v.surface};
+    color: ${v.text};
+    line-height: 1.3;
+    text-decoration: none;
+    opacity: 0;
+    transition: opacity 0.12s ease;
+  }
+
+  ${ROOT} div.image-list > span:hover > a[onclick],
+  ${ROOT} div.image-list > span > a[onclick]:focus-visible {
+    opacity: 1;
+  }
+
+  ${ROOT} body.${FAV_BULK_SELECTING_BODY_CLASS} div.image-list > span > a[onclick] {
+    display: none;
+  }
 }
 
 /*
