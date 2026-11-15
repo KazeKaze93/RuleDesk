@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RuleDesk Web
 // @namespace    https://github.com/kazekaze93/ruledesk-web
-// @version      0.31.1
+// @version      0.32.0
 // @description  Collections, playlists, favorites, artist updates, and page tweaks for rule34.xxx
 // @downloadURL  https://raw.githubusercontent.com/KazeKaze93/RuleDesk/main/dist/ruledesk-web.user.js
 // @updateURL    https://raw.githubusercontent.com/KazeKaze93/RuleDesk/main/dist/ruledesk-web.user.js
@@ -7364,7 +7364,7 @@ function downloadCountText(state) {
 	const counted = `${String(state.done)} / ${String(state.total)}`;
 	return state.failed > 0 ? `${counted}${TEXT_FAILED_JOIN}${String(state.failed)}` : counted;
 }
-function statusText(state) {
+function statusText$1(state) {
 	if (state.phase === "collecting") return `${TEXT_COLLECTING}${String(state.total)}`;
 	if (state.phase === "error") return state.message;
 	if (state.phase === "paused") return `${TEXT_PAUSED} · ${downloadCountText(state)}`;
@@ -7385,14 +7385,14 @@ function DownloadsPanel() {
 		}),
 		state.phase === "collecting" ? /* @__PURE__ */ a(ProgressBar, {
 			waiting: true,
-			label: statusText(state)
+			label: statusText$1(state)
 		}) : state.phase === "error" ? /* @__PURE__ */ a("p", {
 			className: TEXT_CLASS,
 			role: "alert",
-			children: statusText(state)
+			children: statusText$1(state)
 		}) : /* @__PURE__ */ a(ProgressBar, {
 			value: state.total === 0 ? 0 : processed / state.total,
-			label: statusText(state)
+			label: statusText$1(state)
 		}),
 		/* @__PURE__ */ a("div", {
 			className: ACTIONS_CLASS$1,
@@ -7527,6 +7527,477 @@ async function removeFavorite(postId, options = {}) {
 		return { status: "error" };
 	}
 }
+/**
+* What the Favorites page needs to search and show every favorite without
+* asking the site: the tags and the preview address of each post.
+*
+* "Sync favorites" fills it while it walks the site's favorites pages. It is
+* kept in IndexedDB, apart from the main storage: a library of twelve
+* thousand favorites is several megabytes. It is not part of the Data export;
+* a full resync builds it again.
+*/
+var DB_NAME = "ruledesk-web.favorites-index";
+var DB_VERSION = 1;
+var STORE_NAME = "posts";
+var KEY_PATH = "id";
+var FavoriteIndexEntrySchema = /* @__PURE__ */ object({
+	id: int(),
+	/** The tag list as the site prints it on the preview, space separated. */
+	tags: /* @__PURE__ */ string(),
+	/** Address of the preview image. */
+	thumb: /* @__PURE__ */ string(),
+	/** When the sync run that saw the post started, ms since epoch. */
+	run: /* @__PURE__ */ number(),
+	/** Place of the post in the site's list during that run, 0 is the newest favorite. */
+	pos: int()
+});
+/** False where the browser gives no IndexedDB (and in tests without a stub). */
+function favoritesIndexAvailable() {
+	return typeof indexedDB !== "undefined";
+}
+function openDb() {
+	return new Promise((resolve, reject) => {
+		const request = indexedDB.open(DB_NAME, DB_VERSION);
+		request.onerror = () => {
+			reject(request.error ?? /* @__PURE__ */ new Error("favorites-index: open failed"));
+		};
+		request.onsuccess = () => {
+			resolve(request.result);
+		};
+		request.onupgradeneeded = () => {
+			const db = request.result;
+			if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME, { keyPath: KEY_PATH });
+		};
+	});
+}
+function whenDone(tx) {
+	return new Promise((resolve, reject) => {
+		tx.oncomplete = () => {
+			resolve();
+		};
+		tx.onerror = () => {
+			reject(tx.error ?? /* @__PURE__ */ new Error("favorites-index: transaction failed"));
+		};
+		tx.onabort = () => {
+			reject(tx.error ?? /* @__PURE__ */ new Error("favorites-index: transaction aborted"));
+		};
+	});
+}
+/** Adds or replaces entries. Does nothing without IndexedDB. */
+async function putFavoriteIndexEntries(entries) {
+	if (entries.length === 0 || !favoritesIndexAvailable()) return;
+	const db = await openDb();
+	try {
+		const tx = db.transaction(STORE_NAME, "readwrite");
+		const store = tx.objectStore(STORE_NAME);
+		for (const entry of entries) store.put(entry);
+		await whenDone(tx);
+	} finally {
+		db.close();
+	}
+}
+/** Every stored entry that still has the expected shape. */
+async function readFavoriteIndex() {
+	if (!favoritesIndexAvailable()) return [];
+	const db = await openDb();
+	try {
+		const request = db.transaction(STORE_NAME, "readonly").objectStore(STORE_NAME).getAll();
+		const rows = await new Promise((resolve, reject) => {
+			request.onerror = () => {
+				reject(request.error ?? /* @__PURE__ */ new Error("favorites-index: read failed"));
+			};
+			request.onsuccess = () => {
+				const result = request.result;
+				resolve(Array.isArray(result) ? result : []);
+			};
+		});
+		const entries = [];
+		for (const row of rows) {
+			const parsed = FavoriteIndexEntrySchema.safeParse(row);
+			if (parsed.success) entries.push(parsed.data);
+		}
+		return entries;
+	} finally {
+		db.close();
+	}
+}
+/** Like {@link putFavoriteIndexEntries}, but a failure is logged, not thrown. */
+function putFavoriteIndexEntriesQuietly(entries) {
+	putFavoriteIndexEntries(entries).catch((error) => {
+		log.warn("favorites-index: write failed", error);
+	});
+}
+var MEDIA_IMAGES$1 = "images";
+var MEDIA_VIDEOS = "videos";
+var TERM_SEPARATOR = /\s+/;
+var EXCLUDE_PREFIX = "-";
+var WILDCARD = "*";
+var REGEXP_SPECIAL = /[.+?^${}()|[\]\\]/g;
+function termPattern(term) {
+	const body = term.split(WILDCARD).map((part) => part.replace(REGEXP_SPECIAL, "\\$&")).join(".*");
+	return new RegExp(`^${body}$`);
+}
+function isFavoritesMedia(value) {
+	return value === "all" || value === "images" || value === "videos";
+}
+/** Parses what was typed. Case does not matter: the site's tags are lower case. */
+function parseFavoritesQuery(text) {
+	const include = [];
+	const exclude = [];
+	for (const raw of text.toLowerCase().split(TERM_SEPARATOR)) {
+		if (raw.length === 0) continue;
+		if (raw.startsWith(EXCLUDE_PREFIX)) {
+			const term = raw.slice(1);
+			if (term.length > 0) exclude.push(termPattern(term));
+			continue;
+		}
+		include.push(termPattern(raw));
+	}
+	return {
+		include,
+		exclude
+	};
+}
+function isEmptyFavoritesQuery(query) {
+	return query.include.length === 0 && query.exclude.length === 0;
+}
+function hasTag(tags, pattern) {
+	return tags.some((tag) => pattern.test(tag));
+}
+function matchesQuery(tags, query) {
+	return query.include.every((pattern) => hasTag(tags, pattern)) && !query.exclude.some((pattern) => hasTag(tags, pattern));
+}
+function matchesMedia(entry, media) {
+	if (media === "all") return true;
+	return titleSaysVideo(entry.tags) === (media === MEDIA_VIDEOS);
+}
+/**
+* The favorites that match, in the site's order: the newest favorite first.
+* A post that is no longer a favorite is left out even while the index still
+* holds it.
+*/
+function filterFavoriteIndex(entries, favoriteIds, query, media) {
+	return entries.filter((entry) => favoriteIds.has(entry.id) && matchesMedia(entry, media) && matchesQuery(entry.tags.split(TERM_SEPARATOR), query)).sort((a, b) => b.run - a.run || a.pos - b.pos || b.id - a.id);
+}
+/**
+* Search, the Images / Videos switch and endless scrolling on the Favorites
+* page, all from the local index (`src/storage/favorites-index.ts`), without
+* requests.
+*
+* While any of them is on, the site's own grid and pager are hidden and the
+* matching favorites are drawn in a grid of the same markup the site uses for
+* a favorites cell. Everything that works on the site's cells (the video
+* outline and preview, the collections button, the bin, selecting) therefore
+* works on these too.
+*/
+var FAVORITES_BROWSING_BODY_CLASS = "rdw-fav-browsing";
+var FAVORITES_RESULTS_CLASS = "rdw-fav-results";
+var MORE_CLASS = "rdw-fav-more";
+var CONTROLS_CLASS = "rdw-fav-controls";
+var STATUS_CLASS$2 = "rdw-fav-status";
+var SEARCH_FIELD_CLASS = "rdw-fav-search";
+var VIEW_STATE_ID = "favorites-view";
+var VIEW_PAGES = "pages";
+var VIEW_SCROLL = "scroll";
+var TYPING_PAUSE_MS = 250;
+var MORE_ROOT_MARGIN = "600px";
+var SEARCH_FIELD_ID = "rdw-fav-search";
+var SEARCH_PLACEHOLDER = "Search favorites: tag -tag tag*";
+var MEDIA_LABEL = "Media";
+var VIEW_LABEL = "Paging";
+var MORE_LABEL = "Show more";
+var LOCALE$1 = "en-US";
+var NO_INDEX_STATUS = "No index yet: run Full resync in RuleDesk → Favorites to search and scroll here.";
+var REMOVE_FAILED_STATUS = "Could not remove the favorite. Try again.";
+var MEDIA_OPTIONS$1 = [
+	{
+		value: "all",
+		label: "All"
+	},
+	{
+		value: MEDIA_IMAGES$1,
+		label: "Images"
+	},
+	{
+		value: MEDIA_VIDEOS,
+		label: "Videos"
+	}
+];
+var VIEW_OPTIONS = [{
+	value: VIEW_PAGES,
+	label: "Pages"
+}, {
+	value: VIEW_SCROLL,
+	label: "Scroll"
+}];
+/** The site's own inline style of a favorites cell. */
+var CELL_STYLE = "align-self: flex-start; display: grid; grid-template-rows: auto 10px;";
+var POST_HREF_PREFIX = "index.php?page=post&s=view&id=";
+var IMAGE_ALT = "image_thumb";
+var REMOVE_TEXT = "Remove";
+var FAVORITES_BROWSER_CSS = `
+body.${FAVORITES_BROWSING_BODY_CLASS} ${SITE_SELECTORS.imageList}:not(.${FAVORITES_RESULTS_CLASS}),
+body.${FAVORITES_BROWSING_BODY_CLASS} #paginator {
+  display: none !important;
+}
+body:not(.${FAVORITES_BROWSING_BODY_CLASS}) .${FAVORITES_RESULTS_CLASS},
+body:not(.${FAVORITES_BROWSING_BODY_CLASS}) .${MORE_CLASS} {
+  display: none;
+}
+.${CONTROLS_CLASS} {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+}
+.${CONTROLS_CLASS} .${SEARCH_FIELD_CLASS} {
+  flex: 0 1 260px;
+  min-width: 0;
+  margin: 0;
+}
+.${STATUS_CLASS$2} {
+  font: 12px var(--rdw-font);
+  color: var(--rdw-muted);
+}
+.${MORE_CLASS} {
+  display: block;
+  margin: 12px auto 24px;
+  padding: 6px 14px;
+  border: 1px solid var(--rdw-border);
+  border-radius: var(--rdw-radius-m);
+  background: var(--rdw-surface);
+  color: var(--rdw-text);
+  font: 600 12px var(--rdw-font);
+  cursor: pointer;
+}
+.${MORE_CLASS}[hidden] {
+  display: none;
+}
+`.trim();
+function isFavoritesView(value) {
+	return value === "pages" || value === "scroll";
+}
+function readView() {
+	const stored = getFeatureState(VIEW_STATE_ID);
+	return isFavoritesView(stored) ? stored : VIEW_PAGES;
+}
+/** Where the favorites cells on screen are: the results grid while it is shown. */
+function favoritesGridRoot() {
+	if (document.body.classList.contains("rdw-fav-browsing")) {
+		const results = document.querySelector(`.${FAVORITES_RESULTS_CLASS}`);
+		if (results !== null) return results;
+	}
+	return document;
+}
+/** A cell with the markup of the site's favorites grid. */
+function buildFavoriteCell(entry) {
+	const id = String(entry.id);
+	const cell = document.createElement("span");
+	cell.setAttribute("style", CELL_STYLE);
+	const thumb = document.createElement("span");
+	thumb.className = "thumb";
+	const link = document.createElement("a");
+	link.id = `p${id}`;
+	link.href = `${POST_HREF_PREFIX}${id}`;
+	const img = document.createElement("img");
+	img.src = entry.thumb;
+	img.title = entry.tags;
+	img.alt = IMAGE_ALT;
+	img.loading = "lazy";
+	link.append(img);
+	thumb.append(link);
+	const remove = document.createElement("a");
+	remove.href = "#";
+	remove.setAttribute("onclick", `document.location='index.php?page=favorites&s=delete&id=${id}&return_pid=0'; return false;`);
+	const bold = document.createElement("b");
+	bold.textContent = REMOVE_TEXT;
+	remove.append(bold);
+	cell.append(thumb, document.createElement("br"), remove);
+	return cell;
+}
+var grid = null;
+var onRemoveFailed = null;
+function appendChunk(target) {
+	const next = target.results.slice(target.shown, target.shown + 100);
+	for (const entry of next) target.container.append(buildFavoriteCell(entry));
+	target.shown += next.length;
+	target.more.hidden = target.shown >= target.results.length;
+	if (next.length > 0) notifyThumbsAdded(target.container);
+}
+/**
+* The bin of a result cell removes the favorite in place. The site's own link
+* would leave for the delete address and come back to its first page.
+*/
+function onResultsClick(event) {
+	const target = event.target;
+	if (!(target instanceof Element)) return;
+	const link = target.closest("a[onclick]");
+	if (!(link instanceof HTMLAnchorElement)) return;
+	const postId = extractPostIdFromFavoritesDeleteOnclick(link.getAttribute("onclick") ?? "");
+	if (postId === null) return;
+	event.preventDefault();
+	event.stopPropagation();
+	const cell = link.parentElement;
+	removeFavorite(postId).then((result) => {
+		if (result.status === "removed") {
+			cell?.remove();
+			return;
+		}
+		onRemoveFailed?.();
+	}).catch((error) => {
+		log.warn("favorites-browser: remove failed", error);
+		onRemoveFailed?.();
+	});
+}
+function ensureGrid() {
+	if (grid !== null && grid.container.isConnected) return grid;
+	const siteList = document.querySelector(`${SITE_SELECTORS.imageList}:not(.${FAVORITES_RESULTS_CLASS})`);
+	if (siteList === null) return null;
+	const container = document.createElement("div");
+	container.className = `image-list ${FAVORITES_RESULTS_CLASS}`;
+	container.addEventListener("click", onResultsClick, true);
+	const more = document.createElement("button");
+	more.type = "button";
+	more.className = MORE_CLASS;
+	more.textContent = MORE_LABEL;
+	more.hidden = true;
+	siteList.after(container, more);
+	const created = {
+		container,
+		more,
+		results: [],
+		shown: 0
+	};
+	more.addEventListener("click", () => {
+		appendChunk(created);
+	});
+	if (typeof IntersectionObserver === "function") new IntersectionObserver((records) => {
+		if (records.some((record) => record.isIntersecting)) appendChunk(created);
+	}, { rootMargin: MORE_ROOT_MARGIN }).observe(more);
+	grid = created;
+	return created;
+}
+/** Shows `results` instead of the site's grid. */
+function showFavoriteResults(results) {
+	const target = ensureGrid();
+	if (target === null) return;
+	target.container.replaceChildren();
+	target.results = results;
+	target.shown = 0;
+	document.body.classList.add(FAVORITES_BROWSING_BODY_CLASS);
+	appendChunk(target);
+}
+/** Gives the page back to the site's grid and pager. */
+function hideFavoriteResults() {
+	document.body.classList.remove(FAVORITES_BROWSING_BODY_CLASS);
+	if (grid !== null) {
+		grid.container.replaceChildren();
+		grid.results = [];
+		grid.shown = 0;
+		grid.more.hidden = true;
+	}
+}
+function statusText(shown, indexed, favorites) {
+	const found = `${shown.toLocaleString(LOCALE$1)} found`;
+	if (indexed >= favorites) return found;
+	return `${found} · the index holds ${indexed.toLocaleString(LOCALE$1)} of ${favorites.toLocaleString(LOCALE$1)} favorites; Full resync in RuleDesk → Favorites adds the rest`;
+}
+function FavoritesBrowser() {
+	const [text, setText] = d("");
+	const [media, setMedia] = d("all");
+	const [view, setView] = d(() => readView());
+	const [index, setIndex] = d(null);
+	const [status, setStatus] = d("");
+	const loadingRef = T(false);
+	const query = parseFavoritesQuery(text);
+	const active = view === "scroll" || media !== "all" || !isEmptyFavoritesQuery(query);
+	A(() => {
+		onRemoveFailed = () => {
+			setStatus(REMOVE_FAILED_STATUS);
+		};
+		return () => {
+			onRemoveFailed = null;
+		};
+	}, []);
+	A(() => {
+		if (!active) {
+			hideFavoriteResults();
+			setStatus("");
+			return;
+		}
+		if (index === null) {
+			if (!loadingRef.current) {
+				loadingRef.current = true;
+				readFavoriteIndex().then((entries) => {
+					setIndex(entries);
+				}).catch((error) => {
+					log.warn("favorites-browser: index read failed", error);
+					setIndex([]);
+				});
+			}
+			return;
+		}
+		const timer = window.setTimeout(() => {
+			const favorites = loadFavSet();
+			if (index.length === 0) {
+				hideFavoriteResults();
+				setStatus(NO_INDEX_STATUS);
+				return;
+			}
+			const results = filterFavoriteIndex(index, favorites, parseFavoritesQuery(text), media);
+			showFavoriteResults(results);
+			const indexed = index.filter((entry) => favorites.has(entry.id)).length;
+			setStatus(statusText(results.length, indexed, favorites.size));
+		}, TYPING_PAUSE_MS);
+		return () => {
+			window.clearTimeout(timer);
+		};
+	}, [
+		active,
+		index,
+		text,
+		media
+	]);
+	return /* @__PURE__ */ a("div", {
+		className: CONTROLS_CLASS,
+		children: [
+			/* @__PURE__ */ a("style", { children: FAVORITES_BROWSER_CSS }),
+			/* @__PURE__ */ a(TextField, {
+				id: SEARCH_FIELD_ID,
+				className: SEARCH_FIELD_CLASS,
+				value: text,
+				placeholder: SEARCH_PLACEHOLDER,
+				"aria-label": SEARCH_PLACEHOLDER,
+				onChange: setText
+			}),
+			/* @__PURE__ */ a(Segmented, {
+				label: MEDIA_LABEL,
+				options: MEDIA_OPTIONS$1,
+				value: media,
+				onChange: (value) => {
+					if (isFavoritesMedia(value)) setMedia(value);
+				}
+			}),
+			/* @__PURE__ */ a(Segmented, {
+				label: VIEW_LABEL,
+				options: VIEW_OPTIONS,
+				value: view,
+				onChange: (value) => {
+					if (isFavoritesView(value)) {
+						setFeatureState(VIEW_STATE_ID, value);
+						setView(value);
+					}
+				}
+			}),
+			status.length > 0 ? /* @__PURE__ */ a("span", {
+				className: STATUS_CLASS$2,
+				role: "status",
+				children: status
+			}) : null
+		]
+	});
+}
 var removeClickBound = false;
 var POST_LINK_ID_PREFIX = "p";
 /**
@@ -7651,6 +8122,48 @@ function syncFavoritesPage(root = document, search = window.location.search) {
 	}
 	addFavs(numericIds);
 	bindRemoveClickCapture();
+}
+/**
+* Reads the index entries of one favorites page of the site.
+*
+* Favorites grid: `div.image-list > span > span.thumb > a#p{ID} > img`; the
+* image `title` is the tag list (the site cuts its first and last character),
+* `src` is the preview address.
+*/
+var THUMB_LINK_SELECTOR$1 = "span.thumb > a[id^=\"p\"]";
+var LINK_ID_PATTERN = /^p(\d+)$/;
+var IMAGE_SELECTOR = ":scope > img";
+/**
+* @param run when the sync run started, ms since epoch
+* @param firstPos place of the first post of this page in the site's list
+*/
+function readFavoriteIndexEntries(page, run, firstPos, base = window.location.href) {
+	const entries = [];
+	const seen = /* @__PURE__ */ new Set();
+	let pos = firstPos;
+	for (const link of page.querySelectorAll(THUMB_LINK_SELECTOR$1)) {
+		const match = LINK_ID_PATTERN.exec(link.id);
+		const img = link.querySelector(IMAGE_SELECTOR);
+		if (match?.[1] === void 0 || !(img instanceof HTMLImageElement)) continue;
+		const id = Number(match[1]);
+		if (seen.has(id)) continue;
+		seen.add(id);
+		let thumb = "";
+		try {
+			thumb = new URL(img.getAttribute("src") ?? "", base).href;
+		} catch {
+			thumb = "";
+		}
+		entries.push({
+			id,
+			tags: img.title.trim(),
+			thumb: isSiteUrl(thumb) ? thumb : "",
+			run,
+			pos
+		});
+		pos += 1;
+	}
+	return entries;
 }
 /** Minimum pause between sequential favorites page fetches. */
 var FAVORITES_SYNC_PAGE_PAUSE_MS = exports("bd",1500);
@@ -7962,6 +8475,8 @@ async function runFavoritesSync(options) {
 	const unfinished = existing !== void 0 && existing.finishedAt === void 0;
 	const mode = resolveRunMode(unfinished, existing, options.mode);
 	const startedAt = unfinished ? existing.startedAt : (/* @__PURE__ */ new Date()).toISOString();
+	const parsedStart = Date.parse(startedAt);
+	const runStamp = Number.isNaN(parsedStart) ? Date.now() : parsedStart;
 	let pid = unfinished ? existing.nextPid : 0;
 	let lastPid = unfinished ? existing.lastPid : 0;
 	let persistedNextPid = pid;
@@ -8053,6 +8568,7 @@ async function runFavoritesSync(options) {
 			}
 			sawNonEmptyPage = true;
 			const ids = collectFavoriteIdsFromDocument(doc);
+			putFavoriteIndexEntriesQuietly(readFavoriteIndexEntries(doc, runStamp, pid));
 			const allKnown = pageIdsAllInLocalSet(ids, loadFavSet());
 			addFavs(ids);
 			total = loadFavSet().size;
@@ -8217,7 +8733,7 @@ body.${BODY_CLASS$5} .${COUNT_CLASS$1} {
 }
 body.${BODY_CLASS$5} .${BAR_CLASS} {
   display: flex;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.35rem 0.5rem;
@@ -8392,7 +8908,7 @@ function downloadAllFavorites() {
 	});
 }
 function removeDomCellForPost(postId) {
-	const entry = listFavoriteThumbEntries().find((item) => item.postId === postId);
+	const entry = listFavoriteThumbEntries(favoritesGridRoot()).find((item) => item.postId === postId);
 	if (entry !== void 0) {
 		removeFavoriteCell(entry.thumb);
 		return;
@@ -8415,7 +8931,7 @@ function FavoritesBulkBar(props) {
 			clearThumbSelectionChrome();
 			return;
 		}
-		applySelectionChrome(listFavoriteThumbEntries(), selected);
+		applySelectionChrome(listFavoriteThumbEntries(favoritesGridRoot()), selected);
 	}, [selectionActive, selected]);
 	A(() => {
 		return () => {
@@ -8461,7 +8977,7 @@ function FavoritesBulkBar(props) {
 		setPhase({ kind: "selecting" });
 	};
 	const selectPage = () => {
-		const ids = listFavoriteThumbEntries().map((entry) => entry.postId);
+		const ids = listFavoriteThumbEntries(favoritesGridRoot()).map((entry) => entry.postId);
 		setSelected(new Set(ids));
 	};
 	const clearSelection = () => {
@@ -8694,7 +9210,11 @@ function mountFavoritesBulk(_ctx) {
 	const onSelectionModeChange = (active) => {
 		document.body.classList.toggle(BODY_SELECTING_CLASS, active);
 	};
-	Q$1(/* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a(FavoritesHeader, {}), /* @__PURE__ */ a(FavoritesBulkBar, { onSelectionModeChange })] }), root);
+	Q$1(/* @__PURE__ */ a($$1, { children: [
+		/* @__PURE__ */ a(FavoritesHeader, {}),
+		/* @__PURE__ */ a(FavoritesBulkBar, { onSelectionModeChange }),
+		/* @__PURE__ */ a(FavoritesBrowser, {})
+	] }), root);
 }
 var favoritesBulkFeature = {
 	id: FEATURE_ID$12,
@@ -16005,6 +16525,11 @@ ${ROOT} div.image-list > span:has(> a[onclick]) {
   justify-items: center;
 }
 
+/* A cell whose post was removed leaves no hole in its column. */
+${ROOT} div.image-list > span:not(:has(span.thumb)) {
+  display: none;
+}
+
 ${ROOT} div.image-list > span > span.thumb {
   position: relative;
   display: block;
@@ -17576,12 +18101,12 @@ startEarlyLayout();
 whenDomReady(() => {
 	applyLayoutBeforePaint();
 	scheduleAfterFirstPaint(() => {
-		module.import('./app-CxkYBdm0-BObcFzP5.js').then(({ startApp }) => {
+		module.import('./app-BPpcOd1z-BTc7zE2c.js').then(({ startApp }) => {
 			startApp();
 		});
 	});
 });})}}));
-System.register("./app-CxkYBdm0-BObcFzP5.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var yieldToMain,detectPageKind,mountCards,syncFavoritesPage,mountFavoriteVideoMarks,mountCommentsPage,runFeaturesYielding,getAppearance,applyAppearanceTheme,ensureDocumentStyles,SITE_SELECTORS,loadFavSet,log,SITE_ORIGIN,SEARCH_PARAM_TAGS,normalizeArtistTag,CSS_CLASS,getSyncState,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,HEADER_SELECTOR$1,RDW_OWN_PAGE_CLASS,MENU_ITEM_ID,getFeatureEnabled,parseRdwHash,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,runFavoritesSync,UI_TEXT,Q$1,RDW_PAGE_ROOT_ID,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,resolveFavoritesUserId,RDW_HASH_STATS,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,rdwPageHash,createFavoritesSyncTabId,APPEARANCE_BACKGROUND_KEY,readArtistsMirror,listArtistTags,writeArtistsMirror,reloadFromStorage,save,CURRENT_PAGE_CLASS$1,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,a,applyTokenProperties,resolveAppearancePalette,isCollectionDetailPage,menuRouteForPage,getSiteSkinCss,KIT_CONTROL_HEIGHT_VAR,KIT_CONTROL_FONT_VAR,$$1,setFeatureState,PANEL_UI_CLASS,TOKEN_VAR,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,SITE_LIGHT_C_BG,SITE_LIGHT_C_BG_ALT,SITE_DARK_C_BG,SITE_DARK_C_BORDER,APPEARANCE_BACKGROUND_TOO_LARGE,getFeatureState;return{setters:[function(module){yieldToMain=module.y;detectPageKind=module.d;mountCards=module.m;syncFavoritesPage=module.s;mountFavoriteVideoMarks=module.a;mountCommentsPage=module.b;runFeaturesYielding=module.r;getAppearance=module.g;applyAppearanceTheme=module.c;ensureDocumentStyles=module.e;SITE_SELECTORS=module.S;loadFavSet=module.l;log=module.f;SITE_ORIGIN=module.h;SEARCH_PARAM_TAGS=module.i;normalizeArtistTag=module.n;CSS_CLASS=module.C;getSyncState=module.j;ensureStyleElement=module.k;RDW_OWN_PAGE_STYLE_ID=module.R;buildOwnPageCss=module.o;HEADER_SELECTOR$1=module.H;RDW_OWN_PAGE_CLASS=module.p;MENU_ITEM_ID=module.M;getFeatureEnabled=module.q;parseRdwHash=module.t;readFavoritesSyncMode=module.u;FAVORITES_SYNC_MODE_FULL=module.F;runFavoritesSync=module.v;UI_TEXT=module.U;Q$1=module.Q;RDW_PAGE_ROOT_ID=module.w;NAVBAR_SELECTOR=module.N;FEED_MENU_ITEM_ID=module.x;RDW_HASH_COLLECTIONS=module.z;MENU_LABEL=module.A;RDW_HASH_FOLLOWING=module.B;resolveFavoritesUserId=module.D;RDW_HASH_STATS=module.E;MY_FAVORITES_CONTAINER_ID=module.G;RDW_HASH_SETTINGS=module.I;rdwPageHash=module.J;createFavoritesSyncTabId=module.K;APPEARANCE_BACKGROUND_KEY=module.L;readArtistsMirror=module.O;listArtistTags=module.P;writeArtistsMirror=module.T;reloadFromStorage=module.V;save=module.W;CURRENT_PAGE_CLASS$1=module.X;setSyncState=module.Y;SEARCH_PARAM_PAGE=module.Z;FAVORITES_PAGE=module._;FAVORITES_SECTION_VIEW=module.$;SEARCH_PATH=module.a0;a=module.a1;applyTokenProperties=module.a2;resolveAppearancePalette=module.a3;isCollectionDetailPage=module.a4;menuRouteForPage=module.a5;getSiteSkinCss=module.a6;KIT_CONTROL_HEIGHT_VAR=module.a7;KIT_CONTROL_FONT_VAR=module.a8;$$1=module.a9;setFeatureState=module.aa;PANEL_UI_CLASS=module.ab;TOKEN_VAR=module.ac;RDW_THEME_ATTR=module.ad;APPEARANCE_THEME_SITE=module.ae;APPEARANCE_THEME_SITE_DARK=module.af;SITE_LIGHT_C_BG=module.ag;SITE_LIGHT_C_BG_ALT=module.ah;SITE_DARK_C_BG=module.ai;SITE_DARK_C_BORDER=module.aj;APPEARANCE_BACKGROUND_TOO_LARGE=module.ak;getFeatureState=module.al;}],execute:(function(){exports({a:installSiteMenu,f:isViewMode,i:navigateToRdwRoute,m:writeViewMode,n:loadBackground,p:readViewMode,r:saveBackground,startApp:startApp,t:clearBackground});/** Matches host.tsx page title class (owned there; styled here for site polish). */
+System.register("./app-BPpcOd1z-BTc7zE2c.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var yieldToMain,detectPageKind,mountCards,syncFavoritesPage,mountFavoriteVideoMarks,mountCommentsPage,runFeaturesYielding,getAppearance,applyAppearanceTheme,ensureDocumentStyles,SITE_SELECTORS,loadFavSet,log,SITE_ORIGIN,SEARCH_PARAM_TAGS,normalizeArtistTag,CSS_CLASS,getSyncState,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,HEADER_SELECTOR$1,RDW_OWN_PAGE_CLASS,MENU_ITEM_ID,getFeatureEnabled,parseRdwHash,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,runFavoritesSync,UI_TEXT,Q$1,RDW_PAGE_ROOT_ID,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,resolveFavoritesUserId,RDW_HASH_STATS,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,rdwPageHash,createFavoritesSyncTabId,APPEARANCE_BACKGROUND_KEY,readArtistsMirror,listArtistTags,writeArtistsMirror,reloadFromStorage,save,CURRENT_PAGE_CLASS$1,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,a,applyTokenProperties,resolveAppearancePalette,isCollectionDetailPage,menuRouteForPage,getSiteSkinCss,KIT_CONTROL_HEIGHT_VAR,KIT_CONTROL_FONT_VAR,$$1,setFeatureState,PANEL_UI_CLASS,TOKEN_VAR,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,SITE_LIGHT_C_BG,SITE_LIGHT_C_BG_ALT,SITE_DARK_C_BG,SITE_DARK_C_BORDER,APPEARANCE_BACKGROUND_TOO_LARGE,getFeatureState;return{setters:[function(module){yieldToMain=module.y;detectPageKind=module.d;mountCards=module.m;syncFavoritesPage=module.s;mountFavoriteVideoMarks=module.a;mountCommentsPage=module.b;runFeaturesYielding=module.r;getAppearance=module.g;applyAppearanceTheme=module.c;ensureDocumentStyles=module.e;SITE_SELECTORS=module.S;loadFavSet=module.l;log=module.f;SITE_ORIGIN=module.h;SEARCH_PARAM_TAGS=module.i;normalizeArtistTag=module.n;CSS_CLASS=module.C;getSyncState=module.j;ensureStyleElement=module.k;RDW_OWN_PAGE_STYLE_ID=module.R;buildOwnPageCss=module.o;HEADER_SELECTOR$1=module.H;RDW_OWN_PAGE_CLASS=module.p;MENU_ITEM_ID=module.M;getFeatureEnabled=module.q;parseRdwHash=module.t;readFavoritesSyncMode=module.u;FAVORITES_SYNC_MODE_FULL=module.F;runFavoritesSync=module.v;UI_TEXT=module.U;Q$1=module.Q;RDW_PAGE_ROOT_ID=module.w;NAVBAR_SELECTOR=module.N;FEED_MENU_ITEM_ID=module.x;RDW_HASH_COLLECTIONS=module.z;MENU_LABEL=module.A;RDW_HASH_FOLLOWING=module.B;resolveFavoritesUserId=module.D;RDW_HASH_STATS=module.E;MY_FAVORITES_CONTAINER_ID=module.G;RDW_HASH_SETTINGS=module.I;rdwPageHash=module.J;createFavoritesSyncTabId=module.K;APPEARANCE_BACKGROUND_KEY=module.L;readArtistsMirror=module.O;listArtistTags=module.P;writeArtistsMirror=module.T;reloadFromStorage=module.V;save=module.W;CURRENT_PAGE_CLASS$1=module.X;setSyncState=module.Y;SEARCH_PARAM_PAGE=module.Z;FAVORITES_PAGE=module._;FAVORITES_SECTION_VIEW=module.$;SEARCH_PATH=module.a0;a=module.a1;applyTokenProperties=module.a2;resolveAppearancePalette=module.a3;isCollectionDetailPage=module.a4;menuRouteForPage=module.a5;getSiteSkinCss=module.a6;KIT_CONTROL_HEIGHT_VAR=module.a7;KIT_CONTROL_FONT_VAR=module.a8;$$1=module.a9;setFeatureState=module.aa;PANEL_UI_CLASS=module.ab;TOKEN_VAR=module.ac;RDW_THEME_ATTR=module.ad;APPEARANCE_THEME_SITE=module.ae;APPEARANCE_THEME_SITE_DARK=module.af;SITE_LIGHT_C_BG=module.ag;SITE_LIGHT_C_BG_ALT=module.ah;SITE_DARK_C_BG=module.ai;SITE_DARK_C_BORDER=module.aj;APPEARANCE_BACKGROUND_TOO_LARGE=module.ak;getFeatureState=module.al;}],execute:(function(){exports({a:installSiteMenu,f:isViewMode,i:navigateToRdwRoute,m:writeViewMode,n:loadBackground,p:readViewMode,r:saveBackground,startApp:startApp,t:clearBackground});/** Matches host.tsx page title class (owned there; styled here for site polish). */
 var PAGE_TITLE_CLASS$1 = "rdw-page-title";
 /** Matches kit SectionLabel class. */
 var SECTION_LABEL_CLASS = "rdw-section-label";
@@ -17872,35 +18397,35 @@ var followingFactory = null;
 var statsFactory = null;
 function getSettingsFactory() {
 	if (settingsFactory === null) settingsFactory = async () => {
-		const mod = await module.import('./settings-page-DfTqVkKT-BOwUbl_7.js');
+		const mod = await module.import('./settings-page-BasyObej-jOrSKrRp.js');
 		return /* @__PURE__ */ a(mod.SettingsPage, {});
 	};
 	return settingsFactory;
 }
 function getCollectionsFactory() {
 	if (collectionsFactory === null) collectionsFactory = async () => {
-		const mod = await module.import('./collections-page-BgCF2P-V-BqTs7l_r.js');
+		const mod = await module.import('./collections-page-DKPxNNAE-JlQ_i7OH.js');
 		return /* @__PURE__ */ a(mod.CollectionsPage, {});
 	};
 	return collectionsFactory;
 }
 function getFollowingFactory() {
 	if (followingFactory === null) followingFactory = async () => {
-		const mod = await module.import('./following-page-oZwyVTXr-DY-XQEtM.js');
+		const mod = await module.import('./following-page-6fA5EVVs-Bvwy1vjG.js');
 		return /* @__PURE__ */ a(mod.FollowingPage, {});
 	};
 	return followingFactory;
 }
 function getStatsFactory() {
 	if (statsFactory === null) statsFactory = async () => {
-		const mod = await module.import('./stats-section-BObPgLzu-RTISvDDT.js');
+		const mod = await module.import('./stats-section-mECSwrhg-RTISvDDT.js');
 		return /* @__PURE__ */ a(mod.StatsPage, {});
 	};
 	return statsFactory;
 }
 function collectionDetailFactory(collectionId) {
 	return async () => {
-		const mod = await module.import('./collection-detail-page-DSDi-2w7-jke4foAK.js');
+		const mod = await module.import('./collection-detail-page-CUksTh1s-A41wTdTl.js');
 		return /* @__PURE__ */ a(mod.CollectionDetailPage, { collectionId }, collectionId);
 	};
 }
@@ -18695,7 +19220,7 @@ async function startApp() {
 	await yieldToMain();
 	maybeResumeFavoritesSync();
 }})}}));
-System.register("./settings-page-DfTqVkKT-BOwUbl_7.js", ['./___monkey.entry.js','./app-CxkYBdm0-BObcFzP5.js'],(function(exports){'use strict';var d,a,PANEL_UI_CLASS,Switch,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,STATS_MENU_SETTING_LABEL,STATS_MENU_SWITCH_ID,setFeatureEnabled,NumberField,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,setGridFavButtonsVisible,IconChevronRight,IconChevronDown,Card,P$1,T,A,getAppearance,applyAppearanceTheme,getSiteSkinCss,APPEARANCE_THEME_CUSTOM,KIT_FOCUS_CSS,SectionLabel,Select,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,$$1,Segmented,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,TextField,Button,clampBackgroundDim,FEATURES,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,clearFeatureState,applyCssOnlyFeatureEnabled,isFeatureEnabled,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,applyCssOnlyFeatureChoice,getFeatureChoice,createAutocompleteQuerier,b,readSiteBlacklist,AutocompleteField,Chip,ProgressBar,createDefaultCustomTheme,AppearanceThemeSchema,prepareBackgroundImageFile,setFeatureState,writeSiteBlacklist,runFavoritesSync,log,FAVORITES_SYNC_PAGE_PAUSE_MS,clearApiCredentials,parseApiCredentials,setApiCredentials,load,createDefaultStorage,clearStorageCache,clearFavsCache,getSyncState,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,isSiteUrl,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,setAppearance,loadFavSet,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,gridDensityFeature,FAVORITES_SYNC_MODE_INCREMENTAL,FAVORITES_SYNC_MODE_FULL,STATS_MENU_SETTING_ID,hasApiCredentials,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureEnabled,getFeatureChoiceValue,getFeatureState,getScreenPixelSize,installSiteMenu,loadBackground,clearBackground,saveBackground;return{setters:[function(module){d=module.am;a=module.a1;PANEL_UI_CLASS=module.ab;Switch=module.an;UI_TEXT=module.U;TWEAKS_SWITCH_ID=module.ao;setTweaksEnabled=module.ap;STATS_MENU_SETTING_LABEL=module.aq;STATS_MENU_SWITCH_ID=module.ar;setFeatureEnabled=module.as;NumberField=module.at;UPDATES_GROUP_SIZE_ID=module.au;setUpdatesGroupSize=module.av;getUpdatesGroupSize=module.aw;PLAYLIST_CHUNK_SIZE_ID=module.ax;setPlaylistChunkSize=module.ay;getPlaylistChunkSize=module.az;GRID_FAV_CHECKBOX_ID=module.aA;setGridFavButtonsEnabled=module.aB;setGridFavButtonsVisible=module.aC;IconChevronRight=module.aD;IconChevronDown=module.aE;Card=module.aF;P$1=module.aG;T=module.aH;A=module.aI;getAppearance=module.g;applyAppearanceTheme=module.c;getSiteSkinCss=module.a6;APPEARANCE_THEME_CUSTOM=module.aJ;KIT_FOCUS_CSS=module.aK;SectionLabel=module.aL;Select=module.aM;APPEARANCE_THEME_SITE=module.ae;APPEARANCE_THEME_SITE_DARK=module.af;APPEARANCE_THEME_LIGHT=module.aN;APPEARANCE_THEME_DARK=module.aO;$$1=module.a9;Segmented=module.aP;APPEARANCE_CUSTOM_BASE_LIGHT=module.aQ;APPEARANCE_CUSTOM_BASE_DARK=module.aR;TextField=module.aS;Button=module.aT;clampBackgroundDim=module.aU;FEATURES=module.aV;featurePanelLabel=module.aW;FEATURE_CHECKBOX_ID_PREFIX=module.aX;clearFeatureState=module.aY;applyCssOnlyFeatureEnabled=module.aZ;isFeatureEnabled=module.a_;FEATURE_CHOICE_ID_PREFIX=module.a$;setFeatureChoiceValue=module.b0;applyCssOnlyFeatureChoice=module.b1;getFeatureChoice=module.b2;createAutocompleteQuerier=module.b3;b=module.b4;readSiteBlacklist=module.b5;AutocompleteField=module.b6;Chip=module.b7;ProgressBar=module.b8;createDefaultCustomTheme=module.b9;AppearanceThemeSchema=module.ba;prepareBackgroundImageFile=module.bb;setFeatureState=module.aa;writeSiteBlacklist=module.bc;runFavoritesSync=module.v;log=module.f;FAVORITES_SYNC_PAGE_PAUSE_MS=module.bd;clearApiCredentials=module.be;parseApiCredentials=module.bf;setApiCredentials=module.bg;load=module.bh;createDefaultStorage=module.bi;clearStorageCache=module.bj;clearFavsCache=module.bk;getSyncState=module.j;object=module.bl;StorageSchema=module.bm;optional=module.bn;string=module.bo;FavsSchema=module.bp;literal=module.bq;IMPORT_SCHEMA_ERROR_PREFIX=module.br;isSiteUrl=module.bs;stripLegacyPanelWindowSize=module.bt;save=module.W;migrateMarksFavToFavs=module.bu;FAVS_STORAGE_KEY=module.bv;createDefaultFavs=module.bw;parseFavsStrict=module.bx;setAppearance=module.by;loadFavSet=module.l;STORAGE_BACKUP_KEY=module.bz;extractFavIdsFromMarks=module.bA;gridDensityFeature=module.bB;FAVORITES_SYNC_MODE_INCREMENTAL=module.bC;FAVORITES_SYNC_MODE_FULL=module.F;STATS_MENU_SETTING_ID=module.bD;hasApiCredentials=module.bE;getTweaksEnabled=module.bF;getGridFavButtonsEnabled=module.bG;getFeatureEnabled=module.q;getFeatureChoiceValue=module.bH;getFeatureState=module.al;getScreenPixelSize=module.bI;},function(module){installSiteMenu=module.a;loadBackground=module.n;clearBackground=module.t;saveBackground=module.r;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
+System.register("./settings-page-BasyObej-jOrSKrRp.js", ['./___monkey.entry.js','./app-BPpcOd1z-BTc7zE2c.js'],(function(exports){'use strict';var d,a,PANEL_UI_CLASS,Switch,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,STATS_MENU_SETTING_LABEL,STATS_MENU_SWITCH_ID,setFeatureEnabled,NumberField,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,setGridFavButtonsVisible,IconChevronRight,IconChevronDown,Card,P$1,T,A,getAppearance,applyAppearanceTheme,getSiteSkinCss,APPEARANCE_THEME_CUSTOM,KIT_FOCUS_CSS,SectionLabel,Select,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,$$1,Segmented,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,TextField,Button,clampBackgroundDim,FEATURES,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,clearFeatureState,applyCssOnlyFeatureEnabled,isFeatureEnabled,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,applyCssOnlyFeatureChoice,getFeatureChoice,createAutocompleteQuerier,b,readSiteBlacklist,AutocompleteField,Chip,ProgressBar,createDefaultCustomTheme,AppearanceThemeSchema,prepareBackgroundImageFile,setFeatureState,writeSiteBlacklist,runFavoritesSync,log,FAVORITES_SYNC_PAGE_PAUSE_MS,clearApiCredentials,parseApiCredentials,setApiCredentials,load,createDefaultStorage,clearStorageCache,clearFavsCache,getSyncState,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,isSiteUrl,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,setAppearance,loadFavSet,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,gridDensityFeature,FAVORITES_SYNC_MODE_INCREMENTAL,FAVORITES_SYNC_MODE_FULL,STATS_MENU_SETTING_ID,hasApiCredentials,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureEnabled,getFeatureChoiceValue,getFeatureState,getScreenPixelSize,installSiteMenu,loadBackground,clearBackground,saveBackground;return{setters:[function(module){d=module.am;a=module.a1;PANEL_UI_CLASS=module.ab;Switch=module.an;UI_TEXT=module.U;TWEAKS_SWITCH_ID=module.ao;setTweaksEnabled=module.ap;STATS_MENU_SETTING_LABEL=module.aq;STATS_MENU_SWITCH_ID=module.ar;setFeatureEnabled=module.as;NumberField=module.at;UPDATES_GROUP_SIZE_ID=module.au;setUpdatesGroupSize=module.av;getUpdatesGroupSize=module.aw;PLAYLIST_CHUNK_SIZE_ID=module.ax;setPlaylistChunkSize=module.ay;getPlaylistChunkSize=module.az;GRID_FAV_CHECKBOX_ID=module.aA;setGridFavButtonsEnabled=module.aB;setGridFavButtonsVisible=module.aC;IconChevronRight=module.aD;IconChevronDown=module.aE;Card=module.aF;P$1=module.aG;T=module.aH;A=module.aI;getAppearance=module.g;applyAppearanceTheme=module.c;getSiteSkinCss=module.a6;APPEARANCE_THEME_CUSTOM=module.aJ;KIT_FOCUS_CSS=module.aK;SectionLabel=module.aL;Select=module.aM;APPEARANCE_THEME_SITE=module.ae;APPEARANCE_THEME_SITE_DARK=module.af;APPEARANCE_THEME_LIGHT=module.aN;APPEARANCE_THEME_DARK=module.aO;$$1=module.a9;Segmented=module.aP;APPEARANCE_CUSTOM_BASE_LIGHT=module.aQ;APPEARANCE_CUSTOM_BASE_DARK=module.aR;TextField=module.aS;Button=module.aT;clampBackgroundDim=module.aU;FEATURES=module.aV;featurePanelLabel=module.aW;FEATURE_CHECKBOX_ID_PREFIX=module.aX;clearFeatureState=module.aY;applyCssOnlyFeatureEnabled=module.aZ;isFeatureEnabled=module.a_;FEATURE_CHOICE_ID_PREFIX=module.a$;setFeatureChoiceValue=module.b0;applyCssOnlyFeatureChoice=module.b1;getFeatureChoice=module.b2;createAutocompleteQuerier=module.b3;b=module.b4;readSiteBlacklist=module.b5;AutocompleteField=module.b6;Chip=module.b7;ProgressBar=module.b8;createDefaultCustomTheme=module.b9;AppearanceThemeSchema=module.ba;prepareBackgroundImageFile=module.bb;setFeatureState=module.aa;writeSiteBlacklist=module.bc;runFavoritesSync=module.v;log=module.f;FAVORITES_SYNC_PAGE_PAUSE_MS=module.bd;clearApiCredentials=module.be;parseApiCredentials=module.bf;setApiCredentials=module.bg;load=module.bh;createDefaultStorage=module.bi;clearStorageCache=module.bj;clearFavsCache=module.bk;getSyncState=module.j;object=module.bl;StorageSchema=module.bm;optional=module.bn;string=module.bo;FavsSchema=module.bp;literal=module.bq;IMPORT_SCHEMA_ERROR_PREFIX=module.br;isSiteUrl=module.bs;stripLegacyPanelWindowSize=module.bt;save=module.W;migrateMarksFavToFavs=module.bu;FAVS_STORAGE_KEY=module.bv;createDefaultFavs=module.bw;parseFavsStrict=module.bx;setAppearance=module.by;loadFavSet=module.l;STORAGE_BACKUP_KEY=module.bz;extractFavIdsFromMarks=module.bA;gridDensityFeature=module.bB;FAVORITES_SYNC_MODE_INCREMENTAL=module.bC;FAVORITES_SYNC_MODE_FULL=module.F;STATS_MENU_SETTING_ID=module.bD;hasApiCredentials=module.bE;getTweaksEnabled=module.bF;getGridFavButtonsEnabled=module.bG;getFeatureEnabled=module.q;getFeatureChoiceValue=module.bH;getFeatureState=module.al;getScreenPixelSize=module.bI;},function(module){installSiteMenu=module.a;loadBackground=module.n;clearBackground=module.t;saveBackground=module.r;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
 var THEME_OPTIONS = [
 	{
 		value: APPEARANCE_THEME_SITE,
@@ -20356,7 +20881,7 @@ function SettingsPage() {
 		]
 	});
 }})}}));
-System.register("./collections-page-BgCF2P-V-BqTs7l_r.js", ['./___monkey.entry.js','./filter-terms-Dqag3iAV-Bgq_MKCQ.js','./app-CxkYBdm0-BObcFzP5.js'],(function(exports){'use strict';var d,b,A,reloadFromStorage,load,a,Segmented,TextField,$$1,Button,UI_TEXT,IconPlus,EmptyState,Dialog,resolveCollectionKind,deleteCollection,QueryField,isUnfilteredQuery,createDynamicCollection,createPlaylist,COLLECTION_KIND_POSTS,collectionDetailHash,readCoverMirror,COLLECTION_KIND_SEARCH,IconCheck,readCountMirror,buildSearchUrl,dynamicCollectionMarkHash,serialize,matchesAnyTerm,filterTerms,COLLECTION_TERM_SEPARATOR,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,PAGE_CENTRE_PADDING,COLLECTIONS_VIEW_STATE_ID,readViewMode;return{setters:[function(module){d=module.am;b=module.b4;A=module.aI;reloadFromStorage=module.V;load=module.bh;a=module.a1;Segmented=module.aP;TextField=module.aS;$$1=module.a9;Button=module.aT;UI_TEXT=module.U;IconPlus=module.bJ;EmptyState=module.bK;Dialog=module.bL;resolveCollectionKind=module.bM;deleteCollection=module.bN;QueryField=module.bO;isUnfilteredQuery=module.bP;createDynamicCollection=module.bQ;createPlaylist=module.bR;COLLECTION_KIND_POSTS=module.bS;collectionDetailHash=module.bT;readCoverMirror=module.bU;COLLECTION_KIND_SEARCH=module.bV;IconCheck=module.bW;readCountMirror=module.bX;buildSearchUrl=module.bY;dynamicCollectionMarkHash=module.bZ;serialize=module.b_;},function(module){matchesAnyTerm=module.m;filterTerms=module.f;COLLECTION_TERM_SEPARATOR=module.C;},function(module){VIEW_OPTIONS=module.d;VIEW_LABEL=module.l;isViewMode=module.f;writeViewMode=module.m;PAGE_CENTRE_PADDING=module.c;COLLECTIONS_VIEW_STATE_ID=module.o;readViewMode=module.p;}],execute:(function(){exports("CollectionsPage",CollectionsPage);var EVENT_PAGESHOW = "pageshow";
+System.register("./collections-page-DKPxNNAE-JlQ_i7OH.js", ['./___monkey.entry.js','./filter-terms-Dqag3iAV-Bgq_MKCQ.js','./app-BPpcOd1z-BTc7zE2c.js'],(function(exports){'use strict';var d,b,A,reloadFromStorage,load,a,Segmented,TextField,$$1,Button,UI_TEXT,IconPlus,EmptyState,Dialog,resolveCollectionKind,deleteCollection,QueryField,isUnfilteredQuery,createDynamicCollection,createPlaylist,COLLECTION_KIND_POSTS,collectionDetailHash,readCoverMirror,COLLECTION_KIND_SEARCH,IconCheck,readCountMirror,buildSearchUrl,dynamicCollectionMarkHash,serialize,matchesAnyTerm,filterTerms,COLLECTION_TERM_SEPARATOR,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,PAGE_CENTRE_PADDING,COLLECTIONS_VIEW_STATE_ID,readViewMode;return{setters:[function(module){d=module.am;b=module.b4;A=module.aI;reloadFromStorage=module.V;load=module.bh;a=module.a1;Segmented=module.aP;TextField=module.aS;$$1=module.a9;Button=module.aT;UI_TEXT=module.U;IconPlus=module.bJ;EmptyState=module.bK;Dialog=module.bL;resolveCollectionKind=module.bM;deleteCollection=module.bN;QueryField=module.bO;isUnfilteredQuery=module.bP;createDynamicCollection=module.bQ;createPlaylist=module.bR;COLLECTION_KIND_POSTS=module.bS;collectionDetailHash=module.bT;readCoverMirror=module.bU;COLLECTION_KIND_SEARCH=module.bV;IconCheck=module.bW;readCountMirror=module.bX;buildSearchUrl=module.bY;dynamicCollectionMarkHash=module.bZ;serialize=module.b_;},function(module){matchesAnyTerm=module.m;filterTerms=module.f;COLLECTION_TERM_SEPARATOR=module.C;},function(module){VIEW_OPTIONS=module.d;VIEW_LABEL=module.l;isViewMode=module.f;writeViewMode=module.m;PAGE_CENTRE_PADDING=module.c;COLLECTIONS_VIEW_STATE_ID=module.o;readViewMode=module.p;}],execute:(function(){exports("CollectionsPage",CollectionsPage);var EVENT_PAGESHOW = "pageshow";
 var PAGE_CLASS = "rdw-collections-page";
 var HEADER_CLASS = "rdw-collections-header";
 var TOOLBAR_CLASS = "rdw-collections-toolbar";
@@ -21151,7 +21676,7 @@ function CollectionsPage() {
 		]
 	});
 }})}}));
-System.register("./following-page-oZwyVTXr-DY-XQEtM.js", ['./___monkey.entry.js','./filter-terms-Dqag3iAV-Bgq_MKCQ.js','./app-CxkYBdm0-BObcFzP5.js'],(function(exports){'use strict';var d,T,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST,A,reloadFromStorage,getSeenPostId,a,EmptyState,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,$$1,Button,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,Segmented,TextField,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,Select,UI_TEXT,ProgressBar,Dialog,removeArtist,load,completeLastQueryToken,readLastQueryToken,IconPlus,buildSearchUrl,TAG_TYPE_INCLUDE,IconCheck,IconButton,IconX,removeArtists,rememberArtistSnapshot,fetchArtistSnapshot,log,addArtists,AutocompleteField,filterTerms,matchesAnyTerm,ARTIST_TERM_SEPARATOR,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,PAGE_CENTRE_PADDING,FOLLOWING_VIEW_STATE_ID,readViewMode;return{setters:[function(module){d=module.am;T=module.aH;createAutocompleteQuerier=module.b3;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.b$;A=module.aI;reloadFromStorage=module.V;getSeenPostId=module.c0;a=module.a1;EmptyState=module.bK;ARTISTS_EMPTY_HINT=module.c1;ARTISTS_EMPTY_TITLE=module.c2;$$1=module.a9;Button=module.aT;SEARCH_PATH=module.a0;SEARCH_PARAM_PAGE=module.Z;SEARCH_PAGE=module.c3;SEARCH_SECTION=module.c4;Segmented=module.aP;TextField=module.aS;ARTIST_FILTER_LABEL=module.c5;ARTIST_FILTER_ID=module.c6;Select=module.aM;UI_TEXT=module.U;ProgressBar=module.b8;Dialog=module.bL;removeArtist=module.c7;load=module.bh;completeLastQueryToken=module.c8;readLastQueryToken=module.c9;IconPlus=module.bJ;buildSearchUrl=module.bY;TAG_TYPE_INCLUDE=module.ca;IconCheck=module.bW;IconButton=module.cb;IconX=module.cc;removeArtists=module.cd;rememberArtistSnapshot=module.ce;fetchArtistSnapshot=module.cf;log=module.f;addArtists=module.cg;AutocompleteField=module.b6;},function(module){filterTerms=module.f;matchesAnyTerm=module.m;ARTIST_TERM_SEPARATOR=module.A;},function(module){VIEW_OPTIONS=module.d;VIEW_LABEL=module.l;isViewMode=module.f;writeViewMode=module.m;PAGE_CENTRE_PADDING=module.c;FOLLOWING_VIEW_STATE_ID=module.s;readViewMode=module.p;}],execute:(function(){exports("FollowingPage",FollowingPage);var EVENT_PAGESHOW = "pageshow";
+System.register("./following-page-6fA5EVVs-Bvwy1vjG.js", ['./___monkey.entry.js','./filter-terms-Dqag3iAV-Bgq_MKCQ.js','./app-BPpcOd1z-BTc7zE2c.js'],(function(exports){'use strict';var d,T,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST,A,reloadFromStorage,getSeenPostId,a,EmptyState,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,$$1,Button,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,Segmented,TextField,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,Select,UI_TEXT,ProgressBar,Dialog,removeArtist,load,completeLastQueryToken,readLastQueryToken,IconPlus,buildSearchUrl,TAG_TYPE_INCLUDE,IconCheck,IconButton,IconX,removeArtists,rememberArtistSnapshot,fetchArtistSnapshot,log,addArtists,AutocompleteField,filterTerms,matchesAnyTerm,ARTIST_TERM_SEPARATOR,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,PAGE_CENTRE_PADDING,FOLLOWING_VIEW_STATE_ID,readViewMode;return{setters:[function(module){d=module.am;T=module.aH;createAutocompleteQuerier=module.b3;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.b$;A=module.aI;reloadFromStorage=module.V;getSeenPostId=module.c0;a=module.a1;EmptyState=module.bK;ARTISTS_EMPTY_HINT=module.c1;ARTISTS_EMPTY_TITLE=module.c2;$$1=module.a9;Button=module.aT;SEARCH_PATH=module.a0;SEARCH_PARAM_PAGE=module.Z;SEARCH_PAGE=module.c3;SEARCH_SECTION=module.c4;Segmented=module.aP;TextField=module.aS;ARTIST_FILTER_LABEL=module.c5;ARTIST_FILTER_ID=module.c6;Select=module.aM;UI_TEXT=module.U;ProgressBar=module.b8;Dialog=module.bL;removeArtist=module.c7;load=module.bh;completeLastQueryToken=module.c8;readLastQueryToken=module.c9;IconPlus=module.bJ;buildSearchUrl=module.bY;TAG_TYPE_INCLUDE=module.ca;IconCheck=module.bW;IconButton=module.cb;IconX=module.cc;removeArtists=module.cd;rememberArtistSnapshot=module.ce;fetchArtistSnapshot=module.cf;log=module.f;addArtists=module.cg;AutocompleteField=module.b6;},function(module){filterTerms=module.f;matchesAnyTerm=module.m;ARTIST_TERM_SEPARATOR=module.A;},function(module){VIEW_OPTIONS=module.d;VIEW_LABEL=module.l;isViewMode=module.f;writeViewMode=module.m;PAGE_CENTRE_PADDING=module.c;FOLLOWING_VIEW_STATE_ID=module.s;readViewMode=module.p;}],execute:(function(){exports("FollowingPage",FollowingPage);var EVENT_PAGESHOW = "pageshow";
 var PAGE_CLASS = "rdw-following-page";
 var STICKY_CLASS = "rdw-following-sticky";
 var TOOLBAR_CLASS = "rdw-following-toolbar";
@@ -22060,7 +22585,7 @@ function matchesAnyTerm(texts, terms) {
 	const lowered = texts.map((text) => text.toLowerCase());
 	return terms.some((term) => lowered.some((text) => text.includes(term)));
 }})}}));
-System.register("./stats-section-BObPgLzu-RTISvDDT.js", ['./___monkey.entry.js'],(function(exports){'use strict';var a,PANEL_UI_CLASS,Card,loadFavSet,load,resolveCollectionKind,d,Button,$$1,setFeatureState,FETCH_CREDENTIALS,object,number,optional,string,SEARCH_PATH,SEARCH_PARAM_PAGE,int,getFeatureState;return{setters:[function(module){a=module.a1;PANEL_UI_CLASS=module.ab;Card=module.aF;loadFavSet=module.l;load=module.bh;resolveCollectionKind=module.bM;d=module.am;Button=module.aT;$$1=module.a9;setFeatureState=module.aa;FETCH_CREDENTIALS=module.ch;object=module.bl;number=module.ci;optional=module.bn;string=module.bo;SEARCH_PATH=module.a0;SEARCH_PARAM_PAGE=module.Z;int=module.cj;getFeatureState=module.al;}],execute:(function(){exports("StatsPage",StatsPage);/**
+System.register("./stats-section-mECSwrhg-RTISvDDT.js", ['./___monkey.entry.js'],(function(exports){'use strict';var a,PANEL_UI_CLASS,Card,loadFavSet,load,resolveCollectionKind,d,Button,$$1,setFeatureState,FETCH_CREDENTIALS,object,number,optional,string,SEARCH_PATH,SEARCH_PARAM_PAGE,int,getFeatureState;return{setters:[function(module){a=module.a1;PANEL_UI_CLASS=module.ab;Card=module.aF;loadFavSet=module.l;load=module.bh;resolveCollectionKind=module.bM;d=module.am;Button=module.aT;$$1=module.a9;setFeatureState=module.aa;FETCH_CREDENTIALS=module.ch;object=module.bl;number=module.ci;optional=module.bn;string=module.bo;SEARCH_PATH=module.a0;SEARCH_PARAM_PAGE=module.Z;int=module.cj;getFeatureState=module.al;}],execute:(function(){exports("StatsPage",StatsPage);/**
 * The numbers of the user's own profile page on the site, for Statistics.
 *
 * Read only when the user presses "Refresh profile": two requests with a
@@ -22691,7 +23216,7 @@ function StatsPage() {
 		children: /* @__PURE__ */ a(StatsSection, {})
 	});
 }})}}));
-System.register("./collection-detail-page-DSDi-2w7-jke4foAK.js", ['./___monkey.entry.js','./app-CxkYBdm0-BObcFzP5.js'],(function(exports){'use strict';var d,T,w$1,b,downloadsAvailable,a,$$1,Button,UI_TEXT,shuffleCollection,resetCollectionOrder,EmptyState,Dialog,TextField,Toast,getCollectionOrder,listPlaylists,RDW_HASH_COLLECTIONS,removePostsFromCollection,isDownloadBusy,startDownload,movePostInCollection,renameCollection,deleteCollection,RDW_ROUTE_COLLECTIONS,restorePosts,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION_VIEW,SEARCH_PATH,collectionQueueHash,navigateToRdwRoute;return{setters:[function(module){d=module.am;T=module.aH;w$1=module.ck;b=module.b4;downloadsAvailable=module.cl;a=module.a1;$$1=module.a9;Button=module.aT;UI_TEXT=module.U;shuffleCollection=module.cm;resetCollectionOrder=module.cn;EmptyState=module.bK;Dialog=module.bL;TextField=module.aS;Toast=module.co;getCollectionOrder=module.cp;listPlaylists=module.cq;RDW_HASH_COLLECTIONS=module.z;removePostsFromCollection=module.cr;isDownloadBusy=module.cs;startDownload=module.ct;movePostInCollection=module.cu;renameCollection=module.cv;deleteCollection=module.bN;RDW_ROUTE_COLLECTIONS=module.cw;restorePosts=module.cx;SEARCH_PARAM_PAGE=module.Z;SEARCH_PAGE=module.c3;SEARCH_SECTION_VIEW=module.cy;SEARCH_PATH=module.a0;collectionQueueHash=module.cz;},function(module){navigateToRdwRoute=module.i;}],execute:(function(){exports("CollectionDetailPage",CollectionDetailPage);var CELL_SIZE_PX = 200;
+System.register("./collection-detail-page-CUksTh1s-A41wTdTl.js", ['./___monkey.entry.js','./app-BPpcOd1z-BTc7zE2c.js'],(function(exports){'use strict';var d,T,w$1,b,downloadsAvailable,a,$$1,Button,UI_TEXT,shuffleCollection,resetCollectionOrder,EmptyState,Dialog,TextField,Toast,getCollectionOrder,listPlaylists,RDW_HASH_COLLECTIONS,removePostsFromCollection,isDownloadBusy,startDownload,movePostInCollection,renameCollection,deleteCollection,RDW_ROUTE_COLLECTIONS,restorePosts,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION_VIEW,SEARCH_PATH,collectionQueueHash,navigateToRdwRoute;return{setters:[function(module){d=module.am;T=module.aH;w$1=module.ck;b=module.b4;downloadsAvailable=module.cl;a=module.a1;$$1=module.a9;Button=module.aT;UI_TEXT=module.U;shuffleCollection=module.cm;resetCollectionOrder=module.cn;EmptyState=module.bK;Dialog=module.bL;TextField=module.aS;Toast=module.co;getCollectionOrder=module.cp;listPlaylists=module.cq;RDW_HASH_COLLECTIONS=module.z;removePostsFromCollection=module.cr;isDownloadBusy=module.cs;startDownload=module.ct;movePostInCollection=module.cu;renameCollection=module.cv;deleteCollection=module.bN;RDW_ROUTE_COLLECTIONS=module.cw;restorePosts=module.cx;SEARCH_PARAM_PAGE=module.Z;SEARCH_PAGE=module.c3;SEARCH_SECTION_VIEW=module.cy;SEARCH_PATH=module.a0;collectionQueueHash=module.cz;},function(module){navigateToRdwRoute=module.i;}],execute:(function(){exports("CollectionDetailPage",CollectionDetailPage);var CELL_SIZE_PX = 200;
 var GRID_GAP_PX = 4;
 var SECTION_GAP_PX = 12;
 var ACTIONS_GAP_PX = 8;

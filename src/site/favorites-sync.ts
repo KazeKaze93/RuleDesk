@@ -22,6 +22,8 @@ import {
   type FavsSyncMode,
   type FavsSyncState,
 } from "../storage/schema";
+import { putFavoriteIndexEntriesQuietly } from "../storage/favorites-index";
+import { readFavoriteIndexEntries } from "./favorites-index-read";
 import { detectPageKind } from "./pages";
 import { extractPostIdFromFavoritesDeleteOnclick } from "./selectors";
 
@@ -547,6 +549,8 @@ export async function runFavoritesSync(
   const startedAt = unfinished
     ? existing.startedAt
     : new Date().toISOString();
+  const parsedStart = Date.parse(startedAt);
+  const runStamp = Number.isNaN(parsedStart) ? Date.now() : parsedStart;
   let pid = unfinished ? existing.nextPid : 0;
   let lastPid = unfinished ? existing.lastPid : 0;
   let persistedNextPid = pid;
@@ -643,6 +647,8 @@ export async function runFavoritesSync(
 
       sawNonEmptyPage = true;
       const ids = collectFavoriteIdsFromDocument(doc);
+      // The same page gives the search index its tags and previews.
+      putFavoriteIndexEntriesQuietly(readFavoriteIndexEntries(doc, runStamp, pid));
       const localBefore = loadFavSet();
       const allKnown = pageIdsAllInLocalSet(ids, localBefore);
       addFavs(ids);

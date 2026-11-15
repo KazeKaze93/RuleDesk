@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import { UI_TEXT } from "../config/constants";
 import { log } from "../log";
 import { downloadsAvailable } from "./downloads/available";
+import { FavoritesBrowser, favoritesGridRoot } from "./favorites-browser";
 import { isDownloadBusy, startDownload } from "./downloads/queue";
 import { removeFavorite } from "../site/favorites";
 import {
@@ -115,7 +116,7 @@ body.${BODY_CLASS} .${COUNT_CLASS} {
 }
 body.${BODY_CLASS} .${BAR_CLASS} {
   display: flex;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.35rem 0.5rem;
@@ -324,7 +325,7 @@ export function downloadAllFavorites(): void {
 }
 
 function removeDomCellForPost(postId: string): void {
-  const entry = listFavoriteThumbEntries().find((item) => item.postId === postId);
+  const entry = listFavoriteThumbEntries(favoritesGridRoot()).find((item) => item.postId === postId);
   if (entry !== undefined) {
     removeFavoriteCell(entry.thumb);
     return;
@@ -362,7 +363,7 @@ function FavoritesBulkBar(props: FavoritesBulkBarProps): JSX.Element {
       clearThumbSelectionChrome();
       return;
     }
-    applySelectionChrome(listFavoriteThumbEntries(), selected);
+    applySelectionChrome(listFavoriteThumbEntries(favoritesGridRoot()), selected);
   }, [selectionActive, selected]);
 
   useEffect(() => {
@@ -436,7 +437,7 @@ function FavoritesBulkBar(props: FavoritesBulkBarProps): JSX.Element {
   };
 
   const selectPage = (): void => {
-    const ids = listFavoriteThumbEntries().map((entry) => entry.postId);
+    const ids = listFavoriteThumbEntries(favoritesGridRoot()).map((entry) => entry.postId);
     setSelected(new Set(ids));
   };
 
@@ -676,6 +677,7 @@ function mountFavoritesBulk(_ctx: FeatureContext): void {
     <>
       <FavoritesHeader />
       <FavoritesBulkBar onSelectionModeChange={onSelectionModeChange} />
+      <FavoritesBrowser />
     </>,
     root,
   );

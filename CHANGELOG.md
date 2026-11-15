@@ -2,6 +2,17 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.32.0
+
+Favorites: search, filter and endless scrolling, all without leaving the page.
+
+- "Sync favorites" now also remembers the tags and the preview of every favorite. Run "Full resync" once to build this index for the whole list; it is kept in this browser and is not part of the Data export
+- A search field in the header: tags separated by spaces, `-tag` to exclude, `tag*` for any ending. It searches all indexed favorites at once
+- An "All / Images / Videos" switch
+- A "Pages / Scroll" switch: Scroll shows the whole list as one page that grows as you scroll, without requests
+- While a search, the media switch or Scroll is on, the bin removes a favorite in place, without reloading the page
+- A favorite removed from the grid no longer leaves an empty place in its column
+
 ## 0.31.1
 
 - The page no longer "unfolds" while it loads. The script's menu items (Feed, Collections, Following, Favorites, Statistics, RuleDesk) are in the menu before the page is first shown, instead of pushing in between the site's items a moment later

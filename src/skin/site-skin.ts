@@ -936,6 +936,11 @@ ${ROOT} div.image-list > span:has(> a[onclick]) {
   justify-items: center;
 }
 
+/* A cell whose post was removed leaves no hole in its column. */
+${ROOT} div.image-list > span:not(:has(span.thumb)) {
+  display: none;
+}
+
 ${ROOT} div.image-list > span > span.thumb {
   position: relative;
   display: block;
