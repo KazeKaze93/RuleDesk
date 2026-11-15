@@ -6,6 +6,7 @@ import {
 } from "../pages/constants";
 import {
   buildFeedUrl,
+  findFeedGroupIndex,
   isFullUpdatesQuery,
   isPartialUpdatesQuery,
 } from "../search/query";
@@ -26,6 +27,7 @@ import {
 } from "../storage/store";
 import { ensureDocumentStyles } from "../ui/cards";
 import { mountUpdatesBar } from "../ui/updates-bar";
+import { FEED_MERGE_CSS, isMergedFeedPage, mountFeedMerge } from "./feed-merge";
 import { onThumbsAdded } from "./runtime";
 import {
   THUMB_ANCHOR_NAME,
@@ -249,7 +251,8 @@ function isFeedPage(search: string, artistTags: string[]): boolean {
   }
   return (
     isFullUpdatesQuery(tagsParam, artistTags) ||
-    isPartialUpdatesQuery(tagsParam, artistTags)
+    isPartialUpdatesQuery(tagsParam, artistTags) ||
+    findFeedGroupIndex(tagsParam, artistTags, getUpdatesGroupSize()) >= 0
   );
 }
 
@@ -321,7 +324,20 @@ function mountFeed(ctx: FeatureContext): void {
 
   markNewThumbs(document, getSeenPostId());
   ensureNewThumbsSubscription();
-  mountUpdatesBar(document, ctx.search);
+
+  // More artists than one search holds: the page shows the first group only,
+  // the other groups are read and merged into the same grid.
+  const merged = isMergedFeedPage(ctx.search, artistTags, getUpdatesGroupSize());
+  mountUpdatesBar(document, ctx.search, { merged });
+  if (merged) {
+    mountFeedMerge({
+      artistTags,
+      groupSize: getUpdatesGroupSize(),
+      onChange: () => {
+        mountUpdatesBar(document, ctx.search, { merged });
+      },
+    });
+  }
 }
 
 export const feedFeature: Feature = {
@@ -329,6 +345,6 @@ export const feedFeature: Feature = {
   label: FEATURE_LABEL,
   pages: [...FEATURE_PAGES],
   defaultEnabled: true,
-  css: FEATURE_CSS,
+  css: `${FEATURE_CSS}\n${FEED_MERGE_CSS}`,
   mount: mountFeed,
 };

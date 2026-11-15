@@ -2,6 +2,7 @@ import { log } from "../log";
 import { isBlacklisted, readSiteBlacklist } from "../site/blacklist";
 import { fetchNextPage } from "../site/next-page";
 import { SITE_SELECTORS } from "../site/selectors";
+import { FEED_MERGE_BODY_CLASS } from "./feed-merge";
 import { notifyThumbsAdded } from "./runtime";
 import { featureBodyClass, type Feature, type FeatureContext } from "./types";
 
@@ -237,6 +238,10 @@ function isSentinelNear(sentinel: Element): boolean {
 }
 
 function mountInfiniteScroll(_ctx: FeatureContext): void {
+  // The merged feed loads its own pages, from several searches at once.
+  if (document.body.classList.contains(FEED_MERGE_BODY_CLASS)) {
+    return;
+  }
   const imageList = document.querySelector(SITE_SELECTORS.imageList);
   if (imageList === null) {
     log.warn(WARN_MISSING);

@@ -12,6 +12,7 @@ import {
 } from "../config/constants";
 import {
   buildSearchUrl,
+  findFeedGroupIndex,
   isFullUpdatesQuery,
   isPartialUpdatesQuery,
   isUnfilteredQuery,
@@ -22,7 +23,12 @@ import {
   withoutSortRandom,
 } from "../search/query";
 import { isPlaylist, type Collection } from "../storage/schema";
-import { createDynamicCollection, listArtistTags, load } from "../storage/store";
+import {
+  createDynamicCollection,
+  getUpdatesGroupSize,
+  listArtistTags,
+  load,
+} from "../storage/store";
 import { Button, Dialog, TextField } from "../ui/kit";
 import { QueryField } from "../ui/query-field";
 import { rememberDynamicCoverFromPage } from "./playlist-bar";
@@ -95,7 +101,8 @@ export function readSavableQuery(tags: string): string | null {
   const artistTags = listArtistTags();
   if (
     isFullUpdatesQuery(query, artistTags) ||
-    isPartialUpdatesQuery(query, artistTags)
+    isPartialUpdatesQuery(query, artistTags) ||
+    findFeedGroupIndex(query, artistTags, getUpdatesGroupSize()) >= 0
   ) {
     return null;
   }

@@ -180,6 +180,32 @@ export function buildFeedUrl(
   return buildUpdatesSearchUrl(query);
 }
 
+/** One search query per group of followed artists, without an id filter. */
+export function feedGroupQueries(artistTags: string[], groupSize: number): string[] {
+  return buildUpdatesQueries(artistTags, 0, groupSize);
+}
+
+/**
+ * Which group's search a results page shows, when the followed artists do not
+ * fit one search. -1 for any other page, for a page with an id filter, and
+ * when all artists fit one group (the feed is then a single ordinary search).
+ */
+export function findFeedGroupIndex(
+  tagsParam: string,
+  artistTags: string[],
+  groupSize: number,
+): number {
+  const queries = feedGroupQueries(artistTags, groupSize);
+  if (queries.length < 2) {
+    return -1;
+  }
+  const page = tagsParam.trim();
+  if (page.length === 0) {
+    return -1;
+  }
+  return queries.findIndex((query) => queriesMatchIgnoringSortRandom(page, query));
+}
+
 export function stripUpdatesIdFilter(tagsParam: string): string {
   const tokens = tagsParam.trim().split(/\s+/).filter((token) => token.length > 0);
   if (tokens.length === 0) {

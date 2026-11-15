@@ -230,6 +230,7 @@ function mountFullBar(
   imageList: Element,
   search: string,
   tagsParam: string,
+  merged: boolean,
 ): void {
   const bar = createBarShell();
   const seen = getSeenPostId();
@@ -253,7 +254,9 @@ function mountFullBar(
     hint.className = CSS_CLASS.hint;
     hint.textContent = `${UI_TEXT.noNewPostsSince}${String(seen)}`;
     actions.append(hint);
-    appendToggle(actions, tagsParam, seen);
+    if (!merged) {
+      appendToggle(actions, tagsParam, seen);
+    }
     bar.append(actions);
     insertBeforeImageList(imageList, bar);
     return;
@@ -280,19 +283,30 @@ function mountFullBar(
     const wrap = document.createElement("div");
     wrap.className = CSS_CLASS.updatesBarActions;
     wrap.append(confirm);
-    appendToggle(wrap, tagsParam, nextSeen);
+    if (!merged) {
+      appendToggle(wrap, tagsParam, nextSeen);
+    }
     bar.append(wrap);
   });
 
   actions.append(summary, markButton);
-  appendToggle(actions, tagsParam, seen);
+  // "Only new" is one search with an id filter; a merged feed is several.
+  if (!merged) {
+    appendToggle(actions, tagsParam, seen);
+  }
   bar.append(actions);
   insertBeforeImageList(imageList, bar);
 }
 
+export type UpdatesBarOptions = {
+  /** The page is the merged feed of several artist groups: always the full bar. */
+  readonly merged?: boolean;
+};
+
 export function mountUpdatesBar(
   root: ParentNode = document,
   search: string = window.location.search,
+  options: UpdatesBarOptions = {},
 ): void {
   if (detectPageKind(search) !== "list") {
     return;
@@ -306,8 +320,9 @@ export function mountUpdatesBar(
 
   const artistTags = resolveFollowedArtistTags();
   reloadStoragePreservingArtistsMirror();
-  const isFull = isFullUpdatesQuery(tagsParam, artistTags);
-  const isPartial = isPartialUpdatesQuery(tagsParam, artistTags);
+  const merged = options.merged === true;
+  const isFull = merged || isFullUpdatesQuery(tagsParam, artistTags);
+  const isPartial = !merged && isPartialUpdatesQuery(tagsParam, artistTags);
   if (!isFull && !isPartial) {
     removeExistingBar(root);
     return;
@@ -327,5 +342,5 @@ export function mountUpdatesBar(
     return;
   }
 
-  mountFullBar(imageList, search, tagsParam);
+  mountFullBar(imageList, search, tagsParam, merged);
 }

@@ -17,6 +17,7 @@ import { log } from "../log";
 import {
   buildFeedUrl,
   buildSearchUrl,
+  findFeedGroupIndex,
   isFullUpdatesQuery,
   isPartialUpdatesQuery,
   parsePlaylistQuery,
@@ -582,7 +583,8 @@ function detectSourceMode(search: string): SourceMode {
   const artists = resolveFollowedArtistTags();
   if (
     isFullUpdatesQuery(tagsRaw, artists) ||
-    isPartialUpdatesQuery(tagsRaw, artists)
+    isPartialUpdatesQuery(tagsRaw, artists) ||
+    findFeedGroupIndex(tagsRaw, artists, getUpdatesGroupSize()) >= 0
   ) {
     return "feed";
   }
@@ -653,9 +655,12 @@ function orGroupLabel(members: readonly string[]): {
   ]);
   const artists = resolveFollowedArtistTags();
   const count = members.length;
-  if (isFullUpdatesQuery(query, artists)) {
+  if (
+    isFullUpdatesQuery(query, artists) ||
+    findFeedGroupIndex(query, artists, getUpdatesGroupSize()) >= 0
+  ) {
     return {
-      label: `Feed · ${String(count)} artists`,
+      label: `Feed · ${String(artists.length)} artists`,
       title,
     };
   }
