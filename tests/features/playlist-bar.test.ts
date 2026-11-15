@@ -106,10 +106,24 @@ function stubLocation(): { assign: ReturnType<typeof vi.fn>; reload: ReturnType<
   const reload = vi.fn();
   vi.stubGlobal("location", {
     search: "",
+    hash: "",
     assign,
     reload,
   });
   return { assign, reload };
+}
+
+/** Mounts the bar as if the page was opened from the collection's card. */
+function mountOpened(search: string): void {
+  const first = load().collections.find((item) => item.kind !== "posts");
+  window.location.hash = first === undefined ? "" : `#rdw-dc=${first.id}`;
+  playlistBarFeature.mount(makeCtx(search));
+}
+
+/** The same address with the mark of the first dynamic collection. */
+function marked(url: string): string {
+  const first = load().collections.find((item) => item.kind !== "posts");
+  return `${url}#rdw-dc=${first?.id ?? ""}`;
 }
 
 function click(el: Element): void {
@@ -278,6 +292,7 @@ describe("dynamic collection bar", () => {
   });
 
   afterEach(() => {
+    window.location.hash = "";
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
@@ -286,7 +301,7 @@ describe("dynamic collection bar", () => {
     createDynamicCollection("Birds", "cat -dog");
     const list = buildListPage();
 
-    playlistBarFeature.mount(makeCtx(tagsSearch("-dog cat")));
+    mountOpened(tagsSearch("-dog cat"));
 
     const bar = document.getElementById(DYNAMIC_ROOT_ID);
     expect(bar).not.toBeNull();
@@ -305,6 +320,7 @@ describe("dynamic collection bar", () => {
     const broken = createDynamicCollection("Everything", "all");
     buildListPage();
 
+    window.location.hash = "";
     playlistBarFeature.mount(makeCtx(tagsSearch("all")));
     expect(document.getElementById(DYNAMIC_ROOT_ID)).toBeNull();
     playlistBarFeature.mount(makeCtx("?page=post&s=list"));
@@ -313,9 +329,44 @@ describe("dynamic collection bar", () => {
     window.location.hash = `#rdw-dc=${broken.id}`;
     playlistBarFeature.mount(makeCtx(tagsSearch("all")));
     const bar = document.getElementById(DYNAMIC_ROOT_ID);
-    window.location.hash = "";
     expect(bar?.querySelector(`.${NAME_CLASS}`)?.textContent).toBe("Everything");
     expect(load().collections.find((item) => item.id === broken.id)?.postCount).toBeUndefined();
+  });
+
+  it("shows no bar on an ordinary search that equals a saved one, but remembers its cover", () => {
+    const created = createDynamicCollection("Cats", "cat");
+    const list = buildListPage();
+    const thumb = document.createElement("span");
+    thumb.className = "thumb";
+    thumb.innerHTML = '<a href="index.php?page=post&amp;s=view&amp;id=1"><img class="preview" src="https://example.test/t1.jpg"></a>';
+    list.append(thumb);
+
+    window.location.hash = "";
+    playlistBarFeature.mount(makeCtx(tagsSearch("cat")));
+
+    expect(document.getElementById(DYNAMIC_ROOT_ID)).toBeNull();
+    expect(load().collections.find((item) => item.id === created.id)?.cover).toEqual([
+      "https://example.test/t1.jpg",
+    ]);
+
+    window.location.hash = "#rdw-dc=some-other-id";
+    playlistBarFeature.mount(makeCtx(tagsSearch("cat")));
+    expect(document.getElementById(DYNAMIC_ROOT_ID)).toBeNull();
+  });
+
+  it("keeps the collection mark on the pager links of an opened collection", () => {
+    const created = createDynamicCollection("Cats", "cat");
+    buildListPage();
+    const pager = document.createElement("div");
+    pager.className = "pagination";
+    pager.innerHTML = '<b>1</b><a href="?page=post&amp;s=list&amp;tags=cat&amp;pid=42">2</a>';
+    document.getElementById("content")?.append(pager);
+
+    mountOpened(tagsSearch("cat"));
+
+    expect(pager.querySelector("a")?.getAttribute("href")).toBe(
+      `?page=post&s=list&tags=cat&pid=42#rdw-dc=${created.id}`,
+    );
   });
 
   it("matches a legacy search that only has tags", () => {
@@ -330,7 +381,7 @@ describe("dynamic collection bar", () => {
     save(data);
     buildListPage();
 
-    playlistBarFeature.mount(makeCtx(tagsSearch("-cat bird")));
+    mountOpened(tagsSearch("-cat bird"));
 
     const bar = document.getElementById(DYNAMIC_ROOT_ID);
     expect(bar?.querySelector(`.${NAME_CLASS}`)?.textContent).toBe(
@@ -342,7 +393,7 @@ describe("dynamic collection bar", () => {
     createDynamicCollection("Birds", "cat dog");
     buildListPage();
 
-    playlistBarFeature.mount(makeCtx(tagsSearch("dog sort:random cat")));
+    mountOpened(tagsSearch("dog sort:random cat"));
 
     const bar = document.getElementById(DYNAMIC_ROOT_ID);
     expect(bar?.querySelector(`.${NAME_CLASS}`)?.textContent).toBe("Birds");
@@ -379,7 +430,7 @@ describe("dynamic collection bar", () => {
     const fetchSpy = vi.fn();
     vi.stubGlobal("fetch", fetchSpy);
 
-    playlistBarFeature.mount(makeCtx(tagsSearch("dog cat")));
+    mountOpened(tagsSearch("dog cat"));
 
     expect(coverOf(created.id)).toEqual(urls.slice(0, 4));
     expect(fetchSpy).not.toHaveBeenCalled();
@@ -392,18 +443,18 @@ describe("dynamic collection bar", () => {
     const created = createDynamicCollection("Birds", "cat");
     addThumbs(buildListPage(), 4);
 
-    playlistBarFeature.mount(makeCtx(`${tagsSearch("cat")}&pid=42`));
+    mountOpened((`${tagsSearch("cat")}&pid=42`));
     expect(coverOf(created.id)).toBeUndefined();
-    playlistBarFeature.mount(makeCtx(tagsSearch("cat sort:random")));
+    mountOpened(tagsSearch("cat sort:random"));
     expect(coverOf(created.id)).toBeUndefined();
 
-    playlistBarFeature.mount(makeCtx(`${tagsSearch("cat")}&pid=0`));
+    mountOpened((`${tagsSearch("cat")}&pid=0`));
     const stored = coverOf(created.id);
     expect(stored).toHaveLength(4);
 
     document.body.replaceChildren();
     buildListPage();
-    playlistBarFeature.mount(makeCtx(tagsSearch("cat")));
+    mountOpened(tagsSearch("cat"));
     expect(coverOf(created.id)).toEqual(stored);
   });
 
@@ -418,6 +469,41 @@ describe("dynamic collection bar", () => {
     return load().collections.find((item) => item.id === collectionId)?.postCount;
   }
 
+  it("takes the exact total of a one-tag search from the tag's sidebar row", () => {
+    const created = createDynamicCollection("Nyx", "nyx_x");
+    addThumbs(buildListPage(), 4);
+    addPagination(
+      '<a href="?page=post&amp;s=list&amp;tags=nyx_x&amp;pid=2688" alt="last page">&raquo;</a>',
+    );
+    const sidebar = document.createElement("ul");
+    sidebar.id = "tag-sidebar";
+    sidebar.innerHTML =
+      '<li class="tag-type-general"><a href="index.php?page=post&amp;s=list&amp;tags=1girl">1girl</a> <span class="tag-count">1415637</span></li>' +
+      '<li class="tag-type-artist"><a href="index.php?page=wiki&amp;s=list&amp;search=nyx_x">?</a> <a href="index.php?page=post&amp;s=list&amp;tags=nyx_x">nyx x</a> <span class="tag-count">2711</span></li>';
+    document.body.append(sidebar);
+
+    mountOpened(tagsSearch("nyx_x"));
+
+    expect(countOf(created.id)).toEqual({ value: 2711, exact: true });
+  });
+
+  it("keeps the lower bound for a search of several tags", () => {
+    const created = createDynamicCollection("Two", "nyx_x 1girl");
+    addThumbs(buildListPage(), 4);
+    addPagination(
+      '<a href="?page=post&amp;s=list&amp;tags=nyx_x+1girl&amp;pid=84" alt="last page">&raquo;</a>',
+    );
+    const sidebar = document.createElement("ul");
+    sidebar.id = "tag-sidebar";
+    sidebar.innerHTML =
+      '<li class="tag-type-artist"><a href="index.php?page=post&amp;s=list&amp;tags=nyx_x">nyx x</a> <span class="tag-count">2711</span></li>';
+    document.body.append(sidebar);
+
+    mountOpened(tagsSearch("nyx_x 1girl"));
+
+    expect(countOf(created.id)).toEqual({ value: 84, exact: false });
+  });
+
   it("reads a lower-bound post count from the last-page link", () => {
     const created = createDynamicCollection("Birds", "cat");
     addThumbs(buildListPage(), 4);
@@ -427,7 +513,7 @@ describe("dynamic collection bar", () => {
         '<a href="?page=post&amp;s=list&amp;tags=cat&amp;pid=12516" alt="last page">&gt;&gt;</a>',
     );
 
-    playlistBarFeature.mount(makeCtx(tagsSearch("cat")));
+    mountOpened(tagsSearch("cat"));
 
     expect(countOf(created.id)).toEqual({ value: 12516, exact: false });
   });
@@ -440,7 +526,7 @@ describe("dynamic collection bar", () => {
         '<a href="?page=post&amp;s=list&amp;tags=cat&amp;pid=84">3</a>',
     );
 
-    playlistBarFeature.mount(makeCtx(tagsSearch("cat")));
+    mountOpened(tagsSearch("cat"));
 
     expect(countOf(created.id)).toEqual({ value: 84, exact: false });
   });
@@ -450,10 +536,10 @@ describe("dynamic collection bar", () => {
     addThumbs(buildListPage(), 3);
     addPagination(" <b>1</b> ");
 
-    playlistBarFeature.mount(makeCtx(`${tagsSearch("cat")}&pid=42`));
+    mountOpened((`${tagsSearch("cat")}&pid=42`));
     expect(countOf(created.id)).toBeUndefined();
 
-    playlistBarFeature.mount(makeCtx(tagsSearch("cat")));
+    mountOpened(tagsSearch("cat"));
     expect(countOf(created.id)).toEqual({ value: 3, exact: true });
 
     updateDynamicQuery(created.id, "dog");
@@ -463,7 +549,7 @@ describe("dynamic collection bar", () => {
   it("drops the cover when the query is edited", () => {
     const created = createDynamicCollection("Birds", "cat");
     addThumbs(buildListPage(), 4);
-    playlistBarFeature.mount(makeCtx(tagsSearch("cat")));
+    mountOpened(tagsSearch("cat"));
     expect(coverOf(created.id)).toHaveLength(4);
 
     updateDynamicQuery(created.id, "dog");
@@ -474,7 +560,7 @@ describe("dynamic collection bar", () => {
     createDynamicCollection("Birds", "cat");
     buildListPage();
 
-    playlistBarFeature.mount(makeCtx(tagsSearch("dog")));
+    mountOpened(tagsSearch("dog"));
 
     expect(document.getElementById(DYNAMIC_ROOT_ID)).toBeNull();
   });
@@ -497,7 +583,7 @@ describe("dynamic collection bar", () => {
     buildListPage();
     const { assign } = stubLocation();
 
-    playlistBarFeature.mount(makeCtx(tagsSearch("dog cat")));
+    mountOpened(tagsSearch("dog cat"));
     const edit = findButton(
       document.getElementById(DYNAMIC_ROOT_ID) ?? document.body,
       TEXT_EDIT_QUERY,
@@ -530,7 +616,7 @@ describe("dynamic collection bar", () => {
     buildListPage();
     const { assign, reload } = stubLocation();
 
-    playlistBarFeature.mount(makeCtx(tagsSearch("dog cat")));
+    mountOpened(tagsSearch("dog cat"));
     const shuffle = findButton(
       document.getElementById(DYNAMIC_ROOT_ID) ?? document.body,
       TEXT_SHUFFLE,
@@ -541,13 +627,13 @@ describe("dynamic collection bar", () => {
     }
 
     expect(assign).toHaveBeenCalledWith(
-      buildSearchUrl(parseTags(withSortRandom("dog cat"))),
+      marked(buildSearchUrl(parseTags(withSortRandom("dog cat")))),
     );
     expect(reload).not.toHaveBeenCalled();
 
     document.body.replaceChildren();
     buildListPage();
-    playlistBarFeature.mount(makeCtx(tagsSearch("dog sort:random cat")));
+    mountOpened(tagsSearch("dog sort:random cat"));
     const reshuffle = findButton(
       document.getElementById(DYNAMIC_ROOT_ID) ?? document.body,
       TEXT_SHUFFLE,
@@ -565,7 +651,7 @@ describe("dynamic collection bar", () => {
     const { assign } = stubLocation();
     const pageQuery = "dog sort:random cat";
 
-    playlistBarFeature.mount(makeCtx(tagsSearch(pageQuery)));
+    mountOpened(tagsSearch(pageQuery));
     const original = findButton(
       document.getElementById(DYNAMIC_ROOT_ID) ?? document.body,
       TEXT_ORIGINAL_ORDER,
@@ -576,7 +662,7 @@ describe("dynamic collection bar", () => {
     }
 
     expect(assign).toHaveBeenCalledWith(
-      buildSearchUrl(parseTags(withoutSortRandom(pageQuery))),
+      marked(buildSearchUrl(parseTags(withoutSortRandom(pageQuery)))),
     );
   });
 
@@ -585,7 +671,7 @@ describe("dynamic collection bar", () => {
     buildListPage();
     const { assign } = stubLocation();
 
-    playlistBarFeature.mount(makeCtx(tagsSearch("dog cat")));
+    mountOpened(tagsSearch("dog cat"));
     const edit = findButton(
       document.getElementById(DYNAMIC_ROOT_ID) ?? document.body,
       TEXT_EDIT_QUERY,
@@ -615,7 +701,7 @@ describe("dynamic collection bar", () => {
     expect(load().collections.find((item) => item.id === created.id)?.query).toBe(
       "bird",
     );
-    expect(assign).toHaveBeenCalledWith(buildSearchUrl(parseTags("bird")));
+    expect(assign).toHaveBeenCalledWith(marked(buildSearchUrl(parseTags("bird"))));
   });
 
   it("renames from the fields dialog without leaving the page", () => {
@@ -623,7 +709,7 @@ describe("dynamic collection bar", () => {
     buildListPage();
     const { assign } = stubLocation();
 
-    playlistBarFeature.mount(makeCtx(tagsSearch("cat")));
+    mountOpened(tagsSearch("cat"));
     const rename = findButton(
       document.getElementById(DYNAMIC_ROOT_ID) ?? document.body,
       UI_TEXT.rename,
@@ -664,7 +750,7 @@ describe("dynamic collection bar", () => {
     const created = createDynamicCollection("Birds", "cat");
     buildListPage();
 
-    playlistBarFeature.mount(makeCtx(tagsSearch("cat")));
+    mountOpened(tagsSearch("cat"));
     const remove = findButton(
       document.getElementById(DYNAMIC_ROOT_ID) ?? document.body,
       UI_TEXT.delete,

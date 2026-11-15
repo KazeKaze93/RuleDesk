@@ -20,7 +20,10 @@ import {
   withSortRandom,
   withoutSortRandom,
 } from "../search/query";
-import { readDynamicCollectionMark } from "../pages/constants";
+import {
+  dynamicCollectionMarkHash,
+  readDynamicCollectionMark,
+} from "../pages/constants";
 import { SITE_SELECTORS } from "../site/selectors";
 import {
   isPlaylist,
@@ -373,25 +376,17 @@ function storedDynamicQuery(collection: Collection): string {
   return serialize(collection.tags);
 }
 
+/** The saved search this results page shows, for remembering its cover. */
 function findDynamicCollection(tagsParam: string): Collection | null {
-  const pageUnfiltered = isUnfilteredQuery(tagsParam);
+  if (isUnfilteredQuery(tagsParam)) {
+    return null;
+  }
   for (const collection of load().collections) {
     if (isPlaylist(collection)) {
       continue;
     }
     const stored = storedDynamicQuery(collection);
     if (isUnfilteredQuery(stored)) {
-      // Such a query is the plain post list. Its bar shows only when the page
-      // was opened from the collection's own card, so the query can be fixed.
-      if (
-        pageUnfiltered &&
-        readDynamicCollectionMark(window.location.hash) === collection.id
-      ) {
-        return collection;
-      }
-      continue;
-    }
-    if (pageUnfiltered) {
       continue;
     }
     if (queriesMatchIgnoringSortRandom(tagsParam, stored)) {
@@ -399,6 +394,44 @@ function findDynamicCollection(tagsParam: string): Collection | null {
     }
   }
   return null;
+}
+
+/**
+ * The dynamic collection this page was opened for: the address carries its
+ * mark (`#rdw-dc=<id>`, set by the collection's card) and the page shows its
+ * query. An ordinary search that happens to equal a saved one has no mark.
+ */
+function findOpenedCollection(tagsParam: string): Collection | null {
+  const markedId = readDynamicCollectionMark(window.location.hash);
+  if (markedId === null) {
+    return null;
+  }
+  for (const collection of load().collections) {
+    if (collection.id !== markedId || isPlaylist(collection)) {
+      continue;
+    }
+    const stored = storedDynamicQuery(collection);
+    if (isUnfilteredQuery(stored)) {
+      // A collection without a real query: opened so the query can be fixed.
+      return isUnfilteredQuery(tagsParam) ? collection : null;
+    }
+    return queriesMatchIgnoringSortRandom(tagsParam, stored) ? collection : null;
+  }
+  return null;
+}
+
+const HASH_MARK = "#";
+
+/** Other result pages of an opened collection keep its mark, and so its bar. */
+function keepMarkOnPager(collectionId: string): void {
+  const mark = dynamicCollectionMarkHash(collectionId);
+  for (const link of document.querySelectorAll(SITE_SELECTORS.paginationPageLink)) {
+    const href = link.getAttribute("href");
+    if (href === null || href.includes(HASH_MARK)) {
+      continue;
+    }
+    link.setAttribute("href", `${href}${mark}`);
+  }
 }
 
 function removeDynamicBar(root: ParentNode): void {
@@ -417,8 +450,11 @@ function deleteConfirmMessage(collectionName: string): string {
   return `${UI_TEXT.confirmDelete} (${collectionName})`;
 }
 
-function navigateToQuery(query: string): void {
-  window.location.assign(buildSearchUrl(parseTags(query)));
+/** Opens another search of the same collection, keeping its mark. */
+function navigateToQuery(query: string, collectionId: string): void {
+  window.location.assign(
+    `${buildSearchUrl(parseTags(query))}${dynamicCollectionMarkHash(collectionId)}`,
+  );
 }
 
 type DynamicBarProps = {
@@ -452,11 +488,11 @@ function DynamicCollectionBar(props: DynamicBarProps): JSX.Element {
       window.location.reload();
       return;
     }
-    navigateToQuery(withSortRandom(props.pageQuery));
+    navigateToQuery(withSortRandom(props.pageQuery), props.collectionId);
   }
 
   function onOriginalOrder(): void {
-    navigateToQuery(withoutSortRandom(props.pageQuery));
+    navigateToQuery(withoutSortRandom(props.pageQuery), props.collectionId);
   }
 
   function onEditSubmit(): void {
@@ -469,7 +505,7 @@ function DynamicCollectionBar(props: DynamicBarProps): JSX.Element {
     }
     const nextQuery = updated.query ?? serialize(updated.tags);
     setQuery(nextQuery);
-    navigateToQuery(nextQuery);
+    navigateToQuery(nextQuery, props.collectionId);
   }
 
   function onRenameSubmit(): void {
@@ -650,7 +686,7 @@ function rememberDynamicCover(
     return;
   }
   setDynamicCover(collectionId, readFirstThumbUrls());
-  const count = readResultCount();
+  const count = readResultCount(tagsParam);
   if (count !== null) {
     setDynamicPostCount(collectionId, count);
   }
@@ -669,13 +705,81 @@ function readPidFromLink(link: Element): number | null {
   return Number(raw);
 }
 
+const EXCLUDE_MARK = "-";
+const FILTER_MARK = ":";
+const OR_MARKS: readonly string[] = ["(", ")", "~"];
+const NON_DIGITS = /\D/g;
+
+/** The tag of a search that is exactly one plain tag, else null. */
+function readSingleTag(tagsParam: string): string | null {
+  const tokens = withoutSortRandom(tagsParam).split(" ");
+  const tag = tokens[0];
+  if (tokens.length !== 1 || tag === undefined || tag.length === 0) {
+    return null;
+  }
+  if (
+    tag.startsWith(EXCLUDE_MARK) ||
+    tag.includes(FILTER_MARK) ||
+    OR_MARKS.includes(tag)
+  ) {
+    return null;
+  }
+  return tag.toLowerCase();
+}
+
+function rowLinksToTag(row: Element, tag: string): boolean {
+  for (const link of row.querySelectorAll("a[href]")) {
+    const href = link.getAttribute("href") ?? "";
+    const mark = href.indexOf(QUERY_MARK);
+    if (mark < 0) {
+      continue;
+    }
+    const linked = new URLSearchParams(href.slice(mark + QUERY_MARK.length)).get(
+      SEARCH_PARAM_TAGS,
+    );
+    if (linked !== null && linked.trim().toLowerCase() === tag) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * For a search of one tag the sidebar row of that tag shows the site's own
+ * total, which is exact. Null when the row or its number is not on the page.
+ */
+function readSingleTagCount(tagsParam: string): PostCount | null {
+  const tag = readSingleTag(tagsParam);
+  if (tag === null) {
+    return null;
+  }
+  for (const row of document.querySelectorAll(SITE_SELECTORS.tagSidebarRow)) {
+    if (!rowLinksToTag(row, tag)) {
+      continue;
+    }
+    const digits = (
+      row.querySelector(SITE_SELECTORS.tagCount)?.textContent ?? ""
+    ).replace(NON_DIGITS, "");
+    if (digits.length === 0) {
+      return null;
+    }
+    return { value: Number(digits), exact: true };
+  }
+  return null;
+}
+
 /**
  * Size of the current search, read from the first results page.
+ * A search of one tag takes the exact total from the tag's sidebar row.
  * With a last-page link: at least its offset (`pid`), so the count is a lower
  * bound. With other page links only: the largest offset among them. With no
  * page links: the number of thumbs on the page, exact. No grid: null.
  */
-function readResultCount(): PostCount | null {
+function readResultCount(tagsParam: string): PostCount | null {
+  const tagCount = readSingleTagCount(tagsParam);
+  if (tagCount !== null) {
+    return tagCount;
+  }
   const last = document.querySelector(SITE_SELECTORS.paginationLastPage);
   if (last !== null) {
     const pid = readPidFromLink(last);
@@ -704,11 +808,18 @@ function readResultCount(): PostCount | null {
 }
 
 function mountDynamicBar(tagsParam: string, search: string): void {
-  const collection = findDynamicCollection(tagsParam);
-  if (collection === null) {
+  const opened = findOpenedCollection(tagsParam);
+  const shown = opened ?? findDynamicCollection(tagsParam);
+  if (shown !== null) {
+    // Cover and count are remembered on any visit to the saved search.
+    rememberDynamicCover(shown.id, tagsParam, search);
+  }
+  // The bar itself belongs to a visit from Collections, not to a plain search.
+  if (opened === null) {
     return;
   }
-  rememberDynamicCover(collection.id, tagsParam, search);
+  const collection = opened;
+  keepMarkOnPager(collection.id);
   const bar = document.createElement("div");
   bar.id = DYNAMIC_ROOT_ID;
   bar.className = ROOT_CLASS;
@@ -724,18 +835,6 @@ function mountDynamicBar(tagsParam: string, search: string): void {
     }),
     bar,
   );
-}
-
-/**
- * Draws (or redraws) the dynamic collection bar for a results page, e.g. right
- * after the current search was saved. Does nothing while the feature is off.
- */
-export function refreshDynamicBar(search: string): void {
-  if (!document.body.classList.contains(BODY_CLASS)) {
-    return;
-  }
-  removeDynamicBar(document);
-  mountDynamicBar(readTagsParam(search), search);
 }
 
 function mountPlaylistBar(ctx: FeatureContext): void {

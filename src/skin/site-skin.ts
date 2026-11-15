@@ -483,8 +483,8 @@ ${ROOT} div.tag-search input[type="search"] {
   font-size: 13px;
 }
 
-${ROOT} div.tag-search input[type="submit"],
-${ROOT} div.tag-search button[type="submit"] {
+${ROOT} div.tag-search input[type="submit"]${WHERE_NOT_OUR_CONTROL},
+${ROOT} div.tag-search button[type="submit"]${WHERE_NOT_OUR_CONTROL} {
   width: 100%;
   box-sizing: border-box;
   margin-top: 8px;
@@ -498,8 +498,8 @@ ${ROOT} div.tag-search button[type="submit"] {
   cursor: pointer;
 }
 
-${ROOT} div.tag-search input[type="submit"]:hover,
-${ROOT} div.tag-search button[type="submit"]:hover {
+${ROOT} div.tag-search input[type="submit"]${WHERE_NOT_OUR_CONTROL}:hover,
+${ROOT} div.tag-search button[type="submit"]${WHERE_NOT_OUR_CONTROL}:hover {
   filter: brightness(1.05);
 }
 

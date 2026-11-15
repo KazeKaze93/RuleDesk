@@ -2,21 +2,16 @@ import type { JSX } from "preact";
 import { useState } from "preact/hooks";
 
 import {
-  SEARCH_PARAM_SECTION,
-  SEARCH_PARAM_TAGS,
-  SEARCH_SECTION,
   UI_TEXT,
   UPDATES_OR_CLOSE,
   UPDATES_OR_JOIN,
   UPDATES_OR_OPEN,
 } from "../config/constants";
 import {
-  buildSearchUrl,
   isFullUpdatesQuery,
   isPartialUpdatesQuery,
   isUnfilteredQuery,
   parsePlaylistQuery,
-  parseTags,
   queriesMatchIgnoringSortRandom,
   serialize,
   withoutSortRandom,
@@ -25,7 +20,6 @@ import { isPlaylist, type Collection } from "../storage/schema";
 import { createDynamicCollection, listArtistTags, load } from "../storage/store";
 import { Button, Dialog, TextField } from "../ui/kit";
 import { QueryField } from "../ui/query-field";
-import { refreshDynamicBar } from "./playlist-bar";
 
 export const SAVE_SEARCH_LABEL = "Save as collection";
 export const SAVE_SEARCH_TITLE = "Save this search as a dynamic collection";
@@ -35,6 +29,9 @@ export const SAVE_SEARCH_CLASS = "rdw-search-tools-save";
 const CLASS_FORM = "rdw-dialog__fields";
 const CLASS_ACTIONS = "rdw-dialog__actions";
 const CLASS_ERROR = "rdw-search-tools-save-error";
+const CLASS_SAVED = "rdw-search-tools-saved";
+
+export const SAVED_NOTE = "Saved to Collections";
 
 /** `sort:score:desc`, `score:>=10`: a filter, not a tag. */
 const FILTER_MARK = ":";
@@ -54,6 +51,13 @@ export const SAVE_SEARCH_CSS = `
 .${CLASS_ERROR} {
   margin: 0;
   color: var(--rdw-danger);
+  font-size: 12px;
+}
+.${CLASS_SAVED} {
+  flex: 1 1 auto;
+  align-self: center;
+  text-align: center;
+  color: var(--rdw-muted);
   font-size: 12px;
 }
 `.trim();
@@ -113,18 +117,6 @@ function nameError(name: string): string | null {
   return null;
 }
 
-/** True when the page is the results list of exactly this search. */
-function pageShowsQuery(search: string, query: string): boolean {
-  const params = new URLSearchParams(search);
-  if (params.get(SEARCH_PARAM_SECTION) !== SEARCH_SECTION) {
-    return false;
-  }
-  return queriesMatchIgnoringSortRandom(
-    params.get(SEARCH_PARAM_TAGS) ?? "",
-    query,
-  );
-}
-
 export type SaveSearchButtonProps = {
   /** Text of the site's tags field: what the panel shows as chips and filters. */
   readonly tags: string;
@@ -133,19 +125,29 @@ export type SaveSearchButtonProps = {
 /**
  * "Save as collection" button for the search panel footer. Rendered only while
  * the search in the tags field can be saved. The dialog shows the name and the
- * query that will be stored. After saving, the collection's bar appears above
- * the results; when the page shows another search (the field was edited but
- * not submitted), the saved search is opened.
+ * query that will be stored. Saving changes nothing on the page except a short
+ * note in place of the button: the collection is opened from Collections.
  */
 export function SaveSearchButton(props: SaveSearchButtonProps): JSX.Element | null {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [queryDraft, setQueryDraft] = useState("");
   const [error, setError] = useState("");
+  const [saved, setSaved] = useState(false);
 
   const savable = readSavableQuery(props.tags);
   if (savable === null && !open) {
-    return null;
+    if (!saved) {
+      return null;
+    }
+    return (
+      <>
+        <style>{SAVE_SEARCH_CSS}</style>
+        <span className={CLASS_SAVED} role="status">
+          {SAVED_NOTE}
+        </span>
+      </>
+    );
   }
 
   const close = (): void => {
@@ -166,13 +168,8 @@ export function SaveSearchButton(props: SaveSearchButtonProps): JSX.Element | nu
       return;
     }
     createDynamicCollection(name.trim(), query);
+    setSaved(true);
     close();
-    const search = window.location.search;
-    if (pageShowsQuery(search, query)) {
-      refreshDynamicBar(search);
-      return;
-    }
-    window.location.assign(buildSearchUrl(parseTags(query)));
   };
 
   return (

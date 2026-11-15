@@ -279,7 +279,9 @@ describe("createCollectionsPage", () => {
     if (stored === undefined) {
       throw new Error("expected dynamic collection");
     }
-    expect(card.getAttribute("href")).toBe(buildSearchUrl(stored.tags));
+    expect(card.getAttribute("href")).toBe(
+      `${buildSearchUrl(stored.tags)}#rdw-dc=${stored.id}`,
+    );
     expect(card.getAttribute("href")).not.toContain("#rdw/");
     expect(card.getAttribute("data-collection-kind")).toBe(COLLECTION_KIND_SEARCH);
     expect(card.querySelector("button")).toBeNull();
@@ -333,7 +335,9 @@ describe("createCollectionsPage", () => {
     if (stored === undefined) {
       throw new Error("expected legacy collection");
     }
-    expect(card.getAttribute("href")).toBe(buildSearchUrl(stored.tags));
+    expect(card.getAttribute("href")).toBe(
+      `${buildSearchUrl(stored.tags)}#rdw-dc=${stored.id}`,
+    );
     expect(card.hasAttribute("title")).toBe(false);
   });
 
@@ -365,6 +369,50 @@ describe("createCollectionsPage", () => {
       `${buildSearchUrl(broken.tags)}#rdw-dc=${broken.id}`,
     );
     expect(card.textContent).toContain("no query");
+  });
+
+  it("deletes several selected collections after one confirmation", () => {
+    createPlaylist("Keep");
+    createPlaylist("Drop one");
+    createDynamicCollection("Drop two", "cat");
+    const root = mount();
+    expect(findButton(root, "Delete")).toBeNull();
+
+    click(findButton(root, "Select") ?? root);
+    const first = cardByName(root, "Drop one");
+    expect(first.getAttribute("role")).toBe("checkbox");
+    expect(findButton(root, "Delete")?.disabled).toBe(true);
+    click(first);
+    click(cardByName(root, "Drop two"));
+    expect(cardByName(root, "Drop one").getAttribute("aria-checked")).toBe("true");
+    expect(root.textContent).toContain("2 selected");
+    expect(load().collections).toHaveLength(3);
+
+    click(findButton(root, "Delete") ?? root);
+    const dialog = dialogElement(root);
+    expect(dialog.textContent).toContain(
+      "Delete 2 collections? This cannot be undone.",
+    );
+    expect(load().collections).toHaveLength(3);
+    click(findButton(dialog, "Delete") ?? dialog);
+
+    expect(load().collections.map((item) => item.name)).toEqual(["Keep"]);
+    expect(findButton(root, "Select")).not.toBeNull();
+    expect(cardByName(root, "Keep").getAttribute("role")).toBeNull();
+  });
+
+  it("leaves everything in place when selection is cancelled", () => {
+    createPlaylist("One");
+    createPlaylist("Two");
+    const root = mount();
+    click(findButton(root, "Select") ?? root);
+    click(findButton(root, "Select all") ?? root);
+    expect(root.textContent).toContain("2 selected");
+    click(findButton(root, "Cancel") ?? root);
+
+    expect(load().collections).toHaveLength(2);
+    expect(findButton(root, "Delete")).toBeNull();
+    expect(cardByName(root, "One").getAttribute("aria-checked")).toBeNull();
   });
 
   it("shows the post count of a dynamic collection once it is known", () => {
@@ -500,7 +548,9 @@ describe("createCollectionsPage", () => {
     expect(stored.kind).toBe(COLLECTION_KIND_SEARCH);
     expect(stored.query).toBe("( cat ~ dog ) tail");
     const card = cardByName(root, "Birds");
-    expect(card.getAttribute("href")).toBe(buildSearchUrl(stored.tags));
+    expect(card.getAttribute("href")).toBe(
+      `${buildSearchUrl(stored.tags)}#rdw-dc=${stored.id}`,
+    );
   });
 
   it("rejects a dynamic collection with an empty query", () => {

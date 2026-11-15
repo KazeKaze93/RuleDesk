@@ -1,15 +1,14 @@
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { playlistBarFeature } from "../../src/features/playlist-bar";
 import {
   readSavableQuery,
+  SAVED_NOTE,
   SAVE_SEARCH_DIALOG_TITLE,
   SAVE_SEARCH_LABEL,
   SAVE_SEARCH_TITLE,
   SaveSearchButton,
 } from "../../src/features/save-search";
-import { buildSearchUrl, parseTags } from "../../src/search/query";
 import { clearFavsCache } from "../../src/storage/favs";
 import {
   clearStorageCache,
@@ -151,7 +150,7 @@ describe("SaveSearchLink", () => {
     expect(buttonByText(SAVE_SEARCH_LABEL)).toBeNull();
   });
 
-  it("saves the current search under a name and shows its bar without a request", () => {
+  it("saves the search under a name, shows a note, and draws no bar and makes no request", () => {
     openResults("cat sort:random -dog");
     const fetchSpy = vi.fn();
     vi.stubGlobal("fetch", fetchSpy);
@@ -174,7 +173,10 @@ describe("SaveSearchLink", () => {
     expect(saved?.query).toBe("cat -dog");
     expect(document.querySelector('[role="dialog"]')).toBeNull();
     expect(buttonByText(SAVE_SEARCH_LABEL)).toBeNull();
-    expect(document.getElementById(DYNAMIC_BAR_ID)?.textContent).toContain("Cats");
+    expect(document.getElementById(DYNAMIC_BAR_ID)).toBeNull();
+    expect(document.querySelector('[role="status"]')?.textContent).toBe(
+      SAVED_NOTE,
+    );
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
@@ -202,7 +204,7 @@ describe("SaveSearchLink", () => {
     expect(document.getElementById(DYNAMIC_BAR_ID)).toBeNull();
   });
 
-  it("saves what the field holds, not the page address, and opens that search", () => {
+  it("saves what the field holds, not the page address, and stays on the page", () => {
     const assign = vi.fn();
     vi.stubGlobal("location", {
       ...window.location,
@@ -220,9 +222,7 @@ describe("SaveSearchLink", () => {
 
     const saved = load().collections.find((item) => item.name === "Triss");
     expect(saved?.query).toBe("triss_merigold blowjob");
-    expect(assign).toHaveBeenCalledWith(
-      buildSearchUrl(parseTags("triss_merigold blowjob")),
-    );
+    expect(assign).not.toHaveBeenCalled();
     expect(document.getElementById(DYNAMIC_BAR_ID)).toBeNull();
   });
 
@@ -246,22 +246,5 @@ describe("SaveSearchLink", () => {
       "Enter a tag search that is not saved yet.",
     );
     expect(load().collections).toHaveLength(0);
-  });
-
-  it("does not draw the bar while the collection bar feature is off", () => {
-    document.body.className = "";
-    openResults("cat");
-    host = renderKit(<SaveSearchButton tags="cat" />);
-    const link = buttonByText(SAVE_SEARCH_LABEL);
-    if (link === null) {
-      throw new Error("save link missing");
-    }
-    fireClick(link);
-    typeName("Cats");
-    submitDialog();
-
-    expect(load().collections).toHaveLength(1);
-    expect(document.getElementById(DYNAMIC_BAR_ID)).toBeNull();
-    expect(playlistBarFeature.id).toBe("playlist-bar");
   });
 });

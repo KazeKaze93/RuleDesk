@@ -16,6 +16,7 @@ import { readCountMirror, readCoverMirror } from "../storage/cover-mirror";
 import {
   createDynamicCollection,
   createPlaylist,
+  deleteCollection,
   load,
   reloadFromStorage,
 } from "../storage/store";
@@ -27,7 +28,7 @@ import {
   TextField,
   type SegmentedOption,
 } from "../ui/kit";
-import { IconPlus } from "../ui/kit/icons";
+import { IconCheck, IconPlus } from "../ui/kit/icons";
 import { QueryField } from "../ui/query-field";
 import { collectionDetailHash, dynamicCollectionMarkHash } from "./constants";
 
@@ -48,6 +49,9 @@ const NAME_CLASS = "rdw-collection-name";
 const BADGE_CLASS = "rdw-collection-badge";
 const CAPTION_CLASS = "rdw-collection-caption";
 const FORM_ERROR_CLASS = "rdw-collection-form-error";
+const CARD_SELECTED_CLASS = "rdw-collection-card--selected";
+const CARD_MARK_CLASS = "rdw-collection-card-mark";
+const SELECTED_COUNT_CLASS = "rdw-collections-selected-count";
 
 const FILTER_ALL = "all";
 const FILTER_CUSTOM = "custom";
@@ -59,6 +63,16 @@ const FILTER_ALL_LABEL = "All";
 const FILTER_CUSTOM_LABEL = "Custom";
 const FILTER_DYNAMIC_LABEL = "Dynamic";
 const NEW_BUTTON_LABEL = "New";
+const SELECT_BUTTON_LABEL = "Select";
+const SELECT_BUTTON_TITLE = "Select collections to delete";
+const SELECT_ALL_LABEL = "Select all";
+const SELECTED_SUFFIX = " selected";
+const DELETE_DIALOG_TITLE = "Delete collections";
+const DELETE_ONE_MESSAGE = "Delete 1 collection? This cannot be undone.";
+const DELETE_MANY_PREFIX = "Delete ";
+const DELETE_MANY_SUFFIX = " collections? This cannot be undone.";
+const ROLE_CHECKBOX = "checkbox";
+const SINGLE_SELECTION = 1;
 const NEW_DIALOG_TITLE = "New collection";
 const CREATE_LABEL = "Create";
 const QUERY_FIELD_LABEL = "Query";
@@ -101,6 +115,10 @@ const META_GAP_PX = 8;
 const BADGE_FONT_PX = 10;
 const CAPTION_FONT_PX = 12;
 const ICON_PX = 14;
+const MARK_SIZE_PX = 22;
+const MARK_OFFSET_PX = 14;
+const MARK_ICON_PX = 14;
+const MARK_BORDER_PX = 2;
 const BADGE_TRACKING = "0.04em";
 
 const NAME_FIELD_ID = "rdw-collection-name";
@@ -169,6 +187,38 @@ export const COLLECTIONS_PAGE_CSS = `
   border-color: var(--rdw-accent);
   background: var(--rdw-surface-2);
   outline: none;
+}
+.${CARD_CLASS} {
+  position: relative;
+}
+.${CARD_SELECTED_CLASS},
+.${CARD_SELECTED_CLASS}:hover {
+  border-color: var(--rdw-accent);
+  box-shadow: 0 0 0 1px var(--rdw-accent);
+}
+.${CARD_MARK_CLASS} {
+  position: absolute;
+  top: ${String(MARK_OFFSET_PX)}px;
+  left: ${String(MARK_OFFSET_PX)}px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: ${String(MARK_SIZE_PX)}px;
+  height: ${String(MARK_SIZE_PX)}px;
+  border: ${String(MARK_BORDER_PX)}px solid var(--rdw-border);
+  border-radius: var(--rdw-radius-m);
+  background: var(--rdw-surface);
+  color: var(--rdw-surface);
+}
+.${CARD_SELECTED_CLASS} .${CARD_MARK_CLASS} {
+  border-color: var(--rdw-accent);
+  background: var(--rdw-accent);
+}
+.${SELECTED_COUNT_CLASS} {
+  color: var(--rdw-muted);
+  font-size: ${String(CAPTION_FONT_PX)}px;
+  white-space: nowrap;
 }
 .${COVER_CLASS} {
   display: grid;
@@ -336,6 +386,24 @@ function thumbUrl(collection: Collection, postId: number): string | null {
   return value;
 }
 
+/** Present while the page is in selection mode. */
+type CardSelect = {
+  readonly selected: boolean;
+  readonly onToggle: () => void;
+};
+
+type CardProps = {
+  readonly collection: Collection;
+  readonly select: CardSelect | null;
+};
+
+function deleteMessage(count: number): string {
+  if (count === SINGLE_SELECTION) {
+    return DELETE_ONE_MESSAGE;
+  }
+  return `${DELETE_MANY_PREFIX}${String(count)}${DELETE_MANY_SUFFIX}`;
+}
+
 function cardAriaLabel(name: string, badge: string, meta: string): string {
   return `${name}, ${badge}, ${meta}`;
 }
@@ -346,13 +414,46 @@ function CardLink(props: {
   readonly kind: string;
   readonly badge: string;
   readonly meta: string;
+  readonly select: CardSelect | null;
   readonly children: ComponentChildren;
 }): JSX.Element {
+  const select = props.select;
+  const label = cardAriaLabel(props.collection.name, props.badge, props.meta);
+  if (select !== null) {
+    // While selecting, the card is a checkbox: a click marks it and opens nothing.
+    return (
+      <a
+        className={
+          select.selected ? `${CARD_CLASS} ${CARD_SELECTED_CLASS}` : CARD_CLASS
+        }
+        href={props.href}
+        role={ROLE_CHECKBOX}
+        aria-checked={select.selected}
+        aria-label={label}
+        data-collection-id={props.collection.id}
+        data-collection-kind={props.kind}
+        onClick={(event) => {
+          event.preventDefault();
+          select.onToggle();
+        }}
+      >
+        <span className={CARD_MARK_CLASS} aria-hidden="true">
+          {select.selected ? <IconCheck size={MARK_ICON_PX} /> : null}
+        </span>
+        {props.children}
+        <span className={META_ROW_CLASS}>
+          <span className={NAME_CLASS}>{props.collection.name}</span>
+          <span className={BADGE_CLASS}>{props.badge}</span>
+        </span>
+        <span className={CAPTION_CLASS}>{props.meta}</span>
+      </a>
+    );
+  }
   return (
     <a
       className={CARD_CLASS}
       href={props.href}
-      aria-label={cardAriaLabel(props.collection.name, props.badge, props.meta)}
+      aria-label={label}
       data-collection-id={props.collection.id}
       data-collection-kind={props.kind}
     >
@@ -413,7 +514,7 @@ function Cover(props: {
   );
 }
 
-function CustomCard(props: { readonly collection: Collection }): JSX.Element {
+function CustomCard(props: CardProps): JSX.Element {
   const count = props.collection.postIds?.length ?? 0;
   const meta = postsLabel(count);
   const slots = coverPostIds(props.collection);
@@ -427,6 +528,7 @@ function CustomCard(props: { readonly collection: Collection }): JSX.Element {
       kind={COLLECTION_KIND_POSTS}
       badge={BADGE_CUSTOM}
       meta={meta}
+      select={props.select}
     >
       <Cover collectionId={props.collection.id} urls={urls} postIds={slots} />
     </CardLink>
@@ -439,16 +541,11 @@ function dynamicQuery(collection: Collection): string {
 }
 
 /**
- * Results URL of a dynamic collection. A collection whose query narrows
- * nothing carries a mark, so its bar still shows there and the query can be
- * edited or the collection deleted.
+ * Results URL of a dynamic collection, with the collection's mark: the bar
+ * (Shuffle, Edit query, Rename, Delete) shows only on a page opened from here.
  */
 function dynamicHref(collection: Collection): string {
-  const url = buildSearchUrl(collection.tags);
-  if (!isUnfilteredQuery(dynamicQuery(collection))) {
-    return url;
-  }
-  return `${url}${dynamicCollectionMarkHash(collection.id)}`;
+  return `${buildSearchUrl(collection.tags)}${dynamicCollectionMarkHash(collection.id)}`;
 }
 
 function dynamicMeta(collection: Collection): string {
@@ -468,7 +565,7 @@ function dynamicMeta(collection: Collection): string {
   return `${number}${COUNT_AT_LEAST_MARK} ${POST_WORD_PLURAL}`;
 }
 
-function DynamicCard(props: { readonly collection: Collection }): JSX.Element {
+function DynamicCard(props: CardProps): JSX.Element {
   const cover =
     readCoverMirror(props.collection.id) ?? props.collection.cover ?? [];
   const slots: (string | null)[] = [];
@@ -482,19 +579,18 @@ function DynamicCard(props: { readonly collection: Collection }): JSX.Element {
       kind={COLLECTION_KIND_SEARCH}
       badge={BADGE_DYNAMIC}
       meta={dynamicMeta(props.collection)}
+      select={props.select}
     >
       <Cover collectionId={props.collection.id} urls={slots} />
     </CardLink>
   );
 }
 
-function CollectionCard(props: {
-  readonly collection: Collection;
-}): JSX.Element {
+function CollectionCard(props: CardProps): JSX.Element {
   if (resolveCollectionKind(props.collection) === COLLECTION_KIND_POSTS) {
-    return <CustomCard collection={props.collection} />;
+    return <CustomCard collection={props.collection} select={props.select} />;
   }
-  return <DynamicCard collection={props.collection} />;
+  return <DynamicCard collection={props.collection} select={props.select} />;
 }
 
 function NewCollectionDialog(props: {
@@ -580,6 +676,9 @@ export function CollectionsPage(): JSX.Element {
   const [queryDraft, setQueryDraft] = useState("");
   const [formError, setFormError] = useState("");
   const [, setRevision] = useState(0);
+  const [selecting, setSelecting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<readonly string[]>([]);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const closeDialog = useCallback((): void => {
     setDialogOpen(false);
@@ -606,6 +705,33 @@ export function CollectionsPage(): JSX.Element {
     collections.length === 0
       ? { title: EMPTY_TITLE, description: EMPTY_DESCRIPTION }
       : { title: FILTER_EMPTY_TITLE, description: FILTER_EMPTY_DESCRIPTION };
+
+  // Only cards that are on screen count: a filter never hides a doomed card.
+  const selectedVisible = visible.filter((collection) =>
+    selectedIds.includes(collection.id),
+  );
+
+  const stopSelecting = (): void => {
+    setSelecting(false);
+    setSelectedIds([]);
+    setConfirmOpen(false);
+  };
+
+  const toggleSelected = (id: string): void => {
+    setSelectedIds((current) =>
+      current.includes(id)
+        ? current.filter((entry) => entry !== id)
+        : [...current, id],
+    );
+  };
+
+  const deleteSelected = (): void => {
+    for (const collection of selectedVisible) {
+      deleteCollection(collection.id);
+    }
+    stopSelecting();
+    setRevision((value) => value + 1);
+  };
 
   const openDialog = (): void => {
     setNewKind(kindForFilter(filter));
@@ -659,10 +785,54 @@ export function CollectionsPage(): JSX.Element {
             aria-label={FILTER_ARIA_LABEL}
             onChange={setNameQuery}
           />
-          <Button type="button" variant="primary" onClick={openDialog}>
-            <IconPlus size={ICON_PX} />
-            {NEW_BUTTON_LABEL}
-          </Button>
+          {selecting ? (
+            <>
+              <span className={SELECTED_COUNT_CLASS} aria-live="polite">
+                {`${String(selectedVisible.length)}${SELECTED_SUFFIX}`}
+              </span>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setSelectedIds(visible.map((collection) => collection.id));
+                }}
+              >
+                {SELECT_ALL_LABEL}
+              </Button>
+              <Button
+                type="button"
+                variant="danger"
+                disabled={selectedVisible.length === 0}
+                onClick={() => {
+                  setConfirmOpen(true);
+                }}
+              >
+                {UI_TEXT.delete}
+              </Button>
+              <Button type="button" variant="secondary" onClick={stopSelecting}>
+                {UI_TEXT.cancel}
+              </Button>
+            </>
+          ) : (
+            <>
+              {collections.length > 0 ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  title={SELECT_BUTTON_TITLE}
+                  onClick={() => {
+                    setSelecting(true);
+                  }}
+                >
+                  {SELECT_BUTTON_LABEL}
+                </Button>
+              ) : null}
+              <Button type="button" variant="primary" onClick={openDialog}>
+                <IconPlus size={ICON_PX} />
+                {NEW_BUTTON_LABEL}
+              </Button>
+            </>
+          )}
         </div>
       </header>
       {visible.length === 0 ? (
@@ -670,10 +840,36 @@ export function CollectionsPage(): JSX.Element {
       ) : (
         <div className={GRID_CLASS} aria-label={GRID_LABEL}>
           {visible.map((collection) => (
-            <CollectionCard key={collection.id} collection={collection} />
+            <CollectionCard
+              key={collection.id}
+              collection={collection}
+              select={
+                selecting
+                  ? {
+                      selected: selectedIds.includes(collection.id),
+                      onToggle: () => {
+                        toggleSelected(collection.id);
+                      },
+                    }
+                  : null
+              }
+            />
           ))}
         </div>
       )}
+      <Dialog
+        variant="confirm"
+        open={confirmOpen}
+        title={DELETE_DIALOG_TITLE}
+        message={deleteMessage(selectedVisible.length)}
+        confirmLabel={UI_TEXT.delete}
+        cancelLabel={UI_TEXT.cancel}
+        confirmTone="danger"
+        onConfirm={deleteSelected}
+        onClose={() => {
+          setConfirmOpen(false);
+        }}
+      />
       <NewCollectionDialog
         open={dialogOpen}
         kind={newKind}

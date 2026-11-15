@@ -8,6 +8,10 @@ export const SITE_SELECTORS = {
   favoritesDeleteLink: "a[onclick]",
   tagSidebar: "ul#tag-sidebar",
   tagTypeArtist: "li.tag-type-artist",
+  /** A tag row of the sidebar, any tag type. */
+  tagSidebarRow: 'ul#tag-sidebar > li[class*="tag-type-"]',
+  /** Number of posts with the tag, inside its sidebar row. */
+  tagCount: "span.tag-count",
   imageList: "div.image-list",
   postListContent: "#post-list div.content",
   contentRoot: "#content",

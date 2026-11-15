@@ -18,6 +18,17 @@ Local build: `npm install` then `npm run build` → `dist/ruledesk-web.user.js`.
 
 Measured on Tampermonkey 5.5.1: with Dynamic, native page flash on load is typically 0/5 vs ~5/5 with UserScripts API; pages also open faster. Prefer Dynamic for RuleDesk Web.
 
+### 0.19.0 notes
+
+- **Dynamic collection header** (name, Shuffle, Edit query, Rename, Delete) shows only when the collection is opened from Collections. An ordinary search that equals a saved one stays a plain search. Result pages, Shuffle and Edit query keep the header
+- **Save as collection** no longer opens anything or draws a header: the button is replaced by a "Saved to Collections" note
+- The Save button of that dialog is no longer stretched by the site's Search button style
+- **Collections:** a "Select" button turns the cards into checkboxes. "Select all" marks every card on screen, "Delete" removes the marked collections after one confirmation, "Cancel" leaves selection mode
+
+### 0.18.2 notes
+
+- A dynamic collection saved from a one-tag search shows the exact post count, taken from the tag's row in the sidebar. A search of several tags still shows a lower bound with "+"
+
 ### 0.18.1 notes
 
 - **Search panel footer:** the hint text is gone; "Reset" and "Save as collection" are regular buttons
