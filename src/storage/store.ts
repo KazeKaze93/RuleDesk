@@ -17,7 +17,7 @@ import {
   STORAGE_KEY,
 } from "../config/constants";
 import { log } from "../log";
-import { normalizeArtistTag, parseTags, serialize } from "../search/query";
+import { normalizeArtistTag, parseTags } from "../search/query";
 import { readArtistsMirror, writeArtistsMirror } from "./artists-mirror";
 import {
   removeCountMirror,
@@ -711,60 +711,6 @@ export function movePostInCollection(
   CollectionSchema.parse(target);
   save(data);
   return true;
-}
-
-const IMPORT_NAME_FIRST_SUFFIX = 2;
-
-/** A free collection name: the wanted one, or it with " (2)", " (3)"… */
-function freeCollectionName(wanted: string, taken: Set<string>): string {
-  const base = wanted.trim();
-  let name = base;
-  for (let suffix = IMPORT_NAME_FIRST_SUFFIX; taken.has(name.toLowerCase()); suffix += 1) {
-    name = `${base} (${String(suffix)})`;
-  }
-  taken.add(name.toLowerCase());
-  return name;
-}
-
-/**
- * Adds collections read from an export file as new ones: each gets a new id,
- * and a name that is already taken gets a number. Covers and counts of saved
- * searches are not carried (they are re-read from the site's pages).
- * Returns how many were added.
- */
-export function importCollections(incoming: readonly Collection[]): number {
-  if (incoming.length === 0) {
-    return 0;
-  }
-  const data = reloadFromStorage();
-  const taken = new Set(data.collections.map((item) => item.name.trim().toLowerCase()));
-  for (const source of incoming) {
-    const name = freeCollectionName(source.name, taken);
-    const isPosts = isPlaylist(source);
-    data.collections.push(
-      CollectionSchema.parse(
-        isPosts
-          ? {
-              id: crypto.randomUUID(),
-              name,
-              tags: [],
-              kind: COLLECTION_KIND_POSTS,
-              postIds: [...(source.postIds ?? [])],
-              thumbs: { ...(source.thumbs ?? {}) },
-              shuffledOrder: null,
-            }
-          : {
-              id: crypto.randomUUID(),
-              name,
-              tags: source.tags,
-              kind: COLLECTION_KIND_SEARCH,
-              query: source.query ?? serialize(source.tags),
-            },
-      ),
-    );
-  }
-  save(data);
-  return incoming.length;
 }
 
 /** Phase 2 HANDOFF: read-only display order. Null when the id is missing or not a posts collection. */

@@ -19,6 +19,7 @@ import {
   VIDEO_SIZE_ORIGINAL,
 } from "../../src/storage/schema";
 import { tagGroupsFeature } from "../../src/features/tag-groups";
+import { installSiteMenu } from "../../src/pages/menu";
 import {
   clearStorageCache,
   getFeatureState,
@@ -98,7 +99,7 @@ describe("SettingsPage flat rows", () => {
       Array.from(root?.querySelectorAll("button[data-settings-section]") ?? []).map(
         (node) => node.textContent,
       ),
-    ).toEqual(["Appearance", "Page", "Blacklist", "Favorites", "Statistics", "Data"]);
+    ).toEqual(["Appearance", "Page", "Blacklist", "Favorites", "Data"]);
 
     act(() => {
       header.click();
@@ -124,6 +125,39 @@ describe("SettingsPage flat rows", () => {
         ?.querySelector('button[data-settings-section="data"]')
         ?.getAttribute("aria-expanded"),
     ).toBe("true");
+  });
+
+  it("hides the Statistics menu item with its switch and has no statistics block", () => {
+    const header = document.createElement("div");
+    header.id = "header";
+    header.innerHTML = '<ul id="navbar"><li><a href="#">Posts</a></li></ul>';
+    document.body.append(header);
+    installSiteMenu();
+    expect(document.getElementById("rdw-nav-stats")?.textContent).toBe("Statistics");
+
+    let root: HTMLElement | undefined;
+    act(() => {
+      root = createSettingsPage();
+      document.body.append(root);
+    });
+    expect(root?.querySelector('button[data-settings-section="statistics"]')).toBeNull();
+    const toggle = root?.querySelector("#rdw-stats-menu");
+    if (!(toggle instanceof HTMLElement)) {
+      throw new Error("statistics switch missing");
+    }
+    expect(toggle.getAttribute("aria-checked")).toBe("true");
+
+    act(() => {
+      toggle.click();
+    });
+    expect(document.getElementById("rdw-nav-stats")).toBeNull();
+
+    act(() => {
+      toggle.click();
+    });
+    const item = document.getElementById("rdw-nav-stats");
+    expect(item?.querySelector("a")?.getAttribute("href")).toBe("#rdw/stats");
+    header.remove();
   });
 
   it("forgets collapsed tag groups when the Collapse tags switch is flipped", () => {

@@ -4,6 +4,8 @@ import { COLLECTION_KIND_POSTS } from "../config/constants";
 import { loadFavSet } from "../storage/favs";
 import { resolveCollectionKind, type StorageData } from "../storage/schema";
 import { getSeenPostId, load } from "../storage/store";
+import { Card } from "../ui/kit";
+import { PANEL_UI_CLASS } from "./constants";
 
 /**
  * Numbers about what the script stores, computed from local data when the
@@ -218,5 +220,14 @@ export function StatsSection(): JSX.Element {
       )}
       <p className={HINT_CLASS}>{HINT}</p>
     </section>
+  );
+}
+
+/** The Statistics page of the site menu. */
+export function StatsPage(): JSX.Element {
+  return (
+    <Card className={PANEL_UI_CLASS.pageCard}>
+      <StatsSection />
+    </Card>
   );
 }

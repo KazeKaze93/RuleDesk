@@ -5,10 +5,12 @@ export const RDW_HASH_PREFIX = "#rdw/" as const;
 export const RDW_ROUTE_COLLECTIONS = "collections" as const;
 export const RDW_ROUTE_FOLLOWING = "following" as const;
 export const RDW_ROUTE_SETTINGS = "settings" as const;
+export const RDW_ROUTE_STATS = "stats" as const;
 
 export const RDW_ROUTES = [
   RDW_ROUTE_COLLECTIONS,
   RDW_ROUTE_FOLLOWING,
+  RDW_ROUTE_STATS,
   RDW_ROUTE_SETTINGS,
 ] as const;
 
@@ -42,6 +44,15 @@ export const RDW_DYNAMIC_MARK_HASH_PREFIX = "#rdw-dc=" as const;
 export const RDW_HASH_COLLECTIONS = `${RDW_HASH_PREFIX}${RDW_ROUTE_COLLECTIONS}`;
 export const RDW_HASH_FOLLOWING = `${RDW_HASH_PREFIX}${RDW_ROUTE_FOLLOWING}`;
 export const RDW_HASH_SETTINGS = `${RDW_HASH_PREFIX}${RDW_ROUTE_SETTINGS}`;
+export const RDW_HASH_STATS = `${RDW_HASH_PREFIX}${RDW_ROUTE_STATS}`;
+
+/**
+ * Key in `settings.features` for showing Statistics in the site menu.
+ * It is a plain switch, not a page tweak with a module.
+ */
+export const STATS_MENU_SETTING_ID = "stats-menu";
+export const STATS_MENU_SETTING_LABEL = "Statistics in site menu";
+export const STATS_MENU_SWITCH_ID = "rdw-stats-menu";
 
 export const RDW_OWN_PAGE_CLASS = "rdw-own-page";
 export const RDW_PAGE_ROOT_ID = "rdw-page-root";
@@ -55,6 +66,7 @@ export const MENU_ITEM_ID = {
   collections: "rdw-nav-collections",
   following: "rdw-nav-following",
   favorites: "rdw-nav-favorites",
+  stats: "rdw-nav-stats",
   settings: "rdw-nav-settings",
 } as const;
 
@@ -62,6 +74,7 @@ export const MENU_LABEL = {
   collections: "Collections",
   following: "Following",
   favorites: "Favorites",
+  stats: "Statistics",
   settings: "RuleDesk",
 } as const;
 

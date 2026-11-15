@@ -1,16 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
-  parseCollectionsFile,
-  serializeCollections,
-} from "../../src/storage/collection-transfer";
-import {
   addPostToCollection,
   clearStorageCache,
-  createDynamicCollection,
   createPlaylist,
   getCollectionOrder,
-  importCollections,
   load,
   movePostInCollection,
   shuffleCollection,
@@ -37,7 +31,7 @@ function filled(name: string, ids: number[]): string {
   return collection.id;
 }
 
-describe("collection order and transfer", () => {
+describe("collection order", () => {
   beforeEach(() => {
     installGmMocks();
   });
@@ -68,31 +62,5 @@ describe("collection order and transfer", () => {
     movePostInCollection(id, first, last);
     expect(getCollectionOrder(id)?.[2]).toBe(first);
     expect(load().collections[0]?.postIds).toEqual([1, 2, 3]);
-  });
-
-  it("round-trips collections through the export file as new collections", () => {
-    filled("Pics", [5, 6]);
-    createDynamicCollection("Cats", "cat -dog");
-    const text = serializeCollections(load().collections);
-
-    const parsed = parseCollectionsFile(text);
-    expect(parsed).toHaveLength(2);
-    expect(importCollections(parsed ?? [])).toBe(2);
-
-    const all = load().collections;
-    expect(all.map((item) => item.name)).toEqual(["Pics", "Cats", "Pics (2)", "Cats (2)"]);
-    expect(new Set(all.map((item) => item.id)).size).toBe(4);
-    expect(all[2]?.postIds).toEqual([5, 6]);
-    expect(all[2]?.thumbs).toEqual({
-      "5": "https://example.test/5.jpg",
-      "6": "https://example.test/6.jpg",
-    });
-    expect(all[3]?.query).toBe("cat -dog");
-  });
-
-  it("rejects a file that is not a collections export", () => {
-    expect(parseCollectionsFile("not json")).toBeNull();
-    expect(parseCollectionsFile('{"format":"ruledesk-web-backup","version":1}')).toBeNull();
-    expect(importCollections([])).toBe(0);
   });
 });

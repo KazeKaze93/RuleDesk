@@ -12,7 +12,7 @@ A userscript for `rule34.xxx` that adds a feed of followed artists, collections,
 
 ## What it adds
 
-New items appear in the site's header menu: **Feed**, **Collections**, **Following**, **Favorites** and **RuleDesk** (settings).
+New items appear in the site's header menu: **Feed**, **Collections**, **Following**, **Favorites**, **Statistics** and **RuleDesk** (settings).
 
 ### Feed
 
@@ -32,7 +32,7 @@ Every followed artist as a card with a cover, post count and a "new" mark.
 - **Custom collection**: posts you pick by hand with the "+" button on a thumbnail or on the post page
 - **Dynamic collection**: a saved search. Type tags in the search panel and press "Save as collection"
 
-Both kinds show a cover and a post count. A collection can be shuffled, renamed and deleted; Select on the Collections page deletes or exports several at once, and Import adds collections from an exported file. In a custom collection posts are reordered by dragging, and "Download all" saves the original files. A post opened from a custom collection gets previous / next arrows that walk the collection.
+Both kinds show a cover and a post count. A collection can be shuffled, renamed and deleted; Select on the Collections page deletes several at once. In a custom collection posts are reordered by dragging, and "Download all" saves the original files. A post opened from a custom collection gets previous / next arrows that walk the collection.
 
 ### Search panel
 
@@ -49,6 +49,10 @@ Favorite star and "+" on thumbnails, three grid sizes, infinite scroll, dimming 
 ### Favorites
 
 The local favorite list is kept in sync with the site by "Sync favorites" in settings. The Favorites page gets bulk removal.
+
+### Statistics
+
+Counts of what the script stores (followed artists, collections, favorites, seen posts) and the top followed artists by post count. The menu item can be hidden in settings.
 
 ### Themes
 
@@ -73,7 +77,6 @@ Header menu → **RuleDesk**. Every block folds with a click on its title.
 | Page | A switch for each page tweak, and one switch that turns all tweaks off |
 | Blacklist | The site's tag blacklist for this browser |
 | Favorites | Favorite buttons in the grid, favorites sync |
-| Statistics | Counts of what the script stores, and the top followed artists |
 | Data | Export and import of everything the script stores |
 
 To get the untouched site back: Appearance → Site theme → **Site default**, and Page → turn off **Enable page tweaks**.

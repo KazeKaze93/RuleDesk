@@ -11,6 +11,7 @@ import {
   RDW_PAGE_ROOT_ID,
   RDW_ROUTE_COLLECTIONS,
   RDW_ROUTE_FOLLOWING,
+  RDW_ROUTE_STATS,
   type RdwPage,
 } from "./constants";
 import { PAGE_CONTENT_CSS } from "./page-css";
@@ -78,6 +79,9 @@ function titleForRoute(route: RdwPage): string | null {
   if (route === RDW_ROUTE_FOLLOWING) {
     return MENU_LABEL.following;
   }
+  if (route === RDW_ROUTE_STATS) {
+    return MENU_LABEL.stats;
+  }
   return MENU_LABEL.settings;
 }
 
@@ -86,6 +90,7 @@ type PageFactory = () => Promise<JSX.Element>;
 let settingsFactory: PageFactory | null = null;
 let collectionsFactory: PageFactory | null = null;
 let followingFactory: PageFactory | null = null;
+let statsFactory: PageFactory | null = null;
 
 function getSettingsFactory(): PageFactory {
   if (settingsFactory === null) {
@@ -117,6 +122,16 @@ function getFollowingFactory(): PageFactory {
   return followingFactory;
 }
 
+function getStatsFactory(): PageFactory {
+  if (statsFactory === null) {
+    statsFactory = async (): Promise<JSX.Element> => {
+      const mod = await import("./stats-section");
+      return <mod.StatsPage />;
+    };
+  }
+  return statsFactory;
+}
+
 function collectionDetailFactory(collectionId: string): PageFactory {
   return async (): Promise<JSX.Element> => {
     const mod = await import("./collection-detail-page");
@@ -138,6 +153,9 @@ function pageFactoryForRoute(route: RdwPage): PageFactory {
   }
   if (route === RDW_ROUTE_FOLLOWING) {
     return getFollowingFactory();
+  }
+  if (route === RDW_ROUTE_STATS) {
+    return getStatsFactory();
   }
   return getSettingsFactory();
 }

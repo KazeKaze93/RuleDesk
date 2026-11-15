@@ -2,6 +2,11 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.23.1
+
+- **Statistics is its own page** in the site menu, after Favorites. RuleDesk → Page → "Statistics in site menu" hides it (on by default). The block in settings is gone
+- Export and Import are removed from the Collections page. Collections travel in the one file of RuleDesk → Data
+
 ## 0.23.0
 
 - **Download original** on the post page: a button next to "Original" saves the full file as `rule34-<post id>.<ext>` through the script manager. The script asks for one more permission, `GM_download`; the manager shows it when the update installs

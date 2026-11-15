@@ -39,7 +39,7 @@ A feature is an object of type `Feature` (`src/features/types.ts`): an id, a lab
 
 ## Own pages
 
-`#rdw/collections`, `#rdw/collections/<id>`, `#rdw/following`, `#rdw/settings`. `src/pages/router.ts` parses the hash, `src/pages/host.tsx` mounts the page in a shadow root (`#rdw-page-root`) after the site header and hides the rest of the site until the hash is left. Back returns to the site page.
+`#rdw/collections`, `#rdw/collections/<id>`, `#rdw/following`, `#rdw/stats`, `#rdw/settings`. `src/pages/router.ts` parses the hash, `src/pages/host.tsx` mounts the page in a shadow root (`#rdw-page-root`) after the site header and hides the rest of the site until the hash is left. Back returns to the site page.
 
 Two more hash marks sit on site URLs and are not pages:
 

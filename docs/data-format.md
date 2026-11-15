@@ -64,18 +64,4 @@ A followed artist can carry more than the tag:
 
 `exact: false` in `postCount` means "at least this many". A dynamic collection carries `query`, and optionally `cover` and `postCount` of the same kind; a custom collection carries `kind: "posts"`, `postIds` and `thumbs`.
 
-## Collections file
-
-Collections → Select → **Export** writes `ruledesk-web-collections-<YYYY-MM-DD>.json`:
-
-```json
-{
-  "format": "ruledesk-web-collections",
-  "version": 1,
-  "collections": []
-}
-```
-
-Each entry has the shape of a collection in `storage`. **Import** adds every entry as a new collection: a new id, and a number after the name when the name is taken. Covers and counts of dynamic collections are not carried. The code is in `src/storage/collection-transfer.ts`.
-
 Seen marks are capped to the newest 20,000 or so post ids on write.

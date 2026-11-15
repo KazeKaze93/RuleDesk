@@ -9,6 +9,7 @@ import {
 import { resolveFavoritesUserId } from "../site/favorites-sync";
 import { getSyncState, setSyncState } from "../storage/favs";
 import type { FavsSyncState } from "../storage/schema";
+import { getFeatureEnabled } from "../storage/store";
 import {
   CURRENT_PAGE_CLASS,
   FEED_MENU_ITEM_ID,
@@ -21,8 +22,11 @@ import {
   RDW_HASH_COLLECTIONS,
   RDW_HASH_FOLLOWING,
   RDW_HASH_SETTINGS,
+  RDW_HASH_STATS,
   RDW_ROUTE_COLLECTIONS,
   RDW_ROUTE_FOLLOWING,
+  RDW_ROUTE_STATS,
+  STATS_MENU_SETTING_ID,
   type RdwRoute,
 } from "./constants";
 
@@ -222,6 +226,18 @@ export function installSiteMenu(): void {
     }
   }
 
+  // Statistics sits after Favorites (or Following) unless switched off in settings.
+  const existingStats = document.getElementById(MENU_ITEM_ID.stats);
+  if (getFeatureEnabled(STATS_MENU_SETTING_ID, true)) {
+    const stats = ensureMenuLink(MENU_ITEM_ID.stats, MENU_LABEL.stats, RDW_HASH_STATS);
+    const before = document.getElementById(MENU_ITEM_ID.favorites) ?? following;
+    if (stats.previousElementSibling !== before) {
+      before.after(stats);
+    }
+  } else if (existingStats !== null) {
+    existingStats.remove();
+  }
+
   hideNativeMyFavorites();
 
   const settings = ensureMenuLink(
@@ -241,6 +257,9 @@ function menuItemIdForRoute(route: RdwRoute): string {
   if (route === RDW_ROUTE_FOLLOWING) {
     return MENU_ITEM_ID.following;
   }
+  if (route === RDW_ROUTE_STATS) {
+    return MENU_ITEM_ID.stats;
+  }
   return MENU_ITEM_ID.settings;
 }
 
@@ -257,10 +276,7 @@ function captureSiteCurrentIfNeeded(): void {
   const current = navbar.querySelector(`li.${CURRENT_PAGE_CLASS}`);
   savedSiteCurrent =
     current instanceof HTMLLIElement &&
-    current.id !== MENU_ITEM_ID.collections &&
-    current.id !== MENU_ITEM_ID.following &&
-    current.id !== MENU_ITEM_ID.favorites &&
-    current.id !== MENU_ITEM_ID.settings
+    !Object.values<string>(MENU_ITEM_ID).includes(current.id)
       ? current
       : null;
 }
