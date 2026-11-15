@@ -14,16 +14,21 @@ import { menuCleanupFeature } from "../features/menu-cleanup";
 import { applyFeatureChrome } from "../features/runtime";
 import { featureBodyClass, type Feature } from "../features/types";
 import { detectPageKind } from "../site/pages";
+import { installMenuSkeleton } from "./menu-skeleton";
+import {
+  SEARCH_TOOLS_MOUNTED_CLASS,
+  readSearchToolsReserveHeight,
+} from "./search-tools-reserve";
 
 /** Must match search-tools root id/class (feature owns mount; we only reserve). */
 const SEARCH_TOOLS_FEATURE_ID = "search-tools";
 const SEARCH_TOOLS_ROOT_ID = "rdw-search-tools";
 const SEARCH_TOOLS_ROOT_CLASS = "rdw-search-tools";
 const SEARCH_TOOLS_RESERVE_STYLE_ID = "rdw-search-tools-reserve";
-/** Approx panel height (chips + media + sort + source + foot) to avoid layout jump. */
-const SEARCH_TOOLS_RESERVE_MIN_HEIGHT_PX = 168;
 const SEARCH_TOOLS_RESERVE_MARGIN_TOP_PX = 8;
 const TAGS_INPUT_SELECTOR = 'input[name="tags"]';
+const TAG_SIDEBAR_SELECTOR = "ul#tag-sidebar";
+const CONTENT_ID = "content";
 
 const LAYOUT_FEATURES: readonly Feature[] = [
   menuCleanupFeature,
@@ -32,8 +37,10 @@ const LAYOUT_FEATURES: readonly Feature[] = [
 
 function buildSearchReserveCss(bodyClass: string): string {
   return [
+    `body.${bodyClass} #${SEARCH_TOOLS_ROOT_ID}:not(.${SEARCH_TOOLS_MOUNTED_CLASS}) {`,
+    `  min-height: ${String(readSearchToolsReserveHeight())}px;`,
+    "}",
     `body.${bodyClass} #${SEARCH_TOOLS_ROOT_ID} {`,
-    `  min-height: ${String(SEARCH_TOOLS_RESERVE_MIN_HEIGHT_PX)}px;`,
     `  margin-top: ${String(SEARCH_TOOLS_RESERVE_MARGIN_TOP_PX)}px;`,
     "  box-sizing: border-box;",
     "}",
@@ -60,6 +67,68 @@ function ensureSearchToolsPlaceholder(): void {
   root.id = SEARCH_TOOLS_ROOT_ID;
   root.className = SEARCH_TOOLS_ROOT_CLASS;
   form.after(root);
+}
+
+/**
+ * Reserves the place of the search panel under the site's search form.
+ * Returns false while the form is not in the page yet. Safe to call again.
+ */
+export function reserveSearchTools(): boolean {
+  const pageKind = detectPageKind(window.location.search);
+  if (pageKind !== "list" && pageKind !== "post") {
+    return true;
+  }
+  if (!resolveFeatureEnabled(peekLayoutSettings(), SEARCH_TOOLS_FEATURE_ID, true)) {
+    return true;
+  }
+  if (document.body === null || document.querySelector(TAGS_INPUT_SELECTOR) === null) {
+    return false;
+  }
+  const bodyClass = featureBodyClass(SEARCH_TOOLS_FEATURE_ID);
+  document.body.classList.add(bodyClass);
+  const style = ensureStyleElement(SEARCH_TOOLS_RESERVE_STYLE_ID);
+  style.textContent = buildSearchReserveCss(bodyClass);
+  ensureSearchToolsPlaceholder();
+  return true;
+}
+
+/**
+ * The script's menu items and the place of the search panel, put in while the
+ * page is still being parsed, so that the first paint already has them.
+ * Watches the document until both are done or the page is parsed.
+ */
+export function startEarlyLayout(): void {
+  const layout = peekLayoutSettings();
+  let menuDone = false;
+  let searchDone = false;
+  const attempt = (): boolean => {
+    // The menu is complete once something after the header is parsed.
+    if (!menuDone && document.getElementById(CONTENT_ID) !== null) {
+      menuDone = installMenuSkeleton(layout);
+    }
+    // The search form is complete once the tag list after it is parsed.
+    if (!searchDone && document.querySelector(TAG_SIDEBAR_SELECTOR) !== null) {
+      searchDone = reserveSearchTools();
+    }
+    return menuDone && searchDone;
+  };
+  if (attempt()) {
+    return;
+  }
+  const observer = new MutationObserver(() => {
+    if (attempt()) {
+      observer.disconnect();
+    }
+  });
+  observer.observe(document, { childList: true, subtree: true });
+  document.addEventListener(
+    "DOMContentLoaded",
+    () => {
+      observer.disconnect();
+      installMenuSkeleton(layout);
+    },
+    { once: true },
+  );
 }
 
 /**
@@ -92,14 +161,5 @@ export function applyLayoutBeforePaint(): void {
     });
   }
 
-  if (
-    (pageKind === "list" || pageKind === "post") &&
-    resolveFeatureEnabled(layout, SEARCH_TOOLS_FEATURE_ID, true)
-  ) {
-    const bodyClass = featureBodyClass(SEARCH_TOOLS_FEATURE_ID);
-    document.body.classList.add(bodyClass);
-    const style = ensureStyleElement(SEARCH_TOOLS_RESERVE_STYLE_ID);
-    style.textContent = buildSearchReserveCss(bodyClass);
-    ensureSearchToolsPlaceholder();
-  }
+  reserveSearchTools();
 }

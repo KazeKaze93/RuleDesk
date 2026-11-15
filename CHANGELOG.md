@@ -2,6 +2,11 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.31.1
+
+- The page no longer "unfolds" while it loads. The script's menu items (Feed, Collections, Following, Favorites, Statistics, RuleDesk) are in the menu before the page is first shown, instead of pushing in between the site's items a moment later
+- The place of the search panel is reserved at the height the panel really has, so the sidebar under it does not jump when the panel appears. This shows after one page load, when the height has been remembered
+
 ## 0.31.0
 
 - Favorites: "Download all" in the header saves the original file of every favorite, into a "Favorites" folder. It needs your API key, like the other downloads, and goes by the local list: run "Sync favorites" first if that list is out of date

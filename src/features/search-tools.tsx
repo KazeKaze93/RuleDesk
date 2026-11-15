@@ -1,3 +1,7 @@
+import {
+  SEARCH_TOOLS_MOUNTED_CLASS,
+  rememberSearchToolsHeight,
+} from "../boot/search-tools-reserve";
 import { render } from "preact";
 import type { JSX } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
@@ -1192,6 +1196,17 @@ function mountSearchTools(_ctx: FeatureContext): void {
 
   const root = ensureRoot(form);
   render(<SearchToolsPanel input={input} />, root);
+  // The place reserved before the first paint is no longer needed, and the
+  // real height is kept for the next page load, so nothing jumps there.
+  root.classList.add(SEARCH_TOOLS_MOUNTED_CLASS);
+  const remember = (): void => {
+    rememberSearchToolsHeight(root.getBoundingClientRect().height);
+  };
+  if (typeof ResizeObserver === "function") {
+    new ResizeObserver(remember).observe(root);
+  } else {
+    window.requestAnimationFrame(remember);
+  }
 }
 
 export const searchToolsFeature: Feature = {

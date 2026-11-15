@@ -1,8 +1,9 @@
 import { bootEarly } from "./boot/early";
-import { applyLayoutBeforePaint } from "./boot/layout";
+import { applyLayoutBeforePaint, startEarlyLayout } from "./boot/layout";
 import { scheduleAfterFirstPaint, whenDomReady } from "./boot/ready";
 
 bootEarly();
+startEarlyLayout();
 
 whenDomReady(() => {
   applyLayoutBeforePaint();

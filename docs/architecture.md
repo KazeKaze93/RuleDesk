@@ -95,3 +95,7 @@ The storage keys and the userscript's name and namespace keep the old `ruledesk-
 - No magic numbers or strings: name them as constants
 - The script's own interface is built only from `src/ui/kit`
 - Read the code and reproduce a problem before fixing it
+
+## Before the first paint
+
+`main.ts` runs `bootEarly()` (theme and skin CSS) and `startEarlyLayout()` at document-start. The second watches the page while it is parsed and, as soon as the header and the search form are in, puts in the script's menu items (`src/boot/menu-skeleton.ts`: labels and addresses that need no storage) and reserves the place of the search panel at the height it last had (`src/boot/search-tools-reserve.ts`, plain localStorage). The menu code and the Feed feature find those items by id after the first paint and finish them. Nothing heavy may be imported on this path.
