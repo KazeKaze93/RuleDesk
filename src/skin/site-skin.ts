@@ -4,6 +4,7 @@
  * Injected via applyAppearanceTheme → injectSiteSkinHook(getSiteSkinCss()).
  */
 
+import { VIDEO_THUMB_CLASS } from "../site/favorites-video";
 import {
   APPEARANCE_THEME_DARK,
   APPEARANCE_THEME_SITE,
@@ -596,7 +597,8 @@ ${ROOT} div.image-list {
   align-content: flex-start;
 }
 
-${ROOT} img.preview {
+${ROOT} img.preview,
+${ROOT} span.thumb > a > img {
   border-radius: ${v.radiusL};
 }
 
@@ -677,6 +679,7 @@ ${ROOT} #${FAV_BULK_ROOT_ID} .${FAV_BULK_STATUS_CLASS} {
   color: ${v.muted};
 }
 
+${ROOT} span.thumb.${VIDEO_THUMB_CLASS} > a > img,
 ${ROOT} .webm-thumb {
   border: 1px solid ${v.accent};
   box-sizing: border-box;

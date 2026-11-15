@@ -1,12 +1,18 @@
 /**
- * Hover video preview for grid `img.preview.webm-thumb` thumbs.
+ * Hover video preview for grid `img.preview.webm-thumb` thumbs and for the
+ * favorites thumbs marked as video (`src/site/favorites-video.ts`).
  * Loads the CDN mp4 via a <video> element only — no post-page fetches.
  */
 
 import { scheduleAfterFirstPaint } from "../boot/ready";
 import {
+  FAVORITE_IMAGE_SELECTOR,
+  VIDEO_THUMB_CLASS,
+} from "../site/favorites-video";
+import {
   SITE_SELECTORS,
   extractPostIdFromThumb,
+  extractPostIdFromThumbLink,
 } from "../site/selectors";
 import {
   buildVideoUrlFromThumbUrl,
@@ -109,16 +115,24 @@ function findThumbLink(thumb: HTMLElement, postId: string): HTMLAnchorElement | 
   return byHref instanceof HTMLAnchorElement ? byHref : null;
 }
 
+function readPostId(thumb: HTMLElement): string | null {
+  return extractPostIdFromThumb(thumb) ?? extractPostIdFromThumbLink(thumb);
+}
+
 function findWebmThumbImage(thumb: HTMLElement): HTMLImageElement | null {
   const img = thumb.querySelector(WEBM_PREVIEW_SELECTOR);
-  if (!(img instanceof HTMLImageElement)) {
+  if (img instanceof HTMLImageElement) {
+    return img;
+  }
+  if (!thumb.classList.contains(VIDEO_THUMB_CLASS)) {
     return null;
   }
-  return img;
+  const favorite = thumb.querySelector(FAVORITE_IMAGE_SELECTOR);
+  return favorite instanceof HTMLImageElement ? favorite : null;
 }
 
 function startPreview(thumb: HTMLElement): void {
-  const postId = extractPostIdFromThumb(thumb);
+  const postId = readPostId(thumb);
   if (postId === null || failedPostIds.has(postId)) {
     return;
   }
@@ -179,7 +193,7 @@ function onThumbPointerEnter(event: Event): void {
   if (!(thumb instanceof HTMLElement)) {
     return;
   }
-  const postId = extractPostIdFromThumb(thumb);
+  const postId = readPostId(thumb);
   if (postId === null || failedPostIds.has(postId)) {
     return;
   }

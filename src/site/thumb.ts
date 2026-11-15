@@ -6,7 +6,8 @@ export const BASE_GRID_CSS = `
   anchor-scope: ${THUMB_ANCHOR_NAME};
 }
 
-.${THUMB_CLASS} img.preview {
+.${THUMB_CLASS} img.preview,
+.${THUMB_CLASS} > a > img {
   anchor-name: ${THUMB_ANCHOR_NAME};
 }
 `;
@@ -20,8 +21,9 @@ export const THUMB_IMAGE_HOST = "wimg.rule34.xxx";
  */
 export const VIDEO_CDN_ORIGIN = "https://ws-cdn-video.rule34.xxx";
 
+/** Repeated slashes are accepted: the favorites page writes `/thumbnails//<dir>/`. */
 const THUMB_PATH_PATTERN =
-  /^\/thumbnails\/([^/]+)\/thumbnail_([^/]+)\.jpg$/i;
+  /^\/+thumbnails\/+([^/]+)\/+thumbnail_([^/]+)\.jpg$/i;
 
 const HTTPS_PROTOCOL = "https:";
 const THUMB_DIRECTORY = "thumbnails";

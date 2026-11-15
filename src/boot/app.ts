@@ -3,6 +3,7 @@ import { startRdwPages } from "../pages/router";
 import { getSiteSkinCss } from "../skin/site-skin";
 import { applyAppearanceTheme } from "../skin/theme";
 import { syncFavoritesPage } from "../site/favorites-page";
+import { mountFavoriteVideoMarks } from "../site/favorites-video";
 import { maybeResumeFavoritesSync } from "../site/favorites-sync-runner";
 import { detectPageKind } from "../site/pages";
 import { loadBackground } from "../storage/background-store";
@@ -47,6 +48,7 @@ export async function startApp(): Promise<void> {
     await yieldToMain();
   } else if (pageKind === "favorites") {
     syncFavoritesPage();
+    mountFavoriteVideoMarks();
     await yieldToMain();
   }
 

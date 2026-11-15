@@ -35,10 +35,28 @@ export const SITE_SELECTORS = {
 } as const;
 
 export const THUMB_ID_PATTERN = /^s(\d+)$/;
+export const THUMB_LINK_ID_PATTERN = /^p(\d+)$/;
 export const FAVORITES_DELETE_ID_PATTERN = /s=delete&id=(\d+)/;
 
 export function extractPostIdFromThumb(thumb: Element): string | null {
   const match = THUMB_ID_PATTERN.exec(thumb.id);
+  if (match === null) {
+    return null;
+  }
+  const postId = match[1];
+  return postId === undefined ? null : postId;
+}
+
+/**
+ * Post id from the thumb's link `a#p{ID}`. A favorites thumb has no `s{ID}`
+ * id of its own, so this is the only place its post id is written.
+ */
+export function extractPostIdFromThumbLink(thumb: Element): string | null {
+  const link = thumb.querySelector(SITE_SELECTORS.thumbLink);
+  if (link === null) {
+    return null;
+  }
+  const match = THUMB_LINK_ID_PATTERN.exec(link.id);
   if (match === null) {
     return null;
   }

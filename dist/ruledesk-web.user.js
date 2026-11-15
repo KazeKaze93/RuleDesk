@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RuleDesk Web
 // @namespace    https://github.com/kazekaze93/ruledesk-web
-// @version      0.25.1
+// @version      0.25.2
 // @description  Collections, playlists, favorites, artist updates, and page tweaks for rule34.xxx
 // @downloadURL  https://raw.githubusercontent.com/KazeKaze93/RuleDesk/main/dist/ruledesk-web.user.js
 // @updateURL    https://raw.githubusercontent.com/KazeKaze93/RuleDesk/main/dist/ruledesk-web.user.js
@@ -15,31 +15,31 @@
 !function(){function e(e,t){return(t||"")+" (SystemJS Error#"+e+" https://github.com/systemjs/systemjs/blob/main/docs/errors.md#"+e+")"}function t(e,t){if(-1!==e.indexOf("\\")&&(e=e.replace(j,"/")),"/"===e[0]&&"/"===e[1])return t.slice(0,t.indexOf(":")+1)+e;if("."===e[0]&&("/"===e[1]||"."===e[1]&&("/"===e[2]||2===e.length&&(e+="/"))||1===e.length&&(e+="/"))||"/"===e[0]){var n,r=t.slice(0,t.indexOf(":")+1);if(n="/"===t[r.length+1]?"file:"!==r?(n=t.slice(r.length+2)).slice(n.indexOf("/")+1):t.slice(8):t.slice(r.length+("/"===t[r.length])),"/"===e[0])return t.slice(0,t.length-n.length-1)+e;for(var i=n.slice(0,n.lastIndexOf("/")+1)+e,o=[],s=-1,u=0;u<i.length;u++)-1!==s?"/"===i[u]&&(o.push(i.slice(s,u+1)),s=-1):"."===i[u]?"."!==i[u+1]||"/"!==i[u+2]&&u+2!==i.length?"/"===i[u+1]||u+1===i.length?u+=1:s=u:(o.pop(),u+=2):s=u;return-1!==s&&o.push(i.slice(s)),t.slice(0,t.length-n.length)+o.join("")}}function n(e,n){return t(e,n)||(-1!==e.indexOf(":")?e:t("./"+e,n))}function r(e,n,r,i,o){for(var s in e){var a=t(s,r)||s,f=e[s];if("string"==typeof f){var l=c(i,t(f,r)||f,o);l?n[a]=l:u("W1",s,f,"bare specifier did not resolve")}}}function i(e,t,i){var o;for(o in e.imports&&r(e.imports,i.imports,t,i,null),e.scopes||{}){var s=n(o,t);r(e.scopes[o],i.scopes[s]||(i.scopes[s]={}),t,i,s)}for(o in e.depcache||{})i.depcache[n(o,t)]=e.depcache[o];for(o in e.integrity||{})i.integrity[n(o,t)]=e.integrity[o]}function o(e,t){if(t[e])return e;var n=e.length;do{var r=e.slice(0,n+1);if(r in t)return r}while(-1!==(n=e.lastIndexOf("/",n-1)))}function s(e,t){var n=o(e,t);if(n){var r=t[n];if(null===r)return;if(!(e.length>n.length&&"/"!==r[r.length-1]))return r+e.slice(n.length);u("W2",n,r,"should have a trailing '/'")}}function u(t,n,r,i){console.warn(e(t,"Package target "+i+", resolving target '"+r+"' for "+n))}function c(e,t,n){for(var r=e.scopes,i=n&&o(n,r);i;){var u=s(t,r[i]);if(u)return u;i=o(i.slice(0,i.lastIndexOf("/")),r)}return s(t,e.imports)||-1!==t.indexOf(":")&&t}function a(){this[M]={}}function f(e){return e.id}function l(e,t,n,r){if(e.onload(n,t.id,t.d&&t.d.map(f),!!r),n)throw n}function d(t,n,r,i){var o=t[M][n];if(o)return o;var s=[],u=Object.create(null);P&&Object.defineProperty(u,P,{value:"Module"});var c=Promise.resolve().then((function(){return t.instantiate(n,r,i)})).then((function(r){if(!r)throw Error(e(2,"Module "+n+" did not instantiate"));var i=r[1]((function(e,t){o.h=!0;var n=!1;if("string"==typeof e)e in u&&u[e]===t||(u[e]=t,n=!0);else{for(var r in e)t=e[r],r in u&&u[r]===t||(u[r]=t,n=!0);e&&e.__esModule&&(u.__esModule=e.__esModule)}if(n)for(var i=0;i<s.length;i++){var c=s[i];c&&c(u)}return t}),2===r[1].length?{import:function(e,r){return t.import(e,n,r)},meta:t.createContext(n)}:void 0);return o.e=i.execute||function(){},[r[0],i.setters||[],r[2]||[]]}),(function(e){throw o.e=null,o.er=e,l(t,o,e,!0),e})),a=c.then((function(e){return Promise.all(e[0].map((function(r,i){var o=e[1][i],s=e[2][i];return Promise.resolve(t.resolve(r,n)).then((function(e){var r=d(t,e,n,s);return Promise.resolve(r.I).then((function(){return o&&(r.i.push(o),!r.h&&r.I||o(r.n)),r}))}))}))).then((function(e){o.d=e}))}));return o=t[M][n]={id:n,i:s,n:u,m:i,I:c,L:a,h:!1,d:void 0,e:void 0,er:void 0,E:void 0,C:void 0,p:void 0}}function h(e,t,n,r){if(!r[t.id])return r[t.id]=!0,Promise.resolve(t.L).then((function(){return t.p&&null!==t.p.e||(t.p=n),Promise.all(t.d.map((function(t){return h(e,t,n,r)})))})).catch((function(n){if(t.er)throw n;throw t.e=null,l(e,t,n,!1),n}))}function p(e,t){return t.C=h(e,t,t,{}).then((function(){return v(e,t,{})})).then((function(){return t.n}))}function v(e,t,n){function r(){try{var n=o.call(L);if(n)return n=n.then((function(){t.C=t.n,t.E=null,l(e,t,null,!0)}),(function(n){throw t.er=n,t.E=null,l(e,t,n,!0),n})),t.E=n;t.C=t.n,t.L=t.I=void 0}catch(r){throw t.er=r,r}finally{l(e,t,t.er,!0)}}if(!n[t.id]){if(n[t.id]=!0,!t.e){if(t.er)throw t.er;return t.E?t.E:void 0}var i,o=t.e;return t.e=null,t.d.forEach((function(r){try{var o=v(e,r,n);o&&(i=i||[]).push(o)}catch(s){throw t.er=s,l(e,t,s,!1),s}})),i?Promise.all(i).then(r):r()}}function m(){[].forEach.call(document.querySelectorAll("script"),(function(t){if(!t.sp)if("systemjs-module"===t.type){if(t.sp=!0,!t.src)return;System.import("import:"===t.src.slice(0,7)?t.src.slice(7):n(t.src,g)).catch((function(e){if(e.message.indexOf("https://github.com/systemjs/systemjs/blob/main/docs/errors.md#3")>-1){var n=document.createEvent("Event");n.initEvent("error",!1,!1),t.dispatchEvent(n)}return Promise.reject(e)}))}else if("systemjs-importmap"===t.type){t.sp=!0;var r=t.src?(System.fetch||fetch)(t.src,{integrity:t.integrity,priority:t.fetchPriority,passThrough:!0}).then((function(e){if(!e.ok)throw Error("Invalid status code: "+e.status);return e.text()})).catch((function(n){return n.message=e("W4","Error fetching systemjs-import map "+t.src)+"\n"+n.message,console.warn(n),"function"==typeof t.onerror&&t.onerror(),"{}"})):t.innerHTML;W=W.then((function(){return r})).then((function(n){!function(t,n,r){var o={};try{o=JSON.parse(n)}catch(s){console.warn(Error(e("W5","systemjs-importmap contains invalid JSON")+"\n\n"+n+"\n"))}i(o,r,t)}(N,n,t.src||g)}))}}))}var g,y="undefined"!=typeof Symbol,b="undefined"!=typeof self,S="undefined"!=typeof document,w=b?self:global;if(S){var O=document.querySelector("base[href]");O&&(g=O.href)}if(!g&&"undefined"!=typeof location){var E=(g=location.href.split("#")[0].split("?")[0]).lastIndexOf("/");-1!==E&&(g=g.slice(0,E+1))}var x,j=/\\/g,P=y&&Symbol.toStringTag,M=y?Symbol():"@",I=a.prototype;I.import=function(e,t,n){var r=this;return t&&"object"==typeof t&&(n=t,t=void 0),Promise.resolve(r.prepareImport()).then((function(){return r.resolve(e,t,n)})).then((function(e){var t=d(r,e,void 0,n);return t.C||p(r,t)}))},I.createContext=function(e){var t=this;return{url:e,resolve:function(n,r){return Promise.resolve(t.resolve(n,r||e))}}},I.onload=function(){},I.register=function(e,t,n){x=[e,t,n]},I.getRegister=function(){var e=x;return x=void 0,e};var L=Object.freeze(Object.create(null));w.System=new a;var C,R,W=Promise.resolve(),N={imports:{},scopes:{},depcache:{},integrity:{}},T=S;if(I.prepareImport=function(e){return(T||e)&&(m(),T=!1),W},I.getImportMap=function(){return JSON.parse(JSON.stringify(N))},S&&(m(),window.addEventListener("DOMContentLoaded",m)),I.addImportMap=function(e,t){i(e,t||g,N)},S){window.addEventListener("error",(function(e){J=e.filename,_=e.error}));var A=location.origin}I.createScript=function(e){var t=document.createElement("script");t.async=!0,e.indexOf(A+"/")&&(t.crossOrigin="anonymous");var n=N.integrity[e];return n&&(t.integrity=n),t.src=e,t};var J,_,k={},U=I.register;I.register=function(e,t){if(S&&"loading"===document.readyState&&"string"!=typeof e){var n=document.querySelectorAll("script[src]"),r=n[n.length-1];if(r){C=e;var i=this;R=setTimeout((function(){k[r.src]=[e,t],i.import(r.src)}))}}else C=void 0;return U.call(this,e,t)},I.instantiate=function(t,n){var r=k[t];if(r)return delete k[t],r;var i=this;return Promise.resolve(I.createScript(t)).then((function(r){return new Promise((function(o,s){r.addEventListener("error",(function(){s(Error(e(3,"Error loading "+t+(n?" from "+n:""))))})),r.addEventListener("load",(function(){if(document.head.removeChild(r),J===t)s(_);else{var e=i.getRegister(t);e&&e[0]===C&&clearTimeout(R),o(e)}})),document.head.appendChild(r)}))}))},I.shouldFetch=function(){return!1},"undefined"!=typeof fetch&&(I.fetch=fetch);var $=I.instantiate,B=/^(text|application)\/(x-)?javascript(;|$)/;I.instantiate=function(t,n,r){var i=this;return this.shouldFetch(t,n,r)?this.fetch(t,{credentials:"same-origin",integrity:N.integrity[t],meta:r}).then((function(r){if(!r.ok)throw Error(e(7,r.status+" "+r.statusText+", loading "+t+(n?" from "+n:"")));var o=r.headers.get("content-type");if(!o||!B.test(o))throw Error(e(4,'Unknown Content-Type "'+o+'", loading '+t+(n?" from "+n:"")));return r.text().then((function(e){return e.indexOf("//# sourceURL=")<0&&(e+="\n//# sourceURL="+t),(0,eval)(e),i.getRegister(t)}))})):$.apply(this,arguments)},I.resolve=function(n,r){return c(N,t(n,r=r||g)||n,r)||function(t,n){throw Error(e(8,"Unable to resolve bare specifier '"+t+(n?"' from "+n:"'")))}(n,r)};var F=I.instantiate;I.instantiate=function(e,t,n){var r=N.depcache[e];if(r)for(var i=0;i<r.length;i++)d(this,this.resolve(r[i],e),e);return F.call(this,e,t,n)},b&&"function"==typeof importScripts&&(I.instantiate=function(e){var t=this;return Promise.resolve().then((function(){return importScripts(e),t.getRegister(e)}))}),function(e){function t(t){return!e.hasOwnProperty(t)||!isNaN(t)&&t<e.length||a&&e[t]&&"undefined"!=typeof window&&e[t].parent===window}var n,r,i,o=e.System.constructor.prototype,s=o.import;o.import=function(o,u,c){return function(){for(var o in n=r=void 0,e)t(o)||(n?r||(r=o):n=o,i=o)}(),s.call(this,o,u,c)};var u=[[],function(){return{}}],c=o.getRegister;o.getRegister=function(){var o=c.call(this);if(o)return o;var s,a=function(o){var s,u,c=0;for(var a in e)if(!t(a)){if(0===c&&a!==n||1===c&&a!==r)return a;s?(i=a,u=o&&u||a):s=a===i,c++}return u}(this.firstGlobalProp);if(!a)return u;try{s=e[a]}catch(f){return u}return[[],function(e){return{execute:function(){e(s),e({default:s,__useDefault:!0})}}}]};var a="undefined"!=typeof navigator&&-1!==navigator.userAgent.indexOf("Trident")}("undefined"!=typeof self?self:global),function(e){var t=e.System.constructor.prototype,r=/^[^#?]+\.(css|html|json|wasm)([?#].*)?$/,i=t.shouldFetch.bind(t);t.shouldFetch=function(e){return i(e)||r.test(e)};var o=/^application\/json(;|$)/,s=/^text\/css(;|$)/,u=/^application\/wasm(;|$)/,c=t.fetch;t.fetch=function(t,r){return c(t,r).then((function(i){if(r.passThrough)return i;if(!i.ok)return i;var c=i.headers.get("content-type");return o.test(c)?i.json().then((function(e){return new Response(new Blob(['System.register([],function(e){return{execute:function(){e("default",'+JSON.stringify(e)+")}}})"],{type:"application/javascript"}))})):s.test(c)?i.text().then((function(e){return e=e.replace(/url\(\s*(?:(["'])((?:\\.|[^\n\\"'])+)\1|((?:\\.|[^\s,"'()\\])+))\s*\)/g,(function(e,r,i,o){return["url(",r,n(i||o,t),r,")"].join("")})),new Response(new Blob(["System.register([],function(e){return{execute:function(){var s=new CSSStyleSheet();s.replaceSync("+JSON.stringify(e)+');e("default",s)}}})'],{type:"application/javascript"}))})):u.test(c)?(WebAssembly.compileStreaming?WebAssembly.compileStreaming(i):i.arrayBuffer().then(WebAssembly.compile)).then((function(n){e.System.wasmModules||(e.System.wasmModules=Object.create(null)),e.System.wasmModules[t]=n;var r=[],i=[];return WebAssembly.Module.imports&&WebAssembly.Module.imports(n).forEach((function(e){var t=JSON.stringify(e.module);-1===r.indexOf(t)&&(r.push(t),i.push("function(m){i["+t+"]=m}"))})),new Response(new Blob(["System.register(["+r.join(",")+"],function(e){var i={};return{setters:["+i.join(",")+"],execute:function(){return WebAssembly.instantiate(System.wasmModules["+JSON.stringify(t)+"],i).then(function(m){e(m.exports)})}}})"],{type:"application/javascript"}))})):i}))}}("undefined"!=typeof self?self:global);var q="undefined"!=typeof Symbol&&Symbol.toStringTag;I.get=function(e){var t=this[M][e];if(t&&null===t.e&&!t.E)return t.er?null:t.n},I.set=function(t,n){try{new URL(t)}catch(s){console.warn(Error(e("W3",'"'+t+'" is not a valid URL to set in the module registry')))}var r;q&&"Module"===n[q]?r=n:(r=Object.assign(Object.create(null),n),q&&Object.defineProperty(r,q,{value:"Module"}));var i=Promise.resolve(r),o=this[M][t]||(this[M][t]={id:t,i:[],h:!1,d:[],e:null,er:void 0,E:void 0});return!o.e&&!o.E&&(Object.assign(o,{n:r,I:void 0,L:void 0,C:i}),r)},I.has=function(e){return!!this[M][e]},I.delete=function(e){var t=this[M],n=t[e];if(!n||n.p&&null!==n.p.e||n.E)return!1;var r=n.i;return n.d&&n.d.forEach((function(e){var t=e.i.indexOf(n);-1!==t&&e.i.splice(t,1)})),delete t[e],function(){var n=t[e];if(!n||!r||null!==n.e||n.E)return!1;r.forEach((function(e){n.i.push(e),e(n.n)})),r=null}};var D="undefined"!=typeof Symbol&&Symbol.iterator;I.entries=function(){var e,t,n=this,r=Object.keys(n[M]),i=0,o={next:function(){for(;void 0!==(t=r[i++])&&void 0===(e=n.get(t)););return{done:void 0===t,value:void 0!==t&&[t,e]}}};return o[D]=function(){return this},o}}();
 !function(t){function e(t){t.registerRegistry=Object.create(null),t.namedRegisterAliases=Object.create(null)}var r=t.System;e(r);var i,s,n=r.constructor.prototype,l=r.constructor,a=function(){l.call(this),e(this)};a.prototype=n,r.constructor=a;var o=n.register;n.register=function(t,e,r,n){if("string"!=typeof t)return o.apply(this,arguments);var l=[e,r,n];return this.registerRegistry[t]=l,i||(i=l,s=t),Promise.resolve().then((function(){i=null,s=null})),o.apply(this,[e,r,n])};var u=n.resolve;n.resolve=function(t,e){try{return u.call(this,t,e)}catch(r){if(t in this.registerRegistry)return this.namedRegisterAliases[t]||t;throw r}};var c=n.instantiate;n.instantiate=function(t,e,r){var i=this.registerRegistry[t];return i?(this.registerRegistry[t]=null,i):c.call(this,t,e,r)};var g=n.getRegister;n.getRegister=function(t){var e=g.call(this,t);s&&t&&(this.namedRegisterAliases[s]=t);var r=i||e;return i=null,s=null,r}}("undefined"!=typeof self?self:global);
 ;(typeof System!='undefined')&&(System=new System.constructor());
-System.register("./___monkey.entry.js", [],(function(exports,module){'use strict';return{execute:(function(){exports({$:applyTokenProperties,E:rdwPageHash,G:createFavoritesSyncTabId,J:readArtistsMirror,K:listArtistTags,L:writeArtistsMirror,O:reloadFromStorage,P:save,Q:Q$1,V:setSyncState,_:a,a:applyAppearanceTheme,a$:Chip,a0:resolveAppearancePalette,a1:isCollectionDetailPage,a2:menuRouteForPage,a3:getSiteSkinCss,a4:$$1,aA:T,aB:A,aE:SectionLabel,aF:Select,aI:Segmented,aL:TextField,aM:Button,aN:clampBackgroundDim,aP:featurePanelLabel,aR:clearFeatureState,aS:applyCssOnlyFeatureEnabled,aT:isFeatureEnabled,aV:setFeatureChoiceValue,aW:applyCssOnlyFeatureChoice,aX:getFeatureChoice,aY:createAutocompleteQuerier,aZ:b,a_:readSiteBlacklist,af:d,ag:Switch,ai:setTweaksEnabled,al:setFeatureEnabled,am:NumberField,ao:setUpdatesGroupSize,ap:getUpdatesGroupSize,ar:setPlaylistChunkSize,as:getPlaylistChunkSize,au:setGridFavButtonsEnabled,av:setGridFavButtonsVisible,aw:IconChevronRight,ax:IconChevronDown,ay:Card,az:P$1,b0:AutocompleteField,b1:ProgressBar,b2:createDefaultCustomTheme,b4:prepareBackgroundImageFile,b5:setFeatureState,b6:writeSiteBlacklist,b8:clearApiCredentials,b9:parseApiCredentials,bA:getTweaksEnabled,bB:getGridFavButtonsEnabled,bC:getFeatureChoiceValue,bD:getFeatureState,bE:getScreenPixelSize,bF:IconPlus,bG:EmptyState,bH:Dialog,bI:resolveCollectionKind,bJ:deleteCollection,bK:QueryField,bL:isUnfilteredQuery,bM:createDynamicCollection,bN:createPlaylist,bP:collectionDetailHash,bQ:readCoverMirror,bS:IconCheck,bT:readCountMirror,bU:buildSearchUrl,bV:dynamicCollectionMarkHash,bW:serialize,bY:getSeenPostId,bZ:completeLastQueryToken,b_:readLastQueryToken,ba:setApiCredentials,bb:load,bc:createDefaultStorage,bd:clearStorageCache,be:clearFavsCache,bf:object,bh:optional,bi:string,bk:literal,bm:isSiteUrl,bn:stripLegacyPanelWindowSize,bo:migrateMarksFavToFavs,bq:createDefaultFavs,br:parseFavsStrict,bs:setAppearance,bt:loadFavSet,bv:extractFavIdsFromMarks,bz:hasApiCredentials,c5:removeArtist,c6:addArtists,c8:IconButton,c9:IconX,ca:removeArtists,cb:rememberArtistSnapshot,cc:fetchArtistSnapshot,cd:w$1,ce:downloadsAvailable,cf:shuffleCollection,cg:resetCollectionOrder,ch:Toast,ci:getCollectionOrder,cj:listPlaylists,ck:removePostsFromCollection,cl:isDownloadBusy,cm:startDownload,cn:movePostInCollection,co:renameCollection,cq:restorePosts,cs:collectionQueueHash,d:detectPageKind,e:ensureDocumentStyles,f:ensureStyleElement,g:getAppearance,h:buildOwnPageCss,j:getFeatureEnabled,k:getSyncState,m:mountCards,n:normalizeArtistTag,o:readFavoritesSyncMode,p:parseRdwHash,q:runFavoritesSync,r:runFeaturesYielding,s:syncFavoritesPage,y:yieldToMain,z:resolveFavoritesUserId});var STORAGE_KEY = "ruledesk-web.storage";
-var STORAGE_BACKUP_KEY = exports("bu","ruledesk-web.storage.backup");
-var FAVS_STORAGE_KEY = exports("bp","ruledesk-web.favs");
+System.register("./___monkey.entry.js", [],(function(exports,module){'use strict';return{execute:(function(){exports({$:a,A:resolveFavoritesUserId,G:rdwPageHash,I:createFavoritesSyncTabId,K:readArtistsMirror,L:listArtistTags,O:writeArtistsMirror,P:reloadFromStorage,Q:Q$1,T:save,W:setSyncState,a:mountFavoriteVideoMarks,a$:readSiteBlacklist,a0:applyTokenProperties,a1:resolveAppearancePalette,a2:isCollectionDetailPage,a3:menuRouteForPage,a4:getSiteSkinCss,a5:$$1,aA:P$1,aB:T,aC:A,aF:SectionLabel,aG:Select,aJ:Segmented,aM:TextField,aN:Button,aO:clampBackgroundDim,aQ:featurePanelLabel,aS:clearFeatureState,aT:applyCssOnlyFeatureEnabled,aU:isFeatureEnabled,aW:setFeatureChoiceValue,aX:applyCssOnlyFeatureChoice,aY:getFeatureChoice,aZ:createAutocompleteQuerier,a_:b,ag:d,ah:Switch,aj:setTweaksEnabled,am:setFeatureEnabled,an:NumberField,ap:setUpdatesGroupSize,aq:getUpdatesGroupSize,as:setPlaylistChunkSize,at:getPlaylistChunkSize,av:setGridFavButtonsEnabled,aw:setGridFavButtonsVisible,ax:IconChevronRight,ay:IconChevronDown,az:Card,b:applyAppearanceTheme,b$:readLastQueryToken,b0:Chip,b1:AutocompleteField,b2:ProgressBar,b3:createDefaultCustomTheme,b5:prepareBackgroundImageFile,b6:setFeatureState,b7:writeSiteBlacklist,b9:clearApiCredentials,bA:hasApiCredentials,bB:getTweaksEnabled,bC:getGridFavButtonsEnabled,bD:getFeatureChoiceValue,bE:getFeatureState,bF:getScreenPixelSize,bG:IconPlus,bH:EmptyState,bI:Dialog,bJ:resolveCollectionKind,bK:deleteCollection,bL:QueryField,bM:isUnfilteredQuery,bN:createDynamicCollection,bO:createPlaylist,bQ:collectionDetailHash,bR:readCoverMirror,bT:IconCheck,bU:readCountMirror,bV:buildSearchUrl,bW:dynamicCollectionMarkHash,bX:serialize,bZ:getSeenPostId,b_:completeLastQueryToken,ba:parseApiCredentials,bb:setApiCredentials,bc:load,bd:createDefaultStorage,be:clearStorageCache,bf:clearFavsCache,bg:object,bi:optional,bj:string,bl:literal,bn:isSiteUrl,bo:stripLegacyPanelWindowSize,bp:migrateMarksFavToFavs,br:createDefaultFavs,bs:parseFavsStrict,bt:setAppearance,bu:loadFavSet,bw:extractFavIdsFromMarks,c6:removeArtist,c7:addArtists,c9:IconButton,ca:IconX,cb:removeArtists,cc:rememberArtistSnapshot,cd:fetchArtistSnapshot,ce:w$1,cf:downloadsAvailable,cg:shuffleCollection,ch:resetCollectionOrder,ci:Toast,cj:getCollectionOrder,ck:listPlaylists,cl:removePostsFromCollection,cm:isDownloadBusy,cn:startDownload,co:movePostInCollection,cp:renameCollection,cr:restorePosts,ct:collectionQueueHash,d:detectPageKind,e:ensureDocumentStyles,g:getAppearance,h:ensureStyleElement,i:buildOwnPageCss,k:getFeatureEnabled,m:mountCards,n:normalizeArtistTag,o:getSyncState,p:parseRdwHash,q:readFavoritesSyncMode,r:runFeaturesYielding,s:syncFavoritesPage,t:runFavoritesSync,y:yieldToMain});var STORAGE_KEY = "ruledesk-web.storage";
+var STORAGE_BACKUP_KEY = exports("bv","ruledesk-web.storage.backup");
+var FAVS_STORAGE_KEY = exports("bq","ruledesk-web.favs");
 var DEBUG_KEY = "ruledesk-web.debug";
-var APPEARANCE_BACKGROUND_KEY = exports("I","ruledesk-web.appearance.background");
-var APPEARANCE_BACKGROUND_TOO_LARGE = exports("ae","Background image is too large (max 1.5 MB).");
+var APPEARANCE_BACKGROUND_KEY = exports("J","ruledesk-web.appearance.background");
+var APPEARANCE_BACKGROUND_TOO_LARGE = exports("af","Background image is too large (max 1.5 MB).");
 var TOKEN_STYLE_ID = "ruledesk-web-tokens";
 var SITE_SKIN_STYLE_ID = "ruledesk-web-site-skin";
 var RDW_SKIN_CLASS = "rdw-skin";
-var RDW_THEME_ATTR = exports("a7","data-rdw-theme");
-var APPEARANCE_THEME_SITE = exports("a8","site");
-var APPEARANCE_THEME_SITE_DARK = exports("a9","site-dark");
-var APPEARANCE_THEME_LIGHT = exports("aG","light");
-var APPEARANCE_THEME_DARK = exports("aH","dark");
-var APPEARANCE_THEME_CUSTOM = exports("aC","custom");
+var RDW_THEME_ATTR = exports("a8","data-rdw-theme");
+var APPEARANCE_THEME_SITE = exports("a9","site");
+var APPEARANCE_THEME_SITE_DARK = exports("aa","site-dark");
+var APPEARANCE_THEME_LIGHT = exports("aH","light");
+var APPEARANCE_THEME_DARK = exports("aI","dark");
+var APPEARANCE_THEME_CUSTOM = exports("aD","custom");
 var DEFAULT_APPEARANCE_THEME = APPEARANCE_THEME_LIGHT;
-var SITE_ORIGIN = exports("b","https://rule34.xxx");
-var SEARCH_PATH = exports("Z","/index.php");
-var SEARCH_PAGE = exports("c1","post");
-var SEARCH_SECTION = exports("c2","list");
-var SEARCH_SECTION_VIEW = exports("cr","view");
-var SEARCH_PARAM_PAGE = exports("W","page");
-var SEARCH_PARAM_TAGS = exports("c","tags");
-var FAVORITES_PAGE = exports("X","favorites");
-var FAVORITES_SECTION_VIEW = exports("Y","view");
+var SITE_ORIGIN = exports("c","https://rule34.xxx");
+var SEARCH_PATH = exports("_","/index.php");
+var SEARCH_PAGE = exports("c2","post");
+var SEARCH_SECTION = exports("c3","list");
+var SEARCH_SECTION_VIEW = exports("cs","view");
+var SEARCH_PARAM_PAGE = exports("X","page");
+var SEARCH_PARAM_TAGS = exports("f","tags");
+var FAVORITES_PAGE = exports("Y","favorites");
+var FAVORITES_SECTION_VIEW = exports("Z","view");
 var FAVORITES_SECTION_DELETE = "delete";
 var FAVORITES_PARAM_RETURN_PID = "return_pid";
 var ADDFAV_PATH = "/public/addfav.php";
@@ -49,12 +49,12 @@ var VOTE_PARAM_TYPE = "type";
 var VOTE_PAGE = "post";
 var VOTE_SECTION = "vote";
 var FETCH_CREDENTIALS = "same-origin";
-var TAG_TYPE_INCLUDE = exports("c7","include");
+var TAG_TYPE_INCLUDE = exports("c8","include");
 var TAG_TYPE_EXCLUDE = "exclude";
 var UPDATES_ID_PREFIX = "id:>";
-var IMPORT_SCHEMA_ERROR_PREFIX = exports("bl","File is not a RuleDesk Web export");
-var COLLECTION_KIND_SEARCH = exports("bR","search");
-var COLLECTION_KIND_POSTS = exports("bO","posts");
+var IMPORT_SCHEMA_ERROR_PREFIX = exports("bm","File is not a RuleDesk Web export");
+var COLLECTION_KIND_SEARCH = exports("bS","search");
+var COLLECTION_KIND_POSTS = exports("bP","posts");
 var DOCUMENT_STYLE_ID = "ruledesk-web-document-style";
 var UPDATES_BAR_ID = "ruledesk-web-updates-bar";
 var SITE_THEME_COOKIE_NAME = "theme";
@@ -123,7 +123,7 @@ var CSS_CLASS = exports("C",{
 });
 /** Hash routes and DOM ids for RuleDesk own pages (replaces floating panel). */
 var RDW_HASH_PREFIX = "#rdw/";
-var RDW_ROUTE_COLLECTIONS = exports("cp","collections");
+var RDW_ROUTE_COLLECTIONS = exports("cq","collections");
 var RDW_ROUTE_FOLLOWING = "following";
 var RDW_ROUTE_SETTINGS = "settings";
 var RDW_ROUTE_STATS = "stats";
@@ -142,25 +142,25 @@ var RDW_COLLECTION_QUEUE_HASH_PREFIX = "#rdw-c=";
 * query narrows nothing: its bar must not show on the plain post list.
 */
 var RDW_DYNAMIC_MARK_HASH_PREFIX = "#rdw-dc=";
-var RDW_HASH_COLLECTIONS = exports("v",`${RDW_HASH_PREFIX}${RDW_ROUTE_COLLECTIONS}`);
-var RDW_HASH_FOLLOWING = exports("x",`${RDW_HASH_PREFIX}${RDW_ROUTE_FOLLOWING}`);
-var RDW_HASH_SETTINGS = exports("D",`${RDW_HASH_PREFIX}${RDW_ROUTE_SETTINGS}`);
-var RDW_HASH_STATS = exports("A",`${RDW_HASH_PREFIX}${RDW_ROUTE_STATS}`);
+var RDW_HASH_COLLECTIONS = exports("w",`${RDW_HASH_PREFIX}${RDW_ROUTE_COLLECTIONS}`);
+var RDW_HASH_FOLLOWING = exports("z",`${RDW_HASH_PREFIX}${RDW_ROUTE_FOLLOWING}`);
+var RDW_HASH_SETTINGS = exports("E",`${RDW_HASH_PREFIX}${RDW_ROUTE_SETTINGS}`);
+var RDW_HASH_STATS = exports("B",`${RDW_HASH_PREFIX}${RDW_ROUTE_STATS}`);
 /**
 * Key in `settings.features` for showing Statistics in the site menu.
 * It is a plain switch, not a page tweak with a module.
 */
-var STATS_MENU_SETTING_ID = exports("by","stats-menu");
-var STATS_MENU_SETTING_LABEL = exports("aj","Statistics in site menu");
-var STATS_MENU_SWITCH_ID = exports("ak","rdw-stats-menu");
-var RDW_OWN_PAGE_CLASS = exports("i","rdw-own-page");
-var RDW_PAGE_ROOT_ID = exports("t","rdw-page-root");
+var STATS_MENU_SETTING_ID = exports("bz","stats-menu");
+var STATS_MENU_SETTING_LABEL = exports("ak","Statistics in site menu");
+var STATS_MENU_SWITCH_ID = exports("al","rdw-stats-menu");
+var RDW_OWN_PAGE_CLASS = exports("j","rdw-own-page");
+var RDW_PAGE_ROOT_ID = exports("u","rdw-page-root");
 /** The download manager's panel: stays visible over the script's own pages. */
 var RDW_DOWNLOADS_PANEL_ID = "rdw-downloads";
 var RDW_OWN_PAGE_STYLE_ID = exports("R","rdw-own-page-style");
 var HEADER_SELECTOR$1 = exports("H","div#header");
 var NAVBAR_SELECTOR = exports("N","div#header ul#navbar");
-var CURRENT_PAGE_CLASS$1 = exports("T","current-page");
+var CURRENT_PAGE_CLASS$1 = exports("V","current-page");
 var MENU_ITEM_ID = exports("M",{
 	collections: "rdw-nav-collections",
 	following: "rdw-nav-following",
@@ -168,7 +168,7 @@ var MENU_ITEM_ID = exports("M",{
 	stats: "rdw-nav-stats",
 	settings: "rdw-nav-settings"
 });
-var MENU_LABEL = exports("w",{
+var MENU_LABEL = exports("x",{
 	collections: "Collections",
 	following: "Following",
 	favorites: "Favorites",
@@ -176,26 +176,26 @@ var MENU_LABEL = exports("w",{
 	settings: "RuleDesk"
 });
 /** Site native favorites entry (submenu); hidden when our Favorites item is shown. */
-var MY_FAVORITES_CONTAINER_ID = exports("B","my-favorites-container");
-var FEED_MENU_ITEM_ID = exports("u","rdw-feed-menu");
+var MY_FAVORITES_CONTAINER_ID = exports("D","my-favorites-container");
+var FEED_MENU_ITEM_ID = exports("v","rdw-feed-menu");
 /** Shared class names for own-page section layouts (relocated from ui/panel). */
-var PANEL_UI_CLASS = exports("a5",{
+var PANEL_UI_CLASS = exports("a6",{
 	scrollRegion: "rdw-scroll-region",
 	settingsGroup: "rdw-settings-group",
 	settingsRow: "rdw-settings-row",
 	settingsCaption: "rdw-settings-caption",
 	pageCard: "rdw-page-card"
 });
-var ARTISTS_EMPTY_TITLE = exports("c0","No followed artists yet");
-var ARTISTS_EMPTY_HINT = exports("b$","Follow artists with the Follow button next to their name in the tag list.");
-var ARTIST_FILTER_LABEL = exports("c3","Filter artists");
-var FEATURE_CHECKBOX_ID_PREFIX = exports("aQ","rdw-feature-");
-var FEATURE_CHOICE_ID_PREFIX = exports("aU","rdw-feature-choice-");
-var UPDATES_GROUP_SIZE_ID = exports("an","rdw-updates-group-size");
-var PLAYLIST_CHUNK_SIZE_ID = exports("aq","rdw-playlist-chunk-size");
-var ARTIST_FILTER_ID = exports("c4","rdw-artist-filter");
-var GRID_FAV_CHECKBOX_ID = exports("at","rdw-grid-fav-buttons");
-var TWEAKS_SWITCH_ID = exports("ah","rdw-tweaks-enabled");
+var ARTISTS_EMPTY_TITLE = exports("c1","No followed artists yet");
+var ARTISTS_EMPTY_HINT = exports("c0","Follow artists with the Follow button next to their name in the tag list.");
+var ARTIST_FILTER_LABEL = exports("c4","Filter artists");
+var FEATURE_CHECKBOX_ID_PREFIX = exports("aR","rdw-feature-");
+var FEATURE_CHOICE_ID_PREFIX = exports("aV","rdw-feature-choice-");
+var UPDATES_GROUP_SIZE_ID = exports("ao","rdw-updates-group-size");
+var PLAYLIST_CHUNK_SIZE_ID = exports("ar","rdw-playlist-chunk-size");
+var ARTIST_FILTER_ID = exports("c5","rdw-artist-filter");
+var GRID_FAV_CHECKBOX_ID = exports("au","rdw-grid-fav-buttons");
+var TWEAKS_SWITCH_ID = exports("ai","rdw-tweaks-enabled");
 var TAG_GROUPS_PANEL_LABEL = "Collapse tags";
 function featurePanelLabel(featureId, fallback) {
 	if (featureId === "tag-groups") return TAG_GROUPS_PANEL_LABEL;
@@ -281,258 +281,6 @@ html.${RDW_OWN_PAGE_CLASS} ${HEADER_SELECTOR$1} ~ *:not(#${RDW_PAGE_ROOT_ID}):no
 }
 `;
 }
-/**
-* Design tokens for RuleDesk Web UI and site skin.
-* Light values match docs/design/mock-components.html.
-*/
-var TOKEN_VAR = exports("a6",{
-	bg: "--rdw-bg",
-	surface: "--rdw-surface",
-	surface2: "--rdw-surface-2",
-	border: "--rdw-border",
-	text: "--rdw-text",
-	muted: "--rdw-muted",
-	accent: "--rdw-accent",
-	accentSoft: "--rdw-accent-soft",
-	danger: "--rdw-danger",
-	dangerSoft: "--rdw-danger-soft",
-	tagArtist: "--rdw-tag-artist",
-	tagCharacter: "--rdw-tag-character",
-	tagCopyright: "--rdw-tag-copyright",
-	tagMetadata: "--rdw-tag-metadata",
-	radiusS: "--rdw-radius-s",
-	radiusM: "--rdw-radius-m",
-	radiusL: "--rdw-radius-l",
-	shadow1: "--rdw-shadow-1",
-	shadow2: "--rdw-shadow-2",
-	font: "--rdw-font",
-	backgroundImage: "--rdw-background-image",
-	backgroundDim: "--rdw-background-dim"
-});
-/** Light palette — page bg from mock-site-skin.html (.new); surfaces from mock-components. */
-var LIGHT_PALETTE = {
-	bg: "#f3f5f7",
-	surface: "#ffffff",
-	surface2: "#f4f6f8",
-	border: "#cfd6dd",
-	text: "#1c2228",
-	muted: "#66727e",
-	accent: "#2f6fed",
-	accentSoft: "#e8f0fe",
-	danger: "#c0392b",
-	dangerSoft: "#fdecea",
-	tagArtist: "#b00020",
-	tagCharacter: "#0a7a2f",
-	tagCopyright: "#8e24aa",
-	tagMetadata: "#ff8800",
-	radiusS: "6px",
-	radiusM: "8px",
-	radiusL: "10px",
-	shadow1: "0 1px 2px rgba(0, 0, 0, 0.06)",
-	shadow2: "0 8px 24px rgba(0, 0, 0, 0.25)",
-	font: "system-ui, \"Segoe UI\", sans-serif"
-};
-/** Dark palette for theme=dark / site-dark / custom base. */
-var DARK_PALETTE = {
-	bg: "#16181c",
-	surface: "#1e2228",
-	surface2: "#262b33",
-	border: "#3a424c",
-	text: "#e8edf2",
-	muted: "#8a96a3",
-	accent: "#4c8bf5",
-	accentSoft: "#1a2f5a",
-	danger: "#e57373",
-	dangerSoft: "#3d1f1f",
-	tagArtist: "#ff6b81",
-	tagCharacter: "#5dcea0",
-	tagCopyright: "#ce93d8",
-	tagMetadata: "#ffb74d",
-	radiusS: "6px",
-	radiusM: "8px",
-	radiusL: "10px",
-	shadow1: "0 1px 2px rgba(0, 0, 0, 0.35)",
-	shadow2: "0 8px 24px rgba(0, 0, 0, 0.55)",
-	font: "system-ui, \"Segoe UI\", sans-serif"
-};
-var HEX_SHORT_PATTERN = /^#([0-9a-fA-F]{3})$/;
-var HEX_LONG_PATTERN = /^#([0-9a-fA-F]{6})$/;
-var SRGB_LINEAR_THRESHOLD = .03928;
-var SRGB_LINEAR_DIVISOR = 12.92;
-var SRGB_GAMMA = 2.4;
-var SRGB_A = .055;
-var SRGB_B = 1.055;
-var LUMA_R = .2126;
-var LUMA_G = .7152;
-var LUMA_B = .0722;
-function channelToLinear(channel) {
-	const c = channel / 255;
-	if (c <= SRGB_LINEAR_THRESHOLD) return c / SRGB_LINEAR_DIVISOR;
-	return ((c + SRGB_A) / SRGB_B) ** SRGB_GAMMA;
-}
-/** Parse #rgb / #rrggbb into 0–255 channels; null if unsupported. */
-function parseHexColor(value) {
-	const short = HEX_SHORT_PATTERN.exec(value.trim());
-	if (short !== null) {
-		const hex = short[1];
-		if (hex === void 0) return null;
-		return {
-			r: Number.parseInt(hex[0] + hex[0], 16),
-			g: Number.parseInt(hex[1] + hex[1], 16),
-			b: Number.parseInt(hex[2] + hex[2], 16)
-		};
-	}
-	const long = HEX_LONG_PATTERN.exec(value.trim());
-	if (long !== null) {
-		const hex = long[1];
-		if (hex === void 0) return null;
-		return {
-			r: Number.parseInt(hex.slice(0, 2), 16),
-			g: Number.parseInt(hex.slice(2, 4), 16),
-			b: Number.parseInt(hex.slice(4, 6), 16)
-		};
-	}
-	return null;
-}
-function relativeLuminance(hex) {
-	const rgb = parseHexColor(hex);
-	if (rgb === null) return null;
-	const r = channelToLinear(rgb.r);
-	const g = channelToLinear(rgb.g);
-	const b = channelToLinear(rgb.b);
-	return LUMA_R * r + LUMA_G * g + LUMA_B * b;
-}
-var CONTRAST_OFFSET$1 = .05;
-/**
-* Hex equivalents of `docs/design/site-desktop.css` light `* { --c-* }`.
-* Script-page Site default chrome; keep in sync with skin/theme site palette.
-*/
-var SITE_LIGHT_C_BG = exports("aa","#aae5a4");
-var SITE_LIGHT_C_BG_ALT = exports("ab","#89cf81");
-var SITE_LIGHT_C_BG_OVERLAY = "#98d491";
-var SITE_LIGHT_C_TEXT = "#000000";
-var SITE_LIGHT_C_TEXT_SOFT = "#666666";
-var SITE_LIGHT_C_LINK = "#000099";
-/** Site dark script-page chrome (theme=site-dark). */
-var SITE_DARK_C_BG = exports("ac","#303a30");
-var SITE_DARK_C_SURFACE2 = "#303030";
-var SITE_DARK_C_BORDER = exports("ad","#505a50");
-var SITE_DARK_C_TEXT = "#c0c0c0";
-var SITE_DARK_C_MUTED = "#878787";
-var SITE_DARK_C_ACCENT = "#b0e0b0";
-/**
-* Site default switch ON track: green-family control color (not link blue).
-* Must keep ≥ {@link CONTRAST_RATIO_UI_MIN} vs card bg ({@link SITE_LIGHT_C_BG}).
-*/
-var SITE_DEFAULT_SWITCH_ON = "#1a4d1a";
-/** Preferred thumb fill on Site default switch ON (page/card green). */
-var SITE_DEFAULT_SWITCH_THUMB_ON = SITE_LIGHT_C_BG;
-/** WCAG contrast ratio of two hex colors; null if either is unparseable. */
-function contrastRatio$1(foreground, background) {
-	const l1 = relativeLuminance(foreground);
-	const l2 = relativeLuminance(background);
-	if (l1 === null || l2 === null) return null;
-	const lighter = Math.max(l1, l2);
-	const darker = Math.min(l1, l2);
-	return (lighter + CONTRAST_OFFSET$1) / (darker + CONTRAST_OFFSET$1);
-}
-/**
-* Prefer `preferred` when it meets `minRatio` vs `background`; else first
-* candidate that does. Falls back to `preferred` if none pass.
-*/
-function pickContrastingHex(background, preferred, candidates, minRatio) {
-	const preferredRatio = contrastRatio$1(preferred, background);
-	if (preferredRatio !== null && preferredRatio >= minRatio) return preferred;
-	for (const candidate of candidates) {
-		const ratio = contrastRatio$1(candidate, background);
-		if (ratio !== null && ratio >= minRatio) return candidate;
-	}
-	return preferred;
-}
-/** Thumb fill for a switch ON track that meets UI contrast, if possible. */
-function resolveSwitchThumbOn(trackOn, preferredThumb, fallbacks = ["#ffffff"]) {
-	return pickContrastingHex(trackOn, preferredThumb, fallbacks, 3);
-}
-/** Pick light/dark custom base from a legacy background hex. */
-function customBaseFromLegacyBg(bg) {
-	if (bg === void 0) return "light";
-	const luma = relativeLuminance(bg);
-	if (luma !== null && luma < .5) return "dark";
-	return "light";
-}
-function escapeCssValue(value) {
-	return value.replace(/</g, "\\3c ");
-}
-function tokensToCssDeclarations(palette) {
-	return [
-		`${TOKEN_VAR.bg}: ${escapeCssValue(palette.bg)};`,
-		`${TOKEN_VAR.surface}: ${escapeCssValue(palette.surface)};`,
-		`${TOKEN_VAR.surface2}: ${escapeCssValue(palette.surface2)};`,
-		`${TOKEN_VAR.border}: ${escapeCssValue(palette.border)};`,
-		`${TOKEN_VAR.text}: ${escapeCssValue(palette.text)};`,
-		`${TOKEN_VAR.muted}: ${escapeCssValue(palette.muted)};`,
-		`${TOKEN_VAR.accent}: ${escapeCssValue(palette.accent)};`,
-		`${TOKEN_VAR.accentSoft}: ${escapeCssValue(palette.accentSoft)};`,
-		`${TOKEN_VAR.danger}: ${escapeCssValue(palette.danger)};`,
-		`${TOKEN_VAR.dangerSoft}: ${escapeCssValue(palette.dangerSoft)};`,
-		`${TOKEN_VAR.tagArtist}: ${escapeCssValue(palette.tagArtist)};`,
-		`${TOKEN_VAR.tagCharacter}: ${escapeCssValue(palette.tagCharacter)};`,
-		`${TOKEN_VAR.tagCopyright}: ${escapeCssValue(palette.tagCopyright)};`,
-		`${TOKEN_VAR.tagMetadata}: ${escapeCssValue(palette.tagMetadata)};`,
-		`${TOKEN_VAR.radiusS}: ${escapeCssValue(palette.radiusS)};`,
-		`${TOKEN_VAR.radiusM}: ${escapeCssValue(palette.radiusM)};`,
-		`${TOKEN_VAR.radiusL}: ${escapeCssValue(palette.radiusL)};`,
-		`${TOKEN_VAR.shadow1}: ${escapeCssValue(palette.shadow1)};`,
-		`${TOKEN_VAR.shadow2}: ${escapeCssValue(palette.shadow2)};`,
-		`${TOKEN_VAR.font}: ${escapeCssValue(palette.font)};`
-	].join("\n  ");
-}
-/** CSS text for :root (or a host) with the given palette. */
-function buildTokensCss(palette, selector = ":root") {
-	return `${selector} {\n  ${tokensToCssDeclarations(palette)}\n}\n`;
-}
-/**
-* Apply palette CSS variables on an element (documentElement or Shadow host).
-* Inline properties so Shadow :host { all: initial } still sees the tokens.
-*/
-function applyTokenProperties(target, palette) {
-	target.style.setProperty(TOKEN_VAR.bg, palette.bg);
-	target.style.setProperty(TOKEN_VAR.surface, palette.surface);
-	target.style.setProperty(TOKEN_VAR.surface2, palette.surface2);
-	target.style.setProperty(TOKEN_VAR.border, palette.border);
-	target.style.setProperty(TOKEN_VAR.text, palette.text);
-	target.style.setProperty(TOKEN_VAR.muted, palette.muted);
-	target.style.setProperty(TOKEN_VAR.accent, palette.accent);
-	target.style.setProperty(TOKEN_VAR.accentSoft, palette.accentSoft);
-	target.style.setProperty(TOKEN_VAR.danger, palette.danger);
-	target.style.setProperty(TOKEN_VAR.dangerSoft, palette.dangerSoft);
-	target.style.setProperty(TOKEN_VAR.tagArtist, palette.tagArtist);
-	target.style.setProperty(TOKEN_VAR.tagCharacter, palette.tagCharacter);
-	target.style.setProperty(TOKEN_VAR.tagCopyright, palette.tagCopyright);
-	target.style.setProperty(TOKEN_VAR.tagMetadata, palette.tagMetadata);
-	target.style.setProperty(TOKEN_VAR.radiusS, palette.radiusS);
-	target.style.setProperty(TOKEN_VAR.radiusM, palette.radiusM);
-	target.style.setProperty(TOKEN_VAR.radiusL, palette.radiusL);
-	target.style.setProperty(TOKEN_VAR.shadow1, palette.shadow1);
-	target.style.setProperty(TOKEN_VAR.shadow2, palette.shadow2);
-	target.style.setProperty(TOKEN_VAR.font, palette.font);
-}
-/**
-* Apply custom overrides via CSS variables (setProperty only — no inline style attrs).
-* Call on document.documentElement (or a shadow host).
-*/
-function applyCustomThemeProperties(target, custom) {
-	if (custom.backgroundImage !== void 0 && custom.backgroundImage.length > 0) target.style.setProperty(TOKEN_VAR.backgroundImage, `url("${custom.backgroundImage.replace(/"/g, "\\\"")}")`);
-	if (custom.backgroundDim !== void 0) target.style.setProperty(TOKEN_VAR.backgroundDim, String(custom.backgroundDim));
-}
-function clearCustomThemeProperties(target) {
-	target.style.removeProperty(TOKEN_VAR.accent);
-	target.style.removeProperty(TOKEN_VAR.bg);
-	target.style.removeProperty(TOKEN_VAR.surface);
-	target.style.removeProperty(TOKEN_VAR.text);
-	target.style.removeProperty(TOKEN_VAR.backgroundImage);
-	target.style.removeProperty(TOKEN_VAR.backgroundDim);
-}
 function isDebugEnabled() {
 	try {
 		return GM_getValue(DEBUG_KEY, void 0) === true;
@@ -556,6 +304,25 @@ var log = exports("l",{
 		console.error(`[ruledesk-web] ${message}`, ...details);
 	}
 });
+function detectPageKind(search) {
+	const params = new URLSearchParams(search);
+	const page = params.get(SEARCH_PARAM_PAGE);
+	const section = params.get("s");
+	if (page === "post" && section === "list") return "list";
+	if (page === "post" && section === "view") return "post";
+	if (page === "favorites" && section === "view") return "favorites";
+	return "other";
+}
+function readPostIdFromSearch(search) {
+	const params = new URLSearchParams(search);
+	const page = params.get(SEARCH_PARAM_PAGE);
+	const section = params.get("s");
+	const id = params.get("id");
+	if (page !== "post" || section !== "view") return null;
+	if (id === null || id.trim().length === 0) return null;
+	if (!/^\d+$/.test(id)) return null;
+	return id;
+}
 function getEnumValues(entries) {
 	const numericValues = Object.values(entries).filter((v) => typeof v === "number");
 	return Object.entries(entries).filter(([k, _]) => numericValues.indexOf(+k) === -1).map(([_, v]) => v);
@@ -2071,382 +1838,6 @@ function nullable(innerType) {
 		innerType
 	});
 }
-var TagTypeSchema = /* @__PURE__ */ _enum([TAG_TYPE_INCLUDE, TAG_TYPE_EXCLUDE]);
-var CollectionKindSchema = /* @__PURE__ */ _enum([COLLECTION_KIND_SEARCH, COLLECTION_KIND_POSTS]);
-var TagEntrySchema = /* @__PURE__ */ object({
-	tag: (/* @__PURE__ */ string()).check(/* @__PURE__ */ _minLength(1)),
-	type: TagTypeSchema
-});
-/**
-* Optional `kind` / `postIds`: missing `kind` means a saved search.
-* Custom (`posts`) rows may also carry `thumbs` and `shuffledOrder`.
-* Dynamic searches may carry `query` (raw tag string). All three are optional
-* so 0.15 blobs still parse; {@link migrateCollectionMediaFields} fills the
-* custom-collection defaults without dropping `postIds` or search tags.
-* `shuffledOrder: null` means insertion order (`postIds`).
-* Dynamic searches may also carry `cover`: thumb URLs seen on the first
-* page of their results, newest visit wins. `postCount` comes from the same page.
-*/
-/**
-* Size of a saved search as read from its results page.
-* `exact: false` means "at least `value`" (taken from the last-page link).
-*/
-var PostCountSchema = /* @__PURE__ */ object({
-	value: int(),
-	exact: /* @__PURE__ */ boolean()
-});
-var CollectionSchema = /* @__PURE__ */ object({
-	id: (/* @__PURE__ */ string()).check(/* @__PURE__ */ _minLength(1)),
-	name: (/* @__PURE__ */ string()).check(/* @__PURE__ */ _minLength(1)),
-	tags: /* @__PURE__ */ array(TagEntrySchema),
-	kind: /* @__PURE__ */ optional(CollectionKindSchema),
-	postIds: /* @__PURE__ */ optional(/* @__PURE__ */ array(int())),
-	thumbs: /* @__PURE__ */ optional(/* @__PURE__ */ record(/* @__PURE__ */ string(), /* @__PURE__ */ string())),
-	shuffledOrder: /* @__PURE__ */ optional(/* @__PURE__ */ nullable(/* @__PURE__ */ array(int()))),
-	query: /* @__PURE__ */ optional(/* @__PURE__ */ string()),
-	cover: /* @__PURE__ */ optional(/* @__PURE__ */ array(/* @__PURE__ */ string())),
-	postCount: /* @__PURE__ */ optional(PostCountSchema)
-});
-/**
-* A followed artist. Everything except `tag` is what the Following page shows
-* and is filled in as it becomes known.
-*/
-var ArtistEntrySchema = /* @__PURE__ */ object({
-	tag: (/* @__PURE__ */ string()).check(/* @__PURE__ */ _minLength(1)),
-	/** When the artist was followed, ms since epoch. Absent for older entries. */
-	addedAt: /* @__PURE__ */ optional(/* @__PURE__ */ number()),
-	/** First thumbs of the artist's results page, for the card cover. */
-	cover: /* @__PURE__ */ optional(/* @__PURE__ */ array(/* @__PURE__ */ string())),
-	postCount: /* @__PURE__ */ optional(PostCountSchema),
-	/** Newest post id of the artist seen so far. */
-	lastPostId: /* @__PURE__ */ optional(int()),
-	/** When `lastPostId` took its current value, ms since epoch. */
-	lastPostSince: /* @__PURE__ */ optional(/* @__PURE__ */ number())
-});
-/** Legacy `fav` remains optional so old storage/export blobs still parse. */
-var MarkFlagsSchema = /* @__PURE__ */ object({
-	fav: /* @__PURE__ */ optional(/* @__PURE__ */ boolean()),
-	seen: /* @__PURE__ */ optional(/* @__PURE__ */ boolean())
-});
-var AppearanceThemeSchema = exports("b3",/* @__PURE__ */ _enum([
-	APPEARANCE_THEME_SITE,
-	APPEARANCE_THEME_SITE_DARK,
-	APPEARANCE_THEME_LIGHT,
-	APPEARANCE_THEME_DARK,
-	APPEARANCE_THEME_CUSTOM
-]));
-var APPEARANCE_CUSTOM_BASE_LIGHT = exports("aJ","light");
-var APPEARANCE_CUSTOM_BASE_DARK = exports("aK","dark");
-var AppearanceCustomBaseSchema = /* @__PURE__ */ _enum([APPEARANCE_CUSTOM_BASE_LIGHT, APPEARANCE_CUSTOM_BASE_DARK]);
-/** Canonical custom theme: Light/Dark base + optional background image/dim. */
-var AppearanceCustomSchema = /* @__PURE__ */ object({
-	base: AppearanceCustomBaseSchema,
-	backgroundImage: /* @__PURE__ */ optional(/* @__PURE__ */ string()),
-	backgroundDim: /* @__PURE__ */ optional(/* @__PURE__ */ number())
-});
-/**
-* Storage/export parse shape: accepts legacy accent/bg/surface/text so 0.10
-* blobs still load; normalize via {@link normalizeAppearanceCustom}.
-*/
-var AppearanceCustomStoredSchema = /* @__PURE__ */ object({
-	base: /* @__PURE__ */ optional(AppearanceCustomBaseSchema),
-	accent: /* @__PURE__ */ optional(/* @__PURE__ */ string()),
-	bg: /* @__PURE__ */ optional(/* @__PURE__ */ string()),
-	surface: /* @__PURE__ */ optional(/* @__PURE__ */ string()),
-	text: /* @__PURE__ */ optional(/* @__PURE__ */ string()),
-	backgroundImage: /* @__PURE__ */ optional(/* @__PURE__ */ string()),
-	backgroundDim: /* @__PURE__ */ optional(/* @__PURE__ */ number())
-});
-var AppearanceSchema = /* @__PURE__ */ object({
-	theme: AppearanceThemeSchema,
-	custom: /* @__PURE__ */ optional(AppearanceCustomSchema)
-});
-var AppearanceStoredSchema = /* @__PURE__ */ object({
-	theme: AppearanceThemeSchema,
-	custom: /* @__PURE__ */ optional(AppearanceCustomStoredSchema)
-});
-/**
-* Package B: module toggle id for «Video player tweaks»
-* (`settings.features[VIDEO_PLAYER_FEATURE_ID]`).
-*/
-var VIDEO_PLAYER_FEATURE_ID = "video-player";
-/** Package B: `settings.featureChoice[VIDEO_PLAYER_FEATURE_ID]` values. */
-var VIDEO_SIZE_FIT_HEIGHT = "fit-height";
-var VIDEO_SIZE_FIT_WIDTH = "fit-width";
-var VIDEO_SIZE_ORIGINAL = "original";
-var DEFAULT_VIDEO_SIZE = VIDEO_SIZE_FIT_HEIGHT;
-var VideoSizeSchema = /* @__PURE__ */ _enum([
-	VIDEO_SIZE_FIT_HEIGHT,
-	VIDEO_SIZE_FIT_WIDTH,
-	VIDEO_SIZE_ORIGINAL
-]);
-/**
-* Package B: persisted player prefs under
-* `settings.featureState[VIDEO_PLAYER_FEATURE_ID]`.
-*/
-var VideoPlayerStateSchema = /* @__PURE__ */ object({
-	volume: /* @__PURE__ */ optional(/* @__PURE__ */ number()),
-	muted: /* @__PURE__ */ optional(/* @__PURE__ */ boolean()),
-	playbackRate: /* @__PURE__ */ optional(/* @__PURE__ */ number())
-});
-var SettingsSchema = /* @__PURE__ */ object({
-	gridFavButtons: /* @__PURE__ */ boolean(),
-	updatesGroupSize: /* @__PURE__ */ optional(int().check(/* @__PURE__ */ _nonnegative())),
-	playlistChunkSize: /* @__PURE__ */ optional(int().check(/* @__PURE__ */ _positive())),
-	tweaksEnabled: /* @__PURE__ */ optional(/* @__PURE__ */ boolean()),
-	features: /* @__PURE__ */ optional(/* @__PURE__ */ record(/* @__PURE__ */ string(), /* @__PURE__ */ boolean())),
-	featureChoice: /* @__PURE__ */ optional(/* @__PURE__ */ record(/* @__PURE__ */ string(), /* @__PURE__ */ string())),
-	featureState: /* @__PURE__ */ optional(/* @__PURE__ */ record(/* @__PURE__ */ string(), /* @__PURE__ */ unknown())),
-	appearance: /* @__PURE__ */ optional(AppearanceStoredSchema)
-});
-var UpdatesSchema = /* @__PURE__ */ object({ seenPostId: int().check(/* @__PURE__ */ _nonnegative()) });
-var StorageSchema = exports("bg",/* @__PURE__ */ object({
-	version: /* @__PURE__ */ literal(1),
-	collections: /* @__PURE__ */ array(CollectionSchema),
-	artists: /* @__PURE__ */ array(ArtistEntrySchema),
-	marks: /* @__PURE__ */ record(/* @__PURE__ */ string(), MarkFlagsSchema),
-	settings: /* @__PURE__ */ optional(SettingsSchema),
-	updates: /* @__PURE__ */ optional(UpdatesSchema)
-}));
-/** Legacy floating-panel size keys under settings.featureState.panel. */
-var LEGACY_PANEL_FEATURE_STATE_ID = "panel";
-var LEGACY_PANEL_WIDTH_KEY = "width";
-var LEGACY_PANEL_HEIGHT_KEY = "height";
-var GRID_DENSITY_CHOICE_ID = "grid-density";
-var GRID_DENSITY_DEFAULT_VALUE = "default";
-var LEGACY_MASONRY_CHOICE_VALUE = "masonry";
-/** Post panel Info/Comments tab used to live here. Always Info as of 0.15.1. */
-var POST_PANEL_TAB_CHOICE_ID = "post-actions";
-var FavsSyncLockSchema = /* @__PURE__ */ object({
-	tabId: (/* @__PURE__ */ string()).check(/* @__PURE__ */ _minLength(1)),
-	beatAt: /* @__PURE__ */ number()
-});
-/** Package F HANDOFF: incremental stops early; full walks every page. */
-var FAVS_SYNC_MODE_INCREMENTAL = "incremental";
-var FAVS_SYNC_MODE_FULL = "full";
-var FavsSyncModeSchema = /* @__PURE__ */ _enum([FAVS_SYNC_MODE_INCREMENTAL, FAVS_SYNC_MODE_FULL]);
-var FavsSyncSchema = /* @__PURE__ */ object({
-	nextPid: int(),
-	lastPid: int(),
-	startedAt: /* @__PURE__ */ string(),
-	finishedAt: /* @__PURE__ */ optional(/* @__PURE__ */ string()),
-	running: /* @__PURE__ */ optional(/* @__PURE__ */ boolean()),
-	userId: /* @__PURE__ */ optional(int()),
-	lock: /* @__PURE__ */ optional(FavsSyncLockSchema),
-	mode: /* @__PURE__ */ optional(FavsSyncModeSchema)
-});
-var FavsSchema = exports("bj",/* @__PURE__ */ object({
-	version: /* @__PURE__ */ literal(1),
-	ids: /* @__PURE__ */ array(int()),
-	sync: /* @__PURE__ */ optional(FavsSyncSchema)
-}));
-function createDefaultVideoPlayerState() {
-	return {
-		volume: 1,
-		muted: false,
-		playbackRate: 1
-	};
-}
-function parseVideoPlayerState(raw) {
-	const parsed = VideoPlayerStateSchema.safeParse(raw);
-	if (!parsed.success) return createDefaultVideoPlayerState();
-	const defaults = createDefaultVideoPlayerState();
-	const volume = parsed.data.volume;
-	const muted = parsed.data.muted;
-	const playbackRate = parsed.data.playbackRate;
-	return {
-		volume: volume !== void 0 && Number.isFinite(volume) ? Math.min(1, Math.max(0, volume)) : defaults.volume,
-		muted: muted ?? defaults.muted,
-		playbackRate: playbackRate !== void 0 && Number.isFinite(playbackRate) && playbackRate > 0 ? playbackRate : defaults.playbackRate
-	};
-}
-function resolveVideoSize(raw) {
-	const parsed = VideoSizeSchema.safeParse(raw);
-	if (!parsed.success) return DEFAULT_VIDEO_SIZE;
-	return parsed.data;
-}
-function isUnknownRecord$1(value) {
-	return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-/**
-* Drop legacy floating-panel width/height from featureState.panel.
-* Keeps tab and any other keys. No SCHEMA_VERSION bump.
-*/
-function stripLegacyPanelWindowSize(data) {
-	const featureState = data.settings?.featureState;
-	if (featureState === void 0) return {
-		data,
-		changed: false
-	};
-	const panelRaw = featureState[LEGACY_PANEL_FEATURE_STATE_ID];
-	if (!isUnknownRecord$1(panelRaw)) return {
-		data,
-		changed: false
-	};
-	const hasWidth = Object.prototype.hasOwnProperty.call(panelRaw, LEGACY_PANEL_WIDTH_KEY);
-	const hasHeight = Object.prototype.hasOwnProperty.call(panelRaw, LEGACY_PANEL_HEIGHT_KEY);
-	if (!hasWidth && !hasHeight) return {
-		data,
-		changed: false
-	};
-	const nextPanel = {};
-	for (const [key, value] of Object.entries(panelRaw)) {
-		if (key === "width" || key === "height") continue;
-		nextPanel[key] = value;
-	}
-	const nextFeatureState = { ...featureState };
-	if (Object.keys(nextPanel).length === 0) delete nextFeatureState[LEGACY_PANEL_FEATURE_STATE_ID];
-	else nextFeatureState[LEGACY_PANEL_FEATURE_STATE_ID] = nextPanel;
-	const nextSettings = data.settings === void 0 ? { gridFavButtons: true } : { ...data.settings };
-	if (Object.keys(nextFeatureState).length === 0) delete nextSettings.featureState;
-	else nextSettings.featureState = nextFeatureState;
-	return {
-		data: {
-			...data,
-			settings: nextSettings
-		},
-		changed: true
-	};
-}
-/**
-* Saved masonry grid becomes default. Post-panel tab choice is removed.
-* No SCHEMA_VERSION bump.
-*/
-function migrateRetiredFeatureChoices(data) {
-	const featureChoice = data.settings?.featureChoice;
-	if (featureChoice === void 0) return {
-		data,
-		changed: false
-	};
-	const nextChoice = { ...featureChoice };
-	let changed = false;
-	if (nextChoice[GRID_DENSITY_CHOICE_ID] === LEGACY_MASONRY_CHOICE_VALUE) {
-		nextChoice[GRID_DENSITY_CHOICE_ID] = GRID_DENSITY_DEFAULT_VALUE;
-		changed = true;
-	}
-	if (Object.prototype.hasOwnProperty.call(nextChoice, POST_PANEL_TAB_CHOICE_ID)) {
-		delete nextChoice[POST_PANEL_TAB_CHOICE_ID];
-		changed = true;
-	}
-	if (!changed) return {
-		data,
-		changed: false
-	};
-	const nextSettings = data.settings === void 0 ? { gridFavButtons: true } : { ...data.settings };
-	if (Object.keys(nextChoice).length === 0) delete nextSettings.featureChoice;
-	else nextSettings.featureChoice = nextChoice;
-	return {
-		data: {
-			...data,
-			settings: nextSettings
-		},
-		changed: true
-	};
-}
-function isPlaylist(collection) {
-	return collection.kind === COLLECTION_KIND_POSTS;
-}
-/**
-* Posts collections gain `thumbs: {}` and `shuffledOrder: null` when those
-* keys are absent. Saved searches (including explicit `kind: "search"`) are
-* copied through unchanged. No SCHEMA_VERSION bump.
-*/
-function migrateCollectionMediaFields(data) {
-	let changed = false;
-	const collections = [];
-	for (const collection of data.collections) {
-		if (!isPlaylist(collection)) {
-			collections.push(collection);
-			continue;
-		}
-		const needsThumbs = collection.thumbs === void 0;
-		const needsOrder = collection.shuffledOrder === void 0;
-		if (!needsThumbs && !needsOrder) {
-			collections.push(collection);
-			continue;
-		}
-		changed = true;
-		const next = { ...collection };
-		if (needsThumbs) next.thumbs = {};
-		if (needsOrder) next.shuffledOrder = null;
-		collections.push(next);
-	}
-	if (!changed) return {
-		data,
-		changed: false
-	};
-	return {
-		data: {
-			...data,
-			collections
-		},
-		changed: true
-	};
-}
-function resolveCollectionKind(collection) {
-	return collection.kind ?? "search";
-}
-function createDefaultFavs() {
-	return {
-		version: 1,
-		ids: []
-	};
-}
-function createDefaultAppearance() {
-	return { theme: DEFAULT_APPEARANCE_THEME };
-}
-/**
-* Drop legacy custom color fields; pick Light/Dark base from stored base or
-* luminance of legacy `bg`.
-*/
-function normalizeAppearanceCustom(raw) {
-	const next = { base: raw.base === "light" || raw.base === "dark" ? raw.base : customBaseFromLegacyBg(raw.bg) };
-	if (raw.backgroundImage !== void 0) next.backgroundImage = raw.backgroundImage;
-	if (raw.backgroundDim !== void 0) next.backgroundDim = raw.backgroundDim;
-	return next;
-}
-function normalizeAppearance(stored) {
-	if (stored.custom === void 0) return { theme: stored.theme };
-	return {
-		theme: stored.theme,
-		custom: normalizeAppearanceCustom(stored.custom)
-	};
-}
-function createDefaultStorage() {
-	return {
-		version: 1,
-		collections: [],
-		artists: [],
-		marks: {},
-		settings: {
-			gridFavButtons: true,
-			updatesGroupSize: 0,
-			tweaksEnabled: true,
-			appearance: createDefaultAppearance()
-		},
-		updates: { seenPostId: 0 }
-	};
-}
-function resolveAppearance(data) {
-	const stored = data.settings?.appearance;
-	if (stored === void 0) return createDefaultAppearance();
-	return normalizeAppearance(stored);
-}
-function resolveGridFavButtons(data) {
-	return data.settings?.gridFavButtons ?? true;
-}
-function resolveTweaksEnabled(data) {
-	return data.settings?.tweaksEnabled ?? true;
-}
-function resolveUpdatesGroupSize(data) {
-	return data.settings?.updatesGroupSize ?? 0;
-}
-function resolvePlaylistChunkSize(data) {
-	return data.settings?.playlistChunkSize ?? 40;
-}
-function resolveSeenPostId(data) {
-	return data.updates?.seenPostId ?? 0;
-}
 var UPDATES_ID_TOKEN_PATTERN = /^id:>(\d+)$/;
 var PLAYLIST_ID_TOKEN_PATTERN = /^id:(\d+)$/;
 function normalizeArtistTag(raw) {
@@ -2905,10 +2296,638 @@ function pruneMarksIfNeeded(marks, keepLimit = MARKS_KEEP_LIMIT) {
 		pruned: true
 	};
 }
+/**
+* Design tokens for RuleDesk Web UI and site skin.
+* Light values match docs/design/mock-components.html.
+*/
+var TOKEN_VAR = exports("a7",{
+	bg: "--rdw-bg",
+	surface: "--rdw-surface",
+	surface2: "--rdw-surface-2",
+	border: "--rdw-border",
+	text: "--rdw-text",
+	muted: "--rdw-muted",
+	accent: "--rdw-accent",
+	accentSoft: "--rdw-accent-soft",
+	danger: "--rdw-danger",
+	dangerSoft: "--rdw-danger-soft",
+	tagArtist: "--rdw-tag-artist",
+	tagCharacter: "--rdw-tag-character",
+	tagCopyright: "--rdw-tag-copyright",
+	tagMetadata: "--rdw-tag-metadata",
+	radiusS: "--rdw-radius-s",
+	radiusM: "--rdw-radius-m",
+	radiusL: "--rdw-radius-l",
+	shadow1: "--rdw-shadow-1",
+	shadow2: "--rdw-shadow-2",
+	font: "--rdw-font",
+	backgroundImage: "--rdw-background-image",
+	backgroundDim: "--rdw-background-dim"
+});
+/** Light palette — page bg from mock-site-skin.html (.new); surfaces from mock-components. */
+var LIGHT_PALETTE = {
+	bg: "#f3f5f7",
+	surface: "#ffffff",
+	surface2: "#f4f6f8",
+	border: "#cfd6dd",
+	text: "#1c2228",
+	muted: "#66727e",
+	accent: "#2f6fed",
+	accentSoft: "#e8f0fe",
+	danger: "#c0392b",
+	dangerSoft: "#fdecea",
+	tagArtist: "#b00020",
+	tagCharacter: "#0a7a2f",
+	tagCopyright: "#8e24aa",
+	tagMetadata: "#ff8800",
+	radiusS: "6px",
+	radiusM: "8px",
+	radiusL: "10px",
+	shadow1: "0 1px 2px rgba(0, 0, 0, 0.06)",
+	shadow2: "0 8px 24px rgba(0, 0, 0, 0.25)",
+	font: "system-ui, \"Segoe UI\", sans-serif"
+};
+/** Dark palette for theme=dark / site-dark / custom base. */
+var DARK_PALETTE = {
+	bg: "#16181c",
+	surface: "#1e2228",
+	surface2: "#262b33",
+	border: "#3a424c",
+	text: "#e8edf2",
+	muted: "#8a96a3",
+	accent: "#4c8bf5",
+	accentSoft: "#1a2f5a",
+	danger: "#e57373",
+	dangerSoft: "#3d1f1f",
+	tagArtist: "#ff6b81",
+	tagCharacter: "#5dcea0",
+	tagCopyright: "#ce93d8",
+	tagMetadata: "#ffb74d",
+	radiusS: "6px",
+	radiusM: "8px",
+	radiusL: "10px",
+	shadow1: "0 1px 2px rgba(0, 0, 0, 0.35)",
+	shadow2: "0 8px 24px rgba(0, 0, 0, 0.55)",
+	font: "system-ui, \"Segoe UI\", sans-serif"
+};
+var HEX_SHORT_PATTERN = /^#([0-9a-fA-F]{3})$/;
+var HEX_LONG_PATTERN = /^#([0-9a-fA-F]{6})$/;
+var SRGB_LINEAR_THRESHOLD = .03928;
+var SRGB_LINEAR_DIVISOR = 12.92;
+var SRGB_GAMMA = 2.4;
+var SRGB_A = .055;
+var SRGB_B = 1.055;
+var LUMA_R = .2126;
+var LUMA_G = .7152;
+var LUMA_B = .0722;
+function channelToLinear(channel) {
+	const c = channel / 255;
+	if (c <= SRGB_LINEAR_THRESHOLD) return c / SRGB_LINEAR_DIVISOR;
+	return ((c + SRGB_A) / SRGB_B) ** SRGB_GAMMA;
+}
+/** Parse #rgb / #rrggbb into 0–255 channels; null if unsupported. */
+function parseHexColor(value) {
+	const short = HEX_SHORT_PATTERN.exec(value.trim());
+	if (short !== null) {
+		const hex = short[1];
+		if (hex === void 0) return null;
+		return {
+			r: Number.parseInt(hex[0] + hex[0], 16),
+			g: Number.parseInt(hex[1] + hex[1], 16),
+			b: Number.parseInt(hex[2] + hex[2], 16)
+		};
+	}
+	const long = HEX_LONG_PATTERN.exec(value.trim());
+	if (long !== null) {
+		const hex = long[1];
+		if (hex === void 0) return null;
+		return {
+			r: Number.parseInt(hex.slice(0, 2), 16),
+			g: Number.parseInt(hex.slice(2, 4), 16),
+			b: Number.parseInt(hex.slice(4, 6), 16)
+		};
+	}
+	return null;
+}
+function relativeLuminance(hex) {
+	const rgb = parseHexColor(hex);
+	if (rgb === null) return null;
+	const r = channelToLinear(rgb.r);
+	const g = channelToLinear(rgb.g);
+	const b = channelToLinear(rgb.b);
+	return LUMA_R * r + LUMA_G * g + LUMA_B * b;
+}
+var CONTRAST_OFFSET$1 = .05;
+/**
+* Hex equivalents of `docs/design/site-desktop.css` light `* { --c-* }`.
+* Script-page Site default chrome; keep in sync with skin/theme site palette.
+*/
+var SITE_LIGHT_C_BG = exports("ab","#aae5a4");
+var SITE_LIGHT_C_BG_ALT = exports("ac","#89cf81");
+var SITE_LIGHT_C_BG_OVERLAY = "#98d491";
+var SITE_LIGHT_C_TEXT = "#000000";
+var SITE_LIGHT_C_TEXT_SOFT = "#666666";
+var SITE_LIGHT_C_LINK = "#000099";
+/** Site dark script-page chrome (theme=site-dark). */
+var SITE_DARK_C_BG = exports("ad","#303a30");
+var SITE_DARK_C_SURFACE2 = "#303030";
+var SITE_DARK_C_BORDER = exports("ae","#505a50");
+var SITE_DARK_C_TEXT = "#c0c0c0";
+var SITE_DARK_C_MUTED = "#878787";
+var SITE_DARK_C_ACCENT = "#b0e0b0";
+/**
+* Site default switch ON track: green-family control color (not link blue).
+* Must keep ≥ {@link CONTRAST_RATIO_UI_MIN} vs card bg ({@link SITE_LIGHT_C_BG}).
+*/
+var SITE_DEFAULT_SWITCH_ON = "#1a4d1a";
+/** Preferred thumb fill on Site default switch ON (page/card green). */
+var SITE_DEFAULT_SWITCH_THUMB_ON = SITE_LIGHT_C_BG;
+/** WCAG contrast ratio of two hex colors; null if either is unparseable. */
+function contrastRatio$1(foreground, background) {
+	const l1 = relativeLuminance(foreground);
+	const l2 = relativeLuminance(background);
+	if (l1 === null || l2 === null) return null;
+	const lighter = Math.max(l1, l2);
+	const darker = Math.min(l1, l2);
+	return (lighter + CONTRAST_OFFSET$1) / (darker + CONTRAST_OFFSET$1);
+}
+/**
+* Prefer `preferred` when it meets `minRatio` vs `background`; else first
+* candidate that does. Falls back to `preferred` if none pass.
+*/
+function pickContrastingHex(background, preferred, candidates, minRatio) {
+	const preferredRatio = contrastRatio$1(preferred, background);
+	if (preferredRatio !== null && preferredRatio >= minRatio) return preferred;
+	for (const candidate of candidates) {
+		const ratio = contrastRatio$1(candidate, background);
+		if (ratio !== null && ratio >= minRatio) return candidate;
+	}
+	return preferred;
+}
+/** Thumb fill for a switch ON track that meets UI contrast, if possible. */
+function resolveSwitchThumbOn(trackOn, preferredThumb, fallbacks = ["#ffffff"]) {
+	return pickContrastingHex(trackOn, preferredThumb, fallbacks, 3);
+}
+/** Pick light/dark custom base from a legacy background hex. */
+function customBaseFromLegacyBg(bg) {
+	if (bg === void 0) return "light";
+	const luma = relativeLuminance(bg);
+	if (luma !== null && luma < .5) return "dark";
+	return "light";
+}
+function escapeCssValue(value) {
+	return value.replace(/</g, "\\3c ");
+}
+function tokensToCssDeclarations(palette) {
+	return [
+		`${TOKEN_VAR.bg}: ${escapeCssValue(palette.bg)};`,
+		`${TOKEN_VAR.surface}: ${escapeCssValue(palette.surface)};`,
+		`${TOKEN_VAR.surface2}: ${escapeCssValue(palette.surface2)};`,
+		`${TOKEN_VAR.border}: ${escapeCssValue(palette.border)};`,
+		`${TOKEN_VAR.text}: ${escapeCssValue(palette.text)};`,
+		`${TOKEN_VAR.muted}: ${escapeCssValue(palette.muted)};`,
+		`${TOKEN_VAR.accent}: ${escapeCssValue(palette.accent)};`,
+		`${TOKEN_VAR.accentSoft}: ${escapeCssValue(palette.accentSoft)};`,
+		`${TOKEN_VAR.danger}: ${escapeCssValue(palette.danger)};`,
+		`${TOKEN_VAR.dangerSoft}: ${escapeCssValue(palette.dangerSoft)};`,
+		`${TOKEN_VAR.tagArtist}: ${escapeCssValue(palette.tagArtist)};`,
+		`${TOKEN_VAR.tagCharacter}: ${escapeCssValue(palette.tagCharacter)};`,
+		`${TOKEN_VAR.tagCopyright}: ${escapeCssValue(palette.tagCopyright)};`,
+		`${TOKEN_VAR.tagMetadata}: ${escapeCssValue(palette.tagMetadata)};`,
+		`${TOKEN_VAR.radiusS}: ${escapeCssValue(palette.radiusS)};`,
+		`${TOKEN_VAR.radiusM}: ${escapeCssValue(palette.radiusM)};`,
+		`${TOKEN_VAR.radiusL}: ${escapeCssValue(palette.radiusL)};`,
+		`${TOKEN_VAR.shadow1}: ${escapeCssValue(palette.shadow1)};`,
+		`${TOKEN_VAR.shadow2}: ${escapeCssValue(palette.shadow2)};`,
+		`${TOKEN_VAR.font}: ${escapeCssValue(palette.font)};`
+	].join("\n  ");
+}
+/** CSS text for :root (or a host) with the given palette. */
+function buildTokensCss(palette, selector = ":root") {
+	return `${selector} {\n  ${tokensToCssDeclarations(palette)}\n}\n`;
+}
+/**
+* Apply palette CSS variables on an element (documentElement or Shadow host).
+* Inline properties so Shadow :host { all: initial } still sees the tokens.
+*/
+function applyTokenProperties(target, palette) {
+	target.style.setProperty(TOKEN_VAR.bg, palette.bg);
+	target.style.setProperty(TOKEN_VAR.surface, palette.surface);
+	target.style.setProperty(TOKEN_VAR.surface2, palette.surface2);
+	target.style.setProperty(TOKEN_VAR.border, palette.border);
+	target.style.setProperty(TOKEN_VAR.text, palette.text);
+	target.style.setProperty(TOKEN_VAR.muted, palette.muted);
+	target.style.setProperty(TOKEN_VAR.accent, palette.accent);
+	target.style.setProperty(TOKEN_VAR.accentSoft, palette.accentSoft);
+	target.style.setProperty(TOKEN_VAR.danger, palette.danger);
+	target.style.setProperty(TOKEN_VAR.dangerSoft, palette.dangerSoft);
+	target.style.setProperty(TOKEN_VAR.tagArtist, palette.tagArtist);
+	target.style.setProperty(TOKEN_VAR.tagCharacter, palette.tagCharacter);
+	target.style.setProperty(TOKEN_VAR.tagCopyright, palette.tagCopyright);
+	target.style.setProperty(TOKEN_VAR.tagMetadata, palette.tagMetadata);
+	target.style.setProperty(TOKEN_VAR.radiusS, palette.radiusS);
+	target.style.setProperty(TOKEN_VAR.radiusM, palette.radiusM);
+	target.style.setProperty(TOKEN_VAR.radiusL, palette.radiusL);
+	target.style.setProperty(TOKEN_VAR.shadow1, palette.shadow1);
+	target.style.setProperty(TOKEN_VAR.shadow2, palette.shadow2);
+	target.style.setProperty(TOKEN_VAR.font, palette.font);
+}
+/**
+* Apply custom overrides via CSS variables (setProperty only — no inline style attrs).
+* Call on document.documentElement (or a shadow host).
+*/
+function applyCustomThemeProperties(target, custom) {
+	if (custom.backgroundImage !== void 0 && custom.backgroundImage.length > 0) target.style.setProperty(TOKEN_VAR.backgroundImage, `url("${custom.backgroundImage.replace(/"/g, "\\\"")}")`);
+	if (custom.backgroundDim !== void 0) target.style.setProperty(TOKEN_VAR.backgroundDim, String(custom.backgroundDim));
+}
+function clearCustomThemeProperties(target) {
+	target.style.removeProperty(TOKEN_VAR.accent);
+	target.style.removeProperty(TOKEN_VAR.bg);
+	target.style.removeProperty(TOKEN_VAR.surface);
+	target.style.removeProperty(TOKEN_VAR.text);
+	target.style.removeProperty(TOKEN_VAR.backgroundImage);
+	target.style.removeProperty(TOKEN_VAR.backgroundDim);
+}
+var TagTypeSchema = /* @__PURE__ */ _enum([TAG_TYPE_INCLUDE, TAG_TYPE_EXCLUDE]);
+var CollectionKindSchema = /* @__PURE__ */ _enum([COLLECTION_KIND_SEARCH, COLLECTION_KIND_POSTS]);
+var TagEntrySchema = /* @__PURE__ */ object({
+	tag: (/* @__PURE__ */ string()).check(/* @__PURE__ */ _minLength(1)),
+	type: TagTypeSchema
+});
+/**
+* Optional `kind` / `postIds`: missing `kind` means a saved search.
+* Custom (`posts`) rows may also carry `thumbs` and `shuffledOrder`.
+* Dynamic searches may carry `query` (raw tag string). All three are optional
+* so 0.15 blobs still parse; {@link migrateCollectionMediaFields} fills the
+* custom-collection defaults without dropping `postIds` or search tags.
+* `shuffledOrder: null` means insertion order (`postIds`).
+* Dynamic searches may also carry `cover`: thumb URLs seen on the first
+* page of their results, newest visit wins. `postCount` comes from the same page.
+*/
+/**
+* Size of a saved search as read from its results page.
+* `exact: false` means "at least `value`" (taken from the last-page link).
+*/
+var PostCountSchema = /* @__PURE__ */ object({
+	value: int(),
+	exact: /* @__PURE__ */ boolean()
+});
+var CollectionSchema = /* @__PURE__ */ object({
+	id: (/* @__PURE__ */ string()).check(/* @__PURE__ */ _minLength(1)),
+	name: (/* @__PURE__ */ string()).check(/* @__PURE__ */ _minLength(1)),
+	tags: /* @__PURE__ */ array(TagEntrySchema),
+	kind: /* @__PURE__ */ optional(CollectionKindSchema),
+	postIds: /* @__PURE__ */ optional(/* @__PURE__ */ array(int())),
+	thumbs: /* @__PURE__ */ optional(/* @__PURE__ */ record(/* @__PURE__ */ string(), /* @__PURE__ */ string())),
+	shuffledOrder: /* @__PURE__ */ optional(/* @__PURE__ */ nullable(/* @__PURE__ */ array(int()))),
+	query: /* @__PURE__ */ optional(/* @__PURE__ */ string()),
+	cover: /* @__PURE__ */ optional(/* @__PURE__ */ array(/* @__PURE__ */ string())),
+	postCount: /* @__PURE__ */ optional(PostCountSchema)
+});
+/**
+* A followed artist. Everything except `tag` is what the Following page shows
+* and is filled in as it becomes known.
+*/
+var ArtistEntrySchema = /* @__PURE__ */ object({
+	tag: (/* @__PURE__ */ string()).check(/* @__PURE__ */ _minLength(1)),
+	/** When the artist was followed, ms since epoch. Absent for older entries. */
+	addedAt: /* @__PURE__ */ optional(/* @__PURE__ */ number()),
+	/** First thumbs of the artist's results page, for the card cover. */
+	cover: /* @__PURE__ */ optional(/* @__PURE__ */ array(/* @__PURE__ */ string())),
+	postCount: /* @__PURE__ */ optional(PostCountSchema),
+	/** Newest post id of the artist seen so far. */
+	lastPostId: /* @__PURE__ */ optional(int()),
+	/** When `lastPostId` took its current value, ms since epoch. */
+	lastPostSince: /* @__PURE__ */ optional(/* @__PURE__ */ number())
+});
+/** Legacy `fav` remains optional so old storage/export blobs still parse. */
+var MarkFlagsSchema = /* @__PURE__ */ object({
+	fav: /* @__PURE__ */ optional(/* @__PURE__ */ boolean()),
+	seen: /* @__PURE__ */ optional(/* @__PURE__ */ boolean())
+});
+var AppearanceThemeSchema = exports("b4",/* @__PURE__ */ _enum([
+	APPEARANCE_THEME_SITE,
+	APPEARANCE_THEME_SITE_DARK,
+	APPEARANCE_THEME_LIGHT,
+	APPEARANCE_THEME_DARK,
+	APPEARANCE_THEME_CUSTOM
+]));
+var APPEARANCE_CUSTOM_BASE_LIGHT = exports("aK","light");
+var APPEARANCE_CUSTOM_BASE_DARK = exports("aL","dark");
+var AppearanceCustomBaseSchema = /* @__PURE__ */ _enum([APPEARANCE_CUSTOM_BASE_LIGHT, APPEARANCE_CUSTOM_BASE_DARK]);
+/** Canonical custom theme: Light/Dark base + optional background image/dim. */
+var AppearanceCustomSchema = /* @__PURE__ */ object({
+	base: AppearanceCustomBaseSchema,
+	backgroundImage: /* @__PURE__ */ optional(/* @__PURE__ */ string()),
+	backgroundDim: /* @__PURE__ */ optional(/* @__PURE__ */ number())
+});
+/**
+* Storage/export parse shape: accepts legacy accent/bg/surface/text so 0.10
+* blobs still load; normalize via {@link normalizeAppearanceCustom}.
+*/
+var AppearanceCustomStoredSchema = /* @__PURE__ */ object({
+	base: /* @__PURE__ */ optional(AppearanceCustomBaseSchema),
+	accent: /* @__PURE__ */ optional(/* @__PURE__ */ string()),
+	bg: /* @__PURE__ */ optional(/* @__PURE__ */ string()),
+	surface: /* @__PURE__ */ optional(/* @__PURE__ */ string()),
+	text: /* @__PURE__ */ optional(/* @__PURE__ */ string()),
+	backgroundImage: /* @__PURE__ */ optional(/* @__PURE__ */ string()),
+	backgroundDim: /* @__PURE__ */ optional(/* @__PURE__ */ number())
+});
+var AppearanceSchema = /* @__PURE__ */ object({
+	theme: AppearanceThemeSchema,
+	custom: /* @__PURE__ */ optional(AppearanceCustomSchema)
+});
+var AppearanceStoredSchema = /* @__PURE__ */ object({
+	theme: AppearanceThemeSchema,
+	custom: /* @__PURE__ */ optional(AppearanceCustomStoredSchema)
+});
+/**
+* Package B: module toggle id for «Video player tweaks»
+* (`settings.features[VIDEO_PLAYER_FEATURE_ID]`).
+*/
+var VIDEO_PLAYER_FEATURE_ID = "video-player";
+/** Package B: `settings.featureChoice[VIDEO_PLAYER_FEATURE_ID]` values. */
+var VIDEO_SIZE_FIT_HEIGHT = "fit-height";
+var VIDEO_SIZE_FIT_WIDTH = "fit-width";
+var VIDEO_SIZE_ORIGINAL = "original";
+var DEFAULT_VIDEO_SIZE = VIDEO_SIZE_FIT_HEIGHT;
+var VideoSizeSchema = /* @__PURE__ */ _enum([
+	VIDEO_SIZE_FIT_HEIGHT,
+	VIDEO_SIZE_FIT_WIDTH,
+	VIDEO_SIZE_ORIGINAL
+]);
+/**
+* Package B: persisted player prefs under
+* `settings.featureState[VIDEO_PLAYER_FEATURE_ID]`.
+*/
+var VideoPlayerStateSchema = /* @__PURE__ */ object({
+	volume: /* @__PURE__ */ optional(/* @__PURE__ */ number()),
+	muted: /* @__PURE__ */ optional(/* @__PURE__ */ boolean()),
+	playbackRate: /* @__PURE__ */ optional(/* @__PURE__ */ number())
+});
+var SettingsSchema = /* @__PURE__ */ object({
+	gridFavButtons: /* @__PURE__ */ boolean(),
+	updatesGroupSize: /* @__PURE__ */ optional(int().check(/* @__PURE__ */ _nonnegative())),
+	playlistChunkSize: /* @__PURE__ */ optional(int().check(/* @__PURE__ */ _positive())),
+	tweaksEnabled: /* @__PURE__ */ optional(/* @__PURE__ */ boolean()),
+	features: /* @__PURE__ */ optional(/* @__PURE__ */ record(/* @__PURE__ */ string(), /* @__PURE__ */ boolean())),
+	featureChoice: /* @__PURE__ */ optional(/* @__PURE__ */ record(/* @__PURE__ */ string(), /* @__PURE__ */ string())),
+	featureState: /* @__PURE__ */ optional(/* @__PURE__ */ record(/* @__PURE__ */ string(), /* @__PURE__ */ unknown())),
+	appearance: /* @__PURE__ */ optional(AppearanceStoredSchema)
+});
+var UpdatesSchema = /* @__PURE__ */ object({ seenPostId: int().check(/* @__PURE__ */ _nonnegative()) });
+var StorageSchema = exports("bh",/* @__PURE__ */ object({
+	version: /* @__PURE__ */ literal(1),
+	collections: /* @__PURE__ */ array(CollectionSchema),
+	artists: /* @__PURE__ */ array(ArtistEntrySchema),
+	marks: /* @__PURE__ */ record(/* @__PURE__ */ string(), MarkFlagsSchema),
+	settings: /* @__PURE__ */ optional(SettingsSchema),
+	updates: /* @__PURE__ */ optional(UpdatesSchema)
+}));
+/** Legacy floating-panel size keys under settings.featureState.panel. */
+var LEGACY_PANEL_FEATURE_STATE_ID = "panel";
+var LEGACY_PANEL_WIDTH_KEY = "width";
+var LEGACY_PANEL_HEIGHT_KEY = "height";
+var GRID_DENSITY_CHOICE_ID = "grid-density";
+var GRID_DENSITY_DEFAULT_VALUE = "default";
+var LEGACY_MASONRY_CHOICE_VALUE = "masonry";
+/** Post panel Info/Comments tab used to live here. Always Info as of 0.15.1. */
+var POST_PANEL_TAB_CHOICE_ID = "post-actions";
+var FavsSyncLockSchema = /* @__PURE__ */ object({
+	tabId: (/* @__PURE__ */ string()).check(/* @__PURE__ */ _minLength(1)),
+	beatAt: /* @__PURE__ */ number()
+});
+/** Package F HANDOFF: incremental stops early; full walks every page. */
+var FAVS_SYNC_MODE_INCREMENTAL = "incremental";
+var FAVS_SYNC_MODE_FULL = "full";
+var FavsSyncModeSchema = /* @__PURE__ */ _enum([FAVS_SYNC_MODE_INCREMENTAL, FAVS_SYNC_MODE_FULL]);
+var FavsSyncSchema = /* @__PURE__ */ object({
+	nextPid: int(),
+	lastPid: int(),
+	startedAt: /* @__PURE__ */ string(),
+	finishedAt: /* @__PURE__ */ optional(/* @__PURE__ */ string()),
+	running: /* @__PURE__ */ optional(/* @__PURE__ */ boolean()),
+	userId: /* @__PURE__ */ optional(int()),
+	lock: /* @__PURE__ */ optional(FavsSyncLockSchema),
+	mode: /* @__PURE__ */ optional(FavsSyncModeSchema)
+});
+var FavsSchema = exports("bk",/* @__PURE__ */ object({
+	version: /* @__PURE__ */ literal(1),
+	ids: /* @__PURE__ */ array(int()),
+	sync: /* @__PURE__ */ optional(FavsSyncSchema)
+}));
+function createDefaultVideoPlayerState() {
+	return {
+		volume: 1,
+		muted: false,
+		playbackRate: 1
+	};
+}
+function parseVideoPlayerState(raw) {
+	const parsed = VideoPlayerStateSchema.safeParse(raw);
+	if (!parsed.success) return createDefaultVideoPlayerState();
+	const defaults = createDefaultVideoPlayerState();
+	const volume = parsed.data.volume;
+	const muted = parsed.data.muted;
+	const playbackRate = parsed.data.playbackRate;
+	return {
+		volume: volume !== void 0 && Number.isFinite(volume) ? Math.min(1, Math.max(0, volume)) : defaults.volume,
+		muted: muted ?? defaults.muted,
+		playbackRate: playbackRate !== void 0 && Number.isFinite(playbackRate) && playbackRate > 0 ? playbackRate : defaults.playbackRate
+	};
+}
+function resolveVideoSize(raw) {
+	const parsed = VideoSizeSchema.safeParse(raw);
+	if (!parsed.success) return DEFAULT_VIDEO_SIZE;
+	return parsed.data;
+}
+function isUnknownRecord$1(value) {
+	return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+/**
+* Drop legacy floating-panel width/height from featureState.panel.
+* Keeps tab and any other keys. No SCHEMA_VERSION bump.
+*/
+function stripLegacyPanelWindowSize(data) {
+	const featureState = data.settings?.featureState;
+	if (featureState === void 0) return {
+		data,
+		changed: false
+	};
+	const panelRaw = featureState[LEGACY_PANEL_FEATURE_STATE_ID];
+	if (!isUnknownRecord$1(panelRaw)) return {
+		data,
+		changed: false
+	};
+	const hasWidth = Object.prototype.hasOwnProperty.call(panelRaw, LEGACY_PANEL_WIDTH_KEY);
+	const hasHeight = Object.prototype.hasOwnProperty.call(panelRaw, LEGACY_PANEL_HEIGHT_KEY);
+	if (!hasWidth && !hasHeight) return {
+		data,
+		changed: false
+	};
+	const nextPanel = {};
+	for (const [key, value] of Object.entries(panelRaw)) {
+		if (key === "width" || key === "height") continue;
+		nextPanel[key] = value;
+	}
+	const nextFeatureState = { ...featureState };
+	if (Object.keys(nextPanel).length === 0) delete nextFeatureState[LEGACY_PANEL_FEATURE_STATE_ID];
+	else nextFeatureState[LEGACY_PANEL_FEATURE_STATE_ID] = nextPanel;
+	const nextSettings = data.settings === void 0 ? { gridFavButtons: true } : { ...data.settings };
+	if (Object.keys(nextFeatureState).length === 0) delete nextSettings.featureState;
+	else nextSettings.featureState = nextFeatureState;
+	return {
+		data: {
+			...data,
+			settings: nextSettings
+		},
+		changed: true
+	};
+}
+/**
+* Saved masonry grid becomes default. Post-panel tab choice is removed.
+* No SCHEMA_VERSION bump.
+*/
+function migrateRetiredFeatureChoices(data) {
+	const featureChoice = data.settings?.featureChoice;
+	if (featureChoice === void 0) return {
+		data,
+		changed: false
+	};
+	const nextChoice = { ...featureChoice };
+	let changed = false;
+	if (nextChoice[GRID_DENSITY_CHOICE_ID] === LEGACY_MASONRY_CHOICE_VALUE) {
+		nextChoice[GRID_DENSITY_CHOICE_ID] = GRID_DENSITY_DEFAULT_VALUE;
+		changed = true;
+	}
+	if (Object.prototype.hasOwnProperty.call(nextChoice, POST_PANEL_TAB_CHOICE_ID)) {
+		delete nextChoice[POST_PANEL_TAB_CHOICE_ID];
+		changed = true;
+	}
+	if (!changed) return {
+		data,
+		changed: false
+	};
+	const nextSettings = data.settings === void 0 ? { gridFavButtons: true } : { ...data.settings };
+	if (Object.keys(nextChoice).length === 0) delete nextSettings.featureChoice;
+	else nextSettings.featureChoice = nextChoice;
+	return {
+		data: {
+			...data,
+			settings: nextSettings
+		},
+		changed: true
+	};
+}
+function isPlaylist(collection) {
+	return collection.kind === COLLECTION_KIND_POSTS;
+}
+/**
+* Posts collections gain `thumbs: {}` and `shuffledOrder: null` when those
+* keys are absent. Saved searches (including explicit `kind: "search"`) are
+* copied through unchanged. No SCHEMA_VERSION bump.
+*/
+function migrateCollectionMediaFields(data) {
+	let changed = false;
+	const collections = [];
+	for (const collection of data.collections) {
+		if (!isPlaylist(collection)) {
+			collections.push(collection);
+			continue;
+		}
+		const needsThumbs = collection.thumbs === void 0;
+		const needsOrder = collection.shuffledOrder === void 0;
+		if (!needsThumbs && !needsOrder) {
+			collections.push(collection);
+			continue;
+		}
+		changed = true;
+		const next = { ...collection };
+		if (needsThumbs) next.thumbs = {};
+		if (needsOrder) next.shuffledOrder = null;
+		collections.push(next);
+	}
+	if (!changed) return {
+		data,
+		changed: false
+	};
+	return {
+		data: {
+			...data,
+			collections
+		},
+		changed: true
+	};
+}
+function resolveCollectionKind(collection) {
+	return collection.kind ?? "search";
+}
+function createDefaultFavs() {
+	return {
+		version: 1,
+		ids: []
+	};
+}
+function createDefaultAppearance() {
+	return { theme: DEFAULT_APPEARANCE_THEME };
+}
+/**
+* Drop legacy custom color fields; pick Light/Dark base from stored base or
+* luminance of legacy `bg`.
+*/
+function normalizeAppearanceCustom(raw) {
+	const next = { base: raw.base === "light" || raw.base === "dark" ? raw.base : customBaseFromLegacyBg(raw.bg) };
+	if (raw.backgroundImage !== void 0) next.backgroundImage = raw.backgroundImage;
+	if (raw.backgroundDim !== void 0) next.backgroundDim = raw.backgroundDim;
+	return next;
+}
+function normalizeAppearance(stored) {
+	if (stored.custom === void 0) return { theme: stored.theme };
+	return {
+		theme: stored.theme,
+		custom: normalizeAppearanceCustom(stored.custom)
+	};
+}
+function createDefaultStorage() {
+	return {
+		version: 1,
+		collections: [],
+		artists: [],
+		marks: {},
+		settings: {
+			gridFavButtons: true,
+			updatesGroupSize: 0,
+			tweaksEnabled: true,
+			appearance: createDefaultAppearance()
+		},
+		updates: { seenPostId: 0 }
+	};
+}
+function resolveAppearance(data) {
+	const stored = data.settings?.appearance;
+	if (stored === void 0) return createDefaultAppearance();
+	return normalizeAppearance(stored);
+}
+function resolveGridFavButtons(data) {
+	return data.settings?.gridFavButtons ?? true;
+}
+function resolveTweaksEnabled(data) {
+	return data.settings?.tweaksEnabled ?? true;
+}
+function resolveUpdatesGroupSize(data) {
+	return data.settings?.updatesGroupSize ?? 0;
+}
+function resolvePlaylistChunkSize(data) {
+	return data.settings?.playlistChunkSize ?? 40;
+}
+function resolveSeenPostId(data) {
+	return data.updates?.seenPostId ?? 0;
+}
 var cachedIds = null;
 var cachedSync;
 var cacheHydrated = false;
-function getGmGetValue$1() {
+function getGmGetValue$2() {
 	return GM_getValue;
 }
 function getGmSetValue$1() {
@@ -2960,7 +2979,7 @@ function normalizePostId$1(id) {
 	return Math.trunc(parsed);
 }
 function readFavsRaw() {
-	const raw = getGmGetValue$1()(FAVS_STORAGE_KEY, void 0);
+	const raw = getGmGetValue$2()(FAVS_STORAGE_KEY, void 0);
 	if (raw === void 0 || raw === null) return createDefaultFavs();
 	const parsed = cheapParseFavs(raw);
 	if (parsed === null) {
@@ -2978,7 +2997,7 @@ function setCacheFromData(data) {
 	cacheHydrated = true;
 }
 function readMainStorageRaw() {
-	const raw = getGmGetValue$1()(STORAGE_KEY, void 0);
+	const raw = getGmGetValue$2()(STORAGE_KEY, void 0);
 	if (raw === void 0 || raw === null) return null;
 	const parsed = StorageSchema.safeParse(raw);
 	if (!parsed.success) return null;
@@ -3000,7 +3019,7 @@ function writeMainStorage(data) {
 */
 function migrateMarksFavToFavs() {
 	const main = readMainStorageRaw();
-	const favsRaw = getGmGetValue$1()(FAVS_STORAGE_KEY, void 0);
+	const favsRaw = getGmGetValue$2()(FAVS_STORAGE_KEY, void 0);
 	const favsCheap = favsRaw === void 0 || favsRaw === null ? createDefaultFavs() : cheapParseFavs(favsRaw);
 	const favs = favsCheap ?? createDefaultFavs();
 	if (favsCheap === null && favsRaw !== void 0 && favsRaw !== null) log.error("Invalid favs storage content; using empty favs", { key: FAVS_STORAGE_KEY });
@@ -3158,14 +3177,14 @@ var storageCacheHydrated = false;
 var cacheFreshAt = 0;
 /** How old the cache may be for {@link loadRecent}. */
 var RECENT_READ_WINDOW_MS = 1e3;
-function getGmGetValue$2() {
+function getGmGetValue$1() {
 	return GM_getValue;
 }
 function getGmSetValue() {
 	return GM_setValue;
 }
 function readRaw() {
-	return getGmGetValue$2()(STORAGE_KEY, void 0);
+	return getGmGetValue$1()(STORAGE_KEY, void 0);
 }
 function writeData(data) {
 	getGmSetValue()(STORAGE_KEY, data);
@@ -3962,6 +3981,309 @@ function removeArtist(tag) {
 	save(data);
 	return true;
 }
+var COOKIE_PAIR_SEPARATOR = ";";
+var COOKIE_NAME_VALUE_SEPARATOR$1 = "=";
+var BLACKLIST_SPLIT_PATTERN = /[, ]|%20+/g;
+var USER_ENTRY_PREFIX = "user:";
+var RATING_ENTRY_PREFIX = "rating:";
+var MS_PER_DAY$1 = 864e5;
+var DAYS_PER_YEAR = 365;
+var BLACKLIST_TAG_SEPARATOR = " ";
+var changeListeners = /* @__PURE__ */ new Set();
+/** Subscribe to writes of the site `tag_blacklist` cookie. */
+function onSiteBlacklistChange(cb) {
+	changeListeners.add(cb);
+	return () => {
+		changeListeners.delete(cb);
+	};
+}
+function readCookieValue(name) {
+	const pairs = document.cookie.split(COOKIE_PAIR_SEPARATOR);
+	const prefix = `${name}${COOKIE_NAME_VALUE_SEPARATOR$1}`;
+	for (const pair of pairs) {
+		const trimmed = pair.trim();
+		if (!trimmed.startsWith(prefix)) continue;
+		return trimmed.slice(prefix.length);
+	}
+	return null;
+}
+function normalizeBlacklistTags(tags) {
+	const seen = /* @__PURE__ */ new Set();
+	const result = [];
+	for (const raw of tags) {
+		const normalized = raw.trim().toLowerCase().replaceAll(" ", "_");
+		if (normalized.length === 0 || seen.has(normalized)) continue;
+		seen.add(normalized);
+		result.push(normalized);
+	}
+	return result;
+}
+function encodeBlacklistCookieValue(tags) {
+	if (tags.length === 0) return "";
+	return encodeURIComponent(encodeURIComponent(tags.join(BLACKLIST_TAG_SEPARATOR)));
+}
+function writeBlacklistCookie(value, expires) {
+	document.cookie = [
+		`${SITE_BLACKLIST_COOKIE_NAME}${COOKIE_NAME_VALUE_SEPARATOR$1}${value}`,
+		`expires=${expires.toUTCString()}`,
+		`path=/`
+	].join("; ");
+}
+/**
+* Reads the site `tag_blacklist` cookie using the site's decode + split rule.
+* Empty tokens are dropped; entries are lowercased.
+*/
+function readSiteBlacklist() {
+	const raw = readCookieValue(SITE_BLACKLIST_COOKIE_NAME);
+	if (raw === null || raw.length === 0) return [];
+	let decoded;
+	try {
+		decoded = decodeURIComponent(decodeURI(raw));
+	} catch {
+		return [];
+	}
+	const result = [];
+	for (const part of decoded.split(BLACKLIST_SPLIT_PATTERN)) {
+		const trimmed = part.trim().toLowerCase();
+		if (trimmed.length === 0) continue;
+		result.push(trimmed);
+	}
+	return result;
+}
+/**
+* Writes the site `tag_blacklist` cookie (browser cookie only; account list untouched).
+* Value encoding matches the live site: encodeURIComponent twice over space-joined tags.
+*/
+function writeSiteBlacklist(tags) {
+	const normalized = normalizeBlacklistTags(tags);
+	const expires = new Date(Date.now() + 5 * DAYS_PER_YEAR * MS_PER_DAY$1);
+	writeBlacklistCookie(encodeBlacklistCookieValue(normalized), expires);
+	for (const listener of changeListeners) listener(normalized);
+}
+/**
+* True when any blacklist entry matches a post tag or `rating:x`.
+* Entries starting with `user:` are ignored. `score` is reserved for callers.
+*/
+function isBlacklisted(tags, score, rating, list) {
+	if (list.length === 0) return false;
+	const tagSet = /* @__PURE__ */ new Set();
+	for (const tag of tags) {
+		const normalized = tag.trim().toLowerCase();
+		if (normalized.length > 0) tagSet.add(normalized);
+	}
+	const ratingNorm = rating.trim().toLowerCase();
+	for (const entry of list) {
+		if (entry.startsWith(USER_ENTRY_PREFIX)) continue;
+		if (entry.startsWith(RATING_ENTRY_PREFIX)) {
+			const value = entry.slice(7);
+			if (value.length > 0 && value === ratingNorm) return true;
+			continue;
+		}
+		if (tagSet.has(entry)) return true;
+	}
+	return false;
+}
+var SITE_SELECTORS = exports("S",{
+	thumb: "span.thumb",
+	thumbLink: "a[href*=\"s=view\"]",
+	previewImage: "img.preview",
+	cardFavButton: `button.${CSS_CLASS.cardFav}`,
+	favoritesDeleteLink: "a[onclick]",
+	tagSidebar: "ul#tag-sidebar",
+	tagTypeArtist: "li.tag-type-artist",
+	/** A tag row of the sidebar, any tag type. */
+	tagSidebarRow: "ul#tag-sidebar > li[class*=\"tag-type-\"]",
+	/** Number of posts with the tag, inside its sidebar row. */
+	tagCount: "span.tag-count",
+	imageList: "div.image-list",
+	postListContent: "#post-list div.content",
+	contentRoot: "#content",
+	artistFollowButton: `button.${CSS_CLASS.artistFollow}`,
+	/** Native AI filter checkbox (site owns click/cookie logic). */
+	filterAiCheckbox: "input.toggleSwitch#chkFilterAI",
+	/** Row wrapping the native AI filter control — hide when search-tools mirrors it. */
+	filterAiRow: "li:has(> label > span.switch > input.toggleSwitch#chkFilterAI)",
+	/** Post page: site link to the previous post of the last search (href="#", site JS). */
+	postPrevSearchLink: "a#prev_search_link",
+	/** Post page: site link to the next post of the last search (href="#", site JS). */
+	postNextSearchLink: "a#next_search_link",
+	/** List page pager. */
+	pagination: "div.pagination",
+	/** Pager link to the last results page; its `pid` is the offset of that page. */
+	paginationLastPage: "div.pagination a[alt=\"last page\"]",
+	/** Any pager link to another results page. */
+	paginationPageLink: "div.pagination > a[href]",
+	/** Stray Tags heading between #rdw-search-tools and the tag list. */
+	tagsHeadingAfterSearchTools: "#rdw-search-tools + h5"
+});
+var THUMB_ID_PATTERN = /^s(\d+)$/;
+var THUMB_LINK_ID_PATTERN = /^p(\d+)$/;
+var FAVORITES_DELETE_ID_PATTERN = /s=delete&id=(\d+)/;
+function extractPostIdFromThumb(thumb) {
+	const match = THUMB_ID_PATTERN.exec(thumb.id);
+	if (match === null) return null;
+	const postId = match[1];
+	return postId === void 0 ? null : postId;
+}
+/**
+* Post id from the thumb's link `a#p{ID}`. A favorites thumb has no `s{ID}`
+* id of its own, so this is the only place its post id is written.
+*/
+function extractPostIdFromThumbLink(thumb) {
+	const link = thumb.querySelector(SITE_SELECTORS.thumbLink);
+	if (link === null) return null;
+	const match = THUMB_LINK_ID_PATTERN.exec(link.id);
+	if (match === null) return null;
+	const postId = match[1];
+	return postId === void 0 ? null : postId;
+}
+function extractPostIdFromFavoritesDeleteOnclick(onclick) {
+	const match = FAVORITES_DELETE_ID_PATTERN.exec(onclick);
+	if (match === null) return null;
+	const postId = match[1];
+	return postId === void 0 ? null : postId;
+}
+var THUMB_CLASS = "rdw-thumb";
+var THUMB_ANCHOR_NAME = "--rdw-img";
+var FEATURE_STYLE_ID_PREFIX = "rdw-feature-style-";
+var POST_ACTIONS_ID = "rdw-post-actions";
+function featureBodyClass(id) {
+	return `rdw-f-${id}`;
+}
+function featureChoiceBodyClass(id, value) {
+	return `rdw-f-${id}-${value}`;
+}
+var FEATURE_ID$15 = "blacklist-hide";
+var FEATURE_LABEL$14 = "Hide blacklisted posts";
+var FEATURE_PAGES$14 = ["list"];
+var BODY_FEATURE_CLASS$3 = featureBodyClass(FEATURE_ID$15);
+var CLASS_BLACKLISTED$1 = "rdw-blacklisted";
+var SCORE_TOKEN_PREFIX$4 = "score:";
+var RATING_TOKEN_PREFIX$3 = "rating:";
+var WHITESPACE_SPLIT = /\s+/;
+var FEATURE_CSS$13 = `
+body.${BODY_FEATURE_CLASS$3} span.thumb.${CLASS_BLACKLISTED$1} {
+  display: none !important;
+}
+`.trim();
+var unsubscribeThumbsAdded$5;
+var unsubscribeBlacklistChange;
+function parseAltTags(alt) {
+	const tags = [];
+	for (const token of alt.trim().split(WHITESPACE_SPLIT)) {
+		if (token.length === 0) continue;
+		const lower = token.toLowerCase();
+		if (lower.startsWith(SCORE_TOKEN_PREFIX$4) || lower.startsWith(RATING_TOKEN_PREFIX$3)) continue;
+		tags.push(token);
+	}
+	return tags;
+}
+function parseTitleRating(title) {
+	for (const token of title.trim().split(WHITESPACE_SPLIT)) {
+		if (token.length === 0) continue;
+		if (token.toLowerCase().startsWith(RATING_TOKEN_PREFIX$3)) return token.slice(7);
+	}
+	return "";
+}
+function applyBlacklistToThumb(thumb, list) {
+	if (!(thumb instanceof HTMLElement)) return;
+	const img = thumb.querySelector(SITE_SELECTORS.previewImage);
+	const alt = img?.getAttribute("alt") ?? "";
+	const title = img?.getAttribute("title") ?? "";
+	const matched = isBlacklisted(parseAltTags(alt), 0, parseTitleRating(title), list);
+	thumb.classList.toggle(CLASS_BLACKLISTED$1, matched);
+}
+function applyBlacklistToRoot(root, list = readSiteBlacklist()) {
+	const thumbs = root.querySelectorAll(SITE_SELECTORS.thumb);
+	for (const thumb of thumbs) applyBlacklistToThumb(thumb, list);
+}
+function ensureSubscriptions() {
+	if (unsubscribeThumbsAdded$5 === void 0) unsubscribeThumbsAdded$5 = onThumbsAdded((root) => {
+		applyBlacklistToRoot(root);
+	});
+	if (unsubscribeBlacklistChange === void 0) unsubscribeBlacklistChange = onSiteBlacklistChange((list) => {
+		applyBlacklistToRoot(document, list);
+	});
+}
+function mountBlacklistHide(ctx) {
+	if (ctx.pageKind !== "list") return;
+	applyBlacklistToRoot(document);
+	ensureSubscriptions();
+}
+var blacklistHideFeature = {
+	id: FEATURE_ID$15,
+	label: FEATURE_LABEL$14,
+	pages: [...FEATURE_PAGES$14],
+	defaultEnabled: true,
+	cssOnly: true,
+	css: FEATURE_CSS$13,
+	mount: mountBlacklistHide
+};
+/**
+* When the image of a post fails to load, tries the same file on the site's
+* other image servers, one after another.
+*
+* The host list comes from the desktop RuleDesk, where it served API file
+* addresses. A retry happens only after a real load error, at most once per
+* host, and only for an address on one of these hosts.
+*/
+var FEATURE_ID$14 = "cdn-fallback";
+var FEATURE_LABEL$13 = "Retry a failed post image on other servers";
+var FEATURE_PAGES$13 = ["post"];
+var POST_IMAGE_SELECTOR = "img#image";
+var EVENT_ERROR = "error";
+/** Image servers, in the order they are tried. */
+var CDN_IMAGE_HOSTS = [
+	"wimg.rule34.xxx",
+	"img.rule34.xxx",
+	"us.rule34.xxx",
+	"api-cdn.rule34.xxx"
+];
+/**
+* The same address on the next server that was not tried yet, or null when
+* the address is not on a known server or every server was tried.
+*/
+function nextCdnUrl(current, tried) {
+	let url;
+	try {
+		url = new URL(current, window.location.href);
+	} catch {
+		return null;
+	}
+	if (!CDN_IMAGE_HOSTS.includes(url.hostname)) return null;
+	for (const host of CDN_IMAGE_HOSTS) {
+		if (host === url.hostname || tried.has(host)) continue;
+		url.hostname = host;
+		return url.href;
+	}
+	return null;
+}
+function hostOf(address) {
+	try {
+		return new URL(address, window.location.href).hostname;
+	} catch {
+		return "";
+	}
+}
+function mountCdnFallback(_ctx) {
+	const image = document.querySelector(POST_IMAGE_SELECTOR);
+	if (!(image instanceof HTMLImageElement)) return;
+	const tried = /* @__PURE__ */ new Set();
+	image.addEventListener(EVENT_ERROR, () => {
+		const current = image.getAttribute("src") ?? "";
+		tried.add(hostOf(current));
+		const next = nextCdnUrl(current, tried);
+		if (next !== null) image.setAttribute("src", next);
+	});
+}
+var cdnFallbackFeature = {
+	id: FEATURE_ID$14,
+	label: FEATURE_LABEL$13,
+	pages: [...FEATURE_PAGES$13],
+	defaultEnabled: true,
+	css: "",
+	mount: mountCdnFallback
+};
 var n;
 var t$1;
 var u$2;
@@ -3975,7 +4297,7 @@ var a$2;
 var h$1 = Symbol.for("pv");
 var p$1 = {};
 var y$1 = [];
-var v$1 = /^m(i|n|o|s|text|space)$/;
+var v$2 = /^m(i|n|o|s|text|space)$/;
 var w$2 = Array.isArray;
 var d$1 = y$1.slice;
 var _$1 = Object.assign;
@@ -4197,7 +4519,7 @@ function F$1(t, r, u, i, f, o, e, l, c, a) {
 		if (a = "template" == C && t.content || t, o = "textarea" == C && null != x.defaultValue ? null : o && d$1.call(a.childNodes), !l && o) for ($ = {}, s = 0; s < t.attributes.length; s++) $[(k = t.attributes[s]).name] = k.value;
 		for (s in $) k = $[s], "dangerouslySetInnerHTML" == s ? y = k : "children" == s || s in x || "value" == s && "defaultValue" in x || "checked" == s && "defaultChecked" in x || N(t, s, null, k, f);
 		for (s in x) k = x[s], "children" == s ? _ = k : "dangerouslySetInnerHTML" == s ? h = k : "value" == s ? b = k : "checked" == s ? m = k : l && "function" != typeof k || $[s] === k || N(t, s, k, $[s], f);
-		h ? (l || y && (h.__html == y.__html || h.__html == t.innerHTML) || (t.innerHTML = h.__html), r.__k = []) : (y && (t.textContent = ""), ("foreignObject" == C || "http://www.w3.org/1998/Math/MathML" == f && v$1.test(C)) && (f = "http://www.w3.org/1999/xhtml"), I(a, w$2(_) ? _ : [_], r, u, i, f, o, e, o ? o[0] : u.__k && S(u, 0), l, c), o && o.some(g$1)), l && "textarea" != C || (s = "value", "progress" == C && null == b ? t.removeAttribute(s) : null == b || b === t[s] && ("progress" != C || b) || N(t, s, b, $[s], f), s = "checked", null != m && m != t[s] && N(t, s, m, $[s], f));
+		h ? (l || y && (h.__html == y.__html || h.__html == t.innerHTML) || (t.innerHTML = h.__html), r.__k = []) : (y && (t.textContent = ""), ("foreignObject" == C || "http://www.w3.org/1998/Math/MathML" == f && v$2.test(C)) && (f = "http://www.w3.org/1999/xhtml"), I(a, w$2(_) ? _ : [_], r, u, i, f, o, e, o ? o[0] : u.__k && S(u, 0), l, c), o && o.some(g$1)), l && "textarea" != C || (s = "value", "progress" == C && null == b ? t.removeAttribute(s) : null == b || b === t[s] && ("progress" != C || b) || N(t, s, b, $[s], f), s = "checked", null != m && m != t[s] && N(t, s, m, $[s], f));
 	} else $ === x || l && t.data == x || (t.data = x);
 	return t;
 }
@@ -4264,7 +4586,7 @@ var f$1 = 0;
 var c = [];
 var e = [];
 var a$1 = n;
-var v$2 = a$1.__b;
+var v$1 = a$1.__b;
 var l = a$1.__r;
 var m = a$1.diffed;
 var h = a$1.__c;
@@ -4354,7 +4676,7 @@ function g() {
 	} while (e.length);
 }
 a$1.__b = function(n) {
-	r = null, v$2 && v$2(n);
+	r = null, v$1 && v$1(n);
 }, a$1.__ = function(n, t) {
 	n && t.__k && t.__k.__m && (n.__m = t.__k.__m), p && p(n, t);
 }, a$1.__r = function(n) {
@@ -4424,7 +4746,7 @@ function E(n, t) {
 function G(n, t) {
 	return "function" == typeof t ? t(n) : t;
 }
-var KIT_FOCUS_CSS = exports("aD",`
+var KIT_FOCUS_CSS = exports("aE",`
 .rdw-kit-focusable:focus-visible {
   outline: 2px solid var(--rdw-accent);
   outline-offset: 2px;
@@ -4456,7 +4778,7 @@ function a(t, e, n$6, u, a, i) {
 var KEY_ARROW_DOWN = "ArrowDown";
 var KEY_ARROW_UP = "ArrowUp";
 var KEY_ENTER$1 = "Enter";
-var KEY_ESCAPE$2 = "Escape";
+var KEY_ESCAPE$3 = "Escape";
 var NO_ACTIVE_INDEX = -1;
 var AUTOCOMPLETE_FIELD_CSS = `
 ${KIT_FOCUS_CSS}
@@ -4597,7 +4919,7 @@ function AutocompleteField(props) {
 					if (hasSuggestions) setOpen(true);
 				},
 				onKeyDown: (event) => {
-					if (event.key === KEY_ESCAPE$2) {
+					if (event.key === KEY_ESCAPE$3) {
 						if (listOpen) {
 							event.preventDefault();
 							setOpen(false);
@@ -5126,11 +5448,11 @@ var DIALOG_FIELD_QUERY = "query";
 var DEFAULT_NAME_LABEL = "Name";
 var DEFAULT_QUERY_LABEL = "Query";
 var DEFAULT_CONFIRM_TONE = "primary";
-var KEY_ESCAPE$1 = "Escape";
+var KEY_ESCAPE$2 = "Escape";
 var ROLE_COMBOBOX = "combobox";
 var ARIA_TRUE = "true";
 var KEY_TAB = "Tab";
-var EVENT_KEYDOWN$1 = "keydown";
+var EVENT_KEYDOWN$2 = "keydown";
 var EVENT_MOUSEDOWN$1 = "mousedown";
 var DIALOG_Z_INDEX = 40;
 var DIALOG_MAX_WIDTH_PX = 360;
@@ -5322,7 +5644,7 @@ function Dialog(props) {
 			}
 		}
 		const onKeyDown = (event) => {
-			if (event.key === KEY_ESCAPE$1) {
+			if (event.key === KEY_ESCAPE$2) {
 				if (isOpenCombobox(event)) return;
 				event.preventDefault();
 				event.stopPropagation();
@@ -5360,10 +5682,10 @@ function Dialog(props) {
 			if (pathIncludesNode$1(event.composedPath(), currentPanel)) return;
 			props.onClose();
 		};
-		document.addEventListener(EVENT_KEYDOWN$1, onKeyDown, true);
+		document.addEventListener(EVENT_KEYDOWN$2, onKeyDown, true);
 		document.addEventListener(EVENT_MOUSEDOWN$1, onPointerDown, true);
 		return () => {
-			document.removeEventListener(EVENT_KEYDOWN$1, onKeyDown, true);
+			document.removeEventListener(EVENT_KEYDOWN$2, onKeyDown, true);
 			document.removeEventListener(EVENT_MOUSEDOWN$1, onPointerDown, true);
 		};
 	}, [
@@ -5621,8 +5943,8 @@ n.vnode = function(t) {
 		writable: true
 	}), t.$$typeof = P, Q && Q(t);
 };
-var KEY_ESCAPE$3 = "Escape";
-var EVENT_KEYDOWN$2 = "keydown";
+var KEY_ESCAPE$1 = "Escape";
+var EVENT_KEYDOWN$1 = "keydown";
 var EVENT_MOUSEDOWN = "mousedown";
 var EVENT_SCROLL = "scroll";
 var EVENT_RESIZE = "resize";
@@ -5681,7 +6003,7 @@ function Popover(props) {
 		}
 		wasOpenRef.current = true;
 		const onKeyDown = (event) => {
-			if (event.key === KEY_ESCAPE$3) {
+			if (event.key === KEY_ESCAPE$1) {
 				event.preventDefault();
 				props.onClose();
 			}
@@ -5694,10 +6016,10 @@ function Popover(props) {
 			if (pathIncludesNode(path, props.anchorRef?.current ?? null)) return;
 			props.onClose();
 		};
-		document.addEventListener(EVENT_KEYDOWN$2, onKeyDown);
+		document.addEventListener(EVENT_KEYDOWN$1, onKeyDown);
 		document.addEventListener(EVENT_MOUSEDOWN, onPointerDown);
 		return () => {
-			document.removeEventListener(EVENT_KEYDOWN$2, onKeyDown);
+			document.removeEventListener(EVENT_KEYDOWN$1, onKeyDown);
 			document.removeEventListener(EVENT_MOUSEDOWN, onPointerDown);
 		};
 	}, [
@@ -6345,2536 +6667,7 @@ function Toast(props) {
 			children: props.action.label
 		}) : null]
 	})] });
-}var SITE_SELECTORS = exports("S",{
-	thumb: "span.thumb",
-	thumbLink: "a[href*=\"s=view\"]",
-	previewImage: "img.preview",
-	cardFavButton: `button.${CSS_CLASS.cardFav}`,
-	favoritesDeleteLink: "a[onclick]",
-	tagSidebar: "ul#tag-sidebar",
-	tagTypeArtist: "li.tag-type-artist",
-	/** A tag row of the sidebar, any tag type. */
-	tagSidebarRow: "ul#tag-sidebar > li[class*=\"tag-type-\"]",
-	/** Number of posts with the tag, inside its sidebar row. */
-	tagCount: "span.tag-count",
-	imageList: "div.image-list",
-	postListContent: "#post-list div.content",
-	contentRoot: "#content",
-	artistFollowButton: `button.${CSS_CLASS.artistFollow}`,
-	/** Native AI filter checkbox (site owns click/cookie logic). */
-	filterAiCheckbox: "input.toggleSwitch#chkFilterAI",
-	/** Row wrapping the native AI filter control — hide when search-tools mirrors it. */
-	filterAiRow: "li:has(> label > span.switch > input.toggleSwitch#chkFilterAI)",
-	/** Post page: site link to the previous post of the last search (href="#", site JS). */
-	postPrevSearchLink: "a#prev_search_link",
-	/** Post page: site link to the next post of the last search (href="#", site JS). */
-	postNextSearchLink: "a#next_search_link",
-	/** List page pager. */
-	pagination: "div.pagination",
-	/** Pager link to the last results page; its `pid` is the offset of that page. */
-	paginationLastPage: "div.pagination a[alt=\"last page\"]",
-	/** Any pager link to another results page. */
-	paginationPageLink: "div.pagination > a[href]",
-	/** Stray Tags heading between #rdw-search-tools and the tag list. */
-	tagsHeadingAfterSearchTools: "#rdw-search-tools + h5"
-});
-var THUMB_ID_PATTERN = /^s(\d+)$/;
-var FAVORITES_DELETE_ID_PATTERN = /s=delete&id=(\d+)/;
-function extractPostIdFromThumb(thumb) {
-	const match = THUMB_ID_PATTERN.exec(thumb.id);
-	if (match === null) return null;
-	const postId = match[1];
-	return postId === void 0 ? null : postId;
 }
-function extractPostIdFromFavoritesDeleteOnclick(onclick) {
-	const match = FAVORITES_DELETE_ID_PATTERN.exec(onclick);
-	if (match === null) return null;
-	const postId = match[1];
-	return postId === void 0 ? null : postId;
-}/**
-* Site chrome CSS for html.rdw-skin (light / dark / custom themes).
-* Colors only via --rdw-* tokens. Does not change .thumb 200×200 cell size.
-* Injected via applyAppearanceTheme → injectSiteSkinHook(getSiteSkinCss()).
-*/
-var ROOT = `html.${RDW_SKIN_CLASS}`;
-var ROOT_DARK = `${ROOT}[${RDW_THEME_ATTR}="${APPEARANCE_THEME_DARK}"]`;
-var ROOT_SITE = `html[${RDW_THEME_ATTR}="${APPEARANCE_THEME_SITE}"]`;
-var ROOT_SITE_DARK = `html[${RDW_THEME_ATTR}="${APPEARANCE_THEME_SITE_DARK}"]`;
-var ROOT_THEME_DARK = `html[${RDW_THEME_ATTR}="${APPEARANCE_THEME_DARK}"]`;
-/** search-tools mount root (id + class in src/features/search-tools.tsx). */
-var SEARCH_TOOLS_ROOT_ID$1 = "rdw-search-tools";
-/** Reset control class (src/features/search-tools.tsx). */
-/** Exclude our light-DOM controls from site button/input chrome. */
-/** Height of the site's own text fields and selects, next to its buttons. */
-var SITE_CONTROL_MIN_HEIGHT_PX = 30;
-/** Widest a comment or forum post grows before the line gets too long to read. */
-var COMMENT_MAX_WIDTH_PX = 1100;
-/**
-* Same exclusions as :not…:not…, but :where() zeros their specificity so an
-* ID-bearing :not cannot outrank accent rules like div.tag-search submit.
-*/
-var WHERE_NOT_OUR_CONTROL = `:where(:not([class*="rdw-"])${`:not(#${SEARCH_TOOLS_ROOT_ID$1} *)`})`;
-/**
-* Body class Package E sets only while the post panel host is mounted
-* (`POST_PANEL_MOUNTED_CLASS` in post-actions.ts).
-*/
-var RDW_POST_PANEL_MOUNTED_CLASS = "rdw-post-panel-mounted";
-/** Native "I came" counter row — hide with panel chrome (E HANDOFF). */
-var POST_PANEL_ICAME_ROW = "li:has(a[onclick^=\"iCame(\"])";
-/** Post panel host id — keep in sync with POST_ACTIONS_ID in features/types.ts. */
-var POST_ACTIONS_HOST_ID = "rdw-post-actions";
-/** Kit select list — keep in sync with src/ui/kit/select.tsx. */
-var KIT_SELECT_LIST_CLASS = "rdw-select__list";
-/** Kit autocomplete list — keep in sync with src/ui/kit/autocomplete-field.tsx. */
-var KIT_AC_LIST_CLASS = "rdw-ac__list";
-/** Kit dialog panel — keep in sync with src/ui/kit/dialog.tsx. */
-var KIT_DIALOG_CLASS = "rdw-dialog";
-/** Playlist add-to menu — keep in sync with src/features/playlist-menu.ts. */
-var PLAYLIST_MENU_CLASS = "rdw-playlist-menu";
-/** Firefox / modern Chromium thin scrollbar (E HANDOFF). */
-var SCROLLBAR_WIDTH = "thin";
-/** Post panel Original control — keep in sync with post-actions ORIGINAL_BUTTON_SIZE_PX. */
-var POST_PANEL_ORIGINAL_SIZE_PX = 34;
-/** Active tab underline — keep in sync with kit/tabs.tsx. */
-var POST_PANEL_TAB_UNDERLINE_PX = 2;
-/** Post panel classes — keep in sync with src/features/post-panel/post-panel.tsx. */
-var POST_PANEL_ACTIONS_CLASS = "rdw-post-panel-actions";
-var POST_PANEL_ACTIONS_ROW_CLASS = "rdw-post-panel-actions-row";
-var POST_PANEL_FAV_CLASS = "rdw-post-panel-fav";
-var POST_PANEL_ORIGINAL_CLASS = "rdw-post-panel-original";
-var POST_PANEL_TABPANEL_CLASS = "rdw-post-panel-tabpanel";
-var POST_PANEL_POST_ACTION_CLASS = "rdw-post-panel-post-action";
-/** Kit tabs — keep in sync with src/ui/kit/tabs.tsx. */
-var KIT_TABS_CLASS = "rdw-tabs";
-var KIT_TAB_CLASS = "rdw-tabs__tab";
-var KIT_BTN_PRIMARY_CLASS = "rdw-btn--primary";
-/**
-* Body class while search-tools «AI posts» row is rendered
-* (`SEARCH_TOOLS_AI_ROW_BODY_CLASS` in search-tools.tsx — F HANDOFF).
-*/
-var SEARCH_TOOLS_AI_ROW_BODY_CLASS$1 = "rdw-search-tools-ai-posts";
-/** F bulk-select chrome — keep in sync with src/features/favorites-bulk.tsx. */
-var FAV_BULK_SELECTED_CLASS = "rdw-fav-bulk-selected";
-var FAV_BULK_CHECK_CLASS = "rdw-fav-bulk-check";
-var FAV_BULK_ROOT_ID = "rdw-favorites-bulk";
-var FAV_BULK_BAR_CLASS = "rdw-favorites-bulk-bar";
-var FAV_BULK_STATUS_CLASS = "rdw-favorites-bulk-status";
-/** Body class while selection mode is active (featureBodyClass + "-selecting"). */
-var FAV_BULK_SELECTING_BODY_CLASS = "rdw-f-favorites-bulk-selecting";
-var FAV_BULK_OUTLINE_WIDTH = "2px";
-var FAV_BULK_OUTLINE_OFFSET = "2px";
-var FAV_BULK_CHECK_SIZE = "1.25rem";
-var FAV_BULK_CHECK_INSET = "0.25rem";
-var FAV_BULK_CHECK_Z_INDEX = 2;
-var FAV_BULK_CHECK_FONT_SIZE = "0.75rem";
-var v = {
-	bg: `var(${TOKEN_VAR.bg})`,
-	surface: `var(${TOKEN_VAR.surface})`,
-	surface2: `var(${TOKEN_VAR.surface2})`,
-	border: `var(${TOKEN_VAR.border})`,
-	text: `var(${TOKEN_VAR.text})`,
-	muted: `var(${TOKEN_VAR.muted})`,
-	accent: `var(${TOKEN_VAR.accent})`,
-	accentSoft: `var(${TOKEN_VAR.accentSoft})`,
-	danger: `var(${TOKEN_VAR.danger})`,
-	dangerSoft: `var(${TOKEN_VAR.dangerSoft})`,
-	tagArtist: `var(${TOKEN_VAR.tagArtist})`,
-	tagCharacter: `var(${TOKEN_VAR.tagCharacter})`,
-	tagCopyright: `var(${TOKEN_VAR.tagCopyright})`,
-	tagMetadata: `var(${TOKEN_VAR.tagMetadata})`,
-	radiusS: `var(${TOKEN_VAR.radiusS})`,
-	radiusM: `var(${TOKEN_VAR.radiusM})`,
-	radiusL: `var(${TOKEN_VAR.radiusL})`,
-	shadow1: `var(${TOKEN_VAR.shadow1})`,
-	shadow2: `var(${TOKEN_VAR.shadow2})`,
-	font: `var(${TOKEN_VAR.font})`
-};
-/** Full site-skin stylesheet (empty until injected by boot). */
-var SITE_SKIN_CSS = `
-/* —— base —— */
-${ROOT} body {
-  font-family: ${v.font};
-  font-size: 13px;
-  line-height: 1.4;
-  background: ${v.bg};
-  color: ${v.text};
-}
-
-${ROOT} body,
-${ROOT} body div,
-${ROOT} body h1,
-${ROOT} body h2,
-${ROOT} body h3,
-${ROOT} body h4,
-${ROOT} body h5,
-${ROOT} body h6,
-${ROOT} body p,
-${ROOT} body ul,
-${ROOT} body li,
-${ROOT} body dd,
-${ROOT} body dt,
-${ROOT} body input,
-${ROOT} body select,
-${ROOT} body button,
-${ROOT} body textarea {
-  font-family: ${v.font};
-}
-
-/* A visited link looks like any other link: one colour for links on a page. */
-${ROOT} a:link,
-${ROOT} a:visited {
-  color: ${v.accent};
-  text-decoration: none;
-}
-
-${ROOT} a:hover,
-${ROOT} a:active {
-  color: ${v.text};
-  text-decoration: none;
-}
-
-/*
- * My Account: "Logout" is not a link but a form button dressed as a heading,
- * <h4><button type="submit" style="… color: inherit …">. It takes the link
- * colour so the list of headings is one colour; the inline style needs
- * !important to be overridden.
- */
-${ROOT} h4 > button[type="submit"][style*="color: inherit"] {
-  color: ${v.accent} !important;
-}
-
-${ROOT} h4 > button[type="submit"][style*="color: inherit"]:hover {
-  color: ${v.text} !important;
-}
-
-${ROOT} a.last-page {
-  color: ${v.muted};
-}
-
-${ROOT} a.spoiler,
-${ROOT} span.spoiler {
-  color: ${v.text};
-  background: ${v.text};
-}
-
-${ROOT} a.spoiler:hover,
-${ROOT} span.spoiler:hover {
-  color: ${v.bg};
-  background: ${v.text};
-}
-
-${ROOT} hr {
-  border-color: ${v.border};
-}
-
-${ROOT} code {
-  font-family: ui-monospace, monospace;
-}
-
-/* —— header —— */
-${ROOT} div#header {
-  background: ${v.surface};
-  border-bottom: 1px solid ${v.border};
-  margin-bottom: 0.75em;
-}
-
-${ROOT} div#header #site-title {
-  background-image: none;
-  background-color: transparent;
-  padding: 12px 18px 4px 18px;
-  font: 800 17px ${v.font};
-  letter-spacing: -0.02em;
-  color: ${v.text};
-}
-
-${ROOT} div#header #site-title a {
-  color: ${v.text};
-  font-weight: 800;
-  background: none;
-  text-shadow: none;
-}
-
-${ROOT} div#header ul#navbar {
-  background: transparent;
-  padding: 4px 18px 8px 10px;
-  margin: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px;
-}
-
-${ROOT} div#header ul#navbar li {
-  font-size: 13px;
-  font-weight: normal;
-  padding: 0;
-  margin: 0;
-  background: transparent;
-  background-image: none;
-  list-style: none;
-  display: inline;
-}
-
-${ROOT} div#header ul#navbar li a {
-  display: inline-block;
-  padding: 6px 10px;
-  border-radius: ${v.radiusM};
-  color: ${v.muted};
-  font-weight: normal;
-}
-
-${ROOT} div#header ul#navbar li.current-page {
-  background: transparent;
-  background-image: none;
-}
-
-${ROOT} div#header ul#navbar li.current-page a,
-${ROOT} #navbar li.current-page a {
-  background: ${v.accentSoft};
-  color: ${v.accent};
-  font-weight: 600;
-}
-
-${ROOT} div#header ul#subnavbar {
-  background: ${v.surface};
-  border-top: 1px solid ${v.border};
-  border-bottom: none;
-  padding: 6px 18px;
-  margin: 0;
-}
-
-${ROOT} div#header ul#subnavbar li {
-  padding: 0 8px;
-  font-size: 12.5px;
-}
-
-${ROOT} div#header ul#subnavbar li a {
-  color: ${v.muted};
-}
-
-${ROOT} div#header ul#subnavbar li a:hover {
-  color: ${v.accent};
-}
-
-${ROOT} div.tips {
-  background: ${v.accentSoft};
-  background-image: none;
-  border-bottom: 1px solid ${v.border};
-  color: ${v.text};
-}
-
-/* —— sidebar —— */
-${ROOT} div.sidebar {
-  width: 228px;
-  min-width: 228px;
-  max-width: 228px;
-  margin-right: 1em;
-}
-
-${ROOT} div.sidebar h5,
-${ROOT} div.sidebar h6,
-${ROOT} ul#tag-sidebar h5,
-${ROOT} ul#tag-sidebar h6 {
-  font: 600 10.5px ${v.font};
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: ${v.muted};
-  margin: 0 0 6px;
-}
-
-/* Standalone "Tags"/"Search" (and similar) headings above the list card */
-${ROOT} div.sidebar > h5 {
-  display: none;
-}
-
-/* Tags between search panel card and tag list (typical site markup) */
-${ROOT} div.tag-search + h5 {
-  display: none;
-}
-
-/* D: Tags heading immediately after search-tools when they are siblings */
-${ROOT} ${SITE_SELECTORS.tagsHeadingAfterSearchTools} {
-  display: none;
-}
-
-/* F: native AI filter row — only while search-tools AI posts row is rendered */
-${ROOT} body.${SEARCH_TOOLS_AI_ROW_BODY_CLASS$1} ${SITE_SELECTORS.filterAiRow} {
-  display: none;
-}
-
-${ROOT} div.tag-search,
-${ROOT} ul#tag-sidebar {
-  background: ${v.surface};
-  border: 1px solid ${v.border};
-  border-radius: ${v.radiusL};
-  padding: 12px;
-  box-shadow: ${v.shadow1};
-  box-sizing: border-box;
-}
-
-${ROOT} div.tag-search {
-  margin-bottom: 12px;
-}
-
-${ROOT} ul#tag-sidebar {
-  margin: 0;
-  padding: 12px;
-  list-style: none;
-}
-
-/*
- * Tag rows: ?/+/- /name (list) or ?/name (post) wrap as inline text;
- * count stays top-right on the first line (artists-sidebar.test markup).
- */
-${ROOT} ul#tag-sidebar > li {
-  display: block;
-  position: relative;
-  margin: 0 0 5px;
-  padding-right: 4.5em;
-  font-size: 12.5px;
-  line-height: 1.35;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-}
-
-${ROOT} ul#tag-sidebar > li > a {
-  display: inline;
-}
-
-${ROOT} ul#tag-sidebar > li > h5,
-${ROOT} ul#tag-sidebar > li > h6 {
-  display: block;
-  margin-top: 8px;
-}
-
-${ROOT} ul#tag-sidebar > li:first-child > h5,
-${ROOT} ul#tag-sidebar > li:first-child > h6 {
-  margin-top: 0;
-}
-
-${ROOT} .tag-count,
-${ROOT} span.post-count,
-${ROOT} span.tag-count {
-  position: absolute;
-  top: 0;
-  right: 0;
-  margin-left: 0;
-  color: ${v.muted};
-  font-size: 12px;
-  line-height: 1.35;
-}
-
-/*
- * Tag type color on the LAST link of the row (tag name).
- * List rows: ? + − name — name is 4th. Post rows: ? name — name is 2nd.
- * Operators / wiki stay muted on every page.
- */
-${ROOT} ul#tag-sidebar > li[class*="tag-type-"] > a:not(:last-of-type) {
-  color: ${v.muted};
-  font-size: 11px;
-  font-weight: normal;
-}
-
-${ROOT} .tag-type-artist > a,
-${ROOT} .tag-type-artist {
-  color: ${v.tagArtist};
-}
-
-${ROOT} .tag-type-character > a,
-${ROOT} .tag-type-character {
-  color: ${v.tagCharacter};
-}
-
-${ROOT} .tag-type-copyright > a,
-${ROOT} .tag-type-copyright {
-  color: ${v.tagCopyright};
-}
-
-${ROOT} .tag-type-metadata > a,
-${ROOT} .tag-type-metadata {
-  color: ${v.tagMetadata};
-}
-
-${ROOT} ul#tag-sidebar > li.tag-type-artist > a:last-of-type {
-  color: ${v.tagArtist};
-  font-size: 12.5px;
-  font-weight: normal;
-}
-
-${ROOT} ul#tag-sidebar > li.tag-type-character > a:last-of-type {
-  color: ${v.tagCharacter};
-  font-size: 12.5px;
-  font-weight: normal;
-}
-
-${ROOT} ul#tag-sidebar > li.tag-type-copyright > a:last-of-type {
-  color: ${v.tagCopyright};
-  font-size: 12.5px;
-  font-weight: normal;
-}
-
-${ROOT} ul#tag-sidebar > li.tag-type-metadata > a:last-of-type {
-  color: ${v.tagMetadata};
-  font-size: 12.5px;
-  font-weight: normal;
-}
-
-${ROOT} .tag-type-artist > a:hover,
-${ROOT} .tag-type-artist:hover,
-${ROOT} .tag-type-character > a:hover,
-${ROOT} .tag-type-character:hover,
-${ROOT} .tag-type-copyright > a:hover,
-${ROOT} .tag-type-copyright:hover,
-${ROOT} .tag-type-metadata > a:hover,
-${ROOT} .tag-type-metadata:hover,
-${ROOT} ul#tag-sidebar > li[class*="tag-type-"] > a:last-of-type:hover {
-  color: ${v.accent};
-}
-
-/* Artist Follow: kit secondary on theme tokens (beats document-chrome #fff) */
-${ROOT} button.${CSS_CLASS.artistFollow} {
-  background: ${v.surface};
-  border: 1px solid ${v.border};
-  color: ${v.text};
-  border-radius: ${v.radiusS};
-}
-
-${ROOT} button.${CSS_CLASS.artistFollow}:hover {
-  background: ${v.accentSoft};
-  border-color: ${v.accent};
-  color: ${v.accent};
-}
-
-${ROOT} button.${CSS_CLASS.artistFollow}.${CSS_CLASS.artistFollowMarked} {
-  background: ${v.accentSoft};
-  border-color: ${v.accent};
-  color: ${v.accent};
-}
-
-/* —— search field —— */
-${ROOT} div.tag-search input[type="text"],
-${ROOT} div.tag-search input[type="search"] {
-  width: 100%;
-  height: 34px;
-  box-sizing: border-box;
-  border: 1px solid ${v.border};
-  border-radius: ${v.radiusM};
-  padding: 0 10px;
-  background: ${v.surface};
-  color: ${v.text};
-  font-size: 13px;
-}
-
-${ROOT} div.tag-search input[type="submit"]${WHERE_NOT_OUR_CONTROL},
-${ROOT} div.tag-search button[type="submit"]${WHERE_NOT_OUR_CONTROL} {
-  width: 100%;
-  box-sizing: border-box;
-  margin-top: 8px;
-  padding: 6px 12px;
-  border: none;
-  border-radius: ${v.radiusS};
-  background: ${v.accent};
-  color: ${v.surface};
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-${ROOT} div.tag-search input[type="submit"]${WHERE_NOT_OUR_CONTROL}:hover,
-${ROOT} div.tag-search button[type="submit"]${WHERE_NOT_OUR_CONTROL}:hover {
-  filter: brightness(1.05);
-}
-
-${ROOT} input[type="text"]${WHERE_NOT_OUR_CONTROL}:focus,
-${ROOT} input[type="password"]${WHERE_NOT_OUR_CONTROL}:focus,
-${ROOT} input[type="search"]${WHERE_NOT_OUR_CONTROL}:focus,
-${ROOT} textarea${WHERE_NOT_OUR_CONTROL}:focus,
-${ROOT} select${WHERE_NOT_OUR_CONTROL}:focus {
-  background: ${v.surface};
-  outline: 2px solid ${v.accent};
-  outline-offset: 1px;
-  border-color: ${v.accent};
-}
-
-/* —— awesomplete —— */
-/* Site hides closed lists with opacity/scale + display:block; do not undo that. */
-${ROOT} .awesomplete > ul[hidden],
-${ROOT} .awesomplete > ul:empty {
-  display: none !important;
-  pointer-events: none;
-}
-
-${ROOT} .awesomplete > ul:not([hidden]):not(:empty) {
-  background: ${v.surface};
-  background-image: none;
-  border: 1px solid ${v.border};
-  border-radius: ${v.radiusL};
-  box-shadow: ${v.shadow2};
-  margin: 0.35em 0 0;
-  padding: 4px 0;
-  text-shadow: none;
-  transform: none;
-}
-
-${ROOT} .awesomplete > ul:before {
-  display: none;
-  content: none;
-}
-
-${ROOT} .awesomplete > ul > li {
-  padding: 6px 10px;
-  color: ${v.text};
-  cursor: pointer;
-}
-
-${ROOT} .awesomplete > ul > li:hover,
-${ROOT} .awesomplete > ul > li[aria-selected="true"] {
-  background: ${v.accentSoft};
-  color: ${v.accent};
-}
-
-${ROOT} .awesomplete mark {
-  background: ${v.accentSoft};
-  color: ${v.text};
-}
-
-${ROOT} div.auto_complete {
-  background: ${v.surface};
-}
-
-${ROOT} div.auto_complete ul {
-  border-color: ${v.border};
-  background: ${v.surface};
-}
-
-${ROOT} div.auto_complete ul li.selected {
-  background-color: ${v.accentSoft};
-}
-
-${ROOT} div.auto_complete ul strong.highlight {
-  color: ${v.accent};
-}
-
-/* —— grid / thumbs (cell size unchanged) —— */
-${ROOT} div.image-list {
-  column-gap: ${String(4)}px;
-  row-gap: ${String(4)}px;
-  align-items: flex-start;
-  align-content: flex-start;
-}
-
-${ROOT} img.preview {
-  border-radius: ${v.radiusL};
-}
-
-/* Favorites: Remove stays subtle; hover must not paint the thumb cell */
-${ROOT} span.thumb,
-${ROOT} span.thumb:hover,
-${ROOT} span.thumb > a,
-${ROOT} span.thumb > a:hover {
-  background-color: transparent;
-}
-
-${ROOT} span.thumb > a[onclick] {
-  color: ${v.muted};
-  font-size: 12px;
-  font-weight: normal;
-  padding: 2px 8px;
-  border-radius: ${v.radiusS};
-  background: transparent;
-  border: none;
-}
-
-${ROOT} span.thumb > a[onclick]:hover {
-  color: ${v.danger};
-  background: transparent;
-}
-
-${ROOT} span.thumb > a[onclick] b {
-  font-weight: normal;
-  color: inherit;
-}
-
-/* —— favorites bulk select (F HANDOFF; tokens for Light/Dark/Site) —— */
-${ROOT} body.${FAV_BULK_SELECTING_BODY_CLASS} span.thumb {
-  position: relative;
-  cursor: pointer;
-}
-
-${ROOT} span.thumb.${FAV_BULK_SELECTED_CLASS} {
-  outline: ${FAV_BULK_OUTLINE_WIDTH} solid ${v.accent};
-  outline-offset: ${FAV_BULK_OUTLINE_OFFSET};
-  border-radius: ${v.radiusL};
-}
-
-/*
- * Check badge is a sibling of a#p{ID}, never inside the link.
- * Hidden until the thumb is selected.
- */
-${ROOT} span.thumb > .${FAV_BULK_CHECK_CLASS} {
-  position: absolute;
-  top: ${FAV_BULK_CHECK_INSET};
-  left: ${FAV_BULK_CHECK_INSET};
-  z-index: ${String(FAV_BULK_CHECK_Z_INDEX)};
-  display: none;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  width: ${FAV_BULK_CHECK_SIZE};
-  height: ${FAV_BULK_CHECK_SIZE};
-  border-radius: 50%;
-  background: ${v.accent};
-  color: ${v.surface};
-  font-size: ${FAV_BULK_CHECK_FONT_SIZE};
-  font-weight: 700;
-  line-height: 1;
-  pointer-events: none;
-}
-
-${ROOT} span.thumb.${FAV_BULK_SELECTED_CLASS} > .${FAV_BULK_CHECK_CLASS} {
-  display: inline-flex;
-}
-
-${ROOT} #${FAV_BULK_ROOT_ID},
-${ROOT} .${FAV_BULK_BAR_CLASS} {
-  color: ${v.text};
-}
-
-${ROOT} #${FAV_BULK_ROOT_ID} .${FAV_BULK_STATUS_CLASS} {
-  color: ${v.muted};
-}
-
-${ROOT} .webm-thumb {
-  border: 1px solid ${v.accent};
-  box-sizing: border-box;
-}
-
-${ROOT} img.flagged,
-${ROOT} img.has-children,
-${ROOT} img.has-parent,
-${ROOT} img.pending,
-${ROOT} img.video {
-  border-width: 1px;
-  border-style: solid;
-  box-sizing: border-box;
-}
-
-${ROOT} img.flagged {
-  border-color: ${v.danger};
-}
-
-${ROOT} img.has-children {
-  border-color: ${v.tagCharacter};
-}
-
-${ROOT} img.has-parent {
-  border-color: ${v.tagMetadata};
-}
-
-${ROOT} img.pending,
-${ROOT} img.video {
-  border-color: ${v.accent};
-}
-
-/* —— pagination —— */
-${ROOT} div#paginator,
-${ROOT} .pagination {
-  display: block;
-  padding: 1.5em 0 1em;
-  text-align: center;
-  clear: both;
-}
-
-${ROOT} div#paginator a,
-${ROOT} .pagination a {
-  display: inline-block;
-  margin: 0 3px;
-  padding: 4px 10px;
-  border: 1px solid ${v.border};
-  border-radius: ${v.radiusM};
-  background: ${v.surface};
-  color: ${v.text};
-  text-decoration: none;
-}
-
-${ROOT} div#paginator a:hover,
-${ROOT} .pagination a:hover {
-  background: ${v.accentSoft};
-  color: ${v.accent};
-  border-color: ${v.accent};
-}
-
-${ROOT} div#paginator a.current,
-${ROOT} div#paginator span.current,
-${ROOT} .pagination a.current,
-${ROOT} .pagination span.current {
-  background: ${v.accent};
-  border-color: ${v.accent};
-  color: ${v.surface};
-  font-weight: 600;
-}
-
-${ROOT} div#paginator span {
-  margin: 0 3px;
-  padding: 4px 8px;
-}
-
-${ROOT} .manual-page-chooser > input[type="text"] {
-  width: 4em;
-  height: 28px;
-  border: 1px solid ${v.border};
-  border-radius: ${v.radiusS};
-  background: ${v.surface};
-  color: ${v.text};
-  padding: 0 6px;
-}
-
-${ROOT} .manual-page-chooser > input[type="submit"] {
-  height: 28px;
-  margin-left: 4px;
-  padding: 0 10px;
-  border: none;
-  border-radius: ${v.radiusS};
-  background: ${v.accent};
-  color: ${v.surface};
-  font-weight: 600;
-  cursor: pointer;
-}
-
-/* —— forms / tables (site chrome; skip search-tools + any .rdw-* control) —— */
-${ROOT} input${WHERE_NOT_OUR_CONTROL},
-${ROOT} select${WHERE_NOT_OUR_CONTROL},
-${ROOT} textarea${WHERE_NOT_OUR_CONTROL},
-${ROOT} button${WHERE_NOT_OUR_CONTROL} {
-  color: ${v.text};
-  font-family: ${v.font};
-}
-
-${ROOT} input[type="text"]${WHERE_NOT_OUR_CONTROL},
-${ROOT} input[type="password"]${WHERE_NOT_OUR_CONTROL},
-${ROOT} input[type="search"]${WHERE_NOT_OUR_CONTROL},
-${ROOT} input[type="number"]${WHERE_NOT_OUR_CONTROL},
-${ROOT} select${WHERE_NOT_OUR_CONTROL},
-${ROOT} textarea${WHERE_NOT_OUR_CONTROL} {
-  background: ${v.surface};
-  border: 1px solid ${v.border};
-  border-radius: ${v.radiusS};
-  color: ${v.text};
-}
-
-${ROOT} button${WHERE_NOT_OUR_CONTROL},
-${ROOT} input[type="submit"]${WHERE_NOT_OUR_CONTROL},
-${ROOT} input[type="button"]${WHERE_NOT_OUR_CONTROL},
-${ROOT} .gdprbutton button {
-  background: ${v.surface};
-  border: 1px solid ${v.border};
-  border-radius: ${v.radiusS};
-  color: ${v.text};
-  padding: 4px 10px;
-  cursor: pointer;
-}
-
-${ROOT} button${WHERE_NOT_OUR_CONTROL}:hover,
-${ROOT} input[type="submit"]${WHERE_NOT_OUR_CONTROL}:hover,
-${ROOT} input[type="button"]${WHERE_NOT_OUR_CONTROL}:hover,
-${ROOT} .gdprbutton button:hover {
-  background: ${v.accentSoft};
-  border-color: ${v.accent};
-  color: ${v.accent};
-}
-
-/* Keep search submit as primary accent (overrides generic button chrome) */
-${ROOT} div.tag-search input[type="submit"],
-${ROOT} div.tag-search button[type="submit"],
-${ROOT} .manual-page-chooser > input[type="submit"] {
-  background: ${v.accent};
-  border: none;
-  color: ${v.surface};
-  font-weight: 600;
-}
-
-${ROOT} div.tag-search input[type="submit"]:hover,
-${ROOT} div.tag-search button[type="submit"]:hover,
-${ROOT} .manual-page-chooser > input[type="submit"]:hover {
-  background: ${v.accent};
-  border: none;
-  color: ${v.surface};
-  filter: brightness(1.05);
-}
-
-${ROOT} table {
-  color: ${v.text};
-}
-
-${ROOT} tr.tableheader,
-${ROOT} thead tr {
-  background: ${v.surface2} !important;
-  background-image: none !important;
-  color: ${v.text};
-}
-
-${ROOT} table.highlightable th {
-  color: ${v.text};
-  background: ${v.surface2};
-}
-
-${ROOT} table.highlightable td {
-  border-color: ${v.border};
-}
-
-${ROOT} table.highlightable > tbody > tr:hover {
-  background: ${v.accentSoft};
-}
-
-${ROOT} table tr.good {
-  background: ${v.accentSoft};
-}
-
-${ROOT} table tr.selected {
-  background: ${v.accentSoft} !important;
-}
-
-${ROOT} table tr.highlight {
-  background: ${v.surface2};
-}
-
-${ROOT} table tr.pending-tag {
-  background: ${v.surface2};
-}
-
-/* Zebra without native green tint */
-${ROOT} table tr:nth-child(odd) {
-  background: ${v.surface2};
-}
-
-/* —— data tables: one frame for every list (aliases, artists, tags, pools, forum) —— */
-${ROOT} table.highlightable {
-  background: ${v.surface};
-  border: 1px solid ${v.border};
-  border-radius: ${v.radiusL};
-  border-collapse: separate;
-  border-spacing: 0;
-  overflow: hidden;
-}
-
-/*
- * Favorites: "Remove" sits beside the thumb, not inside it
- * (div.image-list > span > [span.thumb, br, a > b]). Quiet, not bold.
- */
-${ROOT} div.image-list > span > a[onclick] {
-  color: ${v.muted};
-  font-size: 12px;
-}
-
-${ROOT} div.image-list > span > a[onclick] > b {
-  font-weight: normal;
-}
-
-${ROOT} div.image-list > span > a[onclick]:hover {
-  color: ${v.danger};
-}
-
-/*
- * Comments and forum posts: the site gives the text columns fixed widths
- * (50em and 30em) and leaves half the window empty. They take the width that
- * is there, up to a readable limit.
- */
-${ROOT} div#comments div#comment-list > div.post {
-  float: none;
-  display: flex;
-  gap: 16px;
-  max-width: ${String(COMMENT_MAX_WIDTH_PX)}px;
-}
-
-${ROOT} div#comments div#comment-list > div.post > div.col1 {
-  float: none;
-  flex: 0 0 auto;
-}
-
-${ROOT} div#comments div#comment-list > div.post > div.col2 {
-  float: none;
-  flex: 1 1 auto;
-  width: auto;
-  min-width: 0;
-}
-
-${ROOT} div.response-list > div.post {
-  display: flex;
-  max-width: ${String(COMMENT_MAX_WIDTH_PX)}px;
-}
-
-${ROOT} div.response-list > div.post > div.author {
-  float: none;
-  flex: 0 0 auto;
-}
-
-${ROOT} div.response-list > div.post > div.content {
-  float: none;
-  flex: 1 1 auto;
-  width: auto;
-  min-width: 0;
-}
-
-/* Forms are not data: no stripes across their rows. */
-${ROOT} table.form tr:nth-child(odd),
-${ROOT} div#upload-form table tr:nth-child(odd),
-${ROOT} div#edit-form table tr:nth-child(odd) {
-  background: transparent;
-}
-
-${ROOT} table.form th {
-  color: ${v.muted};
-}
-
-/* —— site form controls: one height, readable padding —— */
-${ROOT} input[type="text"]${WHERE_NOT_OUR_CONTROL},
-${ROOT} input[type="password"]${WHERE_NOT_OUR_CONTROL},
-${ROOT} input[type="search"]${WHERE_NOT_OUR_CONTROL},
-${ROOT} input[type="number"]${WHERE_NOT_OUR_CONTROL},
-${ROOT} select${WHERE_NOT_OUR_CONTROL} {
-  box-sizing: border-box;
-  min-height: ${String(SITE_CONTROL_MIN_HEIGHT_PX)}px;
-  padding: 4px 8px;
-  font-size: 13px;
-}
-
-${ROOT} textarea${WHERE_NOT_OUR_CONTROL} {
-  box-sizing: border-box;
-  padding: 6px 8px;
-  font-size: 13px;
-}
-
-/* "Choose File": the browser's own button, dressed as a secondary button. */
-${ROOT} input[type="file"]${WHERE_NOT_OUR_CONTROL} {
-  color: ${v.text};
-  font-size: 12px;
-}
-
-${ROOT} input[type="file"]${WHERE_NOT_OUR_CONTROL}::file-selector-button {
-  margin-right: 8px;
-  padding: 4px 10px;
-  border: 1px solid ${v.border};
-  border-radius: ${v.radiusM};
-  background: ${v.surface};
-  color: ${v.text};
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-${ROOT} input[type="file"]${WHERE_NOT_OUR_CONTROL}::file-selector-button:hover {
-  border-color: ${v.accent};
-}
-
-/* Forum tables */
-${ROOT} div#forum > table {
-  background: ${v.surface};
-  border: 1px solid ${v.border};
-  border-radius: ${v.radiusL};
-  border-collapse: separate;
-  border-spacing: 0;
-  overflow: hidden;
-  box-shadow: ${v.shadow1};
-}
-
-${ROOT} div#forum > table th,
-${ROOT} div#forum > table td {
-  border-color: ${v.border};
-  color: ${v.text};
-}
-
-${ROOT} div#forum > table th:first-child,
-${ROOT} div#forum > table td:first-child {
-  text-align: left;
-}
-
-${ROOT} div#forum > table tr:nth-child(odd) {
-  background: ${v.surface2};
-}
-
-${ROOT} div#forum > table tr:nth-child(even) {
-  background: ${v.surface};
-}
-
-${ROOT} div#forum > table.highlightable > tbody > tr:hover {
-  background: ${v.accentSoft};
-}
-
-${ROOT} .added-tags {
-  color: ${v.tagCharacter};
-}
-
-${ROOT} .removed-tags {
-  color: ${v.danger};
-}
-
-${ROOT} .obsolete-tag-change {
-  color: ${v.text};
-}
-
-/* —— notices / cards —— */
-${ROOT} div.status-notice,
-${ROOT} div.notice,
-${ROOT} div.has-mail,
-${ROOT} div.blocked,
-${ROOT} div.quote,
-${ROOT} div.help div.code,
-${ROOT} div#post-comments div#comment-list > div,
-${ROOT} div#comments div#comment-list > div.post > div.col2,
-${ROOT} div.response-list > div.post > div.content {
-  background: ${v.surface};
-  border: 1px solid ${v.border};
-  border-radius: ${v.radiusL};
-  box-shadow: ${v.shadow1};
-}
-
-${ROOT} div.status-notice {
-  border-color: ${v.border};
-  padding: 1em;
-  margin: 1em;
-  color: ${v.text};
-}
-
-${ROOT} div.notice {
-  color: ${v.danger};
-  padding: 0.75em 1em;
-  margin-bottom: 1em;
-}
-
-${ROOT} div.has-mail {
-  border-color: ${v.tagCharacter};
-  background: ${v.accentSoft};
-  padding: 1em;
-  margin: 1em;
-  color: ${v.text};
-}
-
-${ROOT} div.blocked {
-  border-color: ${v.danger};
-  background: ${v.dangerSoft};
-  color: ${v.danger};
-  padding: 1em;
-  margin: 1em;
-}
-
-${ROOT} div.quote {
-  border-color: ${v.border};
-  background: ${v.surface2};
-  background-image: none;
-  color: ${v.text};
-  padding: 12px;
-  margin-top: 10px;
-}
-
-${ROOT} div.help div.code {
-  border: 1px dashed ${v.border};
-  background: ${v.surface2};
-  color: ${v.text};
-}
-
-${ROOT} div.help h4 {
-  color: ${v.tagCharacter};
-}
-
-${ROOT} div#post-comments div#comment-list > div,
-${ROOT} div#comments div#comment-list > div.post > div.col2 {
-  padding: 12px;
-  margin-bottom: 1em;
-}
-
-${ROOT} div.response-list > div.post > div.content {
-  padding: 10px 12px;
-}
-
-${ROOT} div.response-list > div.post > div.content > div.footer {
-  color: ${v.muted};
-  margin-top: 0.75em;
-}
-
-/* Edit | Respond (and similar) on comments / forum posts */
-${ROOT} div.response-list > div.post > div.content > div.footer a,
-${ROOT} ul.flat-list li a {
-  color: ${v.muted};
-  font-weight: normal;
-  padding: 2px 6px;
-  border-radius: ${v.radiusS};
-}
-
-${ROOT} div.response-list > div.post > div.content > div.footer a:hover,
-${ROOT} ul.flat-list li a:hover {
-  color: ${v.accent};
-  background: ${v.accentSoft};
-}
-
-${ROOT} ul.flat-list li a.forum-update {
-  font-style: italic;
-  color: ${v.muted};
-}
-
-${ROOT} div.link-list ul {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-${ROOT} div.link-list li {
-  margin: 0 0 4px;
-}
-
-${ROOT} div.link-list a {
-  display: inline-block;
-  padding: 4px 8px;
-  border-radius: ${v.radiusS};
-  color: ${v.muted};
-}
-
-${ROOT} div.link-list a:hover {
-  color: ${v.accent};
-  background: ${v.accentSoft};
-}
-
-${ROOT} span.author,
-${ROOT} span.date {
-  color: ${v.muted};
-}
-
-${ROOT} span.locked-topic {
-  color: ${v.muted};
-}
-
-${ROOT} strong.divider {
-  color: ${v.muted};
-}
-
-${ROOT} div#footer {
-  color: ${v.muted};
-}
-
-${ROOT} div#footer > .footer-disabled,
-${ROOT} div#footer > #label {
-  color: ${v.muted};
-}
-
-${ROOT} div#user-record > table > tbody > tr.positive-record {
-  background: ${v.accentSoft};
-}
-
-${ROOT} div#user-record > table > tbody > tr.negative-record {
-  background: ${v.dangerSoft};
-}
-
-${ROOT} div.mailbody {
-  background-color: ${v.surface};
-  border-color: ${v.border};
-}
-
-${ROOT} div.mail .received {
-  color: ${v.tagCharacter};
-}
-
-${ROOT} div.mail .sent {
-  color: ${v.danger};
-}
-
-${ROOT} .gdprinner {
-  background-color: ${v.surface};
-  border-color: ${v.border};
-  color: ${v.text};
-}
-
-/* —— post page —— */
-/* E: hide native left-column chrome only while body.rdw-post-panel-mounted */
-${ROOT} body.${RDW_POST_PANEL_MOUNTED_CLASS} div#stats {
-  display: none !important;
-}
-
-${ROOT} body.${RDW_POST_PANEL_MOUNTED_CLASS} div.link-list {
-  display: none !important;
-}
-
-${ROOT} body.${RDW_POST_PANEL_MOUNTED_CLASS} ${POST_PANEL_ICAME_ROW} {
-  display: none !important;
-}
-
-/*
- * A: comments moved into the panel column — lift site max-width: 680px
- * so #post-comments fills the narrow column.
- */
-${ROOT} body.${RDW_POST_PANEL_MOUNTED_CLASS} #${POST_ACTIONS_HOST_ID} #post-comments {
-  max-width: none;
-}
-
-${ROOT} img#image {
-  border-radius: ${v.radiusL};
-}
-
-${ROOT} div#post-view > div#right-col > div#edit,
-${ROOT} div#edit-box {
-  background: ${v.surface};
-  border: 1px solid ${v.border};
-  border-radius: ${v.radiusL};
-  color: ${v.text};
-}
-
-${ROOT} div#note-container > div.note-body {
-  background: ${v.surface};
-  border: 1px solid ${v.border};
-  color: ${v.text};
-  border-radius: ${v.radiusS};
-}
-
-${ROOT} div#note-container > div.note-body > p.tn,
-${ROOT} tn {
-  color: ${v.muted};
-}
-
-${ROOT} div#note-container > div.note-box {
-  border-color: ${v.accent};
-  background: ${v.accentSoft};
-}
-
-${ROOT} div#note-container > div.note-box > div.note-corner {
-  background: ${v.accent};
-}
-
-${ROOT} div#note-container > div.unsaved {
-  background: ${v.surface};
-  border-color: ${v.danger};
-}
-
-${ROOT} div#note-container > div.unsaved > div.note-corner {
-  background: ${v.danger};
-}
-
-${ROOT} a.original-file-changed#highres {
-  color: ${v.accent};
-}
-
-${ROOT} div#post-add p#scale {
-  color: ${v.muted};
-}
-
-${ROOT} h2.wiki-title {
-  color: ${v.accent};
-}
-
-${ROOT} div.wiki > h2.title {
-  color: ${v.accent};
-}
-
-${ROOT} div#wiki-show > div#body > div#byline {
-  color: ${v.muted};
-}
-
-${ROOT} div#wiki-diff del {
-  background-color: ${v.dangerSoft};
-  color: ${v.danger};
-}
-
-${ROOT} div#wiki-diff ins {
-  background-color: ${v.accentSoft};
-  color: ${v.text};
-}
-
-${ROOT} dt.bad {
-  color: ${v.danger};
-}
-
-${ROOT} .blacklisted-tags-disabled {
-  color: ${v.muted} !important;
-}
-
-/* —— dark theme contrast (tokens already dark; keep chrome readable) —— */
-${ROOT_DARK} a:hover,
-${ROOT_DARK} a:active {
-  color: ${v.text};
-}
-
-${ROOT_DARK} a.spoiler,
-${ROOT_DARK} span.spoiler {
-  color: ${v.bg};
-  background: ${v.text};
-}
-
-${ROOT_DARK} a.spoiler:hover,
-${ROOT_DARK} span.spoiler:hover {
-  color: ${v.text};
-  background: ${v.muted};
-}
-
-${ROOT_DARK} div#paginator a.current,
-${ROOT_DARK} div#paginator span.current,
-${ROOT_DARK} .pagination a.current,
-${ROOT_DARK} .pagination span.current,
-${ROOT_DARK} div.tag-search input[type="submit"],
-${ROOT_DARK} div.tag-search button[type="submit"],
-${ROOT_DARK} .manual-page-chooser > input[type="submit"],
-${ROOT_DARK} span.thumb > .${FAV_BULK_CHECK_CLASS},
-${ROOT_DARK} #${POST_ACTIONS_HOST_ID} .${POST_PANEL_FAV_CLASS}.${KIT_BTN_PRIMARY_CLASS} {
-  color: ${v.text};
-}
-
-${ROOT_DARK} div.has-mail {
-  background: ${v.surface2};
-  border-color: ${v.tagCharacter};
-}
-
-/*
- * Post panel actions + tabs (A→E HANDOFF).
- * Unscoped under #rdw-post-actions so Site default/Site dark (no html.rdw-skin)
- * still beat native button/link chrome via document --rdw-* tokens.
- */
-#${POST_ACTIONS_HOST_ID} .${POST_PANEL_ACTIONS_CLASS},
-#${POST_ACTIONS_HOST_ID} .${POST_PANEL_ACTIONS_ROW_CLASS},
-#${POST_ACTIONS_HOST_ID} .${POST_PANEL_TABPANEL_CLASS} {
-  color: ${v.text};
-}
-
-#${POST_ACTIONS_HOST_ID} .${POST_PANEL_FAV_CLASS}.${KIT_BTN_PRIMARY_CLASS} {
-  background: ${v.accent};
-  border-color: ${v.accent};
-  color: ${v.surface};
-}
-
-#${POST_ACTIONS_HOST_ID} .${POST_PANEL_ORIGINAL_CLASS} {
-  box-sizing: border-box;
-  width: ${String(POST_PANEL_ORIGINAL_SIZE_PX)}px;
-  height: ${String(POST_PANEL_ORIGINAL_SIZE_PX)}px;
-  min-width: ${String(POST_PANEL_ORIGINAL_SIZE_PX)}px;
-  min-height: ${String(POST_PANEL_ORIGINAL_SIZE_PX)}px;
-  background: ${v.surface};
-  border: 1px solid ${v.border};
-  color: ${v.text};
-  text-decoration: none;
-}
-
-#${POST_ACTIONS_HOST_ID} .${KIT_TABS_CLASS} {
-  border-bottom: 1px solid ${v.border};
-  color: ${v.text};
-}
-
-#${POST_ACTIONS_HOST_ID} .${KIT_TAB_CLASS} {
-  background: transparent;
-  border: 0;
-  border-bottom: ${String(POST_PANEL_TAB_UNDERLINE_PX)}px solid transparent;
-  color: ${v.muted};
-}
-
-#${POST_ACTIONS_HOST_ID} .${KIT_TAB_CLASS}[aria-selected="true"] {
-  color: ${v.text};
-  font-weight: 600;
-  border-bottom-color: ${v.accent};
-}
-
-#${POST_ACTIONS_HOST_ID} .${POST_PANEL_POST_ACTION_CLASS} {
-  background: ${v.surface};
-  border: 1px solid ${v.border};
-  color: ${v.text};
-  justify-content: flex-start;
-}
-
-/* Site themes: muted fails AA on green/dark chrome — tabs use text; keep accent underline. */
-${ROOT_SITE} #${POST_ACTIONS_HOST_ID} .${KIT_TAB_CLASS},
-${ROOT_SITE_DARK} #${POST_ACTIONS_HOST_ID} .${KIT_TAB_CLASS} {
-  color: ${v.text};
-}
-
-${ROOT_SITE} #${POST_ACTIONS_HOST_ID} .${KIT_TAB_CLASS}[aria-selected="true"],
-${ROOT_SITE_DARK} #${POST_ACTIONS_HOST_ID} .${KIT_TAB_CLASS}[aria-selected="true"] {
-  border-bottom-color: ${v.accent};
-  color: ${v.text};
-}
-
-/* Dark RuleDesk: primary fill uses light label (surface token is dark). */
-${ROOT_THEME_DARK} #${POST_ACTIONS_HOST_ID} .${POST_PANEL_FAV_CLASS}.${KIT_BTN_PRIMARY_CLASS} {
-  color: ${v.text};
-}
-
-/*
- * Own scrollable UI — tokens for all four themes (site/site-dark have no html.rdw-skin).
- * Fixes white post-column scrollbar on dark. Kit lists/dialogs + playlist menu.
- */
-#${POST_ACTIONS_HOST_ID},
-.${KIT_SELECT_LIST_CLASS},
-.${KIT_AC_LIST_CLASS},
-.${KIT_DIALOG_CLASS},
-.${PLAYLIST_MENU_CLASS} {
-  scrollbar-width: ${SCROLLBAR_WIDTH};
-  scrollbar-color: ${v.border} ${v.surface};
-}
-
-/* Site autocomplete lists under rdw-skin */
-${ROOT} .awesomplete > ul:not([hidden]):not(:empty),
-${ROOT} div.auto_complete ul {
-  scrollbar-width: ${SCROLLBAR_WIDTH};
-  scrollbar-color: ${v.border} ${v.surface};
-}
-
-/*
- * Script page host sits on site bg for Site default / Site dark (no html.rdw-skin).
- * Color uses document tokens; Shadow title inherits from the host once tokens sync.
- */
-#${RDW_PAGE_ROOT_ID} {
-  color: ${v.text};
-}
-`.trim();
-/** Returns the site-skin CSS string for injection. */
-function getSiteSkinCss() {
-	return SITE_SKIN_CSS;
-}
-var MS_PER_DAY$1 = 864e5;
-var COOKIE_NAME_VALUE_SEPARATOR$1 = "=";
-var STYLESHEET_REL = "stylesheet";
-var LIGHT_STYLESHEET_PATH = `${SITE_THEME_STYLESHEET_DIR}${SITE_THEME_STYLESHEET_LIGHT}`;
-var DARK_STYLESHEET_PATH = `${SITE_THEME_STYLESHEET_DIR}${SITE_THEME_STYLESHEET_DARK}`;
-function writeThemeCookie(value, expires) {
-	document.cookie = [
-		`${SITE_THEME_COOKIE_NAME}${COOKIE_NAME_VALUE_SEPARATOR$1}${value}`,
-		`expires=${expires.toUTCString()}`,
-		`path=/`
-	].join("; ");
-}
-/** Deletes the site `theme` cookie (light / default). */
-function clearSiteThemeCookie() {
-	document.cookie = [
-		`${SITE_THEME_COOKIE_NAME}${COOKIE_NAME_VALUE_SEPARATOR$1}`,
-		`expires=${(/* @__PURE__ */ new Date(0)).toUTCString()}`,
-		`path=/`
-	].join("; ");
-}
-/** Collapse `//` (and longer) runs in a pathname so `/css/...` comparisons work. */
-var REPEATED_PATH_SLASHES = /\/{2,}/g;
-function collapsePathSlashes(pathname) {
-	return pathname.replace(REPEATED_PATH_SLASHES, "/");
-}
-/**
-* Match site desktop CSS hrefs via URL pathname (query ignored).
-* Production uses absolute hrefs with a doubled slash (`…xxx//css/desktop.css?46`);
-* collapsing repeated path slashes makes that equal `/css/desktop.css`.
-*/
-function isSiteDesktopStylesheetHref(href) {
-	try {
-		const path = collapsePathSlashes(new URL(href, location.href).pathname);
-		return path === LIGHT_STYLESHEET_PATH || path === DARK_STYLESHEET_PATH;
-	} catch {
-		return false;
-	}
-}
-function stylesheetFilenameForTheme(theme) {
-	return theme === "dark" ? SITE_THEME_STYLESHEET_DARK : SITE_THEME_STYLESHEET_LIGHT;
-}
-/** Swap filename in the raw href so `//css/` and `/css/` forms stay intact. */
-function replaceStylesheetFilename(href, filename) {
-	if (href.includes("desktop-dark.css")) return href.replace(SITE_THEME_STYLESHEET_DARK, filename);
-	if (href.includes("desktop.css")) return href.replace(SITE_THEME_STYLESHEET_LIGHT, filename);
-	return href;
-}
-function findSiteDesktopStylesheetLink() {
-	const links = document.querySelectorAll(`link[rel="${STYLESHEET_REL}"]`);
-	for (const link of links) {
-		const href = link.getAttribute("href");
-		if (href === null || href.length === 0) continue;
-		if (isSiteDesktopStylesheetHref(href)) return link;
-	}
-	return null;
-}
-var WARN_STYLESHEET_MISSING = "Site desktop stylesheet link not found; theme cookie updated only";
-var READY_STATE_LOADING = "loading";
-var EVENT_DOM_CONTENT_LOADED = "DOMContentLoaded";
-var STYLESHEET_OBSERVER_OPTIONS = {
-	childList: true,
-	subtree: true
-};
-var pendingStylesheetTheme = null;
-var stylesheetObserver = null;
-var domContentLoadedBound = false;
-function swapStylesheetLink(link, theme) {
-	const href = link.getAttribute("href");
-	if (href === null || href.length === 0) return false;
-	link.setAttribute("href", replaceStylesheetFilename(href, stylesheetFilenameForTheme(theme)));
-	return true;
-}
-function disconnectStylesheetWatch() {
-	if (stylesheetObserver !== null) {
-		stylesheetObserver.disconnect();
-		stylesheetObserver = null;
-	}
-	if (domContentLoadedBound) {
-		document.removeEventListener(EVENT_DOM_CONTENT_LOADED, onStylesheetDomReady);
-		domContentLoadedBound = false;
-	}
-}
-function tryApplyPendingStylesheet() {
-	if (pendingStylesheetTheme === null) return false;
-	const link = findSiteDesktopStylesheetLink();
-	if (link === null) return false;
-	if (!swapStylesheetLink(link, pendingStylesheetTheme)) return false;
-	pendingStylesheetTheme = null;
-	disconnectStylesheetWatch();
-	return true;
-}
-function onStylesheetDomReady() {
-	domContentLoadedBound = false;
-	if (tryApplyPendingStylesheet()) return;
-	if (pendingStylesheetTheme !== null) {
-		log.warn(WARN_STYLESHEET_MISSING);
-		pendingStylesheetTheme = null;
-		disconnectStylesheetWatch();
-	}
-}
-function warnStylesheetMissing() {
-	log.warn(WARN_STYLESHEET_MISSING);
-	pendingStylesheetTheme = null;
-	disconnectStylesheetWatch();
-}
-/**
-* Swap desktop.css ↔ desktop-dark.css once the link exists.
-* At document-start the link is not parsed yet: watch documentElement and
-* fall back to DOMContentLoaded. Warn only if it is still missing after that.
-*/
-function scheduleSiteDesktopStylesheet(theme) {
-	const link = findSiteDesktopStylesheetLink();
-	if (link !== null && swapStylesheetLink(link, theme)) {
-		pendingStylesheetTheme = null;
-		disconnectStylesheetWatch();
-		return;
-	}
-	pendingStylesheetTheme = theme;
-	if (document.readyState !== READY_STATE_LOADING) {
-		warnStylesheetMissing();
-		return;
-	}
-	const root = document.documentElement;
-	if (stylesheetObserver === null && root !== null) {
-		stylesheetObserver = new MutationObserver(() => {
-			tryApplyPendingStylesheet();
-		});
-		stylesheetObserver.observe(root, STYLESHEET_OBSERVER_OPTIONS);
-	}
-	if (!domContentLoadedBound) {
-		document.addEventListener(EVENT_DOM_CONTENT_LOADED, onStylesheetDomReady);
-		domContentLoadedBound = true;
-	}
-}
-/** Cookie only. Stylesheet swap is {@link scheduleSiteDesktopStylesheet}. */
-function writeSiteThemeCookie(theme) {
-	if (theme === "dark") {
-		const expires = new Date(Date.now() + 365 * MS_PER_DAY$1);
-		writeThemeCookie(SITE_THEME_COOKIE_VALUE_DARK, expires);
-		return;
-	}
-	clearSiteThemeCookie();
-}
-/**
-* RuleDesk skin modes need a predictable site base: no theme cookie + light CSS.
-* Does not touch html.rdw-skin (that is owned by src/skin/theme.ts).
-*/
-function forceLightSiteBase() {
-	writeSiteThemeCookie("light");
-	scheduleSiteDesktopStylesheet("light");
-}
-function setSiteTheme(theme) {
-	writeSiteThemeCookie(theme);
-	scheduleSiteDesktopStylesheet(theme);
-}
-var BACKGROUND_DIM_MAX = .8;
-/** JPEG quality when downscaling a custom background to screen size. */
-var APPEARANCE_BACKGROUND_JPEG_QUALITY = .85;
-var CONTRAST_OFFSET = .05;
-var JPEG_MIME = "image/jpeg";
-var BODY_BG_IMAGE = "background-image";
-var BODY_BG_SIZE = "background-size";
-var BODY_BG_POSITION = "background-position";
-var BODY_BG_REPEAT = "background-repeat";
-var BODY_BG_ATTACHMENT = "background-attachment";
-/** Site light tag/link colors (not exported from tokens). */
-var SITE_C_LINK_ARTIST = "#cc0000";
-var SITE_C_LINK_CHARACTER = "#00aa00";
-var SITE_C_LINK_COPYRIGHT = "#aa00aa";
-var SITE_C_LINK_METADATA = "#ff8800";
-/** Site dark accent-soft / tag colors (not exported from tokens). */
-var SITE_DARK_ACCENT_SOFT = SITE_DARK_C_BORDER;
-var SITE_DARK_TAG_ARTIST = "#f0a0a0";
-var SITE_DARK_TAG_CHARACTER = "#f0f0a0";
-var SITE_DARK_TAG_COPYRIGHT = "#f0a0f0";
-var SITE_DARK_TAG_METADATA = "#90d9ed";
-/**
-* Script-page / token palette for Appearance theme "Site default".
-* Card surface = --c-bg; border = --c-bg-alt (aligned with page-css host cards).
-* Danger/radius/shadow/font from Light.
-*/
-var SITE_DEFAULT_PALETTE = {
-	bg: SITE_LIGHT_C_BG,
-	surface: SITE_LIGHT_C_BG,
-	surface2: SITE_LIGHT_C_BG_OVERLAY,
-	border: SITE_LIGHT_C_BG_ALT,
-	text: SITE_LIGHT_C_TEXT,
-	muted: SITE_LIGHT_C_TEXT_SOFT,
-	accent: SITE_LIGHT_C_LINK,
-	accentSoft: SITE_LIGHT_C_BG_ALT,
-	danger: LIGHT_PALETTE.danger,
-	dangerSoft: LIGHT_PALETTE.dangerSoft,
-	tagArtist: SITE_C_LINK_ARTIST,
-	tagCharacter: SITE_C_LINK_CHARACTER,
-	tagCopyright: SITE_C_LINK_COPYRIGHT,
-	tagMetadata: SITE_C_LINK_METADATA,
-	radiusS: LIGHT_PALETTE.radiusS,
-	radiusM: LIGHT_PALETTE.radiusM,
-	radiusL: LIGHT_PALETTE.radiusL,
-	shadow1: LIGHT_PALETTE.shadow1,
-	shadow2: LIGHT_PALETTE.shadow2,
-	font: LIGHT_PALETTE.font
-};
-/**
-* Script-page / token palette for Appearance theme "Site dark".
-* Surface = page bg (not darker chrome); danger/radius/shadow/font from Dark.
-*/
-var SITE_DARK_PALETTE = {
-	bg: SITE_DARK_C_BG,
-	surface: SITE_DARK_C_BG,
-	surface2: SITE_DARK_C_SURFACE2,
-	border: SITE_DARK_C_BORDER,
-	text: SITE_DARK_C_TEXT,
-	muted: SITE_DARK_C_MUTED,
-	accent: SITE_DARK_C_ACCENT,
-	accentSoft: SITE_DARK_ACCENT_SOFT,
-	danger: DARK_PALETTE.danger,
-	dangerSoft: DARK_PALETTE.dangerSoft,
-	tagArtist: SITE_DARK_TAG_ARTIST,
-	tagCharacter: SITE_DARK_TAG_CHARACTER,
-	tagCopyright: SITE_DARK_TAG_COPYRIGHT,
-	tagMetadata: SITE_DARK_TAG_METADATA,
-	radiusS: DARK_PALETTE.radiusS,
-	radiusM: DARK_PALETTE.radiusM,
-	radiusL: DARK_PALETTE.radiusL,
-	shadow1: DARK_PALETTE.shadow1,
-	shadow2: DARK_PALETTE.shadow2,
-	font: DARK_PALETTE.font
-};
-/**
-* Pick text color for a surface: prefer `preferred`, else the first
-* neighboring candidate that meets {@link CONTRAST_RATIO_MIN}.
-*/
-function pickContrastingText(surface, preferred, neighbors) {
-	const preferredRatio = contrastRatio(preferred, surface);
-	if (preferredRatio !== null && preferredRatio >= 4.5) return {
-		text: preferred,
-		ratio: preferredRatio,
-		swapped: false
-	};
-	for (const candidate of neighbors) {
-		const ratio = contrastRatio(candidate, surface);
-		if (ratio !== null && ratio >= 4.5) return {
-			text: candidate,
-			ratio,
-			swapped: true
-		};
-	}
-	return {
-		text: preferred,
-		ratio: preferredRatio,
-		swapped: false
-	};
-}
-function finalizeSitePaletteText(palette) {
-	const picked = pickContrastingText(palette.surface, palette.text, [
-		palette.bg,
-		palette.muted,
-		palette.accent,
-		LIGHT_PALETTE.text,
-		DARK_PALETTE.text
-	]);
-	if (!picked.swapped) return palette;
-	return {
-		...palette,
-		text: picked.text
-	};
-}
-/** Site default after contrast gate (text-on-surface). */
-var SITE_DEFAULT_PALETTE_RESOLVED = finalizeSitePaletteText(SITE_DEFAULT_PALETTE);
-/** Site dark after contrast gate (text-on-surface). */
-var SITE_DARK_PALETTE_RESOLVED = finalizeSitePaletteText(SITE_DARK_PALETTE);
-function createDefaultCustomTheme() {
-	return {
-		base: APPEARANCE_CUSTOM_BASE_LIGHT,
-		backgroundDim: 0
-	};
-}
-function clampBackgroundDim(value) {
-	if (!Number.isFinite(value)) return 0;
-	return Math.min(BACKGROUND_DIM_MAX, Math.max(0, value));
-}
-/** WCAG contrast ratio of two hex colors; null if either is unparseable. */
-function contrastRatio(foreground, background) {
-	const l1 = relativeLuminance(foreground);
-	const l2 = relativeLuminance(background);
-	if (l1 === null || l2 === null) return null;
-	const lighter = Math.max(l1, l2);
-	const darker = Math.min(l1, l2);
-	return (lighter + CONTRAST_OFFSET) / (darker + CONTRAST_OFFSET);
-}
-/**
-* Canonical token palette for an Appearance value.
-* Site themes use site chrome colors — not RuleDesk Light/Dark.
-* Callers (boot/host) should use this instead of light/dark-only resolvers.
-*/
-function resolveAppearancePalette(appearance) {
-	const theme = appearance.theme;
-	if (theme === "site-dark") return SITE_DARK_PALETTE_RESOLVED;
-	if (theme === "site") return SITE_DEFAULT_PALETTE_RESOLVED;
-	if (theme === "dark") return DARK_PALETTE;
-	if (theme === "custom") return appearance.custom?.base === "dark" ? DARK_PALETTE : LIGHT_PALETTE;
-	return LIGHT_PALETTE;
-}
-function escapeUrlForCss(url) {
-	return url.replace(/\\/g, "\\\\").replace(/"/g, "\\\"");
-}
-function clearBodyBackground() {
-	const body = document.body;
-	if (body === null) return;
-	body.style.removeProperty(BODY_BG_IMAGE);
-	body.style.removeProperty(BODY_BG_SIZE);
-	body.style.removeProperty(BODY_BG_POSITION);
-	body.style.removeProperty(BODY_BG_REPEAT);
-	body.style.removeProperty(BODY_BG_ATTACHMENT);
-}
-/**
-* Apply custom background image on <body> with a dim overlay (0–0.8).
-* Cleared when image is empty.
-*/
-function applyBodyBackgroundImage(imageUrl, dim) {
-	const body = document.body;
-	if (body === null) return;
-	if (imageUrl === void 0 || imageUrl.length === 0) {
-		clearBodyBackground();
-		return;
-	}
-	const clamped = clampBackgroundDim(dim);
-	const escaped = escapeUrlForCss(imageUrl);
-	body.style.setProperty(BODY_BG_IMAGE, `linear-gradient(rgba(0, 0, 0, ${String(clamped)}), rgba(0, 0, 0, ${String(clamped)})), url("${escaped}")`);
-	body.style.setProperty(BODY_BG_SIZE, "cover");
-	body.style.setProperty(BODY_BG_POSITION, "center");
-	body.style.setProperty(BODY_BG_REPEAT, "no-repeat");
-	body.style.setProperty(BODY_BG_ATTACHMENT, "fixed");
-}
-function syncSiteCookieAndStylesheet(appearance) {
-	if (appearance.theme === "site-dark") {
-		setSiteTheme("dark");
-		return;
-	}
-	if (appearance.theme === "site") {
-		setSiteTheme("light");
-		return;
-	}
-	forceLightSiteBase();
-}
-/** CSS pixel screen size × devicePixelRatio (for background hints/resize). */
-function getScreenPixelSize() {
-	const dpr = Number.isFinite(window.devicePixelRatio) && window.devicePixelRatio > 0 ? window.devicePixelRatio : 1;
-	return {
-		width: Math.round(window.screen.width * dpr),
-		height: Math.round(window.screen.height * dpr)
-	};
-}
-/**
-* Fit source inside max box without upscaling. Pure sizing helper (testable).
-*/
-function computeDownscaleSize(sourceWidth, sourceHeight, maxWidth, maxHeight) {
-	if (!Number.isFinite(sourceWidth) || !Number.isFinite(sourceHeight) || sourceWidth <= 0 || sourceHeight <= 0) return {
-		width: 0,
-		height: 0
-	};
-	if (sourceWidth <= maxWidth && sourceHeight <= maxHeight) return {
-		width: Math.round(sourceWidth),
-		height: Math.round(sourceHeight)
-	};
-	const scale = Math.min(maxWidth / sourceWidth, maxHeight / sourceHeight);
-	return {
-		width: Math.max(1, Math.round(sourceWidth * scale)),
-		height: Math.max(1, Math.round(sourceHeight * scale))
-	};
-}
-function loadImageElement(src) {
-	return new Promise((resolve, reject) => {
-		const image = new Image();
-		image.onload = () => {
-			resolve(image);
-		};
-		image.onerror = () => {
-			reject(/* @__PURE__ */ new Error("Could not decode image"));
-		};
-		image.src = src;
-	});
-}
-function readFileAsDataUrl(file) {
-	return new Promise((resolve, reject) => {
-		const reader = new FileReader();
-		reader.onload = () => {
-			if (typeof reader.result === "string") {
-				resolve(reader.result);
-				return;
-			}
-			reject(/* @__PURE__ */ new Error("Could not read image file"));
-		};
-		reader.onerror = () => {
-			reject(reader.error ?? /* @__PURE__ */ new Error("Could not read image file"));
-		};
-		reader.readAsDataURL(file);
-	});
-}
-/**
-* Decode file, downscale to screen pixels (never upscale), encode JPEG.
-*/
-async function prepareBackgroundImageFile(file) {
-	const image = await loadImageElement(await readFileAsDataUrl(file));
-	const sourceWidth = image.naturalWidth;
-	const sourceHeight = image.naturalHeight;
-	const screen = getScreenPixelSize();
-	const sized = computeDownscaleSize(sourceWidth, sourceHeight, screen.width, screen.height);
-	const canvas = document.createElement("canvas");
-	canvas.width = sized.width;
-	canvas.height = sized.height;
-	const context = canvas.getContext("2d");
-	if (context === null) throw new Error("Could not prepare background image");
-	context.drawImage(image, 0, 0, sized.width, sized.height);
-	return {
-		dataUrl: canvas.toDataURL(JPEG_MIME, APPEARANCE_BACKGROUND_JPEG_QUALITY),
-		sourceWidth,
-		sourceHeight,
-		outputWidth: sized.width,
-		outputHeight: sized.height,
-		belowScreen: sourceWidth < screen.width || sourceHeight < screen.height
-	};
-}
-/**
-* Full theme apply for boot and settings UI:
-* site cookie/stylesheet + html.rdw-skin / tokens / site-skin / custom props + body image.
-* Token palette comes from {@link resolveAppearancePalette} and is written once via
-* injectTokenStyles + syncPageRootTokens (same tick as applyAppearanceToDocument).
-*/
-function applyAppearanceTheme(options) {
-	const { appearance } = options;
-	syncSiteCookieAndStylesheet(appearance);
-	applyAppearanceToDocument({
-		appearance,
-		siteSkinCss: options.siteSkinCss ?? getSiteSkinCss(),
-		...options.backgroundDataUrl !== void 0 ? { backgroundDataUrl: options.backgroundDataUrl } : {}
-	});
-	const palette = resolveAppearancePalette(appearance);
-	injectTokenStyles(palette);
-	syncPageRootTokens(palette);
-	if (!themeEnablesSkin(appearance.theme)) document.documentElement.classList.remove(RDW_SKIN_CLASS);
-	if (appearance.theme === "custom" && appearance.custom !== void 0) {
-		const custom = appearance.custom;
-		applyBodyBackgroundImage(options.backgroundDataUrl ?? custom.backgroundImage, custom.backgroundDim ?? 0);
-		if (custom.backgroundDim !== void 0) document.documentElement.style.setProperty(TOKEN_VAR.backgroundDim, String(clampBackgroundDim(custom.backgroundDim)));
-	} else clearBodyBackground();
-	const textOnSurface = contrastRatio(palette.text, palette.surface);
-	return {
-		contrastWarning: textOnSurface !== null && textOnSurface < 4.5,
-		contrastRatio: textOnSurface
-	};
-}
-/**
-* Whether RuleDesk site-skin class is active.
-* site / site-dark keep native page chrome; light / dark / custom enable rdw-skin.
-*/
-function themeEnablesSkin(theme) {
-	return theme === "light" || theme === "dark" || theme === "custom";
-}
-/**
-* Ensures a <style id=...> exists under documentElement (works before <head>).
-* Safe at document-start. B1/B2 should reuse these helpers.
-*/
-function ensureStyleElement(id) {
-	const existing = document.getElementById(id);
-	if (existing instanceof HTMLStyleElement) return existing;
-	if (existing !== null) existing.remove();
-	const style = document.createElement("style");
-	style.id = id;
-	(document.head ?? document.documentElement).append(style);
-	return style;
-}
-/** Inject or replace the design-token stylesheet. */
-function injectTokenStyles(palette) {
-	const style = ensureStyleElement(TOKEN_STYLE_ID);
-	style.textContent = buildTokensCss(palette, ":root");
-	return style;
-}
-/**
-* Copy the same palette onto #rdw-page-root when present.
-* Shadow DOM uses :host { all: initial }, so document :root tokens do not inherit.
-*/
-function syncPageRootTokens(palette) {
-	const host = document.getElementById(RDW_PAGE_ROOT_ID);
-	if (!(host instanceof HTMLElement)) return;
-	applyTokenProperties(host, palette);
-}
-/**
-* Inject or replace the site-skin stylesheet (rules scoped under html.rdw-skin).
-*/
-function injectSiteSkinHook(cssText = "") {
-	const style = ensureStyleElement(SITE_SKIN_STYLE_ID);
-	style.textContent = cssText;
-	return style;
-}
-function applyHtmlThemeAttributes(theme) {
-	const root = document.documentElement;
-	root.setAttribute(RDW_THEME_ATTR, theme);
-	if (themeEnablesSkin(theme)) root.classList.add(RDW_SKIN_CLASS);
-	else root.classList.remove(RDW_SKIN_CLASS);
-}
-/**
-* Document-start-safe appearance apply:
-* html class/attr + token CSS (+ site-skin) + optional custom props.
-* Palette from {@link resolveAppearancePalette} (site ≠ Light/Dark).
-* Also syncs live #rdw-page-root Shadow host to the same palette.
-*/
-function applyAppearanceToDocument(options) {
-	const { appearance } = options;
-	applyHtmlThemeAttributes(appearance.theme);
-	const palette = resolveAppearancePalette(appearance);
-	injectTokenStyles(palette);
-	syncPageRootTokens(palette);
-	injectSiteSkinHook(options.siteSkinCss ?? "");
-	const root = document.documentElement;
-	clearCustomThemeProperties(root);
-	const omitImage = options.omitBackgroundImage === true;
-	const backgroundImage = omitImage ? void 0 : options.backgroundDataUrl ?? appearance.custom?.backgroundImage;
-	if (appearance.theme === "custom" && appearance.custom !== void 0) {
-		const overrides = backgroundImage !== void 0 && backgroundImage.length > 0 ? {
-			backgroundImage,
-			...appearance.custom.backgroundDim !== void 0 ? { backgroundDim: appearance.custom.backgroundDim } : {}
-		} : { ...appearance.custom.backgroundDim !== void 0 ? { backgroundDim: appearance.custom.backgroundDim } : {} };
-		applyCustomThemeProperties(root, overrides);
-	} else if (!omitImage && options.backgroundDataUrl !== void 0 && options.backgroundDataUrl.length > 0) applyCustomThemeProperties(root, { backgroundImage: options.backgroundDataUrl });
-}
-/**
-* Pre-paint appearance read: one GM_getValue + shape checks only (no zod).
-* Full AppearanceSchema validation stays on the post-paint store path.
-*/
-var CUSTOM_BASE_LIGHT = "light";
-var CUSTOM_BASE_DARK = "dark";
-/** Cached raw STORAGE_KEY payload from the single pre-paint GM read. */
-var rawStorageCache;
-var rawStorageRead = false;
-function isRecord(value) {
-	return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-function getGmGetValue() {
-	return GM_getValue;
-}
-/**
-* Single GM read for the pre-paint path. Subsequent calls reuse the cache
-* so layout peek does not hit GM again before first paint.
-*/
-function readRawStorageOnce() {
-	if (!rawStorageRead) {
-		rawStorageCache = getGmGetValue()(STORAGE_KEY, void 0);
-		rawStorageRead = true;
-	}
-	return rawStorageCache;
-}
-function cheapParseTheme(value) {
-	if (value === "site") return APPEARANCE_THEME_SITE;
-	if (value === "site-dark") return APPEARANCE_THEME_SITE_DARK;
-	if (value === "light") return APPEARANCE_THEME_LIGHT;
-	if (value === "dark") return APPEARANCE_THEME_DARK;
-	if (value === "custom") return APPEARANCE_THEME_CUSTOM;
-	return DEFAULT_APPEARANCE_THEME;
-}
-function cheapParseCustom(raw) {
-	if (!isRecord(raw)) return;
-	const baseRaw = raw.base;
-	const custom = { base: baseRaw === CUSTOM_BASE_DARK || baseRaw === CUSTOM_BASE_LIGHT ? baseRaw : CUSTOM_BASE_LIGHT };
-	if (typeof raw.backgroundImage === "string") custom.backgroundImage = raw.backgroundImage;
-	if (typeof raw.backgroundDim === "number" && Number.isFinite(raw.backgroundDim)) custom.backgroundDim = raw.backgroundDim;
-	return custom;
-}
-/**
-* Cheap appearance extract from a raw GM storage blob (or undefined).
-* Does not validate marks / collections / artists / favs.
-*/
-function cheapParseAppearance(raw) {
-	if (!isRecord(raw)) return { theme: DEFAULT_APPEARANCE_THEME };
-	const settings = raw.settings;
-	if (!isRecord(settings)) return { theme: DEFAULT_APPEARANCE_THEME };
-	const appearanceRaw = settings.appearance;
-	if (!isRecord(appearanceRaw)) return { theme: DEFAULT_APPEARANCE_THEME };
-	const theme = cheapParseTheme(appearanceRaw.theme);
-	if (theme !== "custom") return { theme };
-	const custom = cheapParseCustom(appearanceRaw.custom);
-	if (custom === void 0) return { theme };
-	return {
-		theme,
-		custom
-	};
-}
-/** Pre-paint appearance: one GM read + cheap shape check. */
-function peekAppearanceForPaint() {
-	return cheapParseAppearance(readRawStorageOnce());
-}
-/**
-* Cheap layout flags from the same cached GM blob (no second GM read, no zod).
-* Used after CSS injection for grid-density / menu-cleanup / search reserve.
-*/
-function peekLayoutSettings() {
-	const raw = readRawStorageOnce();
-	if (!isRecord(raw) || !isRecord(raw.settings)) return {
-		tweaksEnabled: true,
-		features: {},
-		featureChoice: {}
-	};
-	const settings = raw.settings;
-	const tweaksEnabled = typeof settings.tweaksEnabled === "boolean" ? settings.tweaksEnabled : true;
-	const features = {};
-	if (isRecord(settings.features)) {
-		for (const [key, value] of Object.entries(settings.features)) if (typeof value === "boolean") features[key] = value;
-	}
-	const featureChoice = {};
-	if (isRecord(settings.featureChoice)) {
-		for (const [key, value] of Object.entries(settings.featureChoice)) if (typeof value === "string") featureChoice[key] = value;
-	}
-	return {
-		tweaksEnabled,
-		features,
-		featureChoice
-	};
-}
-function resolveFeatureEnabled(layout, id, defaultEnabled) {
-	if (!layout.tweaksEnabled) return false;
-	const stored = layout.features[id];
-	if (stored === void 0) return defaultEnabled;
-	return stored;
-}
-function resolveFeatureChoice(layout, id, defaultValue, allowed) {
-	const stored = layout.featureChoice[id];
-	if (stored !== void 0 && allowed.includes(stored)) return stored;
-	return defaultValue;
-}
-/**
-* Pre-CSS operations on document-start (must stay minimal — A1 counts these):
-* 1. GM_getValue(STORAGE_KEY) via {@link peekAppearanceForPaint}
-* 2. cheap shape parse of settings.appearance (no zod)
-* Then immediately inject theme + skin CSS (base color only, no background image).
-*/
-function syncSiteCookieAfterCss(appearance) {
-	const theme = appearance.theme === "site-dark" ? "dark" : "light";
-	writeSiteThemeCookie(theme);
-	scheduleSiteDesktopStylesheet(theme);
-}
-/**
-* If the URL already has #rdw/…, stamp html.rdw-own-page after CSS inject.
-* Kept here (not in pages/router) so document-start does not import Preact host.
-*/
-function applyOwnPageClassEarly() {
-	if (parseRdwHash(window.location.hash) === null) return;
-	const root = document.documentElement;
-	if (root === null) return;
-	const style = ensureStyleElement(RDW_OWN_PAGE_STYLE_ID);
-	style.textContent = buildOwnPageCss();
-	root.classList.add(RDW_OWN_PAGE_CLASS);
-}
-/**
-* Runs at userscript document-start, before DOMContentLoaded.
-* Hot path: cheap appearance GM read → inject token + site-skin CSS (no bg image).
-* Cookie sync / rdw-own-page run only after styles are in the DOM.
-*/
-function bootEarly() {
-	const appearance = peekAppearanceForPaint();
-	applyAppearanceToDocument({
-		appearance,
-		siteSkinCss: getSiteSkinCss(),
-		omitBackgroundImage: true
-	});
-	syncSiteCookieAfterCss(appearance);
-	applyOwnPageClassEarly();
-}
-var THUMB_CLASS = "rdw-thumb";
-var THUMB_ANCHOR_NAME = "--rdw-img";
-var FEATURE_STYLE_ID_PREFIX = "rdw-feature-style-";
-var POST_ACTIONS_ID = "rdw-post-actions";
-function featureBodyClass(id) {
-	return `rdw-f-${id}`;
-}
-function featureChoiceBodyClass(id, value) {
-	return `rdw-f-${id}-${value}`;
-}
-var FEATURE_ID$15 = "grid-density";
-var COMPACT_PX = 150;
-var LARGE_PX = 250;
-var CHOICE_DEFAULT = "default";
-var CHOICE_COMPACT = "compact";
-var CHOICE_LARGE = "large";
-function sizeCss(choiceValue, px) {
-	const bodyClass = featureChoiceBodyClass(FEATURE_ID$15, choiceValue);
-	return [
-		`body.${bodyClass} span.thumb,`,
-		`body.${bodyClass} span.thumb > a {`,
-		`  width: ${String(px)}px !important;`,
-		`  height: ${String(px)}px !important;`,
-		`}`,
-		`body.${bodyClass} img.preview {`,
-		`  max-width: ${String(px)}px !important;`,
-		`  max-height: ${String(px)}px !important;`,
-		`}`
-	].join("\n");
-}
-/** Same gap on both axes for Default, Compact, and Large. Does not set cell size. */
-function gapCss() {
-	return [
-		`body.${featureBodyClass(FEATURE_ID$15)} div.image-list {`,
-		`  column-gap: ${String(4)}px !important;`,
-		`  row-gap: ${String(4)}px !important;`,
-		`}`
-	].join("\n");
-}
-var gridDensityFeature = exports("bw",{
-	id: FEATURE_ID$15,
-	label: "Grid size",
-	pages: ["list", "favorites"],
-	defaultEnabled: true,
-	cssOnly: true,
-	choice: {
-		options: [
-			{
-				value: CHOICE_DEFAULT,
-				label: "Default"
-			},
-			{
-				value: CHOICE_COMPACT,
-				label: "Compact (150)"
-			},
-			{
-				value: CHOICE_LARGE,
-				label: "Large (250)"
-			}
-		],
-		defaultValue: CHOICE_DEFAULT
-	},
-	css: [
-		sizeCss(CHOICE_COMPACT, COMPACT_PX),
-		sizeCss(CHOICE_LARGE, LARGE_PX),
-		gapCss()
-	].join("\n"),
-	mount: () => void 0
-});
-var FEATURE_ID$14 = "menu-cleanup";
-var FEATURE_LABEL$14 = "Clean header menu";
-var CONTENT_ID$1 = "content";
-var HIDDEN_CLASS = "rdw-menu-hidden";
-var BODY_FEATURE_CLASS$3 = featureBodyClass(FEATURE_ID$14);
-var MISSING_MENU_WARN = "Header menu not found";
-var HIDE_LINK_TEXT_SET = /* @__PURE__ */ new Set([
-	"iCame Top 100",
-	"Discord",
-	"X",
-	"Other Sites",
-	"Contact Us",
-	"DMCA",
-	"About",
-	"TOS",
-	"My Favorites"
-]);
-var FEATURE_PAGES$14 = [
-	"list",
-	"post",
-	"favorites",
-	"other"
-];
-var FEATURE_CSS$13 = `body.${BODY_FEATURE_CLASS$3} li.${HIDDEN_CLASS} { display:none !important; }`;
-function isHeaderMenuLink(anchor, content) {
-	const listItem = anchor.closest("li");
-	if (listItem === null) return false;
-	if (content !== null && content.contains(listItem)) return false;
-	return true;
-}
-function collectHeaderMenuLinks() {
-	const content = document.getElementById(CONTENT_ID$1);
-	const anchors = document.querySelectorAll("a");
-	const headerLinks = [];
-	for (const node of anchors) {
-		if (!(node instanceof HTMLAnchorElement)) continue;
-		if (!isHeaderMenuLink(node, content)) continue;
-		headerLinks.push(node);
-	}
-	return headerLinks;
-}
-function mountMenuCleanup(_ctx) {
-	const headerLinks = collectHeaderMenuLinks();
-	if (headerLinks.length === 0) {
-		log.warn(MISSING_MENU_WARN);
-		return;
-	}
-	for (const anchor of headerLinks) {
-		const text = anchor.textContent?.trim() ?? "";
-		if (!HIDE_LINK_TEXT_SET.has(text)) continue;
-		const listItem = anchor.closest("li");
-		if (listItem === null) continue;
-		listItem.classList.add(HIDDEN_CLASS);
-	}
-}
-var menuCleanupFeature = {
-	id: FEATURE_ID$14,
-	label: FEATURE_LABEL$14,
-	pages: [...FEATURE_PAGES$14],
-	defaultEnabled: true,
-	cssOnly: true,
-	css: FEATURE_CSS$13,
-	mount: mountMenuCleanup
-};
-function detectPageKind(search) {
-	const params = new URLSearchParams(search);
-	const page = params.get(SEARCH_PARAM_PAGE);
-	const section = params.get("s");
-	if (page === "post" && section === "list") return "list";
-	if (page === "post" && section === "view") return "post";
-	if (page === "favorites" && section === "view") return "favorites";
-	return "other";
-}
-function readPostIdFromSearch(search) {
-	const params = new URLSearchParams(search);
-	const page = params.get(SEARCH_PARAM_PAGE);
-	const section = params.get("s");
-	const id = params.get("id");
-	if (page !== "post" || section !== "view") return null;
-	if (id === null || id.trim().length === 0) return null;
-	if (!/^\d+$/.test(id)) return null;
-	return id;
-}
-var COOKIE_PAIR_SEPARATOR = ";";
-var COOKIE_NAME_VALUE_SEPARATOR = "=";
-var BLACKLIST_SPLIT_PATTERN = /[, ]|%20+/g;
-var USER_ENTRY_PREFIX = "user:";
-var RATING_ENTRY_PREFIX = "rating:";
-var MS_PER_DAY = 864e5;
-var DAYS_PER_YEAR = 365;
-var BLACKLIST_TAG_SEPARATOR = " ";
-var changeListeners = /* @__PURE__ */ new Set();
-/** Subscribe to writes of the site `tag_blacklist` cookie. */
-function onSiteBlacklistChange(cb) {
-	changeListeners.add(cb);
-	return () => {
-		changeListeners.delete(cb);
-	};
-}
-function readCookieValue(name) {
-	const pairs = document.cookie.split(COOKIE_PAIR_SEPARATOR);
-	const prefix = `${name}${COOKIE_NAME_VALUE_SEPARATOR}`;
-	for (const pair of pairs) {
-		const trimmed = pair.trim();
-		if (!trimmed.startsWith(prefix)) continue;
-		return trimmed.slice(prefix.length);
-	}
-	return null;
-}
-function normalizeBlacklistTags(tags) {
-	const seen = /* @__PURE__ */ new Set();
-	const result = [];
-	for (const raw of tags) {
-		const normalized = raw.trim().toLowerCase().replaceAll(" ", "_");
-		if (normalized.length === 0 || seen.has(normalized)) continue;
-		seen.add(normalized);
-		result.push(normalized);
-	}
-	return result;
-}
-function encodeBlacklistCookieValue(tags) {
-	if (tags.length === 0) return "";
-	return encodeURIComponent(encodeURIComponent(tags.join(BLACKLIST_TAG_SEPARATOR)));
-}
-function writeBlacklistCookie(value, expires) {
-	document.cookie = [
-		`${SITE_BLACKLIST_COOKIE_NAME}${COOKIE_NAME_VALUE_SEPARATOR}${value}`,
-		`expires=${expires.toUTCString()}`,
-		`path=/`
-	].join("; ");
-}
-/**
-* Reads the site `tag_blacklist` cookie using the site's decode + split rule.
-* Empty tokens are dropped; entries are lowercased.
-*/
-function readSiteBlacklist() {
-	const raw = readCookieValue(SITE_BLACKLIST_COOKIE_NAME);
-	if (raw === null || raw.length === 0) return [];
-	let decoded;
-	try {
-		decoded = decodeURIComponent(decodeURI(raw));
-	} catch {
-		return [];
-	}
-	const result = [];
-	for (const part of decoded.split(BLACKLIST_SPLIT_PATTERN)) {
-		const trimmed = part.trim().toLowerCase();
-		if (trimmed.length === 0) continue;
-		result.push(trimmed);
-	}
-	return result;
-}
-/**
-* Writes the site `tag_blacklist` cookie (browser cookie only; account list untouched).
-* Value encoding matches the live site: encodeURIComponent twice over space-joined tags.
-*/
-function writeSiteBlacklist(tags) {
-	const normalized = normalizeBlacklistTags(tags);
-	const expires = new Date(Date.now() + 5 * DAYS_PER_YEAR * MS_PER_DAY);
-	writeBlacklistCookie(encodeBlacklistCookieValue(normalized), expires);
-	for (const listener of changeListeners) listener(normalized);
-}
-/**
-* True when any blacklist entry matches a post tag or `rating:x`.
-* Entries starting with `user:` are ignored. `score` is reserved for callers.
-*/
-function isBlacklisted(tags, score, rating, list) {
-	if (list.length === 0) return false;
-	const tagSet = /* @__PURE__ */ new Set();
-	for (const tag of tags) {
-		const normalized = tag.trim().toLowerCase();
-		if (normalized.length > 0) tagSet.add(normalized);
-	}
-	const ratingNorm = rating.trim().toLowerCase();
-	for (const entry of list) {
-		if (entry.startsWith(USER_ENTRY_PREFIX)) continue;
-		if (entry.startsWith(RATING_ENTRY_PREFIX)) {
-			const value = entry.slice(7);
-			if (value.length > 0 && value === ratingNorm) return true;
-			continue;
-		}
-		if (tagSet.has(entry)) return true;
-	}
-	return false;
-}
-var FEATURE_ID$13 = "blacklist-hide";
-var FEATURE_LABEL$13 = "Hide blacklisted posts";
-var FEATURE_PAGES$13 = ["list"];
-var BODY_FEATURE_CLASS$2 = featureBodyClass(FEATURE_ID$13);
-var CLASS_BLACKLISTED$1 = "rdw-blacklisted";
-var SCORE_TOKEN_PREFIX$4 = "score:";
-var RATING_TOKEN_PREFIX$3 = "rating:";
-var WHITESPACE_SPLIT = /\s+/;
-var FEATURE_CSS$12 = `
-body.${BODY_FEATURE_CLASS$2} span.thumb.${CLASS_BLACKLISTED$1} {
-  display: none !important;
-}
-`.trim();
-var unsubscribeThumbsAdded$5;
-var unsubscribeBlacklistChange;
-function parseAltTags(alt) {
-	const tags = [];
-	for (const token of alt.trim().split(WHITESPACE_SPLIT)) {
-		if (token.length === 0) continue;
-		const lower = token.toLowerCase();
-		if (lower.startsWith(SCORE_TOKEN_PREFIX$4) || lower.startsWith(RATING_TOKEN_PREFIX$3)) continue;
-		tags.push(token);
-	}
-	return tags;
-}
-function parseTitleRating(title) {
-	for (const token of title.trim().split(WHITESPACE_SPLIT)) {
-		if (token.length === 0) continue;
-		if (token.toLowerCase().startsWith(RATING_TOKEN_PREFIX$3)) return token.slice(7);
-	}
-	return "";
-}
-function applyBlacklistToThumb(thumb, list) {
-	if (!(thumb instanceof HTMLElement)) return;
-	const img = thumb.querySelector(SITE_SELECTORS.previewImage);
-	const alt = img?.getAttribute("alt") ?? "";
-	const title = img?.getAttribute("title") ?? "";
-	const matched = isBlacklisted(parseAltTags(alt), 0, parseTitleRating(title), list);
-	thumb.classList.toggle(CLASS_BLACKLISTED$1, matched);
-}
-function applyBlacklistToRoot(root, list = readSiteBlacklist()) {
-	const thumbs = root.querySelectorAll(SITE_SELECTORS.thumb);
-	for (const thumb of thumbs) applyBlacklistToThumb(thumb, list);
-}
-function ensureSubscriptions() {
-	if (unsubscribeThumbsAdded$5 === void 0) unsubscribeThumbsAdded$5 = onThumbsAdded((root) => {
-		applyBlacklistToRoot(root);
-	});
-	if (unsubscribeBlacklistChange === void 0) unsubscribeBlacklistChange = onSiteBlacklistChange((list) => {
-		applyBlacklistToRoot(document, list);
-	});
-}
-function mountBlacklistHide(ctx) {
-	if (ctx.pageKind !== "list") return;
-	applyBlacklistToRoot(document);
-	ensureSubscriptions();
-}
-var blacklistHideFeature = {
-	id: FEATURE_ID$13,
-	label: FEATURE_LABEL$13,
-	pages: [...FEATURE_PAGES$13],
-	defaultEnabled: true,
-	cssOnly: true,
-	css: FEATURE_CSS$12,
-	mount: mountBlacklistHide
-};
-/**
-* When the image of a post fails to load, tries the same file on the site's
-* other image servers, one after another.
-*
-* The host list comes from the desktop RuleDesk, where it served API file
-* addresses. A retry happens only after a real load error, at most once per
-* host, and only for an address on one of these hosts.
-*/
-var FEATURE_ID$12 = "cdn-fallback";
-var FEATURE_LABEL$12 = "Retry a failed post image on other servers";
-var FEATURE_PAGES$12 = ["post"];
-var POST_IMAGE_SELECTOR = "img#image";
-var EVENT_ERROR = "error";
-/** Image servers, in the order they are tried. */
-var CDN_IMAGE_HOSTS = [
-	"wimg.rule34.xxx",
-	"img.rule34.xxx",
-	"us.rule34.xxx",
-	"api-cdn.rule34.xxx"
-];
-/**
-* The same address on the next server that was not tried yet, or null when
-* the address is not on a known server or every server was tried.
-*/
-function nextCdnUrl(current, tried) {
-	let url;
-	try {
-		url = new URL(current, window.location.href);
-	} catch {
-		return null;
-	}
-	if (!CDN_IMAGE_HOSTS.includes(url.hostname)) return null;
-	for (const host of CDN_IMAGE_HOSTS) {
-		if (host === url.hostname || tried.has(host)) continue;
-		url.hostname = host;
-		return url.href;
-	}
-	return null;
-}
-function hostOf(address) {
-	try {
-		return new URL(address, window.location.href).hostname;
-	} catch {
-		return "";
-	}
-}
-function mountCdnFallback(_ctx) {
-	const image = document.querySelector(POST_IMAGE_SELECTOR);
-	if (!(image instanceof HTMLImageElement)) return;
-	const tried = /* @__PURE__ */ new Set();
-	image.addEventListener(EVENT_ERROR, () => {
-		const current = image.getAttribute("src") ?? "";
-		tried.add(hostOf(current));
-		const next = nextCdnUrl(current, tried);
-		if (next !== null) image.setAttribute("src", next);
-	});
-}
-var cdnFallbackFeature = {
-	id: FEATURE_ID$12,
-	label: FEATURE_LABEL$12,
-	pages: [...FEATURE_PAGES$12],
-	defaultEnabled: true,
-	css: "",
-	mount: mountCdnFallback
-};
 /**
 * Saves one file through the script manager (`GM_download`). The files are on
 * the site's CDN, another origin, so a plain download link cannot name or
@@ -8944,9 +6737,9 @@ function downloadFile(url, name) {
 * Nothing else in the script uses the API.
 */
 var API_CREDENTIALS_KEY = "ruledesk-web.api";
-var ApiCredentialsSchema = object({
-	userId: string().check(_minLength(1)),
-	apiKey: string().check(_minLength(1))
+var ApiCredentialsSchema = /* @__PURE__ */ object({
+	userId: (/* @__PURE__ */ string()).check(/* @__PURE__ */ _minLength(1)),
+	apiKey: (/* @__PURE__ */ string()).check(/* @__PURE__ */ _minLength(1))
 });
 function getApiCredentials() {
 	const parsed = ApiCredentialsSchema.safeParse(GM_getValue(API_CREDENTIALS_KEY));
@@ -9093,9 +6886,9 @@ var SORT_TOKEN_PREFIX$1 = "sort:";
 var ID_BELOW_PREFIX = "id:<";
 var TOKEN_SPLIT$3 = /\s+/;
 var ALL_QUERY = "all";
-var ApiPostSchema = object({
+var ApiPostSchema = /* @__PURE__ */ object({
 	id: int(),
-	file_url: string().check(_minLength(1))
+	file_url: (/* @__PURE__ */ string()).check(/* @__PURE__ */ _minLength(1))
 });
 function buildApiUrl(query, credentials) {
 	const params = new URLSearchParams();
@@ -9241,17 +7034,17 @@ var RUNNING_TAB_VALUE = "1";
 /** Wait before the one retry of a failed file. */
 var RETRY_DELAY_MS = 5e3;
 var NO_FILES_MESSAGE = "The API returned no files for this. Deleted posts have none.";
-var JobSchema = object({
-	label: string(),
-	folder: string(),
-	files: array(object({
+var JobSchema = /* @__PURE__ */ object({
+	label: /* @__PURE__ */ string(),
+	folder: /* @__PURE__ */ string(),
+	files: /* @__PURE__ */ array(/* @__PURE__ */ object({
 		postId: int(),
-		url: string()
+		url: /* @__PURE__ */ string()
 	}))
 });
-var PositionSchema = object({
+var PositionSchema = /* @__PURE__ */ object({
 	next: int(),
-	failed: array(int())
+	failed: /* @__PURE__ */ array(int())
 });
 var IDLE = {
 	phase: "idle",
@@ -9473,9 +7266,9 @@ function restoreDownloads() {
 * while a job exists. It shows what is being saved and holds Pause, Resume
 * and Cancel.
 */
-var FEATURE_ID$11 = DOWNLOADS_FEATURE_ID;
-var FEATURE_LABEL$11 = "Download manager";
-var FEATURE_PAGES$11 = [
+var FEATURE_ID$13 = DOWNLOADS_FEATURE_ID;
+var FEATURE_LABEL$12 = "Download manager";
+var FEATURE_PAGES$12 = [
 	"list",
 	"post",
 	"favorites",
@@ -9496,7 +7289,7 @@ var LABEL_PAUSE = "Pause";
 var LABEL_RESUME = "Resume";
 var LABEL_CANCEL = "Cancel";
 var LABEL_CLOSE = "Close";
-var FEATURE_CSS$11 = `
+var FEATURE_CSS$12 = `
 #${DOWNLOADS_PANEL_ID} {
   position: fixed;
   right: ${String(PANEL_INSET_PX)}px;
@@ -9606,11 +7399,11 @@ function mountDownloads(_ctx) {
 	restoreDownloads();
 }
 var downloadsFeature = {
-	id: FEATURE_ID$11,
-	label: FEATURE_LABEL$11,
-	pages: [...FEATURE_PAGES$11],
+	id: FEATURE_ID$13,
+	label: FEATURE_LABEL$12,
+	pages: [...FEATURE_PAGES$12],
 	defaultEnabled: true,
-	css: `${FEATURE_CSS$11}
+	css: `${FEATURE_CSS$12}
 ${GRID_SELECT_CSS}`,
 	mount: mountDownloads
 };
@@ -9831,14 +7624,14 @@ function syncFavoritesPage(root = document, search = window.location.search) {
 	bindRemoveClickCapture();
 }
 /** Minimum pause between sequential favorites page fetches. */
-var FAVORITES_SYNC_PAGE_PAUSE_MS = exports("b7",1500);
+var FAVORITES_SYNC_PAGE_PAUSE_MS = exports("b8",1500);
 /** Pauses before each of the three retries (HTTP error / missing paginator). */
 var FAVORITES_SYNC_RETRY_DELAYS_MS = [
 	1e4,
 	3e4,
 	6e4
 ];
-var FAVORITES_SYNC_MODE_INCREMENTAL = exports("bx",FAVS_SYNC_MODE_INCREMENTAL);
+var FAVORITES_SYNC_MODE_INCREMENTAL = exports("by",FAVS_SYNC_MODE_INCREMENTAL);
 var FAVORITES_SYNC_MODE_FULL = exports("F",FAVS_SYNC_MODE_FULL);
 var MY_FAVORITES_LINK_SELECTOR$1 = "li#my-favorites-container a[href*=\"page=favorites\"]";
 var THUMB_SELECTOR$1 = "span.thumb";
@@ -10308,9 +8101,9 @@ async function runFavoritesSync(options) {
 		};
 	}
 }
-var FEATURE_ID$10 = "favorites-bulk";
-var FEATURE_LABEL$10 = "Bulk remove favorites";
-var FEATURE_PAGES$10 = ["favorites"];
+var FEATURE_ID$12 = "favorites-bulk";
+var FEATURE_LABEL$11 = "Bulk remove favorites";
+var FEATURE_PAGES$11 = ["favorites"];
 var ROOT_ID$2 = "rdw-favorites-bulk";
 var ROOT_CLASS$2 = "rdw-favorites-bulk";
 var BAR_CLASS = "rdw-favorites-bulk-bar";
@@ -10353,9 +8146,9 @@ var CHECK_SIZE = "1.25rem";
 var CHECK_INSET = "0.25rem";
 var CHECK_Z_INDEX = 2;
 var CHECK_FONT_SIZE = "0.75rem";
-var BODY_CLASS$5 = featureBodyClass(FEATURE_ID$10);
+var BODY_CLASS$5 = featureBodyClass(FEATURE_ID$12);
 var BODY_SELECTING_CLASS = `${BODY_CLASS$5}-selecting`;
-var FEATURE_CSS$10 = `
+var FEATURE_CSS$11 = `
 body.${BODY_CLASS$5} .${ROOT_CLASS$2} {
   display: block;
   box-sizing: border-box;
@@ -10706,31 +8499,28 @@ function FavoritesBulkBar(props) {
 			children: TEXT_SELECT
 		})
 	});
-	if (phase.kind === "removing") {
-		const ratio = phase.total === 0 ? 0 : phase.done / phase.total;
-		return /* @__PURE__ */ a("div", {
-			className: BAR_CLASS,
-			children: [
-				/* @__PURE__ */ a("div", {
-					className: PROGRESS_WRAP_CLASS,
-					children: /* @__PURE__ */ a(ProgressBar, {
-						value: ratio,
-						label: progressLabel(phase.done, phase.total)
-					})
-				}),
-				/* @__PURE__ */ a("span", {
-					className: STATUS_CLASS$1,
-					children: progressLabel(phase.done, phase.total)
-				}),
-				/* @__PURE__ */ a(Button, {
-					variant: "secondary",
-					size: "s",
-					onClick: stopRemoval,
-					children: TEXT_STOP
+	if (phase.kind === "removing") return /* @__PURE__ */ a("div", {
+		className: BAR_CLASS,
+		children: [
+			/* @__PURE__ */ a("div", {
+				className: PROGRESS_WRAP_CLASS,
+				children: /* @__PURE__ */ a(ProgressBar, {
+					value: phase.total === 0 ? 0 : phase.done / phase.total,
+					label: progressLabel(phase.done, phase.total)
 				})
-			]
-		});
-	}
+			}),
+			/* @__PURE__ */ a("span", {
+				className: STATUS_CLASS$1,
+				children: progressLabel(phase.done, phase.total)
+			}),
+			/* @__PURE__ */ a(Button, {
+				variant: "secondary",
+				size: "s",
+				onClick: stopRemoval,
+				children: TEXT_STOP
+			})
+		]
+	});
 	if (phase.kind === "error" || phase.kind === "stopped") return /* @__PURE__ */ a("div", {
 		className: BAR_CLASS,
 		children: [/* @__PURE__ */ a("span", {
@@ -10817,11 +8607,11 @@ function mountFavoritesBulk(_ctx) {
 	Q$1(/* @__PURE__ */ a(FavoritesBulkBar, { onSelectionModeChange }), root);
 }
 var favoritesBulkFeature = {
-	id: FEATURE_ID$10,
-	label: FEATURE_LABEL$10,
-	pages: [...FEATURE_PAGES$10],
+	id: FEATURE_ID$12,
+	label: FEATURE_LABEL$11,
+	pages: [...FEATURE_PAGES$11],
 	defaultEnabled: true,
-	css: FEATURE_CSS$10,
+	css: FEATURE_CSS$11,
 	mount: mountFavoritesBulk
 };
 var BASE_GRID_CSS = `
@@ -10830,7 +8620,8 @@ var BASE_GRID_CSS = `
   anchor-scope: ${THUMB_ANCHOR_NAME};
 }
 
-.${THUMB_CLASS} img.preview {
+.${THUMB_CLASS} img.preview,
+.${THUMB_CLASS} > a > img {
   anchor-name: ${THUMB_ANCHOR_NAME};
 }
 `;
@@ -10841,7 +8632,8 @@ var THUMB_IMAGE_HOST = "wimg.rule34.xxx";
 * slash on ws-cdn-video.rule34.xxx).
 */
 var VIDEO_CDN_ORIGIN = "https://ws-cdn-video.rule34.xxx";
-var THUMB_PATH_PATTERN = /^\/thumbnails\/([^/]+)\/thumbnail_([^/]+)\.jpg$/i;
+/** Repeated slashes are accepted: the favorites page writes `/thumbnails//<dir>/`. */
+var THUMB_PATH_PATTERN = /^\/+thumbnails\/+([^/]+)\/+thumbnail_([^/]+)\.jpg$/i;
 var HTTPS_PROTOCOL = "https:";
 var THUMB_DIRECTORY = "thumbnails";
 var THUMB_FILE_PREFIX = "thumbnail_";
@@ -11890,8 +9682,7 @@ function isMergedFeedPage(search, artistTags, groupSize) {
 	const params = new URLSearchParams(search);
 	const pid = params.get("pid");
 	if (pid !== null && pid.length > 0 && pid !== FIRST_PAGE_PID$1) return false;
-	const tagsParam = params.get("tags") ?? "";
-	return findFeedGroupIndex(tagsParam, artistTags, groupSize) === 0;
+	return findFeedGroupIndex(params.get("tags") ?? "", artistTags, groupSize) === 0;
 }
 /**
 * Starts the merged feed on a page for which {@link isMergedFeedPage} is true.
@@ -12001,15 +9792,15 @@ function mountFeedMerge(options) {
 	pump();
 	return true;
 }
-var FEATURE_ID$9 = "feed";
-var FEATURE_LABEL$9 = "Feed in site menu";
-var FEATURE_PAGES$9 = [
+var FEATURE_ID$11 = "feed";
+var FEATURE_LABEL$10 = "Feed in site menu";
+var FEATURE_PAGES$10 = [
 	"list",
 	"post",
 	"favorites",
 	"other"
 ];
-var CONTENT_ID = "content";
+var CONTENT_ID$1 = "content";
 var POSTS_LINK_TEXT = "Posts";
 var FEED_LINK_TEXT = "Feed";
 var CURRENT_PAGE_CLASS = "current-page";
@@ -12038,8 +9829,8 @@ var NEW_PLAQUE_LEFT_PX = 6;
 var NEW_PLAQUE_TOP_PX = 6;
 var EVENT_PAGESHOW$1 = "pageshow";
 var EVENT_CLICK$2 = "click";
-var BODY_CLASS$4 = featureBodyClass(FEATURE_ID$9);
-var FEATURE_CSS$9 = `
+var BODY_CLASS$4 = featureBodyClass(FEATURE_ID$11);
+var FEATURE_CSS$10 = `
 body.${BODY_CLASS$4} span.thumb.new.${THUMB_CLASS} {
   position: relative;
 }
@@ -12069,7 +9860,7 @@ var unsubscribeThumbsAdded$3;
 var pageshowBound$1 = false;
 var boundFeedLink = null;
 function findPostsMenuItem() {
-	const content = document.getElementById(CONTENT_ID);
+	const content = document.getElementById(CONTENT_ID$1);
 	const anchors = document.querySelectorAll("a");
 	for (const node of anchors) {
 		if (!(node instanceof HTMLAnchorElement)) continue;
@@ -12203,13 +9994,72 @@ function mountFeed(ctx) {
 	});
 }
 var feedFeature = {
-	id: FEATURE_ID$9,
-	label: FEATURE_LABEL$9,
-	pages: [...FEATURE_PAGES$9],
+	id: FEATURE_ID$11,
+	label: FEATURE_LABEL$10,
+	pages: [...FEATURE_PAGES$10],
 	defaultEnabled: true,
-	css: `${FEATURE_CSS$9}\n${FEED_MERGE_CSS}`,
+	css: `${FEATURE_CSS$10}\n${FEED_MERGE_CSS}`,
 	mount: mountFeed
 };
+var FEATURE_ID$10 = "grid-density";
+var COMPACT_PX = 150;
+var LARGE_PX = 250;
+var CHOICE_DEFAULT = "default";
+var CHOICE_COMPACT = "compact";
+var CHOICE_LARGE = "large";
+function sizeCss(choiceValue, px) {
+	const bodyClass = featureChoiceBodyClass(FEATURE_ID$10, choiceValue);
+	return [
+		`body.${bodyClass} span.thumb,`,
+		`body.${bodyClass} span.thumb > a {`,
+		`  width: ${String(px)}px !important;`,
+		`  height: ${String(px)}px !important;`,
+		`}`,
+		`body.${bodyClass} img.preview {`,
+		`  max-width: ${String(px)}px !important;`,
+		`  max-height: ${String(px)}px !important;`,
+		`}`
+	].join("\n");
+}
+/** Same gap on both axes for Default, Compact, and Large. Does not set cell size. */
+function gapCss() {
+	return [
+		`body.${featureBodyClass(FEATURE_ID$10)} div.image-list {`,
+		`  column-gap: ${String(4)}px !important;`,
+		`  row-gap: ${String(4)}px !important;`,
+		`}`
+	].join("\n");
+}
+var gridDensityFeature = exports("bx",{
+	id: FEATURE_ID$10,
+	label: "Grid size",
+	pages: ["list", "favorites"],
+	defaultEnabled: true,
+	cssOnly: true,
+	choice: {
+		options: [
+			{
+				value: CHOICE_DEFAULT,
+				label: "Default"
+			},
+			{
+				value: CHOICE_COMPACT,
+				label: "Compact (150)"
+			},
+			{
+				value: CHOICE_LARGE,
+				label: "Large (250)"
+			}
+		],
+		defaultValue: CHOICE_DEFAULT
+	},
+	css: [
+		sizeCss(CHOICE_COMPACT, COMPACT_PX),
+		sizeCss(CHOICE_LARGE, LARGE_PX),
+		gapCss()
+	].join("\n"),
+	mount: () => void 0
+});
 var SEEN_DIM_FEATURE_ID = "seen-dim";
 var SEEN_CLASS = "rdw-seen";
 var SEEN_DIM_LABEL = "Dim seen posts";
@@ -12273,10 +10123,10 @@ body.${featureBodyClass(SEEN_DIM_FEATURE_ID)} .${SEEN_CLASS}:hover img.preview {
 `,
 	mount: mountSeenDim
 };
-var FEATURE_ID$8 = "infinite-scroll";
-var FEATURE_LABEL$8 = "Infinite scroll";
-var FEATURE_PAGES$8 = ["list"];
-var BODY_FEATURE_CLASS$1 = featureBodyClass(FEATURE_ID$8);
+var FEATURE_ID$9 = "infinite-scroll";
+var FEATURE_LABEL$9 = "Infinite scroll";
+var FEATURE_PAGES$9 = ["list"];
+var BODY_FEATURE_CLASS$2 = featureBodyClass(FEATURE_ID$9);
 /** Prefetch when remaining distance to list end ≤ this many viewport heights. */
 var PREFETCH_REMAINING_VIEWPORT_HEIGHTS = 2;
 var MIN_REQUEST_INTERVAL_MS = 1e3;
@@ -12294,8 +10144,8 @@ var PAGINATION_NEXT_SELECTOR = "div.pagination a[alt=\"next\"]";
 var WARN_MISSING = "infinite-scroll: missing image-list or next link; not mounted";
 var SCORE_TOKEN_PREFIX$1 = "score:";
 var RATING_TOKEN_PREFIX = "rating:";
-var FEATURE_CSS$8 = `
-body.${BODY_FEATURE_CLASS$1} .${CLASS_SENTINEL} {
+var FEATURE_CSS$9 = `
+body.${BODY_FEATURE_CLASS$2} .${CLASS_SENTINEL} {
   display: block;
   width: 100%;
   height: 1px;
@@ -12304,7 +10154,7 @@ body.${BODY_FEATURE_CLASS$1} .${CLASS_SENTINEL} {
   border: 0;
   pointer-events: none;
 }
-body.${BODY_FEATURE_CLASS$1} .${CLASS_STATUS} {
+body.${BODY_FEATURE_CLASS$2} .${CLASS_STATUS} {
   display: block;
   width: 100%;
   margin: 0.75rem 0;
@@ -12312,7 +10162,7 @@ body.${BODY_FEATURE_CLASS$1} .${CLASS_STATUS} {
   font-size: 0.875rem;
   line-height: 1.4;
 }
-body.${BODY_FEATURE_CLASS$1} .${CLASS_SEPARATOR} {
+body.${BODY_FEATURE_CLASS$2} .${CLASS_SEPARATOR} {
   display: block;
   width: 100%;
   margin: 0.75rem 0 0.5rem;
@@ -12321,7 +10171,7 @@ body.${BODY_FEATURE_CLASS$1} .${CLASS_SEPARATOR} {
   font-weight: 600;
   opacity: 0.75;
 }
-body.${BODY_FEATURE_CLASS$1} .${CLASS_RETRY} {
+body.${BODY_FEATURE_CLASS$2} .${CLASS_RETRY} {
   margin-left: 0.5rem;
   color: inherit;
   background: transparent;
@@ -12331,11 +10181,11 @@ body.${BODY_FEATURE_CLASS$1} .${CLASS_RETRY} {
   cursor: pointer;
   font: inherit;
 }
-body.${BODY_FEATURE_CLASS$1} .${CLASS_RETRY}:focus-visible {
+body.${BODY_FEATURE_CLASS$2} .${CLASS_RETRY}:focus-visible {
   outline: 2px solid var(--rdw-accent);
   outline-offset: 2px;
 }
-body.${BODY_FEATURE_CLASS$1} span.thumb.${CLASS_BLACKLISTED} {
+body.${BODY_FEATURE_CLASS$2} span.thumb.${CLASS_BLACKLISTED} {
   display: none !important;
 }
 `.trim();
@@ -12550,23 +10400,86 @@ function mountInfiniteScroll(_ctx) {
 	observer.observe(sentinel);
 }
 var infiniteScrollFeature = {
+	id: FEATURE_ID$9,
+	label: FEATURE_LABEL$9,
+	pages: [...FEATURE_PAGES$9],
+	defaultEnabled: true,
+	css: FEATURE_CSS$9,
+	mount: mountInfiniteScroll
+};
+var FEATURE_ID$8 = "menu-cleanup";
+var FEATURE_LABEL$8 = "Clean header menu";
+var CONTENT_ID = "content";
+var HIDDEN_CLASS = "rdw-menu-hidden";
+var BODY_FEATURE_CLASS$1 = featureBodyClass(FEATURE_ID$8);
+var MISSING_MENU_WARN = "Header menu not found";
+var HIDE_LINK_TEXT_SET = /* @__PURE__ */ new Set([
+	"iCame Top 100",
+	"Discord",
+	"X",
+	"Other Sites",
+	"Contact Us",
+	"DMCA",
+	"About",
+	"TOS",
+	"My Favorites"
+]);
+var FEATURE_PAGES$8 = [
+	"list",
+	"post",
+	"favorites",
+	"other"
+];
+var FEATURE_CSS$8 = `body.${BODY_FEATURE_CLASS$1} li.${HIDDEN_CLASS} { display:none !important; }`;
+function isHeaderMenuLink(anchor, content) {
+	const listItem = anchor.closest("li");
+	if (listItem === null) return false;
+	if (content !== null && content.contains(listItem)) return false;
+	return true;
+}
+function collectHeaderMenuLinks() {
+	const content = document.getElementById(CONTENT_ID);
+	const anchors = document.querySelectorAll("a");
+	const headerLinks = [];
+	for (const node of anchors) {
+		if (!(node instanceof HTMLAnchorElement)) continue;
+		if (!isHeaderMenuLink(node, content)) continue;
+		headerLinks.push(node);
+	}
+	return headerLinks;
+}
+function mountMenuCleanup(_ctx) {
+	const headerLinks = collectHeaderMenuLinks();
+	if (headerLinks.length === 0) {
+		log.warn(MISSING_MENU_WARN);
+		return;
+	}
+	for (const anchor of headerLinks) {
+		const text = anchor.textContent?.trim() ?? "";
+		if (!HIDE_LINK_TEXT_SET.has(text)) continue;
+		const listItem = anchor.closest("li");
+		if (listItem === null) continue;
+		listItem.classList.add(HIDDEN_CLASS);
+	}
+}
+var menuCleanupFeature = {
 	id: FEATURE_ID$8,
 	label: FEATURE_LABEL$8,
 	pages: [...FEATURE_PAGES$8],
 	defaultEnabled: true,
+	cssOnly: true,
 	css: FEATURE_CSS$8,
-	mount: mountInfiniteScroll
+	mount: mountMenuCleanup
 };
 var AUTOCOMPLETE_PATH = "/public/autocomplete.php";
-var AUTOCOMPLETE_TAG_TYPE_ARTIST = exports("bX","artist");
+var AUTOCOMPLETE_TAG_TYPE_ARTIST = exports("bY","artist");
 var HTTP_TOO_MANY_REQUESTS = 429;
 var ABORT_ERROR_NAME = "AbortError";
-var AutocompleteItemSchema = object({
-	label: string(),
-	value: string(),
-	type: optional(nullable(string()))
-});
-var AutocompleteResponseSchema = array(AutocompleteItemSchema);
+var AutocompleteResponseSchema = /* @__PURE__ */ array(/* @__PURE__ */ object({
+	label: /* @__PURE__ */ string(),
+	value: /* @__PURE__ */ string(),
+	type: /* @__PURE__ */ optional(/* @__PURE__ */ nullable(/* @__PURE__ */ string()))
+}));
 function buildAutocompleteUrl(query) {
 	const params = new URLSearchParams();
 	params.set("q", query);
@@ -12751,13 +10664,10 @@ function QueryField(props) {
 		props.onChange(completeLastQueryToken(props.value, option.value));
 		clearSuggestions();
 	};
-	const optional = {
+	return /* @__PURE__ */ a(AutocompleteField, {
 		...props.label === void 0 ? {} : { label: props.label },
 		...props.placeholder === void 0 ? {} : { placeholder: props.placeholder },
-		...props.id === void 0 ? {} : { id: props.id }
-	};
-	return /* @__PURE__ */ a(AutocompleteField, {
-		...optional,
+		...props.id === void 0 ? {} : { id: props.id },
 		value: props.value,
 		suggestions,
 		replaceOnSelect: false,
@@ -15567,7 +13477,7 @@ var BODY_CLASS$1 = featureBodyClass(FEATURE_ID$3);
 * Set on document.body while the panel's «AI posts» row is rendered.
 * Site-skin (HANDOFF G) must hide native Filter AI only under this class.
 */
-var SEARCH_TOOLS_AI_ROW_BODY_CLASS = "rdw-search-tools-ai-posts";
+var SEARCH_TOOLS_AI_ROW_BODY_CLASS$1 = "rdw-search-tools-ai-posts";
 var FILTER_AI_WAIT_TIMEOUT_MS = 4e3;
 var FILTER_AI_OBSERVER_OPTIONS = {
 	childList: true,
@@ -15854,7 +13764,7 @@ function findFilterAiCheckbox() {
 	return node instanceof HTMLInputElement ? node : null;
 }
 function setAiRowBodyClass(active) {
-	document.body.classList.toggle(SEARCH_TOOLS_AI_ROW_BODY_CLASS, active);
+	document.body.classList.toggle(SEARCH_TOOLS_AI_ROW_BODY_CLASS$1, active);
 }
 /**
 * Resolve #chkFilterAI now or when the site injects it. Disconnects on find
@@ -16470,7 +14380,7 @@ var FEATURE_CSS$2 = [
 	"  outline-offset: 2px;",
 	"}"
 ].join("\n");
-var TagGroupsStateSchema = object({ collapsed: array(string()) });
+var TagGroupsStateSchema = /* @__PURE__ */ object({ collapsed: /* @__PURE__ */ array(/* @__PURE__ */ string()) });
 function defaultState() {
 	return { collapsed: [...DEFAULT_COLLAPSED] };
 }
@@ -16560,7 +14470,8 @@ var tagGroupsFeature = {
 * Hides the browser tooltip with the full tag list that shows when the pointer
 * rests on a thumbnail.
 *
-* The tooltip is the `title` of `img.preview`. The attribute stays: the site's
+* The tooltip is the `title` of the preview image (`img.preview`; on the
+* favorites page the image has no class). The attribute stays: the site's
 * scripts and this script read tags from it, and nothing inside `a#p{ID}` is
 * changed. Instead the image stops taking the pointer, so the hovered element
 * is the link around it, which has no title. A click lands on the link as
@@ -16575,7 +14486,7 @@ var THUMB_TOOLTIP_INLINE_CLASS = `${BODY_CLASS}-inline`;
 var DISPLAY_INLINE = "inline";
 var THUMB_LINK_SELECTOR = `${SITE_SELECTORS.thumb} > a:not([onclick])`;
 var FEATURE_CSS$1 = `
-body.${BODY_CLASS} ${SITE_SELECTORS.thumb} > a > ${SITE_SELECTORS.previewImage} {
+body.${BODY_CLASS} ${SITE_SELECTORS.thumb} > a > img {
   pointer-events: none;
 }
 body.${BODY_CLASS}.${THUMB_TOOLTIP_INLINE_CLASS} ${THUMB_LINK_SELECTOR} {
@@ -16663,13 +14574,18 @@ function findThumbLink(thumb, postId) {
 	const byHref = thumb.querySelector(SITE_SELECTORS.thumbLink);
 	return byHref instanceof HTMLAnchorElement ? byHref : null;
 }
+function readPostId(thumb) {
+	return extractPostIdFromThumb(thumb) ?? extractPostIdFromThumbLink(thumb);
+}
 function findWebmThumbImage(thumb) {
 	const img = thumb.querySelector(WEBM_PREVIEW_SELECTOR);
-	if (!(img instanceof HTMLImageElement)) return null;
-	return img;
+	if (img instanceof HTMLImageElement) return img;
+	if (!thumb.classList.contains("rdw-video-thumb")) return null;
+	const favorite = thumb.querySelector(FAVORITE_IMAGE_SELECTOR);
+	return favorite instanceof HTMLImageElement ? favorite : null;
 }
 function startPreview(thumb) {
-	const postId = extractPostIdFromThumb(thumb);
+	const postId = readPostId(thumb);
 	if (postId === null || failedPostIds.has(postId)) return;
 	const img = findWebmThumbImage(thumb);
 	if (img === null) return;
@@ -16714,7 +14630,7 @@ function startPreview(thumb) {
 function onThumbPointerEnter(event) {
 	const thumb = event.currentTarget;
 	if (!(thumb instanceof HTMLElement)) return;
-	const postId = extractPostIdFromThumb(thumb);
+	const postId = readPostId(thumb);
 	if (postId === null || failedPostIds.has(postId)) return;
 	if (findWebmThumbImage(thumb) === null) return;
 	clearHoverTimer();
@@ -16757,7 +14673,7 @@ function mountVideoPreview(ctx) {
 		startBindings();
 	});
 }
-var FEATURES = exports("aO",[
+var FEATURES = exports("aP",[
 	feedFeature,
 	menuCleanupFeature,
 	tagGroupsFeature,
@@ -16942,6 +14858,2145 @@ async function runFeaturesYielding(pageKind, search, features = FEATURES) {
 	}
 }
 /**
+* Marks video posts on the favorites page.
+*
+* On a search page the site puts `webm-thumb` on the preview image of a video.
+* On the favorites page the image has no class at all; the only sign is its
+* `title`, the tag list. The site cuts the first and the last character off
+* that list, so `video` as the last tag arrives as `vide`.
+*
+* The mark is a class on `span.thumb`, outside `a#p{ID}`.
+*/
+var VIDEO_THUMB_CLASS = "rdw-video-thumb";
+/** The preview image of a favorites thumb: it has no class to select by. */
+var FAVORITE_IMAGE_SELECTOR = ":scope > a > img";
+var VIDEO_TAG = "video";
+/** `video` as the last tag of a title, after the site cut its last character. */
+var VIDEO_TAG_CUT = "vide";
+var TAG_SEPARATOR = /\s+/;
+/** True when the tag list in a thumb `title` names the post a video. */
+function titleSaysVideo(title) {
+	const tags = title.trim().split(TAG_SEPARATOR);
+	if (tags.includes(VIDEO_TAG)) return true;
+	return tags[tags.length - 1] === VIDEO_TAG_CUT;
+}
+/** Marks the video thumbs under `root`; returns how many it marked. */
+function markFavoriteVideoThumbs(root) {
+	let marked = 0;
+	for (const thumb of root.querySelectorAll(SITE_SELECTORS.thumb)) {
+		const img = thumb.querySelector(FAVORITE_IMAGE_SELECTOR);
+		if (!(img instanceof HTMLImageElement) || !titleSaysVideo(img.title)) continue;
+		thumb.classList.add(VIDEO_THUMB_CLASS);
+		marked += 1;
+	}
+	return marked;
+}
+/** Marks the thumbs on the page and those added to it later. */
+function mountFavoriteVideoMarks() {
+	markFavoriteVideoThumbs(document);
+	onThumbsAdded((root) => {
+		markFavoriteVideoThumbs(root);
+	});
+}
+/**
+* Site chrome CSS for html.rdw-skin (light / dark / custom themes).
+* Colors only via --rdw-* tokens. Does not change .thumb 200×200 cell size.
+* Injected via applyAppearanceTheme → injectSiteSkinHook(getSiteSkinCss()).
+*/
+var ROOT = `html.${RDW_SKIN_CLASS}`;
+var ROOT_DARK = `${ROOT}[${RDW_THEME_ATTR}="${APPEARANCE_THEME_DARK}"]`;
+var ROOT_SITE = `html[${RDW_THEME_ATTR}="${APPEARANCE_THEME_SITE}"]`;
+var ROOT_SITE_DARK = `html[${RDW_THEME_ATTR}="${APPEARANCE_THEME_SITE_DARK}"]`;
+var ROOT_THEME_DARK = `html[${RDW_THEME_ATTR}="${APPEARANCE_THEME_DARK}"]`;
+/** search-tools mount root (id + class in src/features/search-tools.tsx). */
+var SEARCH_TOOLS_ROOT_ID$1 = "rdw-search-tools";
+/** Reset control class (src/features/search-tools.tsx). */
+/** Exclude our light-DOM controls from site button/input chrome. */
+/** Height of the site's own text fields and selects, next to its buttons. */
+var SITE_CONTROL_MIN_HEIGHT_PX = 30;
+/** Widest a comment or forum post grows before the line gets too long to read. */
+var COMMENT_MAX_WIDTH_PX = 1100;
+/**
+* Same exclusions as :not…:not…, but :where() zeros their specificity so an
+* ID-bearing :not cannot outrank accent rules like div.tag-search submit.
+*/
+var WHERE_NOT_OUR_CONTROL = `:where(:not([class*="rdw-"])${`:not(#${SEARCH_TOOLS_ROOT_ID$1} *)`})`;
+/**
+* Body class Package E sets only while the post panel host is mounted
+* (`POST_PANEL_MOUNTED_CLASS` in post-actions.ts).
+*/
+var RDW_POST_PANEL_MOUNTED_CLASS = "rdw-post-panel-mounted";
+/** Native "I came" counter row — hide with panel chrome (E HANDOFF). */
+var POST_PANEL_ICAME_ROW = "li:has(a[onclick^=\"iCame(\"])";
+/** Post panel host id — keep in sync with POST_ACTIONS_ID in features/types.ts. */
+var POST_ACTIONS_HOST_ID = "rdw-post-actions";
+/** Kit select list — keep in sync with src/ui/kit/select.tsx. */
+var KIT_SELECT_LIST_CLASS = "rdw-select__list";
+/** Kit autocomplete list — keep in sync with src/ui/kit/autocomplete-field.tsx. */
+var KIT_AC_LIST_CLASS = "rdw-ac__list";
+/** Kit dialog panel — keep in sync with src/ui/kit/dialog.tsx. */
+var KIT_DIALOG_CLASS = "rdw-dialog";
+/** Playlist add-to menu — keep in sync with src/features/playlist-menu.ts. */
+var PLAYLIST_MENU_CLASS = "rdw-playlist-menu";
+/** Firefox / modern Chromium thin scrollbar (E HANDOFF). */
+var SCROLLBAR_WIDTH = "thin";
+/** Post panel Original control — keep in sync with post-actions ORIGINAL_BUTTON_SIZE_PX. */
+var POST_PANEL_ORIGINAL_SIZE_PX = 34;
+/** Active tab underline — keep in sync with kit/tabs.tsx. */
+var POST_PANEL_TAB_UNDERLINE_PX = 2;
+/** Post panel classes — keep in sync with src/features/post-panel/post-panel.tsx. */
+var POST_PANEL_ACTIONS_CLASS = "rdw-post-panel-actions";
+var POST_PANEL_ACTIONS_ROW_CLASS = "rdw-post-panel-actions-row";
+var POST_PANEL_FAV_CLASS = "rdw-post-panel-fav";
+var POST_PANEL_ORIGINAL_CLASS = "rdw-post-panel-original";
+var POST_PANEL_TABPANEL_CLASS = "rdw-post-panel-tabpanel";
+var POST_PANEL_POST_ACTION_CLASS = "rdw-post-panel-post-action";
+/** Kit tabs — keep in sync with src/ui/kit/tabs.tsx. */
+var KIT_TABS_CLASS = "rdw-tabs";
+var KIT_TAB_CLASS = "rdw-tabs__tab";
+var KIT_BTN_PRIMARY_CLASS = "rdw-btn--primary";
+/**
+* Body class while search-tools «AI posts» row is rendered
+* (`SEARCH_TOOLS_AI_ROW_BODY_CLASS` in search-tools.tsx — F HANDOFF).
+*/
+var SEARCH_TOOLS_AI_ROW_BODY_CLASS = "rdw-search-tools-ai-posts";
+/** F bulk-select chrome — keep in sync with src/features/favorites-bulk.tsx. */
+var FAV_BULK_SELECTED_CLASS = "rdw-fav-bulk-selected";
+var FAV_BULK_CHECK_CLASS = "rdw-fav-bulk-check";
+var FAV_BULK_ROOT_ID = "rdw-favorites-bulk";
+var FAV_BULK_BAR_CLASS = "rdw-favorites-bulk-bar";
+var FAV_BULK_STATUS_CLASS = "rdw-favorites-bulk-status";
+/** Body class while selection mode is active (featureBodyClass + "-selecting"). */
+var FAV_BULK_SELECTING_BODY_CLASS = "rdw-f-favorites-bulk-selecting";
+var FAV_BULK_OUTLINE_WIDTH = "2px";
+var FAV_BULK_OUTLINE_OFFSET = "2px";
+var FAV_BULK_CHECK_SIZE = "1.25rem";
+var FAV_BULK_CHECK_INSET = "0.25rem";
+var FAV_BULK_CHECK_Z_INDEX = 2;
+var FAV_BULK_CHECK_FONT_SIZE = "0.75rem";
+var v = {
+	bg: `var(${TOKEN_VAR.bg})`,
+	surface: `var(${TOKEN_VAR.surface})`,
+	surface2: `var(${TOKEN_VAR.surface2})`,
+	border: `var(${TOKEN_VAR.border})`,
+	text: `var(${TOKEN_VAR.text})`,
+	muted: `var(${TOKEN_VAR.muted})`,
+	accent: `var(${TOKEN_VAR.accent})`,
+	accentSoft: `var(${TOKEN_VAR.accentSoft})`,
+	danger: `var(${TOKEN_VAR.danger})`,
+	dangerSoft: `var(${TOKEN_VAR.dangerSoft})`,
+	tagArtist: `var(${TOKEN_VAR.tagArtist})`,
+	tagCharacter: `var(${TOKEN_VAR.tagCharacter})`,
+	tagCopyright: `var(${TOKEN_VAR.tagCopyright})`,
+	tagMetadata: `var(${TOKEN_VAR.tagMetadata})`,
+	radiusS: `var(${TOKEN_VAR.radiusS})`,
+	radiusM: `var(${TOKEN_VAR.radiusM})`,
+	radiusL: `var(${TOKEN_VAR.radiusL})`,
+	shadow1: `var(${TOKEN_VAR.shadow1})`,
+	shadow2: `var(${TOKEN_VAR.shadow2})`,
+	font: `var(${TOKEN_VAR.font})`
+};
+/** Full site-skin stylesheet (empty until injected by boot). */
+var SITE_SKIN_CSS = `
+/* —— base —— */
+${ROOT} body {
+  font-family: ${v.font};
+  font-size: 13px;
+  line-height: 1.4;
+  background: ${v.bg};
+  color: ${v.text};
+}
+
+${ROOT} body,
+${ROOT} body div,
+${ROOT} body h1,
+${ROOT} body h2,
+${ROOT} body h3,
+${ROOT} body h4,
+${ROOT} body h5,
+${ROOT} body h6,
+${ROOT} body p,
+${ROOT} body ul,
+${ROOT} body li,
+${ROOT} body dd,
+${ROOT} body dt,
+${ROOT} body input,
+${ROOT} body select,
+${ROOT} body button,
+${ROOT} body textarea {
+  font-family: ${v.font};
+}
+
+/* A visited link looks like any other link: one colour for links on a page. */
+${ROOT} a:link,
+${ROOT} a:visited {
+  color: ${v.accent};
+  text-decoration: none;
+}
+
+${ROOT} a:hover,
+${ROOT} a:active {
+  color: ${v.text};
+  text-decoration: none;
+}
+
+/*
+ * My Account: "Logout" is not a link but a form button dressed as a heading,
+ * <h4><button type="submit" style="… color: inherit …">. It takes the link
+ * colour so the list of headings is one colour; the inline style needs
+ * !important to be overridden.
+ */
+${ROOT} h4 > button[type="submit"][style*="color: inherit"] {
+  color: ${v.accent} !important;
+}
+
+${ROOT} h4 > button[type="submit"][style*="color: inherit"]:hover {
+  color: ${v.text} !important;
+}
+
+${ROOT} a.last-page {
+  color: ${v.muted};
+}
+
+${ROOT} a.spoiler,
+${ROOT} span.spoiler {
+  color: ${v.text};
+  background: ${v.text};
+}
+
+${ROOT} a.spoiler:hover,
+${ROOT} span.spoiler:hover {
+  color: ${v.bg};
+  background: ${v.text};
+}
+
+${ROOT} hr {
+  border-color: ${v.border};
+}
+
+${ROOT} code {
+  font-family: ui-monospace, monospace;
+}
+
+/* —— header —— */
+${ROOT} div#header {
+  background: ${v.surface};
+  border-bottom: 1px solid ${v.border};
+  margin-bottom: 0.75em;
+}
+
+${ROOT} div#header #site-title {
+  background-image: none;
+  background-color: transparent;
+  padding: 12px 18px 4px 18px;
+  font: 800 17px ${v.font};
+  letter-spacing: -0.02em;
+  color: ${v.text};
+}
+
+${ROOT} div#header #site-title a {
+  color: ${v.text};
+  font-weight: 800;
+  background: none;
+  text-shadow: none;
+}
+
+${ROOT} div#header ul#navbar {
+  background: transparent;
+  padding: 4px 18px 8px 10px;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+${ROOT} div#header ul#navbar li {
+  font-size: 13px;
+  font-weight: normal;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  background-image: none;
+  list-style: none;
+  display: inline;
+}
+
+${ROOT} div#header ul#navbar li a {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: ${v.radiusM};
+  color: ${v.muted};
+  font-weight: normal;
+}
+
+${ROOT} div#header ul#navbar li.current-page {
+  background: transparent;
+  background-image: none;
+}
+
+${ROOT} div#header ul#navbar li.current-page a,
+${ROOT} #navbar li.current-page a {
+  background: ${v.accentSoft};
+  color: ${v.accent};
+  font-weight: 600;
+}
+
+${ROOT} div#header ul#subnavbar {
+  background: ${v.surface};
+  border-top: 1px solid ${v.border};
+  border-bottom: none;
+  padding: 6px 18px;
+  margin: 0;
+}
+
+${ROOT} div#header ul#subnavbar li {
+  padding: 0 8px;
+  font-size: 12.5px;
+}
+
+${ROOT} div#header ul#subnavbar li a {
+  color: ${v.muted};
+}
+
+${ROOT} div#header ul#subnavbar li a:hover {
+  color: ${v.accent};
+}
+
+${ROOT} div.tips {
+  background: ${v.accentSoft};
+  background-image: none;
+  border-bottom: 1px solid ${v.border};
+  color: ${v.text};
+}
+
+/* —— sidebar —— */
+${ROOT} div.sidebar {
+  width: 228px;
+  min-width: 228px;
+  max-width: 228px;
+  margin-right: 1em;
+}
+
+${ROOT} div.sidebar h5,
+${ROOT} div.sidebar h6,
+${ROOT} ul#tag-sidebar h5,
+${ROOT} ul#tag-sidebar h6 {
+  font: 600 10.5px ${v.font};
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: ${v.muted};
+  margin: 0 0 6px;
+}
+
+/* Standalone "Tags"/"Search" (and similar) headings above the list card */
+${ROOT} div.sidebar > h5 {
+  display: none;
+}
+
+/* Tags between search panel card and tag list (typical site markup) */
+${ROOT} div.tag-search + h5 {
+  display: none;
+}
+
+/* D: Tags heading immediately after search-tools when they are siblings */
+${ROOT} ${SITE_SELECTORS.tagsHeadingAfterSearchTools} {
+  display: none;
+}
+
+/* F: native AI filter row — only while search-tools AI posts row is rendered */
+${ROOT} body.${SEARCH_TOOLS_AI_ROW_BODY_CLASS} ${SITE_SELECTORS.filterAiRow} {
+  display: none;
+}
+
+${ROOT} div.tag-search,
+${ROOT} ul#tag-sidebar {
+  background: ${v.surface};
+  border: 1px solid ${v.border};
+  border-radius: ${v.radiusL};
+  padding: 12px;
+  box-shadow: ${v.shadow1};
+  box-sizing: border-box;
+}
+
+${ROOT} div.tag-search {
+  margin-bottom: 12px;
+}
+
+${ROOT} ul#tag-sidebar {
+  margin: 0;
+  padding: 12px;
+  list-style: none;
+}
+
+/*
+ * Tag rows: ?/+/- /name (list) or ?/name (post) wrap as inline text;
+ * count stays top-right on the first line (artists-sidebar.test markup).
+ */
+${ROOT} ul#tag-sidebar > li {
+  display: block;
+  position: relative;
+  margin: 0 0 5px;
+  padding-right: 4.5em;
+  font-size: 12.5px;
+  line-height: 1.35;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+${ROOT} ul#tag-sidebar > li > a {
+  display: inline;
+}
+
+${ROOT} ul#tag-sidebar > li > h5,
+${ROOT} ul#tag-sidebar > li > h6 {
+  display: block;
+  margin-top: 8px;
+}
+
+${ROOT} ul#tag-sidebar > li:first-child > h5,
+${ROOT} ul#tag-sidebar > li:first-child > h6 {
+  margin-top: 0;
+}
+
+${ROOT} .tag-count,
+${ROOT} span.post-count,
+${ROOT} span.tag-count {
+  position: absolute;
+  top: 0;
+  right: 0;
+  margin-left: 0;
+  color: ${v.muted};
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+/*
+ * Tag type color on the LAST link of the row (tag name).
+ * List rows: ? + − name — name is 4th. Post rows: ? name — name is 2nd.
+ * Operators / wiki stay muted on every page.
+ */
+${ROOT} ul#tag-sidebar > li[class*="tag-type-"] > a:not(:last-of-type) {
+  color: ${v.muted};
+  font-size: 11px;
+  font-weight: normal;
+}
+
+${ROOT} .tag-type-artist > a,
+${ROOT} .tag-type-artist {
+  color: ${v.tagArtist};
+}
+
+${ROOT} .tag-type-character > a,
+${ROOT} .tag-type-character {
+  color: ${v.tagCharacter};
+}
+
+${ROOT} .tag-type-copyright > a,
+${ROOT} .tag-type-copyright {
+  color: ${v.tagCopyright};
+}
+
+${ROOT} .tag-type-metadata > a,
+${ROOT} .tag-type-metadata {
+  color: ${v.tagMetadata};
+}
+
+${ROOT} ul#tag-sidebar > li.tag-type-artist > a:last-of-type {
+  color: ${v.tagArtist};
+  font-size: 12.5px;
+  font-weight: normal;
+}
+
+${ROOT} ul#tag-sidebar > li.tag-type-character > a:last-of-type {
+  color: ${v.tagCharacter};
+  font-size: 12.5px;
+  font-weight: normal;
+}
+
+${ROOT} ul#tag-sidebar > li.tag-type-copyright > a:last-of-type {
+  color: ${v.tagCopyright};
+  font-size: 12.5px;
+  font-weight: normal;
+}
+
+${ROOT} ul#tag-sidebar > li.tag-type-metadata > a:last-of-type {
+  color: ${v.tagMetadata};
+  font-size: 12.5px;
+  font-weight: normal;
+}
+
+${ROOT} .tag-type-artist > a:hover,
+${ROOT} .tag-type-artist:hover,
+${ROOT} .tag-type-character > a:hover,
+${ROOT} .tag-type-character:hover,
+${ROOT} .tag-type-copyright > a:hover,
+${ROOT} .tag-type-copyright:hover,
+${ROOT} .tag-type-metadata > a:hover,
+${ROOT} .tag-type-metadata:hover,
+${ROOT} ul#tag-sidebar > li[class*="tag-type-"] > a:last-of-type:hover {
+  color: ${v.accent};
+}
+
+/* Artist Follow: kit secondary on theme tokens (beats document-chrome #fff) */
+${ROOT} button.${CSS_CLASS.artistFollow} {
+  background: ${v.surface};
+  border: 1px solid ${v.border};
+  color: ${v.text};
+  border-radius: ${v.radiusS};
+}
+
+${ROOT} button.${CSS_CLASS.artistFollow}:hover {
+  background: ${v.accentSoft};
+  border-color: ${v.accent};
+  color: ${v.accent};
+}
+
+${ROOT} button.${CSS_CLASS.artistFollow}.${CSS_CLASS.artistFollowMarked} {
+  background: ${v.accentSoft};
+  border-color: ${v.accent};
+  color: ${v.accent};
+}
+
+/* —— search field —— */
+${ROOT} div.tag-search input[type="text"],
+${ROOT} div.tag-search input[type="search"] {
+  width: 100%;
+  height: 34px;
+  box-sizing: border-box;
+  border: 1px solid ${v.border};
+  border-radius: ${v.radiusM};
+  padding: 0 10px;
+  background: ${v.surface};
+  color: ${v.text};
+  font-size: 13px;
+}
+
+${ROOT} div.tag-search input[type="submit"]${WHERE_NOT_OUR_CONTROL},
+${ROOT} div.tag-search button[type="submit"]${WHERE_NOT_OUR_CONTROL} {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 8px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: ${v.radiusS};
+  background: ${v.accent};
+  color: ${v.surface};
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+${ROOT} div.tag-search input[type="submit"]${WHERE_NOT_OUR_CONTROL}:hover,
+${ROOT} div.tag-search button[type="submit"]${WHERE_NOT_OUR_CONTROL}:hover {
+  filter: brightness(1.05);
+}
+
+${ROOT} input[type="text"]${WHERE_NOT_OUR_CONTROL}:focus,
+${ROOT} input[type="password"]${WHERE_NOT_OUR_CONTROL}:focus,
+${ROOT} input[type="search"]${WHERE_NOT_OUR_CONTROL}:focus,
+${ROOT} textarea${WHERE_NOT_OUR_CONTROL}:focus,
+${ROOT} select${WHERE_NOT_OUR_CONTROL}:focus {
+  background: ${v.surface};
+  outline: 2px solid ${v.accent};
+  outline-offset: 1px;
+  border-color: ${v.accent};
+}
+
+/* —— awesomplete —— */
+/* Site hides closed lists with opacity/scale + display:block; do not undo that. */
+${ROOT} .awesomplete > ul[hidden],
+${ROOT} .awesomplete > ul:empty {
+  display: none !important;
+  pointer-events: none;
+}
+
+${ROOT} .awesomplete > ul:not([hidden]):not(:empty) {
+  background: ${v.surface};
+  background-image: none;
+  border: 1px solid ${v.border};
+  border-radius: ${v.radiusL};
+  box-shadow: ${v.shadow2};
+  margin: 0.35em 0 0;
+  padding: 4px 0;
+  text-shadow: none;
+  transform: none;
+}
+
+${ROOT} .awesomplete > ul:before {
+  display: none;
+  content: none;
+}
+
+${ROOT} .awesomplete > ul > li {
+  padding: 6px 10px;
+  color: ${v.text};
+  cursor: pointer;
+}
+
+${ROOT} .awesomplete > ul > li:hover,
+${ROOT} .awesomplete > ul > li[aria-selected="true"] {
+  background: ${v.accentSoft};
+  color: ${v.accent};
+}
+
+${ROOT} .awesomplete mark {
+  background: ${v.accentSoft};
+  color: ${v.text};
+}
+
+${ROOT} div.auto_complete {
+  background: ${v.surface};
+}
+
+${ROOT} div.auto_complete ul {
+  border-color: ${v.border};
+  background: ${v.surface};
+}
+
+${ROOT} div.auto_complete ul li.selected {
+  background-color: ${v.accentSoft};
+}
+
+${ROOT} div.auto_complete ul strong.highlight {
+  color: ${v.accent};
+}
+
+/* —— grid / thumbs (cell size unchanged) —— */
+${ROOT} div.image-list {
+  column-gap: ${String(4)}px;
+  row-gap: ${String(4)}px;
+  align-items: flex-start;
+  align-content: flex-start;
+}
+
+${ROOT} img.preview,
+${ROOT} span.thumb > a > img {
+  border-radius: ${v.radiusL};
+}
+
+/* Favorites: Remove stays subtle; hover must not paint the thumb cell */
+${ROOT} span.thumb,
+${ROOT} span.thumb:hover,
+${ROOT} span.thumb > a,
+${ROOT} span.thumb > a:hover {
+  background-color: transparent;
+}
+
+${ROOT} span.thumb > a[onclick] {
+  color: ${v.muted};
+  font-size: 12px;
+  font-weight: normal;
+  padding: 2px 8px;
+  border-radius: ${v.radiusS};
+  background: transparent;
+  border: none;
+}
+
+${ROOT} span.thumb > a[onclick]:hover {
+  color: ${v.danger};
+  background: transparent;
+}
+
+${ROOT} span.thumb > a[onclick] b {
+  font-weight: normal;
+  color: inherit;
+}
+
+/* —— favorites bulk select (F HANDOFF; tokens for Light/Dark/Site) —— */
+${ROOT} body.${FAV_BULK_SELECTING_BODY_CLASS} span.thumb {
+  position: relative;
+  cursor: pointer;
+}
+
+${ROOT} span.thumb.${FAV_BULK_SELECTED_CLASS} {
+  outline: ${FAV_BULK_OUTLINE_WIDTH} solid ${v.accent};
+  outline-offset: ${FAV_BULK_OUTLINE_OFFSET};
+  border-radius: ${v.radiusL};
+}
+
+/*
+ * Check badge is a sibling of a#p{ID}, never inside the link.
+ * Hidden until the thumb is selected.
+ */
+${ROOT} span.thumb > .${FAV_BULK_CHECK_CLASS} {
+  position: absolute;
+  top: ${FAV_BULK_CHECK_INSET};
+  left: ${FAV_BULK_CHECK_INSET};
+  z-index: ${String(FAV_BULK_CHECK_Z_INDEX)};
+  display: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: ${FAV_BULK_CHECK_SIZE};
+  height: ${FAV_BULK_CHECK_SIZE};
+  border-radius: 50%;
+  background: ${v.accent};
+  color: ${v.surface};
+  font-size: ${FAV_BULK_CHECK_FONT_SIZE};
+  font-weight: 700;
+  line-height: 1;
+  pointer-events: none;
+}
+
+${ROOT} span.thumb.${FAV_BULK_SELECTED_CLASS} > .${FAV_BULK_CHECK_CLASS} {
+  display: inline-flex;
+}
+
+${ROOT} #${FAV_BULK_ROOT_ID},
+${ROOT} .${FAV_BULK_BAR_CLASS} {
+  color: ${v.text};
+}
+
+${ROOT} #${FAV_BULK_ROOT_ID} .${FAV_BULK_STATUS_CLASS} {
+  color: ${v.muted};
+}
+
+${ROOT} span.thumb.${VIDEO_THUMB_CLASS} > a > img,
+${ROOT} .webm-thumb {
+  border: 1px solid ${v.accent};
+  box-sizing: border-box;
+}
+
+${ROOT} img.flagged,
+${ROOT} img.has-children,
+${ROOT} img.has-parent,
+${ROOT} img.pending,
+${ROOT} img.video {
+  border-width: 1px;
+  border-style: solid;
+  box-sizing: border-box;
+}
+
+${ROOT} img.flagged {
+  border-color: ${v.danger};
+}
+
+${ROOT} img.has-children {
+  border-color: ${v.tagCharacter};
+}
+
+${ROOT} img.has-parent {
+  border-color: ${v.tagMetadata};
+}
+
+${ROOT} img.pending,
+${ROOT} img.video {
+  border-color: ${v.accent};
+}
+
+/* —— pagination —— */
+${ROOT} div#paginator,
+${ROOT} .pagination {
+  display: block;
+  padding: 1.5em 0 1em;
+  text-align: center;
+  clear: both;
+}
+
+${ROOT} div#paginator a,
+${ROOT} .pagination a {
+  display: inline-block;
+  margin: 0 3px;
+  padding: 4px 10px;
+  border: 1px solid ${v.border};
+  border-radius: ${v.radiusM};
+  background: ${v.surface};
+  color: ${v.text};
+  text-decoration: none;
+}
+
+${ROOT} div#paginator a:hover,
+${ROOT} .pagination a:hover {
+  background: ${v.accentSoft};
+  color: ${v.accent};
+  border-color: ${v.accent};
+}
+
+${ROOT} div#paginator a.current,
+${ROOT} div#paginator span.current,
+${ROOT} .pagination a.current,
+${ROOT} .pagination span.current {
+  background: ${v.accent};
+  border-color: ${v.accent};
+  color: ${v.surface};
+  font-weight: 600;
+}
+
+${ROOT} div#paginator span {
+  margin: 0 3px;
+  padding: 4px 8px;
+}
+
+${ROOT} .manual-page-chooser > input[type="text"] {
+  width: 4em;
+  height: 28px;
+  border: 1px solid ${v.border};
+  border-radius: ${v.radiusS};
+  background: ${v.surface};
+  color: ${v.text};
+  padding: 0 6px;
+}
+
+${ROOT} .manual-page-chooser > input[type="submit"] {
+  height: 28px;
+  margin-left: 4px;
+  padding: 0 10px;
+  border: none;
+  border-radius: ${v.radiusS};
+  background: ${v.accent};
+  color: ${v.surface};
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* —— forms / tables (site chrome; skip search-tools + any .rdw-* control) —— */
+${ROOT} input${WHERE_NOT_OUR_CONTROL},
+${ROOT} select${WHERE_NOT_OUR_CONTROL},
+${ROOT} textarea${WHERE_NOT_OUR_CONTROL},
+${ROOT} button${WHERE_NOT_OUR_CONTROL} {
+  color: ${v.text};
+  font-family: ${v.font};
+}
+
+${ROOT} input[type="text"]${WHERE_NOT_OUR_CONTROL},
+${ROOT} input[type="password"]${WHERE_NOT_OUR_CONTROL},
+${ROOT} input[type="search"]${WHERE_NOT_OUR_CONTROL},
+${ROOT} input[type="number"]${WHERE_NOT_OUR_CONTROL},
+${ROOT} select${WHERE_NOT_OUR_CONTROL},
+${ROOT} textarea${WHERE_NOT_OUR_CONTROL} {
+  background: ${v.surface};
+  border: 1px solid ${v.border};
+  border-radius: ${v.radiusS};
+  color: ${v.text};
+}
+
+${ROOT} button${WHERE_NOT_OUR_CONTROL},
+${ROOT} input[type="submit"]${WHERE_NOT_OUR_CONTROL},
+${ROOT} input[type="button"]${WHERE_NOT_OUR_CONTROL},
+${ROOT} .gdprbutton button {
+  background: ${v.surface};
+  border: 1px solid ${v.border};
+  border-radius: ${v.radiusS};
+  color: ${v.text};
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+${ROOT} button${WHERE_NOT_OUR_CONTROL}:hover,
+${ROOT} input[type="submit"]${WHERE_NOT_OUR_CONTROL}:hover,
+${ROOT} input[type="button"]${WHERE_NOT_OUR_CONTROL}:hover,
+${ROOT} .gdprbutton button:hover {
+  background: ${v.accentSoft};
+  border-color: ${v.accent};
+  color: ${v.accent};
+}
+
+/* Keep search submit as primary accent (overrides generic button chrome) */
+${ROOT} div.tag-search input[type="submit"],
+${ROOT} div.tag-search button[type="submit"],
+${ROOT} .manual-page-chooser > input[type="submit"] {
+  background: ${v.accent};
+  border: none;
+  color: ${v.surface};
+  font-weight: 600;
+}
+
+${ROOT} div.tag-search input[type="submit"]:hover,
+${ROOT} div.tag-search button[type="submit"]:hover,
+${ROOT} .manual-page-chooser > input[type="submit"]:hover {
+  background: ${v.accent};
+  border: none;
+  color: ${v.surface};
+  filter: brightness(1.05);
+}
+
+${ROOT} table {
+  color: ${v.text};
+}
+
+${ROOT} tr.tableheader,
+${ROOT} thead tr {
+  background: ${v.surface2} !important;
+  background-image: none !important;
+  color: ${v.text};
+}
+
+${ROOT} table.highlightable th {
+  color: ${v.text};
+  background: ${v.surface2};
+}
+
+${ROOT} table.highlightable td {
+  border-color: ${v.border};
+}
+
+${ROOT} table.highlightable > tbody > tr:hover {
+  background: ${v.accentSoft};
+}
+
+${ROOT} table tr.good {
+  background: ${v.accentSoft};
+}
+
+${ROOT} table tr.selected {
+  background: ${v.accentSoft} !important;
+}
+
+${ROOT} table tr.highlight {
+  background: ${v.surface2};
+}
+
+${ROOT} table tr.pending-tag {
+  background: ${v.surface2};
+}
+
+/* Zebra without native green tint */
+${ROOT} table tr:nth-child(odd) {
+  background: ${v.surface2};
+}
+
+/* —— data tables: one frame for every list (aliases, artists, tags, pools, forum) —— */
+${ROOT} table.highlightable {
+  background: ${v.surface};
+  border: 1px solid ${v.border};
+  border-radius: ${v.radiusL};
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+}
+
+/*
+ * Favorites: "Remove" sits beside the thumb, not inside it
+ * (div.image-list > span > [span.thumb, br, a > b]). Quiet, not bold.
+ */
+${ROOT} div.image-list > span > a[onclick] {
+  color: ${v.muted};
+  font-size: 12px;
+}
+
+${ROOT} div.image-list > span > a[onclick] > b {
+  font-weight: normal;
+}
+
+${ROOT} div.image-list > span > a[onclick]:hover {
+  color: ${v.danger};
+}
+
+/*
+ * Comments and forum posts: the site gives the text columns fixed widths
+ * (50em and 30em) and leaves half the window empty. They take the width that
+ * is there, up to a readable limit.
+ */
+${ROOT} div#comments div#comment-list > div.post {
+  float: none;
+  display: flex;
+  gap: 16px;
+  max-width: ${String(COMMENT_MAX_WIDTH_PX)}px;
+}
+
+${ROOT} div#comments div#comment-list > div.post > div.col1 {
+  float: none;
+  flex: 0 0 auto;
+}
+
+${ROOT} div#comments div#comment-list > div.post > div.col2 {
+  float: none;
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+}
+
+${ROOT} div.response-list > div.post {
+  display: flex;
+  max-width: ${String(COMMENT_MAX_WIDTH_PX)}px;
+}
+
+${ROOT} div.response-list > div.post > div.author {
+  float: none;
+  flex: 0 0 auto;
+}
+
+${ROOT} div.response-list > div.post > div.content {
+  float: none;
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+}
+
+/* Forms are not data: no stripes across their rows. */
+${ROOT} table.form tr:nth-child(odd),
+${ROOT} div#upload-form table tr:nth-child(odd),
+${ROOT} div#edit-form table tr:nth-child(odd) {
+  background: transparent;
+}
+
+${ROOT} table.form th {
+  color: ${v.muted};
+}
+
+/* —— site form controls: one height, readable padding —— */
+${ROOT} input[type="text"]${WHERE_NOT_OUR_CONTROL},
+${ROOT} input[type="password"]${WHERE_NOT_OUR_CONTROL},
+${ROOT} input[type="search"]${WHERE_NOT_OUR_CONTROL},
+${ROOT} input[type="number"]${WHERE_NOT_OUR_CONTROL},
+${ROOT} select${WHERE_NOT_OUR_CONTROL} {
+  box-sizing: border-box;
+  min-height: ${String(SITE_CONTROL_MIN_HEIGHT_PX)}px;
+  padding: 4px 8px;
+  font-size: 13px;
+}
+
+${ROOT} textarea${WHERE_NOT_OUR_CONTROL} {
+  box-sizing: border-box;
+  padding: 6px 8px;
+  font-size: 13px;
+}
+
+/* "Choose File": the browser's own button, dressed as a secondary button. */
+${ROOT} input[type="file"]${WHERE_NOT_OUR_CONTROL} {
+  color: ${v.text};
+  font-size: 12px;
+}
+
+${ROOT} input[type="file"]${WHERE_NOT_OUR_CONTROL}::file-selector-button {
+  margin-right: 8px;
+  padding: 4px 10px;
+  border: 1px solid ${v.border};
+  border-radius: ${v.radiusM};
+  background: ${v.surface};
+  color: ${v.text};
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+${ROOT} input[type="file"]${WHERE_NOT_OUR_CONTROL}::file-selector-button:hover {
+  border-color: ${v.accent};
+}
+
+/* Forum tables */
+${ROOT} div#forum > table {
+  background: ${v.surface};
+  border: 1px solid ${v.border};
+  border-radius: ${v.radiusL};
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  box-shadow: ${v.shadow1};
+}
+
+${ROOT} div#forum > table th,
+${ROOT} div#forum > table td {
+  border-color: ${v.border};
+  color: ${v.text};
+}
+
+${ROOT} div#forum > table th:first-child,
+${ROOT} div#forum > table td:first-child {
+  text-align: left;
+}
+
+${ROOT} div#forum > table tr:nth-child(odd) {
+  background: ${v.surface2};
+}
+
+${ROOT} div#forum > table tr:nth-child(even) {
+  background: ${v.surface};
+}
+
+${ROOT} div#forum > table.highlightable > tbody > tr:hover {
+  background: ${v.accentSoft};
+}
+
+${ROOT} .added-tags {
+  color: ${v.tagCharacter};
+}
+
+${ROOT} .removed-tags {
+  color: ${v.danger};
+}
+
+${ROOT} .obsolete-tag-change {
+  color: ${v.text};
+}
+
+/* —— notices / cards —— */
+${ROOT} div.status-notice,
+${ROOT} div.notice,
+${ROOT} div.has-mail,
+${ROOT} div.blocked,
+${ROOT} div.quote,
+${ROOT} div.help div.code,
+${ROOT} div#post-comments div#comment-list > div,
+${ROOT} div#comments div#comment-list > div.post > div.col2,
+${ROOT} div.response-list > div.post > div.content {
+  background: ${v.surface};
+  border: 1px solid ${v.border};
+  border-radius: ${v.radiusL};
+  box-shadow: ${v.shadow1};
+}
+
+${ROOT} div.status-notice {
+  border-color: ${v.border};
+  padding: 1em;
+  margin: 1em;
+  color: ${v.text};
+}
+
+${ROOT} div.notice {
+  color: ${v.danger};
+  padding: 0.75em 1em;
+  margin-bottom: 1em;
+}
+
+${ROOT} div.has-mail {
+  border-color: ${v.tagCharacter};
+  background: ${v.accentSoft};
+  padding: 1em;
+  margin: 1em;
+  color: ${v.text};
+}
+
+${ROOT} div.blocked {
+  border-color: ${v.danger};
+  background: ${v.dangerSoft};
+  color: ${v.danger};
+  padding: 1em;
+  margin: 1em;
+}
+
+${ROOT} div.quote {
+  border-color: ${v.border};
+  background: ${v.surface2};
+  background-image: none;
+  color: ${v.text};
+  padding: 12px;
+  margin-top: 10px;
+}
+
+${ROOT} div.help div.code {
+  border: 1px dashed ${v.border};
+  background: ${v.surface2};
+  color: ${v.text};
+}
+
+${ROOT} div.help h4 {
+  color: ${v.tagCharacter};
+}
+
+${ROOT} div#post-comments div#comment-list > div,
+${ROOT} div#comments div#comment-list > div.post > div.col2 {
+  padding: 12px;
+  margin-bottom: 1em;
+}
+
+${ROOT} div.response-list > div.post > div.content {
+  padding: 10px 12px;
+}
+
+${ROOT} div.response-list > div.post > div.content > div.footer {
+  color: ${v.muted};
+  margin-top: 0.75em;
+}
+
+/* Edit | Respond (and similar) on comments / forum posts */
+${ROOT} div.response-list > div.post > div.content > div.footer a,
+${ROOT} ul.flat-list li a {
+  color: ${v.muted};
+  font-weight: normal;
+  padding: 2px 6px;
+  border-radius: ${v.radiusS};
+}
+
+${ROOT} div.response-list > div.post > div.content > div.footer a:hover,
+${ROOT} ul.flat-list li a:hover {
+  color: ${v.accent};
+  background: ${v.accentSoft};
+}
+
+${ROOT} ul.flat-list li a.forum-update {
+  font-style: italic;
+  color: ${v.muted};
+}
+
+${ROOT} div.link-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+${ROOT} div.link-list li {
+  margin: 0 0 4px;
+}
+
+${ROOT} div.link-list a {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: ${v.radiusS};
+  color: ${v.muted};
+}
+
+${ROOT} div.link-list a:hover {
+  color: ${v.accent};
+  background: ${v.accentSoft};
+}
+
+${ROOT} span.author,
+${ROOT} span.date {
+  color: ${v.muted};
+}
+
+${ROOT} span.locked-topic {
+  color: ${v.muted};
+}
+
+${ROOT} strong.divider {
+  color: ${v.muted};
+}
+
+${ROOT} div#footer {
+  color: ${v.muted};
+}
+
+${ROOT} div#footer > .footer-disabled,
+${ROOT} div#footer > #label {
+  color: ${v.muted};
+}
+
+${ROOT} div#user-record > table > tbody > tr.positive-record {
+  background: ${v.accentSoft};
+}
+
+${ROOT} div#user-record > table > tbody > tr.negative-record {
+  background: ${v.dangerSoft};
+}
+
+${ROOT} div.mailbody {
+  background-color: ${v.surface};
+  border-color: ${v.border};
+}
+
+${ROOT} div.mail .received {
+  color: ${v.tagCharacter};
+}
+
+${ROOT} div.mail .sent {
+  color: ${v.danger};
+}
+
+${ROOT} .gdprinner {
+  background-color: ${v.surface};
+  border-color: ${v.border};
+  color: ${v.text};
+}
+
+/* —— post page —— */
+/* E: hide native left-column chrome only while body.rdw-post-panel-mounted */
+${ROOT} body.${RDW_POST_PANEL_MOUNTED_CLASS} div#stats {
+  display: none !important;
+}
+
+${ROOT} body.${RDW_POST_PANEL_MOUNTED_CLASS} div.link-list {
+  display: none !important;
+}
+
+${ROOT} body.${RDW_POST_PANEL_MOUNTED_CLASS} ${POST_PANEL_ICAME_ROW} {
+  display: none !important;
+}
+
+/*
+ * A: comments moved into the panel column — lift site max-width: 680px
+ * so #post-comments fills the narrow column.
+ */
+${ROOT} body.${RDW_POST_PANEL_MOUNTED_CLASS} #${POST_ACTIONS_HOST_ID} #post-comments {
+  max-width: none;
+}
+
+${ROOT} img#image {
+  border-radius: ${v.radiusL};
+}
+
+${ROOT} div#post-view > div#right-col > div#edit,
+${ROOT} div#edit-box {
+  background: ${v.surface};
+  border: 1px solid ${v.border};
+  border-radius: ${v.radiusL};
+  color: ${v.text};
+}
+
+${ROOT} div#note-container > div.note-body {
+  background: ${v.surface};
+  border: 1px solid ${v.border};
+  color: ${v.text};
+  border-radius: ${v.radiusS};
+}
+
+${ROOT} div#note-container > div.note-body > p.tn,
+${ROOT} tn {
+  color: ${v.muted};
+}
+
+${ROOT} div#note-container > div.note-box {
+  border-color: ${v.accent};
+  background: ${v.accentSoft};
+}
+
+${ROOT} div#note-container > div.note-box > div.note-corner {
+  background: ${v.accent};
+}
+
+${ROOT} div#note-container > div.unsaved {
+  background: ${v.surface};
+  border-color: ${v.danger};
+}
+
+${ROOT} div#note-container > div.unsaved > div.note-corner {
+  background: ${v.danger};
+}
+
+${ROOT} a.original-file-changed#highres {
+  color: ${v.accent};
+}
+
+${ROOT} div#post-add p#scale {
+  color: ${v.muted};
+}
+
+${ROOT} h2.wiki-title {
+  color: ${v.accent};
+}
+
+${ROOT} div.wiki > h2.title {
+  color: ${v.accent};
+}
+
+${ROOT} div#wiki-show > div#body > div#byline {
+  color: ${v.muted};
+}
+
+${ROOT} div#wiki-diff del {
+  background-color: ${v.dangerSoft};
+  color: ${v.danger};
+}
+
+${ROOT} div#wiki-diff ins {
+  background-color: ${v.accentSoft};
+  color: ${v.text};
+}
+
+${ROOT} dt.bad {
+  color: ${v.danger};
+}
+
+${ROOT} .blacklisted-tags-disabled {
+  color: ${v.muted} !important;
+}
+
+/* —— dark theme contrast (tokens already dark; keep chrome readable) —— */
+${ROOT_DARK} a:hover,
+${ROOT_DARK} a:active {
+  color: ${v.text};
+}
+
+${ROOT_DARK} a.spoiler,
+${ROOT_DARK} span.spoiler {
+  color: ${v.bg};
+  background: ${v.text};
+}
+
+${ROOT_DARK} a.spoiler:hover,
+${ROOT_DARK} span.spoiler:hover {
+  color: ${v.text};
+  background: ${v.muted};
+}
+
+${ROOT_DARK} div#paginator a.current,
+${ROOT_DARK} div#paginator span.current,
+${ROOT_DARK} .pagination a.current,
+${ROOT_DARK} .pagination span.current,
+${ROOT_DARK} div.tag-search input[type="submit"],
+${ROOT_DARK} div.tag-search button[type="submit"],
+${ROOT_DARK} .manual-page-chooser > input[type="submit"],
+${ROOT_DARK} span.thumb > .${FAV_BULK_CHECK_CLASS},
+${ROOT_DARK} #${POST_ACTIONS_HOST_ID} .${POST_PANEL_FAV_CLASS}.${KIT_BTN_PRIMARY_CLASS} {
+  color: ${v.text};
+}
+
+${ROOT_DARK} div.has-mail {
+  background: ${v.surface2};
+  border-color: ${v.tagCharacter};
+}
+
+/*
+ * Post panel actions + tabs (A→E HANDOFF).
+ * Unscoped under #rdw-post-actions so Site default/Site dark (no html.rdw-skin)
+ * still beat native button/link chrome via document --rdw-* tokens.
+ */
+#${POST_ACTIONS_HOST_ID} .${POST_PANEL_ACTIONS_CLASS},
+#${POST_ACTIONS_HOST_ID} .${POST_PANEL_ACTIONS_ROW_CLASS},
+#${POST_ACTIONS_HOST_ID} .${POST_PANEL_TABPANEL_CLASS} {
+  color: ${v.text};
+}
+
+#${POST_ACTIONS_HOST_ID} .${POST_PANEL_FAV_CLASS}.${KIT_BTN_PRIMARY_CLASS} {
+  background: ${v.accent};
+  border-color: ${v.accent};
+  color: ${v.surface};
+}
+
+#${POST_ACTIONS_HOST_ID} .${POST_PANEL_ORIGINAL_CLASS} {
+  box-sizing: border-box;
+  width: ${String(POST_PANEL_ORIGINAL_SIZE_PX)}px;
+  height: ${String(POST_PANEL_ORIGINAL_SIZE_PX)}px;
+  min-width: ${String(POST_PANEL_ORIGINAL_SIZE_PX)}px;
+  min-height: ${String(POST_PANEL_ORIGINAL_SIZE_PX)}px;
+  background: ${v.surface};
+  border: 1px solid ${v.border};
+  color: ${v.text};
+  text-decoration: none;
+}
+
+#${POST_ACTIONS_HOST_ID} .${KIT_TABS_CLASS} {
+  border-bottom: 1px solid ${v.border};
+  color: ${v.text};
+}
+
+#${POST_ACTIONS_HOST_ID} .${KIT_TAB_CLASS} {
+  background: transparent;
+  border: 0;
+  border-bottom: ${String(POST_PANEL_TAB_UNDERLINE_PX)}px solid transparent;
+  color: ${v.muted};
+}
+
+#${POST_ACTIONS_HOST_ID} .${KIT_TAB_CLASS}[aria-selected="true"] {
+  color: ${v.text};
+  font-weight: 600;
+  border-bottom-color: ${v.accent};
+}
+
+#${POST_ACTIONS_HOST_ID} .${POST_PANEL_POST_ACTION_CLASS} {
+  background: ${v.surface};
+  border: 1px solid ${v.border};
+  color: ${v.text};
+  justify-content: flex-start;
+}
+
+/* Site themes: muted fails AA on green/dark chrome — tabs use text; keep accent underline. */
+${ROOT_SITE} #${POST_ACTIONS_HOST_ID} .${KIT_TAB_CLASS},
+${ROOT_SITE_DARK} #${POST_ACTIONS_HOST_ID} .${KIT_TAB_CLASS} {
+  color: ${v.text};
+}
+
+${ROOT_SITE} #${POST_ACTIONS_HOST_ID} .${KIT_TAB_CLASS}[aria-selected="true"],
+${ROOT_SITE_DARK} #${POST_ACTIONS_HOST_ID} .${KIT_TAB_CLASS}[aria-selected="true"] {
+  border-bottom-color: ${v.accent};
+  color: ${v.text};
+}
+
+/* Dark RuleDesk: primary fill uses light label (surface token is dark). */
+${ROOT_THEME_DARK} #${POST_ACTIONS_HOST_ID} .${POST_PANEL_FAV_CLASS}.${KIT_BTN_PRIMARY_CLASS} {
+  color: ${v.text};
+}
+
+/*
+ * Own scrollable UI — tokens for all four themes (site/site-dark have no html.rdw-skin).
+ * Fixes white post-column scrollbar on dark. Kit lists/dialogs + playlist menu.
+ */
+#${POST_ACTIONS_HOST_ID},
+.${KIT_SELECT_LIST_CLASS},
+.${KIT_AC_LIST_CLASS},
+.${KIT_DIALOG_CLASS},
+.${PLAYLIST_MENU_CLASS} {
+  scrollbar-width: ${SCROLLBAR_WIDTH};
+  scrollbar-color: ${v.border} ${v.surface};
+}
+
+/* Site autocomplete lists under rdw-skin */
+${ROOT} .awesomplete > ul:not([hidden]):not(:empty),
+${ROOT} div.auto_complete ul {
+  scrollbar-width: ${SCROLLBAR_WIDTH};
+  scrollbar-color: ${v.border} ${v.surface};
+}
+
+/*
+ * Script page host sits on site bg for Site default / Site dark (no html.rdw-skin).
+ * Color uses document tokens; Shadow title inherits from the host once tokens sync.
+ */
+#${RDW_PAGE_ROOT_ID} {
+  color: ${v.text};
+}
+`.trim();
+/** Returns the site-skin CSS string for injection. */
+function getSiteSkinCss() {
+	return SITE_SKIN_CSS;
+}
+var MS_PER_DAY = 864e5;
+var COOKIE_NAME_VALUE_SEPARATOR = "=";
+var STYLESHEET_REL = "stylesheet";
+var LIGHT_STYLESHEET_PATH = `${SITE_THEME_STYLESHEET_DIR}${SITE_THEME_STYLESHEET_LIGHT}`;
+var DARK_STYLESHEET_PATH = `${SITE_THEME_STYLESHEET_DIR}${SITE_THEME_STYLESHEET_DARK}`;
+function writeThemeCookie(value, expires) {
+	document.cookie = [
+		`${SITE_THEME_COOKIE_NAME}${COOKIE_NAME_VALUE_SEPARATOR}${value}`,
+		`expires=${expires.toUTCString()}`,
+		`path=/`
+	].join("; ");
+}
+/** Deletes the site `theme` cookie (light / default). */
+function clearSiteThemeCookie() {
+	document.cookie = [
+		`${SITE_THEME_COOKIE_NAME}${COOKIE_NAME_VALUE_SEPARATOR}`,
+		`expires=${(/* @__PURE__ */ new Date(0)).toUTCString()}`,
+		`path=/`
+	].join("; ");
+}
+/** Collapse `//` (and longer) runs in a pathname so `/css/...` comparisons work. */
+var REPEATED_PATH_SLASHES = /\/{2,}/g;
+function collapsePathSlashes(pathname) {
+	return pathname.replace(REPEATED_PATH_SLASHES, "/");
+}
+/**
+* Match site desktop CSS hrefs via URL pathname (query ignored).
+* Production uses absolute hrefs with a doubled slash (`…xxx//css/desktop.css?46`);
+* collapsing repeated path slashes makes that equal `/css/desktop.css`.
+*/
+function isSiteDesktopStylesheetHref(href) {
+	try {
+		const path = collapsePathSlashes(new URL(href, location.href).pathname);
+		return path === LIGHT_STYLESHEET_PATH || path === DARK_STYLESHEET_PATH;
+	} catch {
+		return false;
+	}
+}
+function stylesheetFilenameForTheme(theme) {
+	return theme === "dark" ? SITE_THEME_STYLESHEET_DARK : SITE_THEME_STYLESHEET_LIGHT;
+}
+/** Swap filename in the raw href so `//css/` and `/css/` forms stay intact. */
+function replaceStylesheetFilename(href, filename) {
+	if (href.includes("desktop-dark.css")) return href.replace(SITE_THEME_STYLESHEET_DARK, filename);
+	if (href.includes("desktop.css")) return href.replace(SITE_THEME_STYLESHEET_LIGHT, filename);
+	return href;
+}
+function findSiteDesktopStylesheetLink() {
+	const links = document.querySelectorAll(`link[rel="${STYLESHEET_REL}"]`);
+	for (const link of links) {
+		const href = link.getAttribute("href");
+		if (href === null || href.length === 0) continue;
+		if (isSiteDesktopStylesheetHref(href)) return link;
+	}
+	return null;
+}
+var WARN_STYLESHEET_MISSING = "Site desktop stylesheet link not found; theme cookie updated only";
+var READY_STATE_LOADING = "loading";
+var EVENT_DOM_CONTENT_LOADED = "DOMContentLoaded";
+var STYLESHEET_OBSERVER_OPTIONS = {
+	childList: true,
+	subtree: true
+};
+var pendingStylesheetTheme = null;
+var stylesheetObserver = null;
+var domContentLoadedBound = false;
+function swapStylesheetLink(link, theme) {
+	const href = link.getAttribute("href");
+	if (href === null || href.length === 0) return false;
+	link.setAttribute("href", replaceStylesheetFilename(href, stylesheetFilenameForTheme(theme)));
+	return true;
+}
+function disconnectStylesheetWatch() {
+	if (stylesheetObserver !== null) {
+		stylesheetObserver.disconnect();
+		stylesheetObserver = null;
+	}
+	if (domContentLoadedBound) {
+		document.removeEventListener(EVENT_DOM_CONTENT_LOADED, onStylesheetDomReady);
+		domContentLoadedBound = false;
+	}
+}
+function tryApplyPendingStylesheet() {
+	if (pendingStylesheetTheme === null) return false;
+	const link = findSiteDesktopStylesheetLink();
+	if (link === null) return false;
+	if (!swapStylesheetLink(link, pendingStylesheetTheme)) return false;
+	pendingStylesheetTheme = null;
+	disconnectStylesheetWatch();
+	return true;
+}
+function onStylesheetDomReady() {
+	domContentLoadedBound = false;
+	if (tryApplyPendingStylesheet()) return;
+	if (pendingStylesheetTheme !== null) {
+		log.warn(WARN_STYLESHEET_MISSING);
+		pendingStylesheetTheme = null;
+		disconnectStylesheetWatch();
+	}
+}
+function warnStylesheetMissing() {
+	log.warn(WARN_STYLESHEET_MISSING);
+	pendingStylesheetTheme = null;
+	disconnectStylesheetWatch();
+}
+/**
+* Swap desktop.css ↔ desktop-dark.css once the link exists.
+* At document-start the link is not parsed yet: watch documentElement and
+* fall back to DOMContentLoaded. Warn only if it is still missing after that.
+*/
+function scheduleSiteDesktopStylesheet(theme) {
+	const link = findSiteDesktopStylesheetLink();
+	if (link !== null && swapStylesheetLink(link, theme)) {
+		pendingStylesheetTheme = null;
+		disconnectStylesheetWatch();
+		return;
+	}
+	pendingStylesheetTheme = theme;
+	if (document.readyState !== READY_STATE_LOADING) {
+		warnStylesheetMissing();
+		return;
+	}
+	const root = document.documentElement;
+	if (stylesheetObserver === null && root !== null) {
+		stylesheetObserver = new MutationObserver(() => {
+			tryApplyPendingStylesheet();
+		});
+		stylesheetObserver.observe(root, STYLESHEET_OBSERVER_OPTIONS);
+	}
+	if (!domContentLoadedBound) {
+		document.addEventListener(EVENT_DOM_CONTENT_LOADED, onStylesheetDomReady);
+		domContentLoadedBound = true;
+	}
+}
+/** Cookie only. Stylesheet swap is {@link scheduleSiteDesktopStylesheet}. */
+function writeSiteThemeCookie(theme) {
+	if (theme === "dark") {
+		writeThemeCookie(SITE_THEME_COOKIE_VALUE_DARK, new Date(Date.now() + 365 * MS_PER_DAY));
+		return;
+	}
+	clearSiteThemeCookie();
+}
+/**
+* RuleDesk skin modes need a predictable site base: no theme cookie + light CSS.
+* Does not touch html.rdw-skin (that is owned by src/skin/theme.ts).
+*/
+function forceLightSiteBase() {
+	writeSiteThemeCookie("light");
+	scheduleSiteDesktopStylesheet("light");
+}
+function setSiteTheme(theme) {
+	writeSiteThemeCookie(theme);
+	scheduleSiteDesktopStylesheet(theme);
+}
+var BACKGROUND_DIM_MAX = .8;
+/** JPEG quality when downscaling a custom background to screen size. */
+var APPEARANCE_BACKGROUND_JPEG_QUALITY = .85;
+var CONTRAST_OFFSET = .05;
+var JPEG_MIME = "image/jpeg";
+var BODY_BG_IMAGE = "background-image";
+var BODY_BG_SIZE = "background-size";
+var BODY_BG_POSITION = "background-position";
+var BODY_BG_REPEAT = "background-repeat";
+var BODY_BG_ATTACHMENT = "background-attachment";
+/** Site light tag/link colors (not exported from tokens). */
+var SITE_C_LINK_ARTIST = "#cc0000";
+var SITE_C_LINK_CHARACTER = "#00aa00";
+var SITE_C_LINK_COPYRIGHT = "#aa00aa";
+var SITE_C_LINK_METADATA = "#ff8800";
+/** Site dark accent-soft / tag colors (not exported from tokens). */
+var SITE_DARK_ACCENT_SOFT = SITE_DARK_C_BORDER;
+var SITE_DARK_TAG_ARTIST = "#f0a0a0";
+var SITE_DARK_TAG_CHARACTER = "#f0f0a0";
+var SITE_DARK_TAG_COPYRIGHT = "#f0a0f0";
+var SITE_DARK_TAG_METADATA = "#90d9ed";
+/**
+* Script-page / token palette for Appearance theme "Site default".
+* Card surface = --c-bg; border = --c-bg-alt (aligned with page-css host cards).
+* Danger/radius/shadow/font from Light.
+*/
+var SITE_DEFAULT_PALETTE = {
+	bg: SITE_LIGHT_C_BG,
+	surface: SITE_LIGHT_C_BG,
+	surface2: SITE_LIGHT_C_BG_OVERLAY,
+	border: SITE_LIGHT_C_BG_ALT,
+	text: SITE_LIGHT_C_TEXT,
+	muted: SITE_LIGHT_C_TEXT_SOFT,
+	accent: SITE_LIGHT_C_LINK,
+	accentSoft: SITE_LIGHT_C_BG_ALT,
+	danger: LIGHT_PALETTE.danger,
+	dangerSoft: LIGHT_PALETTE.dangerSoft,
+	tagArtist: SITE_C_LINK_ARTIST,
+	tagCharacter: SITE_C_LINK_CHARACTER,
+	tagCopyright: SITE_C_LINK_COPYRIGHT,
+	tagMetadata: SITE_C_LINK_METADATA,
+	radiusS: LIGHT_PALETTE.radiusS,
+	radiusM: LIGHT_PALETTE.radiusM,
+	radiusL: LIGHT_PALETTE.radiusL,
+	shadow1: LIGHT_PALETTE.shadow1,
+	shadow2: LIGHT_PALETTE.shadow2,
+	font: LIGHT_PALETTE.font
+};
+/**
+* Script-page / token palette for Appearance theme "Site dark".
+* Surface = page bg (not darker chrome); danger/radius/shadow/font from Dark.
+*/
+var SITE_DARK_PALETTE = {
+	bg: SITE_DARK_C_BG,
+	surface: SITE_DARK_C_BG,
+	surface2: SITE_DARK_C_SURFACE2,
+	border: SITE_DARK_C_BORDER,
+	text: SITE_DARK_C_TEXT,
+	muted: SITE_DARK_C_MUTED,
+	accent: SITE_DARK_C_ACCENT,
+	accentSoft: SITE_DARK_ACCENT_SOFT,
+	danger: DARK_PALETTE.danger,
+	dangerSoft: DARK_PALETTE.dangerSoft,
+	tagArtist: SITE_DARK_TAG_ARTIST,
+	tagCharacter: SITE_DARK_TAG_CHARACTER,
+	tagCopyright: SITE_DARK_TAG_COPYRIGHT,
+	tagMetadata: SITE_DARK_TAG_METADATA,
+	radiusS: DARK_PALETTE.radiusS,
+	radiusM: DARK_PALETTE.radiusM,
+	radiusL: DARK_PALETTE.radiusL,
+	shadow1: DARK_PALETTE.shadow1,
+	shadow2: DARK_PALETTE.shadow2,
+	font: DARK_PALETTE.font
+};
+/**
+* Pick text color for a surface: prefer `preferred`, else the first
+* neighboring candidate that meets {@link CONTRAST_RATIO_MIN}.
+*/
+function pickContrastingText(surface, preferred, neighbors) {
+	const preferredRatio = contrastRatio(preferred, surface);
+	if (preferredRatio !== null && preferredRatio >= 4.5) return {
+		text: preferred,
+		ratio: preferredRatio,
+		swapped: false
+	};
+	for (const candidate of neighbors) {
+		const ratio = contrastRatio(candidate, surface);
+		if (ratio !== null && ratio >= 4.5) return {
+			text: candidate,
+			ratio,
+			swapped: true
+		};
+	}
+	return {
+		text: preferred,
+		ratio: preferredRatio,
+		swapped: false
+	};
+}
+function finalizeSitePaletteText(palette) {
+	const picked = pickContrastingText(palette.surface, palette.text, [
+		palette.bg,
+		palette.muted,
+		palette.accent,
+		LIGHT_PALETTE.text,
+		DARK_PALETTE.text
+	]);
+	if (!picked.swapped) return palette;
+	return {
+		...palette,
+		text: picked.text
+	};
+}
+/** Site default after contrast gate (text-on-surface). */
+var SITE_DEFAULT_PALETTE_RESOLVED = finalizeSitePaletteText(SITE_DEFAULT_PALETTE);
+/** Site dark after contrast gate (text-on-surface). */
+var SITE_DARK_PALETTE_RESOLVED = finalizeSitePaletteText(SITE_DARK_PALETTE);
+function createDefaultCustomTheme() {
+	return {
+		base: APPEARANCE_CUSTOM_BASE_LIGHT,
+		backgroundDim: 0
+	};
+}
+function clampBackgroundDim(value) {
+	if (!Number.isFinite(value)) return 0;
+	return Math.min(BACKGROUND_DIM_MAX, Math.max(0, value));
+}
+/** WCAG contrast ratio of two hex colors; null if either is unparseable. */
+function contrastRatio(foreground, background) {
+	const l1 = relativeLuminance(foreground);
+	const l2 = relativeLuminance(background);
+	if (l1 === null || l2 === null) return null;
+	const lighter = Math.max(l1, l2);
+	const darker = Math.min(l1, l2);
+	return (lighter + CONTRAST_OFFSET) / (darker + CONTRAST_OFFSET);
+}
+/**
+* Canonical token palette for an Appearance value.
+* Site themes use site chrome colors — not RuleDesk Light/Dark.
+* Callers (boot/host) should use this instead of light/dark-only resolvers.
+*/
+function resolveAppearancePalette(appearance) {
+	const theme = appearance.theme;
+	if (theme === "site-dark") return SITE_DARK_PALETTE_RESOLVED;
+	if (theme === "site") return SITE_DEFAULT_PALETTE_RESOLVED;
+	if (theme === "dark") return DARK_PALETTE;
+	if (theme === "custom") return appearance.custom?.base === "dark" ? DARK_PALETTE : LIGHT_PALETTE;
+	return LIGHT_PALETTE;
+}
+function escapeUrlForCss(url) {
+	return url.replace(/\\/g, "\\\\").replace(/"/g, "\\\"");
+}
+function clearBodyBackground() {
+	const body = document.body;
+	if (body === null) return;
+	body.style.removeProperty(BODY_BG_IMAGE);
+	body.style.removeProperty(BODY_BG_SIZE);
+	body.style.removeProperty(BODY_BG_POSITION);
+	body.style.removeProperty(BODY_BG_REPEAT);
+	body.style.removeProperty(BODY_BG_ATTACHMENT);
+}
+/**
+* Apply custom background image on <body> with a dim overlay (0–0.8).
+* Cleared when image is empty.
+*/
+function applyBodyBackgroundImage(imageUrl, dim) {
+	const body = document.body;
+	if (body === null) return;
+	if (imageUrl === void 0 || imageUrl.length === 0) {
+		clearBodyBackground();
+		return;
+	}
+	const clamped = clampBackgroundDim(dim);
+	const escaped = escapeUrlForCss(imageUrl);
+	body.style.setProperty(BODY_BG_IMAGE, `linear-gradient(rgba(0, 0, 0, ${String(clamped)}), rgba(0, 0, 0, ${String(clamped)})), url("${escaped}")`);
+	body.style.setProperty(BODY_BG_SIZE, "cover");
+	body.style.setProperty(BODY_BG_POSITION, "center");
+	body.style.setProperty(BODY_BG_REPEAT, "no-repeat");
+	body.style.setProperty(BODY_BG_ATTACHMENT, "fixed");
+}
+function syncSiteCookieAndStylesheet(appearance) {
+	if (appearance.theme === "site-dark") {
+		setSiteTheme("dark");
+		return;
+	}
+	if (appearance.theme === "site") {
+		setSiteTheme("light");
+		return;
+	}
+	forceLightSiteBase();
+}
+/** CSS pixel screen size × devicePixelRatio (for background hints/resize). */
+function getScreenPixelSize() {
+	const dpr = Number.isFinite(window.devicePixelRatio) && window.devicePixelRatio > 0 ? window.devicePixelRatio : 1;
+	return {
+		width: Math.round(window.screen.width * dpr),
+		height: Math.round(window.screen.height * dpr)
+	};
+}
+/**
+* Fit source inside max box without upscaling. Pure sizing helper (testable).
+*/
+function computeDownscaleSize(sourceWidth, sourceHeight, maxWidth, maxHeight) {
+	if (!Number.isFinite(sourceWidth) || !Number.isFinite(sourceHeight) || sourceWidth <= 0 || sourceHeight <= 0) return {
+		width: 0,
+		height: 0
+	};
+	if (sourceWidth <= maxWidth && sourceHeight <= maxHeight) return {
+		width: Math.round(sourceWidth),
+		height: Math.round(sourceHeight)
+	};
+	const scale = Math.min(maxWidth / sourceWidth, maxHeight / sourceHeight);
+	return {
+		width: Math.max(1, Math.round(sourceWidth * scale)),
+		height: Math.max(1, Math.round(sourceHeight * scale))
+	};
+}
+function loadImageElement(src) {
+	return new Promise((resolve, reject) => {
+		const image = new Image();
+		image.onload = () => {
+			resolve(image);
+		};
+		image.onerror = () => {
+			reject(/* @__PURE__ */ new Error("Could not decode image"));
+		};
+		image.src = src;
+	});
+}
+function readFileAsDataUrl(file) {
+	return new Promise((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onload = () => {
+			if (typeof reader.result === "string") {
+				resolve(reader.result);
+				return;
+			}
+			reject(/* @__PURE__ */ new Error("Could not read image file"));
+		};
+		reader.onerror = () => {
+			reject(reader.error ?? /* @__PURE__ */ new Error("Could not read image file"));
+		};
+		reader.readAsDataURL(file);
+	});
+}
+/**
+* Decode file, downscale to screen pixels (never upscale), encode JPEG.
+*/
+async function prepareBackgroundImageFile(file) {
+	const image = await loadImageElement(await readFileAsDataUrl(file));
+	const sourceWidth = image.naturalWidth;
+	const sourceHeight = image.naturalHeight;
+	const screen = getScreenPixelSize();
+	const sized = computeDownscaleSize(sourceWidth, sourceHeight, screen.width, screen.height);
+	const canvas = document.createElement("canvas");
+	canvas.width = sized.width;
+	canvas.height = sized.height;
+	const context = canvas.getContext("2d");
+	if (context === null) throw new Error("Could not prepare background image");
+	context.drawImage(image, 0, 0, sized.width, sized.height);
+	return {
+		dataUrl: canvas.toDataURL(JPEG_MIME, APPEARANCE_BACKGROUND_JPEG_QUALITY),
+		sourceWidth,
+		sourceHeight,
+		outputWidth: sized.width,
+		outputHeight: sized.height,
+		belowScreen: sourceWidth < screen.width || sourceHeight < screen.height
+	};
+}
+/**
+* Full theme apply for boot and settings UI:
+* site cookie/stylesheet + html.rdw-skin / tokens / site-skin / custom props + body image.
+* Token palette comes from {@link resolveAppearancePalette} and is written once via
+* injectTokenStyles + syncPageRootTokens (same tick as applyAppearanceToDocument).
+*/
+function applyAppearanceTheme(options) {
+	const { appearance } = options;
+	syncSiteCookieAndStylesheet(appearance);
+	applyAppearanceToDocument({
+		appearance,
+		siteSkinCss: options.siteSkinCss ?? getSiteSkinCss(),
+		...options.backgroundDataUrl !== void 0 ? { backgroundDataUrl: options.backgroundDataUrl } : {}
+	});
+	const palette = resolveAppearancePalette(appearance);
+	injectTokenStyles(palette);
+	syncPageRootTokens(palette);
+	if (!themeEnablesSkin(appearance.theme)) document.documentElement.classList.remove(RDW_SKIN_CLASS);
+	if (appearance.theme === "custom" && appearance.custom !== void 0) {
+		const custom = appearance.custom;
+		applyBodyBackgroundImage(options.backgroundDataUrl ?? custom.backgroundImage, custom.backgroundDim ?? 0);
+		if (custom.backgroundDim !== void 0) document.documentElement.style.setProperty(TOKEN_VAR.backgroundDim, String(clampBackgroundDim(custom.backgroundDim)));
+	} else clearBodyBackground();
+	const textOnSurface = contrastRatio(palette.text, palette.surface);
+	return {
+		contrastWarning: textOnSurface !== null && textOnSurface < 4.5,
+		contrastRatio: textOnSurface
+	};
+}
+/**
+* Whether RuleDesk site-skin class is active.
+* site / site-dark keep native page chrome; light / dark / custom enable rdw-skin.
+*/
+function themeEnablesSkin(theme) {
+	return theme === "light" || theme === "dark" || theme === "custom";
+}
+/**
+* Ensures a <style id=...> exists under documentElement (works before <head>).
+* Safe at document-start. B1/B2 should reuse these helpers.
+*/
+function ensureStyleElement(id) {
+	const existing = document.getElementById(id);
+	if (existing instanceof HTMLStyleElement) return existing;
+	if (existing !== null) existing.remove();
+	const style = document.createElement("style");
+	style.id = id;
+	(document.head ?? document.documentElement).append(style);
+	return style;
+}
+/** Inject or replace the design-token stylesheet. */
+function injectTokenStyles(palette) {
+	const style = ensureStyleElement(TOKEN_STYLE_ID);
+	style.textContent = buildTokensCss(palette, ":root");
+	return style;
+}
+/**
+* Copy the same palette onto #rdw-page-root when present.
+* Shadow DOM uses :host { all: initial }, so document :root tokens do not inherit.
+*/
+function syncPageRootTokens(palette) {
+	const host = document.getElementById(RDW_PAGE_ROOT_ID);
+	if (!(host instanceof HTMLElement)) return;
+	applyTokenProperties(host, palette);
+}
+/**
+* Inject or replace the site-skin stylesheet (rules scoped under html.rdw-skin).
+*/
+function injectSiteSkinHook(cssText = "") {
+	const style = ensureStyleElement(SITE_SKIN_STYLE_ID);
+	style.textContent = cssText;
+	return style;
+}
+function applyHtmlThemeAttributes(theme) {
+	const root = document.documentElement;
+	root.setAttribute(RDW_THEME_ATTR, theme);
+	if (themeEnablesSkin(theme)) root.classList.add(RDW_SKIN_CLASS);
+	else root.classList.remove(RDW_SKIN_CLASS);
+}
+/**
+* Document-start-safe appearance apply:
+* html class/attr + token CSS (+ site-skin) + optional custom props.
+* Palette from {@link resolveAppearancePalette} (site ≠ Light/Dark).
+* Also syncs live #rdw-page-root Shadow host to the same palette.
+*/
+function applyAppearanceToDocument(options) {
+	const { appearance } = options;
+	applyHtmlThemeAttributes(appearance.theme);
+	const palette = resolveAppearancePalette(appearance);
+	injectTokenStyles(palette);
+	syncPageRootTokens(palette);
+	injectSiteSkinHook(options.siteSkinCss ?? "");
+	const root = document.documentElement;
+	clearCustomThemeProperties(root);
+	const omitImage = options.omitBackgroundImage === true;
+	const backgroundImage = omitImage ? void 0 : options.backgroundDataUrl ?? appearance.custom?.backgroundImage;
+	if (appearance.theme === "custom" && appearance.custom !== void 0) applyCustomThemeProperties(root, backgroundImage !== void 0 && backgroundImage.length > 0 ? {
+		backgroundImage,
+		...appearance.custom.backgroundDim !== void 0 ? { backgroundDim: appearance.custom.backgroundDim } : {}
+	} : { ...appearance.custom.backgroundDim !== void 0 ? { backgroundDim: appearance.custom.backgroundDim } : {} });
+	else if (!omitImage && options.backgroundDataUrl !== void 0 && options.backgroundDataUrl.length > 0) applyCustomThemeProperties(root, { backgroundImage: options.backgroundDataUrl });
+}
+/**
+* Pre-paint appearance read: one GM_getValue + shape checks only (no zod).
+* Full AppearanceSchema validation stays on the post-paint store path.
+*/
+var CUSTOM_BASE_LIGHT = "light";
+var CUSTOM_BASE_DARK = "dark";
+/** Cached raw STORAGE_KEY payload from the single pre-paint GM read. */
+var rawStorageCache;
+var rawStorageRead = false;
+function isRecord(value) {
+	return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function getGmGetValue() {
+	return GM_getValue;
+}
+/**
+* Single GM read for the pre-paint path. Subsequent calls reuse the cache
+* so layout peek does not hit GM again before first paint.
+*/
+function readRawStorageOnce() {
+	if (!rawStorageRead) {
+		rawStorageCache = getGmGetValue()(STORAGE_KEY, void 0);
+		rawStorageRead = true;
+	}
+	return rawStorageCache;
+}
+function cheapParseTheme(value) {
+	if (value === "site") return APPEARANCE_THEME_SITE;
+	if (value === "site-dark") return APPEARANCE_THEME_SITE_DARK;
+	if (value === "light") return APPEARANCE_THEME_LIGHT;
+	if (value === "dark") return APPEARANCE_THEME_DARK;
+	if (value === "custom") return APPEARANCE_THEME_CUSTOM;
+	return DEFAULT_APPEARANCE_THEME;
+}
+function cheapParseCustom(raw) {
+	if (!isRecord(raw)) return;
+	const baseRaw = raw.base;
+	const custom = { base: baseRaw === CUSTOM_BASE_DARK || baseRaw === CUSTOM_BASE_LIGHT ? baseRaw : CUSTOM_BASE_LIGHT };
+	if (typeof raw.backgroundImage === "string") custom.backgroundImage = raw.backgroundImage;
+	if (typeof raw.backgroundDim === "number" && Number.isFinite(raw.backgroundDim)) custom.backgroundDim = raw.backgroundDim;
+	return custom;
+}
+/**
+* Cheap appearance extract from a raw GM storage blob (or undefined).
+* Does not validate marks / collections / artists / favs.
+*/
+function cheapParseAppearance(raw) {
+	if (!isRecord(raw)) return { theme: DEFAULT_APPEARANCE_THEME };
+	const settings = raw.settings;
+	if (!isRecord(settings)) return { theme: DEFAULT_APPEARANCE_THEME };
+	const appearanceRaw = settings.appearance;
+	if (!isRecord(appearanceRaw)) return { theme: DEFAULT_APPEARANCE_THEME };
+	const theme = cheapParseTheme(appearanceRaw.theme);
+	if (theme !== "custom") return { theme };
+	const custom = cheapParseCustom(appearanceRaw.custom);
+	if (custom === void 0) return { theme };
+	return {
+		theme,
+		custom
+	};
+}
+/** Pre-paint appearance: one GM read + cheap shape check. */
+function peekAppearanceForPaint() {
+	return cheapParseAppearance(readRawStorageOnce());
+}
+/**
+* Cheap layout flags from the same cached GM blob (no second GM read, no zod).
+* Used after CSS injection for grid-density / menu-cleanup / search reserve.
+*/
+function peekLayoutSettings() {
+	const raw = readRawStorageOnce();
+	if (!isRecord(raw) || !isRecord(raw.settings)) return {
+		tweaksEnabled: true,
+		features: {},
+		featureChoice: {}
+	};
+	const settings = raw.settings;
+	const tweaksEnabled = typeof settings.tweaksEnabled === "boolean" ? settings.tweaksEnabled : true;
+	const features = {};
+	if (isRecord(settings.features)) {
+		for (const [key, value] of Object.entries(settings.features)) if (typeof value === "boolean") features[key] = value;
+	}
+	const featureChoice = {};
+	if (isRecord(settings.featureChoice)) {
+		for (const [key, value] of Object.entries(settings.featureChoice)) if (typeof value === "string") featureChoice[key] = value;
+	}
+	return {
+		tweaksEnabled,
+		features,
+		featureChoice
+	};
+}
+function resolveFeatureEnabled(layout, id, defaultEnabled) {
+	if (!layout.tweaksEnabled) return false;
+	const stored = layout.features[id];
+	if (stored === void 0) return defaultEnabled;
+	return stored;
+}
+function resolveFeatureChoice(layout, id, defaultValue, allowed) {
+	const stored = layout.featureChoice[id];
+	if (stored !== void 0 && allowed.includes(stored)) return stored;
+	return defaultValue;
+}
+/**
+* Pre-CSS operations on document-start (must stay minimal — A1 counts these):
+* 1. GM_getValue(STORAGE_KEY) via {@link peekAppearanceForPaint}
+* 2. cheap shape parse of settings.appearance (no zod)
+* Then immediately inject theme + skin CSS (base color only, no background image).
+*/
+function syncSiteCookieAfterCss(appearance) {
+	const theme = appearance.theme === "site-dark" ? "dark" : "light";
+	writeSiteThemeCookie(theme);
+	scheduleSiteDesktopStylesheet(theme);
+}
+/**
+* If the URL already has #rdw/…, stamp html.rdw-own-page after CSS inject.
+* Kept here (not in pages/router) so document-start does not import Preact host.
+*/
+function applyOwnPageClassEarly() {
+	if (parseRdwHash(window.location.hash) === null) return;
+	const root = document.documentElement;
+	if (root === null) return;
+	const style = ensureStyleElement(RDW_OWN_PAGE_STYLE_ID);
+	style.textContent = buildOwnPageCss();
+	root.classList.add(RDW_OWN_PAGE_CLASS);
+}
+/**
+* Runs at userscript document-start, before DOMContentLoaded.
+* Hot path: cheap appearance GM read → inject token + site-skin CSS (no bg image).
+* Cookie sync / rdw-own-page run only after styles are in the DOM.
+*/
+function bootEarly() {
+	const appearance = peekAppearanceForPaint();
+	applyAppearanceToDocument({
+		appearance,
+		siteSkinCss: getSiteSkinCss(),
+		omitBackgroundImage: true
+	});
+	syncSiteCookieAfterCss(appearance);
+	applyOwnPageClassEarly();
+}
+/**
 * DOM-ready, still before first paint yield: layout-affecting body classes + CSS.
 * Does not mount thumb buttons, search Preact panel, feed, marks, etc.
 */
@@ -17005,12 +17060,12 @@ bootEarly();
 whenDomReady(() => {
 	applyLayoutBeforePaint();
 	scheduleAfterFirstPaint(() => {
-		module.import('./app-CUlOmvx2-Dj3vNbc_.js').then(({ startApp }) => {
+		module.import('./app-ejTNSNek-Dy8UtyGk.js').then(({ startApp }) => {
 			startApp();
 		});
 	});
 });})}}));
-System.register("./app-CUlOmvx2-Dj3vNbc_.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var yieldToMain,detectPageKind,mountCards,syncFavoritesPage,runFeaturesYielding,getAppearance,applyAppearanceTheme,ensureDocumentStyles,SITE_SELECTORS,log,SITE_ORIGIN,SEARCH_PARAM_TAGS,normalizeArtistTag,CSS_CLASS,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,HEADER_SELECTOR,RDW_OWN_PAGE_CLASS,MENU_ITEM_ID,getFeatureEnabled,parseRdwHash,getSyncState,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,runFavoritesSync,UI_TEXT,Q$1,RDW_PAGE_ROOT_ID,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,resolveFavoritesUserId,RDW_HASH_STATS,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,rdwPageHash,createFavoritesSyncTabId,APPEARANCE_BACKGROUND_KEY,readArtistsMirror,listArtistTags,writeArtistsMirror,reloadFromStorage,save,CURRENT_PAGE_CLASS,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,a,applyTokenProperties,resolveAppearancePalette,isCollectionDetailPage,menuRouteForPage,getSiteSkinCss,$$1,PANEL_UI_CLASS,TOKEN_VAR,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,SITE_LIGHT_C_BG,SITE_LIGHT_C_BG_ALT,SITE_DARK_C_BG,SITE_DARK_C_BORDER,APPEARANCE_BACKGROUND_TOO_LARGE;return{setters:[function(module){yieldToMain=module.y;detectPageKind=module.d;mountCards=module.m;syncFavoritesPage=module.s;runFeaturesYielding=module.r;getAppearance=module.g;applyAppearanceTheme=module.a;ensureDocumentStyles=module.e;SITE_SELECTORS=module.S;log=module.l;SITE_ORIGIN=module.b;SEARCH_PARAM_TAGS=module.c;normalizeArtistTag=module.n;CSS_CLASS=module.C;ensureStyleElement=module.f;RDW_OWN_PAGE_STYLE_ID=module.R;buildOwnPageCss=module.h;HEADER_SELECTOR=module.H;RDW_OWN_PAGE_CLASS=module.i;MENU_ITEM_ID=module.M;getFeatureEnabled=module.j;parseRdwHash=module.p;getSyncState=module.k;readFavoritesSyncMode=module.o;FAVORITES_SYNC_MODE_FULL=module.F;runFavoritesSync=module.q;UI_TEXT=module.U;Q$1=module.Q;RDW_PAGE_ROOT_ID=module.t;NAVBAR_SELECTOR=module.N;FEED_MENU_ITEM_ID=module.u;RDW_HASH_COLLECTIONS=module.v;MENU_LABEL=module.w;RDW_HASH_FOLLOWING=module.x;resolveFavoritesUserId=module.z;RDW_HASH_STATS=module.A;MY_FAVORITES_CONTAINER_ID=module.B;RDW_HASH_SETTINGS=module.D;rdwPageHash=module.E;createFavoritesSyncTabId=module.G;APPEARANCE_BACKGROUND_KEY=module.I;readArtistsMirror=module.J;listArtistTags=module.K;writeArtistsMirror=module.L;reloadFromStorage=module.O;save=module.P;CURRENT_PAGE_CLASS=module.T;setSyncState=module.V;SEARCH_PARAM_PAGE=module.W;FAVORITES_PAGE=module.X;FAVORITES_SECTION_VIEW=module.Y;SEARCH_PATH=module.Z;a=module._;applyTokenProperties=module.$;resolveAppearancePalette=module.a0;isCollectionDetailPage=module.a1;menuRouteForPage=module.a2;getSiteSkinCss=module.a3;$$1=module.a4;PANEL_UI_CLASS=module.a5;TOKEN_VAR=module.a6;RDW_THEME_ATTR=module.a7;APPEARANCE_THEME_SITE=module.a8;APPEARANCE_THEME_SITE_DARK=module.a9;SITE_LIGHT_C_BG=module.aa;SITE_LIGHT_C_BG_ALT=module.ab;SITE_DARK_C_BG=module.ac;SITE_DARK_C_BORDER=module.ad;APPEARANCE_BACKGROUND_TOO_LARGE=module.ae;}],execute:(function(){exports({a:installSiteMenu,i:navigateToRdwRoute,n:loadBackground,r:saveBackground,startApp:startApp,t:clearBackground});/** Matches host.tsx page title class (owned there; styled here for site polish). */
+System.register("./app-ejTNSNek-Dy8UtyGk.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var yieldToMain,detectPageKind,mountCards,syncFavoritesPage,mountFavoriteVideoMarks,runFeaturesYielding,getAppearance,applyAppearanceTheme,ensureDocumentStyles,SITE_SELECTORS,log,SITE_ORIGIN,SEARCH_PARAM_TAGS,normalizeArtistTag,CSS_CLASS,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,HEADER_SELECTOR$1,RDW_OWN_PAGE_CLASS,MENU_ITEM_ID,getFeatureEnabled,parseRdwHash,getSyncState,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,runFavoritesSync,UI_TEXT,Q$1,RDW_PAGE_ROOT_ID,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,resolveFavoritesUserId,RDW_HASH_STATS,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,rdwPageHash,createFavoritesSyncTabId,APPEARANCE_BACKGROUND_KEY,readArtistsMirror,listArtistTags,writeArtistsMirror,reloadFromStorage,save,CURRENT_PAGE_CLASS$1,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,a,applyTokenProperties,resolveAppearancePalette,isCollectionDetailPage,menuRouteForPage,getSiteSkinCss,$$1,PANEL_UI_CLASS,TOKEN_VAR,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,SITE_LIGHT_C_BG,SITE_LIGHT_C_BG_ALT,SITE_DARK_C_BG,SITE_DARK_C_BORDER,APPEARANCE_BACKGROUND_TOO_LARGE;return{setters:[function(module){yieldToMain=module.y;detectPageKind=module.d;mountCards=module.m;syncFavoritesPage=module.s;mountFavoriteVideoMarks=module.a;runFeaturesYielding=module.r;getAppearance=module.g;applyAppearanceTheme=module.b;ensureDocumentStyles=module.e;SITE_SELECTORS=module.S;log=module.l;SITE_ORIGIN=module.c;SEARCH_PARAM_TAGS=module.f;normalizeArtistTag=module.n;CSS_CLASS=module.C;ensureStyleElement=module.h;RDW_OWN_PAGE_STYLE_ID=module.R;buildOwnPageCss=module.i;HEADER_SELECTOR$1=module.H;RDW_OWN_PAGE_CLASS=module.j;MENU_ITEM_ID=module.M;getFeatureEnabled=module.k;parseRdwHash=module.p;getSyncState=module.o;readFavoritesSyncMode=module.q;FAVORITES_SYNC_MODE_FULL=module.F;runFavoritesSync=module.t;UI_TEXT=module.U;Q$1=module.Q;RDW_PAGE_ROOT_ID=module.u;NAVBAR_SELECTOR=module.N;FEED_MENU_ITEM_ID=module.v;RDW_HASH_COLLECTIONS=module.w;MENU_LABEL=module.x;RDW_HASH_FOLLOWING=module.z;resolveFavoritesUserId=module.A;RDW_HASH_STATS=module.B;MY_FAVORITES_CONTAINER_ID=module.D;RDW_HASH_SETTINGS=module.E;rdwPageHash=module.G;createFavoritesSyncTabId=module.I;APPEARANCE_BACKGROUND_KEY=module.J;readArtistsMirror=module.K;listArtistTags=module.L;writeArtistsMirror=module.O;reloadFromStorage=module.P;save=module.T;CURRENT_PAGE_CLASS$1=module.V;setSyncState=module.W;SEARCH_PARAM_PAGE=module.X;FAVORITES_PAGE=module.Y;FAVORITES_SECTION_VIEW=module.Z;SEARCH_PATH=module._;a=module.$;applyTokenProperties=module.a0;resolveAppearancePalette=module.a1;isCollectionDetailPage=module.a2;menuRouteForPage=module.a3;getSiteSkinCss=module.a4;$$1=module.a5;PANEL_UI_CLASS=module.a6;TOKEN_VAR=module.a7;RDW_THEME_ATTR=module.a8;APPEARANCE_THEME_SITE=module.a9;APPEARANCE_THEME_SITE_DARK=module.aa;SITE_LIGHT_C_BG=module.ab;SITE_LIGHT_C_BG_ALT=module.ac;SITE_DARK_C_BG=module.ad;SITE_DARK_C_BORDER=module.ae;APPEARANCE_BACKGROUND_TOO_LARGE=module.af;}],execute:(function(){exports({a:installSiteMenu,i:navigateToRdwRoute,n:loadBackground,r:saveBackground,startApp:startApp,t:clearBackground});/** Matches host.tsx page title class (owned there; styled here for site polish). */
 var PAGE_TITLE_CLASS$1 = "rdw-page-title";
 /** Matches kit SectionLabel class. */
 var SECTION_LABEL_CLASS = "rdw-section-label";
@@ -17251,35 +17306,35 @@ var followingFactory = null;
 var statsFactory = null;
 function getSettingsFactory() {
 	if (settingsFactory === null) settingsFactory = async () => {
-		const mod = await module.import('./settings-page-D3NcBFAX-i6yDkXox.js');
+		const mod = await module.import('./settings-page-BKufo9lA-C0iwiAZP.js');
 		return /* @__PURE__ */ a(mod.SettingsPage, {});
 	};
 	return settingsFactory;
 }
 function getCollectionsFactory() {
 	if (collectionsFactory === null) collectionsFactory = async () => {
-		const mod = await module.import('./collections-page-BBxhXNBl-fwbCQxtR.js');
+		const mod = await module.import('./collections-page-B4oagjCF-ChtWVat0.js');
 		return /* @__PURE__ */ a(mod.CollectionsPage, {});
 	};
 	return collectionsFactory;
 }
 function getFollowingFactory() {
 	if (followingFactory === null) followingFactory = async () => {
-		const mod = await module.import('./following-page-ywCFzyXy-D_IEat2w.js');
+		const mod = await module.import('./following-page-BifRiJSR-BRYIYRBx.js');
 		return /* @__PURE__ */ a(mod.FollowingPage, {});
 	};
 	return followingFactory;
 }
 function getStatsFactory() {
 	if (statsFactory === null) statsFactory = async () => {
-		const mod = await module.import('./stats-section-CkuXMUdo-BA0XQ7zP.js');
+		const mod = await module.import('./stats-section-C8JMmgeZ-3c7l1t_q.js');
 		return /* @__PURE__ */ a(mod.StatsPage, {});
 	};
 	return statsFactory;
 }
 function collectionDetailFactory(collectionId) {
 	return async () => {
-		const mod = await module.import('./collection-detail-page-DWbDDhR7-BKwA9l69.js');
+		const mod = await module.import('./collection-detail-page-DXdWzlFC-ZqOMTSzE.js');
 		return /* @__PURE__ */ a(mod.CollectionDetailPage, { collectionId }, collectionId);
 	};
 }
@@ -17368,7 +17423,7 @@ function findNavbar() {
 	return navbar instanceof HTMLUListElement ? navbar : null;
 }
 function findHeader$1() {
-	const header = document.querySelector(HEADER_SELECTOR);
+	const header = document.querySelector(HEADER_SELECTOR$1);
 	return header instanceof HTMLElement ? header : null;
 }
 /**
@@ -17489,28 +17544,28 @@ function captureSiteCurrentIfNeeded() {
 		savedSiteCurrent = null;
 		return;
 	}
-	const current = navbar.querySelector(`li.${CURRENT_PAGE_CLASS}`);
+	const current = navbar.querySelector(`li.${CURRENT_PAGE_CLASS$1}`);
 	savedSiteCurrent = current instanceof HTMLLIElement && !Object.values(MENU_ITEM_ID).includes(current.id) ? current : null;
 }
 function clearAllOwnCurrent() {
 	for (const id of Object.values(MENU_ITEM_ID)) {
 		const item = document.getElementById(id);
-		if (item instanceof HTMLLIElement) item.classList.remove(CURRENT_PAGE_CLASS);
+		if (item instanceof HTMLLIElement) item.classList.remove(CURRENT_PAGE_CLASS$1);
 	}
 }
 /** Mark the own-page nav item; remember site current-page for restore. */
 function setOwnPageCurrentHighlight(route) {
 	captureSiteCurrentIfNeeded();
 	const navbar = findNavbar();
-	if (navbar !== null) for (const child of navbar.querySelectorAll(`li.${CURRENT_PAGE_CLASS}`)) child.classList.remove(CURRENT_PAGE_CLASS);
+	if (navbar !== null) for (const child of navbar.querySelectorAll(`li.${CURRENT_PAGE_CLASS$1}`)) child.classList.remove(CURRENT_PAGE_CLASS$1);
 	clearAllOwnCurrent();
 	const item = document.getElementById(menuItemIdForRoute(route));
-	if (item instanceof HTMLLIElement) item.classList.add(CURRENT_PAGE_CLASS);
+	if (item instanceof HTMLLIElement) item.classList.add(CURRENT_PAGE_CLASS$1);
 }
 /** Restore site current-page after leaving #rdw/ routes. */
 function clearOwnPageCurrentHighlight() {
 	clearAllOwnCurrent();
-	if (savedSiteCurrent !== null && savedSiteCurrent.isConnected) savedSiteCurrent.classList.add(CURRENT_PAGE_CLASS);
+	if (savedSiteCurrent !== null && savedSiteCurrent.isConnected) savedSiteCurrent.classList.add(CURRENT_PAGE_CLASS$1);
 	savedSiteCurrent = null;
 	siteCurrentCaptured = false;
 }
@@ -17525,7 +17580,7 @@ function ensureOwnPageStyle() {
 	style.textContent = buildOwnPageCss();
 }
 function findHeader() {
-	const header = document.querySelector(HEADER_SELECTOR);
+	const header = document.querySelector(HEADER_SELECTOR$1);
 	return header instanceof HTMLElement ? header : null;
 }
 async function enterRoute(route) {
@@ -17981,6 +18036,7 @@ async function startApp() {
 		await yieldToMain();
 	} else if (pageKind === "favorites") {
 		syncFavoritesPage();
+		mountFavoriteVideoMarks();
 		await yieldToMain();
 	}
 	await runFeaturesYielding(pageKind, search);
@@ -17989,7 +18045,7 @@ async function startApp() {
 	await yieldToMain();
 	maybeResumeFavoritesSync();
 }})}}));
-System.register("./settings-page-D3NcBFAX-i6yDkXox.js", ['./___monkey.entry.js','./app-CUlOmvx2-Dj3vNbc_.js'],(function(exports){'use strict';var d,a,PANEL_UI_CLASS,Switch,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,STATS_MENU_SETTING_LABEL,STATS_MENU_SWITCH_ID,setFeatureEnabled,NumberField,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,setGridFavButtonsVisible,IconChevronRight,IconChevronDown,Card,P$1,T,A,getAppearance,applyAppearanceTheme,getSiteSkinCss,APPEARANCE_THEME_CUSTOM,KIT_FOCUS_CSS,SectionLabel,Select,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,$$1,Segmented,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,TextField,Button,clampBackgroundDim,FEATURES,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,clearFeatureState,applyCssOnlyFeatureEnabled,isFeatureEnabled,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,applyCssOnlyFeatureChoice,getFeatureChoice,createAutocompleteQuerier,b,readSiteBlacklist,Chip,AutocompleteField,ProgressBar,createDefaultCustomTheme,AppearanceThemeSchema,prepareBackgroundImageFile,setFeatureState,writeSiteBlacklist,runFavoritesSync,log,FAVORITES_SYNC_PAGE_PAUSE_MS,clearApiCredentials,parseApiCredentials,setApiCredentials,load,createDefaultStorage,clearStorageCache,clearFavsCache,getSyncState,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,isSiteUrl,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,setAppearance,loadFavSet,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,gridDensityFeature,FAVORITES_SYNC_MODE_INCREMENTAL,FAVORITES_SYNC_MODE_FULL,STATS_MENU_SETTING_ID,hasApiCredentials,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureEnabled,getFeatureChoiceValue,getFeatureState,getScreenPixelSize,installSiteMenu,loadBackground,clearBackground,saveBackground;return{setters:[function(module){d=module.af;a=module._;PANEL_UI_CLASS=module.a5;Switch=module.ag;UI_TEXT=module.U;TWEAKS_SWITCH_ID=module.ah;setTweaksEnabled=module.ai;STATS_MENU_SETTING_LABEL=module.aj;STATS_MENU_SWITCH_ID=module.ak;setFeatureEnabled=module.al;NumberField=module.am;UPDATES_GROUP_SIZE_ID=module.an;setUpdatesGroupSize=module.ao;getUpdatesGroupSize=module.ap;PLAYLIST_CHUNK_SIZE_ID=module.aq;setPlaylistChunkSize=module.ar;getPlaylistChunkSize=module.as;GRID_FAV_CHECKBOX_ID=module.at;setGridFavButtonsEnabled=module.au;setGridFavButtonsVisible=module.av;IconChevronRight=module.aw;IconChevronDown=module.ax;Card=module.ay;P$1=module.az;T=module.aA;A=module.aB;getAppearance=module.g;applyAppearanceTheme=module.a;getSiteSkinCss=module.a3;APPEARANCE_THEME_CUSTOM=module.aC;KIT_FOCUS_CSS=module.aD;SectionLabel=module.aE;Select=module.aF;APPEARANCE_THEME_SITE=module.a8;APPEARANCE_THEME_SITE_DARK=module.a9;APPEARANCE_THEME_LIGHT=module.aG;APPEARANCE_THEME_DARK=module.aH;$$1=module.a4;Segmented=module.aI;APPEARANCE_CUSTOM_BASE_LIGHT=module.aJ;APPEARANCE_CUSTOM_BASE_DARK=module.aK;TextField=module.aL;Button=module.aM;clampBackgroundDim=module.aN;FEATURES=module.aO;featurePanelLabel=module.aP;FEATURE_CHECKBOX_ID_PREFIX=module.aQ;clearFeatureState=module.aR;applyCssOnlyFeatureEnabled=module.aS;isFeatureEnabled=module.aT;FEATURE_CHOICE_ID_PREFIX=module.aU;setFeatureChoiceValue=module.aV;applyCssOnlyFeatureChoice=module.aW;getFeatureChoice=module.aX;createAutocompleteQuerier=module.aY;b=module.aZ;readSiteBlacklist=module.a_;Chip=module.a$;AutocompleteField=module.b0;ProgressBar=module.b1;createDefaultCustomTheme=module.b2;AppearanceThemeSchema=module.b3;prepareBackgroundImageFile=module.b4;setFeatureState=module.b5;writeSiteBlacklist=module.b6;runFavoritesSync=module.q;log=module.l;FAVORITES_SYNC_PAGE_PAUSE_MS=module.b7;clearApiCredentials=module.b8;parseApiCredentials=module.b9;setApiCredentials=module.ba;load=module.bb;createDefaultStorage=module.bc;clearStorageCache=module.bd;clearFavsCache=module.be;getSyncState=module.k;object=module.bf;StorageSchema=module.bg;optional=module.bh;string=module.bi;FavsSchema=module.bj;literal=module.bk;IMPORT_SCHEMA_ERROR_PREFIX=module.bl;isSiteUrl=module.bm;stripLegacyPanelWindowSize=module.bn;save=module.P;migrateMarksFavToFavs=module.bo;FAVS_STORAGE_KEY=module.bp;createDefaultFavs=module.bq;parseFavsStrict=module.br;setAppearance=module.bs;loadFavSet=module.bt;STORAGE_BACKUP_KEY=module.bu;extractFavIdsFromMarks=module.bv;gridDensityFeature=module.bw;FAVORITES_SYNC_MODE_INCREMENTAL=module.bx;FAVORITES_SYNC_MODE_FULL=module.F;STATS_MENU_SETTING_ID=module.by;hasApiCredentials=module.bz;getTweaksEnabled=module.bA;getGridFavButtonsEnabled=module.bB;getFeatureEnabled=module.j;getFeatureChoiceValue=module.bC;getFeatureState=module.bD;getScreenPixelSize=module.bE;},function(module){installSiteMenu=module.a;loadBackground=module.n;clearBackground=module.t;saveBackground=module.r;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
+System.register("./settings-page-BKufo9lA-C0iwiAZP.js", ['./___monkey.entry.js','./app-ejTNSNek-Dy8UtyGk.js'],(function(exports){'use strict';var d,a,PANEL_UI_CLASS,Switch,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,STATS_MENU_SETTING_LABEL,STATS_MENU_SWITCH_ID,setFeatureEnabled,NumberField,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,setGridFavButtonsVisible,IconChevronRight,IconChevronDown,Card,P$1,T,A,getAppearance,applyAppearanceTheme,getSiteSkinCss,APPEARANCE_THEME_CUSTOM,KIT_FOCUS_CSS,SectionLabel,Select,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,$$1,Segmented,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,TextField,Button,clampBackgroundDim,FEATURES,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,clearFeatureState,applyCssOnlyFeatureEnabled,isFeatureEnabled,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,applyCssOnlyFeatureChoice,getFeatureChoice,createAutocompleteQuerier,b,readSiteBlacklist,Chip,AutocompleteField,ProgressBar,createDefaultCustomTheme,AppearanceThemeSchema,prepareBackgroundImageFile,setFeatureState,writeSiteBlacklist,runFavoritesSync,log,FAVORITES_SYNC_PAGE_PAUSE_MS,clearApiCredentials,parseApiCredentials,setApiCredentials,load,createDefaultStorage,clearStorageCache,clearFavsCache,getSyncState,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,isSiteUrl,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,setAppearance,loadFavSet,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,gridDensityFeature,FAVORITES_SYNC_MODE_INCREMENTAL,FAVORITES_SYNC_MODE_FULL,STATS_MENU_SETTING_ID,hasApiCredentials,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureEnabled,getFeatureChoiceValue,getFeatureState,getScreenPixelSize,installSiteMenu,loadBackground,clearBackground,saveBackground;return{setters:[function(module){d=module.ag;a=module.$;PANEL_UI_CLASS=module.a6;Switch=module.ah;UI_TEXT=module.U;TWEAKS_SWITCH_ID=module.ai;setTweaksEnabled=module.aj;STATS_MENU_SETTING_LABEL=module.ak;STATS_MENU_SWITCH_ID=module.al;setFeatureEnabled=module.am;NumberField=module.an;UPDATES_GROUP_SIZE_ID=module.ao;setUpdatesGroupSize=module.ap;getUpdatesGroupSize=module.aq;PLAYLIST_CHUNK_SIZE_ID=module.ar;setPlaylistChunkSize=module.as;getPlaylistChunkSize=module.at;GRID_FAV_CHECKBOX_ID=module.au;setGridFavButtonsEnabled=module.av;setGridFavButtonsVisible=module.aw;IconChevronRight=module.ax;IconChevronDown=module.ay;Card=module.az;P$1=module.aA;T=module.aB;A=module.aC;getAppearance=module.g;applyAppearanceTheme=module.b;getSiteSkinCss=module.a4;APPEARANCE_THEME_CUSTOM=module.aD;KIT_FOCUS_CSS=module.aE;SectionLabel=module.aF;Select=module.aG;APPEARANCE_THEME_SITE=module.a9;APPEARANCE_THEME_SITE_DARK=module.aa;APPEARANCE_THEME_LIGHT=module.aH;APPEARANCE_THEME_DARK=module.aI;$$1=module.a5;Segmented=module.aJ;APPEARANCE_CUSTOM_BASE_LIGHT=module.aK;APPEARANCE_CUSTOM_BASE_DARK=module.aL;TextField=module.aM;Button=module.aN;clampBackgroundDim=module.aO;FEATURES=module.aP;featurePanelLabel=module.aQ;FEATURE_CHECKBOX_ID_PREFIX=module.aR;clearFeatureState=module.aS;applyCssOnlyFeatureEnabled=module.aT;isFeatureEnabled=module.aU;FEATURE_CHOICE_ID_PREFIX=module.aV;setFeatureChoiceValue=module.aW;applyCssOnlyFeatureChoice=module.aX;getFeatureChoice=module.aY;createAutocompleteQuerier=module.aZ;b=module.a_;readSiteBlacklist=module.a$;Chip=module.b0;AutocompleteField=module.b1;ProgressBar=module.b2;createDefaultCustomTheme=module.b3;AppearanceThemeSchema=module.b4;prepareBackgroundImageFile=module.b5;setFeatureState=module.b6;writeSiteBlacklist=module.b7;runFavoritesSync=module.t;log=module.l;FAVORITES_SYNC_PAGE_PAUSE_MS=module.b8;clearApiCredentials=module.b9;parseApiCredentials=module.ba;setApiCredentials=module.bb;load=module.bc;createDefaultStorage=module.bd;clearStorageCache=module.be;clearFavsCache=module.bf;getSyncState=module.o;object=module.bg;StorageSchema=module.bh;optional=module.bi;string=module.bj;FavsSchema=module.bk;literal=module.bl;IMPORT_SCHEMA_ERROR_PREFIX=module.bm;isSiteUrl=module.bn;stripLegacyPanelWindowSize=module.bo;save=module.T;migrateMarksFavToFavs=module.bp;FAVS_STORAGE_KEY=module.bq;createDefaultFavs=module.br;parseFavsStrict=module.bs;setAppearance=module.bt;loadFavSet=module.bu;STORAGE_BACKUP_KEY=module.bv;extractFavIdsFromMarks=module.bw;gridDensityFeature=module.bx;FAVORITES_SYNC_MODE_INCREMENTAL=module.by;FAVORITES_SYNC_MODE_FULL=module.F;STATS_MENU_SETTING_ID=module.bz;hasApiCredentials=module.bA;getTweaksEnabled=module.bB;getGridFavButtonsEnabled=module.bC;getFeatureEnabled=module.k;getFeatureChoiceValue=module.bD;getFeatureState=module.bE;getScreenPixelSize=module.bF;},function(module){installSiteMenu=module.a;loadBackground=module.n;clearBackground=module.t;saveBackground=module.r;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
 var THEME_OPTIONS = [
 	{
 		value: APPEARANCE_THEME_SITE,
@@ -19650,7 +19706,7 @@ function SettingsPage() {
 		]
 	});
 }})}}));
-System.register("./collections-page-BBxhXNBl-fwbCQxtR.js", ['./___monkey.entry.js'],(function(exports){'use strict';var d,b,A,reloadFromStorage,load,a,Segmented,TextField,$$1,Button,UI_TEXT,IconPlus,EmptyState,Dialog,resolveCollectionKind,deleteCollection,QueryField,isUnfilteredQuery,createDynamicCollection,createPlaylist,COLLECTION_KIND_POSTS,collectionDetailHash,readCoverMirror,COLLECTION_KIND_SEARCH,IconCheck,readCountMirror,buildSearchUrl,dynamicCollectionMarkHash,serialize;return{setters:[function(module){d=module.af;b=module.aZ;A=module.aB;reloadFromStorage=module.O;load=module.bb;a=module._;Segmented=module.aI;TextField=module.aL;$$1=module.a4;Button=module.aM;UI_TEXT=module.U;IconPlus=module.bF;EmptyState=module.bG;Dialog=module.bH;resolveCollectionKind=module.bI;deleteCollection=module.bJ;QueryField=module.bK;isUnfilteredQuery=module.bL;createDynamicCollection=module.bM;createPlaylist=module.bN;COLLECTION_KIND_POSTS=module.bO;collectionDetailHash=module.bP;readCoverMirror=module.bQ;COLLECTION_KIND_SEARCH=module.bR;IconCheck=module.bS;readCountMirror=module.bT;buildSearchUrl=module.bU;dynamicCollectionMarkHash=module.bV;serialize=module.bW;}],execute:(function(){exports("CollectionsPage",CollectionsPage);var EVENT_PAGESHOW = "pageshow";
+System.register("./collections-page-B4oagjCF-ChtWVat0.js", ['./___monkey.entry.js'],(function(exports){'use strict';var d,b,A,reloadFromStorage,load,a,Segmented,TextField,$$1,Button,UI_TEXT,IconPlus,EmptyState,Dialog,resolveCollectionKind,deleteCollection,QueryField,isUnfilteredQuery,createDynamicCollection,createPlaylist,COLLECTION_KIND_POSTS,collectionDetailHash,readCoverMirror,COLLECTION_KIND_SEARCH,IconCheck,readCountMirror,buildSearchUrl,dynamicCollectionMarkHash,serialize;return{setters:[function(module){d=module.ag;b=module.a_;A=module.aC;reloadFromStorage=module.P;load=module.bc;a=module.$;Segmented=module.aJ;TextField=module.aM;$$1=module.a5;Button=module.aN;UI_TEXT=module.U;IconPlus=module.bG;EmptyState=module.bH;Dialog=module.bI;resolveCollectionKind=module.bJ;deleteCollection=module.bK;QueryField=module.bL;isUnfilteredQuery=module.bM;createDynamicCollection=module.bN;createPlaylist=module.bO;COLLECTION_KIND_POSTS=module.bP;collectionDetailHash=module.bQ;readCoverMirror=module.bR;COLLECTION_KIND_SEARCH=module.bS;IconCheck=module.bT;readCountMirror=module.bU;buildSearchUrl=module.bV;dynamicCollectionMarkHash=module.bW;serialize=module.bX;}],execute:(function(){exports("CollectionsPage",CollectionsPage);var EVENT_PAGESHOW = "pageshow";
 var PAGE_CLASS = "rdw-collections-page";
 var HEADER_CLASS = "rdw-collections-header";
 var TOOLBAR_CLASS = "rdw-collections-toolbar";
@@ -20375,7 +20431,7 @@ function CollectionsPage() {
 		]
 	});
 }})}}));
-System.register("./following-page-ywCFzyXy-D_IEat2w.js", ['./___monkey.entry.js'],(function(exports){'use strict';var d,T,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST,A,reloadFromStorage,getSeenPostId,a,completeLastQueryToken,readLastQueryToken,EmptyState,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,Button,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,$$1,Segmented,TextField,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,Select,UI_TEXT,ProgressBar,Dialog,removeArtist,load,AutocompleteField,addArtists,buildSearchUrl,TAG_TYPE_INCLUDE,IconCheck,IconButton,IconX,removeArtists,rememberArtistSnapshot,fetchArtistSnapshot,log;return{setters:[function(module){d=module.af;T=module.aA;createAutocompleteQuerier=module.aY;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.bX;A=module.aB;reloadFromStorage=module.O;getSeenPostId=module.bY;a=module._;completeLastQueryToken=module.bZ;readLastQueryToken=module.b_;EmptyState=module.bG;ARTISTS_EMPTY_HINT=module.b$;ARTISTS_EMPTY_TITLE=module.c0;Button=module.aM;SEARCH_PATH=module.Z;SEARCH_PARAM_PAGE=module.W;SEARCH_PAGE=module.c1;SEARCH_SECTION=module.c2;$$1=module.a4;Segmented=module.aI;TextField=module.aL;ARTIST_FILTER_LABEL=module.c3;ARTIST_FILTER_ID=module.c4;Select=module.aF;UI_TEXT=module.U;ProgressBar=module.b1;Dialog=module.bH;removeArtist=module.c5;load=module.bb;AutocompleteField=module.b0;addArtists=module.c6;buildSearchUrl=module.bU;TAG_TYPE_INCLUDE=module.c7;IconCheck=module.bS;IconButton=module.c8;IconX=module.c9;removeArtists=module.ca;rememberArtistSnapshot=module.cb;fetchArtistSnapshot=module.cc;log=module.l;}],execute:(function(){exports("FollowingPage",FollowingPage);var EVENT_PAGESHOW = "pageshow";
+System.register("./following-page-BifRiJSR-BRYIYRBx.js", ['./___monkey.entry.js'],(function(exports){'use strict';var d,T,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST,A,reloadFromStorage,getSeenPostId,a,completeLastQueryToken,readLastQueryToken,EmptyState,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,Button,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,$$1,Segmented,TextField,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,Select,UI_TEXT,ProgressBar,Dialog,removeArtist,load,AutocompleteField,addArtists,buildSearchUrl,TAG_TYPE_INCLUDE,IconCheck,IconButton,IconX,removeArtists,rememberArtistSnapshot,fetchArtistSnapshot,log;return{setters:[function(module){d=module.ag;T=module.aB;createAutocompleteQuerier=module.aZ;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.bY;A=module.aC;reloadFromStorage=module.P;getSeenPostId=module.bZ;a=module.$;completeLastQueryToken=module.b_;readLastQueryToken=module.b$;EmptyState=module.bH;ARTISTS_EMPTY_HINT=module.c0;ARTISTS_EMPTY_TITLE=module.c1;Button=module.aN;SEARCH_PATH=module._;SEARCH_PARAM_PAGE=module.X;SEARCH_PAGE=module.c2;SEARCH_SECTION=module.c3;$$1=module.a5;Segmented=module.aJ;TextField=module.aM;ARTIST_FILTER_LABEL=module.c4;ARTIST_FILTER_ID=module.c5;Select=module.aG;UI_TEXT=module.U;ProgressBar=module.b2;Dialog=module.bI;removeArtist=module.c6;load=module.bc;AutocompleteField=module.b1;addArtists=module.c7;buildSearchUrl=module.bV;TAG_TYPE_INCLUDE=module.c8;IconCheck=module.bT;IconButton=module.c9;IconX=module.ca;removeArtists=module.cb;rememberArtistSnapshot=module.cc;fetchArtistSnapshot=module.cd;log=module.l;}],execute:(function(){exports("FollowingPage",FollowingPage);var EVENT_PAGESHOW = "pageshow";
 var PAGE_CLASS = "rdw-following-page";
 var ADD_FORM_CLASS = "rdw-following-add";
 var TOOLBAR_CLASS = "rdw-following-toolbar";
@@ -21110,7 +21166,7 @@ function FollowingPage() {
 		]
 	});
 }})}}));
-System.register("./stats-section-CkuXMUdo-BA0XQ7zP.js", ['./___monkey.entry.js'],(function(exports){'use strict';var a,PANEL_UI_CLASS,Card,getSeenPostId,loadFavSet,load,resolveCollectionKind;return{setters:[function(module){a=module._;PANEL_UI_CLASS=module.a5;Card=module.ay;getSeenPostId=module.bY;loadFavSet=module.bt;load=module.bb;resolveCollectionKind=module.bI;}],execute:(function(){exports("StatsPage",StatsPage);/**
+System.register("./stats-section-C8JMmgeZ-3c7l1t_q.js", ['./___monkey.entry.js'],(function(exports){'use strict';var a,PANEL_UI_CLASS,Card,getSeenPostId,loadFavSet,load,resolveCollectionKind;return{setters:[function(module){a=module.$;PANEL_UI_CLASS=module.a6;Card=module.az;getSeenPostId=module.bZ;loadFavSet=module.bu;load=module.bc;resolveCollectionKind=module.bJ;}],execute:(function(){exports("StatsPage",StatsPage);/**
 * Numbers about what the script stores, computed from local data when the
 * settings page opens. Nothing is requested from the site, so these are counts
 * of your own library, not totals of the site.
@@ -21325,7 +21381,7 @@ function StatsPage() {
 		children: /* @__PURE__ */ a(StatsSection, {})
 	});
 }})}}));
-System.register("./collection-detail-page-DWbDDhR7-BKwA9l69.js", ['./___monkey.entry.js','./app-CUlOmvx2-Dj3vNbc_.js'],(function(exports){'use strict';var d,T,w$1,b,downloadsAvailable,a,$$1,Button,UI_TEXT,shuffleCollection,resetCollectionOrder,EmptyState,Dialog,TextField,Toast,getCollectionOrder,listPlaylists,RDW_HASH_COLLECTIONS,removePostsFromCollection,isDownloadBusy,startDownload,movePostInCollection,renameCollection,deleteCollection,RDW_ROUTE_COLLECTIONS,restorePosts,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION_VIEW,SEARCH_PATH,collectionQueueHash,navigateToRdwRoute;return{setters:[function(module){d=module.af;T=module.aA;w$1=module.cd;b=module.aZ;downloadsAvailable=module.ce;a=module._;$$1=module.a4;Button=module.aM;UI_TEXT=module.U;shuffleCollection=module.cf;resetCollectionOrder=module.cg;EmptyState=module.bG;Dialog=module.bH;TextField=module.aL;Toast=module.ch;getCollectionOrder=module.ci;listPlaylists=module.cj;RDW_HASH_COLLECTIONS=module.v;removePostsFromCollection=module.ck;isDownloadBusy=module.cl;startDownload=module.cm;movePostInCollection=module.cn;renameCollection=module.co;deleteCollection=module.bJ;RDW_ROUTE_COLLECTIONS=module.cp;restorePosts=module.cq;SEARCH_PARAM_PAGE=module.W;SEARCH_PAGE=module.c1;SEARCH_SECTION_VIEW=module.cr;SEARCH_PATH=module.Z;collectionQueueHash=module.cs;},function(module){navigateToRdwRoute=module.i;}],execute:(function(){exports("CollectionDetailPage",CollectionDetailPage);var CELL_SIZE_PX = 200;
+System.register("./collection-detail-page-DXdWzlFC-ZqOMTSzE.js", ['./___monkey.entry.js','./app-ejTNSNek-Dy8UtyGk.js'],(function(exports){'use strict';var d,T,w$1,b,downloadsAvailable,a,$$1,Button,UI_TEXT,shuffleCollection,resetCollectionOrder,EmptyState,Dialog,TextField,Toast,getCollectionOrder,listPlaylists,RDW_HASH_COLLECTIONS,removePostsFromCollection,isDownloadBusy,startDownload,movePostInCollection,renameCollection,deleteCollection,RDW_ROUTE_COLLECTIONS,restorePosts,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION_VIEW,SEARCH_PATH,collectionQueueHash,navigateToRdwRoute;return{setters:[function(module){d=module.ag;T=module.aB;w$1=module.ce;b=module.a_;downloadsAvailable=module.cf;a=module.$;$$1=module.a5;Button=module.aN;UI_TEXT=module.U;shuffleCollection=module.cg;resetCollectionOrder=module.ch;EmptyState=module.bH;Dialog=module.bI;TextField=module.aM;Toast=module.ci;getCollectionOrder=module.cj;listPlaylists=module.ck;RDW_HASH_COLLECTIONS=module.w;removePostsFromCollection=module.cl;isDownloadBusy=module.cm;startDownload=module.cn;movePostInCollection=module.co;renameCollection=module.cp;deleteCollection=module.bK;RDW_ROUTE_COLLECTIONS=module.cq;restorePosts=module.cr;SEARCH_PARAM_PAGE=module.X;SEARCH_PAGE=module.c2;SEARCH_SECTION_VIEW=module.cs;SEARCH_PATH=module._;collectionQueueHash=module.ct;},function(module){navigateToRdwRoute=module.i;}],execute:(function(){exports("CollectionDetailPage",CollectionDetailPage);var CELL_SIZE_PX = 200;
 var GRID_GAP_PX = 4;
 var SECTION_GAP_PX = 12;
 var ACTIONS_GAP_PX = 8;

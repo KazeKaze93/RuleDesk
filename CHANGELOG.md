@@ -2,6 +2,11 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.25.2
+
+- Favorites: video posts get the same outline as on the Posts page, and "Video preview on hover" works there. The site does not mark videos on that page, so the script reads the `video` tag from the thumbnail
+- Favorites: thumbnails have rounded corners, and "Hide tag tooltip on thumbnails" now works there too
+
 ## 0.25.1
 
 - Post page: a gap between the picture and the side panel; they were touching

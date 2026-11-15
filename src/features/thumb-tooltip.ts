@@ -5,7 +5,8 @@ import { featureBodyClass, type Feature, type FeatureContext } from "./types";
  * Hides the browser tooltip with the full tag list that shows when the pointer
  * rests on a thumbnail.
  *
- * The tooltip is the `title` of `img.preview`. The attribute stays: the site's
+ * The tooltip is the `title` of the preview image (`img.preview`; on the
+ * favorites page the image has no class). The attribute stays: the site's
  * scripts and this script read tags from it, and nothing inside `a#p{ID}` is
  * changed. Instead the image stops taking the pointer, so the hovered element
  * is the link around it, which has no title. A click lands on the link as
@@ -24,7 +25,7 @@ const DISPLAY_INLINE = "inline";
 const THUMB_LINK_SELECTOR = `${SITE_SELECTORS.thumb} > a:not([onclick])`;
 
 const FEATURE_CSS = `
-body.${BODY_CLASS} ${SITE_SELECTORS.thumb} > a > ${SITE_SELECTORS.previewImage} {
+body.${BODY_CLASS} ${SITE_SELECTORS.thumb} > a > img {
   pointer-events: none;
 }
 body.${BODY_CLASS}.${THUMB_TOOLTIP_INLINE_CLASS} ${THUMB_LINK_SELECTOR} {

@@ -42,7 +42,7 @@ describe("thumbTooltipFeature", () => {
     expect(thumbTooltipFeature.defaultEnabled).toBe(true);
     expect(thumbTooltipFeature.cssOnly).toBe(true);
     expect(thumbTooltipFeature.css).toMatch(
-      /body\.rdw-f-thumb-tooltip span\.thumb > a > img\.preview \{\s*pointer-events: none;/,
+      /body\.rdw-f-thumb-tooltip span\.thumb > a > img \{\s*pointer-events: none;/,
     );
   });
 
