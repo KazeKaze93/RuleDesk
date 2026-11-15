@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 
+import { videoPreviewFeature } from "../../src/features/video-preview";
 import {
   VIDEO_THUMB_CLASS,
   markFavoriteVideoThumbs,
@@ -57,6 +58,12 @@ describe("favorites video marks", () => {
         "https://wimg.rule34.xxx/thumbnails//231/thumbnail_abc.jpg?19337851",
       ),
     ).toBe("https://ws-cdn-video.rule34.xxx//images/231/abc.mp4?19337851");
+  });
+
+  it("brings the grid rules the hover preview is positioned by", () => {
+    // Nothing else adds them on the favorites page.
+    expect(videoPreviewFeature.css).toContain(".rdw-thumb {\n  position: relative;");
+    expect(videoPreviewFeature.css).toContain(".rdw-thumb > a > img {\n  anchor-name: --rdw-img;");
   });
 
   it("gives a marked thumb the outline of a video", () => {

@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.25.4
+
+- Favorites: the hover video preview lies exactly on the thumbnail. Before it appeared shifted and wider than the picture, so the post looked doubled
+
 ## 0.25.3
 
 - Favorites: "Remove" is now a small button in the top right corner of the preview, shown while the pointer is over the post. The separate line under each thumbnail is gone, so the rows sit closer. The button is hidden while posts are being selected

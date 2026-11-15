@@ -15,6 +15,7 @@ import {
   extractPostIdFromThumbLink,
 } from "../site/selectors";
 import {
+  BASE_GRID_CSS,
   buildVideoUrlFromThumbUrl,
   ensureThumbAnchor,
 } from "../site/thumb";
@@ -43,7 +44,13 @@ const PRELOAD_NONE = "none";
 const BODY_CLASS = featureBodyClass(FEATURE_ID);
 const BODY_SELECTOR = `body.${BODY_CLASS}`;
 
+/*
+ * The base grid rules (the thumb as the containing block, the image as the
+ * anchor) come with the feature: on the favorites page nothing else adds them,
+ * and without them the video lands beside the image instead of on it.
+ */
 const FEATURE_CSS = `
+${BASE_GRID_CSS.trim()}
 ${BODY_SELECTOR} .${VIDEO_CLASS} {
   position: absolute;
   top: 0;
