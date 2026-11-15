@@ -2,16 +2,21 @@ import type { JSX } from "preact";
 import { useState } from "preact/hooks";
 
 import {
+  SEARCH_PARAM_SECTION,
+  SEARCH_PARAM_TAGS,
+  SEARCH_SECTION,
   UI_TEXT,
   UPDATES_OR_CLOSE,
   UPDATES_OR_JOIN,
   UPDATES_OR_OPEN,
 } from "../config/constants";
 import {
+  buildSearchUrl,
   isFullUpdatesQuery,
   isPartialUpdatesQuery,
   isUnfilteredQuery,
   parsePlaylistQuery,
+  parseTags,
   queriesMatchIgnoringSortRandom,
   serialize,
   withoutSortRandom,
@@ -20,6 +25,7 @@ import { isPlaylist, type Collection } from "../storage/schema";
 import { createDynamicCollection, listArtistTags, load } from "../storage/store";
 import { Button, Dialog, TextField } from "../ui/kit";
 import { QueryField } from "../ui/query-field";
+import { rememberDynamicCoverFromPage } from "./playlist-bar";
 
 export const SAVE_SEARCH_LABEL = "Save as collection";
 export const SAVE_SEARCH_TITLE = "Save this search as a dynamic collection";
@@ -117,6 +123,18 @@ function nameError(name: string): string | null {
   return null;
 }
 
+/** True when the page is the results list of exactly this search. */
+function pageShowsQuery(search: string, query: string): boolean {
+  const params = new URLSearchParams(search);
+  if (params.get(SEARCH_PARAM_SECTION) !== SEARCH_SECTION) {
+    return false;
+  }
+  return queriesMatchIgnoringSortRandom(
+    params.get(SEARCH_PARAM_TAGS) ?? "",
+    query,
+  );
+}
+
 export type SaveSearchButtonProps = {
   /** Text of the site's tags field: what the panel shows as chips and filters. */
   readonly tags: string;
@@ -125,8 +143,11 @@ export type SaveSearchButtonProps = {
 /**
  * "Save as collection" button for the search panel footer. Rendered only while
  * the search in the tags field can be saved. The dialog shows the name and the
- * query that will be stored. Saving changes nothing on the page except a short
- * note in place of the button: the collection is opened from Collections.
+ * query that will be stored. When the page already shows that search, saving
+ * takes the collection's cover and post count from it and leaves a short note
+ * in place of the button. When the field was edited but not submitted, the
+ * saved search is opened as the Search button would, so the cover is known.
+ * The collection's bar shows only when it is opened from Collections.
  */
 export function SaveSearchButton(props: SaveSearchButtonProps): JSX.Element | null {
   const [open, setOpen] = useState(false);
@@ -167,9 +188,16 @@ export function SaveSearchButton(props: SaveSearchButtonProps): JSX.Element | nu
       setError(REJECTED_QUERY_MESSAGE);
       return;
     }
-    createDynamicCollection(name.trim(), query);
-    setSaved(true);
+    const created = createDynamicCollection(name.trim(), query);
+    const search = window.location.search;
+    if (pageShowsQuery(search, query)) {
+      rememberDynamicCoverFromPage(created.id, search);
+      setSaved(true);
+      close();
+      return;
+    }
     close();
+    window.location.assign(buildSearchUrl(parseTags(query)));
   };
 
   return (

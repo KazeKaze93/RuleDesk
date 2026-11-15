@@ -9,6 +9,7 @@ import {
   SAVE_SEARCH_TITLE,
   SaveSearchButton,
 } from "../../src/features/save-search";
+import { buildSearchUrl, parseTags } from "../../src/search/query";
 import { clearFavsCache } from "../../src/storage/favs";
 import {
   clearStorageCache,
@@ -128,6 +129,8 @@ describe("SaveSearchLink", () => {
     content.id = "content";
     const list = document.createElement("div");
     list.className = "image-list";
+    list.innerHTML =
+      '<span class="thumb"><a href="index.php?page=post&amp;s=view&amp;id=1"><img class="preview" src="https://example.test/t1.jpg"></a></span>';
     content.append(list);
     document.body.append(content);
   });
@@ -171,6 +174,8 @@ describe("SaveSearchLink", () => {
 
     const saved = load().collections.find((item) => item.name === "Cats");
     expect(saved?.query).toBe("cat -dog");
+    // The page is shuffled here, so no cover is taken from it.
+    expect(saved?.cover).toBeUndefined();
     expect(document.querySelector('[role="dialog"]')).toBeNull();
     expect(buttonByText(SAVE_SEARCH_LABEL)).toBeNull();
     expect(document.getElementById(DYNAMIC_BAR_ID)).toBeNull();
@@ -178,6 +183,22 @@ describe("SaveSearchLink", () => {
       SAVED_NOTE,
     );
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("takes the cover and post count from the page that already shows the search", () => {
+    openResults("cat");
+    host = renderKit(<SaveSearchButton tags="cat" />);
+    const link = buttonByText(SAVE_SEARCH_LABEL);
+    if (link === null) {
+      throw new Error("save button missing");
+    }
+    fireClick(link);
+    typeName("Cats");
+    submitDialog();
+
+    const saved = load().collections.find((item) => item.name === "Cats");
+    expect(saved?.cover).toEqual(["https://example.test/t1.jpg"]);
+    expect(saved?.postCount).toEqual({ value: 1, exact: true });
   });
 
   it("refuses an empty name and a name that already exists", () => {
@@ -204,7 +225,7 @@ describe("SaveSearchLink", () => {
     expect(document.getElementById(DYNAMIC_BAR_ID)).toBeNull();
   });
 
-  it("saves what the field holds, not the page address, and stays on the page", () => {
+  it("saves what the field holds, not the page address, and opens that search", () => {
     const assign = vi.fn();
     vi.stubGlobal("location", {
       ...window.location,
@@ -222,7 +243,10 @@ describe("SaveSearchLink", () => {
 
     const saved = load().collections.find((item) => item.name === "Triss");
     expect(saved?.query).toBe("triss_merigold blowjob");
-    expect(assign).not.toHaveBeenCalled();
+    expect(assign).toHaveBeenCalledWith(
+      buildSearchUrl(parseTags("triss_merigold blowjob")),
+    );
+    expect(saved?.cover).toBeUndefined();
     expect(document.getElementById(DYNAMIC_BAR_ID)).toBeNull();
   });
 

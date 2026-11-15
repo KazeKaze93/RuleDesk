@@ -18,6 +18,10 @@ Local build: `npm install` then `npm run build` → `dist/ruledesk-web.user.js`.
 
 Measured on Tampermonkey 5.5.1: with Dynamic, native page flash on load is typically 0/5 vs ~5/5 with UserScripts API; pages also open faster. Prefer Dynamic for RuleDesk Web.
 
+### 0.19.1 notes
+
+- A collection saved from the search panel has its cover and post count at once: they are taken from the results page when it already shows that search. When the tags were typed but not searched yet, saving opens that search (as the Search button would), and the cover is taken there
+
 ### 0.19.0 notes
 
 - **Dynamic collection header** (name, Shuffle, Edit query, Rename, Delete) shows only when the collection is opened from Collections. An ordinary search that equals a saved one stays a plain search. Result pages, Shuffle and Edit query keep the header

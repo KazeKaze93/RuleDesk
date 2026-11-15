@@ -837,6 +837,17 @@ function mountDynamicBar(tagsParam: string, search: string): void {
   );
 }
 
+/**
+ * Takes the cover and post count of a just-saved search from the results page
+ * that already shows it. No request is made.
+ */
+export function rememberDynamicCoverFromPage(
+  collectionId: string,
+  search: string,
+): void {
+  rememberDynamicCover(collectionId, readTagsParam(search), search);
+}
+
 function mountPlaylistBar(ctx: FeatureContext): void {
   removeExistingBar(document);
   removeDynamicBar(document);
