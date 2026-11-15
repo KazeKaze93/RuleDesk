@@ -52,7 +52,7 @@ The local favorite list is kept in sync with the site by "Sync favorites" in set
 
 ### Download manager
 
-Saves the original files of a custom collection (all or selected posts), of a whole search, or of posts picked on a results page. Files go to a folder named after the collection or the search, inside your browser's download folder (or inside a subfolder of it that you set in RuleDesk → Downloads), as `rule34-<post id>.<ext>`. A panel in the corner shows progress and has Pause, Resume and Cancel; the job survives a page change.
+Saves the original files of a custom collection (all or selected posts), of a whole search, or of posts picked on a results page. Files go to a folder named after the collection or the search, inside your browser's download folder, as `rule34-<post id>.<ext>`. A panel in the corner shows progress and has Pause, Resume and Cancel; the job survives a page change.
 
 The manager needs your own API key: generate it on the site's account options page and paste the whole line it shows into RuleDesk → Downloads. Without a key there are no download buttons.
 

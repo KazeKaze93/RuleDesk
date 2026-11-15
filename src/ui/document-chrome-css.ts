@@ -47,7 +47,7 @@ export const CARD_CSS = `
 }
 
 .${CSS_CLASS.cardFav}:focus-visible {
-  outline: 2px solid #4c8bf5;
+  outline: 2px solid var(--rdw-accent);
   outline-offset: 2px;
 }
 
@@ -93,7 +93,7 @@ body.${CSS_CLASS.gridFavsHidden} .${CSS_CLASS.cardFav} {
 }
 
 .${CSS_CLASS.artistFollow}:focus-visible {
-  outline: 2px solid #4c8bf5;
+  outline: 2px solid var(--rdw-accent);
   outline-offset: 2px;
 }
 

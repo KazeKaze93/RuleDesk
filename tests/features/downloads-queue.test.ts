@@ -20,10 +20,6 @@ import {
   getApiCredentials,
   setApiCredentials,
 } from "../../src/storage/api-credentials";
-import {
-  getDownloadBaseFolder,
-  setDownloadBaseFolder,
-} from "../../src/storage/download-settings";
 import { clearStorageCache } from "../../src/storage/store";
 
 const memory = new Map<string, unknown>();
@@ -131,20 +127,6 @@ describe("download manager", () => {
       failed: 0,
     });
     expect(memory.get(DOWNLOADS_JOB_KEY)).toBeNull();
-  });
-
-  it("saves under the folder chosen in settings and remembers the choice", async () => {
-    setApiCredentials("42", "key");
-    expect(setDownloadBaseFolder(" art//rule34/ ")).toBe("art/rule34");
-    expect(getDownloadBaseFolder()).toBe("art/rule34");
-    stubApi([3]);
-    const names = stubDownload();
-
-    const run = startDownload("My pics", { kind: "query", tags: "cat" });
-    await vi.advanceTimersByTimeAsync(LONG_MS);
-    await run;
-
-    expect(names).toEqual(["art/rule34/My pics/rule34-3.png"]);
   });
 
   it("retries a failed file once, counts it as failed and goes on", async () => {

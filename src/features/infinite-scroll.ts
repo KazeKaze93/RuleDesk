@@ -74,7 +74,7 @@ body.${BODY_FEATURE_CLASS} .${CLASS_RETRY} {
   font: inherit;
 }
 body.${BODY_FEATURE_CLASS} .${CLASS_RETRY}:focus-visible {
-  outline: 2px solid #4c8bf5;
+  outline: 2px solid var(--rdw-accent);
   outline-offset: 2px;
 }
 body.${BODY_FEATURE_CLASS} span.thumb.${CLASS_BLACKLISTED} {

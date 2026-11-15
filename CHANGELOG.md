@@ -2,6 +2,11 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.24.6
+
+- The "Download folder" setting is removed: where files go is the browser's own download folder, and a script cannot change that. Each download still gets a folder named after the collection or the search, with no fixed root
+- The NEW mark on feed thumbnails and keyboard focus outlines now take their colour from the theme
+
 ## 0.24.5
 
 - Downloads no longer go into a fixed `RuleDesk` folder: each download gets a folder named after the collection or the search, directly in the browser's download folder

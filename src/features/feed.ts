@@ -79,7 +79,6 @@ function reloadStoragePreservingArtistsMirror(): void {
 
 const NEW_PLAQUE_LEFT_PX = 6;
 const NEW_PLAQUE_TOP_PX = 6;
-const NEW_PLAQUE_ACCENT = "#2f6fed";
 
 const EVENT_PAGESHOW = "pageshow";
 const EVENT_CLICK = "click";
@@ -96,8 +95,8 @@ body.${BODY_CLASS} span.thumb.${FEED_NEW_CLASS}.${THUMB_CLASS}::after {
   z-index: 4;
   left: ${String(NEW_PLAQUE_LEFT_PX)}px;
   top: ${String(NEW_PLAQUE_TOP_PX)}px;
-  background: ${NEW_PLAQUE_ACCENT};
-  color: #fff;
+  background: var(--rdw-accent);
+  color: var(--rdw-surface);
   font: 700 9.5px system-ui, Segoe UI, sans-serif;
   letter-spacing: 0.05em;
   padding: 2px 6px;

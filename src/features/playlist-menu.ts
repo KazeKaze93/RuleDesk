@@ -34,7 +34,7 @@ const BUTTON_SIZE_PX = 28;
 const BUTTON_OFFSET_PX = 6;
 const BUTTON_BELOW_FAV_TOP_PX = BUTTON_OFFSET_PX + BUTTON_SIZE_PX + 4;
 
-const FOCUS_OUTLINE = "2px solid #4c8bf5";
+const FOCUS_OUTLINE = "2px solid var(--rdw-accent)";
 const FOCUS_OUTLINE_OFFSET = "2px";
 
 const EVENT_KEYDOWN = "keydown";

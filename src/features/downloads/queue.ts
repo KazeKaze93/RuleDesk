@@ -8,7 +8,6 @@ import {
 } from "../../site/api";
 import { downloadFile, downloadFileName, downloadFolder } from "../../site/download";
 import { getApiCredentials } from "../../storage/api-credentials";
-import { getDownloadBaseFolder } from "../../storage/download-settings";
 
 /**
  * The download queue. One job at a time: first the files of the job are found
@@ -254,7 +253,7 @@ export async function startDownload(label: string, source: DownloadSource): Prom
     emit({ ...IDLE, phase: "error", label, message: NO_FILES_MESSAGE });
     return;
   }
-  job = { label, folder: downloadFolder(label, getDownloadBaseFolder()), files };
+  job = { label, folder: downloadFolder(label), files };
   GM_setValue(DOWNLOADS_JOB_KEY, job);
   savePosition();
   await run();

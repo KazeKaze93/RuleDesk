@@ -28,39 +28,18 @@ export function downloadFileName(url: string, postId: number): string {
   return `${FILE_PREFIX}${String(postId)}.${extension}`;
 }
 
-const PATH_SEPARATOR = /[\\/]+/;
-
-function safeFolderName(name: string): string {
-  return name
+/**
+ * Where a job's files go, relative to the browser's download folder: a folder
+ * named after the job (a collection name or a search), made safe for a folder
+ * name. Where that download folder is, is the browser's own setting.
+ */
+export function downloadFolder(label: string): string {
+  const safe = label
     .replace(FOLDER_FORBIDDEN, " ")
     .replace(FOLDER_SPACES, " ")
     .slice(0, FOLDER_MAX_LENGTH)
     .replace(FOLDER_EDGE, "");
-}
-
-/**
- * A folder path the user typed, made safe: each part cleaned, empty parts and
- * `.` / `..` dropped. The script manager saves only inside the browser's own
- * download folder, so the path is always relative to it.
- */
-export function cleanBaseFolder(base: string): string {
-  return base
-    .split(PATH_SEPARATOR)
-    .map(safeFolderName)
-    .filter((part) => part.length > 0)
-    .join("/");
-}
-
-/**
- * Where a job's files go, relative to the browser's download folder:
- * `<base>/<label>`, or just `<label>` without a base. The label (a collection
- * name or a search) is made safe for a folder name.
- */
-export function downloadFolder(label: string, base = ""): string {
-  const safe = safeFolderName(label);
-  const folder = safe.length > 0 ? safe : FOLDER_FALLBACK;
-  const cleanBase = cleanBaseFolder(base);
-  return cleanBase.length > 0 ? `${cleanBase}/${folder}` : folder;
+  return safe.length > 0 ? safe : FOLDER_FALLBACK;
 }
 
 /** False when the script manager gives no download function. */
