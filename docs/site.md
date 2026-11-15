@@ -55,6 +55,12 @@ The script works on the site's own HTML. This file holds what is known about it.
 - Favorites grid: `div.image-list > span > [span.thumb > a#p{ID} > img, br, a[onclick] > b]`; the last link is Remove; the outer `span` carries `style="align-self: flex-start; display: grid; grid-template-rows: auto 10px;"`. The thumb has no `s{ID}` id and the image has no class (no `preview`, no `webm-thumb`); `alt` is `image_thumb`, `title` is the tag list with its first and last character cut off (`i_generated … vide`). The image address has a double slash: `/thumbnails//<dir>/thumbnail_<hash>.jpg?<id>`. A video is known only by the `video` tag in the title (`src/site/favorites-video.ts`)
 - Comments: `div#comments > div#comment-list > div#p{ID}.post > [div.col1.thumb > a > img.preview, div.col2 > [div.header > [div, div.tags], div.response-list > div#c{CID}.post]]`; the "(N hidden)" link is `div#comment-list > div.content > a#ci`. The site's stylesheet fixes `div.col2` at 50em and `div.response-list > div.post > div.content` at 30em
 
+- Wiki → Create: `div#content > div#post-list > div#post-list > [div.sidebar, div.content > div[style="width: 100%;"] > div[style="color: #464646; … font-size: 11px;"] > [h3, center > div[style="color: #464646; … font-size: 11px; text-align: left;"] > form]]`
+- Aliases: `div#content > [text, div[style="color: #ff0000;"], div > form > input#query, div#aliases > table.highlightable, div#add-box[style="display: none;"] > form]`
+- Artists: `div#content > [div#search-form, table.highlightable, div#paginator, div#footer > a]`; `div#footer` holds Create, Order by Date, Order by Name
+- My Account: `div#content > div#user-index > [form > h4 > button, p, (h4 > a, p)…, br, h1 > a]`
+- Help: `div#content > div#static-more > div > ul > [li > h4, li > a]`
+
 ### Addresses
 
 - Thumbnail: `https://wimg.rule34.xxx/thumbnails/<dir>/thumbnail_<hash>.jpg?<id>`

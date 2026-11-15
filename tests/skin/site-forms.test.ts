@@ -55,6 +55,24 @@ describe("site skin: forms, tables and text columns", () => {
     expect(SITE_SKIN_CSS).toContain("div.image-list > span > a[onclick] {\n    display: none");
   });
 
+  it("makes the inline-coloured notes of Wiki and Aliases readable", () => {
+    expect(
+      ruleFor('center > div[style*="font-size: 11px"] {'),
+    ).toContain("color: var(--rdw-muted) !important");
+    expect(ruleFor('div#content > div[style^="color:"] {')).toContain(
+      "color: var(--rdw-muted) !important",
+    );
+  });
+
+  it("puts My Account and the Help groups into cards", () => {
+    const account = ruleFor("div#user-index {");
+    expect(account).toContain("max-width: 640px");
+    expect(account).toContain("border: 1px solid var(--rdw-border)");
+    expect(ruleFor("div#user-index > h1 {")).toContain("font-size: 13px");
+    expect(ruleFor("div#static-more > div > ul {")).toContain("list-style: none");
+    expect(ruleFor("div#content > div#footer {")).toContain("font-size: 13px");
+  });
+
   it("makes the favorites Remove link quiet", () => {
     expect(ruleFor("div.image-list > span > a[onclick] > b")).toContain("font-weight: normal");
   });

@@ -38,6 +38,8 @@ const FAV_REMOVE_ANCHOR_NAME = "--rdw-fav-img";
 const FAV_REMOVE_INSET_PX = 6;
 /** Above the hover video preview. */
 const FAV_REMOVE_Z_INDEX = 4;
+const ACCOUNT_CARD_MAX_WIDTH_PX = 640;
+const HELP_CARD_MIN_WIDTH_PX = 220;
 const NOT_RDW_CLASS = ':not([class*="rdw-"])';
 const NOT_SEARCH_TOOLS_DESCENDANT = `:not(#${SEARCH_TOOLS_ROOT_ID} *)`;
 /**
@@ -1002,6 +1004,87 @@ ${ROOT} div.response-list > div.post > div.content {
   flex: 1 1 auto;
   width: auto;
   min-width: 0;
+}
+
+/*
+ * Wiki → Create: the intro and the form labels carry an inline dark grey at
+ * 11px, unreadable on a dark page. Inline styles need !important.
+ */
+${ROOT} div.content > div[style*="width: 100%"] > div[style*="font-size: 11px"],
+${ROOT} div.content > div[style*="width: 100%"] center > div[style*="font-size: 11px"] {
+  color: ${v.muted} !important;
+  font-size: 12px !important;
+}
+
+${ROOT} div.content > div[style*="width: 100%"] > div[style*="font-size: 11px"] > h3 {
+  color: ${v.text};
+}
+
+/* Aliases: the example line under the intro is pure red inline. */
+${ROOT} div#content > div[style^="color:"] {
+  color: ${v.muted} !important;
+}
+
+/* Artists: the links under the pager (Create, Order by …) are oversized. */
+${ROOT} div#content > div#footer {
+  font-size: 13px;
+}
+
+/*
+ * My Account: a bare list of headings (div#user-index > [h4 > a, p]…, then
+ * h1 > a "To main post page"). One card, quiet captions, a normal last link.
+ */
+${ROOT} div#user-index {
+  box-sizing: border-box;
+  max-width: ${String(ACCOUNT_CARD_MAX_WIDTH_PX)}px;
+  padding: 8px 20px 16px;
+  background: ${v.surface};
+  border: 1px solid ${v.border};
+  border-radius: ${v.radiusL};
+}
+
+${ROOT} div#user-index h4 {
+  margin: 14px 0 2px;
+  font-size: 15px;
+}
+
+${ROOT} div#user-index > p {
+  margin: 0;
+  color: ${v.muted};
+}
+
+${ROOT} div#user-index > h1 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: normal;
+}
+
+/* Help: each group (div#static-more > div > ul > [li > h4, li > a]) is a card. */
+${ROOT} div#static-more > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+${ROOT} div#static-more > div > ul {
+  box-sizing: border-box;
+  min-width: ${String(HELP_CARD_MIN_WIDTH_PX)}px;
+  margin: 0;
+  padding: 12px 20px 14px;
+  list-style: none;
+  background: ${v.surface};
+  border: 1px solid ${v.border};
+  border-radius: ${v.radiusL};
+}
+
+${ROOT} div#static-more > div > ul > li {
+  margin: 0;
+  padding: 2px 0;
+}
+
+${ROOT} div#static-more > div > ul h4 {
+  margin: 0 0 4px;
 }
 
 /* Forms are not data: no stripes across their rows. */

@@ -2,6 +2,16 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.26.0
+
+Second design pass over the site's own pages:
+
+- Wiki → Create: the intro text and the field labels are readable; before they were dark grey on a dark page
+- Aliases: the example line is no longer pure red
+- Artists: the links under the pager are a normal size
+- My Account: the list sits in a card, the captions are quiet, "To main post page" is an ordinary link instead of a huge heading
+- Help: each group of links is a card
+
 ## 0.25.4
 
 - Favorites: the hover video preview lies exactly on the thumbnail. Before it appeared shifted and wider than the picture, so the post looked doubled
