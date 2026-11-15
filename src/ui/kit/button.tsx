@@ -1,6 +1,6 @@
 import type { ComponentChildren, JSX, MouseEventHandler } from "preact";
 
-import { KIT_FOCUS_CSS, KIT_MIN_TARGET_PX } from "./shared";
+import { KIT_CONTROL_FONT, KIT_CONTROL_HEIGHT, KIT_FOCUS_CSS } from "./shared";
 
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 export type ButtonSize = "s" | "m";
@@ -27,10 +27,10 @@ ${KIT_FOCUS_CSS}
   justify-content: center;
   gap: 6px;
   box-sizing: border-box;
-  min-height: ${KIT_MIN_TARGET_PX}px;
+  min-height: ${KIT_CONTROL_HEIGHT};
   border-radius: var(--rdw-radius-m);
   font: inherit;
-  font-size: 12px;
+  font-size: ${KIT_CONTROL_FONT};
   font-weight: 600;
   cursor: pointer;
   border: 1px solid transparent;
@@ -39,12 +39,12 @@ ${KIT_FOCUS_CSS}
   background: var(--rdw-surface);
 }
 .rdw-btn--s {
-  min-height: ${KIT_MIN_TARGET_PX}px;
+  min-height: ${KIT_CONTROL_HEIGHT};
   padding: 0 10px;
-  font-size: 12px;
+  font-size: ${KIT_CONTROL_FONT};
 }
 .rdw-btn--m {
-  min-height: ${KIT_MIN_TARGET_PX}px;
+  min-height: ${KIT_CONTROL_HEIGHT};
   padding: 0 12px;
 }
 .rdw-btn--primary {

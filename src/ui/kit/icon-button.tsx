@@ -1,6 +1,6 @@
 import type { ComponentChildren, JSX, MouseEventHandler } from "preact";
 
-import { KIT_FOCUS_CSS, KIT_MIN_TARGET_PX } from "./shared";
+import { KIT_CONTROL_HEIGHT, KIT_FOCUS_CSS } from "./shared";
 
 export type IconButtonProps = {
   readonly label: string;
@@ -17,10 +17,10 @@ ${KIT_FOCUS_CSS}
   box-sizing: border-box;
   display: inline-grid;
   place-items: center;
-  min-width: ${KIT_MIN_TARGET_PX}px;
-  min-height: ${KIT_MIN_TARGET_PX}px;
-  width: ${KIT_MIN_TARGET_PX}px;
-  height: ${KIT_MIN_TARGET_PX}px;
+  min-width: ${KIT_CONTROL_HEIGHT};
+  min-height: ${KIT_CONTROL_HEIGHT};
+  width: ${KIT_CONTROL_HEIGHT};
+  height: ${KIT_CONTROL_HEIGHT};
   padding: 0;
   border-radius: var(--rdw-radius-m);
   border: 1px solid var(--rdw-border);

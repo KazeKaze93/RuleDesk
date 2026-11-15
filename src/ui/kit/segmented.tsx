@@ -1,6 +1,6 @@
 import type { JSX } from "preact";
 
-import { KIT_FOCUS_CSS, KIT_MIN_TARGET_PX } from "./shared";
+import { KIT_CONTROL_FONT, KIT_CONTROL_HEIGHT, KIT_FOCUS_CSS } from "./shared";
 
 export type SegmentedOption = {
   readonly value: string;
@@ -28,7 +28,7 @@ ${KIT_FOCUS_CSS}
   gap: 2px;
   /* The whole control is as tall as a button or a field beside it. */
   box-sizing: border-box;
-  height: ${KIT_MIN_TARGET_PX}px;
+  height: ${KIT_CONTROL_HEIGHT};
 }
 .rdw-seg__btn {
   min-height: 0;
@@ -40,7 +40,7 @@ ${KIT_FOCUS_CSS}
   background: transparent;
   color: var(--rdw-muted);
   font: inherit;
-  font-size: 12px;
+  font-size: ${KIT_CONTROL_FONT};
   cursor: pointer;
   padding: 0 8px;
 }

@@ -1,7 +1,7 @@
 import type { JSX } from "preact";
 import { useEffect, useId, useRef, useState } from "preact/hooks";
 
-import { KIT_FOCUS_CSS, KIT_MIN_TARGET_PX } from "./shared";
+import { KIT_CONTROL_FONT, KIT_CONTROL_HEIGHT, KIT_FOCUS_CSS } from "./shared";
 
 export type AutocompleteOption = {
   readonly label: string;
@@ -50,8 +50,8 @@ ${KIT_FOCUS_CSS}
 }
 .rdw-ac__input {
   box-sizing: border-box;
-  min-height: ${KIT_MIN_TARGET_PX}px;
-  height: ${KIT_MIN_TARGET_PX}px;
+  min-height: ${KIT_CONTROL_HEIGHT};
+  height: ${KIT_CONTROL_HEIGHT};
   width: 100%;
   padding: 0 8px;
   border: 1px solid var(--rdw-border);
@@ -59,7 +59,7 @@ ${KIT_FOCUS_CSS}
   background: var(--rdw-surface);
   color: var(--rdw-text);
   font: inherit;
-  font-size: 12px;
+  font-size: ${KIT_CONTROL_FONT};
 }
 /* Site CSS paints focused text inputs light yellow; keep the theme colours. */
 input.rdw-ac__input.rdw-kit-focusable:focus {
@@ -90,12 +90,12 @@ input.rdw-ac__input.rdw-kit-focusable:focus {
   overflow: auto;
 }
 .rdw-ac__option {
-  min-height: ${KIT_MIN_TARGET_PX}px;
+  min-height: ${KIT_CONTROL_HEIGHT};
   display: flex;
   align-items: center;
   padding: 0 8px;
   border-radius: var(--rdw-radius-s);
-  font-size: 12px;
+  font-size: ${KIT_CONTROL_FONT};
   color: var(--rdw-text);
   cursor: pointer;
 }

@@ -1,7 +1,7 @@
 import type { JSX } from "preact";
 
 import { IconX } from "./icons";
-import { KIT_FOCUS_CSS, KIT_MIN_TARGET_PX } from "./shared";
+import { KIT_CONTROL_FONT, KIT_CONTROL_HEIGHT, KIT_FOCUS_CSS } from "./shared";
 
 export type ChipKind = "artist" | "character" | "copyright" | "metadata" | "default";
 export type ChipVariant = "dot" | "exclude" | "group";
@@ -26,7 +26,7 @@ ${KIT_FOCUS_CSS}
   border-radius: 12px;
   background: var(--rdw-surface-2);
   border: 1px solid var(--rdw-border);
-  font-size: 12px;
+  font-size: ${KIT_CONTROL_FONT};
   color: var(--rdw-text);
   max-width: 100%;
   white-space: nowrap;
@@ -56,10 +56,10 @@ ${KIT_FOCUS_CSS}
 }
 .rdw-chip__remove {
   box-sizing: border-box;
-  width: ${KIT_MIN_TARGET_PX}px;
-  height: ${KIT_MIN_TARGET_PX}px;
-  min-width: ${KIT_MIN_TARGET_PX}px;
-  min-height: ${KIT_MIN_TARGET_PX}px;
+  width: ${KIT_CONTROL_HEIGHT};
+  height: ${KIT_CONTROL_HEIGHT};
+  min-width: ${KIT_CONTROL_HEIGHT};
+  min-height: ${KIT_CONTROL_HEIGHT};
   margin: -2px -2px -2px 0;
   border: 0;
   border-radius: 50%;

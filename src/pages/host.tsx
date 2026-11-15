@@ -3,6 +3,7 @@ import type { ComponentChild, JSX } from "preact";
 
 import { resolveAppearancePalette } from "../skin/theme";
 import { getAppearance } from "../storage/store";
+import { KIT_CONTROL_FONT_VAR, KIT_CONTROL_HEIGHT_VAR } from "../ui/kit";
 import { applyTokenProperties } from "../ui/tokens";
 import {
   isCollectionDetailPage,
@@ -17,6 +18,8 @@ import {
 import { PAGE_CONTENT_CSS } from "./page-css";
 import { PAGE_CENTRE_PADDING } from "./view-mode";
 
+const PAGE_CONTROL_HEIGHT_PX = 32;
+const PAGE_CONTROL_FONT_PX = 13;
 const PAGE_SHELL_CLASS = "rdw-page-shell";
 const PAGE_TITLE_CLASS = "rdw-page-title";
 /**
@@ -37,6 +40,9 @@ const PAGE_HOST_CSS = `
   line-height: 1.35;
   color: var(--rdw-text);
   background: transparent;
+  /* The script's own pages have room: their controls are a step larger. */
+  ${KIT_CONTROL_HEIGHT_VAR}: ${String(PAGE_CONTROL_HEIGHT_PX)}px;
+  ${KIT_CONTROL_FONT_VAR}: ${String(PAGE_CONTROL_FONT_PX)}px;
 }
 .${PAGE_SHELL_CLASS} {
   box-sizing: border-box;

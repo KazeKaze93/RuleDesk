@@ -14,7 +14,7 @@ import {
   SITE_LIGHT_C_BG_ALT,
   resolveSwitchThumbOn,
 } from "../tokens";
-import { KIT_FOCUS_CSS, KIT_MIN_TARGET_PX } from "./shared";
+import { KIT_CONTROL_HEIGHT, KIT_FOCUS_CSS } from "./shared";
 
 export type SwitchProps = {
   readonly checked: boolean;
@@ -48,15 +48,15 @@ ${KIT_FOCUS_CSS}
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  min-height: ${KIT_MIN_TARGET_PX}px;
+  min-height: ${KIT_CONTROL_HEIGHT};
 }
 .rdw-switch {
   position: relative;
   box-sizing: border-box;
   width: 36px;
-  height: ${KIT_MIN_TARGET_PX}px;
+  height: ${KIT_CONTROL_HEIGHT};
   min-width: 36px;
-  min-height: ${KIT_MIN_TARGET_PX}px;
+  min-height: ${KIT_CONTROL_HEIGHT};
   border: 0;
   padding: 0;
   background: transparent;

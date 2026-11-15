@@ -1,6 +1,6 @@
 import type { JSX } from "preact";
 
-import { KIT_FOCUS_CSS, KIT_MIN_TARGET_PX } from "./shared";
+import { KIT_CONTROL_HEIGHT, KIT_FOCUS_CSS } from "./shared";
 
 export type TabItem = {
   readonly id: string;
@@ -38,7 +38,7 @@ ${KIT_FOCUS_CSS}
 }
 .rdw-tabs__tab {
   box-sizing: border-box;
-  min-height: ${KIT_MIN_TARGET_PX}px;
+  min-height: ${KIT_CONTROL_HEIGHT};
   padding: 7px 10px;
   border: 0;
   border-bottom: 2px solid transparent;

@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.29.5
+
+- Collections, Following, Statistics and Settings: buttons, fields and switches are a step larger (32 px tall, 13 px text). Tiles and the panels on the site's own pages are unchanged
+
 ## 0.29.4
 
 - Fixed: on Favorites the hover video preview could appear shifted and as wide as the whole cell, so the post looked doubled. The preview is now placed over the picture by measuring it

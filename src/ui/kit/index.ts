@@ -85,4 +85,9 @@ export {
   type ToastAction,
   type ToastProps,
 } from "./toast";
-export { KIT_FOCUS_CSS, KIT_MIN_TARGET_PX } from "./shared";
+export {
+  KIT_CONTROL_FONT_VAR,
+  KIT_CONTROL_HEIGHT_VAR,
+  KIT_FOCUS_CSS,
+  KIT_MIN_TARGET_PX,
+} from "./shared";
