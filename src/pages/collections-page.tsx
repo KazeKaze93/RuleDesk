@@ -39,6 +39,8 @@ const HEADER_CLASS = "rdw-collections-header";
 const TOOLBAR_CLASS = "rdw-collections-toolbar";
 const FILTER_FIELD_CLASS = "rdw-collections-filter";
 const GRID_CLASS = "rdw-collections-grid";
+const GRID_LIST_CLASS = "rdw-collections-grid--list";
+const LIST_COVER_PX = 44;
 const CARD_CLASS = "rdw-collection-card";
 const COVER_CLASS = "rdw-collection-cover";
 const COVER_CELL_CLASS = "rdw-collection-cover-cell";
@@ -144,6 +146,16 @@ type ListFilter = typeof FILTER_ALL | typeof FILTER_CUSTOM | typeof FILTER_DYNAM
 type NewKind = typeof KIND_CUSTOM | typeof KIND_DYNAMIC;
 
 import { COLLECTION_TERM_SEPARATOR, filterTerms, matchesAnyTerm } from "./filter-terms";
+import {
+  COLLECTIONS_VIEW_STATE_ID,
+  VIEW_LABEL,
+  VIEW_LIST,
+  VIEW_OPTIONS,
+  isViewMode,
+  readViewMode,
+  writeViewMode,
+  type ViewMode,
+} from "./view-mode";
 
 export const COLLECTIONS_PAGE_CSS = `
 .${PAGE_CLASS} {
@@ -206,6 +218,33 @@ export const COLLECTIONS_PAGE_CSS = `
   background: var(--rdw-surface);
   border: 1px solid var(--rdw-border);
   border-radius: var(--rdw-radius-l);
+}
+/* List view: one collection per row, a small cover, the count on the right. */
+.${GRID_LIST_CLASS} {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+}
+.${GRID_LIST_CLASS} .${CARD_CLASS} {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 8px;
+}
+.${GRID_LIST_CLASS} .${COVER_CLASS} {
+  flex: none;
+  width: ${String(LIST_COVER_PX)}px;
+}
+.${GRID_LIST_CLASS} .${META_ROW_CLASS} {
+  flex: 1 1 auto;
+  justify-content: flex-start;
+}
+.${GRID_LIST_CLASS} .${CAPTION_CLASS} {
+  flex: none;
+}
+.${GRID_LIST_CLASS} .${CARD_MARK_CLASS} {
+  top: 50%;
+  left: 17px;
+  transform: translateY(-50%);
 }
 .${CARD_CLASS}:hover,
 .${CARD_CLASS}:focus,
@@ -692,6 +731,7 @@ function NewCollectionDialog(props: {
 export function CollectionsPage(): JSX.Element {
   const [filter, setFilter] = useState<ListFilter>(FILTER_ALL);
   const [nameQuery, setNameQuery] = useState("");
+  const [view, setView] = useState<ViewMode>(() => readViewMode(COLLECTIONS_VIEW_STATE_ID));
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newKind, setNewKind] = useState<NewKind>(KIND_CUSTOM);
   const [nameDraft, setNameDraft] = useState("");
@@ -807,6 +847,17 @@ export function CollectionsPage(): JSX.Element {
             aria-label={FILTER_ARIA_LABEL}
             onChange={setNameQuery}
           />
+          <Segmented
+            label={VIEW_LABEL}
+            options={VIEW_OPTIONS}
+            value={view}
+            onChange={(value) => {
+              if (isViewMode(value)) {
+                writeViewMode(COLLECTIONS_VIEW_STATE_ID, value);
+                setView(value);
+              }
+            }}
+          />
           {selecting ? (
             <>
               <span className={SELECTED_COUNT_CLASS} aria-live="polite">
@@ -860,7 +911,10 @@ export function CollectionsPage(): JSX.Element {
       {visible.length === 0 ? (
         <EmptyState title={emptyCopy.title} description={emptyCopy.description} />
       ) : (
-        <div className={GRID_CLASS} aria-label={GRID_LABEL}>
+        <div
+          className={view === VIEW_LIST ? `${GRID_CLASS} ${GRID_LIST_CLASS}` : GRID_CLASS}
+          aria-label={GRID_LABEL}
+        >
           {visible.map((collection) => (
             <CollectionCard
               key={collection.id}

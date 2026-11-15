@@ -60,6 +60,7 @@ const TOOLBAR_CLASS = "rdw-following-toolbar";
 const FILTER_CLASS = "rdw-following-filter";
 const META_CLASS = "rdw-following-meta";
 const GRID_CLASS = "rdw-following-grid";
+const GRID_LIST_CLASS = "rdw-following-grid--list";
 const CARD_CLASS = "rdw-artist-card";
 const CARD_SELECTED_CLASS = "rdw-artist-card--selected";
 const CARD_LINK_CLASS = "rdw-artist-card-link";
@@ -122,6 +123,7 @@ const COVER_AXIS_COUNT = 2;
 const ICON_PX = 14;
 const GRID_MIN_TRACK_PX = 170;
 const ADD_FIELD_WIDTH_PX = 280;
+const LIST_COVER_PX = 44;
 const FILTER_FIELD_WIDTH_PX = 220;
 /** Above the cards and their corner buttons. */
 const TOOLBAR_Z_INDEX = 5;
@@ -138,6 +140,16 @@ const SORT_OPTIONS: readonly SelectOption[] = [
 ];
 
 import { ARTIST_TERM_SEPARATOR, filterTerms, matchesAnyTerm } from "./filter-terms";
+import {
+  FOLLOWING_VIEW_STATE_ID,
+  VIEW_LABEL,
+  VIEW_LIST,
+  VIEW_OPTIONS,
+  isViewMode,
+  readViewMode,
+  writeViewMode,
+  type ViewMode,
+} from "./view-mode";
 
 export const FOLLOWING_PAGE_CSS = `
 .${PAGE_CLASS} {
@@ -217,6 +229,40 @@ export const FOLLOWING_PAGE_CSS = `
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(${String(GRID_MIN_TRACK_PX)}px, 1fr));
   gap: 12px;
+}
+/* List view: one artist per row, a small cover, the numbers on the right. */
+.${GRID_LIST_CLASS} {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+}
+.${GRID_LIST_CLASS} .${CARD_CLASS} {
+  padding: 6px 8px;
+}
+.${GRID_LIST_CLASS} .${CARD_LINK_CLASS} {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding-right: 40px;
+}
+.${GRID_LIST_CLASS} .${COVER_CLASS} {
+  flex: none;
+  width: ${String(LIST_COVER_PX)}px;
+}
+.${GRID_LIST_CLASS} .${NAME_ROW_CLASS} {
+  flex: 1 1 auto;
+}
+.${GRID_LIST_CLASS} .${CAPTION_CLASS} {
+  flex: none;
+}
+.${GRID_LIST_CLASS} .${CARD_ACTIONS_CLASS} {
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+}
+.${GRID_LIST_CLASS} .${CARD_MARK_CLASS} {
+  top: 50%;
+  left: 17px;
+  transform: translateY(-50%);
 }
 .${CARD_CLASS} {
   position: relative;
@@ -591,6 +637,7 @@ export function FollowingPage(): JSX.Element {
   const [filter, setFilter] = useState("");
   const [show, setShow] = useState<ShowMode>(SHOW_ALL);
   const [sort, setSort] = useState<SortMode>(SORT_NAME);
+  const [view, setView] = useState<ViewMode>(() => readViewMode(FOLLOWING_VIEW_STATE_ID));
   const [draft, setDraft] = useState("");
   const [addError, setAddError] = useState("");
   const [suggestions, setSuggestions] = useState<
@@ -798,6 +845,17 @@ export function FollowingPage(): JSX.Element {
                 }
               }}
             />
+            <Segmented
+              label={VIEW_LABEL}
+              options={VIEW_OPTIONS}
+              value={view}
+              onChange={(value) => {
+                if (isViewMode(value)) {
+                  writeViewMode(FOLLOWING_VIEW_STATE_ID, value);
+                  setView(value);
+                }
+              }}
+            />
             {selecting ? (
               <>
                 <span className={META_CLASS} aria-live="polite">
@@ -893,7 +951,9 @@ export function FollowingPage(): JSX.Element {
           {visible.length === 0 ? (
             <EmptyState title={NO_MATCH_TITLE} description={NO_MATCH_DESCRIPTION} />
           ) : (
-            <div className={GRID_CLASS}>
+            <div
+              className={view === VIEW_LIST ? `${GRID_CLASS} ${GRID_LIST_CLASS}` : GRID_CLASS}
+            >
               {visible.map((artist) => (
                 <ArtistCard
                   key={artist.tag}

@@ -192,6 +192,8 @@ describe("createCollectionsPage", () => {
       "All",
       "Custom",
       "Dynamic",
+      "Tiles",
+      "List",
       "New",
     ]);
     expect(root.querySelector("#rdw-collections-filter")).toBeInstanceOf(

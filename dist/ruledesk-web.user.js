@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RuleDesk Web
 // @namespace    https://github.com/kazekaze93/ruledesk-web
-// @version      0.27.1
+// @version      0.28.0
 // @description  Collections, playlists, favorites, artist updates, and page tweaks for rule34.xxx
 // @downloadURL  https://raw.githubusercontent.com/KazeKaze93/RuleDesk/main/dist/ruledesk-web.user.js
 // @updateURL    https://raw.githubusercontent.com/KazeKaze93/RuleDesk/main/dist/ruledesk-web.user.js
@@ -15,31 +15,31 @@
 !function(){function e(e,t){return(t||"")+" (SystemJS Error#"+e+" https://github.com/systemjs/systemjs/blob/main/docs/errors.md#"+e+")"}function t(e,t){if(-1!==e.indexOf("\\")&&(e=e.replace(j,"/")),"/"===e[0]&&"/"===e[1])return t.slice(0,t.indexOf(":")+1)+e;if("."===e[0]&&("/"===e[1]||"."===e[1]&&("/"===e[2]||2===e.length&&(e+="/"))||1===e.length&&(e+="/"))||"/"===e[0]){var n,r=t.slice(0,t.indexOf(":")+1);if(n="/"===t[r.length+1]?"file:"!==r?(n=t.slice(r.length+2)).slice(n.indexOf("/")+1):t.slice(8):t.slice(r.length+("/"===t[r.length])),"/"===e[0])return t.slice(0,t.length-n.length-1)+e;for(var i=n.slice(0,n.lastIndexOf("/")+1)+e,o=[],s=-1,u=0;u<i.length;u++)-1!==s?"/"===i[u]&&(o.push(i.slice(s,u+1)),s=-1):"."===i[u]?"."!==i[u+1]||"/"!==i[u+2]&&u+2!==i.length?"/"===i[u+1]||u+1===i.length?u+=1:s=u:(o.pop(),u+=2):s=u;return-1!==s&&o.push(i.slice(s)),t.slice(0,t.length-n.length)+o.join("")}}function n(e,n){return t(e,n)||(-1!==e.indexOf(":")?e:t("./"+e,n))}function r(e,n,r,i,o){for(var s in e){var a=t(s,r)||s,f=e[s];if("string"==typeof f){var l=c(i,t(f,r)||f,o);l?n[a]=l:u("W1",s,f,"bare specifier did not resolve")}}}function i(e,t,i){var o;for(o in e.imports&&r(e.imports,i.imports,t,i,null),e.scopes||{}){var s=n(o,t);r(e.scopes[o],i.scopes[s]||(i.scopes[s]={}),t,i,s)}for(o in e.depcache||{})i.depcache[n(o,t)]=e.depcache[o];for(o in e.integrity||{})i.integrity[n(o,t)]=e.integrity[o]}function o(e,t){if(t[e])return e;var n=e.length;do{var r=e.slice(0,n+1);if(r in t)return r}while(-1!==(n=e.lastIndexOf("/",n-1)))}function s(e,t){var n=o(e,t);if(n){var r=t[n];if(null===r)return;if(!(e.length>n.length&&"/"!==r[r.length-1]))return r+e.slice(n.length);u("W2",n,r,"should have a trailing '/'")}}function u(t,n,r,i){console.warn(e(t,"Package target "+i+", resolving target '"+r+"' for "+n))}function c(e,t,n){for(var r=e.scopes,i=n&&o(n,r);i;){var u=s(t,r[i]);if(u)return u;i=o(i.slice(0,i.lastIndexOf("/")),r)}return s(t,e.imports)||-1!==t.indexOf(":")&&t}function a(){this[M]={}}function f(e){return e.id}function l(e,t,n,r){if(e.onload(n,t.id,t.d&&t.d.map(f),!!r),n)throw n}function d(t,n,r,i){var o=t[M][n];if(o)return o;var s=[],u=Object.create(null);P&&Object.defineProperty(u,P,{value:"Module"});var c=Promise.resolve().then((function(){return t.instantiate(n,r,i)})).then((function(r){if(!r)throw Error(e(2,"Module "+n+" did not instantiate"));var i=r[1]((function(e,t){o.h=!0;var n=!1;if("string"==typeof e)e in u&&u[e]===t||(u[e]=t,n=!0);else{for(var r in e)t=e[r],r in u&&u[r]===t||(u[r]=t,n=!0);e&&e.__esModule&&(u.__esModule=e.__esModule)}if(n)for(var i=0;i<s.length;i++){var c=s[i];c&&c(u)}return t}),2===r[1].length?{import:function(e,r){return t.import(e,n,r)},meta:t.createContext(n)}:void 0);return o.e=i.execute||function(){},[r[0],i.setters||[],r[2]||[]]}),(function(e){throw o.e=null,o.er=e,l(t,o,e,!0),e})),a=c.then((function(e){return Promise.all(e[0].map((function(r,i){var o=e[1][i],s=e[2][i];return Promise.resolve(t.resolve(r,n)).then((function(e){var r=d(t,e,n,s);return Promise.resolve(r.I).then((function(){return o&&(r.i.push(o),!r.h&&r.I||o(r.n)),r}))}))}))).then((function(e){o.d=e}))}));return o=t[M][n]={id:n,i:s,n:u,m:i,I:c,L:a,h:!1,d:void 0,e:void 0,er:void 0,E:void 0,C:void 0,p:void 0}}function h(e,t,n,r){if(!r[t.id])return r[t.id]=!0,Promise.resolve(t.L).then((function(){return t.p&&null!==t.p.e||(t.p=n),Promise.all(t.d.map((function(t){return h(e,t,n,r)})))})).catch((function(n){if(t.er)throw n;throw t.e=null,l(e,t,n,!1),n}))}function p(e,t){return t.C=h(e,t,t,{}).then((function(){return v(e,t,{})})).then((function(){return t.n}))}function v(e,t,n){function r(){try{var n=o.call(L);if(n)return n=n.then((function(){t.C=t.n,t.E=null,l(e,t,null,!0)}),(function(n){throw t.er=n,t.E=null,l(e,t,n,!0),n})),t.E=n;t.C=t.n,t.L=t.I=void 0}catch(r){throw t.er=r,r}finally{l(e,t,t.er,!0)}}if(!n[t.id]){if(n[t.id]=!0,!t.e){if(t.er)throw t.er;return t.E?t.E:void 0}var i,o=t.e;return t.e=null,t.d.forEach((function(r){try{var o=v(e,r,n);o&&(i=i||[]).push(o)}catch(s){throw t.er=s,l(e,t,s,!1),s}})),i?Promise.all(i).then(r):r()}}function m(){[].forEach.call(document.querySelectorAll("script"),(function(t){if(!t.sp)if("systemjs-module"===t.type){if(t.sp=!0,!t.src)return;System.import("import:"===t.src.slice(0,7)?t.src.slice(7):n(t.src,g)).catch((function(e){if(e.message.indexOf("https://github.com/systemjs/systemjs/blob/main/docs/errors.md#3")>-1){var n=document.createEvent("Event");n.initEvent("error",!1,!1),t.dispatchEvent(n)}return Promise.reject(e)}))}else if("systemjs-importmap"===t.type){t.sp=!0;var r=t.src?(System.fetch||fetch)(t.src,{integrity:t.integrity,priority:t.fetchPriority,passThrough:!0}).then((function(e){if(!e.ok)throw Error("Invalid status code: "+e.status);return e.text()})).catch((function(n){return n.message=e("W4","Error fetching systemjs-import map "+t.src)+"\n"+n.message,console.warn(n),"function"==typeof t.onerror&&t.onerror(),"{}"})):t.innerHTML;W=W.then((function(){return r})).then((function(n){!function(t,n,r){var o={};try{o=JSON.parse(n)}catch(s){console.warn(Error(e("W5","systemjs-importmap contains invalid JSON")+"\n\n"+n+"\n"))}i(o,r,t)}(N,n,t.src||g)}))}}))}var g,y="undefined"!=typeof Symbol,b="undefined"!=typeof self,S="undefined"!=typeof document,w=b?self:global;if(S){var O=document.querySelector("base[href]");O&&(g=O.href)}if(!g&&"undefined"!=typeof location){var E=(g=location.href.split("#")[0].split("?")[0]).lastIndexOf("/");-1!==E&&(g=g.slice(0,E+1))}var x,j=/\\/g,P=y&&Symbol.toStringTag,M=y?Symbol():"@",I=a.prototype;I.import=function(e,t,n){var r=this;return t&&"object"==typeof t&&(n=t,t=void 0),Promise.resolve(r.prepareImport()).then((function(){return r.resolve(e,t,n)})).then((function(e){var t=d(r,e,void 0,n);return t.C||p(r,t)}))},I.createContext=function(e){var t=this;return{url:e,resolve:function(n,r){return Promise.resolve(t.resolve(n,r||e))}}},I.onload=function(){},I.register=function(e,t,n){x=[e,t,n]},I.getRegister=function(){var e=x;return x=void 0,e};var L=Object.freeze(Object.create(null));w.System=new a;var C,R,W=Promise.resolve(),N={imports:{},scopes:{},depcache:{},integrity:{}},T=S;if(I.prepareImport=function(e){return(T||e)&&(m(),T=!1),W},I.getImportMap=function(){return JSON.parse(JSON.stringify(N))},S&&(m(),window.addEventListener("DOMContentLoaded",m)),I.addImportMap=function(e,t){i(e,t||g,N)},S){window.addEventListener("error",(function(e){J=e.filename,_=e.error}));var A=location.origin}I.createScript=function(e){var t=document.createElement("script");t.async=!0,e.indexOf(A+"/")&&(t.crossOrigin="anonymous");var n=N.integrity[e];return n&&(t.integrity=n),t.src=e,t};var J,_,k={},U=I.register;I.register=function(e,t){if(S&&"loading"===document.readyState&&"string"!=typeof e){var n=document.querySelectorAll("script[src]"),r=n[n.length-1];if(r){C=e;var i=this;R=setTimeout((function(){k[r.src]=[e,t],i.import(r.src)}))}}else C=void 0;return U.call(this,e,t)},I.instantiate=function(t,n){var r=k[t];if(r)return delete k[t],r;var i=this;return Promise.resolve(I.createScript(t)).then((function(r){return new Promise((function(o,s){r.addEventListener("error",(function(){s(Error(e(3,"Error loading "+t+(n?" from "+n:""))))})),r.addEventListener("load",(function(){if(document.head.removeChild(r),J===t)s(_);else{var e=i.getRegister(t);e&&e[0]===C&&clearTimeout(R),o(e)}})),document.head.appendChild(r)}))}))},I.shouldFetch=function(){return!1},"undefined"!=typeof fetch&&(I.fetch=fetch);var $=I.instantiate,B=/^(text|application)\/(x-)?javascript(;|$)/;I.instantiate=function(t,n,r){var i=this;return this.shouldFetch(t,n,r)?this.fetch(t,{credentials:"same-origin",integrity:N.integrity[t],meta:r}).then((function(r){if(!r.ok)throw Error(e(7,r.status+" "+r.statusText+", loading "+t+(n?" from "+n:"")));var o=r.headers.get("content-type");if(!o||!B.test(o))throw Error(e(4,'Unknown Content-Type "'+o+'", loading '+t+(n?" from "+n:"")));return r.text().then((function(e){return e.indexOf("//# sourceURL=")<0&&(e+="\n//# sourceURL="+t),(0,eval)(e),i.getRegister(t)}))})):$.apply(this,arguments)},I.resolve=function(n,r){return c(N,t(n,r=r||g)||n,r)||function(t,n){throw Error(e(8,"Unable to resolve bare specifier '"+t+(n?"' from "+n:"'")))}(n,r)};var F=I.instantiate;I.instantiate=function(e,t,n){var r=N.depcache[e];if(r)for(var i=0;i<r.length;i++)d(this,this.resolve(r[i],e),e);return F.call(this,e,t,n)},b&&"function"==typeof importScripts&&(I.instantiate=function(e){var t=this;return Promise.resolve().then((function(){return importScripts(e),t.getRegister(e)}))}),function(e){function t(t){return!e.hasOwnProperty(t)||!isNaN(t)&&t<e.length||a&&e[t]&&"undefined"!=typeof window&&e[t].parent===window}var n,r,i,o=e.System.constructor.prototype,s=o.import;o.import=function(o,u,c){return function(){for(var o in n=r=void 0,e)t(o)||(n?r||(r=o):n=o,i=o)}(),s.call(this,o,u,c)};var u=[[],function(){return{}}],c=o.getRegister;o.getRegister=function(){var o=c.call(this);if(o)return o;var s,a=function(o){var s,u,c=0;for(var a in e)if(!t(a)){if(0===c&&a!==n||1===c&&a!==r)return a;s?(i=a,u=o&&u||a):s=a===i,c++}return u}(this.firstGlobalProp);if(!a)return u;try{s=e[a]}catch(f){return u}return[[],function(e){return{execute:function(){e(s),e({default:s,__useDefault:!0})}}}]};var a="undefined"!=typeof navigator&&-1!==navigator.userAgent.indexOf("Trident")}("undefined"!=typeof self?self:global),function(e){var t=e.System.constructor.prototype,r=/^[^#?]+\.(css|html|json|wasm)([?#].*)?$/,i=t.shouldFetch.bind(t);t.shouldFetch=function(e){return i(e)||r.test(e)};var o=/^application\/json(;|$)/,s=/^text\/css(;|$)/,u=/^application\/wasm(;|$)/,c=t.fetch;t.fetch=function(t,r){return c(t,r).then((function(i){if(r.passThrough)return i;if(!i.ok)return i;var c=i.headers.get("content-type");return o.test(c)?i.json().then((function(e){return new Response(new Blob(['System.register([],function(e){return{execute:function(){e("default",'+JSON.stringify(e)+")}}})"],{type:"application/javascript"}))})):s.test(c)?i.text().then((function(e){return e=e.replace(/url\(\s*(?:(["'])((?:\\.|[^\n\\"'])+)\1|((?:\\.|[^\s,"'()\\])+))\s*\)/g,(function(e,r,i,o){return["url(",r,n(i||o,t),r,")"].join("")})),new Response(new Blob(["System.register([],function(e){return{execute:function(){var s=new CSSStyleSheet();s.replaceSync("+JSON.stringify(e)+');e("default",s)}}})'],{type:"application/javascript"}))})):u.test(c)?(WebAssembly.compileStreaming?WebAssembly.compileStreaming(i):i.arrayBuffer().then(WebAssembly.compile)).then((function(n){e.System.wasmModules||(e.System.wasmModules=Object.create(null)),e.System.wasmModules[t]=n;var r=[],i=[];return WebAssembly.Module.imports&&WebAssembly.Module.imports(n).forEach((function(e){var t=JSON.stringify(e.module);-1===r.indexOf(t)&&(r.push(t),i.push("function(m){i["+t+"]=m}"))})),new Response(new Blob(["System.register(["+r.join(",")+"],function(e){var i={};return{setters:["+i.join(",")+"],execute:function(){return WebAssembly.instantiate(System.wasmModules["+JSON.stringify(t)+"],i).then(function(m){e(m.exports)})}}})"],{type:"application/javascript"}))})):i}))}}("undefined"!=typeof self?self:global);var q="undefined"!=typeof Symbol&&Symbol.toStringTag;I.get=function(e){var t=this[M][e];if(t&&null===t.e&&!t.E)return t.er?null:t.n},I.set=function(t,n){try{new URL(t)}catch(s){console.warn(Error(e("W3",'"'+t+'" is not a valid URL to set in the module registry')))}var r;q&&"Module"===n[q]?r=n:(r=Object.assign(Object.create(null),n),q&&Object.defineProperty(r,q,{value:"Module"}));var i=Promise.resolve(r),o=this[M][t]||(this[M][t]={id:t,i:[],h:!1,d:[],e:null,er:void 0,E:void 0});return!o.e&&!o.E&&(Object.assign(o,{n:r,I:void 0,L:void 0,C:i}),r)},I.has=function(e){return!!this[M][e]},I.delete=function(e){var t=this[M],n=t[e];if(!n||n.p&&null!==n.p.e||n.E)return!1;var r=n.i;return n.d&&n.d.forEach((function(e){var t=e.i.indexOf(n);-1!==t&&e.i.splice(t,1)})),delete t[e],function(){var n=t[e];if(!n||!r||null!==n.e||n.E)return!1;r.forEach((function(e){n.i.push(e),e(n.n)})),r=null}};var D="undefined"!=typeof Symbol&&Symbol.iterator;I.entries=function(){var e,t,n=this,r=Object.keys(n[M]),i=0,o={next:function(){for(;void 0!==(t=r[i++])&&void 0===(e=n.get(t)););return{done:void 0===t,value:void 0!==t&&[t,e]}}};return o[D]=function(){return this},o}}();
 !function(t){function e(t){t.registerRegistry=Object.create(null),t.namedRegisterAliases=Object.create(null)}var r=t.System;e(r);var i,s,n=r.constructor.prototype,l=r.constructor,a=function(){l.call(this),e(this)};a.prototype=n,r.constructor=a;var o=n.register;n.register=function(t,e,r,n){if("string"!=typeof t)return o.apply(this,arguments);var l=[e,r,n];return this.registerRegistry[t]=l,i||(i=l,s=t),Promise.resolve().then((function(){i=null,s=null})),o.apply(this,[e,r,n])};var u=n.resolve;n.resolve=function(t,e){try{return u.call(this,t,e)}catch(r){if(t in this.registerRegistry)return this.namedRegisterAliases[t]||t;throw r}};var c=n.instantiate;n.instantiate=function(t,e,r){var i=this.registerRegistry[t];return i?(this.registerRegistry[t]=null,i):c.call(this,t,e,r)};var g=n.getRegister;n.getRegister=function(t){var e=g.call(this,t);s&&t&&(this.namedRegisterAliases[s]=t);var r=i||e;return i=null,s=null,r}}("undefined"!=typeof self?self:global);
 ;(typeof System!='undefined')&&(System=new System.constructor());
-System.register("./___monkey.entry.js", [],(function(exports,module){'use strict';return{execute:(function(){exports({B:resolveFavoritesUserId,I:rdwPageHash,J:createFavoritesSyncTabId,L:readArtistsMirror,O:listArtistTags,P:writeArtistsMirror,Q:Q$1,T:reloadFromStorage,V:save,X:setSyncState,a:mountFavoriteVideoMarks,a$:b,a0:a,a1:applyTokenProperties,a2:resolveAppearancePalette,a3:isCollectionDetailPage,a4:menuRouteForPage,a5:getSiteSkinCss,a6:$$1,aA:Card,aB:P$1,aC:T,aD:A,aG:SectionLabel,aH:Select,aK:Segmented,aN:TextField,aO:Button,aP:clampBackgroundDim,aR:featurePanelLabel,aT:clearFeatureState,aU:applyCssOnlyFeatureEnabled,aV:isFeatureEnabled,aX:setFeatureChoiceValue,aY:applyCssOnlyFeatureChoice,aZ:getFeatureChoice,a_:createAutocompleteQuerier,ah:d,ai:Switch,ak:setTweaksEnabled,an:setFeatureEnabled,ao:NumberField,aq:setUpdatesGroupSize,ar:getUpdatesGroupSize,at:setPlaylistChunkSize,au:getPlaylistChunkSize,aw:setGridFavButtonsEnabled,ax:setGridFavButtonsVisible,ay:IconChevronRight,az:IconChevronDown,b:mountCommentsPage,b0:readSiteBlacklist,b1:Chip,b2:AutocompleteField,b3:ProgressBar,b4:createDefaultCustomTheme,b6:prepareBackgroundImageFile,b7:setFeatureState,b8:writeSiteBlacklist,bB:hasApiCredentials,bC:getTweaksEnabled,bD:getGridFavButtonsEnabled,bE:getFeatureChoiceValue,bF:getFeatureState,bG:getScreenPixelSize,bH:IconPlus,bI:EmptyState,bJ:Dialog,bK:resolveCollectionKind,bL:deleteCollection,bM:QueryField,bN:isUnfilteredQuery,bO:createDynamicCollection,bP:createPlaylist,bR:collectionDetailHash,bS:readCoverMirror,bU:IconCheck,bV:readCountMirror,bW:buildSearchUrl,bX:dynamicCollectionMarkHash,bY:serialize,b_:getSeenPostId,ba:clearApiCredentials,bb:parseApiCredentials,bc:setApiCredentials,bd:load,be:createDefaultStorage,bf:clearStorageCache,bg:clearFavsCache,bh:object,bj:optional,bk:string,bm:literal,bo:isSiteUrl,bp:stripLegacyPanelWindowSize,bq:migrateMarksFavToFavs,bs:createDefaultFavs,bt:parseFavsStrict,bu:setAppearance,bv:loadFavSet,bx:extractFavIdsFromMarks,c:applyAppearanceTheme,c5:removeArtist,c6:completeLastQueryToken,c7:readLastQueryToken,c9:IconButton,ca:IconX,cb:removeArtists,cc:rememberArtistSnapshot,cd:fetchArtistSnapshot,ce:addArtists,cf:w$1,cg:downloadsAvailable,ch:shuffleCollection,ci:resetCollectionOrder,cj:Toast,ck:getCollectionOrder,cl:listPlaylists,cm:removePostsFromCollection,cn:isDownloadBusy,co:startDownload,cp:movePostInCollection,cq:renameCollection,cs:restorePosts,cu:collectionQueueHash,d:detectPageKind,e:ensureDocumentStyles,g:getAppearance,i:ensureStyleElement,j:buildOwnPageCss,m:mountCards,n:normalizeArtistTag,o:getFeatureEnabled,p:parseRdwHash,q:getSyncState,r:runFeaturesYielding,s:syncFavoritesPage,t:readFavoritesSyncMode,u:runFavoritesSync,y:yieldToMain});var STORAGE_KEY = "ruledesk-web.storage";
-var STORAGE_BACKUP_KEY = exports("bw","ruledesk-web.storage.backup");
-var FAVS_STORAGE_KEY = exports("br","ruledesk-web.favs");
+System.register("./___monkey.entry.js", [],(function(exports,module){'use strict';return{execute:(function(){exports({$:$$1,D:yieldToMain,E:detectPageKind,G:mountCards,I:syncFavoritesPage,J:mountFavoriteVideoMarks,K:mountCommentsPage,L:runFeaturesYielding,O:applyAppearanceTheme,Q:Q$1,U:ensureDocumentStyles,Z:normalizeArtistTag,_:ensureStyleElement,a:getFeatureState,a$:getFeatureChoice,a1:buildOwnPageCss,a3:parseRdwHash,a4:readFavoritesSyncMode,a6:runFavoritesSync,a8:rdwPageHash,a9:createFavoritesSyncTabId,aA:IconChevronRight,aB:IconChevronDown,aC:Card,aD:P$1,aE:T,aF:A,aI:SectionLabel,aJ:Select,aM:Segmented,aP:TextField,aQ:Button,aR:clampBackgroundDim,aT:featurePanelLabel,aV:clearFeatureState,aW:applyCssOnlyFeatureEnabled,aX:isFeatureEnabled,aZ:setFeatureChoiceValue,a_:applyCssOnlyFeatureChoice,ab:readArtistsMirror,ac:listArtistTags,ad:writeArtistsMirror,ae:reloadFromStorage,af:save,ah:menuRouteForPage,ai:getSiteSkinCss,aj:d,ak:Switch,am:setTweaksEnabled,ap:setFeatureEnabled,aq:NumberField,as:setUpdatesGroupSize,at:getUpdatesGroupSize,av:setPlaylistChunkSize,aw:getPlaylistChunkSize,ay:setGridFavButtonsEnabled,az:setGridFavButtonsVisible,b0:createAutocompleteQuerier,b1:b,b2:readSiteBlacklist,b3:Chip,b4:AutocompleteField,b5:ProgressBar,b6:createDefaultCustomTheme,b8:prepareBackgroundImageFile,b9:writeSiteBlacklist,bC:hasApiCredentials,bD:getTweaksEnabled,bE:getGridFavButtonsEnabled,bF:getFeatureChoiceValue,bG:getScreenPixelSize,bH:IconPlus,bI:EmptyState,bJ:Dialog,bK:resolveCollectionKind,bL:deleteCollection,bM:QueryField,bN:isUnfilteredQuery,bO:createDynamicCollection,bP:createPlaylist,bR:collectionDetailHash,bS:readCoverMirror,bU:IconCheck,bV:readCountMirror,bW:buildSearchUrl,bX:dynamicCollectionMarkHash,bY:serialize,b_:getSeenPostId,bb:clearApiCredentials,bc:parseApiCredentials,bd:setApiCredentials,be:load,bf:createDefaultStorage,bg:clearStorageCache,bh:clearFavsCache,bi:object,bk:optional,bl:string,bn:literal,bp:isSiteUrl,bq:stripLegacyPanelWindowSize,br:migrateMarksFavToFavs,bt:createDefaultFavs,bu:parseFavsStrict,bv:setAppearance,bw:loadFavSet,by:extractFavIdsFromMarks,c5:removeArtist,c6:completeLastQueryToken,c7:readLastQueryToken,c9:IconButton,ca:IconX,cb:removeArtists,cc:rememberArtistSnapshot,cd:fetchArtistSnapshot,ce:addArtists,cf:w$1,cg:downloadsAvailable,ch:shuffleCollection,ci:resetCollectionOrder,cj:Toast,ck:getCollectionOrder,cl:listPlaylists,cm:removePostsFromCollection,cn:isDownloadBusy,co:startDownload,cp:movePostInCollection,cq:renameCollection,cs:restorePosts,cu:collectionQueueHash,e:getSyncState,g:getFeatureEnabled,j:setSyncState,n:a,o:applyTokenProperties,p:resolveAppearancePalette,q:getAppearance,r:resolveFavoritesUserId,s:setFeatureState,t:isCollectionDetailPage});var STORAGE_KEY = "ruledesk-web.storage";
+var STORAGE_BACKUP_KEY = exports("bx","ruledesk-web.storage.backup");
+var FAVS_STORAGE_KEY = exports("bs","ruledesk-web.favs");
 var DEBUG_KEY = "ruledesk-web.debug";
-var APPEARANCE_BACKGROUND_KEY = exports("K","ruledesk-web.appearance.background");
+var APPEARANCE_BACKGROUND_KEY = exports("aa","ruledesk-web.appearance.background");
 var APPEARANCE_BACKGROUND_TOO_LARGE = exports("ag","Background image is too large (max 1.5 MB).");
 var TOKEN_STYLE_ID = "ruledesk-web-tokens";
 var SITE_SKIN_STYLE_ID = "ruledesk-web-site-skin";
 var RDW_SKIN_CLASS = "rdw-skin";
-var RDW_THEME_ATTR = exports("a9","data-rdw-theme");
-var APPEARANCE_THEME_SITE = exports("aa","site");
-var APPEARANCE_THEME_SITE_DARK = exports("ab","site-dark");
-var APPEARANCE_THEME_LIGHT = exports("aI","light");
-var APPEARANCE_THEME_DARK = exports("aJ","dark");
-var APPEARANCE_THEME_CUSTOM = exports("aE","custom");
+var RDW_THEME_ATTR = exports("u","data-rdw-theme");
+var APPEARANCE_THEME_SITE = exports("A","site");
+var APPEARANCE_THEME_SITE_DARK = exports("v","site-dark");
+var APPEARANCE_THEME_LIGHT = exports("aK","light");
+var APPEARANCE_THEME_DARK = exports("aL","dark");
+var APPEARANCE_THEME_CUSTOM = exports("aG","custom");
 var DEFAULT_APPEARANCE_THEME = APPEARANCE_THEME_LIGHT;
-var SITE_ORIGIN = exports("f","https://rule34.xxx");
-var SEARCH_PATH = exports("$","/index.php");
+var SITE_ORIGIN = exports("X","https://rule34.xxx");
+var SEARCH_PATH = exports("m","/index.php");
 var SEARCH_PAGE = exports("c1","post");
 var SEARCH_SECTION = exports("c2","list");
 var SEARCH_SECTION_VIEW = exports("ct","view");
-var SEARCH_PARAM_PAGE = exports("Y","page");
-var SEARCH_PARAM_TAGS = exports("h","tags");
-var FAVORITES_PAGE = exports("Z","favorites");
-var FAVORITES_SECTION_VIEW = exports("_","view");
+var SEARCH_PARAM_PAGE = exports("S","page");
+var SEARCH_PARAM_TAGS = exports("Y","tags");
+var FAVORITES_PAGE = exports("k","favorites");
+var FAVORITES_SECTION_VIEW = exports("l","view");
 var FAVORITES_SECTION_DELETE = "delete";
 var FAVORITES_PARAM_RETURN_PID = "return_pid";
 var ADDFAV_PATH = "/public/addfav.php";
@@ -52,7 +52,7 @@ var FETCH_CREDENTIALS = "same-origin";
 var TAG_TYPE_INCLUDE = exports("c8","include");
 var TAG_TYPE_EXCLUDE = "exclude";
 var UPDATES_ID_PREFIX = "id:>";
-var IMPORT_SCHEMA_ERROR_PREFIX = exports("bn","File is not a RuleDesk Web export");
+var IMPORT_SCHEMA_ERROR_PREFIX = exports("bo","File is not a RuleDesk Web export");
 var COLLECTION_KIND_SEARCH = exports("bT","search");
 var COLLECTION_KIND_POSTS = exports("bQ","posts");
 var DOCUMENT_STYLE_ID = "ruledesk-web-document-style";
@@ -63,7 +63,7 @@ var SITE_BLACKLIST_COOKIE_NAME = "tag_blacklist";
 var SITE_THEME_STYLESHEET_DIR = "/css/";
 var SITE_THEME_STYLESHEET_LIGHT = "desktop.css";
 var SITE_THEME_STYLESHEET_DARK = "desktop-dark.css";
-var UI_TEXT = exports("U",{
+var UI_TEXT = exports("a7",{
 	nameLabel: "Name",
 	save: "Save",
 	cancel: "Cancel",
@@ -96,7 +96,7 @@ var UI_TEXT = exports("U",{
 	updatesPartialHint: "This search covers only part of your artists. Marking as seen works when all artists are in one search (set “Artists per search” to 0).",
 	updatesBarMissingHost: "updates empty host not found; updates bar not mounted"
 });
-var CSS_CLASS = exports("C",{
+var CSS_CLASS = exports("w",{
 	section: "rdw-section",
 	list: "rdw-list",
 	listItem: "rdw-list-item",
@@ -142,25 +142,25 @@ var RDW_COLLECTION_QUEUE_HASH_PREFIX = "#rdw-c=";
 * query narrows nothing: its bar must not show on the plain post list.
 */
 var RDW_DYNAMIC_MARK_HASH_PREFIX = "#rdw-dc=";
-var RDW_HASH_COLLECTIONS = exports("x",`${RDW_HASH_PREFIX}${RDW_ROUTE_COLLECTIONS}`);
-var RDW_HASH_FOLLOWING = exports("A",`${RDW_HASH_PREFIX}${RDW_ROUTE_FOLLOWING}`);
-var RDW_HASH_SETTINGS = exports("G",`${RDW_HASH_PREFIX}${RDW_ROUTE_SETTINGS}`);
-var RDW_HASH_STATS = exports("D",`${RDW_HASH_PREFIX}${RDW_ROUTE_STATS}`);
+var RDW_HASH_COLLECTIONS = exports("b",`${RDW_HASH_PREFIX}${RDW_ROUTE_COLLECTIONS}`);
+var RDW_HASH_FOLLOWING = exports("d",`${RDW_HASH_PREFIX}${RDW_ROUTE_FOLLOWING}`);
+var RDW_HASH_SETTINGS = exports("i",`${RDW_HASH_PREFIX}${RDW_ROUTE_SETTINGS}`);
+var RDW_HASH_STATS = exports("f",`${RDW_HASH_PREFIX}${RDW_ROUTE_STATS}`);
 /**
 * Key in `settings.features` for showing Statistics in the site menu.
 * It is a plain switch, not a page tweak with a module.
 */
-var STATS_MENU_SETTING_ID = exports("bA","stats-menu");
-var STATS_MENU_SETTING_LABEL = exports("al","Statistics in site menu");
-var STATS_MENU_SWITCH_ID = exports("am","rdw-stats-menu");
-var RDW_OWN_PAGE_CLASS = exports("k","rdw-own-page");
-var RDW_PAGE_ROOT_ID = exports("v","rdw-page-root");
+var STATS_MENU_SETTING_ID = exports("bB","stats-menu");
+var STATS_MENU_SETTING_LABEL = exports("an","Statistics in site menu");
+var STATS_MENU_SWITCH_ID = exports("ao","rdw-stats-menu");
+var RDW_OWN_PAGE_CLASS = exports("a2","rdw-own-page");
+var RDW_PAGE_ROOT_ID = exports("R","rdw-page-root");
 /** The download manager's panel: stays visible over the script's own pages. */
 var RDW_DOWNLOADS_PANEL_ID = "rdw-downloads";
-var RDW_OWN_PAGE_STYLE_ID = exports("R","rdw-own-page-style");
+var RDW_OWN_PAGE_STYLE_ID = exports("a0","rdw-own-page-style");
 var HEADER_SELECTOR$1 = exports("H","div#header");
 var NAVBAR_SELECTOR = exports("N","div#header ul#navbar");
-var CURRENT_PAGE_CLASS$1 = exports("W","current-page");
+var CURRENT_PAGE_CLASS$1 = exports("C","current-page");
 var MENU_ITEM_ID = exports("M",{
 	collections: "rdw-nav-collections",
 	following: "rdw-nav-following",
@@ -168,7 +168,7 @@ var MENU_ITEM_ID = exports("M",{
 	stats: "rdw-nav-stats",
 	settings: "rdw-nav-settings"
 });
-var MENU_LABEL = exports("z",{
+var MENU_LABEL = exports("c",{
 	collections: "Collections",
 	following: "Following",
 	favorites: "Favorites",
@@ -176,10 +176,10 @@ var MENU_LABEL = exports("z",{
 	settings: "RuleDesk"
 });
 /** Site native favorites entry (submenu); hidden when our Favorites item is shown. */
-var MY_FAVORITES_CONTAINER_ID = exports("E","my-favorites-container");
-var FEED_MENU_ITEM_ID = exports("w","rdw-feed-menu");
+var MY_FAVORITES_CONTAINER_ID = exports("h","my-favorites-container");
+var FEED_MENU_ITEM_ID = exports("F","rdw-feed-menu");
 /** Shared class names for own-page section layouts (relocated from ui/panel). */
-var PANEL_UI_CLASS = exports("a7",{
+var PANEL_UI_CLASS = exports("P",{
 	scrollRegion: "rdw-scroll-region",
 	settingsGroup: "rdw-settings-group",
 	settingsRow: "rdw-settings-row",
@@ -189,13 +189,13 @@ var PANEL_UI_CLASS = exports("a7",{
 var ARTISTS_EMPTY_TITLE = exports("c0","No followed artists yet");
 var ARTISTS_EMPTY_HINT = exports("b$","Follow artists with the Follow button next to their name in the tag list.");
 var ARTIST_FILTER_LABEL = exports("c3","Filter artists (several: space or comma)");
-var FEATURE_CHECKBOX_ID_PREFIX = exports("aS","rdw-feature-");
-var FEATURE_CHOICE_ID_PREFIX = exports("aW","rdw-feature-choice-");
-var UPDATES_GROUP_SIZE_ID = exports("ap","rdw-updates-group-size");
-var PLAYLIST_CHUNK_SIZE_ID = exports("as","rdw-playlist-chunk-size");
+var FEATURE_CHECKBOX_ID_PREFIX = exports("aU","rdw-feature-");
+var FEATURE_CHOICE_ID_PREFIX = exports("aY","rdw-feature-choice-");
+var UPDATES_GROUP_SIZE_ID = exports("ar","rdw-updates-group-size");
+var PLAYLIST_CHUNK_SIZE_ID = exports("au","rdw-playlist-chunk-size");
 var ARTIST_FILTER_ID = exports("c4","rdw-artist-filter");
-var GRID_FAV_CHECKBOX_ID = exports("av","rdw-grid-fav-buttons");
-var TWEAKS_SWITCH_ID = exports("aj","rdw-tweaks-enabled");
+var GRID_FAV_CHECKBOX_ID = exports("ax","rdw-grid-fav-buttons");
+var TWEAKS_SWITCH_ID = exports("al","rdw-tweaks-enabled");
 var TAG_GROUPS_PANEL_LABEL = "Collapse tags";
 function featurePanelLabel(featureId, fallback) {
 	if (featureId === "tag-groups") return TAG_GROUPS_PANEL_LABEL;
@@ -298,7 +298,7 @@ function isDebugEnabled() {
 		return false;
 	}
 }
-var log = exports("l",{
+var log = exports("W",{
 	debug(message, ...details) {
 		if (!isDebugEnabled()) return;
 		console.debug(`[ruledesk-web] ${message}`, ...details);
@@ -2310,7 +2310,7 @@ function pruneMarksIfNeeded(marks, keepLimit = MARKS_KEEP_LIMIT) {
 * Design tokens for RuleDesk Web UI and site skin.
 * Light values match docs/design/mock-components.html.
 */
-var TOKEN_VAR = exports("a8",{
+var TOKEN_VAR = exports("T",{
 	bg: "--rdw-bg",
 	surface: "--rdw-surface",
 	surface2: "--rdw-surface-2",
@@ -2432,16 +2432,16 @@ var CONTRAST_OFFSET$1 = .05;
 * Hex equivalents of `docs/design/site-desktop.css` light `* { --c-* }`.
 * Script-page Site default chrome; keep in sync with skin/theme site palette.
 */
-var SITE_LIGHT_C_BG = exports("ac","#aae5a4");
-var SITE_LIGHT_C_BG_ALT = exports("ad","#89cf81");
+var SITE_LIGHT_C_BG = exports("x","#aae5a4");
+var SITE_LIGHT_C_BG_ALT = exports("y","#89cf81");
 var SITE_LIGHT_C_BG_OVERLAY = "#98d491";
 var SITE_LIGHT_C_TEXT = "#000000";
 var SITE_LIGHT_C_TEXT_SOFT = "#666666";
 var SITE_LIGHT_C_LINK = "#000099";
 /** Site dark script-page chrome (theme=site-dark). */
-var SITE_DARK_C_BG = exports("ae","#303a30");
+var SITE_DARK_C_BG = exports("z","#303a30");
 var SITE_DARK_C_SURFACE2 = "#303030";
-var SITE_DARK_C_BORDER = exports("af","#505a50");
+var SITE_DARK_C_BORDER = exports("B","#505a50");
 var SITE_DARK_C_TEXT = "#c0c0c0";
 var SITE_DARK_C_MUTED = "#878787";
 var SITE_DARK_C_ACCENT = "#b0e0b0";
@@ -2615,15 +2615,15 @@ var MarkFlagsSchema = /* @__PURE__ */ object({
 	fav: /* @__PURE__ */ optional(/* @__PURE__ */ boolean()),
 	seen: /* @__PURE__ */ optional(/* @__PURE__ */ boolean())
 });
-var AppearanceThemeSchema = exports("b5",/* @__PURE__ */ _enum([
+var AppearanceThemeSchema = exports("b7",/* @__PURE__ */ _enum([
 	APPEARANCE_THEME_SITE,
 	APPEARANCE_THEME_SITE_DARK,
 	APPEARANCE_THEME_LIGHT,
 	APPEARANCE_THEME_DARK,
 	APPEARANCE_THEME_CUSTOM
 ]));
-var APPEARANCE_CUSTOM_BASE_LIGHT = exports("aL","light");
-var APPEARANCE_CUSTOM_BASE_DARK = exports("aM","dark");
+var APPEARANCE_CUSTOM_BASE_LIGHT = exports("aN","light");
+var APPEARANCE_CUSTOM_BASE_DARK = exports("aO","dark");
 var AppearanceCustomBaseSchema = /* @__PURE__ */ _enum([APPEARANCE_CUSTOM_BASE_LIGHT, APPEARANCE_CUSTOM_BASE_DARK]);
 /** Canonical custom theme: Light/Dark base + optional background image/dim. */
 var AppearanceCustomSchema = /* @__PURE__ */ object({
@@ -2687,7 +2687,7 @@ var SettingsSchema = /* @__PURE__ */ object({
 	appearance: /* @__PURE__ */ optional(AppearanceStoredSchema)
 });
 var UpdatesSchema = /* @__PURE__ */ object({ seenPostId: int().check(/* @__PURE__ */ _nonnegative()) });
-var StorageSchema = exports("bi",/* @__PURE__ */ object({
+var StorageSchema = exports("bj",/* @__PURE__ */ object({
 	version: /* @__PURE__ */ literal(1),
 	collections: /* @__PURE__ */ array(CollectionSchema),
 	artists: /* @__PURE__ */ array(ArtistEntrySchema),
@@ -2722,7 +2722,7 @@ var FavsSyncSchema = /* @__PURE__ */ object({
 	lock: /* @__PURE__ */ optional(FavsSyncLockSchema),
 	mode: /* @__PURE__ */ optional(FavsSyncModeSchema)
 });
-var FavsSchema = exports("bl",/* @__PURE__ */ object({
+var FavsSchema = exports("bm",/* @__PURE__ */ object({
 	version: /* @__PURE__ */ literal(1),
 	ids: /* @__PURE__ */ array(int()),
 	sync: /* @__PURE__ */ optional(FavsSyncSchema)
@@ -4093,7 +4093,7 @@ function isBlacklisted(tags, score, rating, list) {
 	}
 	return false;
 }
-var SITE_SELECTORS = exports("S",{
+var SITE_SELECTORS = exports("V",{
 	thumb: "span.thumb",
 	thumbLink: "a[href*=\"s=view\"]",
 	previewImage: "img.preview",
@@ -4764,7 +4764,7 @@ function E(n, t) {
 function G(n, t) {
 	return "function" == typeof t ? t(n) : t;
 }
-var KIT_FOCUS_CSS = exports("aF",`
+var KIT_FOCUS_CSS = exports("aH",`
 .rdw-kit-focusable:focus-visible {
   outline: 2px solid var(--rdw-accent);
   outline-offset: 2px;
@@ -7642,15 +7642,15 @@ function syncFavoritesPage(root = document, search = window.location.search) {
 	bindRemoveClickCapture();
 }
 /** Minimum pause between sequential favorites page fetches. */
-var FAVORITES_SYNC_PAGE_PAUSE_MS = exports("b9",1500);
+var FAVORITES_SYNC_PAGE_PAUSE_MS = exports("ba",1500);
 /** Pauses before each of the three retries (HTTP error / missing paginator). */
 var FAVORITES_SYNC_RETRY_DELAYS_MS = [
 	1e4,
 	3e4,
 	6e4
 ];
-var FAVORITES_SYNC_MODE_INCREMENTAL = exports("bz",FAVS_SYNC_MODE_INCREMENTAL);
-var FAVORITES_SYNC_MODE_FULL = exports("F",FAVS_SYNC_MODE_FULL);
+var FAVORITES_SYNC_MODE_INCREMENTAL = exports("bA",FAVS_SYNC_MODE_INCREMENTAL);
+var FAVORITES_SYNC_MODE_FULL = exports("a5",FAVS_SYNC_MODE_FULL);
 var MY_FAVORITES_LINK_SELECTOR$1 = "li#my-favorites-container a[href*=\"page=favorites\"]";
 var THUMB_SELECTOR$1 = "span.thumb";
 var THUMB_POST_LINK_SELECTOR = "span.thumb a[id^=\"p\"]";
@@ -10048,7 +10048,7 @@ function gapCss() {
 		`}`
 	].join("\n");
 }
-var gridDensityFeature = exports("by",{
+var gridDensityFeature = exports("bz",{
 	id: FEATURE_ID$10,
 	label: "Grid size",
 	pages: ["list", "favorites"],
@@ -14799,7 +14799,7 @@ function mountVideoPreview(ctx) {
 		startBindings();
 	});
 }
-var FEATURES = exports("aQ",[
+var FEATURES = exports("aS",[
 	feedFeature,
 	menuCleanupFeature,
 	tagGroupsFeature,
@@ -17326,12 +17326,45 @@ bootEarly();
 whenDomReady(() => {
 	applyLayoutBeforePaint();
 	scheduleAfterFirstPaint(() => {
-		module.import('./app-Ci556D8L-DQBNw289.js').then(({ startApp }) => {
+		module.import('./app-D9wl0The-CiZHvaAE.js').then(function(n){return n.h}).then(({ startApp }) => {
 			startApp();
 		});
 	});
 });})}}));
-System.register("./app-Ci556D8L-DQBNw289.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var yieldToMain,detectPageKind,mountCards,syncFavoritesPage,mountFavoriteVideoMarks,mountCommentsPage,runFeaturesYielding,getAppearance,applyAppearanceTheme,ensureDocumentStyles,SITE_SELECTORS,log,SITE_ORIGIN,SEARCH_PARAM_TAGS,normalizeArtistTag,CSS_CLASS,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,HEADER_SELECTOR$1,RDW_OWN_PAGE_CLASS,MENU_ITEM_ID,getFeatureEnabled,parseRdwHash,getSyncState,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,runFavoritesSync,UI_TEXT,Q$1,RDW_PAGE_ROOT_ID,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,resolveFavoritesUserId,RDW_HASH_STATS,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,rdwPageHash,createFavoritesSyncTabId,APPEARANCE_BACKGROUND_KEY,readArtistsMirror,listArtistTags,writeArtistsMirror,reloadFromStorage,save,CURRENT_PAGE_CLASS$1,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,a,applyTokenProperties,resolveAppearancePalette,isCollectionDetailPage,menuRouteForPage,getSiteSkinCss,$$1,PANEL_UI_CLASS,TOKEN_VAR,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,SITE_LIGHT_C_BG,SITE_LIGHT_C_BG_ALT,SITE_DARK_C_BG,SITE_DARK_C_BORDER,APPEARANCE_BACKGROUND_TOO_LARGE;return{setters:[function(module){yieldToMain=module.y;detectPageKind=module.d;mountCards=module.m;syncFavoritesPage=module.s;mountFavoriteVideoMarks=module.a;mountCommentsPage=module.b;runFeaturesYielding=module.r;getAppearance=module.g;applyAppearanceTheme=module.c;ensureDocumentStyles=module.e;SITE_SELECTORS=module.S;log=module.l;SITE_ORIGIN=module.f;SEARCH_PARAM_TAGS=module.h;normalizeArtistTag=module.n;CSS_CLASS=module.C;ensureStyleElement=module.i;RDW_OWN_PAGE_STYLE_ID=module.R;buildOwnPageCss=module.j;HEADER_SELECTOR$1=module.H;RDW_OWN_PAGE_CLASS=module.k;MENU_ITEM_ID=module.M;getFeatureEnabled=module.o;parseRdwHash=module.p;getSyncState=module.q;readFavoritesSyncMode=module.t;FAVORITES_SYNC_MODE_FULL=module.F;runFavoritesSync=module.u;UI_TEXT=module.U;Q$1=module.Q;RDW_PAGE_ROOT_ID=module.v;NAVBAR_SELECTOR=module.N;FEED_MENU_ITEM_ID=module.w;RDW_HASH_COLLECTIONS=module.x;MENU_LABEL=module.z;RDW_HASH_FOLLOWING=module.A;resolveFavoritesUserId=module.B;RDW_HASH_STATS=module.D;MY_FAVORITES_CONTAINER_ID=module.E;RDW_HASH_SETTINGS=module.G;rdwPageHash=module.I;createFavoritesSyncTabId=module.J;APPEARANCE_BACKGROUND_KEY=module.K;readArtistsMirror=module.L;listArtistTags=module.O;writeArtistsMirror=module.P;reloadFromStorage=module.T;save=module.V;CURRENT_PAGE_CLASS$1=module.W;setSyncState=module.X;SEARCH_PARAM_PAGE=module.Y;FAVORITES_PAGE=module.Z;FAVORITES_SECTION_VIEW=module._;SEARCH_PATH=module.$;a=module.a0;applyTokenProperties=module.a1;resolveAppearancePalette=module.a2;isCollectionDetailPage=module.a3;menuRouteForPage=module.a4;getSiteSkinCss=module.a5;$$1=module.a6;PANEL_UI_CLASS=module.a7;TOKEN_VAR=module.a8;RDW_THEME_ATTR=module.a9;APPEARANCE_THEME_SITE=module.aa;APPEARANCE_THEME_SITE_DARK=module.ab;SITE_LIGHT_C_BG=module.ac;SITE_LIGHT_C_BG_ALT=module.ad;SITE_DARK_C_BG=module.ae;SITE_DARK_C_BORDER=module.af;APPEARANCE_BACKGROUND_TOO_LARGE=module.ag;}],execute:(function(){exports({a:installSiteMenu,i:navigateToRdwRoute,n:loadBackground,r:saveBackground,startApp:startApp,t:clearBackground});/** Matches host.tsx page title class (owned there; styled here for site polish). */
+System.register("./app-D9wl0The-CiZHvaAE.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var getFeatureEnabled,setFeatureState,getFeatureState,MENU_ITEM_ID,Q$1,RDW_PAGE_ROOT_ID,HEADER_SELECTOR$1,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,resolveFavoritesUserId,getSyncState,RDW_HASH_STATS,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,CURRENT_PAGE_CLASS$1,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,a,applyTokenProperties,resolveAppearancePalette,getAppearance,isCollectionDetailPage,$$1,PANEL_UI_CLASS,TOKEN_VAR,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,CSS_CLASS,SITE_LIGHT_C_BG,SITE_LIGHT_C_BG_ALT,SITE_DARK_C_BG,SITE_DARK_C_BORDER,yieldToMain,detectPageKind,mountCards,syncFavoritesPage,mountFavoriteVideoMarks,mountCommentsPage,runFeaturesYielding,applyAppearanceTheme,ensureDocumentStyles,SITE_SELECTORS,log,SITE_ORIGIN,SEARCH_PARAM_TAGS,normalizeArtistTag,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,RDW_OWN_PAGE_CLASS,parseRdwHash,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,runFavoritesSync,UI_TEXT,rdwPageHash,createFavoritesSyncTabId,APPEARANCE_BACKGROUND_KEY,readArtistsMirror,listArtistTags,writeArtistsMirror,reloadFromStorage,save,APPEARANCE_BACKGROUND_TOO_LARGE,menuRouteForPage,getSiteSkinCss;return{setters:[function(module){getFeatureEnabled=module.g;setFeatureState=module.s;getFeatureState=module.a;MENU_ITEM_ID=module.M;Q$1=module.Q;RDW_PAGE_ROOT_ID=module.R;HEADER_SELECTOR$1=module.H;NAVBAR_SELECTOR=module.N;FEED_MENU_ITEM_ID=module.F;RDW_HASH_COLLECTIONS=module.b;MENU_LABEL=module.c;RDW_HASH_FOLLOWING=module.d;resolveFavoritesUserId=module.r;getSyncState=module.e;RDW_HASH_STATS=module.f;MY_FAVORITES_CONTAINER_ID=module.h;RDW_HASH_SETTINGS=module.i;CURRENT_PAGE_CLASS$1=module.C;setSyncState=module.j;SEARCH_PARAM_PAGE=module.S;FAVORITES_PAGE=module.k;FAVORITES_SECTION_VIEW=module.l;SEARCH_PATH=module.m;a=module.n;applyTokenProperties=module.o;resolveAppearancePalette=module.p;getAppearance=module.q;isCollectionDetailPage=module.t;$$1=module.$;PANEL_UI_CLASS=module.P;TOKEN_VAR=module.T;RDW_THEME_ATTR=module.u;APPEARANCE_THEME_SITE=module.A;APPEARANCE_THEME_SITE_DARK=module.v;CSS_CLASS=module.w;SITE_LIGHT_C_BG=module.x;SITE_LIGHT_C_BG_ALT=module.y;SITE_DARK_C_BG=module.z;SITE_DARK_C_BORDER=module.B;yieldToMain=module.D;detectPageKind=module.E;mountCards=module.G;syncFavoritesPage=module.I;mountFavoriteVideoMarks=module.J;mountCommentsPage=module.K;runFeaturesYielding=module.L;applyAppearanceTheme=module.O;ensureDocumentStyles=module.U;SITE_SELECTORS=module.V;log=module.W;SITE_ORIGIN=module.X;SEARCH_PARAM_TAGS=module.Y;normalizeArtistTag=module.Z;ensureStyleElement=module._;RDW_OWN_PAGE_STYLE_ID=module.a0;buildOwnPageCss=module.a1;RDW_OWN_PAGE_CLASS=module.a2;parseRdwHash=module.a3;readFavoritesSyncMode=module.a4;FAVORITES_SYNC_MODE_FULL=module.a5;runFavoritesSync=module.a6;UI_TEXT=module.a7;rdwPageHash=module.a8;createFavoritesSyncTabId=module.a9;APPEARANCE_BACKGROUND_KEY=module.aa;readArtistsMirror=module.ab;listArtistTags=module.ac;writeArtistsMirror=module.ad;reloadFromStorage=module.ae;save=module.af;APPEARANCE_BACKGROUND_TOO_LARGE=module.ag;menuRouteForPage=module.ah;getSiteSkinCss=module.ai;}],execute:(function(){exports({b:saveBackground,c:clearBackground,f:isViewMode,g:writeViewMode,i:installSiteMenu,l:loadBackground,n:navigateToRdwRoute,r:readViewMode,s:syncRdwPageLayout,w:widePagesEnabled});/**
+* How the Collections and Following pages show their items (tiles or a list),
+* remembered per page, and whether those pages take the whole window width.
+*/
+var VIEW_TILES = "tiles";
+var VIEW_LIST = "list";
+var VIEW_LABEL = exports("e","View");
+var VIEW_OPTIONS = exports("V",[{
+	value: VIEW_TILES,
+	label: "Tiles"
+}, {
+	value: VIEW_LIST,
+	label: "List"
+}]);
+var FOLLOWING_VIEW_STATE_ID = exports("F","following-view");
+var COLLECTIONS_VIEW_STATE_ID = exports("C","collections-view");
+/** Setting: Collections and Following fill the window instead of a centred column. */
+var WIDE_PAGES_SETTING_ID = exports("d","wide-pages");
+var WIDE_PAGES_SETTING_LABEL = exports("W","Full-width Collections and Following");
+var WIDE_PAGES_SWITCH_ID = exports("a","rdw-wide-pages");
+function isViewMode(value) {
+	return value === "tiles" || value === "list";
+}
+/** The remembered view of a page; tiles until the user chose otherwise. */
+function readViewMode(stateId) {
+	const stored = getFeatureState(stateId);
+	return isViewMode(stored) ? stored : VIEW_TILES;
+}
+function writeViewMode(stateId, mode) {
+	setFeatureState(stateId, mode);
+}
+function widePagesEnabled() {
+	return getFeatureEnabled(WIDE_PAGES_SETTING_ID, false);
+}/** Matches host.tsx page title class (owned there; styled here for site polish). */
 var PAGE_TITLE_CLASS$1 = "rdw-page-title";
 /** Matches kit SectionLabel class. */
 var SECTION_LABEL_CLASS = "rdw-section-label";
@@ -17520,6 +17553,10 @@ var PAGE_CONTENT_CSS = `
 `.trim();
 var PAGE_SHELL_CLASS = "rdw-page-shell";
 var PAGE_TITLE_CLASS = "rdw-page-title";
+/** On the mount point: the pages start at the left edge instead of a centred column. */
+var LAYOUT_WIDE_CLASS = "rdw-layout-wide";
+/** With the wide layout: a page of text and forms keeps its narrow column. */
+var LAYOUT_TEXT_CLASS = "rdw-layout-text";
 /**
 * Structural shell only — palette tokens come from applyTokenProperties on the
 * host (same source as document :root via resolveAppearancePalette).
@@ -17541,6 +17578,14 @@ var PAGE_HOST_CSS = `
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+.${LAYOUT_WIDE_CLASS} .${PAGE_SHELL_CLASS} {
+  max-width: none;
+  margin: 0;
+  padding: 16px 20px 32px;
+}
+.${LAYOUT_WIDE_CLASS}.${LAYOUT_TEXT_CLASS} .${PAGE_SHELL_CLASS} {
+  max-width: ${String(960)}px;
 }
 .${PAGE_TITLE_CLASS} {
   margin: 0;
@@ -17572,35 +17617,35 @@ var followingFactory = null;
 var statsFactory = null;
 function getSettingsFactory() {
 	if (settingsFactory === null) settingsFactory = async () => {
-		const mod = await module.import('./settings-page-Br5uIyE3-lm9W4n0S.js');
+		const mod = await module.import('./settings-page-CmkwV8ye-J00LwXM0.js');
 		return /* @__PURE__ */ a(mod.SettingsPage, {});
 	};
 	return settingsFactory;
 }
 function getCollectionsFactory() {
 	if (collectionsFactory === null) collectionsFactory = async () => {
-		const mod = await module.import('./collections-page-C5k15_Gv-DYrC5g7h.js');
+		const mod = await module.import('./collections-page-BZN_332y-BcZxO0Ui.js');
 		return /* @__PURE__ */ a(mod.CollectionsPage, {});
 	};
 	return collectionsFactory;
 }
 function getFollowingFactory() {
 	if (followingFactory === null) followingFactory = async () => {
-		const mod = await module.import('./following-page-bjhrVref-De_hDrzP.js');
+		const mod = await module.import('./following-page-B78717lh-DDO16eMj.js');
 		return /* @__PURE__ */ a(mod.FollowingPage, {});
 	};
 	return followingFactory;
 }
 function getStatsFactory() {
 	if (statsFactory === null) statsFactory = async () => {
-		const mod = await module.import('./stats-section-Cw7eRgc8-CmscQKeb.js');
+		const mod = await module.import('./stats-section-DGP56jr5-C7dW1V0K.js');
 		return /* @__PURE__ */ a(mod.StatsPage, {});
 	};
 	return statsFactory;
 }
 function collectionDetailFactory(collectionId) {
 	return async () => {
-		const mod = await module.import('./collection-detail-page-MaBVOc8b-BxxaBkii.js');
+		const mod = await module.import('./collection-detail-page-BPDkbWxg-Ba8yQwKP.js');
 		return /* @__PURE__ */ a(mod.CollectionDetailPage, { collectionId }, collectionId);
 	};
 }
@@ -17610,6 +17655,18 @@ function pageFactoryForRoute(route) {
 	if (route === "following") return getFollowingFactory();
 	if (route === "stats") return getStatsFactory();
 	return getSettingsFactory();
+}
+/** Collections, a collection and Following are grids; the rest is text and forms. */
+function isGridRoute(route) {
+	return isCollectionDetailPage(route) || route === "collections" || route === "following";
+}
+var shownRoute = null;
+/** Applies the page width setting to the page that is shown. */
+function syncRdwPageLayout() {
+	if (mountPoint === null || shownRoute === null) return;
+	const wide = widePagesEnabled();
+	mountPoint.classList.toggle(LAYOUT_WIDE_CLASS, wide);
+	mountPoint.classList.toggle(LAYOUT_TEXT_CLASS, wide && !isGridRoute(shownRoute));
 }
 var hostElement = null;
 var mountPoint = null;
@@ -17647,6 +17704,8 @@ async function showRdwPage(route, header) {
 	const generation = ++renderGeneration;
 	const page = await pageFactoryForRoute(route)();
 	if (generation !== renderGeneration || mountPoint !== mount) return;
+	shownRoute = route;
+	syncRdwPageLayout();
 	Q$1(/* @__PURE__ */ a(PageShell, {
 		title: titleForRoute(route),
 		children: page
@@ -17659,6 +17718,7 @@ function hideRdwPage() {
 	if (hostElement !== null) hostElement.remove();
 	hostElement = null;
 	mountPoint = null;
+	shownRoute = null;
 	const stray = document.getElementById(RDW_PAGE_ROOT_ID);
 	if (stray !== null) stray.remove();
 }
@@ -17834,8 +17894,7 @@ function clearOwnPageCurrentHighlight() {
 	if (savedSiteCurrent !== null && savedSiteCurrent.isConnected) savedSiteCurrent.classList.add(CURRENT_PAGE_CLASS$1);
 	savedSiteCurrent = null;
 	siteCurrentCaptured = false;
-}
-var EVENT_HASHCHANGE = "hashchange";
+}var EVENT_HASHCHANGE = "hashchange";
 var EVENT_POPSTATE = "popstate";
 var EVENT_CLICK = "click";
 var HISTORY_STATE_TITLE = "";
@@ -18323,8 +18382,8 @@ async function startApp() {
 	await startRdwPages();
 	await yieldToMain();
 	maybeResumeFavoritesSync();
-}})}}));
-System.register("./settings-page-Br5uIyE3-lm9W4n0S.js", ['./___monkey.entry.js','./app-Ci556D8L-DQBNw289.js'],(function(exports){'use strict';var d,a,PANEL_UI_CLASS,Switch,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,STATS_MENU_SETTING_LABEL,STATS_MENU_SWITCH_ID,setFeatureEnabled,NumberField,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,setGridFavButtonsVisible,IconChevronRight,IconChevronDown,Card,P$1,T,A,getAppearance,applyAppearanceTheme,getSiteSkinCss,APPEARANCE_THEME_CUSTOM,KIT_FOCUS_CSS,SectionLabel,Select,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,$$1,Segmented,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,TextField,Button,clampBackgroundDim,FEATURES,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,clearFeatureState,applyCssOnlyFeatureEnabled,isFeatureEnabled,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,applyCssOnlyFeatureChoice,getFeatureChoice,createAutocompleteQuerier,b,readSiteBlacklist,Chip,AutocompleteField,ProgressBar,createDefaultCustomTheme,AppearanceThemeSchema,prepareBackgroundImageFile,setFeatureState,writeSiteBlacklist,runFavoritesSync,log,FAVORITES_SYNC_PAGE_PAUSE_MS,clearApiCredentials,parseApiCredentials,setApiCredentials,load,createDefaultStorage,clearStorageCache,clearFavsCache,getSyncState,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,isSiteUrl,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,setAppearance,loadFavSet,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,gridDensityFeature,FAVORITES_SYNC_MODE_INCREMENTAL,FAVORITES_SYNC_MODE_FULL,STATS_MENU_SETTING_ID,hasApiCredentials,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureEnabled,getFeatureChoiceValue,getFeatureState,getScreenPixelSize,installSiteMenu,loadBackground,clearBackground,saveBackground;return{setters:[function(module){d=module.ah;a=module.a0;PANEL_UI_CLASS=module.a7;Switch=module.ai;UI_TEXT=module.U;TWEAKS_SWITCH_ID=module.aj;setTweaksEnabled=module.ak;STATS_MENU_SETTING_LABEL=module.al;STATS_MENU_SWITCH_ID=module.am;setFeatureEnabled=module.an;NumberField=module.ao;UPDATES_GROUP_SIZE_ID=module.ap;setUpdatesGroupSize=module.aq;getUpdatesGroupSize=module.ar;PLAYLIST_CHUNK_SIZE_ID=module.as;setPlaylistChunkSize=module.at;getPlaylistChunkSize=module.au;GRID_FAV_CHECKBOX_ID=module.av;setGridFavButtonsEnabled=module.aw;setGridFavButtonsVisible=module.ax;IconChevronRight=module.ay;IconChevronDown=module.az;Card=module.aA;P$1=module.aB;T=module.aC;A=module.aD;getAppearance=module.g;applyAppearanceTheme=module.c;getSiteSkinCss=module.a5;APPEARANCE_THEME_CUSTOM=module.aE;KIT_FOCUS_CSS=module.aF;SectionLabel=module.aG;Select=module.aH;APPEARANCE_THEME_SITE=module.aa;APPEARANCE_THEME_SITE_DARK=module.ab;APPEARANCE_THEME_LIGHT=module.aI;APPEARANCE_THEME_DARK=module.aJ;$$1=module.a6;Segmented=module.aK;APPEARANCE_CUSTOM_BASE_LIGHT=module.aL;APPEARANCE_CUSTOM_BASE_DARK=module.aM;TextField=module.aN;Button=module.aO;clampBackgroundDim=module.aP;FEATURES=module.aQ;featurePanelLabel=module.aR;FEATURE_CHECKBOX_ID_PREFIX=module.aS;clearFeatureState=module.aT;applyCssOnlyFeatureEnabled=module.aU;isFeatureEnabled=module.aV;FEATURE_CHOICE_ID_PREFIX=module.aW;setFeatureChoiceValue=module.aX;applyCssOnlyFeatureChoice=module.aY;getFeatureChoice=module.aZ;createAutocompleteQuerier=module.a_;b=module.a$;readSiteBlacklist=module.b0;Chip=module.b1;AutocompleteField=module.b2;ProgressBar=module.b3;createDefaultCustomTheme=module.b4;AppearanceThemeSchema=module.b5;prepareBackgroundImageFile=module.b6;setFeatureState=module.b7;writeSiteBlacklist=module.b8;runFavoritesSync=module.u;log=module.l;FAVORITES_SYNC_PAGE_PAUSE_MS=module.b9;clearApiCredentials=module.ba;parseApiCredentials=module.bb;setApiCredentials=module.bc;load=module.bd;createDefaultStorage=module.be;clearStorageCache=module.bf;clearFavsCache=module.bg;getSyncState=module.q;object=module.bh;StorageSchema=module.bi;optional=module.bj;string=module.bk;FavsSchema=module.bl;literal=module.bm;IMPORT_SCHEMA_ERROR_PREFIX=module.bn;isSiteUrl=module.bo;stripLegacyPanelWindowSize=module.bp;save=module.V;migrateMarksFavToFavs=module.bq;FAVS_STORAGE_KEY=module.br;createDefaultFavs=module.bs;parseFavsStrict=module.bt;setAppearance=module.bu;loadFavSet=module.bv;STORAGE_BACKUP_KEY=module.bw;extractFavIdsFromMarks=module.bx;gridDensityFeature=module.by;FAVORITES_SYNC_MODE_INCREMENTAL=module.bz;FAVORITES_SYNC_MODE_FULL=module.F;STATS_MENU_SETTING_ID=module.bA;hasApiCredentials=module.bB;getTweaksEnabled=module.bC;getGridFavButtonsEnabled=module.bD;getFeatureEnabled=module.o;getFeatureChoiceValue=module.bE;getFeatureState=module.bF;getScreenPixelSize=module.bG;},function(module){installSiteMenu=module.a;loadBackground=module.n;clearBackground=module.t;saveBackground=module.r;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
+}var appD9wl0The=/*#__PURE__*/Object.freeze({__proto__:null,i:navigateToRdwRoute,n:loadBackground,r:saveBackground,startApp:startApp,t:clearBackground});exports("h",appD9wl0The);})}}));
+System.register("./settings-page-CmkwV8ye-J00LwXM0.js", ['./___monkey.entry.js','./app-D9wl0The-CiZHvaAE.js'],(function(exports){'use strict';var d,a,PANEL_UI_CLASS,Switch,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,STATS_MENU_SETTING_LABEL,STATS_MENU_SWITCH_ID,setFeatureEnabled,NumberField,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,setGridFavButtonsVisible,IconChevronRight,IconChevronDown,Card,P$1,T,A,getAppearance,applyAppearanceTheme,getSiteSkinCss,APPEARANCE_THEME_CUSTOM,KIT_FOCUS_CSS,SectionLabel,Select,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,$$1,Segmented,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,TextField,Button,clampBackgroundDim,FEATURES,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,clearFeatureState,applyCssOnlyFeatureEnabled,isFeatureEnabled,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,applyCssOnlyFeatureChoice,getFeatureChoice,createAutocompleteQuerier,b,readSiteBlacklist,Chip,AutocompleteField,ProgressBar,createDefaultCustomTheme,AppearanceThemeSchema,prepareBackgroundImageFile,setFeatureState,writeSiteBlacklist,runFavoritesSync,log,FAVORITES_SYNC_PAGE_PAUSE_MS,clearApiCredentials,parseApiCredentials,setApiCredentials,load,createDefaultStorage,clearStorageCache,clearFavsCache,getSyncState,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,isSiteUrl,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,setAppearance,loadFavSet,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,gridDensityFeature,FAVORITES_SYNC_MODE_INCREMENTAL,FAVORITES_SYNC_MODE_FULL,STATS_MENU_SETTING_ID,hasApiCredentials,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureEnabled,getFeatureChoiceValue,getFeatureState,getScreenPixelSize,installSiteMenu,WIDE_PAGES_SETTING_LABEL,WIDE_PAGES_SWITCH_ID,syncRdwPageLayout,loadBackground,clearBackground,saveBackground,WIDE_PAGES_SETTING_ID,widePagesEnabled;return{setters:[function(module){d=module.aj;a=module.n;PANEL_UI_CLASS=module.P;Switch=module.ak;UI_TEXT=module.a7;TWEAKS_SWITCH_ID=module.al;setTweaksEnabled=module.am;STATS_MENU_SETTING_LABEL=module.an;STATS_MENU_SWITCH_ID=module.ao;setFeatureEnabled=module.ap;NumberField=module.aq;UPDATES_GROUP_SIZE_ID=module.ar;setUpdatesGroupSize=module.as;getUpdatesGroupSize=module.at;PLAYLIST_CHUNK_SIZE_ID=module.au;setPlaylistChunkSize=module.av;getPlaylistChunkSize=module.aw;GRID_FAV_CHECKBOX_ID=module.ax;setGridFavButtonsEnabled=module.ay;setGridFavButtonsVisible=module.az;IconChevronRight=module.aA;IconChevronDown=module.aB;Card=module.aC;P$1=module.aD;T=module.aE;A=module.aF;getAppearance=module.q;applyAppearanceTheme=module.O;getSiteSkinCss=module.ai;APPEARANCE_THEME_CUSTOM=module.aG;KIT_FOCUS_CSS=module.aH;SectionLabel=module.aI;Select=module.aJ;APPEARANCE_THEME_SITE=module.A;APPEARANCE_THEME_SITE_DARK=module.v;APPEARANCE_THEME_LIGHT=module.aK;APPEARANCE_THEME_DARK=module.aL;$$1=module.$;Segmented=module.aM;APPEARANCE_CUSTOM_BASE_LIGHT=module.aN;APPEARANCE_CUSTOM_BASE_DARK=module.aO;TextField=module.aP;Button=module.aQ;clampBackgroundDim=module.aR;FEATURES=module.aS;featurePanelLabel=module.aT;FEATURE_CHECKBOX_ID_PREFIX=module.aU;clearFeatureState=module.aV;applyCssOnlyFeatureEnabled=module.aW;isFeatureEnabled=module.aX;FEATURE_CHOICE_ID_PREFIX=module.aY;setFeatureChoiceValue=module.aZ;applyCssOnlyFeatureChoice=module.a_;getFeatureChoice=module.a$;createAutocompleteQuerier=module.b0;b=module.b1;readSiteBlacklist=module.b2;Chip=module.b3;AutocompleteField=module.b4;ProgressBar=module.b5;createDefaultCustomTheme=module.b6;AppearanceThemeSchema=module.b7;prepareBackgroundImageFile=module.b8;setFeatureState=module.s;writeSiteBlacklist=module.b9;runFavoritesSync=module.a6;log=module.W;FAVORITES_SYNC_PAGE_PAUSE_MS=module.ba;clearApiCredentials=module.bb;parseApiCredentials=module.bc;setApiCredentials=module.bd;load=module.be;createDefaultStorage=module.bf;clearStorageCache=module.bg;clearFavsCache=module.bh;getSyncState=module.e;object=module.bi;StorageSchema=module.bj;optional=module.bk;string=module.bl;FavsSchema=module.bm;literal=module.bn;IMPORT_SCHEMA_ERROR_PREFIX=module.bo;isSiteUrl=module.bp;stripLegacyPanelWindowSize=module.bq;save=module.af;migrateMarksFavToFavs=module.br;FAVS_STORAGE_KEY=module.bs;createDefaultFavs=module.bt;parseFavsStrict=module.bu;setAppearance=module.bv;loadFavSet=module.bw;STORAGE_BACKUP_KEY=module.bx;extractFavIdsFromMarks=module.by;gridDensityFeature=module.bz;FAVORITES_SYNC_MODE_INCREMENTAL=module.bA;FAVORITES_SYNC_MODE_FULL=module.a5;STATS_MENU_SETTING_ID=module.bB;hasApiCredentials=module.bC;getTweaksEnabled=module.bD;getGridFavButtonsEnabled=module.bE;getFeatureEnabled=module.g;getFeatureChoiceValue=module.bF;getFeatureState=module.a;getScreenPixelSize=module.bG;},function(module){installSiteMenu=module.i;WIDE_PAGES_SETTING_LABEL=module.W;WIDE_PAGES_SWITCH_ID=module.a;syncRdwPageLayout=module.s;loadBackground=module.l;clearBackground=module.c;saveBackground=module.b;WIDE_PAGES_SETTING_ID=module.d;widePagesEnabled=module.w;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
 var THEME_OPTIONS = [
 	{
 		value: APPEARANCE_THEME_SITE,
@@ -19872,6 +19931,7 @@ function SettingsPage() {
 	const [playlistChunk, setPlaylistChunk] = d(() => getPlaylistChunkSize());
 	const [gridFavEnabled, setGridFavEnabled] = d(() => getGridFavButtonsEnabled());
 	const [statsMenu, setStatsMenu] = d(() => getFeatureEnabled(STATS_MENU_SETTING_ID, true));
+	const [widePages, setWidePages] = d(() => widePagesEnabled());
 	const [collapsed, setCollapsed] = d(() => readCollapsedSections());
 	const toggleSection = (id) => {
 		const next = collapsed.includes(id) ? collapsed.filter((entry) => entry !== id) : [...collapsed, id];
@@ -19920,6 +19980,19 @@ function SettingsPage() {
 									setFeatureEnabled(STATS_MENU_SETTING_ID, checked);
 									setStatsMenu(checked);
 									installSiteMenu();
+								}
+							})
+						}),
+						/* @__PURE__ */ a("div", {
+							className: PANEL_UI_CLASS.settingsRow,
+							children: /* @__PURE__ */ a(Switch, {
+								id: WIDE_PAGES_SWITCH_ID,
+								label: WIDE_PAGES_SETTING_LABEL,
+								checked: widePages,
+								onChange: (checked) => {
+									setFeatureEnabled(WIDE_PAGES_SETTING_ID, checked);
+									setWidePages(checked);
+									syncRdwPageLayout();
 								}
 							})
 						}),
@@ -19985,12 +20058,14 @@ function SettingsPage() {
 		]
 	});
 }})}}));
-System.register("./collections-page-C5k15_Gv-DYrC5g7h.js", ['./___monkey.entry.js','./filter-terms-Dqag3iAV-Bgq_MKCQ.js'],(function(exports){'use strict';var d,b,A,reloadFromStorage,load,a,Segmented,TextField,$$1,Button,UI_TEXT,IconPlus,EmptyState,Dialog,resolveCollectionKind,deleteCollection,QueryField,isUnfilteredQuery,createDynamicCollection,createPlaylist,COLLECTION_KIND_POSTS,collectionDetailHash,readCoverMirror,COLLECTION_KIND_SEARCH,IconCheck,readCountMirror,buildSearchUrl,dynamicCollectionMarkHash,serialize,matchesAnyTerm,filterTerms,COLLECTION_TERM_SEPARATOR;return{setters:[function(module){d=module.ah;b=module.a$;A=module.aD;reloadFromStorage=module.T;load=module.bd;a=module.a0;Segmented=module.aK;TextField=module.aN;$$1=module.a6;Button=module.aO;UI_TEXT=module.U;IconPlus=module.bH;EmptyState=module.bI;Dialog=module.bJ;resolveCollectionKind=module.bK;deleteCollection=module.bL;QueryField=module.bM;isUnfilteredQuery=module.bN;createDynamicCollection=module.bO;createPlaylist=module.bP;COLLECTION_KIND_POSTS=module.bQ;collectionDetailHash=module.bR;readCoverMirror=module.bS;COLLECTION_KIND_SEARCH=module.bT;IconCheck=module.bU;readCountMirror=module.bV;buildSearchUrl=module.bW;dynamicCollectionMarkHash=module.bX;serialize=module.bY;},function(module){matchesAnyTerm=module.m;filterTerms=module.f;COLLECTION_TERM_SEPARATOR=module.C;}],execute:(function(){exports("CollectionsPage",CollectionsPage);var EVENT_PAGESHOW = "pageshow";
+System.register("./collections-page-BZN_332y-BcZxO0Ui.js", ['./___monkey.entry.js','./filter-terms-Dqag3iAV-Bgq_MKCQ.js','./app-D9wl0The-CiZHvaAE.js'],(function(exports){'use strict';var d,b,A,reloadFromStorage,load,a,Segmented,TextField,$$1,Button,UI_TEXT,IconPlus,EmptyState,Dialog,resolveCollectionKind,deleteCollection,QueryField,isUnfilteredQuery,createDynamicCollection,createPlaylist,COLLECTION_KIND_POSTS,collectionDetailHash,readCoverMirror,COLLECTION_KIND_SEARCH,IconCheck,readCountMirror,buildSearchUrl,dynamicCollectionMarkHash,serialize,matchesAnyTerm,filterTerms,COLLECTION_TERM_SEPARATOR,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,COLLECTIONS_VIEW_STATE_ID,readViewMode;return{setters:[function(module){d=module.aj;b=module.b1;A=module.aF;reloadFromStorage=module.ae;load=module.be;a=module.n;Segmented=module.aM;TextField=module.aP;$$1=module.$;Button=module.aQ;UI_TEXT=module.a7;IconPlus=module.bH;EmptyState=module.bI;Dialog=module.bJ;resolveCollectionKind=module.bK;deleteCollection=module.bL;QueryField=module.bM;isUnfilteredQuery=module.bN;createDynamicCollection=module.bO;createPlaylist=module.bP;COLLECTION_KIND_POSTS=module.bQ;collectionDetailHash=module.bR;readCoverMirror=module.bS;COLLECTION_KIND_SEARCH=module.bT;IconCheck=module.bU;readCountMirror=module.bV;buildSearchUrl=module.bW;dynamicCollectionMarkHash=module.bX;serialize=module.bY;},function(module){matchesAnyTerm=module.m;filterTerms=module.f;COLLECTION_TERM_SEPARATOR=module.C;},function(module){VIEW_OPTIONS=module.V;VIEW_LABEL=module.e;isViewMode=module.f;writeViewMode=module.g;COLLECTIONS_VIEW_STATE_ID=module.C;readViewMode=module.r;}],execute:(function(){exports("CollectionsPage",CollectionsPage);var EVENT_PAGESHOW = "pageshow";
 var PAGE_CLASS = "rdw-collections-page";
 var HEADER_CLASS = "rdw-collections-header";
 var TOOLBAR_CLASS = "rdw-collections-toolbar";
 var FILTER_FIELD_CLASS = "rdw-collections-filter";
 var GRID_CLASS = "rdw-collections-grid";
+var GRID_LIST_CLASS = "rdw-collections-grid--list";
+var LIST_COVER_PX = 44;
 var CARD_CLASS = "rdw-collection-card";
 var COVER_CLASS = "rdw-collection-cover";
 var COVER_CELL_CLASS = "rdw-collection-cover-cell";
@@ -20156,6 +20231,33 @@ var COLLECTIONS_PAGE_CSS = `
   background: var(--rdw-surface);
   border: 1px solid var(--rdw-border);
   border-radius: var(--rdw-radius-l);
+}
+/* List view: one collection per row, a small cover, the count on the right. */
+.${GRID_LIST_CLASS} {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+}
+.${GRID_LIST_CLASS} .${CARD_CLASS} {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 8px;
+}
+.${GRID_LIST_CLASS} .${COVER_CLASS} {
+  flex: none;
+  width: ${String(LIST_COVER_PX)}px;
+}
+.${GRID_LIST_CLASS} .${META_ROW_CLASS} {
+  flex: 1 1 auto;
+  justify-content: flex-start;
+}
+.${GRID_LIST_CLASS} .${CAPTION_CLASS} {
+  flex: none;
+}
+.${GRID_LIST_CLASS} .${CARD_MARK_CLASS} {
+  top: 50%;
+  left: 17px;
+  transform: translateY(-50%);
 }
 .${CARD_CLASS}:hover,
 .${CARD_CLASS}:focus,
@@ -20536,6 +20638,7 @@ function NewCollectionDialog(props) {
 function CollectionsPage() {
 	const [filter, setFilter] = d(FILTER_ALL);
 	const [nameQuery, setNameQuery] = d("");
+	const [view, setView] = d(() => readViewMode(COLLECTIONS_VIEW_STATE_ID));
 	const [dialogOpen, setDialogOpen] = d(false);
 	const [newKind, setNewKind] = d(KIND_CUSTOM);
 	const [nameDraft, setNameDraft] = d("");
@@ -20633,6 +20736,17 @@ function CollectionsPage() {
 							"aria-label": FILTER_ARIA_LABEL,
 							onChange: setNameQuery
 						}),
+						/* @__PURE__ */ a(Segmented, {
+							label: VIEW_LABEL,
+							options: VIEW_OPTIONS,
+							value: view,
+							onChange: (value) => {
+								if (isViewMode(value)) {
+									writeViewMode(COLLECTIONS_VIEW_STATE_ID, value);
+									setView(value);
+								}
+							}
+						}),
 						selecting ? /* @__PURE__ */ a($$1, { children: [
 							/* @__PURE__ */ a("span", {
 								className: SELECTED_COUNT_CLASS,
@@ -20683,7 +20797,7 @@ function CollectionsPage() {
 				title: emptyCopy.title,
 				description: emptyCopy.description
 			}) : /* @__PURE__ */ a("div", {
-				className: GRID_CLASS,
+				className: view === "list" ? `${GRID_CLASS} ${GRID_LIST_CLASS}` : GRID_CLASS,
 				"aria-label": GRID_LABEL,
 				children: visible.map((collection) => /* @__PURE__ */ a(CollectionCard, {
 					collection,
@@ -20732,7 +20846,7 @@ function CollectionsPage() {
 		]
 	});
 }})}}));
-System.register("./following-page-bjhrVref-De_hDrzP.js", ['./___monkey.entry.js','./filter-terms-Dqag3iAV-Bgq_MKCQ.js'],(function(exports){'use strict';var d,T,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST,A,reloadFromStorage,getSeenPostId,a,EmptyState,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,Button,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,$$1,Segmented,TextField,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,Select,UI_TEXT,ProgressBar,Dialog,removeArtist,load,completeLastQueryToken,readLastQueryToken,buildSearchUrl,TAG_TYPE_INCLUDE,IconCheck,IconButton,IconX,removeArtists,rememberArtistSnapshot,fetchArtistSnapshot,log,addArtists,AutocompleteField,filterTerms,matchesAnyTerm,ARTIST_TERM_SEPARATOR;return{setters:[function(module){d=module.ah;T=module.aC;createAutocompleteQuerier=module.a_;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.bZ;A=module.aD;reloadFromStorage=module.T;getSeenPostId=module.b_;a=module.a0;EmptyState=module.bI;ARTISTS_EMPTY_HINT=module.b$;ARTISTS_EMPTY_TITLE=module.c0;Button=module.aO;SEARCH_PATH=module.$;SEARCH_PARAM_PAGE=module.Y;SEARCH_PAGE=module.c1;SEARCH_SECTION=module.c2;$$1=module.a6;Segmented=module.aK;TextField=module.aN;ARTIST_FILTER_LABEL=module.c3;ARTIST_FILTER_ID=module.c4;Select=module.aH;UI_TEXT=module.U;ProgressBar=module.b3;Dialog=module.bJ;removeArtist=module.c5;load=module.bd;completeLastQueryToken=module.c6;readLastQueryToken=module.c7;buildSearchUrl=module.bW;TAG_TYPE_INCLUDE=module.c8;IconCheck=module.bU;IconButton=module.c9;IconX=module.ca;removeArtists=module.cb;rememberArtistSnapshot=module.cc;fetchArtistSnapshot=module.cd;log=module.l;addArtists=module.ce;AutocompleteField=module.b2;},function(module){filterTerms=module.f;matchesAnyTerm=module.m;ARTIST_TERM_SEPARATOR=module.A;}],execute:(function(){exports("FollowingPage",FollowingPage);var EVENT_PAGESHOW = "pageshow";
+System.register("./following-page-B78717lh-DDO16eMj.js", ['./___monkey.entry.js','./filter-terms-Dqag3iAV-Bgq_MKCQ.js','./app-D9wl0The-CiZHvaAE.js'],(function(exports){'use strict';var d,T,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST,A,reloadFromStorage,getSeenPostId,a,EmptyState,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,Button,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,$$1,Segmented,TextField,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,Select,UI_TEXT,ProgressBar,Dialog,removeArtist,load,completeLastQueryToken,readLastQueryToken,buildSearchUrl,TAG_TYPE_INCLUDE,IconCheck,IconButton,IconX,removeArtists,rememberArtistSnapshot,fetchArtistSnapshot,log,addArtists,AutocompleteField,filterTerms,matchesAnyTerm,ARTIST_TERM_SEPARATOR,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,FOLLOWING_VIEW_STATE_ID,readViewMode;return{setters:[function(module){d=module.aj;T=module.aE;createAutocompleteQuerier=module.b0;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.bZ;A=module.aF;reloadFromStorage=module.ae;getSeenPostId=module.b_;a=module.n;EmptyState=module.bI;ARTISTS_EMPTY_HINT=module.b$;ARTISTS_EMPTY_TITLE=module.c0;Button=module.aQ;SEARCH_PATH=module.m;SEARCH_PARAM_PAGE=module.S;SEARCH_PAGE=module.c1;SEARCH_SECTION=module.c2;$$1=module.$;Segmented=module.aM;TextField=module.aP;ARTIST_FILTER_LABEL=module.c3;ARTIST_FILTER_ID=module.c4;Select=module.aJ;UI_TEXT=module.a7;ProgressBar=module.b5;Dialog=module.bJ;removeArtist=module.c5;load=module.be;completeLastQueryToken=module.c6;readLastQueryToken=module.c7;buildSearchUrl=module.bW;TAG_TYPE_INCLUDE=module.c8;IconCheck=module.bU;IconButton=module.c9;IconX=module.ca;removeArtists=module.cb;rememberArtistSnapshot=module.cc;fetchArtistSnapshot=module.cd;log=module.W;addArtists=module.ce;AutocompleteField=module.b4;},function(module){filterTerms=module.f;matchesAnyTerm=module.m;ARTIST_TERM_SEPARATOR=module.A;},function(module){VIEW_OPTIONS=module.V;VIEW_LABEL=module.e;isViewMode=module.f;writeViewMode=module.g;FOLLOWING_VIEW_STATE_ID=module.F;readViewMode=module.r;}],execute:(function(){exports("FollowingPage",FollowingPage);var EVENT_PAGESHOW = "pageshow";
 var PAGE_CLASS = "rdw-following-page";
 var ADD_FORM_CLASS = "rdw-following-add";
 var STICKY_CLASS = "rdw-following-sticky";
@@ -20740,6 +20854,7 @@ var TOOLBAR_CLASS = "rdw-following-toolbar";
 var FILTER_CLASS = "rdw-following-filter";
 var META_CLASS = "rdw-following-meta";
 var GRID_CLASS = "rdw-following-grid";
+var GRID_LIST_CLASS = "rdw-following-grid--list";
 var CARD_CLASS = "rdw-artist-card";
 var CARD_SELECTED_CLASS = "rdw-artist-card--selected";
 var CARD_LINK_CLASS = "rdw-artist-card-link";
@@ -20798,6 +20913,7 @@ var COVER_AXIS_COUNT = 2;
 var ICON_PX = 14;
 var GRID_MIN_TRACK_PX = 170;
 var ADD_FIELD_WIDTH_PX = 280;
+var LIST_COVER_PX = 44;
 var FILTER_FIELD_WIDTH_PX = 220;
 /** Above the cards and their corner buttons. */
 var TOOLBAR_Z_INDEX = 5;
@@ -20900,6 +21016,40 @@ var FOLLOWING_PAGE_CSS = `
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(${String(GRID_MIN_TRACK_PX)}px, 1fr));
   gap: 12px;
+}
+/* List view: one artist per row, a small cover, the numbers on the right. */
+.${GRID_LIST_CLASS} {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+}
+.${GRID_LIST_CLASS} .${CARD_CLASS} {
+  padding: 6px 8px;
+}
+.${GRID_LIST_CLASS} .${CARD_LINK_CLASS} {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding-right: 40px;
+}
+.${GRID_LIST_CLASS} .${COVER_CLASS} {
+  flex: none;
+  width: ${String(LIST_COVER_PX)}px;
+}
+.${GRID_LIST_CLASS} .${NAME_ROW_CLASS} {
+  flex: 1 1 auto;
+}
+.${GRID_LIST_CLASS} .${CAPTION_CLASS} {
+  flex: none;
+}
+.${GRID_LIST_CLASS} .${CARD_ACTIONS_CLASS} {
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+}
+.${GRID_LIST_CLASS} .${CARD_MARK_CLASS} {
+  top: 50%;
+  left: 17px;
+  transform: translateY(-50%);
 }
 .${CARD_CLASS} {
   position: relative;
@@ -21206,6 +21356,7 @@ function FollowingPage() {
 	const [filter, setFilter] = d("");
 	const [show, setShow] = d(SHOW_ALL);
 	const [sort, setSort] = d(SORT_NAME);
+	const [view, setView] = d(() => readViewMode(FOLLOWING_VIEW_STATE_ID));
 	const [draft, setDraft] = d("");
 	const [addError, setAddError] = d("");
 	const [suggestions, setSuggestions] = d([]);
@@ -21381,6 +21532,17 @@ function FollowingPage() {
 									if (isSortMode(value)) setSort(value);
 								}
 							}),
+							/* @__PURE__ */ a(Segmented, {
+								label: VIEW_LABEL,
+								options: VIEW_OPTIONS,
+								value: view,
+								onChange: (value) => {
+									if (isViewMode(value)) {
+										writeViewMode(FOLLOWING_VIEW_STATE_ID, value);
+										setView(value);
+									}
+								}
+							}),
 							selecting ? /* @__PURE__ */ a($$1, { children: [
 								/* @__PURE__ */ a("span", {
 									className: META_CLASS,
@@ -21456,7 +21618,7 @@ function FollowingPage() {
 					title: NO_MATCH_TITLE,
 					description: NO_MATCH_DESCRIPTION
 				}) : /* @__PURE__ */ a("div", {
-					className: GRID_CLASS,
+					className: view === "list" ? `${GRID_CLASS} ${GRID_LIST_CLASS}` : GRID_CLASS,
 					children: visible.map((artist) => /* @__PURE__ */ a(ArtistCard, {
 						artist,
 						hasNew: artistHasNew(artist, seen),
@@ -21541,29 +21703,54 @@ function matchesAnyTerm(texts, terms) {
 	const lowered = texts.map((text) => text.toLowerCase());
 	return terms.some((term) => lowered.some((text) => text.includes(term)));
 }})}}));
-System.register("./stats-section-Cw7eRgc8-CmscQKeb.js", ['./___monkey.entry.js'],(function(exports){'use strict';var a,PANEL_UI_CLASS,Card,getSeenPostId,loadFavSet,load,resolveCollectionKind;return{setters:[function(module){a=module.a0;PANEL_UI_CLASS=module.a7;Card=module.aA;getSeenPostId=module.b_;loadFavSet=module.bv;load=module.bd;resolveCollectionKind=module.bK;}],execute:(function(){exports("StatsPage",StatsPage);/**
+System.register("./stats-section-DGP56jr5-C7dW1V0K.js", ['./___monkey.entry.js'],(function(exports){'use strict';var a,PANEL_UI_CLASS,Card,loadFavSet,load,resolveCollectionKind;return{setters:[function(module){a=module.n;PANEL_UI_CLASS=module.P;Card=module.aC;loadFavSet=module.bw;load=module.be;resolveCollectionKind=module.bK;}],execute:(function(){exports("StatsPage",StatsPage);/**
 * Numbers about what the script stores, computed from local data when the
-* settings page opens. Nothing is requested from the site, so these are counts
-* of your own library, not totals of the site.
+* page opens. Nothing is requested from the site, so these are counts of your
+* own library, not totals of the site.
+*
+* Tiles for single numbers, a ring for the two kinds of collections, bars for
+* the collections compared by size.
 */
 var SECTION_CLASS = "rdw-stats";
 var TILES_CLASS = "rdw-stats-tiles";
 var TILE_CLASS = "rdw-stats-tile";
 var TILE_VALUE_CLASS = "rdw-stats-value";
 var TILE_LABEL_CLASS = "rdw-stats-label";
+var CHARTS_CLASS = "rdw-stats-charts";
+var CHART_CLASS = "rdw-stats-chart";
+var RING_ROW_CLASS = "rdw-stats-ring-row";
+var RING_CLASS = "rdw-stats-ring";
+var RING_TRACK_CLASS = "rdw-stats-ring-track";
+var RING_ARC_CLASS = "rdw-stats-ring-arc";
+var RING_TOTAL_CLASS = "rdw-stats-ring-total";
+var LEGEND_CLASS = "rdw-stats-legend";
+var SWATCH_CLASS = "rdw-stats-swatch";
+var SWATCH_SECOND_CLASS = "rdw-stats-swatch--second";
 var TOP_CLASS = "rdw-stats-top";
 var TOP_ROW_CLASS = "rdw-stats-top-row";
 var TOP_BAR_CLASS = "rdw-stats-top-bar";
 var TOP_FILL_CLASS = "rdw-stats-top-fill";
 var HINT_CLASS = "rdw-stats-hint";
 var LOCALE = "en-US";
-var TOP_ARTISTS_LIMIT = 10;
+var TOP_COLLECTIONS_LIMIT = 10;
 var BYTES_PER_KB = 1024;
 var PERCENT = 100;
 var MIN_BAR_PERCENT = 2;
 var TILE_MIN_PX = 130;
-var TOP_HEADING = "Top followed artists by posts";
-var TOP_EMPTY = "Open an artist's page or press Refresh on Following to fill this list.";
+var CHART_MIN_PX = 260;
+var RING_SIZE_PX = 96;
+/** A circle of this radius has a circumference of 100, so a dash is a percentage. */
+var RING_RADIUS = 15.915;
+var RING_CENTRE = 21;
+var RING_VIEW_BOX = "0 0 42 42";
+var RING_STROKE = 5;
+var RING_TOTAL_Y = 24;
+var KINDS_HEADING = "Collections by kind";
+var KINDS_EMPTY = "No collections yet.";
+var KIND_CUSTOM_LABEL = "Custom";
+var KIND_DYNAMIC_LABEL = "Dynamic";
+var TOP_HEADING = "Collections by posts";
+var TOP_EMPTY = "Collections show here once they hold posts or their count is known.";
 var HINT = "Counted from the script's own data in this browser. Seen posts keep only the newest marks.";
 var STATS_SECTION_CSS = `
 .${SECTION_CLASS} {
@@ -21576,13 +21763,24 @@ var STATS_SECTION_CSS = `
   grid-template-columns: repeat(auto-fill, minmax(${String(TILE_MIN_PX)}px, 1fr));
   gap: 8px;
 }
-.${TILE_CLASS} {
+.${TILE_CLASS},
+.${CHART_CLASS} {
   display: flex;
   flex-direction: column;
   gap: 2px;
   padding: 8px 10px;
   background: var(--rdw-surface-2);
   border-radius: var(--rdw-radius-m);
+}
+.${CHARTS_CLASS} {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(${String(CHART_MIN_PX)}px, 1fr));
+  gap: 8px;
+  align-items: start;
+}
+.${CHART_CLASS} {
+  gap: 8px;
+  padding: 10px 12px;
 }
 .${TILE_VALUE_CLASS} {
   font-size: 18px;
@@ -21594,6 +21792,56 @@ var STATS_SECTION_CSS = `
   margin: 0;
   font-size: 12px;
   color: var(--rdw-muted);
+}
+.${RING_ROW_CLASS} {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.${RING_CLASS} {
+  flex: none;
+  width: ${String(RING_SIZE_PX)}px;
+  height: ${String(RING_SIZE_PX)}px;
+}
+.${RING_TRACK_CLASS},
+.${RING_ARC_CLASS} {
+  fill: none;
+  stroke-width: ${String(RING_STROKE)};
+}
+.${RING_TRACK_CLASS} {
+  stroke: var(--rdw-muted);
+}
+.${RING_ARC_CLASS} {
+  stroke: var(--rdw-accent);
+}
+.${RING_TOTAL_CLASS} {
+  fill: var(--rdw-text);
+  font: 600 9px var(--rdw-font);
+  text-anchor: middle;
+}
+.${LEGEND_CLASS} {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+}
+.${LEGEND_CLASS} > li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.${SWATCH_CLASS} {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--rdw-accent);
+}
+.${SWATCH_SECOND_CLASS} {
+  background: var(--rdw-muted);
 }
 .${TOP_CLASS} {
   display: flex;
@@ -21618,7 +21866,7 @@ var STATS_SECTION_CSS = `
 .${TOP_BAR_CLASS} {
   height: 6px;
   border-radius: 3px;
-  background: var(--rdw-surface-2);
+  background: var(--rdw-surface);
   overflow: hidden;
 }
 .${TOP_FILL_CLASS} {
@@ -21628,26 +21876,31 @@ var STATS_SECTION_CSS = `
 }
 `.trim();
 /** Pure: the numbers for a stored state. */
-function computeStats(data, favoriteCount, seenPostId) {
+function computeStats(data, favoriteCount) {
 	let custom = 0;
 	let dynamic = 0;
 	const collected = /* @__PURE__ */ new Set();
-	for (const collection of data.collections) if (resolveCollectionKind(collection) === "posts") {
-		custom += 1;
-		for (const id of collection.postIds ?? []) collected.add(id);
-	} else dynamic += 1;
-	let seenPosts = 0;
-	for (const flags of Object.values(data.marks)) if (flags.seen === true) seenPosts += 1;
-	let withNew = 0;
 	const top = [];
-	for (const artist of data.artists) {
-		if (seenPostId > 0 && (artist.lastPostId ?? 0) > seenPostId) withNew += 1;
-		if (artist.postCount !== void 0) top.push({
-			tag: artist.tag,
-			posts: artist.postCount.value
+	for (const collection of data.collections) {
+		let posts;
+		if (resolveCollectionKind(collection) === "posts") {
+			custom += 1;
+			const ids = collection.postIds ?? [];
+			for (const id of ids) collected.add(id);
+			posts = ids.length;
+		} else {
+			dynamic += 1;
+			posts = collection.postCount?.value;
+		}
+		if (posts !== void 0 && posts > 0) top.push({
+			id: collection.id,
+			name: collection.name,
+			posts
 		});
 	}
-	top.sort((a, b) => b.posts - a.posts || a.tag.localeCompare(b.tag));
+	top.sort((a, b) => b.posts - a.posts || a.name.localeCompare(b.name));
+	let seenPosts = 0;
+	for (const flags of Object.values(data.marks)) if (flags.seen === true) seenPosts += 1;
 	const sizeKb = Math.ceil(JSON.stringify(data).length / BYTES_PER_KB);
 	return {
 		tiles: [
@@ -21656,16 +21909,8 @@ function computeStats(data, favoriteCount, seenPostId) {
 				value: data.artists.length
 			},
 			{
-				label: "Artists with new posts",
-				value: withNew
-			},
-			{
-				label: "Custom collections",
-				value: custom
-			},
-			{
-				label: "Dynamic collections",
-				value: dynamic
+				label: "Collections",
+				value: custom + dynamic
 			},
 			{
 				label: "Posts in custom collections",
@@ -21685,15 +21930,101 @@ function computeStats(data, favoriteCount, seenPostId) {
 				unit: "KB"
 			}
 		],
-		topArtists: top.slice(0, TOP_ARTISTS_LIMIT)
+		customCollections: custom,
+		dynamicCollections: dynamic,
+		topCollections: top.slice(0, TOP_COLLECTIONS_LIMIT)
 	};
 }
 function formatNumber(value) {
 	return value.toLocaleString(LOCALE);
 }
+/** Share of the first part in the whole, as a whole percentage. */
+function ringPercent(first, second) {
+	const total = first + second;
+	return total === 0 ? 0 : Math.round(first / total * PERCENT);
+}
+function KindsRing(props) {
+	const total = props.custom + props.dynamic;
+	if (total === 0) return /* @__PURE__ */ a("p", {
+		className: HINT_CLASS,
+		children: KINDS_EMPTY
+	});
+	const percent = ringPercent(props.custom, props.dynamic);
+	const summary = `${KIND_CUSTOM_LABEL} ${String(props.custom)}, ${KIND_DYNAMIC_LABEL} ${String(props.dynamic)}`;
+	return /* @__PURE__ */ a("div", {
+		className: RING_ROW_CLASS,
+		children: [/* @__PURE__ */ a("svg", {
+			className: RING_CLASS,
+			viewBox: RING_VIEW_BOX,
+			role: "img",
+			"aria-label": summary,
+			children: [
+				/* @__PURE__ */ a("circle", {
+					className: RING_TRACK_CLASS,
+					cx: RING_CENTRE,
+					cy: RING_CENTRE,
+					r: RING_RADIUS
+				}),
+				/* @__PURE__ */ a("circle", {
+					className: RING_ARC_CLASS,
+					cx: RING_CENTRE,
+					cy: RING_CENTRE,
+					r: RING_RADIUS,
+					"stroke-dasharray": `${String(percent)} ${String(PERCENT - percent)}`,
+					transform: `rotate(-90 ${String(RING_CENTRE)} ${String(RING_CENTRE)})`
+				}),
+				/* @__PURE__ */ a("text", {
+					className: RING_TOTAL_CLASS,
+					x: RING_CENTRE,
+					y: RING_TOTAL_Y,
+					children: formatNumber(total)
+				})
+			]
+		}), /* @__PURE__ */ a("ul", {
+			className: LEGEND_CLASS,
+			children: [/* @__PURE__ */ a("li", { children: [/* @__PURE__ */ a("span", {
+				className: SWATCH_CLASS,
+				"aria-hidden": "true"
+			}), `${KIND_CUSTOM_LABEL}: ${formatNumber(props.custom)}`] }), /* @__PURE__ */ a("li", { children: [/* @__PURE__ */ a("span", {
+				className: `${SWATCH_CLASS} ${SWATCH_SECOND_CLASS}`,
+				"aria-hidden": "true"
+			}), `${KIND_DYNAMIC_LABEL}: ${formatNumber(props.dynamic)}`] })]
+		})]
+	});
+}
+function CollectionBars(props) {
+	const largest = props.collections[0]?.posts ?? 0;
+	if (largest === 0) return /* @__PURE__ */ a("p", {
+		className: HINT_CLASS,
+		children: TOP_EMPTY
+	});
+	return /* @__PURE__ */ a("ol", {
+		className: TOP_CLASS,
+		children: props.collections.map((collection) => {
+			const share = Math.max(MIN_BAR_PERCENT, Math.round(collection.posts / largest * PERCENT));
+			return /* @__PURE__ */ a("li", {
+				className: TOP_ROW_CLASS,
+				children: [
+					/* @__PURE__ */ a("span", {
+						title: collection.name,
+						children: collection.name
+					}),
+					/* @__PURE__ */ a("span", {
+						className: TOP_BAR_CLASS,
+						"aria-hidden": "true",
+						children: /* @__PURE__ */ a("span", {
+							className: TOP_FILL_CLASS,
+							style: { width: `${String(share)}%` }
+						})
+					}),
+					/* @__PURE__ */ a("span", { children: formatNumber(collection.posts) })
+				]
+			}, collection.id);
+		})
+	});
+}
 function StatsSection() {
-	const stats = computeStats(load(), loadFavSet().size, getSeenPostId());
-	const largest = stats.topArtists[0]?.posts ?? 0;
+	const stats = computeStats(load(), loadFavSet().size);
 	return /* @__PURE__ */ a("section", {
 		className: `rdw-section ${SECTION_CLASS}`,
 		children: [
@@ -21711,36 +22042,24 @@ function StatsSection() {
 					})]
 				}, tile.label))
 			}),
-			/* @__PURE__ */ a("p", {
-				className: TILE_LABEL_CLASS,
-				children: TOP_HEADING
-			}),
-			stats.topArtists.length === 0 ? /* @__PURE__ */ a("p", {
-				className: HINT_CLASS,
-				children: TOP_EMPTY
-			}) : /* @__PURE__ */ a("ol", {
-				className: TOP_CLASS,
-				children: stats.topArtists.map((artist) => {
-					const share = largest > 0 ? Math.max(MIN_BAR_PERCENT, Math.round(artist.posts / largest * PERCENT)) : 0;
-					return /* @__PURE__ */ a("li", {
-						className: TOP_ROW_CLASS,
-						children: [
-							/* @__PURE__ */ a("span", {
-								title: artist.tag,
-								children: artist.tag.replaceAll("_", " ")
-							}),
-							/* @__PURE__ */ a("span", {
-								className: TOP_BAR_CLASS,
-								"aria-hidden": "true",
-								children: /* @__PURE__ */ a("span", {
-									className: TOP_FILL_CLASS,
-									style: { width: `${String(share)}%` }
-								})
-							}),
-							/* @__PURE__ */ a("span", { children: formatNumber(artist.posts) })
-						]
-					}, artist.tag);
-				})
+			/* @__PURE__ */ a("div", {
+				className: CHARTS_CLASS,
+				children: [/* @__PURE__ */ a("div", {
+					className: CHART_CLASS,
+					children: [/* @__PURE__ */ a("p", {
+						className: TILE_LABEL_CLASS,
+						children: KINDS_HEADING
+					}), /* @__PURE__ */ a(KindsRing, {
+						custom: stats.customCollections,
+						dynamic: stats.dynamicCollections
+					})]
+				}), /* @__PURE__ */ a("div", {
+					className: CHART_CLASS,
+					children: [/* @__PURE__ */ a("p", {
+						className: TILE_LABEL_CLASS,
+						children: TOP_HEADING
+					}), /* @__PURE__ */ a(CollectionBars, { collections: stats.topCollections })]
+				})]
 			}),
 			/* @__PURE__ */ a("p", {
 				className: HINT_CLASS,
@@ -21756,7 +22075,7 @@ function StatsPage() {
 		children: /* @__PURE__ */ a(StatsSection, {})
 	});
 }})}}));
-System.register("./collection-detail-page-MaBVOc8b-BxxaBkii.js", ['./___monkey.entry.js','./app-Ci556D8L-DQBNw289.js'],(function(exports){'use strict';var d,T,w$1,b,downloadsAvailable,a,$$1,Button,UI_TEXT,shuffleCollection,resetCollectionOrder,EmptyState,Dialog,TextField,Toast,getCollectionOrder,listPlaylists,RDW_HASH_COLLECTIONS,removePostsFromCollection,isDownloadBusy,startDownload,movePostInCollection,renameCollection,deleteCollection,RDW_ROUTE_COLLECTIONS,restorePosts,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION_VIEW,SEARCH_PATH,collectionQueueHash,navigateToRdwRoute;return{setters:[function(module){d=module.ah;T=module.aC;w$1=module.cf;b=module.a$;downloadsAvailable=module.cg;a=module.a0;$$1=module.a6;Button=module.aO;UI_TEXT=module.U;shuffleCollection=module.ch;resetCollectionOrder=module.ci;EmptyState=module.bI;Dialog=module.bJ;TextField=module.aN;Toast=module.cj;getCollectionOrder=module.ck;listPlaylists=module.cl;RDW_HASH_COLLECTIONS=module.x;removePostsFromCollection=module.cm;isDownloadBusy=module.cn;startDownload=module.co;movePostInCollection=module.cp;renameCollection=module.cq;deleteCollection=module.bL;RDW_ROUTE_COLLECTIONS=module.cr;restorePosts=module.cs;SEARCH_PARAM_PAGE=module.Y;SEARCH_PAGE=module.c1;SEARCH_SECTION_VIEW=module.ct;SEARCH_PATH=module.$;collectionQueueHash=module.cu;},function(module){navigateToRdwRoute=module.i;}],execute:(function(){exports("CollectionDetailPage",CollectionDetailPage);var CELL_SIZE_PX = 200;
+System.register("./collection-detail-page-BPDkbWxg-Ba8yQwKP.js", ['./___monkey.entry.js','./app-D9wl0The-CiZHvaAE.js'],(function(exports){'use strict';var d,T,w$1,b,downloadsAvailable,a,$$1,Button,UI_TEXT,shuffleCollection,resetCollectionOrder,EmptyState,Dialog,TextField,Toast,getCollectionOrder,listPlaylists,RDW_HASH_COLLECTIONS,removePostsFromCollection,isDownloadBusy,startDownload,movePostInCollection,renameCollection,deleteCollection,RDW_ROUTE_COLLECTIONS,restorePosts,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION_VIEW,SEARCH_PATH,collectionQueueHash,navigateToRdwRoute;return{setters:[function(module){d=module.aj;T=module.aE;w$1=module.cf;b=module.b1;downloadsAvailable=module.cg;a=module.n;$$1=module.$;Button=module.aQ;UI_TEXT=module.a7;shuffleCollection=module.ch;resetCollectionOrder=module.ci;EmptyState=module.bI;Dialog=module.bJ;TextField=module.aP;Toast=module.cj;getCollectionOrder=module.ck;listPlaylists=module.cl;RDW_HASH_COLLECTIONS=module.b;removePostsFromCollection=module.cm;isDownloadBusy=module.cn;startDownload=module.co;movePostInCollection=module.cp;renameCollection=module.cq;deleteCollection=module.bL;RDW_ROUTE_COLLECTIONS=module.cr;restorePosts=module.cs;SEARCH_PARAM_PAGE=module.S;SEARCH_PAGE=module.c1;SEARCH_SECTION_VIEW=module.ct;SEARCH_PATH=module.m;collectionQueueHash=module.cu;},function(module){navigateToRdwRoute=module.n;}],execute:(function(){exports("CollectionDetailPage",CollectionDetailPage);var CELL_SIZE_PX = 200;
 var GRID_GAP_PX = 4;
 var SECTION_GAP_PX = 12;
 var ACTIONS_GAP_PX = 8;

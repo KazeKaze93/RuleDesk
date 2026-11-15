@@ -2,6 +2,12 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.28.0
+
+- Collections and Following: a "Tiles / List" switch. The list shows one item per row with a small cover; the choice is remembered for each page
+- New setting in RuleDesk → Page: "Full-width Collections and Following". Off by default. When on, these pages and a collection's page fill the window from the left edge, and Settings and Statistics move to the left as a narrow column
+- Statistics: a ring for the kinds of collections (Custom / Dynamic) and bars comparing collections by number of posts. The bars for artists and the "Artists with new posts" tile are gone
+
 ## 0.27.1
 
 - Fixed: following an artist with the Follow button in the tag sidebar erased the cover, the post count and the newest post of every artist already followed. They are kept now. Covers lost before come back with Refresh on the Following page

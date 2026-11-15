@@ -47,7 +47,14 @@ import {
 import { DataSection } from "./data-section";
 import { DownloadsSection } from "./downloads-section";
 import { FavoritesSyncSection } from "./favorites-sync-section";
+import { syncRdwPageLayout } from "./host";
 import { installSiteMenu } from "./menu";
+import {
+  WIDE_PAGES_SETTING_ID,
+  WIDE_PAGES_SETTING_LABEL,
+  WIDE_PAGES_SWITCH_ID,
+  widePagesEnabled,
+} from "./view-mode";
 
 /** Grid density is owned by Appearance; omit from Page module list. */
 const PAGE_FEATURE_SKIP = new Set(["grid-density"]);
@@ -253,6 +260,8 @@ export function SettingsPage(): JSX.Element {
     getFeatureEnabled(STATS_MENU_SETTING_ID, true),
   );
 
+  const [widePages, setWidePages] = useState(() => widePagesEnabled());
+
   const [collapsed, setCollapsed] = useState<string[]>(() =>
     readCollapsedSections(),
   );
@@ -302,6 +311,19 @@ export function SettingsPage(): JSX.Element {
                 setStatsMenu(checked);
                 // The menu is on this very page: add or remove the item at once.
                 installSiteMenu();
+              }}
+            />
+          </div>
+          <div className={PANEL_UI_CLASS.settingsRow}>
+            <Switch
+              id={WIDE_PAGES_SWITCH_ID}
+              label={WIDE_PAGES_SETTING_LABEL}
+              checked={widePages}
+              onChange={(checked) => {
+                setFeatureEnabled(WIDE_PAGES_SETTING_ID, checked);
+                setWidePages(checked);
+                // This page is one of them: move it at once.
+                syncRdwPageLayout();
               }}
             />
           </div>
