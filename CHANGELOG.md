@@ -2,6 +2,12 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.24.3
+
+- Fixed: a download stopped with "API answer has no readable body". The API is now asked with a plain request from the page, which it allows, instead of through the script manager
+- The extra permission for `api.rule34.xxx` is no longer needed and is removed
+- If the API does not answer a group of post ids, the posts are asked for one by one
+
 ## 0.24.2
 
 - Fixed: a download stopped with "Cannot read properties of undefined (reading 'trim')". The script now reads the API answer in every form the script manager gives it

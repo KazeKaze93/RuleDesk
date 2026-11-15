@@ -1,6 +1,6 @@
 # Architecture
 
-RuleDesk Web is one userscript file, `dist/ruledesk-web.user.js`, built from TypeScript with Vite and `vite-plugin-monkey`. Its own interface is Preact (`preact/compat`); data is validated with `zod/mini`. It runs at `document-start` on `https://rule34.xxx/*` with four grants: `GM_getValue`, `GM_setValue`, and for the download manager `GM_download` and `GM_xmlhttpRequest` (connect: `api.rule34.xxx`).
+RuleDesk Web is one userscript file, `dist/ruledesk-web.user.js`, built from TypeScript with Vite and `vite-plugin-monkey`. Its own interface is Preact (`preact/compat`); data is validated with `zod/mini`. It runs at `document-start` on `https://rule34.xxx/*` with three grants: `GM_getValue`, `GM_setValue`, and for the download manager `GM_download`.
 
 The approach: the site's pages and markup stay. The script recolours the whole site with its own skin, adds controls to the site's pages, and adds pages of its own that open by URL hash without a request to the site.
 

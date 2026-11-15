@@ -1,5 +1,6 @@
 import * as z from "zod/mini";
 
+import { FETCH_METHOD_GET } from "../config/constants";
 import { buildPlaylistQueries } from "../search/query";
 import type { ApiCredentials } from "../storage/api-credentials";
 
@@ -16,7 +17,7 @@ const POSTS_PER_REQUEST = 1000;
 const IDS_PER_REQUEST = 100;
 /** Pause between two API requests of one collection run. */
 export const API_REQUEST_INTERVAL_MS = 1000;
-const HTTP_OK = 200;
+const FETCH_NO_CREDENTIALS = "omit";
 const ERROR_TEXT_LIMIT = 120;
 const SORT_TOKEN_PREFIX = "sort:";
 const ID_BELOW_PREFIX = "id:<";
@@ -38,7 +39,9 @@ export type DownloadSource =
   | { readonly kind: "query"; readonly tags: string }
   | { readonly kind: "ids"; readonly ids: readonly number[] };
 
-function buildApiUrl(tags: string, credentials: ApiCredentials): string {
+type ApiQuery = { readonly tags: string } | { readonly id: number };
+
+function buildApiUrl(query: ApiQuery, credentials: ApiCredentials): string {
   const params = new URLSearchParams();
   params.set("page", "dapi");
   params.set("s", "post");
@@ -46,63 +49,30 @@ function buildApiUrl(tags: string, credentials: ApiCredentials): string {
   params.set("json", "1");
   params.set("limit", String(POSTS_PER_REQUEST));
   params.set("pid", "0");
-  if (tags.length > 0 && tags !== ALL_QUERY) {
-    params.set("tags", tags);
+  if ("id" in query) {
+    params.set("id", String(query.id));
+  } else if (query.tags.length > 0 && query.tags !== ALL_QUERY) {
+    params.set("tags", query.tags);
   }
   params.set("user_id", credentials.userId);
   params.set("api_key", credentials.apiKey);
   return `${API_URL}?${params.toString()}`;
 }
 
-const NO_BODY_ERROR = "API answer has no readable body";
-
 /**
- * The body of an answer as text. Script managers differ: the text may be in
- * `responseText`, or only in `response` (as text, or already parsed).
+ * One API request. The API allows requests from any page
+ * (`access-control-allow-origin: *`), so a plain `fetch` does it; no cookies
+ * are sent, the key in the address is the whole authentication.
  */
-export function readResponseText(response: {
-  readonly responseText?: unknown;
-  readonly response?: unknown;
-}): string | null {
-  if (typeof response.responseText === "string") {
-    return response.responseText;
-  }
-  const body = response.response;
-  if (typeof body === "string") {
-    return body;
-  }
-  if (body !== null && typeof body === "object") {
-    return JSON.stringify(body);
-  }
-  return null;
-}
-
-function requestText(url: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    GM_xmlhttpRequest({
-      method: "GET",
-      url,
-      responseType: "text",
-      onload: (response) => {
-        if (response.status !== HTTP_OK) {
-          reject(new Error(`API HTTP ${String(response.status)}`));
-          return;
-        }
-        const text = readResponseText(response);
-        if (text === null) {
-          reject(new Error(NO_BODY_ERROR));
-          return;
-        }
-        resolve(text);
-      },
-      onerror: () => {
-        reject(new Error("API request failed"));
-      },
-      ontimeout: () => {
-        reject(new Error("API request timed out"));
-      },
-    });
+async function requestText(query: ApiQuery, credentials: ApiCredentials): Promise<string> {
+  const response = await fetch(buildApiUrl(query, credentials), {
+    method: FETCH_METHOD_GET,
+    credentials: FETCH_NO_CREDENTIALS,
   });
+  if (!response.ok) {
+    throw new Error(`API HTTP ${String(response.status)}`);
+  }
+  return response.text();
 }
 
 /**
@@ -120,6 +90,10 @@ export function parseApiPosts(body: string): PostFile[] {
     raw = JSON.parse(text);
   } catch {
     throw new Error(`API: ${text.slice(0, ERROR_TEXT_LIMIT)}`);
+  }
+  if (typeof raw === "string") {
+    // A refusal comes as a quoted sentence, e.g. "Missing authentication…".
+    throw new Error(`API: ${raw.slice(0, ERROR_TEXT_LIMIT)}`);
   }
   if (!Array.isArray(raw)) {
     throw new Error(`API: ${text.slice(0, ERROR_TEXT_LIMIT)}`);
@@ -174,7 +148,7 @@ async function collectQuery(tags: string, options: CollectOptions): Promise<Post
       .filter((part) => part.length > 0)
       .join(" ");
     const batch = parseApiPosts(
-      await requestText(buildApiUrl(query, options.credentials)),
+      await requestText({ tags: query }, options.credentials),
     );
     if (batch.length === 0) {
       return files;
@@ -194,28 +168,51 @@ async function collectQuery(tags: string, options: CollectOptions): Promise<Post
   }
 }
 
-/** The given posts, asked for in groups of ids, in the order of `ids`. */
+/**
+ * The given posts, in the order of `ids`. They are asked for in groups, as
+ * one `( id:1 ~ id:2 … )` search per group. When a group's answer is empty
+ * the group is asked again post by post through the `id` parameter, which is
+ * slower but does not depend on the search accepting such a group.
+ */
 async function collectIds(
   ids: readonly number[],
   options: CollectOptions,
 ): Promise<PostFile[]> {
   const byId = new Map<number, string>();
-  const queries = buildPlaylistQueries([...ids], IDS_PER_REQUEST);
-  for (let index = 0; index < queries.length; index += 1) {
+  let requests = 0;
+  const ask = async (query: ApiQuery): Promise<PostFile[]> => {
+    if (requests > 0) {
+      await sleep(API_REQUEST_INTERVAL_MS);
+    }
+    requests += 1;
+    return parseApiPosts(await requestText(query, options.credentials));
+  };
+
+  for (let start = 0; start < ids.length; start += IDS_PER_REQUEST) {
     if (options.isCancelled()) {
       break;
     }
-    if (index > 0) {
-      await sleep(API_REQUEST_INTERVAL_MS);
-    }
-    const query = queries[index] ?? "";
-    for (const file of parseApiPosts(
-      await requestText(buildApiUrl(query, options.credentials)),
-    )) {
-      byId.set(file.postId, file.url);
+    const group = ids.slice(start, start + IDS_PER_REQUEST);
+    const tags = buildPlaylistQueries([...group], 0)[0] ?? "";
+    const found = await ask({ tags });
+    if (found.length > 0) {
+      for (const file of found) {
+        byId.set(file.postId, file.url);
+      }
+    } else {
+      for (const id of group) {
+        if (options.isCancelled()) {
+          break;
+        }
+        for (const file of await ask({ id })) {
+          byId.set(file.postId, file.url);
+        }
+        options.onProgress(byId.size);
+      }
     }
     options.onProgress(byId.size);
   }
+
   const files: PostFile[] = [];
   for (const id of ids) {
     const url = byId.get(id);

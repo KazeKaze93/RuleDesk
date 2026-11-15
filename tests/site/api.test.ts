@@ -5,31 +5,31 @@ import {
   collectPostFiles,
   parseApiPosts,
   queryForWalk,
-  readResponseText,
 } from "../../src/site/api";
 
 const CREDENTIALS = { userId: "42", apiKey: "secret-key" };
-
-type Request = { url: string; onload: (response: { status: number; responseText: string }) => void };
 
 function post(id: number): { id: number; file_url: string } {
   return { id, file_url: `https://wimg.rule34.xxx//images/1/${String(id)}.jpg` };
 }
 
-/** Answers API requests in order; records the `tags` of each request. */
+/** Answers API requests in order; records the `tags` (or `id=N`) of each. */
 function stubApi(answers: string[]): string[] {
-  const seenTags: string[] = [];
-  vi.stubGlobal("GM_xmlhttpRequest", (request: Request) => {
-    const url = new URL(request.url);
-    seenTags.push(url.searchParams.get("tags") ?? "");
+  const seen: string[] = [];
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    const url = new URL(input);
+    const id = url.searchParams.get("id");
+    seen.push(id === null ? (url.searchParams.get("tags") ?? "") : `id=${id}`);
     expect(url.origin).toBe("https://api.rule34.xxx");
     expect(url.searchParams.get("user_id")).toBe("42");
     expect(url.searchParams.get("api_key")).toBe("secret-key");
     expect(url.searchParams.get("json")).toBe("1");
     expect(url.searchParams.get("limit")).toBe("1000");
-    request.onload({ status: 200, responseText: answers.shift() ?? "" });
+    // No cookies go to the API: the key is the whole authentication.
+    expect(init?.credentials).toBe("omit");
+    return Promise.resolve(new Response(answers.shift() ?? "", { status: 200 }));
   });
-  return seenTags;
+  return seen;
 }
 
 async function settle<T>(promise: Promise<T>): Promise<T> {
@@ -56,35 +56,36 @@ describe("site API for downloads", () => {
     expect(parseApiPosts("  \n")).toEqual([]);
   });
 
-  it("finds the body of an answer wherever the script manager puts it", () => {
-    expect(readResponseText({ responseText: "[1]" })).toBe("[1]");
-    expect(readResponseText({ response: "[2]" })).toBe("[2]");
-    expect(readResponseText({ response: [{ id: 5 }] })).toBe('[{"id":5}]');
-    expect(readResponseText({ responseText: "", response: "x" })).toBe("");
-    expect(readResponseText({})).toBeNull();
-    expect(readResponseText({ response: null })).toBeNull();
-  });
-
-  it("reads posts when the manager gives only `response`, not `responseText`", async () => {
-    vi.stubGlobal(
-      "GM_xmlhttpRequest",
-      (request: { onload: (response: { status: number; response: unknown }) => void }) => {
-        request.onload({ status: 200, response: [post(5)] });
-      },
-    );
+  it("asks post by post when a group of ids gets an empty answer", async () => {
+    const seen = stubApi(["", JSON.stringify([post(7)]), "", JSON.stringify([post(9)])]);
     const files = await settle(
       collectPostFiles(
-        { kind: "ids", ids: [5] },
+        { kind: "ids", ids: [7, 8, 9] },
         { credentials: CREDENTIALS, onProgress: () => {}, isCancelled: () => false },
       ),
     );
-    expect(files).toEqual([{ postId: 5, url: "https://wimg.rule34.xxx//images/1/5.jpg" }]);
+    expect(seen).toEqual(["( id:9 ~ id:8 ~ id:7 )", "id=7", "id=8", "id=9"]);
+    // Post 8 is gone from the site: it is left out.
+    expect(files.map((file) => file.postId)).toEqual([7, 9]);
+  });
+
+  it("reports a failed request by its status", async () => {
+    vi.stubGlobal("fetch", () => Promise.resolve(new Response("", { status: 429 })));
+    const walk = collectPostFiles(
+      { kind: "query", tags: "cat" },
+      { credentials: CREDENTIALS, onProgress: () => {}, isCancelled: () => false },
+    );
+    await expect(walk).rejects.toThrow("API HTTP 429");
   });
 
   it("turns a refusal in words into an error with those words", () => {
     expect(() => parseApiPosts("Missing authentication. Go to the account page.")).toThrow(
       "API: Missing authentication.",
     );
+    // What the API really sends without a key: the sentence as a JSON string.
+    expect(() =>
+      parseApiPosts('"Missing authentication. Go to api.rule34.xxx for more information"'),
+    ).toThrow("API: Missing authentication. Go to api.rule34.xxx for more information");
     expect(() => parseApiPosts('{"success":false}')).toThrow("API:");
   });
 

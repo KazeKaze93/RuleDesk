@@ -5,7 +5,7 @@ The script works on the site's own HTML. This file holds what is known about it.
 ## Rules the script follows
 
 - **No site API, with one exception: the download manager.** It asks `api.rule34.xxx` for the file addresses of posts, with the user's own key typed into settings (`src/site/api.ts`). Nothing else may use the API, and the manager does not exist without a key.
-- **Requests only for a user action, one at a time, with a pause.** The site rate-limits quickly (HTTP 429). A new kind of request needs the maintainer's consent. All `fetch`, `GM_xmlhttpRequest` and `GM_download` calls are in `src/site/`:
+- **Requests only for a user action, one at a time, with a pause.** The site rate-limits quickly (HTTP 429). A new kind of request needs the maintainer's consent. All `fetch` and `GM_download` calls are in `src/site/`:
 
   | File | When it asks | Pause |
   |---|---|---|
@@ -14,7 +14,7 @@ The script works on the site's own HTML. This file holds what is known about it.
   | `autocomplete.ts` | Typing in a tag field of the script | debounced, one at a time |
   | `next-page.ts` | Infinite scroll; other artist groups of a merged feed | 1 s |
   | `artist-snapshot.ts` | "Refresh" on Following, after a confirmation | 1.5 s per artist |
-| `api.ts` | A download job: the list of files (`GM_xmlhttpRequest` to `api.rule34.xxx`, up to 1000 posts per request) | 1 s |
+| `api.ts` | A download job: the list of files (`fetch` to `api.rule34.xxx`, which allows any origin; up to 1000 posts per request) | 1 s |
 | `download.ts` | A download job: the files, one at a time (`GM_download` from the CDN) | 0.4 s; one retry after 5 s |
 
 - **Cookies:** only `tag_blacklist` and `theme` are read or written. `user_id` and `pass_hash` are never read. The account settings form is never submitted.

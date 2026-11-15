@@ -43,11 +43,8 @@ function stubApi(ids: number[]): void {
     ),
     "",
   ];
-  vi.stubGlobal(
-    "GM_xmlhttpRequest",
-    (request: { onload: (response: { status: number; responseText: string }) => void }) => {
-      request.onload({ status: 200, responseText: answers.shift() ?? "" });
-    },
+  vi.stubGlobal("fetch", () =>
+    Promise.resolve(new Response(answers.shift() ?? "", { status: 200 })),
   );
 }
 
@@ -208,11 +205,8 @@ describe("download manager", () => {
   it("reports an API refusal instead of starting, and Cancel clears it", async () => {
     setApiCredentials("42", "wrong");
     stubDownload();
-    vi.stubGlobal(
-      "GM_xmlhttpRequest",
-      (request: { onload: (response: { status: number; responseText: string }) => void }) => {
-        request.onload({ status: 200, responseText: "Missing authentication." });
-      },
+    vi.stubGlobal("fetch", () =>
+      Promise.resolve(new Response('"Missing authentication."', { status: 200 })),
     );
     vi.spyOn(console, "warn").mockImplementation(() => {});
 
