@@ -1,5 +1,10 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { favoritesCountLabel } from "../../src/features/favorites-bulk";
+import {
+  playlistMenuFeature,
+  resetPlaylistMenuRuntimeState,
+} from "../../src/features/playlist-menu";
 import { videoPreviewFeature } from "../../src/features/video-preview";
 import {
   VIDEO_THUMB_CLASS,
@@ -64,6 +69,45 @@ describe("favorites video marks", () => {
     // Nothing else adds them on the favorites page.
     expect(videoPreviewFeature.css).toContain(".rdw-thumb {\n  position: relative;");
     expect(videoPreviewFeature.css).toContain(".rdw-thumb > a > img {\n  anchor-name: --rdw-img;");
+  });
+
+  it("gets the collections button on a favorites thumb and keeps its link untouched", () => {
+    vi.stubGlobal("GM_getValue", (_key: string, fallback?: unknown): unknown => fallback);
+    vi.stubGlobal("GM_setValue", (): void => {});
+    const thumb = favoriteThumb("19337851", "boy sound video");
+    const cell = document.createElement("span");
+    const list = document.createElement("div");
+    list.className = "image-list";
+    cell.append(thumb);
+    list.append(cell);
+    document.body.append(list);
+    const before = thumb.querySelector("a")?.outerHTML;
+
+    playlistMenuFeature.mount({
+      pageKind: "favorites",
+      search: "?page=favorites&s=view&id=1",
+      getState: <T>(parse: (raw: unknown) => T): T => parse(undefined),
+      setState: (): void => {},
+    });
+
+    const button = thumb.querySelector("button.rdw-playlist-add");
+    expect(button?.textContent).toBe("+");
+    expect(button?.getAttribute("data-rdw-post-id")).toBe("19337851");
+    expect(thumb.querySelector("a")?.outerHTML).toBe(before);
+    resetPlaylistMenuRuntimeState();
+    vi.unstubAllGlobals();
+  });
+
+  it("makes favorites thumbs square tiles with a cropped picture", () => {
+    const at = SITE_SKIN_CSS.indexOf("div.image-list > span > span.thumb > a > img {\n  display: block;");
+    expect(at).toBeGreaterThan(-1);
+    const rule = SITE_SKIN_CSS.slice(at, SITE_SKIN_CSS.indexOf("}", at));
+    expect(rule).toContain("width: 100%");
+    expect(rule).toContain("height: 100%");
+    expect(rule).toContain("object-fit: cover");
+    expect(favoritesCountLabel(11962)).toBe("11,962 posts");
+    expect(favoritesCountLabel(1)).toBe("1 post");
+    expect(favoritesCountLabel(0)).toBe("");
   });
 
   it("gives a marked thumb the outline of a video", () => {

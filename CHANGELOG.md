@@ -2,6 +2,14 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.30.0
+
+Favorites, first part of the rework:
+
+- A header with the title, the number of favorites and the buttons; it stays at the top of the window while the page scrolls
+- Every thumbnail is a square tile with rounded corners; the picture fills it and is cropped around its centre. The gaps between rows are gone
+- The "+" button on a thumbnail adds the post to a collection, as on Posts. It sits in the top left corner; "Remove" keeps the top right one
+
 ## 0.29.5
 
 - Collections, Following, Statistics and Settings: buttons, fields and switches are a step larger (32 px tall, 13 px text). Tiles and the panels on the site's own pages are unchanged

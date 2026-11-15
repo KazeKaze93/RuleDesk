@@ -49,7 +49,7 @@ Favorite star and "+" on thumbnails, three grid sizes, infinite scroll, dimming 
 
 ### Favorites
 
-The local favorite list is kept in sync with the site by "Sync favorites" in settings. The Favorites page gets bulk removal.
+The local favorite list is kept in sync with the site by "Sync favorites" in settings. The Favorites page gets a header, square tiles, bulk removal and the "+" button for collections.
 
 ### Download manager
 

@@ -177,7 +177,7 @@ describe("playlistMenuFeature", () => {
   it("exports Feature metadata for list and post", () => {
     expect(playlistMenuFeature.id).toBe("playlist-menu");
     expect(playlistMenuFeature.label).toBe("Add to collection button");
-    expect(playlistMenuFeature.pages).toEqual(["list", "post"]);
+    expect(playlistMenuFeature.pages).toEqual(["list", "post", "favorites"]);
     expect(playlistMenuFeature.defaultEnabled).toBe(true);
   });
 

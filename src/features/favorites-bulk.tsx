@@ -13,7 +13,7 @@ import {
 } from "../site/favorites-page";
 import { FAVORITES_SYNC_PAGE_PAUSE_MS } from "../site/favorites-sync";
 import { SITE_SELECTORS } from "../site/selectors";
-import { removeFav } from "../storage/favs";
+import { loadFavSet, removeFav } from "../storage/favs";
 import { Button, Dialog, ProgressBar } from "../ui/kit";
 import { featureBodyClass, type Feature, type FeatureContext } from "./types";
 
@@ -28,6 +28,12 @@ const STATUS_CLASS = "rdw-favorites-bulk-status";
 const CONFIRM_CLASS = "rdw-favorites-bulk-confirm";
 const CONFIRM_ROW_CLASS = "rdw-favorites-bulk-confirm-row";
 const PROGRESS_WRAP_CLASS = "rdw-favorites-bulk-progress";
+const TITLE_CLASS = "rdw-favorites-title";
+const COUNT_CLASS = "rdw-favorites-count";
+const TITLE_TEXT = "Favorites";
+const LOCALE = "en-US";
+/** Above the thumbs and their corner buttons. */
+const HEADER_Z_INDEX = 6;
 
 /** Selection chrome on site thumbs — skin may restyle (HANDOFF G). */
 export const CLASS_THUMB_SELECTED = "rdw-fav-bulk-selected";
@@ -73,21 +79,39 @@ const BODY_CLASS = featureBodyClass(FEATURE_ID);
 const BODY_SELECTING_CLASS = `${BODY_CLASS}-selecting`;
 
 const FEATURE_CSS = `
+/* The page header: title, count and the buttons; stays at the top of the window. */
 body.${BODY_CLASS} .${ROOT_CLASS} {
-  display: block;
-  box-sizing: border-box;
-  width: 100%;
-  max-width: 100%;
-  margin: 0.5rem 0;
-  flex: 0 0 100%;
-  grid-column: 1 / -1;
-}
-body.${BODY_CLASS} .${BAR_CLASS} {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.35rem 0.5rem;
+  gap: 0.35rem 1rem;
+  box-sizing: border-box;
   width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0.5rem 0;
+  flex: 0 0 100%;
+  grid-column: 1 / -1;
+  position: sticky;
+  top: 0;
+  z-index: ${String(HEADER_Z_INDEX)};
+  background: var(--rdw-bg);
+}
+body.${BODY_CLASS} .${TITLE_CLASS} {
+  margin: 0;
+  font: 700 18px var(--rdw-font);
+  color: var(--rdw-text);
+}
+body.${BODY_CLASS} .${COUNT_CLASS} {
+  font: 12px var(--rdw-font);
+  color: var(--rdw-muted);
+}
+body.${BODY_CLASS} .${BAR_CLASS} {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
   box-sizing: border-box;
 }
 body.${BODY_CLASS} .${STATUS_CLASS} {
@@ -586,6 +610,24 @@ function FavoritesBulkBar(props: FavoritesBulkBarProps): JSX.Element {
   );
 }
 
+/** "11,962 posts", from the local list; nothing while that list is empty. */
+export function favoritesCountLabel(count: number): string {
+  if (count <= 0) {
+    return "";
+  }
+  return `${count.toLocaleString(LOCALE)} ${count === 1 ? "post" : "posts"}`;
+}
+
+function FavoritesHeader(): JSX.Element {
+  const count = favoritesCountLabel(loadFavSet().size);
+  return (
+    <>
+      <h2 className={TITLE_CLASS}>{TITLE_TEXT}</h2>
+      {count.length > 0 ? <span className={COUNT_CLASS}>{count}</span> : null}
+    </>
+  );
+}
+
 function mountFavoritesBulk(_ctx: FeatureContext): void {
   if (document.getElementById(ROOT_ID) !== null) {
     return;
@@ -602,7 +644,10 @@ function mountFavoritesBulk(_ctx: FeatureContext): void {
   };
 
   render(
-    <FavoritesBulkBar onSelectionModeChange={onSelectionModeChange} />,
+    <>
+      <FavoritesHeader />
+      <FavoritesBulkBar onSelectionModeChange={onSelectionModeChange} />
+    </>,
     root,
   );
 }

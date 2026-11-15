@@ -919,6 +919,37 @@ ${ROOT} div.image-list > span > a[onclick]:hover {
 }
 
 /*
+ * Favorites: every thumb is a square tile. The picture fills its cell and is
+ * cropped around its centre, like a cover on Collections; before, pictures of
+ * different shapes hung in the middle of their cells with gaps between rows.
+ * The hover video is cropped the same way, so it covers the picture exactly.
+ */
+${ROOT} div.image-list > span > span.thumb {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border-radius: ${v.radiusL};
+}
+
+${ROOT} div.image-list > span > span.thumb > a {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+${ROOT} div.image-list > span > span.thumb > a > img {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+${ROOT} div.image-list > span > span.thumb > video {
+  object-fit: cover;
+}
+
+/*
  * Favorites: "Remove" lies on the preview, in its top right corner, and shows
  * while the pointer is over the post. The link stays where the site put it in
  * the page; it is only positioned against the image. The row the site kept

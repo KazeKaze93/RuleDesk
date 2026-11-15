@@ -1,9 +1,11 @@
+import { THUMB_IMAGE_SELECTOR } from "../site/video-thumbs";
 import { h, render } from "preact";
 
 import { playlistsContaining } from "../storage/store";
 import {
   SITE_SELECTORS,
   extractPostIdFromThumb,
+  extractPostIdFromThumbLink,
 } from "../site/selectors";
 import { ensureThumbAnchor } from "../site/thumb";
 import { CollectionPicker } from "../ui/collection-picker";
@@ -13,7 +15,7 @@ import { onThumbsAdded } from "./runtime";
 
 const FEATURE_ID = "playlist-menu";
 const FEATURE_LABEL = "Add to collection button";
-const FEATURE_PAGES = ["list", "post"] as const;
+const FEATURE_PAGES = ["list", "post", "favorites"] as const;
 
 const CLASS_ADD = "rdw-playlist-add";
 const CLASS_ADD_IN = "rdw-playlist-add--in";
@@ -34,6 +36,11 @@ const BUTTON_SIZE_PX = 28;
 const BUTTON_OFFSET_PX = 6;
 const BUTTON_BELOW_FAV_TOP_PX = BUTTON_OFFSET_PX + BUTTON_SIZE_PX + 4;
 
+/** A favorites thumb: `div.image-list > span > span.thumb` (a search thumb has no wrapper). */
+const FAVORITE_THUMB_SELECTOR = "div.image-list > span > span.thumb";
+/** Set by the favorites bulk feature while posts are being selected. */
+const FAVORITES_SELECTING_BODY_CLASS = "rdw-f-favorites-bulk-selecting";
+
 const FOCUS_OUTLINE = "2px solid var(--rdw-accent)";
 const FOCUS_OUTLINE_OFFSET = "2px";
 
@@ -44,6 +51,11 @@ const KEY_ESCAPE = "Escape";
 const BODY_CLASS = featureBodyClass(FEATURE_ID);
 const BODY_SELECTOR = `body.${BODY_CLASS}`;
 
+/*
+ * On Favorites the top right corner of a thumb belongs to Remove, so the
+ * button sits in the top left one, and is out of the way while posts are
+ * being selected.
+ */
 const FEATURE_CSS = `
 ${BODY_SELECTOR} .${CLASS_ADD} {
   position: absolute;
@@ -71,6 +83,14 @@ ${BODY_SELECTOR} .${CLASS_ADD} {
   line-height: 1;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
   opacity: 0;
+}
+${BODY_SELECTOR} ${FAVORITE_THUMB_SELECTOR} > .${CLASS_ADD} {
+  top: ${String(BUTTON_OFFSET_PX)}px;
+  right: auto;
+  left: ${String(BUTTON_OFFSET_PX)}px;
+}
+${BODY_SELECTOR}.${FAVORITES_SELECTING_BODY_CLASS} ${FAVORITE_THUMB_SELECTOR} > .${CLASS_ADD} {
+  display: none;
 }
 ${BODY_SELECTOR} .${THUMB_CLASS}:hover .${CLASS_ADD},
 ${BODY_SELECTOR} .${CLASS_ADD}:focus-visible {
@@ -191,10 +211,12 @@ function readPreviewThumbUrl(thumb: HTMLElement, postId: string): string | null 
       return url;
     }
   }
-  if (nestedImage === null) {
-    return null;
+  if (nestedImage !== null) {
+    return readImageAddress(nestedImage);
   }
-  return readImageAddress(nestedImage);
+  // A favorites thumb: its image has no class.
+  const plain = thumb.querySelector(THUMB_IMAGE_SELECTOR);
+  return plain instanceof HTMLImageElement ? readImageAddress(plain) : null;
 }
 
 function readThumbUrlFromTrigger(button: HTMLElement): string | null {
@@ -398,7 +420,8 @@ function stampPlaylistButtons(root: ParentNode = document): void {
     if (!(thumb instanceof HTMLElement)) {
       continue;
     }
-    const postId = extractPostIdFromThumb(thumb);
+    // A favorites thumb has no id of its own: the post id is on its link.
+    const postId = extractPostIdFromThumb(thumb) ?? extractPostIdFromThumbLink(thumb);
     if (postId === null) {
       continue;
     }
@@ -425,7 +448,7 @@ export function resetPlaylistMenuRuntimeState(): void {
 }
 
 function mountPlaylistMenu(ctx: FeatureContext): void {
-  if (ctx.pageKind !== "list") {
+  if (ctx.pageKind !== "list" && ctx.pageKind !== "favorites") {
     return;
   }
   stampPlaylistButtons(document);
