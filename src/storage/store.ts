@@ -66,6 +66,10 @@ type GmSetValue = (key: string, value: unknown) => void;
 
 let cachedStorage: StorageData | null = null;
 let storageCacheHydrated = false;
+/** When the cache last matched storage: a real read, or our own write. */
+let cacheFreshAt = 0;
+/** How old the cache may be for {@link loadRecent}. */
+const RECENT_READ_WINDOW_MS = 1000;
 
 function getGmGetValue(): GmGetValue {
   return GM_getValue;
@@ -86,6 +90,7 @@ function writeData(data: StorageData): void {
 function setStorageCache(data: StorageData): void {
   cachedStorage = data;
   storageCacheHydrated = true;
+  cacheFreshAt = Date.now();
 }
 
 /** Authoritative replace: used after intentional GM writes ({@link save}). */
@@ -117,6 +122,7 @@ export function syncArtistsMirrorFromStorage(): void {
 export function clearStorageCache(): void {
   cachedStorage = null;
   storageCacheHydrated = false;
+  cacheFreshAt = 0;
 }
 
 function loadUncached(): StorageData {
@@ -238,6 +244,34 @@ export function reloadFromStorage(): StorageData {
   return load();
 }
 
+/**
+ * Data for reading only, at most a second old. Reading and validating the
+ * whole storage is slow on a large library, and a page's modules each want
+ * "current" data within the same moment: they share one read through this.
+ * Anything that writes must use {@link reloadFromStorage} first, so a change
+ * made in another tab is not overwritten.
+ */
+export function loadRecent(): StorageData {
+  if (
+    storageCacheHydrated &&
+    cachedStorage !== null &&
+    Date.now() - cacheFreshAt < RECENT_READ_WINDOW_MS
+  ) {
+    return cachedStorage;
+  }
+  return reloadFromStorage();
+}
+
+/** True when any mark still carries the legacy `fav` flag. */
+function hasLegacyFavMarks(marks: StorageData["marks"]): boolean {
+  for (const flags of Object.values(marks)) {
+    if (flags.fav !== undefined) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export function save(data: StorageData): void {
   const parsed = StorageSchema.parse(data);
   const migrated = migrateCollectionMediaFields(parsed).data;
@@ -246,6 +280,13 @@ export function save(data: StorageData): void {
     ? { ...migrated, marks: pruned.marks }
     : migrated;
   writeData(toWrite);
+  if (!hasLegacyFavMarks(toWrite.marks)) {
+    // Nothing to migrate: what was written is what storage holds. No second
+    // read and validation of the whole data.
+    setStorageCache(toWrite);
+    syncArtistsMirror(toWrite);
+    return;
+  }
   migrateMarksFavToFavs();
   const after = readRaw();
   if (after === undefined || after === null) {
@@ -1112,11 +1153,11 @@ export function setSeenPostId(seenPostId: number): void {
 }
 
 /**
- * Followed artist tags from a fresh GM read (not the in-memory snapshot).
+ * Followed artist tags from a recent GM read (see {@link loadRecent}).
  * Feed href / recognition and Follow/Unfollow must not diverge across pages.
  */
 export function listArtistTags(): string[] {
-  return reloadFromStorage().artists.map((entry) => entry.tag);
+  return loadRecent().artists.map((entry) => entry.tag);
 }
 
 export function isFollowingArtist(tag: string): boolean {
@@ -1196,6 +1237,17 @@ export type ArtistSnapshotInput = {
   readonly lastPostId: number;
 };
 
+/** True when a snapshot would change what is stored about an artist. */
+function snapshotChanges(target: ArtistEntry, snapshot: ArtistSnapshotInput): boolean {
+  const count = snapshot.postCount;
+  return (
+    (snapshot.cover.length > 0 && !sameStrings(target.cover ?? [], snapshot.cover)) ||
+    (count !== null &&
+      (target.postCount?.value !== count.value || target.postCount.exact !== count.exact)) ||
+    snapshot.lastPostId > (target.lastPostId ?? 0)
+  );
+}
+
 /** A newer post than the remembered one: keep it and when it was first seen. */
 function applyLastPost(target: ArtistEntry, postId: number, now: number): boolean {
   if (postId <= 0 || postId <= (target.lastPostId ?? 0)) {
@@ -1215,6 +1267,12 @@ export function rememberArtistSnapshot(
   snapshot: ArtistSnapshotInput,
   now: number = Date.now(),
 ): boolean {
+  // Most page visits change nothing: decide that on recent data, without a
+  // fresh read of the whole storage.
+  const known = loadRecent().artists.find((entry) => entry.tag === tag);
+  if (known === undefined || !snapshotChanges(known, snapshot)) {
+    return false;
+  }
   const data = reloadFromStorage();
   const target = data.artists.find((entry) => entry.tag === tag);
   if (target === undefined) {
@@ -1247,6 +1305,12 @@ export function rememberArtistLastPosts(
   newest: ReadonlyMap<string, number>,
   now: number = Date.now(),
 ): boolean {
+  const anyNewer = loadRecent().artists.some(
+    (entry) => (newest.get(entry.tag) ?? 0) > (entry.lastPostId ?? 0),
+  );
+  if (!anyNewer) {
+    return false;
+  }
   const data = reloadFromStorage();
   let changed = false;
   for (const target of data.artists) {

@@ -65,7 +65,7 @@ Colours come only from the tokens `--rdw-*` (`src/ui/tokens.ts`); no component h
 | `localStorage` | mirrors | Followed artists; covers and counts of dynamic collections |
 | Site cookies | `tag_blacklist`, `theme` | The site's own blacklist and theme |
 
-`src/storage/schema.ts` is the single definition of the stored shape; `src/storage/store.ts` is the only module that writes it. The mirrors exist because a page restored by the Back button can get stale data from the script manager; pages that list data re-read it on `pageshow`.
+`src/storage/schema.ts` is the single definition of the stored shape; `src/storage/store.ts` is the only module that writes it. Reading and validating the whole storage costs tens of milliseconds on a large library, so there are three ways to get it: `load()` returns the in-memory copy; `loadRecent()` returns it when it is under a second old and reads otherwise, and is what read-only code on a page uses; `reloadFromStorage()` always reads, and every write goes through it first so that a change made in another tab is not overwritten. The mirrors exist because a page restored by the Back button can get stale data from the script manager; pages that list data re-read it on `pageshow`.
 
 The backup file format is described in [data-format.md](data-format.md).
 

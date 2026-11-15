@@ -26,7 +26,7 @@ import {
 import {
   getSeenPostId,
   listArtistTags,
-  reloadFromStorage,
+  loadRecent,
   setSeenPostId,
 } from "../storage/store";
 import { ensureDocumentStyles } from "./cards";
@@ -59,7 +59,7 @@ function resolveFollowedArtistTags(): string[] {
  */
 function reloadStoragePreservingArtistsMirror(): void {
   const mirrored = readArtistsMirror();
-  reloadFromStorage();
+  loadRecent();
   if (mirrored !== null && mirrored.length > 0) {
     writeArtistsMirror(mirrored);
   }

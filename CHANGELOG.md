@@ -2,6 +2,12 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.24.4
+
+- **Faster on a large library.** The modules of a page now share one read of the stored data instead of each reading it again, and a write no longer validates the data twice. Measured on 20,000 seen posts and 300 artists: a results page went from 310 ms of storage work to 50 ms
+- The download manager takes files only from the site's own servers, whatever the API answers
+- Importing a file drops picture addresses that are not on the site
+
 ## 0.24.3
 
 - Fixed: a download stopped with "API answer has no readable body". The API is now asked with a plain request from the page, which it allows, instead of through the script manager

@@ -3,6 +3,7 @@ import * as z from "zod/mini";
 import { FETCH_METHOD_GET } from "../config/constants";
 import { buildPlaylistQueries } from "../search/query";
 import type { ApiCredentials } from "../storage/api-credentials";
+import { isSiteUrl } from "./urls";
 
 /**
  * The site API, used for one thing only: finding the original files of posts
@@ -101,7 +102,8 @@ export function parseApiPosts(body: string): PostFile[] {
   const files: PostFile[] = [];
   for (const item of raw) {
     const parsed = ApiPostSchema.safeParse(item);
-    if (parsed.success) {
+    // A file is taken only from the site's own servers, whatever the answer says.
+    if (parsed.success && isSiteUrl(parsed.data.file_url)) {
       files.push({ postId: parsed.data.id, url: parsed.data.file_url });
     }
   }

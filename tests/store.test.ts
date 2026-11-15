@@ -389,7 +389,9 @@ describe("store", () => {
     expect(getUpdatesGroupSize()).toBe(MAX_UPDATES_GROUP_SIZE);
   });
 
-  it("listArtistTags re-reads GM when the in-memory cache is stale", () => {
+  it("listArtistTags shares one read within a second and re-reads GM after it", () => {
+    const start = Date.now();
+    const clock = vi.spyOn(Date, "now").mockReturnValue(start);
     save(createDefaultStorage());
     expect(listArtistTags()).toEqual([]);
     memory.set(STORAGE_KEY, {
@@ -398,7 +400,13 @@ describe("store", () => {
       artists: [{ tag: "from_gm" }],
       marks: {},
     });
+    // Within the same moment the page's modules share one read.
+    clock.mockReturnValue(start + 500);
+    expect(listArtistTags()).toEqual([]);
+    // Later the cache counts as stale and storage is read again.
+    clock.mockReturnValue(start + 1500);
     expect(listArtistTags()).toEqual(["from_gm"]);
+    clock.mockRestore();
   });
 
   it("addArtist reloads before write so a stale cache cannot drop peers", () => {

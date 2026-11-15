@@ -334,7 +334,10 @@ describe("feedFeature", () => {
     data.artists = [{ tag: "stale_cache_artist" }, { tag: "also" }];
     memory.set(STORAGE_KEY, data);
 
+    // The click or page return happens later than the shared-read window.
+    const clock = vi.spyOn(Date, "now").mockReturnValue(Date.now() + 2000);
     refreshFeedHref();
+    clock.mockRestore();
 
     expect(feedLink?.href).toContain(
       "tags=%28+stale_cache_artist+~+also+%29",

@@ -23,7 +23,7 @@ import {
   getSeenPostId,
   getUpdatesGroupSize,
   listArtistTags,
-  reloadFromStorage,
+  loadRecent,
 } from "../storage/store";
 import { ensureDocumentStyles } from "../ui/cards";
 import { mountUpdatesBar } from "../ui/updates-bar";
@@ -71,7 +71,7 @@ function resolveFollowedArtistTags(): string[] {
  */
 function reloadStoragePreservingArtistsMirror(): void {
   const mirrored = readArtistsMirror();
-  reloadFromStorage();
+  loadRecent();
   if (mirrored !== null && mirrored.length > 0) {
     writeArtistsMirror(mirrored);
   }

@@ -18,6 +18,7 @@ The script works on the site's own HTML. This file holds what is known about it.
 | `download.ts` | A download job: the files, one at a time (`GM_download` from the CDN) | 0.4 s; one retry after 5 s |
 
 - **Cookies:** only `tag_blacklist` and `theme` are read or written. `user_id` and `pass_hash` are never read. The account settings form is never submitted.
+- **Outside addresses are checked.** A file address from an API answer and a picture address from an imported file are used only when they are `https` on the site's domain (`src/site/urls.ts`).
 - **The grid link is left alone.** Nothing inside `a#p{ID}` is changed; thumbnail size is set only by `grid-density`.
 
 ## Markup

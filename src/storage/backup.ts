@@ -11,6 +11,7 @@ import {
   loadBackground,
   saveBackground,
 } from "./background-store";
+import { isSiteUrl } from "../site/urls";
 import {
   clearFavsCache,
   extractFavIdsFromMarks,
@@ -136,6 +137,42 @@ async function snapshotCurrentToBackupKey(): Promise<void> {
     ...(background !== undefined ? { background } : {}),
   };
   getGmSetValue()(STORAGE_BACKUP_KEY, snapshot);
+}
+
+function siteUrlsOnly(urls: readonly string[] | undefined): string[] | undefined {
+  return urls === undefined ? undefined : urls.filter(isSiteUrl);
+}
+
+/**
+ * Drops picture addresses that are not on the site from an imported file.
+ * A file from someone else could otherwise make the Collections and Following
+ * pages load pictures from a server of its author's choice.
+ */
+export function keepSiteMedia(storage: StorageData): StorageData {
+  return {
+    ...storage,
+    collections: storage.collections.map((collection) => {
+      const next = { ...collection };
+      const cover = siteUrlsOnly(collection.cover);
+      if (cover !== undefined) {
+        next.cover = cover;
+      }
+      if (collection.thumbs !== undefined) {
+        const thumbs: Record<string, string> = {};
+        for (const [postId, url] of Object.entries(collection.thumbs)) {
+          if (isSiteUrl(url)) {
+            thumbs[postId] = url;
+          }
+        }
+        next.thumbs = thumbs;
+      }
+      return next;
+    }),
+    artists: storage.artists.map((artist) => {
+      const cover = siteUrlsOnly(artist.cover);
+      return cover === undefined ? artist : { ...artist, cover };
+    }),
+  };
 }
 
 function mergeArtists(
@@ -321,7 +358,7 @@ export async function importBackupJson(
     return { ok: false, error: formatSchemaError(parsed.error) };
   }
 
-  const incoming = parsed.data;
+  const incoming = { ...parsed.data, storage: keepSiteMedia(parsed.data.storage) };
   const hasBackgroundField = Object.prototype.hasOwnProperty.call(
     incoming,
     "background",
