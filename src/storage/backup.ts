@@ -277,9 +277,15 @@ export function serializeBackupFile(file: BackupFile): string {
   return `${JSON.stringify(file, null, 2)}\n`;
 }
 
-/** Trigger a browser download of the JSON text (Blob + `<a download>`). */
-export function downloadBackupText(json: string, filename: string): void {
-  const blob = new Blob([json], { type: "application/json" });
+const BACKUP_MIME = "application/json";
+
+/** Trigger a browser download of a text (Blob + `<a download>`); JSON by default. */
+export function downloadBackupText(
+  json: string,
+  filename: string,
+  mime: string = BACKUP_MIME,
+): void {
+  const blob = new Blob([json], { type: mime });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;

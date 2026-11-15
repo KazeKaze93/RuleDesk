@@ -18,6 +18,13 @@ Local build: `npm install` then `npm run build` → `dist/ruledesk-web.user.js`.
 
 Measured on Tampermonkey 5.5.1: with Dynamic, native page flash on load is typically 0/5 vs ~5/5 with UserScripts API; pages also open faster. Prefer Dynamic for RuleDesk Web.
 
+### 0.21.1 notes
+
+- **Following:** the cross on a card asks "Unfollow …?" and removes the artist at once; there is no Undo row
+- **Add** takes several artist tags separated by spaces; the suggestion list works on the tag being typed
+- Notes on artist cards are removed: no pencil button, no note line
+- The "Import / export" button is gone from Following. **RuleDesk → Data** has "Export artists" and "Import artists": a text file with one tag per line
+
 ### 0.21.0 notes
 
 - **Following as cards.** Each followed artist is a card with a 2x2 cover, post count, a "new" mark, a "no new posts since" line and your own note

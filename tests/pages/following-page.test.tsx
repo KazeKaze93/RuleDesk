@@ -15,7 +15,6 @@ import {
   load,
   rememberArtistLastPosts,
   rememberArtistSnapshot,
-  setArtistNote,
   setSeenPostId,
 } from "../../src/storage/store";
 
@@ -196,7 +195,7 @@ describe("FollowingPage", () => {
     vi.restoreAllMocks();
   });
 
-  it("shows a card per artist with cover, post count, note and the new mark", () => {
+  it("shows a card per artist with cover, post count and the new mark, and no note button", () => {
     addArtist("nyx_x");
     addArtist("nero100");
     rememberArtistSnapshot("nyx_x", {
@@ -204,7 +203,6 @@ describe("FollowingPage", () => {
       postCount: { value: 2711, exact: true },
       lastPostId: 90,
     });
-    setArtistNote("nyx_x", "fav painter");
     setSeenPostId(80);
 
     const root = mount();
@@ -213,7 +211,7 @@ describe("FollowingPage", () => {
     expect(nyx.querySelector("img")?.getAttribute("src")).toBe(THUMB);
     expect(nyx.textContent).toContain("nyx x");
     expect(nyx.textContent).toContain("2,711 posts");
-    expect(nyx.textContent).toContain("fav painter");
+    expect(root.querySelector('button[aria-label^="Note"]')).toBeNull();
     expect(nyx.querySelector(".rdw-artist-new")).not.toBeNull();
     const nero = card(root, "nero100");
     expect(nero.textContent).toContain("not opened yet");
@@ -266,57 +264,62 @@ describe("FollowingPage", () => {
     expect(hasButton(root, "Select")).toBe(true);
   });
 
-  it("puts an unfollowed artist back with everything known about them", () => {
+  it("asks before unfollowing one artist and removes the card at once", () => {
     addArtist("nyx_x");
-    rememberArtistSnapshot("nyx_x", {
-      cover: [THUMB],
-      postCount: { value: 7, exact: true },
-      lastPostId: 5,
-    });
+    addArtist("nero100");
     const root = mount();
-
     const unfollow = root.querySelector('button[aria-label="Unfollow nyx_x"]');
     if (unfollow === null) {
       throw new Error("unfollow button missing");
     }
     click(unfollow);
-    expect(artistTags()).toEqual([]);
-    click(button(root, "Undo"));
 
-    const restored = load().artists[0];
-    expect(restored?.tag).toBe("nyx_x");
-    expect(restored?.cover).toEqual([THUMB]);
-    expect(restored?.postCount).toEqual({ value: 7, exact: true });
+    expect(dialog(root).textContent).toContain("Unfollow nyx x? This cannot be undone.");
+    expect(artistTags()).toEqual(["nyx_x", "nero100"]);
+    click(button(dialog(root), "Unfollow"));
+
+    expect(artistTags()).toEqual(["nero100"]);
+    expect(cardTags(root)).toEqual(["nero100"]);
+    expect(hasButton(root, "Undo")).toBe(false);
   });
 
-  it("saves a note from the card's note dialog", () => {
+  it("leaves the artist when the unfollow question is cancelled", () => {
     addArtist("nyx_x");
     const root = mount();
-    const edit = root.querySelector('button[aria-label="Note for nyx_x"]');
-    if (edit === null) {
-      throw new Error("note button missing");
+    const unfollow = root.querySelector('button[aria-label="Unfollow nyx_x"]');
+    if (unfollow === null) {
+      throw new Error("unfollow button missing");
     }
-    click(edit);
-    setInput(dialog(root).querySelector("input"), "  backgrounds  ");
-    click(button(dialog(root), "Save"));
+    click(unfollow);
+    click(button(dialog(root), "Cancel"));
 
-    expect(load().artists[0]?.note).toBe("backgrounds");
-    expect(card(root, "nyx_x").textContent).toContain("backgrounds");
+    expect(artistTags()).toEqual(["nyx_x"]);
   });
 
-  it("exports the tags as text and imports new ones, counting the rest", () => {
+  it("adds several artists typed with spaces and reports the ones it skipped", () => {
     addArtist("nyx_x");
     const root = mount();
-    click(button(root, "Import / export"));
-    const field = dialog(root).querySelector("input");
-    expect(field instanceof HTMLInputElement ? field.value : "").toBe("nyx_x");
+    expect(hasButton(root, "Import / export")).toBe(false);
 
-    setInput(field, "nyx_x nero100  Sultry_Kiyomi ( ");
-    click(button(dialog(root), "Import"));
+    setInput(root.querySelector("#rdw-following-add-tag"), "nyx_x nero100  Sultry_Kiyomi ( ");
+    click(button(root, "Add"));
 
     expect(artistTags()).toEqual(["nyx_x", "nero100", "sultry_kiyomi"]);
-    expect(dialog(root).textContent).toContain(
-      "Added 2, already followed 1, invalid 1",
+    expect(root.textContent).toContain("Added 2, already followed 1, invalid 1.");
+    expect(cardTags(root)).toEqual(["nero100", "nyx_x", "sultry_kiyomi"]);
+  });
+
+  it("adds one artist without a message and says when it is already followed", () => {
+    const root = mount();
+    setInput(root.querySelector("#rdw-following-add-tag"), "nyx_x");
+    click(button(root, "Add"));
+    expect(artistTags()).toEqual(["nyx_x"]);
+    expect(root.querySelector(".rdw-error")).toBeNull();
+
+    setInput(root.querySelector("#rdw-following-add-tag"), "nyx_x");
+    click(button(root, "Add"));
+    expect(root.querySelector(".rdw-error")?.textContent).toBe(
+      "Already following this artist.",
     );
   });
 

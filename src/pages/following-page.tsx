@@ -12,7 +12,7 @@ import {
   UI_TEXT,
 } from "../config/constants";
 import { log } from "../log";
-import { buildSearchUrl, normalizeArtistTag } from "../search/query";
+import { buildSearchUrl } from "../search/query";
 import { ARTIST_COVER_SIZE, fetchArtistSnapshot } from "../site/artist-snapshot";
 import {
   AUTOCOMPLETE_TAG_TYPE_ARTIST,
@@ -21,17 +21,13 @@ import {
 } from "../site/autocomplete";
 import type { ArtistEntry } from "../storage/schema";
 import {
-  addArtist,
   addArtists,
   getSeenPostId,
-  isFollowingArtist,
   load,
   reloadFromStorage,
   rememberArtistSnapshot,
   removeArtist,
   removeArtists,
-  restoreArtist,
-  setArtistNote,
 } from "../storage/store";
 import {
   AutocompleteField,
@@ -46,15 +42,13 @@ import {
   type SegmentedOption,
   type SelectOption,
 } from "../ui/kit";
-import { IconCheck, IconPencil, IconX } from "../ui/kit/icons";
+import { IconCheck, IconX } from "../ui/kit/icons";
+import { completeLastQueryToken, readLastQueryToken } from "../ui/query-field";
 import {
   ARTIST_FILTER_ID,
   ARTIST_FILTER_LABEL,
   ARTISTS_EMPTY_HINT,
   ARTISTS_EMPTY_TITLE,
-  UNFOLLOW_UNDO_LABEL,
-  UNFOLLOW_UNDO_MS,
-  UNFOLLOWED_PREFIX,
 } from "./constants";
 
 const EVENT_PAGESHOW = "pageshow";
@@ -70,7 +64,6 @@ const CARD_SELECTED_CLASS = "rdw-artist-card--selected";
 const CARD_LINK_CLASS = "rdw-artist-card-link";
 const CARD_MARK_CLASS = "rdw-artist-card-mark";
 const CARD_ACTIONS_CLASS = "rdw-artist-card-actions";
-const CARD_UNDO_CLASS = "rdw-artist-card-undo";
 const COVER_CLASS = "rdw-artist-cover";
 const COVER_CELL_CLASS = "rdw-artist-cover-cell";
 const COVER_IMAGE_CLASS = "rdw-artist-cover-image";
@@ -78,7 +71,6 @@ const NAME_ROW_CLASS = "rdw-artist-name-row";
 const NAME_CLASS = "rdw-artist-name";
 const NEW_BADGE_CLASS = "rdw-artist-new";
 const CAPTION_CLASS = "rdw-artist-caption";
-const NOTE_CLASS = "rdw-artist-note";
 const PROGRESS_CLASS = "rdw-following-progress";
 const DIALOG_FORM_CLASS = "rdw-dialog__fields";
 const DIALOG_ACTIONS_CLASS = "rdw-dialog__actions";
@@ -102,15 +94,9 @@ const SELECTED_SUFFIX = " selected";
 const UNFOLLOW_LABEL = "Unfollow";
 const REFRESH_LABEL = "Refresh";
 const REFRESH_TITLE = "Read each artist's first page again: cover, post count, newest post";
-const TRANSFER_LABEL = "Import / export";
-const TRANSFER_TITLE = "Import or export followed artists";
-const TRANSFER_FIELD_LABEL = "Artist tags, separated by spaces";
-const COPY_LABEL = "Copy";
-const COPIED_LABEL = "Copied";
-const IMPORT_LABEL = "Import";
+const ADD_FIELD_LABEL = "Artist tags, separated by spaces";
+const TAG_SPLIT = /\s+/;
 const CLOSE_LABEL = "Close";
-const NOTE_TITLE_PREFIX = "Note for ";
-const NOTE_FIELD_LABEL = "Note";
 const NOT_OPENED_CAPTION = "not opened yet";
 const QUIET_PREFIX = "no new posts since ";
 const POST_WORD_SINGULAR = "post";
@@ -169,17 +155,10 @@ export const FOLLOWING_PAGE_CSS = `
   margin: 0;
 }
 .${META_CLASS},
-.${CAPTION_CLASS},
-.${NOTE_CLASS} {
+.${CAPTION_CLASS} {
   margin: 0;
   color: var(--rdw-muted);
   font-size: 12px;
-}
-.${NOTE_CLASS} {
-  color: var(--rdw-text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .${GRID_CLASS} {
   display: grid;
@@ -285,15 +264,6 @@ export const FOLLOWING_PAGE_CSS = `
   border-color: var(--rdw-accent);
   background: var(--rdw-accent);
 }
-.${CARD_UNDO_CLASS} {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 8px;
-  height: 100%;
-  color: var(--rdw-muted);
-}
 .${PROGRESS_CLASS} {
   display: flex;
   align-items: center;
@@ -306,11 +276,6 @@ export const FOLLOWING_PAGE_CSS = `
 
 type ShowMode = typeof SHOW_ALL | typeof SHOW_NEW;
 type SortMode = typeof SORT_NAME | typeof SORT_POSTS | typeof SORT_ADDED;
-
-type PendingUnfollow = {
-  readonly entry: ArtistEntry;
-  readonly timer: ReturnType<typeof setTimeout>;
-};
 
 type RefreshState = {
   readonly done: number;
@@ -392,6 +357,28 @@ export function sortArtists(
   return sorted;
 }
 
+function unfollowOneMessage(tag: string): string {
+  return `Unfollow ${displayArtistName(tag)}? This cannot be undone.`;
+}
+
+/** What an Add of several tags did, or an empty text when all were added. */
+function addSummary(result: {
+  readonly added: number;
+  readonly duplicates: number;
+  readonly invalid: number;
+}): string {
+  if (result.duplicates === 0 && result.invalid === 0) {
+    return "";
+  }
+  if (result.added === 0 && result.invalid === 0) {
+    return UI_TEXT.artistDuplicate;
+  }
+  if (result.added === 0 && result.duplicates === 0) {
+    return UI_TEXT.artistInvalid;
+  }
+  return `Added ${String(result.added)}, already followed ${String(result.duplicates)}, invalid ${String(result.invalid)}.`;
+}
+
 function unfollowMessage(count: number): string {
   return count === SINGLE
     ? "Unfollow 1 artist? This cannot be undone."
@@ -448,11 +435,9 @@ function ArtistCard(props: {
   readonly now: number;
   readonly select: CardSelect | null;
   readonly onUnfollow: () => void;
-  readonly onEditNote: () => void;
 }): JSX.Element {
   const { artist, select } = props;
   const quiet = quietSince(artist, props.now);
-  const note = artist.note ?? "";
   const body = (
     <>
       <ArtistCover artist={artist} />
@@ -466,11 +451,6 @@ function ArtistCard(props: {
       {quiet === null ? null : (
         <span className={CAPTION_CLASS}>{`${QUIET_PREFIX}${formatDay(quiet)}`}</span>
       )}
-      {note.length > 0 ? (
-        <span className={NOTE_CLASS} title={note}>
-          {note}
-        </span>
-      ) : null}
     </>
   );
   const href = buildSearchUrl([{ tag: artist.tag, type: TAG_TYPE_INCLUDE }]);
@@ -510,9 +490,6 @@ function ArtistCard(props: {
         {body}
       </a>
       <div className={CARD_ACTIONS_CLASS}>
-        <IconButton label={`Note for ${artist.tag}`} onClick={props.onEditNote}>
-          <IconPencil size={ICON_PX} />
-        </IconButton>
         <IconButton label={`Unfollow ${artist.tag}`} onClick={props.onUnfollow}>
           <IconX size={ICON_PX} />
         </IconButton>
@@ -526,7 +503,7 @@ function AddArtistForm(props: {
   readonly error: string;
   readonly suggestions: readonly AutocompleteSuggestion[];
   readonly onDraftChange: (value: string) => void;
-  readonly onSuggestionSelect: () => void;
+  readonly onSuggestionSelect: (tag: string) => void;
   readonly onSubmit: () => void;
 }): JSX.Element {
   return (
@@ -539,11 +516,14 @@ function AddArtistForm(props: {
     >
       <AutocompleteField
         id={ADD_INPUT_ID}
-        label={UI_TEXT.artistTagLabel}
+        label={ADD_FIELD_LABEL}
         value={props.draft}
         suggestions={props.suggestions}
+        replaceOnSelect={false}
         onChange={props.onDraftChange}
-        onSelect={props.onSuggestionSelect}
+        onSelect={(option) => {
+          props.onSuggestionSelect(option.value);
+        }}
       />
       <Button type="submit" variant="primary">
         {UI_TEXT.artistAdd}
@@ -555,7 +535,6 @@ function AddArtistForm(props: {
 
 export function FollowingPage(): JSX.Element {
   const [artists, setArtists] = useState<ArtistEntry[]>(() => readArtists());
-  const [pending, setPending] = useState<PendingUnfollow[]>([]);
   const [filter, setFilter] = useState("");
   const [show, setShow] = useState<ShowMode>(SHOW_ALL);
   const [sort, setSort] = useState<SortMode>(SORT_NAME);
@@ -567,15 +546,9 @@ export function FollowingPage(): JSX.Element {
   const [selecting, setSelecting] = useState(false);
   const [selectedTags, setSelectedTags] = useState<readonly string[]>([]);
   const [confirmUnfollow, setConfirmUnfollow] = useState(false);
+  const [unfollowTag, setUnfollowTag] = useState<string | null>(null);
   const [confirmRefresh, setConfirmRefresh] = useState(false);
   const [refresh, setRefresh] = useState<RefreshState | null>(null);
-  const [noteTag, setNoteTag] = useState<string | null>(null);
-  const [noteDraft, setNoteDraft] = useState("");
-  const [transferOpen, setTransferOpen] = useState(false);
-  const [transferDraft, setTransferDraft] = useState("");
-  const [transferMessage, setTransferMessage] = useState("");
-  const pendingRef = useRef(pending);
-  pendingRef.current = pending;
   const cancelRefreshRef = useRef(false);
   const querierRef = useRef(
     createAutocompleteQuerier({ preferType: AUTOCOMPLETE_TAG_TYPE_ARTIST }),
@@ -593,75 +566,20 @@ export function FollowingPage(): JSX.Element {
       window.removeEventListener(EVENT_PAGESHOW, onPageShow);
       querier.cancel();
       cancelRefreshRef.current = true;
-      for (const entry of pendingRef.current) {
-        clearTimeout(entry.timer);
-      }
     };
   }, []);
 
-  const clearPendingUnfollow = (tag: string): void => {
-    setPending((current) => {
-      const found = current.find((entry) => entry.entry.tag === tag);
-      if (found === undefined) {
-        return current;
-      }
-      clearTimeout(found.timer);
-      return current.filter((entry) => entry.entry.tag !== tag);
-    });
-  };
-
-  const onUnfollow = (artist: ArtistEntry): void => {
-    const existing = pendingRef.current.find(
-      (entry) => entry.entry.tag === artist.tag,
-    );
-    if (existing !== undefined) {
-      clearTimeout(existing.timer);
-    }
-    removeArtist(artist.tag);
-    const timer = setTimeout(() => {
-      clearPendingUnfollow(artist.tag);
-    }, UNFOLLOW_UNDO_MS);
-    setPending([
-      ...pendingRef.current.filter((entry) => entry.entry.tag !== artist.tag),
-      { entry: artist, timer },
-    ]);
-    setArtists(readArtists());
-  };
-
-  const onUndo = (entry: ArtistEntry): void => {
-    clearPendingUnfollow(entry.tag);
-    try {
-      restoreArtist(entry);
-    } catch (error) {
-      log.warn("Undo unfollow failed", error);
-    }
-    setArtists(readArtists());
-  };
-
   const onAdd = (): void => {
-    const normalized = normalizeArtistTag(draft);
-    if (normalized === null) {
+    const tags = draft.split(TAG_SPLIT).filter((tag) => tag.length > 0);
+    if (tags.length === 0) {
       setAddError(UI_TEXT.artistInvalid);
       return;
     }
-    if (isFollowingArtist(normalized)) {
-      setAddError(UI_TEXT.artistDuplicate);
-      return;
+    const result = addArtists(tags);
+    setAddError(addSummary(result));
+    if (result.added > 0) {
+      setDraft("");
     }
-    try {
-      addArtist(normalized);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : UI_TEXT.artistDuplicate;
-      setAddError(
-        message.toLowerCase().includes("duplicate")
-          ? UI_TEXT.artistDuplicate
-          : UI_TEXT.artistInvalid,
-      );
-      return;
-    }
-    setDraft("");
-    setAddError("");
     setSuggestions([]);
     querierRef.current.cancel();
     setArtists(readArtists());
@@ -679,8 +597,7 @@ export function FollowingPage(): JSX.Element {
     }
     return (
       artist.tag.toLowerCase().includes(needle) ||
-      displayArtistName(artist.tag).toLowerCase().includes(needle) ||
-      (artist.note ?? "").toLowerCase().includes(needle)
+      displayArtistName(artist.tag).toLowerCase().includes(needle)
     );
   };
   const visible = sortArtists(artists, sort).filter(matches);
@@ -689,7 +606,7 @@ export function FollowingPage(): JSX.Element {
     selectedTags.includes(artist.tag),
   );
   const count = artists.length;
-  const empty = count === 0 && pending.length === 0;
+  const empty = count === 0;
   const busy = refresh !== null && refresh.running;
 
   const stopSelecting = (): void => {
@@ -753,45 +670,6 @@ export function FollowingPage(): JSX.Element {
     });
   };
 
-  const openNote = (artist: ArtistEntry): void => {
-    setNoteDraft(artist.note ?? "");
-    setNoteTag(artist.tag);
-  };
-
-  const submitNote = (): void => {
-    if (noteTag !== null) {
-      setArtistNote(noteTag, noteDraft);
-      setArtists(readArtists());
-    }
-    setNoteTag(null);
-  };
-
-  const openTransfer = (): void => {
-    setTransferDraft(sortArtists(artists, SORT_NAME).map((artist) => artist.tag).join(" "));
-    setTransferMessage("");
-    setTransferOpen(true);
-  };
-
-  const importTransfer = (): void => {
-    const tags = transferDraft.split(/\s+/).filter((tag) => tag.length > 0);
-    const result = addArtists(tags);
-    setArtists(readArtists());
-    setTransferMessage(
-      `Added ${String(result.added)}, already followed ${String(result.duplicates)}, invalid ${String(result.invalid)}`,
-    );
-  };
-
-  const copyTransfer = (): void => {
-    void navigator.clipboard.writeText(transferDraft).then(
-      () => {
-        setTransferMessage(COPIED_LABEL);
-      },
-      (error: unknown) => {
-        log.warn("following: copy failed", error);
-      },
-    );
-  };
-
   return (
     <div className={PAGE_CLASS}>
       <style>{FOLLOWING_PAGE_CSS}</style>
@@ -804,9 +682,17 @@ export function FollowingPage(): JSX.Element {
           if (addError.length > 0) {
             setAddError("");
           }
-          querierRef.current.query(value, setSuggestions);
+          const last = readLastQueryToken(value);
+          if (last === null) {
+            querierRef.current.cancel();
+            setSuggestions([]);
+            return;
+          }
+          querierRef.current.query(last.stem, setSuggestions);
         }}
-        onSuggestionSelect={() => {
+        onSuggestionSelect={(tag) => {
+          // Only the tag being typed is replaced; earlier tags stay.
+          setDraft(completeLastQueryToken(draft, tag));
           querierRef.current.cancel();
           setSuggestions([]);
         }}
@@ -818,19 +704,14 @@ export function FollowingPage(): JSX.Element {
           title={ARTISTS_EMPTY_TITLE}
           description={ARTISTS_EMPTY_HINT}
           action={
-            <>
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  window.location.assign(OPEN_POSTS_HREF);
-                }}
-              >
-                {OPEN_POSTS_LABEL}
-              </Button>
-              <Button variant="secondary" title={TRANSFER_TITLE} onClick={openTransfer}>
-                {TRANSFER_LABEL}
-              </Button>
-            </>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                window.location.assign(OPEN_POSTS_HREF);
+              }}
+            >
+              {OPEN_POSTS_LABEL}
+            </Button>
           }
         />
       ) : (
@@ -911,9 +792,6 @@ export function FollowingPage(): JSX.Element {
                 >
                   {REFRESH_LABEL}
                 </Button>
-                <Button variant="secondary" title={TRANSFER_TITLE} onClick={openTransfer}>
-                  {TRANSFER_LABEL}
-                </Button>
               </>
             )}
           </div>
@@ -958,30 +836,10 @@ export function FollowingPage(): JSX.Element {
             </div>
           )}
 
-          {visible.length === 0 && pending.length === 0 ? (
+          {visible.length === 0 ? (
             <EmptyState title={NO_MATCH_TITLE} description={NO_MATCH_DESCRIPTION} />
           ) : (
             <div className={GRID_CLASS}>
-              {pending.map((entry) => (
-                <div
-                  key={`undo-${entry.entry.tag}`}
-                  className={CARD_CLASS}
-                  data-tag={entry.entry.tag}
-                >
-                  <div className={CARD_UNDO_CLASS}>
-                    <span>{`${UNFOLLOWED_PREFIX}${displayArtistName(entry.entry.tag)}`}</span>
-                    <Button
-                      variant="secondary"
-                      size="s"
-                      onClick={() => {
-                        onUndo(entry.entry);
-                      }}
-                    >
-                      {UNFOLLOW_UNDO_LABEL}
-                    </Button>
-                  </div>
-                </div>
-              ))}
               {visible.map((artist) => (
                 <ArtistCard
                   key={artist.tag}
@@ -999,10 +857,7 @@ export function FollowingPage(): JSX.Element {
                       : null
                   }
                   onUnfollow={() => {
-                    onUnfollow(artist);
-                  }}
-                  onEditNote={() => {
-                    openNote(artist);
+                    setUnfollowTag(artist.tag);
                   }}
                 />
               ))}
@@ -1026,6 +881,25 @@ export function FollowingPage(): JSX.Element {
       />
       <Dialog
         variant="confirm"
+        open={unfollowTag !== null}
+        title={UNFOLLOW_LABEL}
+        message={unfollowOneMessage(unfollowTag ?? "")}
+        confirmLabel={UNFOLLOW_LABEL}
+        cancelLabel={UI_TEXT.cancel}
+        confirmTone="danger"
+        onConfirm={() => {
+          if (unfollowTag !== null) {
+            removeArtist(unfollowTag);
+            setArtists(readArtists());
+          }
+          setUnfollowTag(null);
+        }}
+        onClose={() => {
+          setUnfollowTag(null);
+        }}
+      />
+      <Dialog
+        variant="confirm"
         open={confirmRefresh}
         title={REFRESH_DIALOG_TITLE}
         message={refreshMessage(visible.length)}
@@ -1039,85 +913,6 @@ export function FollowingPage(): JSX.Element {
           setConfirmRefresh(false);
         }}
       />
-      <Dialog
-        open={noteTag !== null}
-        title={`${NOTE_TITLE_PREFIX}${displayArtistName(noteTag ?? "")}`}
-        onClose={() => {
-          setNoteTag(null);
-        }}
-      >
-        <form
-          className={DIALOG_FORM_CLASS}
-          onSubmit={(event) => {
-            event.preventDefault();
-            submitNote();
-          }}
-        >
-          <TextField label={NOTE_FIELD_LABEL} value={noteDraft} onChange={setNoteDraft} />
-          <div className={DIALOG_ACTIONS_CLASS}>
-            <Button
-              type="button"
-              variant="secondary"
-              size="s"
-              onClick={() => {
-                setNoteTag(null);
-              }}
-            >
-              {UI_TEXT.cancel}
-            </Button>
-            <Button type="submit" variant="primary" size="s">
-              {UI_TEXT.save}
-            </Button>
-          </div>
-        </form>
-      </Dialog>
-      <Dialog
-        open={transferOpen}
-        title={TRANSFER_TITLE}
-        onClose={() => {
-          setTransferOpen(false);
-        }}
-      >
-        <form
-          className={DIALOG_FORM_CLASS}
-          onSubmit={(event) => {
-            event.preventDefault();
-            importTransfer();
-          }}
-        >
-          <TextField
-            label={TRANSFER_FIELD_LABEL}
-            value={transferDraft}
-            onChange={(value) => {
-              setTransferDraft(value);
-              setTransferMessage("");
-            }}
-          />
-          {transferMessage.length > 0 ? (
-            <p className={META_CLASS} role="status">
-              {transferMessage}
-            </p>
-          ) : null}
-          <div className={DIALOG_ACTIONS_CLASS}>
-            <Button
-              type="button"
-              variant="secondary"
-              size="s"
-              onClick={() => {
-                setTransferOpen(false);
-              }}
-            >
-              {CLOSE_LABEL}
-            </Button>
-            <Button type="button" variant="secondary" size="s" onClick={copyTransfer}>
-              {COPY_LABEL}
-            </Button>
-            <Button type="submit" variant="primary" size="s">
-              {IMPORT_LABEL}
-            </Button>
-          </div>
-        </form>
-      </Dialog>
     </div>
   );
 }
