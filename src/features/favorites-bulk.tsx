@@ -5,7 +5,11 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import { UI_TEXT } from "../config/constants";
 import { log } from "../log";
 import { downloadsAvailable } from "./downloads/available";
-import { FavoritesBrowser, favoritesGridRoot } from "./favorites-browser";
+import {
+  FavoritesBrowser,
+  bindInPlaceRemoval,
+  favoritesGridRoot,
+} from "./favorites-browser";
 import { isDownloadBusy, startDownload } from "./downloads/queue";
 import { removeFavorite } from "../site/favorites";
 import {
@@ -668,6 +672,11 @@ function mountFavoritesBulk(_ctx: FeatureContext): void {
   root.id = ROOT_ID;
   root.className = ROOT_CLASS;
   host.parent.insertBefore(root, host.before);
+
+  const siteGrid = document.querySelector(SITE_SELECTORS.imageList);
+  if (siteGrid !== null) {
+    bindInPlaceRemoval(siteGrid);
+  }
 
   const onSelectionModeChange = (active: boolean): void => {
     document.body.classList.toggle(BODY_SELECTING_CLASS, active);

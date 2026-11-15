@@ -4,7 +4,7 @@
  * Injected via applyAppearanceTheme → injectSiteSkinHook(getSiteSkinCss()).
  */
 
-import { THUMB_ANCHOR_NAME } from "../features/types";
+import { FAVORITE_IMAGE_ANCHOR_NAME, THUMB_ANCHOR_NAME } from "../features/types";
 import { VIDEO_THUMB_CLASS } from "../site/video-thumbs";
 import {
   APPEARANCE_THEME_DARK,
@@ -34,13 +34,11 @@ const SITE_CONTROL_MIN_HEIGHT_PX = 30;
 /** Widest a comment or forum post grows before the line gets too long to read. */
 const COMMENT_MAX_WIDTH_PX = 1100;
 /** Anchor of a favorites preview, visible to the Remove link beside its thumb. */
-const FAV_REMOVE_ANCHOR_NAME = "--rdw-fav-img";
+const FAV_REMOVE_ANCHOR_NAME = FAVORITE_IMAGE_ANCHOR_NAME;
 const FAV_REMOVE_INSET_PX = 6;
 /** The same square as the buttons on a Posts thumb. */
 const FAV_REMOVE_SIZE_PX = 28;
 const FAV_REMOVE_ICON_PX = 16;
-/** Width of a column of the favorites grid: the site's own cell width. */
-const FAV_CELL_WIDTH_PX = 250;
 /** A bin, drawn as a mask so that it takes the colour of the rule. */
 const FAV_REMOVE_ICON_MASK = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 6h18'/%3E%3Cpath d='M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6'/%3E%3Cpath d='M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2'/%3E%3Cpath d='M10 11v6'/%3E%3Cpath d='M14 11v6'/%3E%3C/svg%3E") center / contain no-repeat`;
 /** Above the hover video preview. */
@@ -926,15 +924,10 @@ ${ROOT} div.image-list > span > a[onclick]:hover {
 }
 
 /*
- * Favorites: a picture keeps its shape and the rows sit close. The site gives
- * every thumb a fixed square cell and centres the picture in it, which leaves
- * gaps between rows. Here the column keeps its width, the thumb is exactly as
- * large as its picture, and a row is as tall as its tallest picture.
+ * Favorites: the grid is the site's own, the same as on Posts: a square cell
+ * with the picture in its middle. Only the row the site keeps under each thumb
+ * for "Remove" goes away (below), so the rows sit as close as on Posts.
  */
-${ROOT} div.image-list > span:has(> a[onclick]) {
-  width: ${String(FAV_CELL_WIDTH_PX)}px;
-  justify-items: center;
-}
 
 /*
  * A favorites cell whose post was removed leaves no hole in its column.
@@ -948,21 +941,6 @@ ${ROOT} div.image-list > span:not(.thumb):not(:has(span.thumb)) {
 
 ${ROOT} div.image-list > span > span.thumb {
   position: relative;
-  display: block;
-  width: fit-content;
-  height: auto;
-  max-width: 100%;
-}
-
-${ROOT} div.image-list > span > span.thumb > a {
-  display: block;
-}
-
-${ROOT} div.image-list > span > span.thumb > a > img {
-  display: block;
-  box-sizing: border-box;
-  max-width: ${String(FAV_CELL_WIDTH_PX)}px;
-  height: auto;
 }
 
 /*

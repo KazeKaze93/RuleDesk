@@ -2,6 +2,12 @@ import type { PageKind } from "../site/pages";
 
 export const THUMB_CLASS = "rdw-thumb";
 export const THUMB_ANCHOR_NAME = "--rdw-img";
+/**
+ * Anchor of a favorites picture. Its scope is the whole cell and comes from
+ * the stylesheet, so it is there from the first layout; the buttons of a
+ * favorites thumb are placed by it.
+ */
+export const FAVORITE_IMAGE_ANCHOR_NAME = "--rdw-fav-img";
 
 export const FEATURE_STYLE_ID_PREFIX = "rdw-feature-style-";
 export const POST_ACTIONS_ID = "rdw-post-actions";

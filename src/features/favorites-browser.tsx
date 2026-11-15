@@ -195,10 +195,11 @@ function appendChunk(target: Grid): void {
 }
 
 /**
- * The bin of a result cell removes the favorite in place. The site's own link
- * would leave for the delete address and come back to its first page.
+ * The bin of a cell removes the favorite in place, on the site's own grid as
+ * well as on the results. The site's own link would leave for the delete
+ * address and come back to the top of the first page.
  */
-function onResultsClick(event: Event): void {
+function onGridClick(event: Event): void {
   const target = event.target;
   if (!(target instanceof Element)) {
     return;
@@ -228,6 +229,17 @@ function onResultsClick(event: Event): void {
     });
 }
 
+const boundGrids = new WeakSet<Element>();
+
+/** Makes the bins of the cells under `gridRoot` remove without leaving the page. */
+export function bindInPlaceRemoval(gridRoot: Element): void {
+  if (boundGrids.has(gridRoot)) {
+    return;
+  }
+  boundGrids.add(gridRoot);
+  gridRoot.addEventListener("click", onGridClick, true);
+}
+
 function ensureGrid(): Grid | null {
   if (grid !== null && grid.container.isConnected) {
     return grid;
@@ -240,7 +252,7 @@ function ensureGrid(): Grid | null {
   }
   const container = document.createElement("div");
   container.className = `image-list ${FAVORITES_RESULTS_CLASS}`;
-  container.addEventListener("click", onResultsClick, true);
+  bindInPlaceRemoval(container);
   const more = document.createElement("button");
   more.type = "button";
   more.className = MORE_CLASS;

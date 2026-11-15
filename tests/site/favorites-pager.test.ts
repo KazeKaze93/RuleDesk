@@ -48,11 +48,16 @@ describe("favorites pager", () => {
   it("hides the links past the last real page and keeps the rest", () => {
     buildPager([0, 50, 100, 150, 200], 50, 200);
     // 120 favorites: pages at 0, 50 and 100.
-    expect(trimFavoritesPager(document, 100, 0)).toBe(3);
-    expect(visiblePids()).toEqual(["0", "50", "100", "next"]);
+    expect(trimFavoritesPager(document, 100, 0)).toBe(2);
+    expect(visiblePids()).toEqual(["0", "50", "100", "next", "lastpage"]);
+    // "Last page" stays and leads to the page that exists.
+    const last = document.querySelector('#paginator a[name="lastpage"]');
+    expect(last?.getAttribute("onclick")).toBe(
+      "document.location='?page=favorites&s=view&id=1&pid=100'; return false;",
+    );
   });
 
-  it("hides next on the last real page", () => {
+  it("hides next and last page on the last real page", () => {
     buildPager([0, 50, 100, 150], 150, 150);
     trimFavoritesPager(document, 100, 100);
     expect(visiblePids()).toEqual(["0", "50", "100"]);

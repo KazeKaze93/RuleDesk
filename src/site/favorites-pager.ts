@@ -5,7 +5,7 @@ import { FAVORITES_SYNC_PID_STEP } from "./favorites-sync";
 /**
  * The pager of the site's Favorites page lists more pages than there are
  * favorites (an old site bug): the last ones are empty. This hides the links
- * that lead past the real last page.
+ * that lead past the real last page and makes "last page" lead to it.
  *
  * The real last page is counted from the local list of favorites, so nothing
  * is hidden until "Sync favorites" has finished at least once: an incomplete
@@ -17,6 +17,7 @@ import { FAVORITES_SYNC_PID_STEP } from "./favorites-sync";
 
 const PAGINATOR_LINK_SELECTOR = "#paginator a[onclick]";
 const NEXT_NAME = "next";
+const LASTPAGE_NAME = "lastpage";
 const ONCLICK_PID_PATTERN = /[?&]pid=(\d+)/;
 const DISPLAY_NONE = "none";
 
@@ -34,8 +35,9 @@ function readPid(link: Element): number | null {
 }
 
 /**
- * Hides the pager links that lead past `lastPid`, and the "next" link on the
- * last page itself. Returns how many links it hid.
+ * Hides the pager links that lead past `lastPid`, points "last page" at the
+ * real last page, and hides "next" and "last page" on that page itself.
+ * Returns how many links it hid.
  */
 export function trimFavoritesPager(
   root: ParentNode,
@@ -48,9 +50,23 @@ export function trimFavoritesPager(
       continue;
     }
     const pid = readPid(link);
+    const name = link.getAttribute("name");
+    const onLastPage = currentPid >= lastPid;
+    if (name === LASTPAGE_NAME && !onLastPage) {
+      // Still wanted: it only has to lead to the page that exists.
+      if (pid !== null && pid > lastPid) {
+        link.setAttribute(
+          "onclick",
+          (link.getAttribute("onclick") ?? "").replace(ONCLICK_PID_PATTERN, (match) =>
+            match.replace(String(pid), String(lastPid)),
+          ),
+        );
+      }
+      continue;
+    }
     const past = pid !== null && pid > lastPid;
-    const uselessNext = link.getAttribute("name") === NEXT_NAME && currentPid >= lastPid;
-    if (past || uselessNext) {
+    const uselessEnd = (name === NEXT_NAME || name === LASTPAGE_NAME) && onLastPage;
+    if (past || uselessEnd) {
       link.style.display = DISPLAY_NONE;
       hidden += 1;
     }

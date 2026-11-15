@@ -10,7 +10,13 @@ import {
 import { ensureThumbAnchor } from "../site/thumb";
 import { CollectionPicker } from "../ui/collection-picker";
 import { KIT_ICON_BUTTON_CLASS } from "../ui/fav-button";
-import { THUMB_CLASS, featureBodyClass, type Feature, type FeatureContext } from "./types";
+import {
+  FAVORITE_IMAGE_ANCHOR_NAME,
+  THUMB_CLASS,
+  featureBodyClass,
+  type Feature,
+  type FeatureContext,
+} from "./types";
 import { onThumbsAdded } from "./runtime";
 
 const FEATURE_ID = "playlist-menu";
@@ -54,7 +60,7 @@ const BODY_SELECTOR = `body.${BODY_CLASS}`;
 /*
  * On Favorites the button sits where it does on Posts: in the top right
  * corner, under the first button (there the star, here the bin of Remove).
- * A favorites thumb is exactly as large as its picture, so plain offsets do.
+ * It is placed against the picture by the anchor of the favorites cell.
  * The button is out of the way while posts are being selected.
  */
 const FEATURE_CSS = `
@@ -86,8 +92,7 @@ ${BODY_SELECTOR} .${CLASS_ADD} {
   opacity: 0;
 }
 ${BODY_SELECTOR} ${FAVORITE_THUMB_SELECTOR} > .${CLASS_ADD} {
-  top: ${String(BUTTON_BELOW_FAV_TOP_PX)}px;
-  right: ${String(BUTTON_OFFSET_PX)}px;
+  position-anchor: ${FAVORITE_IMAGE_ANCHOR_NAME};
 }
 ${BODY_SELECTOR}.${FAVORITES_SELECTING_BODY_CLASS} ${FAVORITE_THUMB_SELECTOR} > .${CLASS_ADD} {
   display: none;

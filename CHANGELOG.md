@@ -2,6 +2,12 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.32.4
+
+- Favorites: the grid looks as on Posts again: a square cell with the picture in its middle. The bin and "+" sit in the top right corner of the picture itself
+- Favorites: the bin removes a post in place on the ordinary page too, without reloading it and jumping to the top
+- Favorites: the pager keeps its "last page" button, and it now leads to the real last page
+
 ## 0.32.3
 
 - Infinite scroll: after two pages in a row that add nothing to the screen (all their posts hidden, or repeats), loading pauses and shows "Load more" instead of walking the whole search by itself. Each press loads one more page

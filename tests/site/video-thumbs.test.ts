@@ -99,18 +99,14 @@ describe("favorites video marks", () => {
   });
 
   it("keeps the shape of a favorites picture and turns Remove into a bin button", () => {
-    expect(SITE_SKIN_CSS).toContain(
-      "div.image-list > span > span.thumb {\n  position: relative;\n  display: block;\n  width: fit-content;\n  height: auto;",
-    );
-    expect(SITE_SKIN_CSS).not.toContain("object-fit: cover;\n}\n\nhtml.rdw-skin div.image-list > span > span.thumb > video");
+    // The cell keeps the site's own size: no width or height of ours.
+    expect(SITE_SKIN_CSS).not.toContain("width: fit-content");
     const at = SITE_SKIN_CSS.indexOf("div.image-list > span > a[onclick] {\n    position: absolute");
     const rule = SITE_SKIN_CSS.slice(at, SITE_SKIN_CSS.indexOf("}", at));
     expect(rule).toContain("width: 28px");
     expect(rule).toContain("font-size: 0");
     expect(SITE_SKIN_CSS).toContain("a[onclick]::before {");
-    expect(playlistMenuFeature.css).toContain(
-      "div.image-list > span > span.thumb > .rdw-playlist-add {\n  top: 38px;\n  right: 6px;",
-    );
+    expect(playlistMenuFeature.css).toContain("position-anchor: --rdw-fav-img;");
     expect(favoritesCountLabel(11962)).toBe("11,962 posts");
     expect(favoritesCountLabel(1)).toBe("1 post");
     expect(favoritesCountLabel(0)).toBe("");
