@@ -55,6 +55,7 @@ const EVENT_PAGESHOW = "pageshow";
 
 const PAGE_CLASS = "rdw-following-page";
 const ADD_FORM_CLASS = "rdw-following-add";
+const STICKY_CLASS = "rdw-following-sticky";
 const TOOLBAR_CLASS = "rdw-following-toolbar";
 const FILTER_CLASS = "rdw-following-filter";
 const META_CLASS = "rdw-following-meta";
@@ -136,6 +137,8 @@ const SORT_OPTIONS: readonly SelectOption[] = [
   { value: SORT_ADDED, label: "Recently followed" },
 ];
 
+import { ARTIST_TERM_SEPARATOR, filterTerms, matchesAnyTerm } from "./filter-terms";
+
 export const FOLLOWING_PAGE_CSS = `
 .${PAGE_CLASS} {
   display: flex;
@@ -172,12 +175,31 @@ export const FOLLOWING_PAGE_CSS = `
   }
 }
 .${TOOLBAR_CLASS} .${FILTER_CLASS} {
-  flex: 0 1 ${String(FILTER_FIELD_WIDTH_PX)}px;
+  flex: 0 1 auto;
   min-width: 0;
+  max-width: 100%;
   margin: 0;
 }
-/* Stays at the top of the window while the list scrolls under it. */
-.${TOOLBAR_CLASS} {
+/* Starts short and grows with what is typed, up to the row. */
+.${FILTER_CLASS} .rdw-field__input {
+  field-sizing: content;
+  width: ${String(FILTER_FIELD_WIDTH_PX)}px;
+  min-width: ${String(FILTER_FIELD_WIDTH_PX)}px;
+  max-width: 100%;
+}
+@supports (field-sizing: content) {
+  .${FILTER_CLASS} .rdw-field__input {
+    width: auto;
+  }
+}
+/*
+ * The Add row and the filter row stay at the top of the window while the
+ * list scrolls under them.
+ */
+.${STICKY_CLASS} {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   position: sticky;
   top: 0;
   z-index: ${String(TOOLBAR_Z_INDEX)};
@@ -618,18 +640,12 @@ export function FollowingPage(): JSX.Element {
 
   const seen = getSeenPostId();
   const now = Date.now();
-  const needle = filter.trim().toLowerCase();
+  const terms = filterTerms(filter, ARTIST_TERM_SEPARATOR);
   const matches = (artist: ArtistEntry): boolean => {
     if (show === SHOW_NEW && !artistHasNew(artist, seen)) {
       return false;
     }
-    if (needle.length === 0) {
-      return true;
-    }
-    return (
-      artist.tag.toLowerCase().includes(needle) ||
-      displayArtistName(artist.tag).toLowerCase().includes(needle)
-    );
+    return matchesAnyTerm([artist.tag], terms);
   };
   const visible = sortArtists(artists, sort).filter(matches);
   // Only cards on screen count: a filter never hides a card that is acted on.
@@ -701,9 +717,7 @@ export function FollowingPage(): JSX.Element {
     });
   };
 
-  return (
-    <div className={PAGE_CLASS}>
-      <style>{FOLLOWING_PAGE_CSS}</style>
+  const addForm = (
       <AddArtistForm
         draft={draft}
         error={addError}
@@ -729,6 +743,12 @@ export function FollowingPage(): JSX.Element {
         }}
         onSubmit={onAdd}
       />
+  );
+
+  return (
+    <div className={PAGE_CLASS}>
+      <style>{FOLLOWING_PAGE_CSS}</style>
+      {empty ? addForm : null}
 
       {empty ? (
         <EmptyState
@@ -747,6 +767,8 @@ export function FollowingPage(): JSX.Element {
         />
       ) : (
         <>
+          <div className={STICKY_CLASS}>
+          {addForm}
           <div className={TOOLBAR_CLASS}>
             <Segmented
               label={SHOW_LABEL}
@@ -825,6 +847,7 @@ export function FollowingPage(): JSX.Element {
                 </Button>
               </>
             )}
+          </div>
           </div>
 
           <p className={META_CLASS}>

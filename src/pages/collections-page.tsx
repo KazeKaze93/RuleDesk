@@ -79,8 +79,8 @@ const QUERY_FIELD_LABEL = "Query";
 const QUERY_PLACEHOLDER = "tag -tag ( a ~ b )";
 const TYPE_SEGMENTED_LABEL = "Show";
 const KIND_SEGMENTED_LABEL = "Collection kind";
-const FILTER_ARIA_LABEL = "Filter by name";
-const FILTER_PLACEHOLDER = "Filter by name";
+const FILTER_ARIA_LABEL = "Filter by name; several names separated by commas";
+const FILTER_PLACEHOLDER = "Filter by name, name…";
 const GRID_LABEL = "Collections";
 const BADGE_CUSTOM = "Custom";
 const BADGE_DYNAMIC = "Dynamic";
@@ -143,6 +143,8 @@ const NEW_KIND_OPTIONS: readonly SegmentedOption[] = [
 type ListFilter = typeof FILTER_ALL | typeof FILTER_CUSTOM | typeof FILTER_DYNAMIC;
 type NewKind = typeof KIND_CUSTOM | typeof KIND_DYNAMIC;
 
+import { COLLECTION_TERM_SEPARATOR, filterTerms, matchesAnyTerm } from "./filter-terms";
+
 export const COLLECTIONS_PAGE_CSS = `
 .${PAGE_CLASS} {
   display: flex;
@@ -161,9 +163,22 @@ export const COLLECTIONS_PAGE_CSS = `
   gap: ${String(TOOLBAR_GAP_PX)}px;
 }
 .${TOOLBAR_CLASS} .${FILTER_FIELD_CLASS} {
-  flex: 0 1 ${String(FILTER_FIELD_WIDTH_PX)}px;
+  flex: 0 1 auto;
   min-width: 0;
+  max-width: 100%;
   margin: 0;
+}
+/* Starts short and grows with what is typed, up to the row. */
+.${FILTER_FIELD_CLASS} .rdw-field__input {
+  field-sizing: content;
+  width: ${String(FILTER_FIELD_WIDTH_PX)}px;
+  min-width: ${String(FILTER_FIELD_WIDTH_PX)}px;
+  max-width: 100%;
+}
+@supports (field-sizing: content) {
+  .${FILTER_FIELD_CLASS} .rdw-field__input {
+    width: auto;
+  }
 }
 /* Stays at the top of the window while the list scrolls under it. */
 .${HEADER_CLASS} {
@@ -328,11 +343,7 @@ function nameError(
 }
 
 function nameMatchesFilter(name: string, query: string): boolean {
-  const needle = query.trim().toLowerCase();
-  if (needle.length === 0) {
-    return true;
-  }
-  return name.toLowerCase().includes(needle);
+  return matchesAnyTerm([name], filterTerms(query, COLLECTION_TERM_SEPARATOR));
 }
 
 function visibleCollections(

@@ -2,6 +2,12 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.27.1
+
+- Fixed: following an artist with the Follow button in the tag sidebar erased the cover, the post count and the newest post of every artist already followed. They are kept now. Covers lost before come back with Refresh on the Following page
+- Following: the "Artist tags" row stays at the top of the window together with the filter row
+- Following and Collections: the filter takes several names at once (artists: separated by spaces or commas; collections: by commas) and shows whatever matches any of them. The filter field grows as you type
+
 ## 0.27.0
 
 The site's Comments page:

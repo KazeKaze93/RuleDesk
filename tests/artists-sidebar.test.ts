@@ -119,6 +119,35 @@ describe("mountArtistSidebar", () => {
     ]);
   });
 
+  it("keeps what is stored about the artists already followed when another is followed", () => {
+    const data = createDefaultStorage();
+    data.artists = [
+      {
+        tag: "already",
+        addedAt: 1000,
+        cover: ["https://wimg.rule34.xxx/thumbnails/1/thumbnail_a.jpg?5"],
+        postCount: { value: 260, exact: true },
+        lastPostId: 5,
+        lastPostSince: 2000,
+      },
+    ];
+    save(data);
+
+    document.body.innerHTML = listSidebarMarkup();
+    mountArtistSidebar(document, "?page=post&s=list&tags=cat");
+    const button = document.querySelector(`button.${CSS_CLASS.artistFollow}`);
+    button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+    const stored = load().artists;
+    expect(stored[0]).toEqual(data.artists[0]);
+    expect(stored[1]?.tag).toBe("nyx_x");
+    expect(typeof stored[1]?.addedAt).toBe("number");
+
+    // Unfollowing the new one leaves the first untouched as well.
+    button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(load().artists).toEqual(data.artists);
+  });
+
   it("marks Following when the artist is only present in the mirror", () => {
     writeArtistsMirror(["nyx_x"]);
     document.body.innerHTML = postSidebarMarkup();

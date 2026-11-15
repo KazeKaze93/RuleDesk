@@ -98,9 +98,16 @@ function readMergedArtistTags(): string[] {
   return merged;
 }
 
+/**
+ * Writes the followed list. An artist already followed keeps everything
+ * stored about them (cover, post count, newest post, follow date); only a
+ * new one starts as a bare entry.
+ */
 function persistArtistTags(tags: readonly string[]): void {
   const data = reloadFromStorage();
-  data.artists = tags.map((tag) => ({ tag }));
+  const stored = new Map(data.artists.map((entry) => [entry.tag, entry]));
+  const now = Date.now();
+  data.artists = tags.map((tag) => stored.get(tag) ?? { tag, addedAt: now });
   save(data);
   writeArtistsMirror(tags);
 }

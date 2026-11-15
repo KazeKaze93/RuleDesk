@@ -99,7 +99,7 @@ export const PANEL_UI_CLASS = {
 export const ARTISTS_EMPTY_TITLE = "No followed artists yet";
 export const ARTISTS_EMPTY_HINT =
   "Follow artists with the Follow button next to their name in the tag list.";
-export const ARTIST_FILTER_LABEL = "Filter artists";
+export const ARTIST_FILTER_LABEL = "Filter artists (several: space or comma)";
 export const FEATURE_CHECKBOX_ID_PREFIX = "rdw-feature-";
 export const FEATURE_CHOICE_ID_PREFIX = "rdw-feature-choice-";
 export const UPDATES_GROUP_SIZE_ID = "rdw-updates-group-size";
