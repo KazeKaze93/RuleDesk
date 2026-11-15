@@ -29,7 +29,7 @@ function buildHeader(withFavorites: boolean): void {
 function menuLabels(): string[] {
   return [...document.querySelectorAll("#navbar > li")]
     .filter((item) => !(item instanceof HTMLElement && item.hidden))
-    .map((item) => item.textContent?.trim() ?? "");
+    .map((item) => item.querySelector(":scope > a, :scope > button")?.textContent?.trim() ?? "");
 }
 
 describe("menu skeleton", () => {
@@ -53,9 +53,26 @@ describe("menu skeleton", () => {
       "Following",
       "Favorites",
       "Statistics",
-      "Comments",
+      "More",
       "RuleDesk",
     ]);
+    // The rare sections sit inside "More", closed until it is pressed.
+    const more = document.getElementById("rdw-nav-more");
+    const list = more?.querySelector("ul");
+    expect([...(list?.children ?? [])].map((item) => item.textContent?.trim())).toEqual([
+      "Comments",
+    ]);
+    expect(list?.hidden).toBe(true);
+    more?.querySelector("button")?.click();
+    expect(list?.hidden).toBe(false);
+    expect(more?.querySelector("button")?.getAttribute("aria-expanded")).toBe("true");
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    expect(list?.hidden).toBe(true);
+    // Statistics, My Account and RuleDesk are icons with the label as a tooltip.
+    expect(document.querySelector("li.rdw-nav-account > a")?.getAttribute("title")).toBe(
+      "My Account",
+    );
+    expect(document.querySelectorAll("#navbar > li.rdw-nav-icon")).toHaveLength(3);
     const favorites = document.querySelector("#rdw-nav-favorites a");
     expect(favorites?.getAttribute("href")).toBe("/index.php?page=favorites&s=view&id=77");
   });
@@ -81,9 +98,42 @@ describe("menu skeleton", () => {
       "Posts",
       "Collections",
       "Following",
-      "Comments",
+      "More",
       "RuleDesk",
     ]);
+  });
+
+  it("marks the links of the second row on Posts and makes the uploads buttons", () => {
+    buildHeader(false);
+    document
+      .getElementById("header")
+      ?.insertAdjacentHTML(
+        "beforeend",
+        '<ul id="subnavbar" class="flat-list"><li><a href="#">Video</a></li><li><a href="#">Upload</a></li><li><a href="#">Upload Video</a></li><li><a href="#">Random</a></li><li><a href="#">Edit</a></li></ul>',
+      );
+    installMenuSkeleton(LAYOUT);
+    const classes = [...document.querySelectorAll("#subnavbar > li")].map((item) => item.className);
+    expect(classes).toEqual([
+      "rdw-subnav-video",
+      "rdw-subnav-upload rdw-subnav-action",
+      "rdw-subnav-upload-video rdw-subnav-action",
+      "rdw-subnav-random",
+      "",
+    ]);
+  });
+
+  it("makes the header sticky only when the setting is on", () => {
+    buildHeader(false);
+    installMenuSkeleton(LAYOUT);
+    expect(document.documentElement.classList.contains("rdw-sticky-header")).toBe(false);
+    installMenuSkeleton({
+      tweaksEnabled: true,
+      features: { "sticky-header": true },
+      featureChoice: {},
+    });
+    expect(document.documentElement.classList.contains("rdw-sticky-header")).toBe(true);
+    document.documentElement.className = "";
+    document.documentElement.removeAttribute("style");
   });
 
   it("hides the site's Filter AI row before the panel mounts", () => {

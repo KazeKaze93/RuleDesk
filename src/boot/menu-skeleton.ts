@@ -20,6 +20,8 @@ import {
   STATS_MENU_SETTING_ID,
 } from "../pages/constants";
 import { resolveFeatureEnabled, type BootLayoutSettings } from "./cheap-appearance";
+import { applyHeaderLayout } from "./header-layout";
+import { STICKY_HEADER_SETTING_ID, applyStickyHeader } from "./sticky-header";
 
 /**
  * Puts the script's items into the site menu as soon as the menu is parsed,
@@ -128,6 +130,10 @@ export function installMenuSkeleton(layout: BootLayoutSettings): boolean {
   }
   if (document.getElementById(MENU_ITEM_ID.settings) === null) {
     navbar.append(makeItem(MENU_ITEM_ID.settings, MENU_LABEL.settings, RDW_HASH_SETTINGS));
+  }
+  applyHeaderLayout(navbar);
+  if (layout.features[STICKY_HEADER_SETTING_ID] === true) {
+    applyStickyHeader(true);
   }
   return true;
 }

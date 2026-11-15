@@ -47,6 +47,12 @@ import {
 import { DataSection } from "./data-section";
 import { DownloadsSection } from "./downloads-section";
 import { FavoritesSyncSection } from "./favorites-sync-section";
+import {
+  STICKY_HEADER_SETTING_ID,
+  STICKY_HEADER_SETTING_LABEL,
+  STICKY_HEADER_SWITCH_ID,
+  applyStickyHeader,
+} from "../boot/sticky-header";
 import { installSiteMenu } from "./menu";
 
 /** Grid density is owned by Appearance; omit from Page module list. */
@@ -253,6 +259,10 @@ export function SettingsPage(): JSX.Element {
     getFeatureEnabled(STATS_MENU_SETTING_ID, true),
   );
 
+  const [stickyHeader, setStickyHeader] = useState(() =>
+    getFeatureEnabled(STICKY_HEADER_SETTING_ID, false),
+  );
+
   const [collapsed, setCollapsed] = useState<string[]>(() =>
     readCollapsedSections(),
   );
@@ -302,6 +312,18 @@ export function SettingsPage(): JSX.Element {
                 setStatsMenu(checked);
                 // The menu is on this very page: add or remove the item at once.
                 installSiteMenu();
+              }}
+            />
+          </div>
+          <div className={PANEL_UI_CLASS.settingsRow}>
+            <Switch
+              id={STICKY_HEADER_SWITCH_ID}
+              label={STICKY_HEADER_SETTING_LABEL}
+              checked={stickyHeader}
+              onChange={(checked) => {
+                setFeatureEnabled(STICKY_HEADER_SETTING_ID, checked);
+                setStickyHeader(checked);
+                applyStickyHeader(checked);
               }}
             />
           </div>

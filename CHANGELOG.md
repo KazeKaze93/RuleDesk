@@ -2,6 +2,14 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.33.0
+
+The header, redrawn:
+
+- Three zones. On the left what is used all the time: Posts, Feed, Collections, Following, Favorites. Then a "More" menu with the site's rarely used sections: Comments, Wiki, Aliases, Artists, Tags, Pools, Forum, Help. On the right Statistics, My Account and RuleDesk as icons; point at one for its name
+- The second row on Posts: Video, Random and Help get icons, and Upload and Upload Video become buttons on the right
+- New setting in RuleDesk → Page: "Keep the header at the top while scrolling". Off by default
+
 ## 0.32.7
 
 - Fixed: on a pool page every thumbnail shrank into a small bin button and they piled up in one place. The styles of the Favorites bin also matched the links of pool thumbnails; they are now limited to the Favorites page

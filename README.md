@@ -13,7 +13,7 @@ A userscript for `rule34.xxx` that adds a feed of followed artists, collections,
 
 ## What it adds
 
-New items appear in the site's header menu: **Feed**, **Collections**, **Following**, **Favorites**, **Statistics** and **RuleDesk** (settings).
+New items appear in the site's header menu: **Feed**, **Collections**, **Following**, **Favorites**, **Statistics** and **RuleDesk** (settings). The menu is laid out in three zones: the sections used most on the left, the site's other sections under **More**, and Statistics, My Account and RuleDesk as icons on the right.
 
 ### Feed
 

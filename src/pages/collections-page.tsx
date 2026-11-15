@@ -1,3 +1,4 @@
+import { STICKY_TOP } from "../boot/sticky-header";
 import type { ComponentChildren, JSX } from "preact";
 import { render as preactRender } from "preact";
 import { useCallback, useEffect, useState } from "preact/hooks";
@@ -195,7 +196,7 @@ export const COLLECTIONS_PAGE_CSS = `
 /* Stays at the top of the window while the list scrolls under it. */
 .${HEADER_CLASS} {
   position: sticky;
-  top: 0;
+  top: ${STICKY_TOP};
   z-index: ${String(TOOLBAR_Z_INDEX)};
   padding-block: 8px;
   margin: -8px 0;

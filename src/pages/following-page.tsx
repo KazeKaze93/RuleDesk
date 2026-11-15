@@ -1,3 +1,4 @@
+import { STICKY_TOP } from "../boot/sticky-header";
 import type { JSX } from "preact";
 import { render as preactRender } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
@@ -204,7 +205,7 @@ export const FOLLOWING_PAGE_CSS = `
   flex-direction: column;
   gap: 12px;
   position: sticky;
-  top: 0;
+  top: ${STICKY_TOP};
   z-index: ${String(TOOLBAR_Z_INDEX)};
   padding-block: 8px;
   margin: -8px 0;

@@ -1,3 +1,4 @@
+import { applyHeaderLayout } from "../boot/header-layout";
 import {
   FAVORITES_PAGE,
   FAVORITES_SECTION_VIEW,
@@ -248,6 +249,8 @@ export function installSiteMenu(): void {
   if (settings.parentElement !== navbar || navbar.lastElementChild !== settings) {
     navbar.append(settings);
   }
+  // Items added here (Favorites, Statistics) join the header layout.
+  applyHeaderLayout(navbar);
 }
 
 function menuItemIdForRoute(route: RdwRoute): string {

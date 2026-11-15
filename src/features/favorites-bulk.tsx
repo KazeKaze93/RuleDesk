@@ -1,3 +1,4 @@
+import { STICKY_TOP } from "../boot/sticky-header";
 import { render } from "preact";
 import type { JSX } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
@@ -105,7 +106,7 @@ body.${BODY_CLASS} .${ROOT_CLASS} {
   flex: 0 0 100%;
   grid-column: 1 / -1;
   position: sticky;
-  top: 0;
+  top: ${STICKY_TOP};
   z-index: ${String(HEADER_Z_INDEX)};
   background: var(--rdw-bg);
 }
