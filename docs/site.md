@@ -88,6 +88,7 @@ The script works on the site's own HTML. This file holds what is known about it.
 
 | Limit | Effect in the script |
 |---|---|
+| A page that adds nothing to the screen | Infinite scroll pauses after two such pages in a row and waits for "Load more" (`MAX_STALLED_LOADS` in `infinite-scroll.ts`); otherwise it would ask for page after page |
 | Rate limiting (429) | Requests are spaced; Refresh and favorites sync stop at the first error. Even the site's own "I came" got 429 on a third quick click |
 | No total in the pager | A dynamic collection of several tags shows a lower bound ("12,516+ posts"): the offset of the last page, up to 41 posts short. A single tag takes the exact number from `span.tag-count` |
 | No post date in the grid | Following shows when the script first saw an artist's newest post, not when it was posted |

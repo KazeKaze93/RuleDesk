@@ -26,6 +26,10 @@ const TEXT_LOADING = "Loading…";
 const TEXT_END = "End of results";
 const TEXT_ERROR = "Failed to load more";
 const TEXT_RETRY = "Retry";
+const TEXT_STALLED = "Paused: the last pages added nothing to the screen";
+const TEXT_LOAD_MORE = "Load more";
+/** Pages in a row that may add nothing to the screen before loading waits for the user. */
+export const MAX_STALLED_LOADS = 2;
 const PAGE_LABEL_PREFIX = "Page ";
 
 const PAGINATION_NEXT_SELECTOR = 'div.pagination a[alt="next"]';
@@ -172,6 +176,12 @@ function createSeparator(pageNumber: number): HTMLElement {
   return separator;
 }
 
+type BatchResult = {
+  readonly nextUrl: string | null;
+  /** How many thumbs of the page were new and went into the list. */
+  readonly added: number;
+};
+
 type ScrollUi = {
   sentinel: HTMLElement;
   status: HTMLElement;
@@ -214,6 +224,27 @@ function setStatusError(status: HTMLElement, onRetry: () => void): void {
     onRetry();
   });
   status.append(message, retry);
+}
+
+/** Shown when loading was paused because the pages add nothing to the screen. */
+function setStatusStalled(status: HTMLElement, onContinue: () => void): void {
+  status.replaceChildren();
+  const message = document.createElement("span");
+  message.textContent = TEXT_STALLED;
+  const more = document.createElement("button");
+  more.type = "button";
+  more.className = CLASS_RETRY;
+  more.textContent = TEXT_LOAD_MORE;
+  more.addEventListener("click", (event: Event) => {
+    event.preventDefault();
+    onContinue();
+  });
+  status.append(message, more);
+}
+
+/** Height of the whole page; 0 where there is no layout to measure. */
+function pageHeight(): number {
+  return document.documentElement.scrollHeight;
 }
 
 function clearStatus(status: HTMLElement): void {
@@ -259,6 +290,7 @@ function mountInfiniteScroll(_ctx: FeatureContext): void {
   let lastRequestAt = 0;
   let pageNumber = 1;
   let ended = false;
+  let stalledLoads = 0;
   let observer: IntersectionObserver | null = null;
 
   const finish = (): void => {
@@ -271,8 +303,9 @@ function mountInfiniteScroll(_ctx: FeatureContext): void {
     }
   };
 
-  const appendBatch = async (requestUrl: string): Promise<string | null> => {
+  const appendBatch = async (requestUrl: string): Promise<BatchResult> => {
     const result = await fetchNextPage(requestUrl);
+    let added = 0;
     pageNumber += 1;
     imageList.append(createSeparator(pageNumber));
 
@@ -289,13 +322,18 @@ function mountInfiniteScroll(_ctx: FeatureContext): void {
       }
       applyBlacklist(node, blacklist);
       imageList.append(node);
+      added += 1;
     }
 
     notifyThumbsAdded(imageList);
-    return result.nextUrl;
+    return { nextUrl: result.nextUrl, added };
   };
 
-  const loadMore = async (options?: { bypassRateLimit?: boolean }): Promise<void> => {
+  const loadMore = async (options?: {
+    bypassRateLimit?: boolean;
+    /** Load one page and stop, whatever it adds: the user asked for it. */
+    single?: boolean;
+  }): Promise<void> => {
     if (ended || inFlight || nextUrl === null) {
       return;
     }
@@ -303,7 +341,11 @@ function mountInfiniteScroll(_ctx: FeatureContext): void {
     let bypassRateLimit = options?.bypassRateLimit === true;
 
     try {
-      while (!ended && nextUrl !== null && isSentinelNear(sentinel)) {
+      while (
+        !ended &&
+        nextUrl !== null &&
+        (options?.single === true || isSentinelNear(sentinel))
+      ) {
         const elapsed = Date.now() - lastRequestAt;
         if (
           !bypassRateLimit &&
@@ -320,11 +362,30 @@ function mountInfiniteScroll(_ctx: FeatureContext): void {
         setStatusLoading(status);
 
         try {
-          const fetchedNext = await appendBatch(requestUrl);
-          nextUrl = fetchedNext;
+          const heightBefore = pageHeight();
+          const batch = await appendBatch(requestUrl);
+          nextUrl = batch.nextUrl;
           clearStatus(status);
           if (nextUrl === null) {
             finish();
+            return;
+          }
+          // A page that put nothing on the screen (all its posts hidden, or
+          // repeats) leaves the sentinel where it was, and the loop would go
+          // on to the next page at once. A few of those in a row and loading
+          // waits for the user instead of walking the whole search.
+          const grew = heightBefore === 0 || pageHeight() > heightBefore;
+          const useful = batch.added > 0 && grew;
+          stalledLoads = useful ? 0 : stalledLoads + 1;
+          const single = options?.single === true;
+          if (stalledLoads >= MAX_STALLED_LOADS || (single && !useful)) {
+            stalledLoads = 0;
+            setStatusStalled(status, () => {
+              void loadMore({ bypassRateLimit: true, single: true });
+            });
+            return;
+          }
+          if (single) {
             return;
           }
         } catch (error) {

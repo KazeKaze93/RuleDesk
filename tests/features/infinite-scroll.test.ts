@@ -372,6 +372,58 @@ describe("infiniteScrollFeature", () => {
     expect(notifyThumbsAddedMock).toHaveBeenCalledWith(imageList);
   });
 
+  it("pauses after two pages in a row that add nothing to the screen", async () => {
+    const { imageList } = buildListPage();
+    // A page with layout whose height never grows: every new thumb is hidden.
+    Object.defineProperty(document.documentElement, "scrollHeight", {
+      configurable: true,
+      value: 1000,
+    });
+    const next = (pid: number): string => `?page=post&s=list&tags=test&pid=${String(pid)}`;
+    mockFetchSequence([
+      { body: pageHtml([buildThumbHtml("s201", "a", 1, "s")], next(84)) },
+      { body: pageHtml([buildThumbHtml("s202", "a", 1, "s")], next(126)) },
+      { body: pageHtml([buildThumbHtml("s203", "a", 1, "s")], next(168)) },
+      { body: pageHtml([buildThumbHtml("s204", "a", 1, "s")], next(210)) },
+      { body: pageHtml([buildThumbHtml("s205", "a", 1, "s")], next(252)) },
+      { body: pageHtml([buildThumbHtml("s206", "a", 1, "s")], next(294)) },
+    ]);
+
+    try {
+      infiniteScrollFeature.mount(makeCtx());
+      await triggerIntersect();
+      await vi.waitFor(
+        () => {
+          expect(document.body.textContent).toContain("Paused");
+        },
+        { timeout: 4000, interval: 10 },
+      );
+      // Two pages went into this list, not the whole search. (The pages are
+      // counted in the list: a loop left by an earlier test may take a reply.)
+      expect(imageList.querySelectorAll(".rdw-infinite-page")).toHaveLength(2);
+
+      const more = Array.from(document.querySelectorAll("button")).find(
+        (button) => button.textContent === "Load more",
+      );
+      if (more === undefined) {
+        throw new Error("no Load more button");
+      }
+      more.click();
+      await vi.waitFor(
+        () => {
+          expect(imageList.querySelectorAll(".rdw-infinite-page")).toHaveLength(3);
+        },
+        { timeout: 4000, interval: 10 },
+      );
+      // One page per click, and it waits again.
+      await flushMicrotasks();
+      expect(imageList.querySelectorAll(".rdw-infinite-page")).toHaveLength(3);
+      expect(document.body.textContent).toContain("Paused");
+    } finally {
+      Reflect.deleteProperty(document.documentElement, "scrollHeight");
+    }
+  });
+
   it("skips thumbs whose id already exists on the page", async () => {
     const { imageList } = buildListPage({ initialThumbIds: ["s100", "s200"] });
     mockFetchSequence([

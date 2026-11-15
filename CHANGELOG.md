@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.32.3
+
+- Infinite scroll: after two pages in a row that add nothing to the screen (all their posts hidden, or repeats), loading pauses and shows "Load more" instead of walking the whole search by itself. Each press loads one more page
+
 ## 0.32.2
 
 - Fixed: since 0.32.0 the Posts page showed no thumbnails, and with infinite scroll on it kept loading page after page. A style rule meant for emptied Favorites cells also matched every thumbnail of a search page
