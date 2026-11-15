@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   canDownload,
+  cleanBaseFolder,
   downloadFile,
   downloadFileName,
   downloadFolder,
@@ -22,13 +23,18 @@ describe("download", () => {
     expect(downloadFileName("https://example.test/file", 7)).toBe("rule34-7.jpg");
   });
 
-  it("makes a folder name out of a collection name or a query", () => {
-    expect(downloadFolder("My pics")).toBe("RuleDesk/My pics");
-    expect(downloadFolder('( a ~ b ) score:>=10 "x" / y')).toBe(
-      "RuleDesk/( a ~ b ) score =10 x y",
-    );
-    expect(downloadFolder("  ...  ")).toBe("RuleDesk/downloads");
-    expect(downloadFolder("x".repeat(200)).length).toBe("RuleDesk/".length + 60);
+  it("puts a job into a folder named after it, with no fixed root", () => {
+    expect(downloadFolder("My pics")).toBe("My pics");
+    expect(downloadFolder('( a ~ b ) score:>=10 "x" / y')).toBe("( a ~ b ) score =10 x y");
+    expect(downloadFolder("  ...  ")).toBe("downloads");
+    expect(downloadFolder("x".repeat(200)).length).toBe(60);
+  });
+
+  it("puts the job folder under the base folder the user chose", () => {
+    expect(downloadFolder("My pics", "art/rule34")).toBe("art/rule34/My pics");
+    expect(downloadFolder("My pics", "  ")).toBe("My pics");
+    expect(cleanBaseFolder("\\art\\ rule34 //../a:b/")).toBe("art/rule34/a b");
+    expect(cleanBaseFolder("C:\\Users\\me")).toBe("C/Users/me");
   });
 
   it("knows when the script manager has no download function", () => {

@@ -2,6 +2,11 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.24.5
+
+- Downloads no longer go into a fixed `RuleDesk` folder: each download gets a folder named after the collection or the search, directly in the browser's download folder
+- **Download folder** in RuleDesk → Downloads: a folder inside the browser's download folder (for example `art/rule34`) under which downloads are put. The choice is remembered
+
 ## 0.24.4
 
 - **Faster on a large library.** The modules of a page now share one read of the stored data instead of each reading it again, and a write no longer validates the data twice. Measured on 20,000 seen posts and 300 artists: a results page went from 310 ms of storage work to 50 ms

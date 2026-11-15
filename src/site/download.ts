@@ -9,7 +9,6 @@ const DEFAULT_EXTENSION = "jpg";
 const EXTENSION_PATTERN = /\.([a-z0-9]{2,5})$/i;
 const UNKNOWN_ERROR = "unknown error";
 const TIMEOUT_ERROR = "timeout";
-const FOLDER_ROOT = "RuleDesk";
 const FOLDER_FALLBACK = "downloads";
 const FOLDER_MAX_LENGTH = 60;
 /** Characters a file system does not take in a folder name. */
@@ -29,14 +28,39 @@ export function downloadFileName(url: string, postId: number): string {
   return `${FILE_PREFIX}${String(postId)}.${extension}`;
 }
 
-/** `RuleDesk/<label>` with the label made safe for a folder name. */
-export function downloadFolder(label: string): string {
-  const safe = label
+const PATH_SEPARATOR = /[\\/]+/;
+
+function safeFolderName(name: string): string {
+  return name
     .replace(FOLDER_FORBIDDEN, " ")
     .replace(FOLDER_SPACES, " ")
     .slice(0, FOLDER_MAX_LENGTH)
     .replace(FOLDER_EDGE, "");
-  return `${FOLDER_ROOT}/${safe.length > 0 ? safe : FOLDER_FALLBACK}`;
+}
+
+/**
+ * A folder path the user typed, made safe: each part cleaned, empty parts and
+ * `.` / `..` dropped. The script manager saves only inside the browser's own
+ * download folder, so the path is always relative to it.
+ */
+export function cleanBaseFolder(base: string): string {
+  return base
+    .split(PATH_SEPARATOR)
+    .map(safeFolderName)
+    .filter((part) => part.length > 0)
+    .join("/");
+}
+
+/**
+ * Where a job's files go, relative to the browser's download folder:
+ * `<base>/<label>`, or just `<label>` without a base. The label (a collection
+ * name or a search) is made safe for a folder name.
+ */
+export function downloadFolder(label: string, base = ""): string {
+  const safe = safeFolderName(label);
+  const folder = safe.length > 0 ? safe : FOLDER_FALLBACK;
+  const cleanBase = cleanBaseFolder(base);
+  return cleanBase.length > 0 ? `${cleanBase}/${folder}` : folder;
 }
 
 /** False when the script manager gives no download function. */

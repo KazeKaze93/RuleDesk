@@ -20,6 +20,10 @@ import {
   getApiCredentials,
   setApiCredentials,
 } from "../../src/storage/api-credentials";
+import {
+  getDownloadBaseFolder,
+  setDownloadBaseFolder,
+} from "../../src/storage/download-settings";
 import { clearStorageCache } from "../../src/storage/store";
 
 const memory = new Map<string, unknown>();
@@ -115,9 +119,9 @@ describe("download manager", () => {
     await run;
 
     expect(names).toEqual([
-      "RuleDesk/My pics/rule34-3.png",
-      "RuleDesk/My pics/rule34-2.png",
-      "RuleDesk/My pics/rule34-1.png",
+      "My pics/rule34-3.png",
+      "My pics/rule34-2.png",
+      "My pics/rule34-1.png",
     ]);
     expect(getDownloadState()).toMatchObject({
       phase: "done",
@@ -129,6 +133,20 @@ describe("download manager", () => {
     expect(memory.get(DOWNLOADS_JOB_KEY)).toBeNull();
   });
 
+  it("saves under the folder chosen in settings and remembers the choice", async () => {
+    setApiCredentials("42", "key");
+    expect(setDownloadBaseFolder(" art//rule34/ ")).toBe("art/rule34");
+    expect(getDownloadBaseFolder()).toBe("art/rule34");
+    stubApi([3]);
+    const names = stubDownload();
+
+    const run = startDownload("My pics", { kind: "query", tags: "cat" });
+    await vi.advanceTimersByTimeAsync(LONG_MS);
+    await run;
+
+    expect(names).toEqual(["art/rule34/My pics/rule34-3.png"]);
+  });
+
   it("retries a failed file once, counts it as failed and goes on", async () => {
     setApiCredentials("42", "key");
     stubApi([3, 2, 1]);
@@ -138,7 +156,7 @@ describe("download manager", () => {
     await vi.advanceTimersByTimeAsync(RETRY_DELAY_MS + LONG_MS);
     await run;
 
-    expect(names).toEqual(["RuleDesk/Pics/rule34-3.png", "RuleDesk/Pics/rule34-1.png"]);
+    expect(names).toEqual(["Pics/rule34-3.png", "Pics/rule34-1.png"]);
     expect(getDownloadState()).toMatchObject({ phase: "done", done: 2, failed: 1 });
   });
 
@@ -169,7 +187,7 @@ describe("download manager", () => {
     const names = stubDownload();
     const job = {
       label: "Pics",
-      folder: "RuleDesk/Pics",
+      folder: "Pics",
       files: [
         { postId: 3, url: "https://wimg.rule34.xxx//images/1/3.png" },
         { postId: 2, url: "https://wimg.rule34.xxx//images/1/2.png" },
@@ -186,7 +204,7 @@ describe("download manager", () => {
     window.sessionStorage.setItem("ruledesk-web.downloads.running", "1");
     restoreDownloads();
     await vi.advanceTimersByTimeAsync(FILE_INTERVAL_MS + LONG_MS);
-    expect(names).toEqual(["RuleDesk/Pics/rule34-2.png"]);
+    expect(names).toEqual(["Pics/rule34-2.png"]);
     expect(getDownloadState().phase).toBe("done");
   });
 
