@@ -172,6 +172,29 @@ function findWebmThumbImage(thumb: HTMLElement): HTMLImageElement | null {
   return favorite instanceof HTMLImageElement ? favorite : null;
 }
 
+/**
+ * Puts the video exactly over the image by measuring both. The stylesheet
+ * does the same by anchor positioning, but the browser does not always find
+ * the anchor for a thumb that got its anchor scope only now, on hover (seen
+ * on the favorites page: the video took the size of the whole cell). Measured
+ * numbers do not depend on that. Nothing is set when there is no layout.
+ */
+function placeOverImage(
+  video: HTMLVideoElement,
+  thumb: HTMLElement,
+  img: HTMLImageElement,
+): void {
+  const image = img.getBoundingClientRect();
+  if (image.width <= 0 || image.height <= 0) {
+    return;
+  }
+  const cell = thumb.getBoundingClientRect();
+  video.style.top = `${String(image.top - cell.top - thumb.clientTop)}px`;
+  video.style.left = `${String(image.left - cell.left - thumb.clientLeft)}px`;
+  video.style.width = `${String(image.width)}px`;
+  video.style.height = `${String(image.height)}px`;
+}
+
 function startPreview(thumb: HTMLElement): void {
   const postId = readPostId(thumb);
   if (postId === null || failedRecently(postId)) {
@@ -219,6 +242,7 @@ function startPreview(thumb: HTMLElement): void {
 
   video.src = videoUrl;
   link.after(video);
+  placeOverImage(video, thumb, img);
   activePreview = { thumb, video, postId, onError };
 
   const playResult = video.play();

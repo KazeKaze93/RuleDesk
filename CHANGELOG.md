@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.29.4
+
+- Fixed: on Favorites the hover video preview could appear shifted and as wide as the whole cell, so the post looked doubled. The preview is now placed over the picture by measuring it
+
 ## 0.29.3
 
 - Following: the row of buttons sits as close to the title as on Collections. The "Sort" caption over the list is gone; its options now read "By name", "By posts", "Recently followed"

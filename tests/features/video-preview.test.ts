@@ -165,6 +165,30 @@ describe("videoPreviewFeature", () => {
     expect(videoPreviewFeature.css).toContain("pointer-events: none");
   });
 
+  it("puts the video over the image by measured numbers, not by the size of the cell", () => {
+    const thumb = buildWebmThumb(POST_ID_A, DIR_A, HASH_A);
+    document.body.append(thumb);
+    const img = thumb.querySelector("img");
+    if (img === null) {
+      throw new Error("no image");
+    }
+    // The cell is 250x250 at (782, 381); the image is smaller and lower in it.
+    thumb.getBoundingClientRect = (): DOMRect => new DOMRect(782, 381, 250, 250);
+    img.getBoundingClientRect = (): DOMRect => new DOMRect(790, 442, 234, 133);
+    mountFeature();
+
+    dispatchPointer(thumb, "pointerenter");
+    vi.advanceTimersByTime(HOVER_DELAY_MS);
+    const video = thumb.querySelector(`video.${VIDEO_CLASS}`);
+    if (!(video instanceof HTMLVideoElement)) {
+      throw new Error("no preview video");
+    }
+    expect(video.style.top).toBe("61px");
+    expect(video.style.left).toBe("8px");
+    expect(video.style.width).toBe("234px");
+    expect(video.style.height).toBe("133px");
+  });
+
   it("tears down video on leave: pause, clear src, load, remove", () => {
     const thumb = buildWebmThumb(POST_ID_A, DIR_A, HASH_A);
     document.body.append(thumb);
