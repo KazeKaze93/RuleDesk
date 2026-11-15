@@ -10,6 +10,7 @@ import { playlistMenuFeature } from "./playlist-menu";
 import { postActionsFeature } from "./post-actions";
 import { searchToolsFeature } from "./search-tools";
 import { tagGroupsFeature } from "./tag-groups";
+import { thumbTooltipFeature } from "./thumb-tooltip";
 import type { Feature } from "./types";
 import { videoPlayerFeature } from "./video-player";
 import { videoPreviewFeature } from "./video-preview";
@@ -26,6 +27,7 @@ export const FEATURES: Feature[] = [
   infiniteScrollFeature,
   postActionsFeature,
   gridDensityFeature,
+  thumbTooltipFeature,
   favoritesBulkFeature,
   videoPlayerFeature,
   videoPreviewFeature,

@@ -1,4 +1,4 @@
-import type { JSX } from "preact";
+import type { ComponentChildren, JSX } from "preact";
 import { Fragment, render as preactRender } from "preact";
 import { useState } from "preact/hooks";
 
@@ -17,7 +17,9 @@ import {
   getUpdatesGroupSize,
   setFeatureChoiceValue,
   clearFeatureState,
+  getFeatureState,
   setFeatureEnabled,
+  setFeatureState,
   setGridFavButtonsEnabled,
   setPlaylistChunkSize,
   setTweaksEnabled,
@@ -25,13 +27,8 @@ import {
 } from "../storage/store";
 import { AppearanceSection } from "../ui/appearance-section";
 import { setGridFavButtonsVisible } from "../ui/cards";
-import {
-  Card,
-  NumberField,
-  SectionLabel,
-  Select,
-  Switch,
-} from "../ui/kit";
+import { Card, NumberField, Select, Switch } from "../ui/kit";
+import { IconChevronDown, IconChevronRight } from "../ui/kit/icons";
 import { BlacklistSection } from "./blacklist-section";
 import {
   FEATURE_CHECKBOX_ID_PREFIX,
@@ -60,6 +57,110 @@ const APPEARANCE_FLAT_ROWS_CSS = `
   background: transparent;
 }
 `.trim();
+
+const SECTION_CLASS = "rdw-settings-section";
+const SECTION_HEADER_CLASS = "rdw-settings-section-header";
+const SECTION_BODY_CLASS = "rdw-settings-section-body";
+const SECTION_ID_ATTR = "data-settings-section";
+const CHEVRON_PX = 14;
+
+/** Saved under featureState: which settings blocks are collapsed. */
+const SECTIONS_STATE_ID = "settings-sections";
+
+const SECTION_APPEARANCE = "appearance";
+const SECTION_PAGE = "page";
+const SECTION_BLACKLIST = "blacklist";
+const SECTION_FAVORITES = "favorites";
+const SECTION_DATA = "data";
+
+const SECTION_TITLES: Readonly<Record<string, string>> = {
+  [SECTION_APPEARANCE]: "Appearance",
+  [SECTION_PAGE]: "Page",
+  [SECTION_BLACKLIST]: "Blacklist",
+  [SECTION_FAVORITES]: "Favorites",
+  [SECTION_DATA]: "Data",
+};
+
+export const SETTINGS_SECTION_CSS = `
+.${SECTION_HEADER_CLASS} {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--rdw-muted);
+  font: 600 10.5px var(--rdw-font);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: left;
+  cursor: pointer;
+}
+.${SECTION_HEADER_CLASS}:hover {
+  color: var(--rdw-text);
+}
+.${SECTION_BODY_CLASS} {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.${SECTION_BODY_CLASS}[hidden] {
+  display: none;
+}
+`.trim();
+
+function readCollapsedSections(): string[] {
+  const raw = getFeatureState(SECTIONS_STATE_ID);
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  const ids: string[] = [];
+  for (const item of raw) {
+    if (typeof item === "string" && item in SECTION_TITLES) {
+      ids.push(item);
+    }
+  }
+  return ids;
+}
+
+/**
+ * One settings block that folds to its title. The body stays mounted while
+ * folded, so a running favorites sync or a typed value is not lost.
+ */
+function SettingsSection(props: {
+  readonly id: string;
+  readonly collapsed: boolean;
+  readonly onToggle: (id: string) => void;
+  readonly children: ComponentChildren;
+}): JSX.Element {
+  const bodyId = `${SECTION_CLASS}-${props.id}`;
+  return (
+    <Card className={`${PANEL_UI_CLASS.pageCard} ${SECTION_CLASS}`}>
+      <button
+        type="button"
+        className={`${SECTION_HEADER_CLASS} rdw-kit-focusable`}
+        aria-expanded={!props.collapsed}
+        aria-controls={bodyId}
+        {...{ [SECTION_ID_ATTR]: props.id }}
+        onClick={() => {
+          props.onToggle(props.id);
+        }}
+      >
+        {props.collapsed ? (
+          <IconChevronRight size={CHEVRON_PX} />
+        ) : (
+          <IconChevronDown size={CHEVRON_PX} />
+        )}
+        {SECTION_TITLES[props.id] ?? props.id}
+      </button>
+      <div id={bodyId} className={SECTION_BODY_CLASS} hidden={props.collapsed}>
+        {props.children}
+      </div>
+    </Card>
+  );
+}
 
 function FeatureModules(): JSX.Element {
   const [, bump] = useState(0);
@@ -141,15 +242,31 @@ export function SettingsPage(): JSX.Element {
     getGridFavButtonsEnabled(),
   );
 
+  const [collapsed, setCollapsed] = useState<string[]>(() =>
+    readCollapsedSections(),
+  );
+  const toggleSection = (id: string): void => {
+    const next = collapsed.includes(id)
+      ? collapsed.filter((entry) => entry !== id)
+      : [...collapsed, id];
+    setFeatureState(SECTIONS_STATE_ID, next);
+    setCollapsed(next);
+  };
+  const section = (id: string): { id: string; collapsed: boolean; onToggle: (id: string) => void } => ({
+    id,
+    collapsed: collapsed.includes(id),
+    onToggle: toggleSection,
+  });
+
   return (
     <div className={PANEL_UI_CLASS.scrollRegion}>
-      <Card className={PANEL_UI_CLASS.pageCard}>
-        <AppearanceSection />
+      <style>{SETTINGS_SECTION_CSS}</style>
+      <SettingsSection {...section(SECTION_APPEARANCE)}>
+        <AppearanceSection includeHeading={false} />
         <style>{APPEARANCE_FLAT_ROWS_CSS}</style>
-      </Card>
+      </SettingsSection>
 
-      <Card className={PANEL_UI_CLASS.pageCard}>
-        <SectionLabel>Page</SectionLabel>
+      <SettingsSection {...section(SECTION_PAGE)}>
         <div className={PANEL_UI_CLASS.settingsGroup}>
           <div className={PANEL_UI_CLASS.settingsRow}>
             <Switch
@@ -193,14 +310,13 @@ export function SettingsPage(): JSX.Element {
             />
           </div>
         </div>
-      </Card>
+      </SettingsSection>
 
-      <Card className={PANEL_UI_CLASS.pageCard}>
-        <BlacklistSection />
-      </Card>
+      <SettingsSection {...section(SECTION_BLACKLIST)}>
+        <BlacklistSection includeHeading={false} />
+      </SettingsSection>
 
-      <Card className={PANEL_UI_CLASS.pageCard}>
-        <SectionLabel>Favorites</SectionLabel>
+      <SettingsSection {...section(SECTION_FAVORITES)}>
         <div className={PANEL_UI_CLASS.settingsRow}>
           <Switch
             id={GRID_FAV_CHECKBOX_ID}
@@ -214,11 +330,11 @@ export function SettingsPage(): JSX.Element {
           />
         </div>
         <FavoritesSyncSection includeHeading={false} />
-      </Card>
+      </SettingsSection>
 
-      <Card className={PANEL_UI_CLASS.pageCard}>
-        <DataSection />
-      </Card>
+      <SettingsSection {...section(SECTION_DATA)}>
+        <DataSection includeHeading={false} />
+      </SettingsSection>
     </div>
   );
 }

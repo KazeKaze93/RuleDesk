@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RuleDesk Web
 // @namespace    https://github.com/kazekaze93/ruledesk-web
-// @version      0.21.2
+// @version      0.22.0
 // @description  Collections, playlists, favorites, artist updates, and page tweaks for rule34.xxx
 // @downloadURL  https://raw.githubusercontent.com/KazeKaze93/ruledesk-web/main/dist/ruledesk-web.user.js
 // @updateURL    https://raw.githubusercontent.com/KazeKaze93/ruledesk-web/main/dist/ruledesk-web.user.js
@@ -14,9 +14,9 @@
 !function(){function e(e,t){return(t||"")+" (SystemJS Error#"+e+" https://github.com/systemjs/systemjs/blob/main/docs/errors.md#"+e+")"}function t(e,t){if(-1!==e.indexOf("\\")&&(e=e.replace(j,"/")),"/"===e[0]&&"/"===e[1])return t.slice(0,t.indexOf(":")+1)+e;if("."===e[0]&&("/"===e[1]||"."===e[1]&&("/"===e[2]||2===e.length&&(e+="/"))||1===e.length&&(e+="/"))||"/"===e[0]){var n,r=t.slice(0,t.indexOf(":")+1);if(n="/"===t[r.length+1]?"file:"!==r?(n=t.slice(r.length+2)).slice(n.indexOf("/")+1):t.slice(8):t.slice(r.length+("/"===t[r.length])),"/"===e[0])return t.slice(0,t.length-n.length-1)+e;for(var i=n.slice(0,n.lastIndexOf("/")+1)+e,o=[],s=-1,u=0;u<i.length;u++)-1!==s?"/"===i[u]&&(o.push(i.slice(s,u+1)),s=-1):"."===i[u]?"."!==i[u+1]||"/"!==i[u+2]&&u+2!==i.length?"/"===i[u+1]||u+1===i.length?u+=1:s=u:(o.pop(),u+=2):s=u;return-1!==s&&o.push(i.slice(s)),t.slice(0,t.length-n.length)+o.join("")}}function n(e,n){return t(e,n)||(-1!==e.indexOf(":")?e:t("./"+e,n))}function r(e,n,r,i,o){for(var s in e){var a=t(s,r)||s,f=e[s];if("string"==typeof f){var l=c(i,t(f,r)||f,o);l?n[a]=l:u("W1",s,f,"bare specifier did not resolve")}}}function i(e,t,i){var o;for(o in e.imports&&r(e.imports,i.imports,t,i,null),e.scopes||{}){var s=n(o,t);r(e.scopes[o],i.scopes[s]||(i.scopes[s]={}),t,i,s)}for(o in e.depcache||{})i.depcache[n(o,t)]=e.depcache[o];for(o in e.integrity||{})i.integrity[n(o,t)]=e.integrity[o]}function o(e,t){if(t[e])return e;var n=e.length;do{var r=e.slice(0,n+1);if(r in t)return r}while(-1!==(n=e.lastIndexOf("/",n-1)))}function s(e,t){var n=o(e,t);if(n){var r=t[n];if(null===r)return;if(!(e.length>n.length&&"/"!==r[r.length-1]))return r+e.slice(n.length);u("W2",n,r,"should have a trailing '/'")}}function u(t,n,r,i){console.warn(e(t,"Package target "+i+", resolving target '"+r+"' for "+n))}function c(e,t,n){for(var r=e.scopes,i=n&&o(n,r);i;){var u=s(t,r[i]);if(u)return u;i=o(i.slice(0,i.lastIndexOf("/")),r)}return s(t,e.imports)||-1!==t.indexOf(":")&&t}function a(){this[M]={}}function f(e){return e.id}function l(e,t,n,r){if(e.onload(n,t.id,t.d&&t.d.map(f),!!r),n)throw n}function d(t,n,r,i){var o=t[M][n];if(o)return o;var s=[],u=Object.create(null);P&&Object.defineProperty(u,P,{value:"Module"});var c=Promise.resolve().then((function(){return t.instantiate(n,r,i)})).then((function(r){if(!r)throw Error(e(2,"Module "+n+" did not instantiate"));var i=r[1]((function(e,t){o.h=!0;var n=!1;if("string"==typeof e)e in u&&u[e]===t||(u[e]=t,n=!0);else{for(var r in e)t=e[r],r in u&&u[r]===t||(u[r]=t,n=!0);e&&e.__esModule&&(u.__esModule=e.__esModule)}if(n)for(var i=0;i<s.length;i++){var c=s[i];c&&c(u)}return t}),2===r[1].length?{import:function(e,r){return t.import(e,n,r)},meta:t.createContext(n)}:void 0);return o.e=i.execute||function(){},[r[0],i.setters||[],r[2]||[]]}),(function(e){throw o.e=null,o.er=e,l(t,o,e,!0),e})),a=c.then((function(e){return Promise.all(e[0].map((function(r,i){var o=e[1][i],s=e[2][i];return Promise.resolve(t.resolve(r,n)).then((function(e){var r=d(t,e,n,s);return Promise.resolve(r.I).then((function(){return o&&(r.i.push(o),!r.h&&r.I||o(r.n)),r}))}))}))).then((function(e){o.d=e}))}));return o=t[M][n]={id:n,i:s,n:u,m:i,I:c,L:a,h:!1,d:void 0,e:void 0,er:void 0,E:void 0,C:void 0,p:void 0}}function h(e,t,n,r){if(!r[t.id])return r[t.id]=!0,Promise.resolve(t.L).then((function(){return t.p&&null!==t.p.e||(t.p=n),Promise.all(t.d.map((function(t){return h(e,t,n,r)})))})).catch((function(n){if(t.er)throw n;throw t.e=null,l(e,t,n,!1),n}))}function p(e,t){return t.C=h(e,t,t,{}).then((function(){return v(e,t,{})})).then((function(){return t.n}))}function v(e,t,n){function r(){try{var n=o.call(L);if(n)return n=n.then((function(){t.C=t.n,t.E=null,l(e,t,null,!0)}),(function(n){throw t.er=n,t.E=null,l(e,t,n,!0),n})),t.E=n;t.C=t.n,t.L=t.I=void 0}catch(r){throw t.er=r,r}finally{l(e,t,t.er,!0)}}if(!n[t.id]){if(n[t.id]=!0,!t.e){if(t.er)throw t.er;return t.E?t.E:void 0}var i,o=t.e;return t.e=null,t.d.forEach((function(r){try{var o=v(e,r,n);o&&(i=i||[]).push(o)}catch(s){throw t.er=s,l(e,t,s,!1),s}})),i?Promise.all(i).then(r):r()}}function m(){[].forEach.call(document.querySelectorAll("script"),(function(t){if(!t.sp)if("systemjs-module"===t.type){if(t.sp=!0,!t.src)return;System.import("import:"===t.src.slice(0,7)?t.src.slice(7):n(t.src,g)).catch((function(e){if(e.message.indexOf("https://github.com/systemjs/systemjs/blob/main/docs/errors.md#3")>-1){var n=document.createEvent("Event");n.initEvent("error",!1,!1),t.dispatchEvent(n)}return Promise.reject(e)}))}else if("systemjs-importmap"===t.type){t.sp=!0;var r=t.src?(System.fetch||fetch)(t.src,{integrity:t.integrity,priority:t.fetchPriority,passThrough:!0}).then((function(e){if(!e.ok)throw Error("Invalid status code: "+e.status);return e.text()})).catch((function(n){return n.message=e("W4","Error fetching systemjs-import map "+t.src)+"\n"+n.message,console.warn(n),"function"==typeof t.onerror&&t.onerror(),"{}"})):t.innerHTML;W=W.then((function(){return r})).then((function(n){!function(t,n,r){var o={};try{o=JSON.parse(n)}catch(s){console.warn(Error(e("W5","systemjs-importmap contains invalid JSON")+"\n\n"+n+"\n"))}i(o,r,t)}(N,n,t.src||g)}))}}))}var g,y="undefined"!=typeof Symbol,b="undefined"!=typeof self,S="undefined"!=typeof document,w=b?self:global;if(S){var O=document.querySelector("base[href]");O&&(g=O.href)}if(!g&&"undefined"!=typeof location){var E=(g=location.href.split("#")[0].split("?")[0]).lastIndexOf("/");-1!==E&&(g=g.slice(0,E+1))}var x,j=/\\/g,P=y&&Symbol.toStringTag,M=y?Symbol():"@",I=a.prototype;I.import=function(e,t,n){var r=this;return t&&"object"==typeof t&&(n=t,t=void 0),Promise.resolve(r.prepareImport()).then((function(){return r.resolve(e,t,n)})).then((function(e){var t=d(r,e,void 0,n);return t.C||p(r,t)}))},I.createContext=function(e){var t=this;return{url:e,resolve:function(n,r){return Promise.resolve(t.resolve(n,r||e))}}},I.onload=function(){},I.register=function(e,t,n){x=[e,t,n]},I.getRegister=function(){var e=x;return x=void 0,e};var L=Object.freeze(Object.create(null));w.System=new a;var C,R,W=Promise.resolve(),N={imports:{},scopes:{},depcache:{},integrity:{}},T=S;if(I.prepareImport=function(e){return(T||e)&&(m(),T=!1),W},I.getImportMap=function(){return JSON.parse(JSON.stringify(N))},S&&(m(),window.addEventListener("DOMContentLoaded",m)),I.addImportMap=function(e,t){i(e,t||g,N)},S){window.addEventListener("error",(function(e){J=e.filename,_=e.error}));var A=location.origin}I.createScript=function(e){var t=document.createElement("script");t.async=!0,e.indexOf(A+"/")&&(t.crossOrigin="anonymous");var n=N.integrity[e];return n&&(t.integrity=n),t.src=e,t};var J,_,k={},U=I.register;I.register=function(e,t){if(S&&"loading"===document.readyState&&"string"!=typeof e){var n=document.querySelectorAll("script[src]"),r=n[n.length-1];if(r){C=e;var i=this;R=setTimeout((function(){k[r.src]=[e,t],i.import(r.src)}))}}else C=void 0;return U.call(this,e,t)},I.instantiate=function(t,n){var r=k[t];if(r)return delete k[t],r;var i=this;return Promise.resolve(I.createScript(t)).then((function(r){return new Promise((function(o,s){r.addEventListener("error",(function(){s(Error(e(3,"Error loading "+t+(n?" from "+n:""))))})),r.addEventListener("load",(function(){if(document.head.removeChild(r),J===t)s(_);else{var e=i.getRegister(t);e&&e[0]===C&&clearTimeout(R),o(e)}})),document.head.appendChild(r)}))}))},I.shouldFetch=function(){return!1},"undefined"!=typeof fetch&&(I.fetch=fetch);var $=I.instantiate,B=/^(text|application)\/(x-)?javascript(;|$)/;I.instantiate=function(t,n,r){var i=this;return this.shouldFetch(t,n,r)?this.fetch(t,{credentials:"same-origin",integrity:N.integrity[t],meta:r}).then((function(r){if(!r.ok)throw Error(e(7,r.status+" "+r.statusText+", loading "+t+(n?" from "+n:"")));var o=r.headers.get("content-type");if(!o||!B.test(o))throw Error(e(4,'Unknown Content-Type "'+o+'", loading '+t+(n?" from "+n:"")));return r.text().then((function(e){return e.indexOf("//# sourceURL=")<0&&(e+="\n//# sourceURL="+t),(0,eval)(e),i.getRegister(t)}))})):$.apply(this,arguments)},I.resolve=function(n,r){return c(N,t(n,r=r||g)||n,r)||function(t,n){throw Error(e(8,"Unable to resolve bare specifier '"+t+(n?"' from "+n:"'")))}(n,r)};var F=I.instantiate;I.instantiate=function(e,t,n){var r=N.depcache[e];if(r)for(var i=0;i<r.length;i++)d(this,this.resolve(r[i],e),e);return F.call(this,e,t,n)},b&&"function"==typeof importScripts&&(I.instantiate=function(e){var t=this;return Promise.resolve().then((function(){return importScripts(e),t.getRegister(e)}))}),function(e){function t(t){return!e.hasOwnProperty(t)||!isNaN(t)&&t<e.length||a&&e[t]&&"undefined"!=typeof window&&e[t].parent===window}var n,r,i,o=e.System.constructor.prototype,s=o.import;o.import=function(o,u,c){return function(){for(var o in n=r=void 0,e)t(o)||(n?r||(r=o):n=o,i=o)}(),s.call(this,o,u,c)};var u=[[],function(){return{}}],c=o.getRegister;o.getRegister=function(){var o=c.call(this);if(o)return o;var s,a=function(o){var s,u,c=0;for(var a in e)if(!t(a)){if(0===c&&a!==n||1===c&&a!==r)return a;s?(i=a,u=o&&u||a):s=a===i,c++}return u}(this.firstGlobalProp);if(!a)return u;try{s=e[a]}catch(f){return u}return[[],function(e){return{execute:function(){e(s),e({default:s,__useDefault:!0})}}}]};var a="undefined"!=typeof navigator&&-1!==navigator.userAgent.indexOf("Trident")}("undefined"!=typeof self?self:global),function(e){var t=e.System.constructor.prototype,r=/^[^#?]+\.(css|html|json|wasm)([?#].*)?$/,i=t.shouldFetch.bind(t);t.shouldFetch=function(e){return i(e)||r.test(e)};var o=/^application\/json(;|$)/,s=/^text\/css(;|$)/,u=/^application\/wasm(;|$)/,c=t.fetch;t.fetch=function(t,r){return c(t,r).then((function(i){if(r.passThrough)return i;if(!i.ok)return i;var c=i.headers.get("content-type");return o.test(c)?i.json().then((function(e){return new Response(new Blob(['System.register([],function(e){return{execute:function(){e("default",'+JSON.stringify(e)+")}}})"],{type:"application/javascript"}))})):s.test(c)?i.text().then((function(e){return e=e.replace(/url\(\s*(?:(["'])((?:\\.|[^\n\\"'])+)\1|((?:\\.|[^\s,"'()\\])+))\s*\)/g,(function(e,r,i,o){return["url(",r,n(i||o,t),r,")"].join("")})),new Response(new Blob(["System.register([],function(e){return{execute:function(){var s=new CSSStyleSheet();s.replaceSync("+JSON.stringify(e)+');e("default",s)}}})'],{type:"application/javascript"}))})):u.test(c)?(WebAssembly.compileStreaming?WebAssembly.compileStreaming(i):i.arrayBuffer().then(WebAssembly.compile)).then((function(n){e.System.wasmModules||(e.System.wasmModules=Object.create(null)),e.System.wasmModules[t]=n;var r=[],i=[];return WebAssembly.Module.imports&&WebAssembly.Module.imports(n).forEach((function(e){var t=JSON.stringify(e.module);-1===r.indexOf(t)&&(r.push(t),i.push("function(m){i["+t+"]=m}"))})),new Response(new Blob(["System.register(["+r.join(",")+"],function(e){var i={};return{setters:["+i.join(",")+"],execute:function(){return WebAssembly.instantiate(System.wasmModules["+JSON.stringify(t)+"],i).then(function(m){e(m.exports)})}}})"],{type:"application/javascript"}))})):i}))}}("undefined"!=typeof self?self:global);var q="undefined"!=typeof Symbol&&Symbol.toStringTag;I.get=function(e){var t=this[M][e];if(t&&null===t.e&&!t.E)return t.er?null:t.n},I.set=function(t,n){try{new URL(t)}catch(s){console.warn(Error(e("W3",'"'+t+'" is not a valid URL to set in the module registry')))}var r;q&&"Module"===n[q]?r=n:(r=Object.assign(Object.create(null),n),q&&Object.defineProperty(r,q,{value:"Module"}));var i=Promise.resolve(r),o=this[M][t]||(this[M][t]={id:t,i:[],h:!1,d:[],e:null,er:void 0,E:void 0});return!o.e&&!o.E&&(Object.assign(o,{n:r,I:void 0,L:void 0,C:i}),r)},I.has=function(e){return!!this[M][e]},I.delete=function(e){var t=this[M],n=t[e];if(!n||n.p&&null!==n.p.e||n.E)return!1;var r=n.i;return n.d&&n.d.forEach((function(e){var t=e.i.indexOf(n);-1!==t&&e.i.splice(t,1)})),delete t[e],function(){var n=t[e];if(!n||!r||null!==n.e||n.E)return!1;r.forEach((function(e){n.i.push(e),e(n.n)})),r=null}};var D="undefined"!=typeof Symbol&&Symbol.iterator;I.entries=function(){var e,t,n=this,r=Object.keys(n[M]),i=0,o={next:function(){for(;void 0!==(t=r[i++])&&void 0===(e=n.get(t)););return{done:void 0===t,value:void 0!==t&&[t,e]}}};return o[D]=function(){return this},o}}();
 !function(t){function e(t){t.registerRegistry=Object.create(null),t.namedRegisterAliases=Object.create(null)}var r=t.System;e(r);var i,s,n=r.constructor.prototype,l=r.constructor,a=function(){l.call(this),e(this)};a.prototype=n,r.constructor=a;var o=n.register;n.register=function(t,e,r,n){if("string"!=typeof t)return o.apply(this,arguments);var l=[e,r,n];return this.registerRegistry[t]=l,i||(i=l,s=t),Promise.resolve().then((function(){i=null,s=null})),o.apply(this,[e,r,n])};var u=n.resolve;n.resolve=function(t,e){try{return u.call(this,t,e)}catch(r){if(t in this.registerRegistry)return this.namedRegisterAliases[t]||t;throw r}};var c=n.instantiate;n.instantiate=function(t,e,r){var i=this.registerRegistry[t];return i?(this.registerRegistry[t]=null,i):c.call(this,t,e,r)};var g=n.getRegister;n.getRegister=function(t){var e=g.call(this,t);s&&t&&(this.namedRegisterAliases[s]=t);var r=i||e;return i=null,s=null,r}}("undefined"!=typeof self?self:global);
 ;(typeof System!='undefined')&&(System=new System.constructor());
-System.register("./___monkey.entry.js", [],(function(exports,module){'use strict';return{execute:(function(){exports({$:isCollectionDetailPage,B:rdwPageHash,D:createFavoritesSyncTabId,G:readArtistsMirror,I:listArtistTags,J:writeArtistsMirror,K:reloadFromStorage,L:save,P:setSyncState,Q:Q$1,Y:a,Z:applyTokenProperties,_:resolveAppearancePalette,a:applyAppearanceTheme,a$:writeSiteBlacklist,a0:menuRouteForPage,a1:getSiteSkinCss,a2:$$1,aB:Segmented,aE:TextField,aF:Button,aG:clampBackgroundDim,aI:featurePanelLabel,aK:setFeatureEnabled,aL:clearFeatureState,aM:applyCssOnlyFeatureEnabled,aN:isFeatureEnabled,aP:setFeatureChoiceValue,aQ:applyCssOnlyFeatureChoice,aR:getFeatureChoice,aS:createAutocompleteQuerier,aT:b,aU:readSiteBlacklist,aV:Chip,aW:AutocompleteField,aX:ProgressBar,aY:createDefaultCustomTheme,a_:prepareBackgroundImageFile,ad:d,ae:Card,af:SectionLabel,ag:Switch,ai:setTweaksEnabled,aj:NumberField,al:setUpdatesGroupSize,am:getUpdatesGroupSize,ao:setPlaylistChunkSize,ap:getPlaylistChunkSize,ar:setGridFavButtonsEnabled,as:setGridFavButtonsVisible,at:P$1,au:T,av:A,ay:Select,b$:w$1,b1:load,b2:createDefaultStorage,b3:clearStorageCache,b4:clearFavsCache,b5:object,b7:optional,b8:string,bB:collectionDetailHash,bC:readCoverMirror,bE:IconCheck,bF:readCountMirror,bG:buildSearchUrl,bH:dynamicCollectionMarkHash,bI:serialize,bK:getSeenPostId,bL:completeLastQueryToken,bM:readLastQueryToken,bT:removeArtist,bU:addArtists,bW:IconButton,bX:IconX,bY:removeArtists,bZ:rememberArtistSnapshot,b_:fetchArtistSnapshot,ba:literal,bc:stripLegacyPanelWindowSize,bd:migrateMarksFavToFavs,bf:createDefaultFavs,bg:parseFavsStrict,bh:setAppearance,bi:loadFavSet,bk:extractFavIdsFromMarks,bn:getTweaksEnabled,bo:getGridFavButtonsEnabled,bp:getFeatureChoiceValue,bq:getScreenPixelSize,br:IconPlus,bs:EmptyState,bt:Dialog,bu:resolveCollectionKind,bv:deleteCollection,bw:QueryField,bx:isUnfilteredQuery,by:createDynamicCollection,bz:createPlaylist,c0:shuffleCollection,c1:resetCollectionOrder,c2:Toast,c3:getCollectionOrder,c4:listPlaylists,c5:removePostsFromCollection,c6:renameCollection,c8:restorePosts,ca:collectionQueueHash,d:detectPageKind,e:ensureDocumentStyles,f:ensureStyleElement,g:getAppearance,h:buildOwnPageCss,j:getSyncState,k:readFavoritesSyncMode,m:mountCards,n:normalizeArtistTag,o:runFavoritesSync,p:parseRdwHash,r:runFeaturesYielding,s:syncFavoritesPage,x:resolveFavoritesUserId,y:yieldToMain});var STORAGE_KEY = "ruledesk-web.storage";
-var STORAGE_BACKUP_KEY = exports("bj","ruledesk-web.storage.backup");
-var FAVS_STORAGE_KEY = exports("be","ruledesk-web.favs");
+System.register("./___monkey.entry.js", [],(function(exports,module){'use strict';return{execute:(function(){exports({$:isCollectionDetailPage,B:rdwPageHash,D:createFavoritesSyncTabId,G:readArtistsMirror,I:listArtistTags,J:writeArtistsMirror,K:reloadFromStorage,L:save,P:setSyncState,Q:Q$1,Y:a,Z:applyTokenProperties,_:resolveAppearancePalette,a:applyAppearanceTheme,a0:menuRouteForPage,a1:getSiteSkinCss,a2:$$1,aA:Select,aD:Segmented,aG:TextField,aH:Button,aI:clampBackgroundDim,aK:featurePanelLabel,aM:setFeatureEnabled,aN:clearFeatureState,aO:applyCssOnlyFeatureEnabled,aP:isFeatureEnabled,aR:setFeatureChoiceValue,aS:applyCssOnlyFeatureChoice,aT:getFeatureChoice,aU:createAutocompleteQuerier,aV:b,aW:readSiteBlacklist,aX:Chip,aY:AutocompleteField,aZ:ProgressBar,a_:createDefaultCustomTheme,ad:d,ae:Switch,ag:setTweaksEnabled,ah:NumberField,aj:setUpdatesGroupSize,ak:getUpdatesGroupSize,am:setPlaylistChunkSize,an:getPlaylistChunkSize,ap:setGridFavButtonsEnabled,aq:setGridFavButtonsVisible,ar:IconChevronRight,as:IconChevronDown,at:Card,au:P$1,av:T,aw:A,az:SectionLabel,b$:IconX,b0:prepareBackgroundImageFile,b1:setFeatureState,b2:writeSiteBlacklist,b4:load,b5:createDefaultStorage,b6:clearStorageCache,b7:clearFavsCache,b8:object,bA:QueryField,bB:isUnfilteredQuery,bC:createDynamicCollection,bD:createPlaylist,bF:collectionDetailHash,bG:readCoverMirror,bI:IconCheck,bJ:readCountMirror,bK:buildSearchUrl,bL:dynamicCollectionMarkHash,bM:serialize,bO:getSeenPostId,bP:completeLastQueryToken,bQ:readLastQueryToken,bX:removeArtist,bY:addArtists,b_:IconButton,ba:optional,bb:string,bd:literal,bf:stripLegacyPanelWindowSize,bg:migrateMarksFavToFavs,bi:createDefaultFavs,bj:parseFavsStrict,bk:setAppearance,bl:loadFavSet,bn:extractFavIdsFromMarks,bq:getTweaksEnabled,br:getGridFavButtonsEnabled,bs:getFeatureChoiceValue,bt:getFeatureState,bu:getScreenPixelSize,bv:IconPlus,bw:EmptyState,bx:Dialog,by:resolveCollectionKind,bz:deleteCollection,c0:removeArtists,c1:rememberArtistSnapshot,c2:fetchArtistSnapshot,c3:w$1,c4:shuffleCollection,c5:resetCollectionOrder,c6:Toast,c7:getCollectionOrder,c8:listPlaylists,c9:removePostsFromCollection,ca:renameCollection,cc:restorePosts,ce:collectionQueueHash,d:detectPageKind,e:ensureDocumentStyles,f:ensureStyleElement,g:getAppearance,h:buildOwnPageCss,j:getSyncState,k:readFavoritesSyncMode,m:mountCards,n:normalizeArtistTag,o:runFavoritesSync,p:parseRdwHash,r:runFeaturesYielding,s:syncFavoritesPage,x:resolveFavoritesUserId,y:yieldToMain});var STORAGE_KEY = "ruledesk-web.storage";
+var STORAGE_BACKUP_KEY = exports("bm","ruledesk-web.storage.backup");
+var FAVS_STORAGE_KEY = exports("bh","ruledesk-web.favs");
 var DEBUG_KEY = "ruledesk-web.debug";
 var APPEARANCE_BACKGROUND_KEY = exports("E","ruledesk-web.appearance.background");
 var APPEARANCE_BACKGROUND_TOO_LARGE = exports("ac","Background image is too large (max 1.5 MB).");
@@ -26,15 +26,15 @@ var RDW_SKIN_CLASS = "rdw-skin";
 var RDW_THEME_ATTR = exports("a5","data-rdw-theme");
 var APPEARANCE_THEME_SITE = exports("a6","site");
 var APPEARANCE_THEME_SITE_DARK = exports("a7","site-dark");
-var APPEARANCE_THEME_LIGHT = exports("az","light");
-var APPEARANCE_THEME_DARK = exports("aA","dark");
-var APPEARANCE_THEME_CUSTOM = exports("aw","custom");
+var APPEARANCE_THEME_LIGHT = exports("aB","light");
+var APPEARANCE_THEME_DARK = exports("aC","dark");
+var APPEARANCE_THEME_CUSTOM = exports("ax","custom");
 var DEFAULT_APPEARANCE_THEME = APPEARANCE_THEME_LIGHT;
 var SITE_ORIGIN = exports("b","https://rule34.xxx");
 var SEARCH_PATH = exports("X","/index.php");
-var SEARCH_PAGE = exports("bP","post");
-var SEARCH_SECTION = exports("bQ","list");
-var SEARCH_SECTION_VIEW = exports("c9","view");
+var SEARCH_PAGE = exports("bT","post");
+var SEARCH_SECTION = exports("bU","list");
+var SEARCH_SECTION_VIEW = exports("cd","view");
 var SEARCH_PARAM_PAGE = exports("T","page");
 var SEARCH_PARAM_TAGS = exports("c","tags");
 var FAVORITES_PAGE = exports("V","favorites");
@@ -48,12 +48,12 @@ var VOTE_PARAM_TYPE = "type";
 var VOTE_PAGE = "post";
 var VOTE_SECTION = "vote";
 var FETCH_CREDENTIALS = "same-origin";
-var TAG_TYPE_INCLUDE = exports("bV","include");
+var TAG_TYPE_INCLUDE = exports("bZ","include");
 var TAG_TYPE_EXCLUDE = "exclude";
 var UPDATES_ID_PREFIX = "id:>";
-var IMPORT_SCHEMA_ERROR_PREFIX = exports("bb","File is not a RuleDesk Web export");
-var COLLECTION_KIND_SEARCH = exports("bD","search");
-var COLLECTION_KIND_POSTS = exports("bA","posts");
+var IMPORT_SCHEMA_ERROR_PREFIX = exports("be","File is not a RuleDesk Web export");
+var COLLECTION_KIND_SEARCH = exports("bH","search");
+var COLLECTION_KIND_POSTS = exports("bE","posts");
 var DOCUMENT_STYLE_ID = "ruledesk-web-document-style";
 var UPDATES_BAR_ID = "ruledesk-web-updates-bar";
 var SITE_THEME_COOKIE_NAME = "theme";
@@ -122,7 +122,7 @@ var CSS_CLASS = exports("C",{
 });
 /** Hash routes and DOM ids for RuleDesk own pages (replaces floating panel). */
 var RDW_HASH_PREFIX = "#rdw/";
-var RDW_ROUTE_COLLECTIONS = exports("c7","collections");
+var RDW_ROUTE_COLLECTIONS = exports("cb","collections");
 var RDW_ROUTE_FOLLOWING = "following";
 var RDW_ROUTE_SETTINGS = "settings";
 var RDW_ROUTES = [
@@ -177,16 +177,16 @@ var PANEL_UI_CLASS = exports("a3",{
 	settingsCaption: "rdw-settings-caption",
 	pageCard: "rdw-page-card"
 });
-var ARTISTS_EMPTY_TITLE = exports("bO","No followed artists yet");
-var ARTISTS_EMPTY_HINT = exports("bN","Follow artists with the Follow button next to their name in the tag list.");
-var ARTIST_FILTER_LABEL = exports("bR","Filter artists");
-var FEATURE_CHECKBOX_ID_PREFIX = exports("aJ","rdw-feature-");
-var FEATURE_CHOICE_ID_PREFIX = exports("aO","rdw-feature-choice-");
-var UPDATES_GROUP_SIZE_ID = exports("ak","rdw-updates-group-size");
-var PLAYLIST_CHUNK_SIZE_ID = exports("an","rdw-playlist-chunk-size");
-var ARTIST_FILTER_ID = exports("bS","rdw-artist-filter");
-var GRID_FAV_CHECKBOX_ID = exports("aq","rdw-grid-fav-buttons");
-var TWEAKS_SWITCH_ID = exports("ah","rdw-tweaks-enabled");
+var ARTISTS_EMPTY_TITLE = exports("bS","No followed artists yet");
+var ARTISTS_EMPTY_HINT = exports("bR","Follow artists with the Follow button next to their name in the tag list.");
+var ARTIST_FILTER_LABEL = exports("bV","Filter artists");
+var FEATURE_CHECKBOX_ID_PREFIX = exports("aL","rdw-feature-");
+var FEATURE_CHOICE_ID_PREFIX = exports("aQ","rdw-feature-choice-");
+var UPDATES_GROUP_SIZE_ID = exports("ai","rdw-updates-group-size");
+var PLAYLIST_CHUNK_SIZE_ID = exports("al","rdw-playlist-chunk-size");
+var ARTIST_FILTER_ID = exports("bW","rdw-artist-filter");
+var GRID_FAV_CHECKBOX_ID = exports("ao","rdw-grid-fav-buttons");
+var TWEAKS_SWITCH_ID = exports("af","rdw-tweaks-enabled");
 var TAG_GROUPS_PANEL_LABEL = "Collapse tags";
 function featurePanelLabel(featureId, fallback) {
 	if (featureId === "tag-groups") return TAG_GROUPS_PANEL_LABEL;
@@ -2121,15 +2121,15 @@ var MarkFlagsSchema = /* @__PURE__ */ object({
 	fav: /* @__PURE__ */ optional(/* @__PURE__ */ boolean()),
 	seen: /* @__PURE__ */ optional(/* @__PURE__ */ boolean())
 });
-var AppearanceThemeSchema = exports("aZ",/* @__PURE__ */ _enum([
+var AppearanceThemeSchema = exports("a$",/* @__PURE__ */ _enum([
 	APPEARANCE_THEME_SITE,
 	APPEARANCE_THEME_SITE_DARK,
 	APPEARANCE_THEME_LIGHT,
 	APPEARANCE_THEME_DARK,
 	APPEARANCE_THEME_CUSTOM
 ]));
-var APPEARANCE_CUSTOM_BASE_LIGHT = exports("aC","light");
-var APPEARANCE_CUSTOM_BASE_DARK = exports("aD","dark");
+var APPEARANCE_CUSTOM_BASE_LIGHT = exports("aE","light");
+var APPEARANCE_CUSTOM_BASE_DARK = exports("aF","dark");
 var AppearanceCustomBaseSchema = /* @__PURE__ */ _enum([APPEARANCE_CUSTOM_BASE_LIGHT, APPEARANCE_CUSTOM_BASE_DARK]);
 /** Canonical custom theme: Light/Dark base + optional background image/dim. */
 var AppearanceCustomSchema = /* @__PURE__ */ object({
@@ -2193,7 +2193,7 @@ var SettingsSchema = /* @__PURE__ */ object({
 	appearance: /* @__PURE__ */ optional(AppearanceStoredSchema)
 });
 var UpdatesSchema = /* @__PURE__ */ object({ seenPostId: int().check(/* @__PURE__ */ _nonnegative()) });
-var StorageSchema = exports("b6",/* @__PURE__ */ object({
+var StorageSchema = exports("b9",/* @__PURE__ */ object({
 	version: /* @__PURE__ */ literal(1),
 	collections: /* @__PURE__ */ array(CollectionSchema),
 	artists: /* @__PURE__ */ array(ArtistEntrySchema),
@@ -2228,7 +2228,7 @@ var FavsSyncSchema = /* @__PURE__ */ object({
 	lock: /* @__PURE__ */ optional(FavsSyncLockSchema),
 	mode: /* @__PURE__ */ optional(FavsSyncModeSchema)
 });
-var FavsSchema = exports("b9",/* @__PURE__ */ object({
+var FavsSchema = exports("bc",/* @__PURE__ */ object({
 	version: /* @__PURE__ */ literal(1),
 	ids: /* @__PURE__ */ array(int()),
 	sync: /* @__PURE__ */ optional(FavsSyncSchema)
@@ -4360,7 +4360,7 @@ function E(n, t) {
 function G(n, t) {
 	return "function" == typeof t ? t(n) : t;
 }
-var KIT_FOCUS_CSS = exports("ax",`
+var KIT_FOCUS_CSS = exports("ay",`
 .rdw-kit-focusable:focus-visible {
   outline: 2px solid var(--rdw-accent);
   outline-offset: 2px;
@@ -4779,6 +4779,12 @@ function IconChevronDown(props) {
 	return /* @__PURE__ */ a("svg", {
 		...baseProps(props.size ?? DEFAULT_SIZE, props.className, props.title),
 		children: [props.title !== void 0 ? /* @__PURE__ */ a("title", { children: props.title }) : null, /* @__PURE__ */ a("polyline", { points: "6 9 12 15 18 9" })]
+	});
+}
+function IconChevronRight(props) {
+	return /* @__PURE__ */ a("svg", {
+		...baseProps(props.size ?? DEFAULT_SIZE, props.className, props.title),
+		children: [props.title !== void 0 ? /* @__PURE__ */ a("title", { children: props.title }) : null, /* @__PURE__ */ a("polyline", { points: "9 18 15 12 9 6" })]
 	});
 }
 function IconArrowUp(props) {
@@ -8289,14 +8295,14 @@ function featureBodyClass(id) {
 function featureChoiceBodyClass(id, value) {
 	return `rdw-f-${id}-${value}`;
 }
-var FEATURE_ID$12 = "grid-density";
+var FEATURE_ID$13 = "grid-density";
 var COMPACT_PX = 150;
 var LARGE_PX = 250;
 var CHOICE_DEFAULT = "default";
 var CHOICE_COMPACT = "compact";
 var CHOICE_LARGE = "large";
 function sizeCss(choiceValue, px) {
-	const bodyClass = featureChoiceBodyClass(FEATURE_ID$12, choiceValue);
+	const bodyClass = featureChoiceBodyClass(FEATURE_ID$13, choiceValue);
 	return [
 		`body.${bodyClass} span.thumb,`,
 		`body.${bodyClass} span.thumb > a {`,
@@ -8312,14 +8318,14 @@ function sizeCss(choiceValue, px) {
 /** Same gap on both axes for Default, Compact, and Large. Does not set cell size. */
 function gapCss() {
 	return [
-		`body.${featureBodyClass(FEATURE_ID$12)} div.image-list {`,
+		`body.${featureBodyClass(FEATURE_ID$13)} div.image-list {`,
 		`  column-gap: ${String(4)}px !important;`,
 		`  row-gap: ${String(4)}px !important;`,
 		`}`
 	].join("\n");
 }
-var gridDensityFeature = exports("bl",{
-	id: FEATURE_ID$12,
+var gridDensityFeature = exports("bo",{
+	id: FEATURE_ID$13,
 	label: "Grid size",
 	pages: ["list", "favorites"],
 	defaultEnabled: true,
@@ -8348,11 +8354,11 @@ var gridDensityFeature = exports("bl",{
 	].join("\n"),
 	mount: () => void 0
 });
-var FEATURE_ID$11 = "menu-cleanup";
-var FEATURE_LABEL$11 = "Clean header menu";
+var FEATURE_ID$12 = "menu-cleanup";
+var FEATURE_LABEL$12 = "Clean header menu";
 var CONTENT_ID$1 = "content";
 var HIDDEN_CLASS = "rdw-menu-hidden";
-var BODY_FEATURE_CLASS$3 = featureBodyClass(FEATURE_ID$11);
+var BODY_FEATURE_CLASS$3 = featureBodyClass(FEATURE_ID$12);
 var MISSING_MENU_WARN = "Header menu not found";
 var HIDE_LINK_TEXT_SET = /* @__PURE__ */ new Set([
 	"iCame Top 100",
@@ -8365,13 +8371,13 @@ var HIDE_LINK_TEXT_SET = /* @__PURE__ */ new Set([
 	"TOS",
 	"My Favorites"
 ]);
-var FEATURE_PAGES$11 = [
+var FEATURE_PAGES$12 = [
 	"list",
 	"post",
 	"favorites",
 	"other"
 ];
-var FEATURE_CSS$11 = `body.${BODY_FEATURE_CLASS$3} li.${HIDDEN_CLASS} { display:none !important; }`;
+var FEATURE_CSS$12 = `body.${BODY_FEATURE_CLASS$3} li.${HIDDEN_CLASS} { display:none !important; }`;
 function isHeaderMenuLink(anchor, content) {
 	const listItem = anchor.closest("li");
 	if (listItem === null) return false;
@@ -8404,12 +8410,12 @@ function mountMenuCleanup(_ctx) {
 	}
 }
 var menuCleanupFeature = {
-	id: FEATURE_ID$11,
-	label: FEATURE_LABEL$11,
-	pages: [...FEATURE_PAGES$11],
+	id: FEATURE_ID$12,
+	label: FEATURE_LABEL$12,
+	pages: [...FEATURE_PAGES$12],
 	defaultEnabled: true,
 	cssOnly: true,
-	css: FEATURE_CSS$11,
+	css: FEATURE_CSS$12,
 	mount: mountMenuCleanup
 };
 function detectPageKind(search) {
@@ -8533,15 +8539,15 @@ function isBlacklisted(tags, score, rating, list) {
 	}
 	return false;
 }
-var FEATURE_ID$10 = "blacklist-hide";
-var FEATURE_LABEL$10 = "Hide blacklisted posts";
-var FEATURE_PAGES$10 = ["list"];
-var BODY_FEATURE_CLASS$2 = featureBodyClass(FEATURE_ID$10);
+var FEATURE_ID$11 = "blacklist-hide";
+var FEATURE_LABEL$11 = "Hide blacklisted posts";
+var FEATURE_PAGES$11 = ["list"];
+var BODY_FEATURE_CLASS$2 = featureBodyClass(FEATURE_ID$11);
 var CLASS_BLACKLISTED$1 = "rdw-blacklisted";
 var SCORE_TOKEN_PREFIX$4 = "score:";
 var RATING_TOKEN_PREFIX$3 = "rating:";
 var WHITESPACE_SPLIT = /\s+/;
-var FEATURE_CSS$10 = `
+var FEATURE_CSS$11 = `
 body.${BODY_FEATURE_CLASS$2} span.thumb.${CLASS_BLACKLISTED$1} {
   display: none !important;
 }
@@ -8591,12 +8597,12 @@ function mountBlacklistHide(ctx) {
 	ensureSubscriptions();
 }
 var blacklistHideFeature = {
-	id: FEATURE_ID$10,
-	label: FEATURE_LABEL$10,
-	pages: [...FEATURE_PAGES$10],
+	id: FEATURE_ID$11,
+	label: FEATURE_LABEL$11,
+	pages: [...FEATURE_PAGES$11],
 	defaultEnabled: true,
 	cssOnly: true,
-	css: FEATURE_CSS$10,
+	css: FEATURE_CSS$11,
 	mount: mountBlacklistHide
 };
 function buildAddFavUrl(postId) {
@@ -8816,14 +8822,14 @@ function syncFavoritesPage(root = document, search = window.location.search) {
 	bindRemoveClickCapture();
 }
 /** Minimum pause between sequential favorites page fetches. */
-var FAVORITES_SYNC_PAGE_PAUSE_MS = exports("b0",1500);
+var FAVORITES_SYNC_PAGE_PAUSE_MS = exports("b3",1500);
 /** Pauses before each of the three retries (HTTP error / missing paginator). */
 var FAVORITES_SYNC_RETRY_DELAYS_MS = [
 	1e4,
 	3e4,
 	6e4
 ];
-var FAVORITES_SYNC_MODE_INCREMENTAL = exports("bm",FAVS_SYNC_MODE_INCREMENTAL);
+var FAVORITES_SYNC_MODE_INCREMENTAL = exports("bp",FAVS_SYNC_MODE_INCREMENTAL);
 var FAVORITES_SYNC_MODE_FULL = exports("F",FAVS_SYNC_MODE_FULL);
 var MY_FAVORITES_LINK_SELECTOR$1 = "li#my-favorites-container a[href*=\"page=favorites\"]";
 var THUMB_SELECTOR$1 = "span.thumb";
@@ -9293,9 +9299,9 @@ async function runFavoritesSync(options) {
 		};
 	}
 }
-var FEATURE_ID$9 = "favorites-bulk";
-var FEATURE_LABEL$9 = "Bulk remove favorites";
-var FEATURE_PAGES$9 = ["favorites"];
+var FEATURE_ID$10 = "favorites-bulk";
+var FEATURE_LABEL$10 = "Bulk remove favorites";
+var FEATURE_PAGES$10 = ["favorites"];
 var ROOT_ID$2 = "rdw-favorites-bulk";
 var ROOT_CLASS$2 = "rdw-favorites-bulk";
 var BAR_CLASS = "rdw-favorites-bulk-bar";
@@ -9338,10 +9344,10 @@ var CHECK_SIZE = "1.25rem";
 var CHECK_INSET = "0.25rem";
 var CHECK_Z_INDEX = 2;
 var CHECK_FONT_SIZE = "0.75rem";
-var BODY_CLASS$4 = featureBodyClass(FEATURE_ID$9);
-var BODY_SELECTING_CLASS = `${BODY_CLASS$4}-selecting`;
-var FEATURE_CSS$9 = `
-body.${BODY_CLASS$4} .${ROOT_CLASS$2} {
+var BODY_CLASS$5 = featureBodyClass(FEATURE_ID$10);
+var BODY_SELECTING_CLASS = `${BODY_CLASS$5}-selecting`;
+var FEATURE_CSS$10 = `
+body.${BODY_CLASS$5} .${ROOT_CLASS$2} {
   display: block;
   box-sizing: border-box;
   width: 100%;
@@ -9350,7 +9356,7 @@ body.${BODY_CLASS$4} .${ROOT_CLASS$2} {
   flex: 0 0 100%;
   grid-column: 1 / -1;
 }
-body.${BODY_CLASS$4} .${BAR_CLASS} {
+body.${BODY_CLASS$5} .${BAR_CLASS} {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -9358,35 +9364,35 @@ body.${BODY_CLASS$4} .${BAR_CLASS} {
   width: 100%;
   box-sizing: border-box;
 }
-body.${BODY_CLASS$4} .${STATUS_CLASS$1} {
+body.${BODY_CLASS$5} .${STATUS_CLASS$1} {
   flex: 1 1 12rem;
   min-width: 0;
   font: inherit;
   font-size: 0.875rem;
   line-height: 1.3;
 }
-body.${BODY_CLASS$4} .${CONFIRM_CLASS} {
+body.${BODY_CLASS$5} .${CONFIRM_CLASS} {
   display: grid;
   gap: 0.75rem;
 }
-body.${BODY_CLASS$4} .${CONFIRM_ROW_CLASS} {
+body.${BODY_CLASS$5} .${CONFIRM_ROW_CLASS} {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem 0.5rem;
 }
-body.${BODY_CLASS$4} .${PROGRESS_WRAP_CLASS} {
+body.${BODY_CLASS$5} .${PROGRESS_WRAP_CLASS} {
   flex: 1 1 12rem;
   min-width: 8rem;
   max-width: 24rem;
 }
-body.${BODY_CLASS$4} span.thumb {
+body.${BODY_CLASS$5} span.thumb {
   position: relative;
 }
-body.${BODY_CLASS$4} span.thumb.${CLASS_THUMB_SELECTED} {
+body.${BODY_CLASS$5} span.thumb.${CLASS_THUMB_SELECTED} {
   outline: ${SELECT_OUTLINE_WIDTH} solid var(--rdw-accent, ${ACCENT_FALLBACK});
   outline-offset: ${SELECT_OUTLINE_OFFSET};
 }
-body.${BODY_CLASS$4} span.thumb > .${CLASS_THUMB_CHECK} {
+body.${BODY_CLASS$5} span.thumb > .${CLASS_THUMB_CHECK} {
   position: absolute;
   top: ${CHECK_INSET};
   left: ${CHECK_INSET};
@@ -9404,7 +9410,7 @@ body.${BODY_CLASS$4} span.thumb > .${CLASS_THUMB_CHECK} {
   line-height: 1;
   pointer-events: none;
 }
-body.${BODY_CLASS$4} span.thumb.${CLASS_THUMB_SELECTED} > .${CLASS_THUMB_CHECK} {
+body.${BODY_CLASS$5} span.thumb.${CLASS_THUMB_SELECTED} > .${CLASS_THUMB_CHECK} {
   display: inline-flex;
 }
 `.trim();
@@ -9802,11 +9808,11 @@ function mountFavoritesBulk(_ctx) {
 	Q$1(/* @__PURE__ */ a(FavoritesBulkBar, { onSelectionModeChange }), root);
 }
 var favoritesBulkFeature = {
-	id: FEATURE_ID$9,
-	label: FEATURE_LABEL$9,
-	pages: [...FEATURE_PAGES$9],
+	id: FEATURE_ID$10,
+	label: FEATURE_LABEL$10,
+	pages: [...FEATURE_PAGES$10],
 	defaultEnabled: true,
-	css: FEATURE_CSS$9,
+	css: FEATURE_CSS$10,
 	mount: mountFavoritesBulk
 };
 var BASE_GRID_CSS = `
@@ -10986,9 +10992,9 @@ function mountFeedMerge(options) {
 	pump();
 	return true;
 }
-var FEATURE_ID$8 = "feed";
-var FEATURE_LABEL$8 = "Feed in site menu";
-var FEATURE_PAGES$8 = [
+var FEATURE_ID$9 = "feed";
+var FEATURE_LABEL$9 = "Feed in site menu";
+var FEATURE_PAGES$9 = [
 	"list",
 	"post",
 	"favorites",
@@ -11024,12 +11030,12 @@ var NEW_PLAQUE_TOP_PX = 6;
 var NEW_PLAQUE_ACCENT = "#2f6fed";
 var EVENT_PAGESHOW$1 = "pageshow";
 var EVENT_CLICK$2 = "click";
-var BODY_CLASS$3 = featureBodyClass(FEATURE_ID$8);
-var FEATURE_CSS$8 = `
-body.${BODY_CLASS$3} span.thumb.new.${THUMB_CLASS} {
+var BODY_CLASS$4 = featureBodyClass(FEATURE_ID$9);
+var FEATURE_CSS$9 = `
+body.${BODY_CLASS$4} span.thumb.new.${THUMB_CLASS} {
   position: relative;
 }
-body.${BODY_CLASS$3} span.thumb.new.${THUMB_CLASS}::after {
+body.${BODY_CLASS$4} span.thumb.new.${THUMB_CLASS}::after {
   content: "NEW";
   position: absolute;
   z-index: 4;
@@ -11044,7 +11050,7 @@ body.${BODY_CLASS$3} span.thumb.new.${THUMB_CLASS}::after {
   pointer-events: none;
 }
 @supports (anchor-name: --a) {
-  body.${BODY_CLASS$3} span.thumb.new.${THUMB_CLASS}::after {
+  body.${BODY_CLASS$4} span.thumb.new.${THUMB_CLASS}::after {
     position-anchor: ${THUMB_ANCHOR_NAME};
     left: calc(anchor(left) + ${String(NEW_PLAQUE_LEFT_PX)}px);
     top: calc(anchor(top) + ${String(NEW_PLAQUE_TOP_PX)}px);
@@ -11189,11 +11195,11 @@ function mountFeed(ctx) {
 	});
 }
 var feedFeature = {
-	id: FEATURE_ID$8,
-	label: FEATURE_LABEL$8,
-	pages: [...FEATURE_PAGES$8],
+	id: FEATURE_ID$9,
+	label: FEATURE_LABEL$9,
+	pages: [...FEATURE_PAGES$9],
 	defaultEnabled: true,
-	css: `${FEATURE_CSS$8}\n${FEED_MERGE_CSS}`,
+	css: `${FEATURE_CSS$9}\n${FEED_MERGE_CSS}`,
 	mount: mountFeed
 };
 var SEEN_DIM_FEATURE_ID = "seen-dim";
@@ -11259,10 +11265,10 @@ body.${featureBodyClass(SEEN_DIM_FEATURE_ID)} .${SEEN_CLASS}:hover img.preview {
 `,
 	mount: mountSeenDim
 };
-var FEATURE_ID$7 = "infinite-scroll";
-var FEATURE_LABEL$7 = "Infinite scroll";
-var FEATURE_PAGES$7 = ["list"];
-var BODY_FEATURE_CLASS$1 = featureBodyClass(FEATURE_ID$7);
+var FEATURE_ID$8 = "infinite-scroll";
+var FEATURE_LABEL$8 = "Infinite scroll";
+var FEATURE_PAGES$8 = ["list"];
+var BODY_FEATURE_CLASS$1 = featureBodyClass(FEATURE_ID$8);
 /** Prefetch when remaining distance to list end ≤ this many viewport heights. */
 var PREFETCH_REMAINING_VIEWPORT_HEIGHTS = 2;
 var MIN_REQUEST_INTERVAL_MS = 1e3;
@@ -11280,7 +11286,7 @@ var PAGINATION_NEXT_SELECTOR = "div.pagination a[alt=\"next\"]";
 var WARN_MISSING = "infinite-scroll: missing image-list or next link; not mounted";
 var SCORE_TOKEN_PREFIX$1 = "score:";
 var RATING_TOKEN_PREFIX = "rating:";
-var FEATURE_CSS$7 = `
+var FEATURE_CSS$8 = `
 body.${BODY_FEATURE_CLASS$1} .${CLASS_SENTINEL} {
   display: block;
   width: 100%;
@@ -11536,15 +11542,15 @@ function mountInfiniteScroll(_ctx) {
 	observer.observe(sentinel);
 }
 var infiniteScrollFeature = {
-	id: FEATURE_ID$7,
-	label: FEATURE_LABEL$7,
-	pages: [...FEATURE_PAGES$7],
+	id: FEATURE_ID$8,
+	label: FEATURE_LABEL$8,
+	pages: [...FEATURE_PAGES$8],
 	defaultEnabled: true,
-	css: FEATURE_CSS$7,
+	css: FEATURE_CSS$8,
 	mount: mountInfiniteScroll
 };
 var AUTOCOMPLETE_PATH = "/public/autocomplete.php";
-var AUTOCOMPLETE_TAG_TYPE_ARTIST = exports("bJ","artist");
+var AUTOCOMPLETE_TAG_TYPE_ARTIST = exports("bN","artist");
 var HTTP_TOO_MANY_REQUESTS = 429;
 var ABORT_ERROR_NAME = "AbortError";
 var AutocompleteItemSchema = object({
@@ -11751,9 +11757,9 @@ function QueryField(props) {
 		onSelect: onPicked
 	});
 }
-var FEATURE_ID$6 = "playlist-bar";
-var FEATURE_LABEL$6 = "Collection header";
-var FEATURE_PAGES$6 = ["list"];
+var FEATURE_ID$7 = "playlist-bar";
+var FEATURE_LABEL$7 = "Collection header";
+var FEATURE_PAGES$7 = ["list"];
 var ROOT_ID$1 = "rdw-playlist-bar";
 var ROOT_CLASS$1 = "rdw-playlist-bar";
 var TITLE_CLASS = "rdw-playlist-bar-title";
@@ -11790,9 +11796,9 @@ var BAR_BUTTON_SIZE = "s";
 var NAME_FONT_PX = 18;
 var ACTIONS_GAP_PX = 8;
 var WARN_MISSING_HOST = "playlist-bar: image-list not found; playlist bar not mounted";
-var BODY_CLASS$2 = featureBodyClass(FEATURE_ID$6);
-var FEATURE_CSS$6 = `
-body.${BODY_CLASS$2} .${ROOT_CLASS$1} {
+var BODY_CLASS$3 = featureBodyClass(FEATURE_ID$7);
+var FEATURE_CSS$7 = `
+body.${BODY_CLASS$3} .${ROOT_CLASS$1} {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
@@ -11801,7 +11807,7 @@ body.${BODY_CLASS$2} .${ROOT_CLASS$1} {
   color: var(--rdw-text);
   box-sizing: border-box;
 }
-body.${BODY_CLASS$2} .${TITLE_CLASS} {
+body.${BODY_CLASS$3} .${TITLE_CLASS} {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
@@ -11810,14 +11816,14 @@ body.${BODY_CLASS$2} .${TITLE_CLASS} {
   font: inherit;
   line-height: 1.3;
 }
-body.${BODY_CLASS$2} .${NAME_CLASS} {
+body.${BODY_CLASS$3} .${NAME_CLASS} {
   font-size: ${String(NAME_FONT_PX)}px;
   font-weight: 700;
 }
-body.${BODY_CLASS$2} .${COUNT_CLASS} {
+body.${BODY_CLASS$3} .${COUNT_CLASS} {
   opacity: 0.85;
 }
-body.${BODY_CLASS$2} .${PARTS_CLASS} {
+body.${BODY_CLASS$3} .${PARTS_CLASS} {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -11826,25 +11832,25 @@ body.${BODY_CLASS$2} .${PARTS_CLASS} {
   font: inherit;
   line-height: 1.3;
 }
-body.${BODY_CLASS$2} .${PART_LABEL_CLASS} {
+body.${BODY_CLASS$3} .${PART_LABEL_CLASS} {
   flex: 0 0 auto;
 }
-body.${BODY_CLASS$2} a.${PART_LINK_CLASS} {
+body.${BODY_CLASS$3} a.${PART_LINK_CLASS} {
   color: inherit;
   text-decoration: underline;
 }
-body.${BODY_CLASS$2} a.${PART_LINK_CLASS}:focus-visible {
+body.${BODY_CLASS$3} a.${PART_LINK_CLASS}:focus-visible {
   outline: 2px solid var(--rdw-accent);
   outline-offset: 2px;
 }
-body.${BODY_CLASS$2} .${CAPTION_CLASS} {
+body.${BODY_CLASS$3} .${CAPTION_CLASS} {
   margin: 0;
   font: inherit;
   font-size: 0.875rem;
   line-height: 1.35;
   opacity: 0.8;
 }
-body.${BODY_CLASS$2} .${ACTIONS_CLASS} {
+body.${BODY_CLASS$3} .${ACTIONS_CLASS} {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -12204,11 +12210,11 @@ function mountPlaylistBar(ctx) {
 	mountDynamicBar(tagsParam, ctx.search);
 }
 var playlistBarFeature = {
-	id: FEATURE_ID$6,
-	label: FEATURE_LABEL$6,
-	pages: [...FEATURE_PAGES$6],
+	id: FEATURE_ID$7,
+	label: FEATURE_LABEL$7,
+	pages: [...FEATURE_PAGES$7],
 	defaultEnabled: true,
-	css: FEATURE_CSS$6,
+	css: FEATURE_CSS$7,
 	mount: mountPlaylistBar
 };
 var COLLECTION_PICKER_CLASS = "rdw-collection-picker";
@@ -12458,9 +12464,9 @@ function CollectionPicker(props) {
 		]
 	});
 }
-var FEATURE_ID$5 = "playlist-menu";
-var FEATURE_LABEL$5 = "Add to collection button";
-var FEATURE_PAGES$5 = ["list", "post"];
+var FEATURE_ID$6 = "playlist-menu";
+var FEATURE_LABEL$6 = "Add to collection button";
+var FEATURE_PAGES$6 = ["list", "post"];
 var CLASS_ADD = "rdw-playlist-add";
 var CLASS_ADD_IN = "rdw-playlist-add--in";
 var CLASS_MENU = "rdw-playlist-menu";
@@ -12480,8 +12486,8 @@ var FOCUS_OUTLINE_OFFSET = "2px";
 var EVENT_KEYDOWN = "keydown";
 var EVENT_POINTERDOWN = "pointerdown";
 var KEY_ESCAPE = "Escape";
-var BODY_SELECTOR$3 = `body.${featureBodyClass(FEATURE_ID$5)}`;
-var FEATURE_CSS$5 = `
+var BODY_SELECTOR$3 = `body.${featureBodyClass(FEATURE_ID$6)}`;
+var FEATURE_CSS$6 = `
 ${BODY_SELECTOR$3} .${CLASS_ADD} {
   position: absolute;
   top: ${String(BUTTON_BELOW_FAV_TOP_PX)}px;
@@ -12760,11 +12766,11 @@ function mountPlaylistMenu(ctx) {
 	ensureListSubscriptions();
 }
 var playlistMenuFeature = {
-	id: FEATURE_ID$5,
-	label: FEATURE_LABEL$5,
-	pages: [...FEATURE_PAGES$5],
+	id: FEATURE_ID$6,
+	label: FEATURE_LABEL$6,
+	pages: [...FEATURE_PAGES$6],
 	defaultEnabled: true,
-	css: FEATURE_CSS$5,
+	css: FEATURE_CSS$6,
 	mount: mountPlaylistMenu
 };
 var CLASS_STRIP = "rdw-post-panel-collection-queue";
@@ -13345,17 +13351,17 @@ function readCommentCount() {
 * Does not replace the Fluid wrapper or rename its classes — only the
 * wrapper size via explicit width/height (overrides Fluid's intrinsic px).
 */
-var FEATURE_ID$4 = VIDEO_PLAYER_FEATURE_ID;
-var FEATURE_LABEL$4 = "Video player tweaks";
-var FEATURE_PAGES$4 = ["post"];
+var FEATURE_ID$5 = VIDEO_PLAYER_FEATURE_ID;
+var FEATURE_LABEL$5 = "Video player tweaks";
+var FEATURE_PAGES$5 = ["post"];
 var VIDEO_ELEMENT_ID = "gelcomVideoPlayer";
 var FLUID_WRAPPER_ID = "fluid_video_wrapper_gelcomVideoPlayer";
 var FLUID_WRAPPER_CLASS = "fluid_video_wrapper";
 var VOLUME_MIN = 0;
 var VOLUME_MAX = 1;
 var CHROME_GAP_PX = 12;
-var BODY_CLASS$1 = featureBodyClass(FEATURE_ID$4);
-var BODY_SELECTOR$2 = `body.${BODY_CLASS$1}`;
+var BODY_CLASS$2 = featureBodyClass(FEATURE_ID$5);
+var BODY_SELECTOR$2 = `body.${BODY_CLASS$2}`;
 var WRAPPER_SELECTOR = `#${FLUID_WRAPPER_ID}.${FLUID_WRAPPER_CLASS}`;
 var SIZE_LABEL_FIT_HEIGHT = "Fit height";
 var SIZE_LABEL_FIT_WIDTH = "Fit width";
@@ -13367,7 +13373,7 @@ var SIZE_MODE_VALUES = [
 ];
 /** Settings caption under the Video player tweaks switch. */
 var VIDEO_PLAYER_SETTING_CAPTION = "Fit height fills under the header (may upscale). Fit width uses the media column. Original is native pixels.";
-var FEATURE_CSS$4 = [
+var FEATURE_CSS$5 = [
 	`${BODY_SELECTOR$2} ${WRAPPER_SELECTOR} {`,
 	`  box-sizing: border-box;`,
 	`}`
@@ -13426,7 +13432,7 @@ function findWrapper() {
 	return node;
 }
 function readSizeModeFromBody() {
-	for (const value of SIZE_MODE_VALUES) if (document.body.classList.contains(featureChoiceBodyClass(FEATURE_ID$4, value))) return value;
+	for (const value of SIZE_MODE_VALUES) if (document.body.classList.contains(featureChoiceBodyClass(FEATURE_ID$5, value))) return value;
 	return resolveVideoSize(DEFAULT_VIDEO_SIZE);
 }
 function measureMediaColumnWidthPx(wrapper) {
@@ -13443,7 +13449,7 @@ function clearWrapperSize(wrapper) {
 	wrapper.style.removeProperty("height");
 }
 function applyWrapperSize(wrapper, video) {
-	if (!document.body.classList.contains(BODY_CLASS$1)) {
+	if (!document.body.classList.contains(BODY_CLASS$2)) {
 		clearWrapperSize(wrapper);
 		return;
 	}
@@ -13520,9 +13526,9 @@ function mountVideoPlayer(ctx) {
 	});
 }
 var videoPlayerFeature = {
-	id: FEATURE_ID$4,
-	label: FEATURE_LABEL$4,
-	pages: [...FEATURE_PAGES$4],
+	id: FEATURE_ID$5,
+	label: FEATURE_LABEL$5,
+	pages: [...FEATURE_PAGES$5],
 	defaultEnabled: true,
 	cssOnly: true,
 	settingsCaption: VIDEO_PLAYER_SETTING_CAPTION,
@@ -13544,7 +13550,7 @@ var videoPlayerFeature = {
 		],
 		defaultValue: DEFAULT_VIDEO_SIZE
 	},
-	css: FEATURE_CSS$4,
+	css: FEATURE_CSS$5,
 	mount: mountVideoPlayer
 };
 var TEXT_COLLECTIONS = "Collections";
@@ -13956,9 +13962,9 @@ function StatRowView(props) {
 		children: row.value
 	})] });
 }
-var FEATURE_ID$3 = "post-actions";
-var FEATURE_LABEL$3 = "Post side panel";
-var FEATURE_PAGES$3 = ["post"];
+var FEATURE_ID$4 = "post-actions";
+var FEATURE_LABEL$4 = "Post side panel";
+var FEATURE_PAGES$4 = ["post"];
 /** Body class while the panel host is in the document — CSS hide handoff for G. */
 var POST_PANEL_MOUNTED_CLASS = "rdw-post-panel-mounted";
 var NARROW_BREAKPOINT_PX = 1100;
@@ -13980,8 +13986,8 @@ var CLASS_PANEL = "rdw-post-actions";
 var CLASS_MODE_WIDE = "rdw-post-actions--wide";
 var CLASS_MODE_NARROW = "rdw-post-actions--narrow";
 var WARN_NO_FLEXI = "post-actions: div.flexi missing; panel not mounted";
-var BODY_SELECTOR$1 = `body.${featureBodyClass(FEATURE_ID$3)}`;
-var FEATURE_CSS$3 = `
+var BODY_SELECTOR$1 = `body.${featureBodyClass(FEATURE_ID$4)}`;
+var FEATURE_CSS$4 = `
 ${BODY_SELECTOR$1} #fit-to-screen div.flexi,
 ${BODY_SELECTOR$1} div#right-col div.flexi,
 ${BODY_SELECTOR$1} div.flexi {
@@ -14188,7 +14194,7 @@ function mountPostActions(ctx) {
 	host.id = POST_ACTIONS_ID;
 	host.className = CLASS_PANEL;
 	host.setAttribute("role", "complementary");
-	host.setAttribute("aria-label", FEATURE_LABEL$3);
+	host.setAttribute("aria-label", FEATURE_LABEL$4);
 	const postId = readPostIdFromSearch(ctx.search);
 	panelHost = host;
 	document.body.classList.add(POST_PANEL_MOUNTED_CLASS);
@@ -14197,11 +14203,11 @@ function mountPostActions(ctx) {
 	Q$1(k$1(PostPanel, { postId }), host);
 }
 var postActionsFeature = {
-	id: FEATURE_ID$3,
-	label: FEATURE_LABEL$3,
-	pages: [...FEATURE_PAGES$3],
+	id: FEATURE_ID$4,
+	label: FEATURE_LABEL$4,
+	pages: [...FEATURE_PAGES$4],
 	defaultEnabled: true,
-	css: FEATURE_CSS$3,
+	css: FEATURE_CSS$4,
 	mount: mountPostActions
 };
 var SAVE_SEARCH_LABEL = "Save as collection";
@@ -14390,9 +14396,9 @@ function SaveSearchButton(props) {
 		})
 	] });
 }
-var FEATURE_ID$2 = "search-tools";
-var FEATURE_LABEL$2 = "Search tools";
-var FEATURE_PAGES$2 = ["list", "post"];
+var FEATURE_ID$3 = "search-tools";
+var FEATURE_LABEL$3 = "Search tools";
+var FEATURE_PAGES$3 = ["list", "post"];
 /**
 * Followed artists for Feed chip / source detection (read-only).
 * Mirror first — GM snapshots on bfcache pages can omit recent follows.
@@ -14438,7 +14444,7 @@ var EVENT_CHANGE = "change";
 var EVENT_CLICK = "click";
 var EVENT_AWESOMPLETE_SELECT = "awesomplete-selectcomplete";
 var WARN_NO_FORM = "search-tools: search form not found; not mounted";
-var BODY_CLASS = featureBodyClass(FEATURE_ID$2);
+var BODY_CLASS$1 = featureBodyClass(FEATURE_ID$3);
 /**
 * Set on document.body while the panel's «AI posts» row is rendered.
 * Site-skin (HANDOFF G) must hide native Filter AI only under this class.
@@ -14525,47 +14531,47 @@ var SOURCE_OPTIONS = [
 ];
 var SORT_TOKEN_TO_MODE = /* @__PURE__ */ new Map();
 for (const option of SORT_OPTIONS) if (option.token !== null) SORT_TOKEN_TO_MODE.set(option.token, option.value);
-var FEATURE_CSS$2 = [
-	`body.${BODY_CLASS} .${ROOT_CLASS} {`,
+var FEATURE_CSS$3 = [
+	`body.${BODY_CLASS$1} .${ROOT_CLASS} {`,
 	"  margin-top: 8px;",
 	"  max-width: 100%;",
 	"  box-sizing: border-box;",
 	"}",
-	`body.${BODY_CLASS} .${CARD_CLASS} {`,
+	`body.${BODY_CLASS$1} .${CARD_CLASS} {`,
 	"  padding: 10px;",
 	"  display: grid;",
 	"  gap: 10px;",
 	"}",
-	`body.${BODY_CLASS} .${CHIPS_CLASS} {`,
+	`body.${BODY_CLASS$1} .${CHIPS_CLASS} {`,
 	"  display: flex;",
 	"  flex-wrap: wrap;",
 	"  gap: 5px;",
 	"}",
-	`body.${BODY_CLASS} .${CHIP_CLASS} {`,
+	`body.${BODY_CLASS$1} .${CHIP_CLASS} {`,
 	"  cursor: default;",
 	"}",
-	`body.${BODY_CLASS} .${CHIP_CLASS}[${CHIP_ATTR_TOGGLE}="1"] {`,
+	`body.${BODY_CLASS$1} .${CHIP_CLASS}[${CHIP_ATTR_TOGGLE}="1"] {`,
 	"  cursor: pointer;",
 	"}",
-	`body.${BODY_CLASS} .${FIELD_CLASS} {`,
+	`body.${BODY_CLASS$1} .${FIELD_CLASS} {`,
 	"  display: grid;",
 	"  gap: 0;",
 	"  min-width: 0;",
 	"}",
-	`body.${BODY_CLASS} .${ROW_SORT_CLASS} {`,
+	`body.${BODY_CLASS$1} .${ROW_SORT_CLASS} {`,
 	"  display: grid;",
 	"  grid-template-columns: 1fr 72px;",
 	"  gap: 8px;",
 	"  align-items: start;",
 	"}",
-	`body.${BODY_CLASS} .${FOOT_CLASS} {`,
+	`body.${BODY_CLASS$1} .${FOOT_CLASS} {`,
 	"  display: flex;",
 	"  flex-wrap: wrap;",
 	"  gap: 6px;",
 	"  border-top: 1px solid var(--rdw-border);",
 	"  padding-top: 10px;",
 	"}",
-	`body.${BODY_CLASS} .${FOOT_CLASS} > button {`,
+	`body.${BODY_CLASS$1} .${FOOT_CLASS} > button {`,
 	"  flex: 1 1 auto;",
 	"  white-space: nowrap;",
 	"}"
@@ -15295,19 +15301,19 @@ function mountSearchTools(_ctx) {
 	Q$1(/* @__PURE__ */ a(SearchToolsPanel, { input }), root);
 }
 var searchToolsFeature = {
-	id: FEATURE_ID$2,
-	label: FEATURE_LABEL$2,
-	pages: [...FEATURE_PAGES$2],
+	id: FEATURE_ID$3,
+	label: FEATURE_LABEL$3,
+	pages: [...FEATURE_PAGES$3],
 	defaultEnabled: true,
-	css: FEATURE_CSS$2,
+	css: FEATURE_CSS$3,
 	mount: mountSearchTools
 };
-var FEATURE_ID$1 = "tag-groups";
-var FEATURE_LABEL$1 = "Collapse tags";
+var FEATURE_ID$2 = "tag-groups";
+var FEATURE_LABEL$2 = "Collapse tags";
 var TAG_SIDEBAR_SELECTOR = "ul#tag-sidebar";
 var TOGGLE_CLASS = "rdw-tag-group-toggle";
 var COLLAPSED_CLASS = "rdw-tag-group-collapsed";
-var BODY_FEATURE_CLASS = featureBodyClass(FEATURE_ID$1);
+var BODY_FEATURE_CLASS = featureBodyClass(FEATURE_ID$2);
 var MISSING_SIDEBAR_WARN = "Tag sidebar not found";
 var GROUP_HEADER_NAME_SET = /* @__PURE__ */ new Set([
 	"Copyright",
@@ -15317,7 +15323,7 @@ var GROUP_HEADER_NAME_SET = /* @__PURE__ */ new Set([
 	"Meta"
 ]);
 var DEFAULT_COLLAPSED = ["General", "Meta"];
-var FEATURE_PAGES$1 = ["list", "post"];
+var FEATURE_PAGES$2 = ["list", "post"];
 /**
 * Site-skin `html.rdw-skin ul#tag-sidebar > li { display: block }` includes an id,
 * so a body+class rule cannot hide the row. Match that chain, then add the
@@ -15326,7 +15332,7 @@ var FEATURE_PAGES$1 = ["list", "post"];
 var COLLAPSED_ROW = `ul#tag-sidebar > li.${COLLAPSED_CLASS}`;
 var HIDE_COLLAPSED_WITH_SKIN = `html.${RDW_SKIN_CLASS} body.${BODY_FEATURE_CLASS} ${COLLAPSED_ROW}`;
 var HIDE_COLLAPSED_SITE_THEME = `body.${BODY_FEATURE_CLASS} ${COLLAPSED_ROW}`;
-var FEATURE_CSS$1 = [
+var FEATURE_CSS$2 = [
 	`${HIDE_COLLAPSED_WITH_SKIN},`,
 	`${HIDE_COLLAPSED_SITE_THEME} { display: none; }`,
 	`body.${BODY_FEATURE_CLASS} button.${TOGGLE_CLASS} {`,
@@ -15420,13 +15426,58 @@ function mountTagGroups(ctx) {
 	for (const group of groups) mountToggle(group, collapsedNames, ctx);
 }
 var tagGroupsFeature = {
+	id: FEATURE_ID$2,
+	label: FEATURE_LABEL$2,
+	pages: [...FEATURE_PAGES$2],
+	defaultEnabled: true,
+	css: FEATURE_CSS$2,
+	resetStateOnToggle: true,
+	mount: mountTagGroups
+};
+/**
+* Hides the browser tooltip with the full tag list that shows when the pointer
+* rests on a thumbnail.
+*
+* The tooltip is the `title` of `img.preview`. The attribute stays: the site's
+* scripts and this script read tags from it, and nothing inside `a#p{ID}` is
+* changed. Instead the image stops taking the pointer, so the hovered element
+* is the link around it, which has no title. A click lands on the link as
+* before.
+*/
+var FEATURE_ID$1 = "thumb-tooltip";
+var FEATURE_LABEL$1 = "Hide tag tooltip on thumbnails";
+var FEATURE_PAGES$1 = ["list", "favorites"];
+var BODY_CLASS = featureBodyClass(FEATURE_ID$1);
+/** Added when the site lays the thumb link out inline (see mount). */
+var THUMB_TOOLTIP_INLINE_CLASS = `${BODY_CLASS}-inline`;
+var DISPLAY_INLINE = "inline";
+var THUMB_LINK_SELECTOR = `${SITE_SELECTORS.thumb} > a:not([onclick])`;
+var FEATURE_CSS$1 = `
+body.${BODY_CLASS} ${SITE_SELECTORS.thumb} > a > ${SITE_SELECTORS.previewImage} {
+  pointer-events: none;
+}
+body.${BODY_CLASS}.${THUMB_TOOLTIP_INLINE_CLASS} ${THUMB_LINK_SELECTOR} {
+  display: inline-block;
+}
+`.trim();
+/**
+* An inline link does not cover its image for hit-testing, so with the image
+* out of the way a click would miss the link. Such a link becomes an
+* inline-block, which wraps the image.
+*/
+function mountThumbTooltip(_ctx) {
+	const link = document.querySelector(THUMB_LINK_SELECTOR);
+	if (link === null) return;
+	if (window.getComputedStyle(link).display === DISPLAY_INLINE) document.body.classList.add(THUMB_TOOLTIP_INLINE_CLASS);
+}
+var thumbTooltipFeature = {
 	id: FEATURE_ID$1,
 	label: FEATURE_LABEL$1,
 	pages: [...FEATURE_PAGES$1],
 	defaultEnabled: true,
 	css: FEATURE_CSS$1,
-	resetStateOnToggle: true,
-	mount: mountTagGroups
+	cssOnly: true,
+	mount: mountThumbTooltip
 };
 var FEATURE_ID = "video-preview";
 var FEATURE_LABEL = "Video preview on hover";
@@ -15584,7 +15635,7 @@ function mountVideoPreview(ctx) {
 		startBindings();
 	});
 }
-var FEATURES = exports("aH",[
+var FEATURES = exports("aJ",[
 	feedFeature,
 	menuCleanupFeature,
 	tagGroupsFeature,
@@ -15596,6 +15647,7 @@ var FEATURES = exports("aH",[
 	infiniteScrollFeature,
 	postActionsFeature,
 	gridDensityFeature,
+	thumbTooltipFeature,
 	favoritesBulkFeature,
 	videoPlayerFeature,
 	{
@@ -15829,12 +15881,12 @@ bootEarly();
 whenDomReady(() => {
 	applyLayoutBeforePaint();
 	scheduleAfterFirstPaint(() => {
-		module.import('./app-h-k4xIgg-C3pI-N1D.js').then(({ startApp }) => {
+		module.import('./app-VAIopq5Q-Dzu-rM2T.js').then(({ startApp }) => {
 			startApp();
 		});
 	});
 });})}}));
-System.register("./app-h-k4xIgg-C3pI-N1D.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var yieldToMain,detectPageKind,mountCards,syncFavoritesPage,runFeaturesYielding,getAppearance,applyAppearanceTheme,ensureDocumentStyles,SITE_SELECTORS,log,SITE_ORIGIN,SEARCH_PARAM_TAGS,normalizeArtistTag,CSS_CLASS,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,HEADER_SELECTOR,RDW_OWN_PAGE_CLASS,MENU_ITEM_ID,parseRdwHash,getSyncState,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,runFavoritesSync,UI_TEXT,Q$1,RDW_PAGE_ROOT_ID,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,resolveFavoritesUserId,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,rdwPageHash,createFavoritesSyncTabId,APPEARANCE_BACKGROUND_KEY,readArtistsMirror,listArtistTags,writeArtistsMirror,reloadFromStorage,save,CURRENT_PAGE_CLASS,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,a,applyTokenProperties,resolveAppearancePalette,isCollectionDetailPage,menuRouteForPage,getSiteSkinCss,$$1,PANEL_UI_CLASS,TOKEN_VAR,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,SITE_LIGHT_C_BG,SITE_LIGHT_C_BG_ALT,SITE_DARK_C_BG,SITE_DARK_C_BORDER,APPEARANCE_BACKGROUND_TOO_LARGE;return{setters:[function(module){yieldToMain=module.y;detectPageKind=module.d;mountCards=module.m;syncFavoritesPage=module.s;runFeaturesYielding=module.r;getAppearance=module.g;applyAppearanceTheme=module.a;ensureDocumentStyles=module.e;SITE_SELECTORS=module.S;log=module.l;SITE_ORIGIN=module.b;SEARCH_PARAM_TAGS=module.c;normalizeArtistTag=module.n;CSS_CLASS=module.C;ensureStyleElement=module.f;RDW_OWN_PAGE_STYLE_ID=module.R;buildOwnPageCss=module.h;HEADER_SELECTOR=module.H;RDW_OWN_PAGE_CLASS=module.i;MENU_ITEM_ID=module.M;parseRdwHash=module.p;getSyncState=module.j;readFavoritesSyncMode=module.k;FAVORITES_SYNC_MODE_FULL=module.F;runFavoritesSync=module.o;UI_TEXT=module.U;Q$1=module.Q;RDW_PAGE_ROOT_ID=module.q;NAVBAR_SELECTOR=module.N;FEED_MENU_ITEM_ID=module.t;RDW_HASH_COLLECTIONS=module.u;MENU_LABEL=module.v;RDW_HASH_FOLLOWING=module.w;resolveFavoritesUserId=module.x;MY_FAVORITES_CONTAINER_ID=module.z;RDW_HASH_SETTINGS=module.A;rdwPageHash=module.B;createFavoritesSyncTabId=module.D;APPEARANCE_BACKGROUND_KEY=module.E;readArtistsMirror=module.G;listArtistTags=module.I;writeArtistsMirror=module.J;reloadFromStorage=module.K;save=module.L;CURRENT_PAGE_CLASS=module.O;setSyncState=module.P;SEARCH_PARAM_PAGE=module.T;FAVORITES_PAGE=module.V;FAVORITES_SECTION_VIEW=module.W;SEARCH_PATH=module.X;a=module.Y;applyTokenProperties=module.Z;resolveAppearancePalette=module._;isCollectionDetailPage=module.$;menuRouteForPage=module.a0;getSiteSkinCss=module.a1;$$1=module.a2;PANEL_UI_CLASS=module.a3;TOKEN_VAR=module.a4;RDW_THEME_ATTR=module.a5;APPEARANCE_THEME_SITE=module.a6;APPEARANCE_THEME_SITE_DARK=module.a7;SITE_LIGHT_C_BG=module.a8;SITE_LIGHT_C_BG_ALT=module.a9;SITE_DARK_C_BG=module.aa;SITE_DARK_C_BORDER=module.ab;APPEARANCE_BACKGROUND_TOO_LARGE=module.ac;}],execute:(function(){exports({i:navigateToRdwRoute,n:loadBackground,r:saveBackground,startApp:startApp,t:clearBackground});/** Matches host.tsx page title class (owned there; styled here for site polish). */
+System.register("./app-VAIopq5Q-Dzu-rM2T.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var yieldToMain,detectPageKind,mountCards,syncFavoritesPage,runFeaturesYielding,getAppearance,applyAppearanceTheme,ensureDocumentStyles,SITE_SELECTORS,log,SITE_ORIGIN,SEARCH_PARAM_TAGS,normalizeArtistTag,CSS_CLASS,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,HEADER_SELECTOR,RDW_OWN_PAGE_CLASS,MENU_ITEM_ID,parseRdwHash,getSyncState,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,runFavoritesSync,UI_TEXT,Q$1,RDW_PAGE_ROOT_ID,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,resolveFavoritesUserId,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,rdwPageHash,createFavoritesSyncTabId,APPEARANCE_BACKGROUND_KEY,readArtistsMirror,listArtistTags,writeArtistsMirror,reloadFromStorage,save,CURRENT_PAGE_CLASS,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,a,applyTokenProperties,resolveAppearancePalette,isCollectionDetailPage,menuRouteForPage,getSiteSkinCss,$$1,PANEL_UI_CLASS,TOKEN_VAR,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,SITE_LIGHT_C_BG,SITE_LIGHT_C_BG_ALT,SITE_DARK_C_BG,SITE_DARK_C_BORDER,APPEARANCE_BACKGROUND_TOO_LARGE;return{setters:[function(module){yieldToMain=module.y;detectPageKind=module.d;mountCards=module.m;syncFavoritesPage=module.s;runFeaturesYielding=module.r;getAppearance=module.g;applyAppearanceTheme=module.a;ensureDocumentStyles=module.e;SITE_SELECTORS=module.S;log=module.l;SITE_ORIGIN=module.b;SEARCH_PARAM_TAGS=module.c;normalizeArtistTag=module.n;CSS_CLASS=module.C;ensureStyleElement=module.f;RDW_OWN_PAGE_STYLE_ID=module.R;buildOwnPageCss=module.h;HEADER_SELECTOR=module.H;RDW_OWN_PAGE_CLASS=module.i;MENU_ITEM_ID=module.M;parseRdwHash=module.p;getSyncState=module.j;readFavoritesSyncMode=module.k;FAVORITES_SYNC_MODE_FULL=module.F;runFavoritesSync=module.o;UI_TEXT=module.U;Q$1=module.Q;RDW_PAGE_ROOT_ID=module.q;NAVBAR_SELECTOR=module.N;FEED_MENU_ITEM_ID=module.t;RDW_HASH_COLLECTIONS=module.u;MENU_LABEL=module.v;RDW_HASH_FOLLOWING=module.w;resolveFavoritesUserId=module.x;MY_FAVORITES_CONTAINER_ID=module.z;RDW_HASH_SETTINGS=module.A;rdwPageHash=module.B;createFavoritesSyncTabId=module.D;APPEARANCE_BACKGROUND_KEY=module.E;readArtistsMirror=module.G;listArtistTags=module.I;writeArtistsMirror=module.J;reloadFromStorage=module.K;save=module.L;CURRENT_PAGE_CLASS=module.O;setSyncState=module.P;SEARCH_PARAM_PAGE=module.T;FAVORITES_PAGE=module.V;FAVORITES_SECTION_VIEW=module.W;SEARCH_PATH=module.X;a=module.Y;applyTokenProperties=module.Z;resolveAppearancePalette=module._;isCollectionDetailPage=module.$;menuRouteForPage=module.a0;getSiteSkinCss=module.a1;$$1=module.a2;PANEL_UI_CLASS=module.a3;TOKEN_VAR=module.a4;RDW_THEME_ATTR=module.a5;APPEARANCE_THEME_SITE=module.a6;APPEARANCE_THEME_SITE_DARK=module.a7;SITE_LIGHT_C_BG=module.a8;SITE_LIGHT_C_BG_ALT=module.a9;SITE_DARK_C_BG=module.aa;SITE_DARK_C_BORDER=module.ab;APPEARANCE_BACKGROUND_TOO_LARGE=module.ac;}],execute:(function(){exports({i:navigateToRdwRoute,n:loadBackground,r:saveBackground,startApp:startApp,t:clearBackground});/** Matches host.tsx page title class (owned there; styled here for site polish). */
 var PAGE_TITLE_CLASS$1 = "rdw-page-title";
 /** Matches kit SectionLabel class. */
 var SECTION_LABEL_CLASS = "rdw-section-label";
@@ -16124,28 +16176,28 @@ var collectionsFactory = null;
 var followingFactory = null;
 function getSettingsFactory() {
 	if (settingsFactory === null) settingsFactory = async () => {
-		const mod = await module.import('./settings-page-IZkrN9he-BMU-uPhn.js');
+		const mod = await module.import('./settings-page-DZ6p6C-k-BSy7BIis.js');
 		return /* @__PURE__ */ a(mod.SettingsPage, {});
 	};
 	return settingsFactory;
 }
 function getCollectionsFactory() {
 	if (collectionsFactory === null) collectionsFactory = async () => {
-		const mod = await module.import('./collections-page-BMbxne0C-C7qQf3m5.js');
+		const mod = await module.import('./collections-page-DrUvTUCa-CxygZByi.js');
 		return /* @__PURE__ */ a(mod.CollectionsPage, {});
 	};
 	return collectionsFactory;
 }
 function getFollowingFactory() {
 	if (followingFactory === null) followingFactory = async () => {
-		const mod = await module.import('./following-page-DBL-3jFH-DvwqdDDS.js');
+		const mod = await module.import('./following-page-DeJepZjZ-CAdK8u4H.js');
 		return /* @__PURE__ */ a(mod.FollowingPage, {});
 	};
 	return followingFactory;
 }
 function collectionDetailFactory(collectionId) {
 	return async () => {
-		const mod = await module.import('./collection-detail-page-DLaJ-vtL-CFVSM_Yq.js');
+		const mod = await module.import('./collection-detail-page-CONiiEnc-COEWD27c.js');
 		return /* @__PURE__ */ a(mod.CollectionDetailPage, { collectionId }, collectionId);
 	};
 }
@@ -16847,7 +16899,7 @@ async function startApp() {
 	await yieldToMain();
 	maybeResumeFavoritesSync();
 }})}}));
-System.register("./settings-page-IZkrN9he-BMU-uPhn.js", ['./___monkey.entry.js','./app-h-k4xIgg-C3pI-N1D.js'],(function(exports){'use strict';var d,a,PANEL_UI_CLASS,Card,SectionLabel,Switch,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,NumberField,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,setGridFavButtonsVisible,P$1,T,A,getAppearance,applyAppearanceTheme,getSiteSkinCss,APPEARANCE_THEME_CUSTOM,KIT_FOCUS_CSS,Select,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,$$1,Segmented,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,TextField,Button,clampBackgroundDim,FEATURES,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,setFeatureEnabled,clearFeatureState,applyCssOnlyFeatureEnabled,isFeatureEnabled,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,applyCssOnlyFeatureChoice,getFeatureChoice,createAutocompleteQuerier,b,readSiteBlacklist,Chip,AutocompleteField,ProgressBar,createDefaultCustomTheme,AppearanceThemeSchema,prepareBackgroundImageFile,writeSiteBlacklist,runFavoritesSync,log,FAVORITES_SYNC_PAGE_PAUSE_MS,load,createDefaultStorage,clearStorageCache,clearFavsCache,getSyncState,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,setAppearance,loadFavSet,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,gridDensityFeature,FAVORITES_SYNC_MODE_INCREMENTAL,FAVORITES_SYNC_MODE_FULL,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureChoiceValue,getScreenPixelSize,loadBackground,clearBackground,saveBackground;return{setters:[function(module){d=module.ad;a=module.Y;PANEL_UI_CLASS=module.a3;Card=module.ae;SectionLabel=module.af;Switch=module.ag;UI_TEXT=module.U;TWEAKS_SWITCH_ID=module.ah;setTweaksEnabled=module.ai;NumberField=module.aj;UPDATES_GROUP_SIZE_ID=module.ak;setUpdatesGroupSize=module.al;getUpdatesGroupSize=module.am;PLAYLIST_CHUNK_SIZE_ID=module.an;setPlaylistChunkSize=module.ao;getPlaylistChunkSize=module.ap;GRID_FAV_CHECKBOX_ID=module.aq;setGridFavButtonsEnabled=module.ar;setGridFavButtonsVisible=module.as;P$1=module.at;T=module.au;A=module.av;getAppearance=module.g;applyAppearanceTheme=module.a;getSiteSkinCss=module.a1;APPEARANCE_THEME_CUSTOM=module.aw;KIT_FOCUS_CSS=module.ax;Select=module.ay;APPEARANCE_THEME_SITE=module.a6;APPEARANCE_THEME_SITE_DARK=module.a7;APPEARANCE_THEME_LIGHT=module.az;APPEARANCE_THEME_DARK=module.aA;$$1=module.a2;Segmented=module.aB;APPEARANCE_CUSTOM_BASE_LIGHT=module.aC;APPEARANCE_CUSTOM_BASE_DARK=module.aD;TextField=module.aE;Button=module.aF;clampBackgroundDim=module.aG;FEATURES=module.aH;featurePanelLabel=module.aI;FEATURE_CHECKBOX_ID_PREFIX=module.aJ;setFeatureEnabled=module.aK;clearFeatureState=module.aL;applyCssOnlyFeatureEnabled=module.aM;isFeatureEnabled=module.aN;FEATURE_CHOICE_ID_PREFIX=module.aO;setFeatureChoiceValue=module.aP;applyCssOnlyFeatureChoice=module.aQ;getFeatureChoice=module.aR;createAutocompleteQuerier=module.aS;b=module.aT;readSiteBlacklist=module.aU;Chip=module.aV;AutocompleteField=module.aW;ProgressBar=module.aX;createDefaultCustomTheme=module.aY;AppearanceThemeSchema=module.aZ;prepareBackgroundImageFile=module.a_;writeSiteBlacklist=module.a$;runFavoritesSync=module.o;log=module.l;FAVORITES_SYNC_PAGE_PAUSE_MS=module.b0;load=module.b1;createDefaultStorage=module.b2;clearStorageCache=module.b3;clearFavsCache=module.b4;getSyncState=module.j;object=module.b5;StorageSchema=module.b6;optional=module.b7;string=module.b8;FavsSchema=module.b9;literal=module.ba;IMPORT_SCHEMA_ERROR_PREFIX=module.bb;stripLegacyPanelWindowSize=module.bc;save=module.L;migrateMarksFavToFavs=module.bd;FAVS_STORAGE_KEY=module.be;createDefaultFavs=module.bf;parseFavsStrict=module.bg;setAppearance=module.bh;loadFavSet=module.bi;STORAGE_BACKUP_KEY=module.bj;extractFavIdsFromMarks=module.bk;gridDensityFeature=module.bl;FAVORITES_SYNC_MODE_INCREMENTAL=module.bm;FAVORITES_SYNC_MODE_FULL=module.F;getTweaksEnabled=module.bn;getGridFavButtonsEnabled=module.bo;getFeatureChoiceValue=module.bp;getScreenPixelSize=module.bq;},function(module){loadBackground=module.n;clearBackground=module.t;saveBackground=module.r;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
+System.register("./settings-page-DZ6p6C-k-BSy7BIis.js", ['./___monkey.entry.js','./app-VAIopq5Q-Dzu-rM2T.js'],(function(exports){'use strict';var d,a,PANEL_UI_CLASS,Switch,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,NumberField,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,setGridFavButtonsVisible,IconChevronRight,IconChevronDown,Card,P$1,T,A,getAppearance,applyAppearanceTheme,getSiteSkinCss,APPEARANCE_THEME_CUSTOM,KIT_FOCUS_CSS,SectionLabel,Select,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,$$1,Segmented,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,TextField,Button,clampBackgroundDim,FEATURES,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,setFeatureEnabled,clearFeatureState,applyCssOnlyFeatureEnabled,isFeatureEnabled,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,applyCssOnlyFeatureChoice,getFeatureChoice,createAutocompleteQuerier,b,readSiteBlacklist,Chip,AutocompleteField,ProgressBar,createDefaultCustomTheme,AppearanceThemeSchema,prepareBackgroundImageFile,setFeatureState,writeSiteBlacklist,runFavoritesSync,log,FAVORITES_SYNC_PAGE_PAUSE_MS,load,createDefaultStorage,clearStorageCache,clearFavsCache,getSyncState,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,setAppearance,loadFavSet,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,gridDensityFeature,FAVORITES_SYNC_MODE_INCREMENTAL,FAVORITES_SYNC_MODE_FULL,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureChoiceValue,getFeatureState,getScreenPixelSize,loadBackground,clearBackground,saveBackground;return{setters:[function(module){d=module.ad;a=module.Y;PANEL_UI_CLASS=module.a3;Switch=module.ae;UI_TEXT=module.U;TWEAKS_SWITCH_ID=module.af;setTweaksEnabled=module.ag;NumberField=module.ah;UPDATES_GROUP_SIZE_ID=module.ai;setUpdatesGroupSize=module.aj;getUpdatesGroupSize=module.ak;PLAYLIST_CHUNK_SIZE_ID=module.al;setPlaylistChunkSize=module.am;getPlaylistChunkSize=module.an;GRID_FAV_CHECKBOX_ID=module.ao;setGridFavButtonsEnabled=module.ap;setGridFavButtonsVisible=module.aq;IconChevronRight=module.ar;IconChevronDown=module.as;Card=module.at;P$1=module.au;T=module.av;A=module.aw;getAppearance=module.g;applyAppearanceTheme=module.a;getSiteSkinCss=module.a1;APPEARANCE_THEME_CUSTOM=module.ax;KIT_FOCUS_CSS=module.ay;SectionLabel=module.az;Select=module.aA;APPEARANCE_THEME_SITE=module.a6;APPEARANCE_THEME_SITE_DARK=module.a7;APPEARANCE_THEME_LIGHT=module.aB;APPEARANCE_THEME_DARK=module.aC;$$1=module.a2;Segmented=module.aD;APPEARANCE_CUSTOM_BASE_LIGHT=module.aE;APPEARANCE_CUSTOM_BASE_DARK=module.aF;TextField=module.aG;Button=module.aH;clampBackgroundDim=module.aI;FEATURES=module.aJ;featurePanelLabel=module.aK;FEATURE_CHECKBOX_ID_PREFIX=module.aL;setFeatureEnabled=module.aM;clearFeatureState=module.aN;applyCssOnlyFeatureEnabled=module.aO;isFeatureEnabled=module.aP;FEATURE_CHOICE_ID_PREFIX=module.aQ;setFeatureChoiceValue=module.aR;applyCssOnlyFeatureChoice=module.aS;getFeatureChoice=module.aT;createAutocompleteQuerier=module.aU;b=module.aV;readSiteBlacklist=module.aW;Chip=module.aX;AutocompleteField=module.aY;ProgressBar=module.aZ;createDefaultCustomTheme=module.a_;AppearanceThemeSchema=module.a$;prepareBackgroundImageFile=module.b0;setFeatureState=module.b1;writeSiteBlacklist=module.b2;runFavoritesSync=module.o;log=module.l;FAVORITES_SYNC_PAGE_PAUSE_MS=module.b3;load=module.b4;createDefaultStorage=module.b5;clearStorageCache=module.b6;clearFavsCache=module.b7;getSyncState=module.j;object=module.b8;StorageSchema=module.b9;optional=module.ba;string=module.bb;FavsSchema=module.bc;literal=module.bd;IMPORT_SCHEMA_ERROR_PREFIX=module.be;stripLegacyPanelWindowSize=module.bf;save=module.L;migrateMarksFavToFavs=module.bg;FAVS_STORAGE_KEY=module.bh;createDefaultFavs=module.bi;parseFavsStrict=module.bj;setAppearance=module.bk;loadFavSet=module.bl;STORAGE_BACKUP_KEY=module.bm;extractFavIdsFromMarks=module.bn;gridDensityFeature=module.bo;FAVORITES_SYNC_MODE_INCREMENTAL=module.bp;FAVORITES_SYNC_MODE_FULL=module.F;getTweaksEnabled=module.bq;getGridFavButtonsEnabled=module.br;getFeatureChoiceValue=module.bs;getFeatureState=module.bt;getScreenPixelSize=module.bu;},function(module){loadBackground=module.n;clearBackground=module.t;saveBackground=module.r;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
 var THEME_OPTIONS = [
 	{
 		value: APPEARANCE_THEME_SITE,
@@ -17176,7 +17228,7 @@ function AppearanceSection(props) {
 		className,
 		"aria-label": SECTION_TITLE,
 		children: [
-			/* @__PURE__ */ a(SectionLabel, { children: SECTION_TITLE }),
+			props.includeHeading === false ? null : /* @__PURE__ */ a(SectionLabel, { children: SECTION_TITLE }),
 			/* @__PURE__ */ a("div", {
 				className: "rdw-appearance__row",
 				children: [/* @__PURE__ */ a("div", {
@@ -17327,7 +17379,7 @@ function AppearanceSection(props) {
 		]
 	})] });
 }
-var SECTION_CLASS$2 = "rdw-blacklist";
+var SECTION_CLASS$3 = "rdw-blacklist";
 var CHIPS_CLASS = "rdw-blacklist-chips";
 var ADD_ROW_CLASS = "rdw-blacklist-add-row";
 var HINT_CLASS$1 = "rdw-blacklist-hint";
@@ -17338,12 +17390,12 @@ var ADD_INPUT_ID = "rdw-blacklist-add";
 var TAG_SPLIT_PATTERN = /[, ]+/;
 /** Layout CSS for the blacklist section (chips come from kit Chip). */
 var BLACKLIST_SECTION_CSS = `
-.${SECTION_CLASS$2} {
+.${SECTION_CLASS$3} {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
-.${SECTION_CLASS$2} .${CHIPS_CLASS} {
+.${SECTION_CLASS$3} .${CHIPS_CLASS} {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -17351,18 +17403,18 @@ var BLACKLIST_SECTION_CSS = `
   padding: 0;
   list-style: none;
 }
-.${SECTION_CLASS$2} .${ADD_ROW_CLASS} {
+.${SECTION_CLASS$3} .${ADD_ROW_CLASS} {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   align-items: flex-end;
 }
-.${SECTION_CLASS$2} .${ADD_ROW_CLASS} .rdw-field,
-.${SECTION_CLASS$2} .${ADD_ROW_CLASS} .rdw-ac {
+.${SECTION_CLASS$3} .${ADD_ROW_CLASS} .rdw-field,
+.${SECTION_CLASS$3} .${ADD_ROW_CLASS} .rdw-ac {
   flex: 1 1 12rem;
   margin: 0;
 }
-.${SECTION_CLASS$2} .${HINT_CLASS$1} {
+.${SECTION_CLASS$3} .${HINT_CLASS$1} {
   margin: 0;
   color: var(--rdw-muted);
   font-size: 12px;
@@ -17402,7 +17454,7 @@ function BlacklistSection(props = {}) {
 		querierRef.current.cancel();
 	}, [draft]);
 	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("style", { children: BLACKLIST_SECTION_CSS }), /* @__PURE__ */ a("section", {
-		className: `rdw-section ${SECTION_CLASS$2}`,
+		className: `rdw-section ${SECTION_CLASS$3}`,
 		children: [
 			includeHeading ? /* @__PURE__ */ a(SectionLabel, { children: "Blacklist" }) : null,
 			/* @__PURE__ */ a("ul", {
@@ -17672,7 +17724,7 @@ async function importBackupJson(raw, mode) {
 		};
 	}
 }
-var SECTION_CLASS$1 = "rdw-data-section";
+var SECTION_CLASS$2 = "rdw-data-section";
 var ACTIONS_CLASS$1 = "rdw-data-actions";
 var HINT_CLASS = "rdw-data-hint";
 var FILE_CLASS = "rdw-data-file";
@@ -17695,23 +17747,23 @@ var MODE_OPTIONS = [{
 	label: "Replace"
 }];
 var DATA_SECTION_CSS = `
-.${SECTION_CLASS$1} {
+.${SECTION_CLASS$2} {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
-.${SECTION_CLASS$1} .${ACTIONS_CLASS$1} {
+.${SECTION_CLASS$2} .${ACTIONS_CLASS$1} {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
 }
-.${SECTION_CLASS$1} .${HINT_CLASS} {
+.${SECTION_CLASS$2} .${HINT_CLASS} {
   margin: 0;
   color: var(--rdw-muted);
   font-size: 12px;
 }
-.${SECTION_CLASS$1} .${FILE_CLASS} {
+.${SECTION_CLASS$2} .${FILE_CLASS} {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -17750,7 +17802,7 @@ function DataSection(props = {}) {
 	const [error, setError] = d("");
 	const [summary, setSummary] = d("");
 	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("style", { children: DATA_SECTION_CSS }), /* @__PURE__ */ a("section", {
-		className: `rdw-section ${SECTION_CLASS$1}`,
+		className: `rdw-section ${SECTION_CLASS$2}`,
 		children: [
 			includeHeading ? /* @__PURE__ */ a(SectionLabel, { children: HEADING$1 }) : null,
 			/* @__PURE__ */ a(Switch, {
@@ -17844,7 +17896,7 @@ function DataSection(props = {}) {
 		]
 	})] });
 }
-var SECTION_CLASS = "rdw-favs-sync";
+var SECTION_CLASS$1 = "rdw-favs-sync";
 var STATUS_CLASS = "rdw-favs-sync-status";
 var ACTIONS_CLASS = "rdw-favs-sync-actions";
 var WARNING_CLASS = "rdw-favs-sync-warning";
@@ -17865,24 +17917,24 @@ var TEXT_ABORTED = (page, pages, total) => `Stopped at page ${String(page)} of $
 var TEXT_STARTING = "Starting sync…";
 var PAUSE_SECONDS = FAVORITES_SYNC_PAGE_PAUSE_MS / 1e3;
 var FAVORITES_SYNC_SECTION_CSS = `
-.${SECTION_CLASS} {
+.${SECTION_CLASS$1} {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
-.${SECTION_CLASS} .${STATUS_CLASS} {
+.${SECTION_CLASS$1} .${STATUS_CLASS} {
   margin: 0;
   color: var(--rdw-text);
   font-size: 12px;
 }
-.${SECTION_CLASS} .${ACTIONS_CLASS} {
+.${SECTION_CLASS$1} .${ACTIONS_CLASS} {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
 }
-.${SECTION_CLASS} .${WARNING_CLASS},
-.${SECTION_CLASS} .${NOTE_CLASS} {
+.${SECTION_CLASS$1} .${WARNING_CLASS},
+.${SECTION_CLASS$1} .${NOTE_CLASS} {
   margin: 0;
   color: var(--rdw-muted);
   font-size: 12px;
@@ -18027,7 +18079,7 @@ function FavoritesSyncSection(props = {}) {
 		};
 	}, []);
 	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("style", { children: FAVORITES_SYNC_SECTION_CSS }), /* @__PURE__ */ a("section", {
-		className: `rdw-section ${SECTION_CLASS}`,
+		className: `rdw-section ${SECTION_CLASS$1}`,
 		children: [
 			includeHeading ? /* @__PURE__ */ a(SectionLabel, { children: HEADING }) : null,
 			/* @__PURE__ */ a("p", {
@@ -18097,6 +18149,87 @@ var APPEARANCE_FLAT_ROWS_CSS = `
   background: transparent;
 }
 `.trim();
+var SECTION_CLASS = "rdw-settings-section";
+var SECTION_HEADER_CLASS = "rdw-settings-section-header";
+var SECTION_BODY_CLASS = "rdw-settings-section-body";
+var SECTION_ID_ATTR = "data-settings-section";
+var CHEVRON_PX = 14;
+/** Saved under featureState: which settings blocks are collapsed. */
+var SECTIONS_STATE_ID = "settings-sections";
+var SECTION_APPEARANCE = "appearance";
+var SECTION_PAGE = "page";
+var SECTION_BLACKLIST = "blacklist";
+var SECTION_FAVORITES = "favorites";
+var SECTION_DATA = "data";
+var SECTION_TITLES = {
+	[SECTION_APPEARANCE]: "Appearance",
+	[SECTION_PAGE]: "Page",
+	[SECTION_BLACKLIST]: "Blacklist",
+	[SECTION_FAVORITES]: "Favorites",
+	[SECTION_DATA]: "Data"
+};
+var SETTINGS_SECTION_CSS = `
+.${SECTION_HEADER_CLASS} {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--rdw-muted);
+  font: 600 10.5px var(--rdw-font);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: left;
+  cursor: pointer;
+}
+.${SECTION_HEADER_CLASS}:hover {
+  color: var(--rdw-text);
+}
+.${SECTION_BODY_CLASS} {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.${SECTION_BODY_CLASS}[hidden] {
+  display: none;
+}
+`.trim();
+function readCollapsedSections() {
+	const raw = getFeatureState(SECTIONS_STATE_ID);
+	if (!Array.isArray(raw)) return [];
+	const ids = [];
+	for (const item of raw) if (typeof item === "string" && item in SECTION_TITLES) ids.push(item);
+	return ids;
+}
+/**
+* One settings block that folds to its title. The body stays mounted while
+* folded, so a running favorites sync or a typed value is not lost.
+*/
+function SettingsSection(props) {
+	const bodyId = `${SECTION_CLASS}-${props.id}`;
+	return /* @__PURE__ */ a(Card, {
+		className: `${PANEL_UI_CLASS.pageCard} ${SECTION_CLASS}`,
+		children: [/* @__PURE__ */ a("button", {
+			type: "button",
+			className: `${SECTION_HEADER_CLASS} rdw-kit-focusable`,
+			"aria-expanded": !props.collapsed,
+			"aria-controls": bodyId,
+			[SECTION_ID_ATTR]: props.id,
+			onClick: () => {
+				props.onToggle(props.id);
+			},
+			children: [props.collapsed ? /* @__PURE__ */ a(IconChevronRight, { size: CHEVRON_PX }) : /* @__PURE__ */ a(IconChevronDown, { size: CHEVRON_PX }), SECTION_TITLES[props.id] ?? props.id]
+		}), /* @__PURE__ */ a("div", {
+			id: bodyId,
+			className: SECTION_BODY_CLASS,
+			hidden: props.collapsed,
+			children: props.children
+		})]
+	});
+}
 function FeatureModules() {
 	const [, bump] = d(0);
 	const refresh = () => {
@@ -18156,16 +18289,28 @@ function SettingsPage() {
 	const [updatesGroup, setUpdatesGroup] = d(() => getUpdatesGroupSize());
 	const [playlistChunk, setPlaylistChunk] = d(() => getPlaylistChunkSize());
 	const [gridFavEnabled, setGridFavEnabled] = d(() => getGridFavButtonsEnabled());
+	const [collapsed, setCollapsed] = d(() => readCollapsedSections());
+	const toggleSection = (id) => {
+		const next = collapsed.includes(id) ? collapsed.filter((entry) => entry !== id) : [...collapsed, id];
+		setFeatureState(SECTIONS_STATE_ID, next);
+		setCollapsed(next);
+	};
+	const section = (id) => ({
+		id,
+		collapsed: collapsed.includes(id),
+		onToggle: toggleSection
+	});
 	return /* @__PURE__ */ a("div", {
 		className: PANEL_UI_CLASS.scrollRegion,
 		children: [
-			/* @__PURE__ */ a(Card, {
-				className: PANEL_UI_CLASS.pageCard,
-				children: [/* @__PURE__ */ a(AppearanceSection, {}), /* @__PURE__ */ a("style", { children: APPEARANCE_FLAT_ROWS_CSS })]
+			/* @__PURE__ */ a("style", { children: SETTINGS_SECTION_CSS }),
+			/* @__PURE__ */ a(SettingsSection, {
+				...section(SECTION_APPEARANCE),
+				children: [/* @__PURE__ */ a(AppearanceSection, { includeHeading: false }), /* @__PURE__ */ a("style", { children: APPEARANCE_FLAT_ROWS_CSS })]
 			}),
-			/* @__PURE__ */ a(Card, {
-				className: PANEL_UI_CLASS.pageCard,
-				children: [/* @__PURE__ */ a(SectionLabel, { children: "Page" }), /* @__PURE__ */ a("div", {
+			/* @__PURE__ */ a(SettingsSection, {
+				...section(SECTION_PAGE),
+				children: /* @__PURE__ */ a("div", {
 					className: PANEL_UI_CLASS.settingsGroup,
 					children: [
 						/* @__PURE__ */ a("div", {
@@ -18211,40 +18356,36 @@ function SettingsPage() {
 							})
 						})
 					]
-				})]
+				})
 			}),
-			/* @__PURE__ */ a(Card, {
-				className: PANEL_UI_CLASS.pageCard,
-				children: /* @__PURE__ */ a(BlacklistSection, {})
+			/* @__PURE__ */ a(SettingsSection, {
+				...section(SECTION_BLACKLIST),
+				children: /* @__PURE__ */ a(BlacklistSection, { includeHeading: false })
 			}),
-			/* @__PURE__ */ a(Card, {
-				className: PANEL_UI_CLASS.pageCard,
-				children: [
-					/* @__PURE__ */ a(SectionLabel, { children: "Favorites" }),
-					/* @__PURE__ */ a("div", {
-						className: PANEL_UI_CLASS.settingsRow,
-						children: /* @__PURE__ */ a(Switch, {
-							id: GRID_FAV_CHECKBOX_ID,
-							label: UI_TEXT.gridFavButtonsLabel,
-							checked: gridFavEnabled,
-							onChange: (checked) => {
-								setGridFavButtonsEnabled(checked);
-								setGridFavButtonsVisible(checked);
-								setGridFavEnabled(checked);
-							}
-						})
-					}),
-					/* @__PURE__ */ a(FavoritesSyncSection, { includeHeading: false })
-				]
+			/* @__PURE__ */ a(SettingsSection, {
+				...section(SECTION_FAVORITES),
+				children: [/* @__PURE__ */ a("div", {
+					className: PANEL_UI_CLASS.settingsRow,
+					children: /* @__PURE__ */ a(Switch, {
+						id: GRID_FAV_CHECKBOX_ID,
+						label: UI_TEXT.gridFavButtonsLabel,
+						checked: gridFavEnabled,
+						onChange: (checked) => {
+							setGridFavButtonsEnabled(checked);
+							setGridFavButtonsVisible(checked);
+							setGridFavEnabled(checked);
+						}
+					})
+				}), /* @__PURE__ */ a(FavoritesSyncSection, { includeHeading: false })]
 			}),
-			/* @__PURE__ */ a(Card, {
-				className: PANEL_UI_CLASS.pageCard,
-				children: /* @__PURE__ */ a(DataSection, {})
+			/* @__PURE__ */ a(SettingsSection, {
+				...section(SECTION_DATA),
+				children: /* @__PURE__ */ a(DataSection, { includeHeading: false })
 			})
 		]
 	});
 }})}}));
-System.register("./collections-page-BMbxne0C-C7qQf3m5.js", ['./___monkey.entry.js'],(function(exports){'use strict';var d,b,A,reloadFromStorage,load,a,Segmented,TextField,$$1,Button,UI_TEXT,IconPlus,EmptyState,Dialog,resolveCollectionKind,deleteCollection,QueryField,isUnfilteredQuery,createDynamicCollection,createPlaylist,COLLECTION_KIND_POSTS,collectionDetailHash,readCoverMirror,COLLECTION_KIND_SEARCH,IconCheck,readCountMirror,buildSearchUrl,dynamicCollectionMarkHash,serialize;return{setters:[function(module){d=module.ad;b=module.aT;A=module.av;reloadFromStorage=module.K;load=module.b1;a=module.Y;Segmented=module.aB;TextField=module.aE;$$1=module.a2;Button=module.aF;UI_TEXT=module.U;IconPlus=module.br;EmptyState=module.bs;Dialog=module.bt;resolveCollectionKind=module.bu;deleteCollection=module.bv;QueryField=module.bw;isUnfilteredQuery=module.bx;createDynamicCollection=module.by;createPlaylist=module.bz;COLLECTION_KIND_POSTS=module.bA;collectionDetailHash=module.bB;readCoverMirror=module.bC;COLLECTION_KIND_SEARCH=module.bD;IconCheck=module.bE;readCountMirror=module.bF;buildSearchUrl=module.bG;dynamicCollectionMarkHash=module.bH;serialize=module.bI;}],execute:(function(){exports("CollectionsPage",CollectionsPage);var EVENT_PAGESHOW = "pageshow";
+System.register("./collections-page-DrUvTUCa-CxygZByi.js", ['./___monkey.entry.js'],(function(exports){'use strict';var d,b,A,reloadFromStorage,load,a,Segmented,TextField,$$1,Button,UI_TEXT,IconPlus,EmptyState,Dialog,resolveCollectionKind,deleteCollection,QueryField,isUnfilteredQuery,createDynamicCollection,createPlaylist,COLLECTION_KIND_POSTS,collectionDetailHash,readCoverMirror,COLLECTION_KIND_SEARCH,IconCheck,readCountMirror,buildSearchUrl,dynamicCollectionMarkHash,serialize;return{setters:[function(module){d=module.ad;b=module.aV;A=module.aw;reloadFromStorage=module.K;load=module.b4;a=module.Y;Segmented=module.aD;TextField=module.aG;$$1=module.a2;Button=module.aH;UI_TEXT=module.U;IconPlus=module.bv;EmptyState=module.bw;Dialog=module.bx;resolveCollectionKind=module.by;deleteCollection=module.bz;QueryField=module.bA;isUnfilteredQuery=module.bB;createDynamicCollection=module.bC;createPlaylist=module.bD;COLLECTION_KIND_POSTS=module.bE;collectionDetailHash=module.bF;readCoverMirror=module.bG;COLLECTION_KIND_SEARCH=module.bH;IconCheck=module.bI;readCountMirror=module.bJ;buildSearchUrl=module.bK;dynamicCollectionMarkHash=module.bL;serialize=module.bM;}],execute:(function(){exports("CollectionsPage",CollectionsPage);var EVENT_PAGESHOW = "pageshow";
 var PAGE_CLASS = "rdw-collections-page";
 var HEADER_CLASS = "rdw-collections-header";
 var TOOLBAR_CLASS = "rdw-collections-toolbar";
@@ -18969,7 +19110,7 @@ function CollectionsPage() {
 		]
 	});
 }})}}));
-System.register("./following-page-DBL-3jFH-DvwqdDDS.js", ['./___monkey.entry.js'],(function(exports){'use strict';var d,T,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST,A,reloadFromStorage,getSeenPostId,a,completeLastQueryToken,readLastQueryToken,EmptyState,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,Button,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,$$1,Segmented,TextField,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,Select,UI_TEXT,ProgressBar,Dialog,removeArtist,load,AutocompleteField,addArtists,buildSearchUrl,TAG_TYPE_INCLUDE,IconCheck,IconButton,IconX,removeArtists,rememberArtistSnapshot,fetchArtistSnapshot,log;return{setters:[function(module){d=module.ad;T=module.au;createAutocompleteQuerier=module.aS;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.bJ;A=module.av;reloadFromStorage=module.K;getSeenPostId=module.bK;a=module.Y;completeLastQueryToken=module.bL;readLastQueryToken=module.bM;EmptyState=module.bs;ARTISTS_EMPTY_HINT=module.bN;ARTISTS_EMPTY_TITLE=module.bO;Button=module.aF;SEARCH_PATH=module.X;SEARCH_PARAM_PAGE=module.T;SEARCH_PAGE=module.bP;SEARCH_SECTION=module.bQ;$$1=module.a2;Segmented=module.aB;TextField=module.aE;ARTIST_FILTER_LABEL=module.bR;ARTIST_FILTER_ID=module.bS;Select=module.ay;UI_TEXT=module.U;ProgressBar=module.aX;Dialog=module.bt;removeArtist=module.bT;load=module.b1;AutocompleteField=module.aW;addArtists=module.bU;buildSearchUrl=module.bG;TAG_TYPE_INCLUDE=module.bV;IconCheck=module.bE;IconButton=module.bW;IconX=module.bX;removeArtists=module.bY;rememberArtistSnapshot=module.bZ;fetchArtistSnapshot=module.b_;log=module.l;}],execute:(function(){exports("FollowingPage",FollowingPage);var EVENT_PAGESHOW = "pageshow";
+System.register("./following-page-DeJepZjZ-CAdK8u4H.js", ['./___monkey.entry.js'],(function(exports){'use strict';var d,T,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST,A,reloadFromStorage,getSeenPostId,a,completeLastQueryToken,readLastQueryToken,EmptyState,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,Button,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,$$1,Segmented,TextField,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,Select,UI_TEXT,ProgressBar,Dialog,removeArtist,load,AutocompleteField,addArtists,buildSearchUrl,TAG_TYPE_INCLUDE,IconCheck,IconButton,IconX,removeArtists,rememberArtistSnapshot,fetchArtistSnapshot,log;return{setters:[function(module){d=module.ad;T=module.av;createAutocompleteQuerier=module.aU;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.bN;A=module.aw;reloadFromStorage=module.K;getSeenPostId=module.bO;a=module.Y;completeLastQueryToken=module.bP;readLastQueryToken=module.bQ;EmptyState=module.bw;ARTISTS_EMPTY_HINT=module.bR;ARTISTS_EMPTY_TITLE=module.bS;Button=module.aH;SEARCH_PATH=module.X;SEARCH_PARAM_PAGE=module.T;SEARCH_PAGE=module.bT;SEARCH_SECTION=module.bU;$$1=module.a2;Segmented=module.aD;TextField=module.aG;ARTIST_FILTER_LABEL=module.bV;ARTIST_FILTER_ID=module.bW;Select=module.aA;UI_TEXT=module.U;ProgressBar=module.aZ;Dialog=module.bx;removeArtist=module.bX;load=module.b4;AutocompleteField=module.aY;addArtists=module.bY;buildSearchUrl=module.bK;TAG_TYPE_INCLUDE=module.bZ;IconCheck=module.bI;IconButton=module.b_;IconX=module.b$;removeArtists=module.c0;rememberArtistSnapshot=module.c1;fetchArtistSnapshot=module.c2;log=module.l;}],execute:(function(){exports("FollowingPage",FollowingPage);var EVENT_PAGESHOW = "pageshow";
 var PAGE_CLASS = "rdw-following-page";
 var ADD_FORM_CLASS = "rdw-following-add";
 var TOOLBAR_CLASS = "rdw-following-toolbar";
@@ -19704,7 +19845,7 @@ function FollowingPage() {
 		]
 	});
 }})}}));
-System.register("./collection-detail-page-DLaJ-vtL-CFVSM_Yq.js", ['./___monkey.entry.js','./app-h-k4xIgg-C3pI-N1D.js'],(function(exports){'use strict';var d,T,w$1,b,a,$$1,Button,UI_TEXT,shuffleCollection,resetCollectionOrder,EmptyState,Dialog,TextField,Toast,getCollectionOrder,listPlaylists,RDW_HASH_COLLECTIONS,removePostsFromCollection,renameCollection,deleteCollection,RDW_ROUTE_COLLECTIONS,restorePosts,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION_VIEW,SEARCH_PATH,collectionQueueHash,navigateToRdwRoute;return{setters:[function(module){d=module.ad;T=module.au;w$1=module.b$;b=module.aT;a=module.Y;$$1=module.a2;Button=module.aF;UI_TEXT=module.U;shuffleCollection=module.c0;resetCollectionOrder=module.c1;EmptyState=module.bs;Dialog=module.bt;TextField=module.aE;Toast=module.c2;getCollectionOrder=module.c3;listPlaylists=module.c4;RDW_HASH_COLLECTIONS=module.u;removePostsFromCollection=module.c5;renameCollection=module.c6;deleteCollection=module.bv;RDW_ROUTE_COLLECTIONS=module.c7;restorePosts=module.c8;SEARCH_PARAM_PAGE=module.T;SEARCH_PAGE=module.bP;SEARCH_SECTION_VIEW=module.c9;SEARCH_PATH=module.X;collectionQueueHash=module.ca;},function(module){navigateToRdwRoute=module.i;}],execute:(function(){exports("CollectionDetailPage",CollectionDetailPage);var CELL_SIZE_PX = 200;
+System.register("./collection-detail-page-CONiiEnc-COEWD27c.js", ['./___monkey.entry.js','./app-VAIopq5Q-Dzu-rM2T.js'],(function(exports){'use strict';var d,T,w$1,b,a,$$1,Button,UI_TEXT,shuffleCollection,resetCollectionOrder,EmptyState,Dialog,TextField,Toast,getCollectionOrder,listPlaylists,RDW_HASH_COLLECTIONS,removePostsFromCollection,renameCollection,deleteCollection,RDW_ROUTE_COLLECTIONS,restorePosts,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION_VIEW,SEARCH_PATH,collectionQueueHash,navigateToRdwRoute;return{setters:[function(module){d=module.ad;T=module.av;w$1=module.c3;b=module.aV;a=module.Y;$$1=module.a2;Button=module.aH;UI_TEXT=module.U;shuffleCollection=module.c4;resetCollectionOrder=module.c5;EmptyState=module.bw;Dialog=module.bx;TextField=module.aG;Toast=module.c6;getCollectionOrder=module.c7;listPlaylists=module.c8;RDW_HASH_COLLECTIONS=module.u;removePostsFromCollection=module.c9;renameCollection=module.ca;deleteCollection=module.bz;RDW_ROUTE_COLLECTIONS=module.cb;restorePosts=module.cc;SEARCH_PARAM_PAGE=module.T;SEARCH_PAGE=module.bT;SEARCH_SECTION_VIEW=module.cd;SEARCH_PATH=module.X;collectionQueueHash=module.ce;},function(module){navigateToRdwRoute=module.i;}],execute:(function(){exports("CollectionDetailPage",CollectionDetailPage);var CELL_SIZE_PX = 200;
 var GRID_GAP_PX = 4;
 var SECTION_GAP_PX = 12;
 var ACTIONS_GAP_PX = 8;

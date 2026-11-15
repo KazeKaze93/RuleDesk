@@ -217,6 +217,8 @@ function formatScreenHint(): string {
 
 export type AppearanceSectionProps = {
   readonly className?: string;
+  /** False when the host already shows the section title. */
+  readonly includeHeading?: boolean;
 };
 
 export function AppearanceSection(
@@ -445,7 +447,9 @@ export function AppearanceSection(
     <>
       <style>{APPEARANCE_SECTION_CSS}</style>
       <section className={className} aria-label={SECTION_TITLE}>
-        <SectionLabel>{SECTION_TITLE}</SectionLabel>
+        {props.includeHeading === false ? null : (
+          <SectionLabel>{SECTION_TITLE}</SectionLabel>
+        )}
 
         <div className="rdw-appearance__row">
           <div className="rdw-appearance__row-text">

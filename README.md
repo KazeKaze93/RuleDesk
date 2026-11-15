@@ -18,6 +18,11 @@ Local build: `npm install` then `npm run build` → `dist/ruledesk-web.user.js`.
 
 Measured on Tampermonkey 5.5.1: with Dynamic, native page flash on load is typically 0/5 vs ~5/5 with UserScripts API; pages also open faster. Prefer Dynamic for RuleDesk Web.
 
+### 0.22.0 notes
+
+- **Hide tag tooltip on thumbnails** (RuleDesk → Page, on by default): the browser tooltip with the full tag list no longer shows over a thumbnail. Turn the switch off to get it back
+- **Settings blocks fold.** A click on a block title (Appearance, Page, Blacklist, Favorites, Data) folds the block; the choice is remembered
+
 ### 0.21.2 notes
 
 - **RuleDesk → Data:** the separate "Export artists" / "Import artists" block is removed. Followed artists travel in the one Export / Import file, with their covers, post counts and follow dates

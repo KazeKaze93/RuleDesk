@@ -80,6 +80,52 @@ describe("SettingsPage flat rows", () => {
     expect(flatIndex).toBeGreaterThan(appearanceOwn);
   });
 
+  it("folds a settings block to its title and remembers it", () => {
+    let root: HTMLElement | undefined;
+    act(() => {
+      root = createSettingsPage();
+      document.body.append(root);
+    });
+    const header = root?.querySelector('button[data-settings-section="page"]');
+    if (!(header instanceof HTMLButtonElement)) {
+      throw new Error("Page section header missing");
+    }
+    const body = root?.querySelector("#rdw-settings-section-page");
+    expect(header.textContent).toBe("Page");
+    expect(header.getAttribute("aria-expanded")).toBe("true");
+    expect(body?.hasAttribute("hidden")).toBe(false);
+    expect(
+      Array.from(root?.querySelectorAll("button[data-settings-section]") ?? []).map(
+        (node) => node.textContent,
+      ),
+    ).toEqual(["Appearance", "Page", "Blacklist", "Favorites", "Data"]);
+
+    act(() => {
+      header.click();
+    });
+    expect(header.getAttribute("aria-expanded")).toBe("false");
+    expect(body?.hasAttribute("hidden")).toBe(true);
+    // The body stays mounted: its controls keep their state while folded.
+    expect(body?.querySelector(`#${FEATURE_CHECKBOX_ID_PREFIX}tag-groups`)).not.toBeNull();
+    expect(getFeatureState("settings-sections")).toEqual(["page"]);
+
+    let again: HTMLElement | undefined;
+    act(() => {
+      again = createSettingsPage();
+      document.body.append(again);
+    });
+    expect(
+      again
+        ?.querySelector('button[data-settings-section="page"]')
+        ?.getAttribute("aria-expanded"),
+    ).toBe("false");
+    expect(
+      again
+        ?.querySelector('button[data-settings-section="data"]')
+        ?.getAttribute("aria-expanded"),
+    ).toBe("true");
+  });
+
   it("forgets collapsed tag groups when the Collapse tags switch is flipped", () => {
     const reload = vi.fn();
     vi.stubGlobal("location", { ...window.location, reload });

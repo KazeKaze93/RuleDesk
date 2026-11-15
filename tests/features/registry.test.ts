@@ -17,6 +17,7 @@ describe("FEATURES registry", () => {
       "infinite-scroll",
       "post-actions",
       "grid-density",
+      "thumb-tooltip",
       "favorites-bulk",
       "video-player",
       "video-preview",
