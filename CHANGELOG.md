@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.32.7
+
+- Fixed: on a pool page every thumbnail shrank into a small bin button and they piled up in one place. The styles of the Favorites bin also matched the links of pool thumbnails; they are now limited to the Favorites page
+
 ## 0.32.6
 
 - The page no longer jumps up right after it appears. The site's menu items that "Clean header menu" hides were hidden a frame too late: for that frame the menu was two rows tall, then shrank to one and pulled the whole page up

@@ -126,6 +126,15 @@ describe("favorites video marks", () => {
     expect([...document.querySelectorAll(hidden)].map((node) => node.id)).toEqual(["emptied"]);
   });
 
+  it("keeps the favorites cell rules off other pages, such as a pool", () => {
+    // On a pool page the link of every thumb carries an onclick; in 0.32.x it
+    // was taken for the Remove link and turned into a 28px bin button.
+    expect(SITE_SKIN_CSS).not.toContain("html.rdw-skin div.image-list > span");
+    expect(SITE_SKIN_CSS).toContain(
+      "html.rdw-skin.rdw-page-favorites div.image-list > span > a[onclick] {",
+    );
+  });
+
   it("gives a marked thumb the outline of a video", () => {
     expect(SITE_SKIN_CSS).toContain(`.${VIDEO_THUMB_CLASS} > a > img,`);
   });

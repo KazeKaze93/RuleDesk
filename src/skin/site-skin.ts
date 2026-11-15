@@ -4,7 +4,11 @@
  * Injected via applyAppearanceTheme → injectSiteSkinHook(getSiteSkinCss()).
  */
 
-import { FAVORITE_IMAGE_ANCHOR_NAME, THUMB_ANCHOR_NAME } from "../features/types";
+import {
+  FAVORITE_IMAGE_ANCHOR_NAME,
+  FAVORITES_PAGE_CLASS,
+  THUMB_ANCHOR_NAME,
+} from "../features/types";
 import { VIDEO_THUMB_CLASS } from "../site/video-thumbs";
 import {
   APPEARANCE_THEME_DARK,
@@ -20,6 +24,8 @@ import { SITE_SELECTORS } from "../site/selectors";
 import { TOKEN_VAR } from "../ui/tokens";
 
 const ROOT = `html.${RDW_SKIN_CLASS}`;
+/** The site's Favorites page only (see FAVORITES_PAGE_CLASS). */
+const ROOT_FAVORITES = `${ROOT}.${FAVORITES_PAGE_CLASS}`;
 const ROOT_DARK = `${ROOT}[${RDW_THEME_ATTR}="${APPEARANCE_THEME_DARK}"]`;
 const ROOT_SITE = `html[${RDW_THEME_ATTR}="${APPEARANCE_THEME_SITE}"]`;
 const ROOT_SITE_DARK = `html[${RDW_THEME_ATTR}="${APPEARANCE_THEME_SITE_DARK}"]`;
@@ -910,16 +916,16 @@ ${ROOT} table.highlightable {
  * Favorites: "Remove" sits beside the thumb, not inside it
  * (div.image-list > span > [span.thumb, br, a > b]). Quiet, not bold.
  */
-${ROOT} div.image-list > span > a[onclick] {
+${ROOT_FAVORITES} div.image-list > span > a[onclick] {
   color: ${v.muted};
   font-size: 12px;
 }
 
-${ROOT} div.image-list > span > a[onclick] > b {
+${ROOT_FAVORITES} div.image-list > span > a[onclick] > b {
   font-weight: normal;
 }
 
-${ROOT} div.image-list > span > a[onclick]:hover {
+${ROOT_FAVORITES} div.image-list > span > a[onclick]:hover {
   color: ${v.danger};
 }
 
@@ -934,12 +940,12 @@ ${ROOT} div.image-list > span > a[onclick]:hover {
  * The :not(.thumb) part matters: on a search page the thumbs themselves are the
  * direct children of the list, and they must never match.
  */
-${ROOT} div.image-list > span:not(.thumb):not(:has(span.thumb)) {
+${ROOT_FAVORITES} div.image-list > span:not(.thumb):not(:has(span.thumb)) {
   /* The cell carries an inline display: grid. */
   display: none !important;
 }
 
-${ROOT} div.image-list > span > span.thumb {
+${ROOT_FAVORITES} div.image-list > span > span.thumb {
   position: relative;
 }
 
@@ -952,20 +958,20 @@ ${ROOT} div.image-list > span > span.thumb {
  * being selected.
  */
 @supports (anchor-name: --a) {
-  ${ROOT} div.image-list > span:has(> a[onclick]) {
+  ${ROOT_FAVORITES} div.image-list > span:has(> a[onclick]) {
     anchor-scope: ${FAV_REMOVE_ANCHOR_NAME};
     grid-template-rows: auto !important;
   }
 
-  ${ROOT} div.image-list > span:has(> a[onclick]) > br {
+  ${ROOT_FAVORITES} div.image-list > span:has(> a[onclick]) > br {
     display: none;
   }
 
-  ${ROOT} div.image-list > span > span.thumb > a > img {
+  ${ROOT_FAVORITES} div.image-list > span > span.thumb > a > img {
     anchor-name: ${THUMB_ANCHOR_NAME}, ${FAV_REMOVE_ANCHOR_NAME};
   }
 
-  ${ROOT} div.image-list > span > a[onclick] {
+  ${ROOT_FAVORITES} div.image-list > span > a[onclick] {
     position: absolute;
     position-anchor: ${FAV_REMOVE_ANCHOR_NAME};
     top: calc(anchor(top) + ${String(FAV_REMOVE_INSET_PX)}px);
@@ -988,7 +994,7 @@ ${ROOT} div.image-list > span > span.thumb {
     transition: opacity 0.12s ease;
   }
 
-  ${ROOT} div.image-list > span > a[onclick]::before {
+  ${ROOT_FAVORITES} div.image-list > span > a[onclick]::before {
     content: "";
     width: ${String(FAV_REMOVE_ICON_PX)}px;
     height: ${String(FAV_REMOVE_ICON_PX)}px;
@@ -997,20 +1003,20 @@ ${ROOT} div.image-list > span > span.thumb {
     mask: ${FAV_REMOVE_ICON_MASK};
   }
 
-  ${ROOT} div.image-list > span > a[onclick]:hover::before {
+  ${ROOT_FAVORITES} div.image-list > span > a[onclick]:hover::before {
     background: ${v.danger};
   }
 
-  ${ROOT} div.image-list > span:hover > a[onclick] {
+  ${ROOT_FAVORITES} div.image-list > span:hover > a[onclick] {
     opacity: 0.65;
   }
 
-  ${ROOT} div.image-list > span > a[onclick]:hover,
-  ${ROOT} div.image-list > span > a[onclick]:focus-visible {
+  ${ROOT_FAVORITES} div.image-list > span > a[onclick]:hover,
+  ${ROOT_FAVORITES} div.image-list > span > a[onclick]:focus-visible {
     opacity: 1;
   }
 
-  ${ROOT} body.${FAV_BULK_SELECTING_BODY_CLASS} div.image-list > span > a[onclick] {
+  ${ROOT_FAVORITES} body.${FAV_BULK_SELECTING_BODY_CLASS} div.image-list > span > a[onclick] {
     display: none;
   }
 }

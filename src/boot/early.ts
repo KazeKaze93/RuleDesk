@@ -9,6 +9,8 @@ import {
   buildOwnPageCss,
   parseRdwHash,
 } from "../pages/constants";
+import { FAVORITES_PAGE_CLASS } from "../features/types";
+import { detectPageKind } from "../site/pages";
 import { getSiteSkinCss } from "../skin/site-skin";
 import {
   scheduleSiteDesktopStylesheet,
@@ -63,4 +65,7 @@ export function bootEarly(): void {
   });
   syncSiteCookieAfterCss(appearance);
   applyOwnPageClassEarly();
+  if (detectPageKind(window.location.search) === "favorites") {
+    document.documentElement.classList.add(FAVORITES_PAGE_CLASS);
+  }
 }

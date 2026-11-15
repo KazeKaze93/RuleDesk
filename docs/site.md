@@ -61,6 +61,7 @@ The script works on the site's own HTML. This file holds what is known about it.
 - Artists: `div#content > [div#search-form, table.highlightable, div#paginator, div#footer > a]`; `div#footer` holds Create, Order by Date, Order by Name
 - My Account: `div#content > div#user-index > [form > h4 > button, p, (h4 > a, p)…, br, h1 > a]`
 - Profile (`?page=account&s=profile&id={ID}`): `div > table.highlightable > tr > [td label, td value]`; rows Contact, Join Date (`YYYY-MM-DD`), Level, Favorite Tags, Posts, Deleted Posts, Favorites, Comments, Tag Edits, Note Edits, Forum Posts, Record. My Account links: `div#user-index h4 > a`, the profile one is `index.php?page=account&s=profile&id={ID}`
+- Pool page (`?page=pool&s=show&id={ID}`): its thumbs sit in `div.image-list` and the link of each carries an `onclick` (Delete Mode). Anything styled by `a[onclick]` inside `div.image-list` must be limited to the page it is meant for (`html.rdw-page-favorites`)
 - Help: `div#content > div#static-more > div > ul > [li > h4, li > a]`
 
 ### Addresses

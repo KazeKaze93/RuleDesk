@@ -1,6 +1,12 @@
 import type { PageKind } from "../site/pages";
 
 export const THUMB_CLASS = "rdw-thumb";
+/**
+ * On <html> on the site's Favorites page, set before the first paint. The
+ * skin rules for a favorites cell are held to it: the pool page has thumbs
+ * of a similar shape, and their links carry an onclick too.
+ */
+export const FAVORITES_PAGE_CLASS = "rdw-page-favorites";
 export const THUMB_ANCHOR_NAME = "--rdw-img";
 /**
  * Anchor of a favorites picture. Its scope is the whole cell and comes from
