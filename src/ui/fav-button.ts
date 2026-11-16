@@ -1,6 +1,7 @@
 import { CSS_CLASS, UI_TEXT } from "../config/constants";
 import { log } from "../log";
 import { addFavorite, removeFavorite } from "../site/favorites";
+import { indexFavoriteFromThumb } from "../features/favorites-index-live";
 import { addFav, removeFav } from "../storage/favs";
 
 /** Kit IconButton root class — prefer for preview badges. */
@@ -116,6 +117,7 @@ export async function handleFavToggleClick(
   const result = await addFavorite(postId);
   if (result.status === "added" || result.status === "already") {
     addFav(postId);
+    indexFavoriteFromThumb(postId, button);
     applyFavButtonState(button, "marked", postId);
     return;
   }

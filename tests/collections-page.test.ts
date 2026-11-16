@@ -192,6 +192,7 @@ describe("createCollectionsPage", () => {
       "All",
       "Custom",
       "Dynamic",
+      "As created",
       "Tiles",
       "List",
       "New",

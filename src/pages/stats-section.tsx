@@ -1,7 +1,9 @@
 import type { JSX } from "preact";
-import { useState } from "preact/hooks";
+import { useEffect, useState } from "preact/hooks";
 
 import { COLLECTION_KIND_POSTS } from "../config/constants";
+import { topFavoriteTags, type TagCount } from "../features/favorites-search";
+import { readFavoriteIndex } from "../storage/favorites-index";
 import { loadFavSet } from "../storage/favs";
 import { resolveCollectionKind, type StorageData } from "../storage/schema";
 import { load } from "../storage/store";
@@ -65,6 +67,10 @@ const KIND_CUSTOM_LABEL = "Custom";
 const KIND_DYNAMIC_LABEL = "Dynamic";
 const TOP_HEADING = "Collections by posts";
 const TOP_EMPTY = "Collections show here once they hold posts or their count is known.";
+const TOP_TAGS_HEADING = "Top tags in favorites";
+const TOP_TAGS_EMPTY =
+  "Run Full resync in RuleDesk → Favorites to fill this: it reads the tags of your favorites.";
+const TOP_TAGS_LIMIT = 20;
 const PROFILE_HEADING = "Site profile";
 const PROFILE_REFRESH_LABEL = "Refresh profile";
 const PROFILE_REFRESH_TITLE =
@@ -417,6 +423,58 @@ function formatDay(time: number): string {
   });
 }
 
+/** Bars of the most frequent tags among the favorites, from the local index. */
+function FavoriteTagsBlock(): JSX.Element | null {
+  const [tags, setTags] = useState<readonly TagCount[] | null>(null);
+  useEffect(() => {
+    let alive = true;
+    readFavoriteIndex()
+      .then((entries) => {
+        if (alive) {
+          setTags(topFavoriteTags(entries, loadFavSet(), TOP_TAGS_LIMIT));
+        }
+      })
+      .catch(() => {
+        if (alive) {
+          setTags([]);
+        }
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  if (tags === null) {
+    return null;
+  }
+  const largest = tags[0]?.count ?? 0;
+  return (
+    <div className={CHART_CLASS}>
+      <p className={TILE_LABEL_CLASS}>{TOP_TAGS_HEADING}</p>
+      {largest === 0 ? (
+        <p className={HINT_CLASS}>{TOP_TAGS_EMPTY}</p>
+      ) : (
+        <ol className={TOP_CLASS}>
+          {tags.map((entry) => (
+            <li key={entry.tag} className={TOP_ROW_CLASS}>
+              <span title={entry.tag}>{entry.tag.replaceAll("_", " ")}</span>
+              <span className={TOP_BAR_CLASS} aria-hidden="true">
+                <span
+                  className={TOP_FILL_CLASS}
+                  style={{
+                    width: `${String(Math.max(MIN_BAR_PERCENT, Math.round((entry.count / largest) * PERCENT)))}%`,
+                  }}
+                />
+              </span>
+              <span>{formatNumber(entry.count)}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  );
+}
+
 function ProfileBlock(): JSX.Element {
   const [profile, setProfile] = useState<ProfileStats | null>(() => readStoredProfileStats());
   const [busy, setBusy] = useState(false);
@@ -502,6 +560,7 @@ export function StatsSection(): JSX.Element {
           <CollectionBars collections={stats.topCollections} />
         </div>
       </div>
+      <FavoriteTagsBlock />
       <ProfileBlock />
       <p className={HINT_CLASS}>{HINT}</p>
     </section>

@@ -18,16 +18,20 @@ import {
   createDynamicCollection,
   createPlaylist,
   deleteCollection,
+  getFeatureState,
   load,
   reloadFromStorage,
+  setFeatureState,
 } from "../storage/store";
 import {
   Button,
   Dialog,
   EmptyState,
   Segmented,
+  Select,
   TextField,
   type SegmentedOption,
+  type SelectOption,
 } from "../ui/kit";
 import { IconCheck, IconPlus } from "../ui/kit/icons";
 import { QueryField } from "../ui/query-field";
@@ -180,6 +184,15 @@ export const COLLECTIONS_PAGE_CSS = `
   min-width: 0;
   max-width: 100%;
   margin: 0;
+}
+/* The caption over the sort list would make the row taller; the options say what they sort by. */
+.${TOOLBAR_CLASS} .rdw-select__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 /* Starts short and grows with what is typed, up to the row. */
 .${FILTER_FIELD_CLASS} .rdw-field__input {
@@ -414,6 +427,52 @@ function visibleCollections(
     visible.push(collection);
   }
   return visible;
+}
+
+export const SORT_CREATED = "created";
+export const SORT_NAME = "name";
+export const SORT_SIZE = "size";
+export type CollectionSort = typeof SORT_CREATED | typeof SORT_NAME | typeof SORT_SIZE;
+const SORT_STATE_ID = "collections-sort";
+const SORT_LABEL = "Sort";
+const SORT_OPTIONS: readonly SelectOption[] = [
+  { value: SORT_CREATED, label: "As created" },
+  { value: SORT_NAME, label: "By name" },
+  { value: SORT_SIZE, label: "By size" },
+];
+
+function isCollectionSort(value: unknown): value is CollectionSort {
+  return value === SORT_CREATED || value === SORT_NAME || value === SORT_SIZE;
+}
+
+function readCollectionSort(): CollectionSort {
+  const stored = getFeatureState(SORT_STATE_ID);
+  return isCollectionSort(stored) ? stored : SORT_CREATED;
+}
+
+/** Posts in a collection; a dynamic one whose count is not known yet counts as none. */
+function collectionSize(collection: Collection): number {
+  return resolveCollectionKind(collection) === COLLECTION_KIND_POSTS
+    ? (collection.postIds?.length ?? 0)
+    : (collection.postCount?.value ?? 0);
+}
+
+/** "As created" keeps the stored order; the other two break ties by name. */
+export function sortCollections(
+  collections: readonly Collection[],
+  sort: CollectionSort,
+): Collection[] {
+  const sorted = [...collections];
+  if (sort === SORT_CREATED) {
+    return sorted;
+  }
+  const byName = (a: Collection, b: Collection): number =>
+    a.name.localeCompare(b.name, undefined, { sensitivity: "base", numeric: true });
+  sorted.sort(byName);
+  if (sort === SORT_SIZE) {
+    sorted.sort((a, b) => collectionSize(b) - collectionSize(a));
+  }
+  return sorted;
 }
 
 function kindForFilter(filter: ListFilter): NewKind {
@@ -741,6 +800,7 @@ export function CollectionsPage(): JSX.Element {
   const [filter, setFilter] = useState<ListFilter>(FILTER_ALL);
   const [nameQuery, setNameQuery] = useState("");
   const [view, setView] = useState<ViewMode>(() => readViewMode(COLLECTIONS_VIEW_STATE_ID));
+  const [sort, setSort] = useState<CollectionSort>(() => readCollectionSort());
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newKind, setNewKind] = useState<NewKind>(KIND_CUSTOM);
   const [nameDraft, setNameDraft] = useState("");
@@ -771,7 +831,7 @@ export function CollectionsPage(): JSX.Element {
   }, []);
 
   const collections = load().collections;
-  const visible = visibleCollections(collections, filter, nameQuery);
+  const visible = sortCollections(visibleCollections(collections, filter, nameQuery), sort);
   const emptyCopy =
     collections.length === 0
       ? { title: EMPTY_TITLE, description: EMPTY_DESCRIPTION }
@@ -855,6 +915,17 @@ export function CollectionsPage(): JSX.Element {
             placeholder={FILTER_PLACEHOLDER}
             aria-label={FILTER_ARIA_LABEL}
             onChange={setNameQuery}
+          />
+          <Select
+            label={SORT_LABEL}
+            options={SORT_OPTIONS}
+            value={sort}
+            onChange={(value) => {
+              if (isCollectionSort(value)) {
+                setFeatureState(SORT_STATE_ID, value);
+                setSort(value);
+              }
+            }}
           />
           <Segmented
             label={VIEW_LABEL}

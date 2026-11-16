@@ -97,3 +97,54 @@ export function filterFavoriteIndex(
   );
   return matched.sort((a, b) => b.run - a.run || a.pos - b.pos || b.id - a.id);
 }
+
+/** The most frequent tags among the favorites, most frequent first. */
+export type TagCount = { readonly tag: string; readonly count: number };
+
+export function topFavoriteTags(
+  entries: readonly FavoriteIndexEntry[],
+  favoriteIds: ReadonlySet<number>,
+  limit: number,
+): TagCount[] {
+  const counts = new Map<string, number>();
+  for (const entry of entries) {
+    if (!favoriteIds.has(entry.id)) {
+      continue;
+    }
+    for (const tag of new Set(entry.tags.split(TERM_SEPARATOR))) {
+      if (tag.length > 0) {
+        counts.set(tag, (counts.get(tag) ?? 0) + 1);
+      }
+    }
+  }
+  return [...counts]
+    .map(([tag, count]) => ({ tag, count }))
+    .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag))
+    .slice(0, limit);
+}
+
+const SEED_STEP = 0x6d2b79f5;
+const UINT32_RANGE = 4294967296;
+
+/** A repeatable random order: the same seed gives the same order. */
+export function shuffleBySeed<T>(items: readonly T[], seed: number): T[] {
+  let state = seed >>> 0;
+  const next = (): number => {
+    state = (state + SEED_STEP) >>> 0;
+    let mixed = state;
+    mixed = Math.imul(mixed ^ (mixed >>> 15), mixed | 1);
+    mixed ^= mixed + Math.imul(mixed ^ (mixed >>> 7), mixed | 61);
+    return ((mixed ^ (mixed >>> 14)) >>> 0) / UINT32_RANGE;
+  };
+  const shuffled = [...items];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const other = Math.floor(next() * (index + 1));
+    const held = shuffled[index];
+    const swapped = shuffled[other];
+    if (held !== undefined && swapped !== undefined) {
+      shuffled[index] = swapped;
+      shuffled[other] = held;
+    }
+  }
+  return shuffled;
+}

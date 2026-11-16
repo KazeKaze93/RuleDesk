@@ -1,3 +1,4 @@
+import { indexFavoriteFromPostPage } from "../favorites-index-live";
 import type { JSX } from "preact";
 import {
   useCallback,
@@ -166,6 +167,7 @@ export function PostPanel(props: PostPanelProps): JSX.Element {
       const result = await addFavorite(props.postId);
       if (result.status === "added" || result.status === "already") {
         addFav(props.postId);
+        indexFavoriteFromPostPage(props.postId);
         setFavorited(true);
         if (result.status === "added" && result.score !== undefined) {
           writeScoreText(props.postId, result.score);

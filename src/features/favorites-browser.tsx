@@ -10,7 +10,7 @@ import {
   type FavoriteIndexEntry,
 } from "../storage/favorites-index";
 import { getFeatureState, setFeatureState } from "../storage/store";
-import { Segmented, TextField, type SegmentedOption } from "../ui/kit";
+import { Button, Segmented, TextField, type SegmentedOption } from "../ui/kit";
 import {
   MEDIA_ALL,
   MEDIA_IMAGES,
@@ -19,6 +19,7 @@ import {
   isEmptyFavoritesQuery,
   isFavoritesMedia,
   parseFavoritesQuery,
+  shuffleBySeed,
   type FavoritesMedia,
 } from "./favorites-search";
 import { notifyThumbsAdded } from "./runtime";
@@ -61,6 +62,11 @@ const LOCALE = "en-US";
 const NO_INDEX_STATUS =
   "No index yet: run Full resync in RuleDesk → Favorites to search and scroll here.";
 const REMOVE_FAILED_STATUS = "Could not remove the favorite. Try again.";
+const SHUFFLE_LABEL = "Shuffle";
+const SHUFFLE_OFF_LABEL = "In order";
+const SHUFFLE_TITLE = "Show the favorites in a random order";
+const RANDOM_LABEL = "Random";
+const RANDOM_TITLE = "Open a random favorite";
 
 const MEDIA_OPTIONS: readonly SegmentedOption[] = [
   { value: MEDIA_ALL, label: "All" },
@@ -319,6 +325,15 @@ function statusText(shown: number, indexed: number, favorites: number): string {
   return `${found} · the index holds ${indexed.toLocaleString(LOCALE)} of ${favorites.toLocaleString(LOCALE)} favorites; Full resync in RuleDesk → Favorites adds the rest`;
 }
 
+/** Opens a random post of the local list of favorites. */
+export function openRandomFavorite(): void {
+  const ids = [...loadFavSet()];
+  const id = ids[Math.floor(Math.random() * ids.length)];
+  if (id !== undefined) {
+    window.location.assign(`${POST_HREF_PREFIX}${String(id)}`);
+  }
+}
+
 export function FavoritesBrowser(): JSX.Element {
   const [text, setText] = useState("");
   const [media, setMedia] = useState<FavoritesMedia>(MEDIA_ALL);
@@ -327,8 +342,15 @@ export function FavoritesBrowser(): JSX.Element {
   const [status, setStatus] = useState("");
   const loadingRef = useRef(false);
 
+  // A number while the list is shown in a random order, null otherwise.
+  const [shuffleSeed, setShuffleSeed] = useState<number | null>(null);
+
   const query = parseFavoritesQuery(text);
-  const active = view === VIEW_SCROLL || media !== MEDIA_ALL || !isEmptyFavoritesQuery(query);
+  const active =
+    view === VIEW_SCROLL ||
+    media !== MEDIA_ALL ||
+    shuffleSeed !== null ||
+    !isEmptyFavoritesQuery(query);
 
   useEffect(() => {
     onRemoveFailed = (): void => {
@@ -366,7 +388,8 @@ export function FavoritesBrowser(): JSX.Element {
         setStatus(NO_INDEX_STATUS);
         return;
       }
-      const results = filterFavoriteIndex(index, favorites, parseFavoritesQuery(text), media);
+      const matched = filterFavoriteIndex(index, favorites, parseFavoritesQuery(text), media);
+      const results = shuffleSeed === null ? matched : shuffleBySeed(matched, shuffleSeed);
       showFavoriteResults(results);
       const indexed = index.filter((entry) => favorites.has(entry.id)).length;
       setStatus(statusText(results.length, indexed, favorites.size));
@@ -374,7 +397,7 @@ export function FavoritesBrowser(): JSX.Element {
     return () => {
       window.clearTimeout(timer);
     };
-  }, [active, index, text, media]);
+  }, [active, index, text, media, shuffleSeed]);
 
   return (
     <div className={CONTROLS_CLASS}>
@@ -408,6 +431,20 @@ export function FavoritesBrowser(): JSX.Element {
           }
         }}
       />
+      <Button
+        variant="secondary"
+        size="s"
+        title={SHUFFLE_TITLE}
+        aria-pressed={shuffleSeed !== null}
+        onClick={() => {
+          setShuffleSeed(shuffleSeed === null ? Date.now() : null);
+        }}
+      >
+        {shuffleSeed === null ? SHUFFLE_LABEL : SHUFFLE_OFF_LABEL}
+      </Button>
+      <Button variant="secondary" size="s" title={RANDOM_TITLE} onClick={openRandomFavorite}>
+        {RANDOM_LABEL}
+      </Button>
       {status.length > 0 ? (
         <span className={STATUS_CLASS} role="status">
           {status}

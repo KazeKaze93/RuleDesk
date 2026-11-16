@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RuleDesk Web
 // @namespace    https://github.com/kazekaze93/ruledesk-web
-// @version      0.33.3
+// @version      0.34.0
 // @description  Collections, playlists, favorites, artist updates, and page tweaks for rule34.xxx
 // @downloadURL  https://raw.githubusercontent.com/KazeKaze93/RuleDesk/main/dist/ruledesk-web.user.js
 // @updateURL    https://raw.githubusercontent.com/KazeKaze93/RuleDesk/main/dist/ruledesk-web.user.js
@@ -15,7 +15,7 @@
 !function(){function e(e,t){return(t||"")+" (SystemJS Error#"+e+" https://github.com/systemjs/systemjs/blob/main/docs/errors.md#"+e+")"}function t(e,t){if(-1!==e.indexOf("\\")&&(e=e.replace(j,"/")),"/"===e[0]&&"/"===e[1])return t.slice(0,t.indexOf(":")+1)+e;if("."===e[0]&&("/"===e[1]||"."===e[1]&&("/"===e[2]||2===e.length&&(e+="/"))||1===e.length&&(e+="/"))||"/"===e[0]){var n,r=t.slice(0,t.indexOf(":")+1);if(n="/"===t[r.length+1]?"file:"!==r?(n=t.slice(r.length+2)).slice(n.indexOf("/")+1):t.slice(8):t.slice(r.length+("/"===t[r.length])),"/"===e[0])return t.slice(0,t.length-n.length-1)+e;for(var i=n.slice(0,n.lastIndexOf("/")+1)+e,o=[],s=-1,u=0;u<i.length;u++)-1!==s?"/"===i[u]&&(o.push(i.slice(s,u+1)),s=-1):"."===i[u]?"."!==i[u+1]||"/"!==i[u+2]&&u+2!==i.length?"/"===i[u+1]||u+1===i.length?u+=1:s=u:(o.pop(),u+=2):s=u;return-1!==s&&o.push(i.slice(s)),t.slice(0,t.length-n.length)+o.join("")}}function n(e,n){return t(e,n)||(-1!==e.indexOf(":")?e:t("./"+e,n))}function r(e,n,r,i,o){for(var s in e){var a=t(s,r)||s,f=e[s];if("string"==typeof f){var l=c(i,t(f,r)||f,o);l?n[a]=l:u("W1",s,f,"bare specifier did not resolve")}}}function i(e,t,i){var o;for(o in e.imports&&r(e.imports,i.imports,t,i,null),e.scopes||{}){var s=n(o,t);r(e.scopes[o],i.scopes[s]||(i.scopes[s]={}),t,i,s)}for(o in e.depcache||{})i.depcache[n(o,t)]=e.depcache[o];for(o in e.integrity||{})i.integrity[n(o,t)]=e.integrity[o]}function o(e,t){if(t[e])return e;var n=e.length;do{var r=e.slice(0,n+1);if(r in t)return r}while(-1!==(n=e.lastIndexOf("/",n-1)))}function s(e,t){var n=o(e,t);if(n){var r=t[n];if(null===r)return;if(!(e.length>n.length&&"/"!==r[r.length-1]))return r+e.slice(n.length);u("W2",n,r,"should have a trailing '/'")}}function u(t,n,r,i){console.warn(e(t,"Package target "+i+", resolving target '"+r+"' for "+n))}function c(e,t,n){for(var r=e.scopes,i=n&&o(n,r);i;){var u=s(t,r[i]);if(u)return u;i=o(i.slice(0,i.lastIndexOf("/")),r)}return s(t,e.imports)||-1!==t.indexOf(":")&&t}function a(){this[M]={}}function f(e){return e.id}function l(e,t,n,r){if(e.onload(n,t.id,t.d&&t.d.map(f),!!r),n)throw n}function d(t,n,r,i){var o=t[M][n];if(o)return o;var s=[],u=Object.create(null);P&&Object.defineProperty(u,P,{value:"Module"});var c=Promise.resolve().then((function(){return t.instantiate(n,r,i)})).then((function(r){if(!r)throw Error(e(2,"Module "+n+" did not instantiate"));var i=r[1]((function(e,t){o.h=!0;var n=!1;if("string"==typeof e)e in u&&u[e]===t||(u[e]=t,n=!0);else{for(var r in e)t=e[r],r in u&&u[r]===t||(u[r]=t,n=!0);e&&e.__esModule&&(u.__esModule=e.__esModule)}if(n)for(var i=0;i<s.length;i++){var c=s[i];c&&c(u)}return t}),2===r[1].length?{import:function(e,r){return t.import(e,n,r)},meta:t.createContext(n)}:void 0);return o.e=i.execute||function(){},[r[0],i.setters||[],r[2]||[]]}),(function(e){throw o.e=null,o.er=e,l(t,o,e,!0),e})),a=c.then((function(e){return Promise.all(e[0].map((function(r,i){var o=e[1][i],s=e[2][i];return Promise.resolve(t.resolve(r,n)).then((function(e){var r=d(t,e,n,s);return Promise.resolve(r.I).then((function(){return o&&(r.i.push(o),!r.h&&r.I||o(r.n)),r}))}))}))).then((function(e){o.d=e}))}));return o=t[M][n]={id:n,i:s,n:u,m:i,I:c,L:a,h:!1,d:void 0,e:void 0,er:void 0,E:void 0,C:void 0,p:void 0}}function h(e,t,n,r){if(!r[t.id])return r[t.id]=!0,Promise.resolve(t.L).then((function(){return t.p&&null!==t.p.e||(t.p=n),Promise.all(t.d.map((function(t){return h(e,t,n,r)})))})).catch((function(n){if(t.er)throw n;throw t.e=null,l(e,t,n,!1),n}))}function p(e,t){return t.C=h(e,t,t,{}).then((function(){return v(e,t,{})})).then((function(){return t.n}))}function v(e,t,n){function r(){try{var n=o.call(L);if(n)return n=n.then((function(){t.C=t.n,t.E=null,l(e,t,null,!0)}),(function(n){throw t.er=n,t.E=null,l(e,t,n,!0),n})),t.E=n;t.C=t.n,t.L=t.I=void 0}catch(r){throw t.er=r,r}finally{l(e,t,t.er,!0)}}if(!n[t.id]){if(n[t.id]=!0,!t.e){if(t.er)throw t.er;return t.E?t.E:void 0}var i,o=t.e;return t.e=null,t.d.forEach((function(r){try{var o=v(e,r,n);o&&(i=i||[]).push(o)}catch(s){throw t.er=s,l(e,t,s,!1),s}})),i?Promise.all(i).then(r):r()}}function m(){[].forEach.call(document.querySelectorAll("script"),(function(t){if(!t.sp)if("systemjs-module"===t.type){if(t.sp=!0,!t.src)return;System.import("import:"===t.src.slice(0,7)?t.src.slice(7):n(t.src,g)).catch((function(e){if(e.message.indexOf("https://github.com/systemjs/systemjs/blob/main/docs/errors.md#3")>-1){var n=document.createEvent("Event");n.initEvent("error",!1,!1),t.dispatchEvent(n)}return Promise.reject(e)}))}else if("systemjs-importmap"===t.type){t.sp=!0;var r=t.src?(System.fetch||fetch)(t.src,{integrity:t.integrity,priority:t.fetchPriority,passThrough:!0}).then((function(e){if(!e.ok)throw Error("Invalid status code: "+e.status);return e.text()})).catch((function(n){return n.message=e("W4","Error fetching systemjs-import map "+t.src)+"\n"+n.message,console.warn(n),"function"==typeof t.onerror&&t.onerror(),"{}"})):t.innerHTML;W=W.then((function(){return r})).then((function(n){!function(t,n,r){var o={};try{o=JSON.parse(n)}catch(s){console.warn(Error(e("W5","systemjs-importmap contains invalid JSON")+"\n\n"+n+"\n"))}i(o,r,t)}(N,n,t.src||g)}))}}))}var g,y="undefined"!=typeof Symbol,b="undefined"!=typeof self,S="undefined"!=typeof document,w=b?self:global;if(S){var O=document.querySelector("base[href]");O&&(g=O.href)}if(!g&&"undefined"!=typeof location){var E=(g=location.href.split("#")[0].split("?")[0]).lastIndexOf("/");-1!==E&&(g=g.slice(0,E+1))}var x,j=/\\/g,P=y&&Symbol.toStringTag,M=y?Symbol():"@",I=a.prototype;I.import=function(e,t,n){var r=this;return t&&"object"==typeof t&&(n=t,t=void 0),Promise.resolve(r.prepareImport()).then((function(){return r.resolve(e,t,n)})).then((function(e){var t=d(r,e,void 0,n);return t.C||p(r,t)}))},I.createContext=function(e){var t=this;return{url:e,resolve:function(n,r){return Promise.resolve(t.resolve(n,r||e))}}},I.onload=function(){},I.register=function(e,t,n){x=[e,t,n]},I.getRegister=function(){var e=x;return x=void 0,e};var L=Object.freeze(Object.create(null));w.System=new a;var C,R,W=Promise.resolve(),N={imports:{},scopes:{},depcache:{},integrity:{}},T=S;if(I.prepareImport=function(e){return(T||e)&&(m(),T=!1),W},I.getImportMap=function(){return JSON.parse(JSON.stringify(N))},S&&(m(),window.addEventListener("DOMContentLoaded",m)),I.addImportMap=function(e,t){i(e,t||g,N)},S){window.addEventListener("error",(function(e){J=e.filename,_=e.error}));var A=location.origin}I.createScript=function(e){var t=document.createElement("script");t.async=!0,e.indexOf(A+"/")&&(t.crossOrigin="anonymous");var n=N.integrity[e];return n&&(t.integrity=n),t.src=e,t};var J,_,k={},U=I.register;I.register=function(e,t){if(S&&"loading"===document.readyState&&"string"!=typeof e){var n=document.querySelectorAll("script[src]"),r=n[n.length-1];if(r){C=e;var i=this;R=setTimeout((function(){k[r.src]=[e,t],i.import(r.src)}))}}else C=void 0;return U.call(this,e,t)},I.instantiate=function(t,n){var r=k[t];if(r)return delete k[t],r;var i=this;return Promise.resolve(I.createScript(t)).then((function(r){return new Promise((function(o,s){r.addEventListener("error",(function(){s(Error(e(3,"Error loading "+t+(n?" from "+n:""))))})),r.addEventListener("load",(function(){if(document.head.removeChild(r),J===t)s(_);else{var e=i.getRegister(t);e&&e[0]===C&&clearTimeout(R),o(e)}})),document.head.appendChild(r)}))}))},I.shouldFetch=function(){return!1},"undefined"!=typeof fetch&&(I.fetch=fetch);var $=I.instantiate,B=/^(text|application)\/(x-)?javascript(;|$)/;I.instantiate=function(t,n,r){var i=this;return this.shouldFetch(t,n,r)?this.fetch(t,{credentials:"same-origin",integrity:N.integrity[t],meta:r}).then((function(r){if(!r.ok)throw Error(e(7,r.status+" "+r.statusText+", loading "+t+(n?" from "+n:"")));var o=r.headers.get("content-type");if(!o||!B.test(o))throw Error(e(4,'Unknown Content-Type "'+o+'", loading '+t+(n?" from "+n:"")));return r.text().then((function(e){return e.indexOf("//# sourceURL=")<0&&(e+="\n//# sourceURL="+t),(0,eval)(e),i.getRegister(t)}))})):$.apply(this,arguments)},I.resolve=function(n,r){return c(N,t(n,r=r||g)||n,r)||function(t,n){throw Error(e(8,"Unable to resolve bare specifier '"+t+(n?"' from "+n:"'")))}(n,r)};var F=I.instantiate;I.instantiate=function(e,t,n){var r=N.depcache[e];if(r)for(var i=0;i<r.length;i++)d(this,this.resolve(r[i],e),e);return F.call(this,e,t,n)},b&&"function"==typeof importScripts&&(I.instantiate=function(e){var t=this;return Promise.resolve().then((function(){return importScripts(e),t.getRegister(e)}))}),function(e){function t(t){return!e.hasOwnProperty(t)||!isNaN(t)&&t<e.length||a&&e[t]&&"undefined"!=typeof window&&e[t].parent===window}var n,r,i,o=e.System.constructor.prototype,s=o.import;o.import=function(o,u,c){return function(){for(var o in n=r=void 0,e)t(o)||(n?r||(r=o):n=o,i=o)}(),s.call(this,o,u,c)};var u=[[],function(){return{}}],c=o.getRegister;o.getRegister=function(){var o=c.call(this);if(o)return o;var s,a=function(o){var s,u,c=0;for(var a in e)if(!t(a)){if(0===c&&a!==n||1===c&&a!==r)return a;s?(i=a,u=o&&u||a):s=a===i,c++}return u}(this.firstGlobalProp);if(!a)return u;try{s=e[a]}catch(f){return u}return[[],function(e){return{execute:function(){e(s),e({default:s,__useDefault:!0})}}}]};var a="undefined"!=typeof navigator&&-1!==navigator.userAgent.indexOf("Trident")}("undefined"!=typeof self?self:global),function(e){var t=e.System.constructor.prototype,r=/^[^#?]+\.(css|html|json|wasm)([?#].*)?$/,i=t.shouldFetch.bind(t);t.shouldFetch=function(e){return i(e)||r.test(e)};var o=/^application\/json(;|$)/,s=/^text\/css(;|$)/,u=/^application\/wasm(;|$)/,c=t.fetch;t.fetch=function(t,r){return c(t,r).then((function(i){if(r.passThrough)return i;if(!i.ok)return i;var c=i.headers.get("content-type");return o.test(c)?i.json().then((function(e){return new Response(new Blob(['System.register([],function(e){return{execute:function(){e("default",'+JSON.stringify(e)+")}}})"],{type:"application/javascript"}))})):s.test(c)?i.text().then((function(e){return e=e.replace(/url\(\s*(?:(["'])((?:\\.|[^\n\\"'])+)\1|((?:\\.|[^\s,"'()\\])+))\s*\)/g,(function(e,r,i,o){return["url(",r,n(i||o,t),r,")"].join("")})),new Response(new Blob(["System.register([],function(e){return{execute:function(){var s=new CSSStyleSheet();s.replaceSync("+JSON.stringify(e)+');e("default",s)}}})'],{type:"application/javascript"}))})):u.test(c)?(WebAssembly.compileStreaming?WebAssembly.compileStreaming(i):i.arrayBuffer().then(WebAssembly.compile)).then((function(n){e.System.wasmModules||(e.System.wasmModules=Object.create(null)),e.System.wasmModules[t]=n;var r=[],i=[];return WebAssembly.Module.imports&&WebAssembly.Module.imports(n).forEach((function(e){var t=JSON.stringify(e.module);-1===r.indexOf(t)&&(r.push(t),i.push("function(m){i["+t+"]=m}"))})),new Response(new Blob(["System.register(["+r.join(",")+"],function(e){var i={};return{setters:["+i.join(",")+"],execute:function(){return WebAssembly.instantiate(System.wasmModules["+JSON.stringify(t)+"],i).then(function(m){e(m.exports)})}}})"],{type:"application/javascript"}))})):i}))}}("undefined"!=typeof self?self:global);var q="undefined"!=typeof Symbol&&Symbol.toStringTag;I.get=function(e){var t=this[M][e];if(t&&null===t.e&&!t.E)return t.er?null:t.n},I.set=function(t,n){try{new URL(t)}catch(s){console.warn(Error(e("W3",'"'+t+'" is not a valid URL to set in the module registry')))}var r;q&&"Module"===n[q]?r=n:(r=Object.assign(Object.create(null),n),q&&Object.defineProperty(r,q,{value:"Module"}));var i=Promise.resolve(r),o=this[M][t]||(this[M][t]={id:t,i:[],h:!1,d:[],e:null,er:void 0,E:void 0});return!o.e&&!o.E&&(Object.assign(o,{n:r,I:void 0,L:void 0,C:i}),r)},I.has=function(e){return!!this[M][e]},I.delete=function(e){var t=this[M],n=t[e];if(!n||n.p&&null!==n.p.e||n.E)return!1;var r=n.i;return n.d&&n.d.forEach((function(e){var t=e.i.indexOf(n);-1!==t&&e.i.splice(t,1)})),delete t[e],function(){var n=t[e];if(!n||!r||null!==n.e||n.E)return!1;r.forEach((function(e){n.i.push(e),e(n.n)})),r=null}};var D="undefined"!=typeof Symbol&&Symbol.iterator;I.entries=function(){var e,t,n=this,r=Object.keys(n[M]),i=0,o={next:function(){for(;void 0!==(t=r[i++])&&void 0===(e=n.get(t)););return{done:void 0===t,value:void 0!==t&&[t,e]}}};return o[D]=function(){return this},o}}();
 !function(t){function e(t){t.registerRegistry=Object.create(null),t.namedRegisterAliases=Object.create(null)}var r=t.System;e(r);var i,s,n=r.constructor.prototype,l=r.constructor,a=function(){l.call(this),e(this)};a.prototype=n,r.constructor=a;var o=n.register;n.register=function(t,e,r,n){if("string"!=typeof t)return o.apply(this,arguments);var l=[e,r,n];return this.registerRegistry[t]=l,i||(i=l,s=t),Promise.resolve().then((function(){i=null,s=null})),o.apply(this,[e,r,n])};var u=n.resolve;n.resolve=function(t,e){try{return u.call(this,t,e)}catch(r){if(t in this.registerRegistry)return this.namedRegisterAliases[t]||t;throw r}};var c=n.instantiate;n.instantiate=function(t,e,r){var i=this.registerRegistry[t];return i?(this.registerRegistry[t]=null,i):c.call(this,t,e,r)};var g=n.getRegister;n.getRegister=function(t){var e=g.call(this,t);s&&t&&(this.namedRegisterAliases[s]=t);var r=i||e;return i=null,s=null,r}}("undefined"!=typeof self?self:global);
 ;(typeof System!='undefined')&&(System=new System.constructor());
-System.register("./___monkey.entry.js", [],(function(exports,module){'use strict';return{execute:(function(){exports({G:resolveFavoritesUserId,L:rdwPageHash,O:createFavoritesSyncTabId,Q:Q$1,T:readArtistsMirror,V:listArtistTags,W:writeArtistsMirror,X:reloadFromStorage,Y:save,_:setSyncState,a:mountCards,a$:featurePanelLabel,a3:a,a4:applyTokenProperties,a5:resolveAppearancePalette,a6:isCollectionDetailPage,a7:menuRouteForPage,a8:getSiteSkinCss,aA:setUpdatesGroupSize,aB:getUpdatesGroupSize,aD:setPlaylistChunkSize,aE:getPlaylistChunkSize,aG:setGridFavButtonsEnabled,aH:setGridFavButtonsVisible,aI:IconChevronRight,aJ:IconChevronDown,aK:Card,aL:P$1,aM:T,aN:A,aQ:SectionLabel,aR:Select,aU:Segmented,aX:TextField,aY:Button,aZ:clampBackgroundDim,ab:$$1,ac:setFeatureState,an:getFeatureState,ao:d,ap:Switch,ar:setTweaksEnabled,au:setFeatureEnabled,ax:applyStickyHeader,ay:NumberField,b:mountFavoriteVideoMarks,b$:readCoverMirror,b1:clearFeatureState,b2:applyCssOnlyFeatureEnabled,b3:isFeatureEnabled,b5:setFeatureChoiceValue,b6:applyCssOnlyFeatureChoice,b7:getFeatureChoice,b8:createAutocompleteQuerier,b9:b,bB:createDefaultFavs,bC:parseFavsStrict,bD:setAppearance,bF:extractFavIdsFromMarks,bK:hasApiCredentials,bL:getTweaksEnabled,bM:getGridFavButtonsEnabled,bN:getFeatureChoiceValue,bO:getScreenPixelSize,bP:IconPlus,bQ:EmptyState,bR:Dialog,bS:resolveCollectionKind,bU:deleteCollection,bV:QueryField,bW:isUnfilteredQuery,bX:createDynamicCollection,bY:createPlaylist,b_:collectionDetailHash,ba:readSiteBlacklist,bb:AutocompleteField,bc:Chip,bd:ProgressBar,be:createDefaultCustomTheme,bg:prepareBackgroundImageFile,bh:writeSiteBlacklist,bj:clearApiCredentials,bk:parseApiCredentials,bl:setApiCredentials,bm:load,bn:createDefaultStorage,bo:clearStorageCache,bp:clearFavsCache,bq:object,bs:optional,bt:string,bv:literal,bx:isSiteUrl,by:stripLegacyPanelWindowSize,bz:migrateMarksFavToFavs,c:mountCommentsPage,c1:IconCheck,c2:readCountMirror,c3:buildSearchUrl,c4:dynamicCollectionMarkHash,c5:serialize,c7:getSeenPostId,cA:startDownload,cB:movePostInCollection,cC:renameCollection,cE:restorePosts,cG:collectionQueueHash,ce:removeArtist,cf:completeLastQueryToken,cg:readLastQueryToken,ci:IconButton,cj:IconX,ck:removeArtists,cl:rememberArtistSnapshot,cm:fetchArtistSnapshot,cn:addArtists,cp:number,cq:int,cr:w$1,cs:downloadsAvailable,ct:shuffleCollection,cu:resetCollectionOrder,cv:Toast,cw:getCollectionOrder,cx:listPlaylists,cy:removePostsFromCollection,cz:isDownloadBusy,d:detectPageKind,e:applyAppearanceTheme,f:ensureDocumentStyles,g:getAppearance,k:getSyncState,l:loadFavSet,m:mountGifMarks,n:normalizeArtistTag,o:ensureStyleElement,p:buildOwnPageCss,r:runFeaturesYielding,s:syncFavoritesPage,t:getFeatureEnabled,u:applyHeaderLayout,v:parseRdwHash,w:readFavoritesSyncMode,x:runFavoritesSync,y:yieldToMain});var STORAGE_KEY = "ruledesk-web.storage";
+System.register("./___monkey.entry.js", [],(function(exports,module){'use strict';return{execute:(function(){exports({G:resolveFavoritesUserId,L:rdwPageHash,O:createFavoritesSyncTabId,Q:Q$1,T:readArtistsMirror,V:listArtistTags,W:writeArtistsMirror,X:reloadFromStorage,Y:save,_:setSyncState,a:mountCards,a$:featurePanelLabel,a3:a,a4:applyTokenProperties,a5:resolveAppearancePalette,a6:isCollectionDetailPage,a7:menuRouteForPage,a8:getSiteSkinCss,aA:setUpdatesGroupSize,aB:getUpdatesGroupSize,aD:setPlaylistChunkSize,aE:getPlaylistChunkSize,aG:setGridFavButtonsEnabled,aH:setGridFavButtonsVisible,aI:IconChevronRight,aJ:IconChevronDown,aK:Card,aL:P$1,aM:T,aN:A,aQ:SectionLabel,aR:Select,aU:Segmented,aX:TextField,aY:Button,aZ:clampBackgroundDim,ab:$$1,ac:setFeatureState,an:getFeatureState,ao:d,ap:Switch,ar:setTweaksEnabled,au:setFeatureEnabled,ax:applyStickyHeader,ay:NumberField,b:mountFavoriteVideoMarks,b$:readCoverMirror,b1:clearFeatureState,b2:applyCssOnlyFeatureEnabled,b3:isFeatureEnabled,b5:setFeatureChoiceValue,b6:applyCssOnlyFeatureChoice,b7:getFeatureChoice,b8:createAutocompleteQuerier,b9:b,bB:createDefaultFavs,bC:parseFavsStrict,bD:setAppearance,bF:extractFavIdsFromMarks,bK:hasApiCredentials,bL:getTweaksEnabled,bM:getGridFavButtonsEnabled,bN:getFeatureChoiceValue,bO:getScreenPixelSize,bP:IconPlus,bQ:EmptyState,bR:Dialog,bS:resolveCollectionKind,bU:deleteCollection,bV:QueryField,bW:isUnfilteredQuery,bX:createDynamicCollection,bY:createPlaylist,b_:collectionDetailHash,ba:readSiteBlacklist,bb:AutocompleteField,bc:Chip,bd:ProgressBar,be:createDefaultCustomTheme,bg:prepareBackgroundImageFile,bh:writeSiteBlacklist,bj:clearApiCredentials,bk:parseApiCredentials,bl:setApiCredentials,bm:load,bn:createDefaultStorage,bo:clearStorageCache,bp:clearFavsCache,bq:object,bs:optional,bt:string,bv:literal,bx:isSiteUrl,by:stripLegacyPanelWindowSize,bz:migrateMarksFavToFavs,c:mountCommentsPage,c1:IconCheck,c2:readCountMirror,c3:buildSearchUrl,c4:dynamicCollectionMarkHash,c5:serialize,c7:getSeenPostId,cA:removePostsFromCollection,cB:isDownloadBusy,cC:startDownload,cD:movePostInCollection,cE:renameCollection,cG:restorePosts,cI:collectionQueueHash,ce:removeArtist,cf:completeLastQueryToken,cg:readLastQueryToken,ci:IconButton,cj:IconX,ck:removeArtists,cl:rememberArtistSnapshot,cm:fetchArtistSnapshot,cn:addArtists,co:readFavoriteIndex,cp:topFavoriteTags,cr:number,cs:int,ct:w$1,cu:downloadsAvailable,cv:shuffleCollection,cw:resetCollectionOrder,cx:Toast,cy:getCollectionOrder,cz:listPlaylists,d:detectPageKind,e:applyAppearanceTheme,f:ensureDocumentStyles,g:getAppearance,k:getSyncState,l:loadFavSet,m:mountGifMarks,n:normalizeArtistTag,o:ensureStyleElement,p:buildOwnPageCss,r:runFeaturesYielding,s:syncFavoritesPage,t:getFeatureEnabled,u:applyHeaderLayout,v:parseRdwHash,w:readFavoritesSyncMode,x:runFavoritesSync,y:yieldToMain});var STORAGE_KEY = "ruledesk-web.storage";
 var STORAGE_BACKUP_KEY = exports("bE","ruledesk-web.storage.backup");
 var FAVS_STORAGE_KEY = exports("bA","ruledesk-web.favs");
 var DEBUG_KEY = "ruledesk-web.debug";
@@ -35,7 +35,7 @@ var SITE_ORIGIN = exports("i","https://rule34.xxx");
 var SEARCH_PATH = exports("a2","/index.php");
 var SEARCH_PAGE = exports("ca","post");
 var SEARCH_SECTION = exports("cb","list");
-var SEARCH_SECTION_VIEW = exports("cF","view");
+var SEARCH_SECTION_VIEW = exports("cH","view");
 var SEARCH_PARAM_PAGE = exports("$","page");
 var SEARCH_PARAM_TAGS = exports("j","tags");
 var FAVORITES_PAGE = exports("a0","favorites");
@@ -48,7 +48,7 @@ var VOTE_PARAM_PAGE = "page";
 var VOTE_PARAM_TYPE = "type";
 var VOTE_PAGE = "post";
 var VOTE_SECTION = "vote";
-var FETCH_CREDENTIALS = exports("co","same-origin");
+var FETCH_CREDENTIALS = exports("cq","same-origin");
 var TAG_TYPE_INCLUDE = exports("ch","include");
 var TAG_TYPE_EXCLUDE = "exclude";
 var UPDATES_ID_PREFIX = "id:>";
@@ -123,7 +123,7 @@ var CSS_CLASS = exports("C",{
 });
 /** Hash routes and DOM ids for RuleDesk own pages (replaces floating panel). */
 var RDW_HASH_PREFIX = "#rdw/";
-var RDW_ROUTE_COLLECTIONS = exports("cD","collections");
+var RDW_ROUTE_COLLECTIONS = exports("cF","collections");
 var RDW_ROUTE_FOLLOWING = "following";
 var RDW_ROUTE_SETTINGS = "settings";
 var RDW_ROUTE_STATS = "stats";
@@ -158,7 +158,7 @@ var RDW_PAGE_ROOT_ID = exports("z","rdw-page-root");
 /** The download manager's panel: stays visible over the script's own pages. */
 var RDW_DOWNLOADS_PANEL_ID = "rdw-downloads";
 var RDW_OWN_PAGE_STYLE_ID = exports("R","rdw-own-page-style");
-var HEADER_SELECTOR$2 = exports("H","div#header");
+var HEADER_SELECTOR$1 = exports("H","div#header");
 var NAVBAR_SELECTOR = exports("N","div#header ul#navbar");
 var CURRENT_PAGE_CLASS$1 = exports("Z","current-page");
 var MENU_ITEM_ID = exports("M",{
@@ -271,7 +271,7 @@ function parseRdwHash(hash) {
 /** CSS: hide site siblings after header while own page is open. */
 function buildOwnPageCss() {
 	return `
-html.${RDW_OWN_PAGE_CLASS} ${HEADER_SELECTOR$2} ~ *:not(#${RDW_PAGE_ROOT_ID}):not(#${RDW_DOWNLOADS_PANEL_ID}) {
+html.${RDW_OWN_PAGE_CLASS} ${HEADER_SELECTOR$1} ~ *:not(#${RDW_PAGE_ROOT_ID}):not(#${RDW_DOWNLOADS_PANEL_ID}) {
   display: none !important;
 }
 #${RDW_PAGE_ROOT_ID} {
@@ -280,28 +280,6 @@ html.${RDW_OWN_PAGE_CLASS} ${HEADER_SELECTOR$2} ~ *:not(#${RDW_PAGE_ROOT_ID}):no
   width: 100%;
 }
 `;
-}
-var THUMB_CLASS = "rdw-thumb";
-/**
-* On <html> on the site's Favorites page, set before the first paint. The
-* skin rules for a favorites cell are held to it: the pool page has thumbs
-* of a similar shape, and their links carry an onclick too.
-*/
-var FAVORITES_PAGE_CLASS = "rdw-page-favorites";
-var THUMB_ANCHOR_NAME = "--rdw-img";
-/**
-* Anchor of a favorites picture. Its scope is the whole cell and comes from
-* the stylesheet, so it is there from the first layout; the buttons of a
-* favorites thumb are placed by it.
-*/
-var FAVORITE_IMAGE_ANCHOR_NAME = "--rdw-fav-img";
-var FEATURE_STYLE_ID_PREFIX = "rdw-feature-style-";
-var POST_ACTIONS_ID = "rdw-post-actions";
-function featureBodyClass(id) {
-	return `rdw-f-${id}`;
-}
-function featureChoiceBodyClass(id, value) {
-	return `rdw-f-${id}-${value}`;
 }
 function isDebugEnabled() {
 	try {
@@ -326,25 +304,6 @@ var log = exports("h",{
 		console.error(`[ruledesk-web] ${message}`, ...details);
 	}
 });
-function detectPageKind(search) {
-	const params = new URLSearchParams(search);
-	const page = params.get(SEARCH_PARAM_PAGE);
-	const section = params.get("s");
-	if (page === "post" && section === "list") return "list";
-	if (page === "post" && section === "view") return "post";
-	if (page === "favorites" && section === "view") return "favorites";
-	return "other";
-}
-function readPostIdFromSearch(search) {
-	const params = new URLSearchParams(search);
-	const page = params.get(SEARCH_PARAM_PAGE);
-	const section = params.get("s");
-	const id = params.get("id");
-	if (page !== "post" || section !== "view") return null;
-	if (id === null || id.trim().length === 0) return null;
-	if (!/^\d+$/.test(id)) return null;
-	return id;
-}
 function getEnumValues(entries) {
 	const numericValues = Object.values(entries).filter((v) => typeof v === "number");
 	return Object.entries(entries).filter(([k, _]) => numericValues.indexOf(+k) === -1).map(([_, v]) => v);
@@ -2949,7 +2908,7 @@ function resolveSeenPostId(data) {
 var cachedIds = null;
 var cachedSync;
 var cacheHydrated = false;
-function getGmGetValue$2() {
+function getGmGetValue$1() {
 	return GM_getValue;
 }
 function getGmSetValue$1() {
@@ -3001,7 +2960,7 @@ function normalizePostId$1(id) {
 	return Math.trunc(parsed);
 }
 function readFavsRaw() {
-	const raw = getGmGetValue$2()(FAVS_STORAGE_KEY, void 0);
+	const raw = getGmGetValue$1()(FAVS_STORAGE_KEY, void 0);
 	if (raw === void 0 || raw === null) return createDefaultFavs();
 	const parsed = cheapParseFavs(raw);
 	if (parsed === null) {
@@ -3019,7 +2978,7 @@ function setCacheFromData(data) {
 	cacheHydrated = true;
 }
 function readMainStorageRaw() {
-	const raw = getGmGetValue$2()(STORAGE_KEY, void 0);
+	const raw = getGmGetValue$1()(STORAGE_KEY, void 0);
 	if (raw === void 0 || raw === null) return null;
 	const parsed = StorageSchema.safeParse(raw);
 	if (!parsed.success) return null;
@@ -3041,7 +3000,7 @@ function writeMainStorage(data) {
 */
 function migrateMarksFavToFavs() {
 	const main = readMainStorageRaw();
-	const favsRaw = getGmGetValue$2()(FAVS_STORAGE_KEY, void 0);
+	const favsRaw = getGmGetValue$1()(FAVS_STORAGE_KEY, void 0);
 	const favsCheap = favsRaw === void 0 || favsRaw === null ? createDefaultFavs() : cheapParseFavs(favsRaw);
 	const favs = favsCheap ?? createDefaultFavs();
 	if (favsCheap === null && favsRaw !== void 0 && favsRaw !== null) log.error("Invalid favs storage content; using empty favs", { key: FAVS_STORAGE_KEY });
@@ -3199,14 +3158,14 @@ var storageCacheHydrated = false;
 var cacheFreshAt = 0;
 /** How old the cache may be for {@link loadRecent}. */
 var RECENT_READ_WINDOW_MS = 1e3;
-function getGmGetValue$1() {
+function getGmGetValue$2() {
 	return GM_getValue;
 }
 function getGmSetValue() {
 	return GM_setValue;
 }
 function readRaw() {
-	return getGmGetValue$1()(STORAGE_KEY, void 0);
+	return getGmGetValue$2()(STORAGE_KEY, void 0);
 }
 function writeData(data) {
 	getGmSetValue()(STORAGE_KEY, data);
@@ -4003,317 +3962,6 @@ function removeArtist(tag) {
 	save(data);
 	return true;
 }
-var COOKIE_PAIR_SEPARATOR = ";";
-var COOKIE_NAME_VALUE_SEPARATOR$1 = "=";
-var BLACKLIST_SPLIT_PATTERN = /[, ]|%20+/g;
-var USER_ENTRY_PREFIX = "user:";
-var RATING_ENTRY_PREFIX = "rating:";
-var MS_PER_DAY$1 = 864e5;
-var DAYS_PER_YEAR = 365;
-var BLACKLIST_TAG_SEPARATOR = " ";
-var changeListeners = /* @__PURE__ */ new Set();
-/** Subscribe to writes of the site `tag_blacklist` cookie. */
-function onSiteBlacklistChange(cb) {
-	changeListeners.add(cb);
-	return () => {
-		changeListeners.delete(cb);
-	};
-}
-function readCookieValue(name) {
-	const pairs = document.cookie.split(COOKIE_PAIR_SEPARATOR);
-	const prefix = `${name}${COOKIE_NAME_VALUE_SEPARATOR$1}`;
-	for (const pair of pairs) {
-		const trimmed = pair.trim();
-		if (!trimmed.startsWith(prefix)) continue;
-		return trimmed.slice(prefix.length);
-	}
-	return null;
-}
-function normalizeBlacklistTags(tags) {
-	const seen = /* @__PURE__ */ new Set();
-	const result = [];
-	for (const raw of tags) {
-		const normalized = raw.trim().toLowerCase().replaceAll(" ", "_");
-		if (normalized.length === 0 || seen.has(normalized)) continue;
-		seen.add(normalized);
-		result.push(normalized);
-	}
-	return result;
-}
-function encodeBlacklistCookieValue(tags) {
-	if (tags.length === 0) return "";
-	return encodeURIComponent(encodeURIComponent(tags.join(BLACKLIST_TAG_SEPARATOR)));
-}
-function writeBlacklistCookie(value, expires) {
-	document.cookie = [
-		`${SITE_BLACKLIST_COOKIE_NAME}${COOKIE_NAME_VALUE_SEPARATOR$1}${value}`,
-		`expires=${expires.toUTCString()}`,
-		`path=/`
-	].join("; ");
-}
-/**
-* Reads the site `tag_blacklist` cookie using the site's decode + split rule.
-* Empty tokens are dropped; entries are lowercased.
-*/
-function readSiteBlacklist() {
-	const raw = readCookieValue(SITE_BLACKLIST_COOKIE_NAME);
-	if (raw === null || raw.length === 0) return [];
-	let decoded;
-	try {
-		decoded = decodeURIComponent(decodeURI(raw));
-	} catch {
-		return [];
-	}
-	const result = [];
-	for (const part of decoded.split(BLACKLIST_SPLIT_PATTERN)) {
-		const trimmed = part.trim().toLowerCase();
-		if (trimmed.length === 0) continue;
-		result.push(trimmed);
-	}
-	return result;
-}
-/**
-* Writes the site `tag_blacklist` cookie (browser cookie only; account list untouched).
-* Value encoding matches the live site: encodeURIComponent twice over space-joined tags.
-*/
-function writeSiteBlacklist(tags) {
-	const normalized = normalizeBlacklistTags(tags);
-	const expires = new Date(Date.now() + 5 * DAYS_PER_YEAR * MS_PER_DAY$1);
-	writeBlacklistCookie(encodeBlacklistCookieValue(normalized), expires);
-	for (const listener of changeListeners) listener(normalized);
-}
-/**
-* True when any blacklist entry matches a post tag or `rating:x`.
-* Entries starting with `user:` are ignored. `score` is reserved for callers.
-*/
-function isBlacklisted(tags, score, rating, list) {
-	if (list.length === 0) return false;
-	const tagSet = /* @__PURE__ */ new Set();
-	for (const tag of tags) {
-		const normalized = tag.trim().toLowerCase();
-		if (normalized.length > 0) tagSet.add(normalized);
-	}
-	const ratingNorm = rating.trim().toLowerCase();
-	for (const entry of list) {
-		if (entry.startsWith(USER_ENTRY_PREFIX)) continue;
-		if (entry.startsWith(RATING_ENTRY_PREFIX)) {
-			const value = entry.slice(7);
-			if (value.length > 0 && value === ratingNorm) return true;
-			continue;
-		}
-		if (tagSet.has(entry)) return true;
-	}
-	return false;
-}
-var SITE_SELECTORS = exports("S",{
-	thumb: "span.thumb",
-	thumbLink: "a[href*=\"s=view\"]",
-	previewImage: "img.preview",
-	cardFavButton: `button.${CSS_CLASS.cardFav}`,
-	favoritesDeleteLink: "a[onclick]",
-	tagSidebar: "ul#tag-sidebar",
-	tagTypeArtist: "li.tag-type-artist",
-	/** A tag row of the sidebar, any tag type. */
-	tagSidebarRow: "ul#tag-sidebar > li[class*=\"tag-type-\"]",
-	/** Number of posts with the tag, inside its sidebar row. */
-	tagCount: "span.tag-count",
-	imageList: "div.image-list",
-	/** Comments page: the list of posts with their comments. */
-	commentList: "div#comments div#comment-list",
-	/** Comments page: the preview cell of a post, `div#p{ID}.post > div.col1.thumb > a > img.preview`. */
-	commentThumb: "div#comments div#comment-list > div.post > div.col1.thumb",
-	/** Comments page: the whole tag list of a post, one `span` per tag. */
-	commentTags: "div#comments div#comment-list > div.post > div.col2 > div.header > div.tags",
-	postListContent: "#post-list div.content",
-	contentRoot: "#content",
-	artistFollowButton: `button.${CSS_CLASS.artistFollow}`,
-	/** Native AI filter checkbox (site owns click/cookie logic). */
-	filterAiCheckbox: "input.toggleSwitch#chkFilterAI",
-	/** Row wrapping the native AI filter control — hide when search-tools mirrors it. */
-	filterAiRow: "li:has(> label > span.switch > input.toggleSwitch#chkFilterAI)",
-	/** Post page: site link to the previous post of the last search (href="#", site JS). */
-	postPrevSearchLink: "a#prev_search_link",
-	/** Post page: site link to the next post of the last search (href="#", site JS). */
-	postNextSearchLink: "a#next_search_link",
-	/** List page pager. */
-	pagination: "div.pagination",
-	/** Pager link to the last results page; its `pid` is the offset of that page. */
-	paginationLastPage: "div.pagination a[alt=\"last page\"]",
-	/** Any pager link to another results page. */
-	paginationPageLink: "div.pagination > a[href]",
-	/** Stray Tags heading between #rdw-search-tools and the tag list. */
-	tagsHeadingAfterSearchTools: "#rdw-search-tools + h5"
-});
-var THUMB_ID_PATTERN = /^s(\d+)$/;
-var THUMB_LINK_ID_PATTERN = /^p(\d+)$/;
-var FAVORITES_DELETE_ID_PATTERN = /s=delete&id=(\d+)/;
-function extractPostIdFromThumb(thumb) {
-	const match = THUMB_ID_PATTERN.exec(thumb.id);
-	if (match === null) return null;
-	const postId = match[1];
-	return postId === void 0 ? null : postId;
-}
-/**
-* Post id from the thumb's link `a#p{ID}`. A favorites thumb has no `s{ID}`
-* id of its own, so this is the only place its post id is written.
-*/
-function extractPostIdFromThumbLink(thumb) {
-	const link = thumb.querySelector(SITE_SELECTORS.thumbLink);
-	if (link === null) return null;
-	const match = THUMB_LINK_ID_PATTERN.exec(link.id);
-	if (match === null) return null;
-	const postId = match[1];
-	return postId === void 0 ? null : postId;
-}
-/**
-* Post id of a Comments page preview: the cell has no id, the post around it
-* is `div#p{ID}.post`.
-*/
-function extractPostIdFromCommentThumb(thumb) {
-	const post = thumb.parentElement;
-	if (post === null) return null;
-	const match = THUMB_LINK_ID_PATTERN.exec(post.id);
-	if (match === null) return null;
-	const postId = match[1];
-	return postId === void 0 ? null : postId;
-}
-function extractPostIdFromFavoritesDeleteOnclick(onclick) {
-	const match = FAVORITES_DELETE_ID_PATTERN.exec(onclick);
-	if (match === null) return null;
-	const postId = match[1];
-	return postId === void 0 ? null : postId;
-}
-var FEATURE_ID$15 = "blacklist-hide";
-var FEATURE_LABEL$14 = "Hide blacklisted posts";
-var FEATURE_PAGES$14 = ["list"];
-var BODY_FEATURE_CLASS$3 = featureBodyClass(FEATURE_ID$15);
-var CLASS_BLACKLISTED$1 = "rdw-blacklisted";
-var SCORE_TOKEN_PREFIX$4 = "score:";
-var RATING_TOKEN_PREFIX$3 = "rating:";
-var WHITESPACE_SPLIT = /\s+/;
-var FEATURE_CSS$13 = `
-body.${BODY_FEATURE_CLASS$3} span.thumb.${CLASS_BLACKLISTED$1} {
-  display: none !important;
-}
-`.trim();
-var unsubscribeThumbsAdded$5;
-var unsubscribeBlacklistChange;
-function parseAltTags(alt) {
-	const tags = [];
-	for (const token of alt.trim().split(WHITESPACE_SPLIT)) {
-		if (token.length === 0) continue;
-		const lower = token.toLowerCase();
-		if (lower.startsWith(SCORE_TOKEN_PREFIX$4) || lower.startsWith(RATING_TOKEN_PREFIX$3)) continue;
-		tags.push(token);
-	}
-	return tags;
-}
-function parseTitleRating(title) {
-	for (const token of title.trim().split(WHITESPACE_SPLIT)) {
-		if (token.length === 0) continue;
-		if (token.toLowerCase().startsWith(RATING_TOKEN_PREFIX$3)) return token.slice(7);
-	}
-	return "";
-}
-function applyBlacklistToThumb(thumb, list) {
-	if (!(thumb instanceof HTMLElement)) return;
-	const img = thumb.querySelector(SITE_SELECTORS.previewImage);
-	const alt = img?.getAttribute("alt") ?? "";
-	const title = img?.getAttribute("title") ?? "";
-	const matched = isBlacklisted(parseAltTags(alt), 0, parseTitleRating(title), list);
-	thumb.classList.toggle(CLASS_BLACKLISTED$1, matched);
-}
-function applyBlacklistToRoot(root, list = readSiteBlacklist()) {
-	const thumbs = root.querySelectorAll(SITE_SELECTORS.thumb);
-	for (const thumb of thumbs) applyBlacklistToThumb(thumb, list);
-}
-function ensureSubscriptions() {
-	if (unsubscribeThumbsAdded$5 === void 0) unsubscribeThumbsAdded$5 = onThumbsAdded((root) => {
-		applyBlacklistToRoot(root);
-	});
-	if (unsubscribeBlacklistChange === void 0) unsubscribeBlacklistChange = onSiteBlacklistChange((list) => {
-		applyBlacklistToRoot(document, list);
-	});
-}
-function mountBlacklistHide(ctx) {
-	if (ctx.pageKind !== "list") return;
-	applyBlacklistToRoot(document);
-	ensureSubscriptions();
-}
-var blacklistHideFeature = {
-	id: FEATURE_ID$15,
-	label: FEATURE_LABEL$14,
-	pages: [...FEATURE_PAGES$14],
-	defaultEnabled: true,
-	cssOnly: true,
-	css: FEATURE_CSS$13,
-	mount: mountBlacklistHide
-};
-/**
-* When the image of a post fails to load, tries the same file on the site's
-* other image servers, one after another.
-*
-* The host list comes from the desktop RuleDesk, where it served API file
-* addresses. A retry happens only after a real load error, at most once per
-* host, and only for an address on one of these hosts.
-*/
-var FEATURE_ID$14 = "cdn-fallback";
-var FEATURE_LABEL$13 = "Retry a failed post image on other servers";
-var FEATURE_PAGES$13 = ["post"];
-var POST_IMAGE_SELECTOR = "img#image";
-var EVENT_ERROR = "error";
-/** Image servers, in the order they are tried. */
-var CDN_IMAGE_HOSTS = [
-	"wimg.rule34.xxx",
-	"img.rule34.xxx",
-	"us.rule34.xxx",
-	"api-cdn.rule34.xxx"
-];
-/**
-* The same address on the next server that was not tried yet, or null when
-* the address is not on a known server or every server was tried.
-*/
-function nextCdnUrl(current, tried) {
-	let url;
-	try {
-		url = new URL(current, window.location.href);
-	} catch {
-		return null;
-	}
-	if (!CDN_IMAGE_HOSTS.includes(url.hostname)) return null;
-	for (const host of CDN_IMAGE_HOSTS) {
-		if (host === url.hostname || tried.has(host)) continue;
-		url.hostname = host;
-		return url.href;
-	}
-	return null;
-}
-function hostOf(address) {
-	try {
-		return new URL(address, window.location.href).hostname;
-	} catch {
-		return "";
-	}
-}
-function mountCdnFallback(_ctx) {
-	const image = document.querySelector(POST_IMAGE_SELECTOR);
-	if (!(image instanceof HTMLImageElement)) return;
-	const tried = /* @__PURE__ */ new Set();
-	image.addEventListener(EVENT_ERROR, () => {
-		const current = image.getAttribute("src") ?? "";
-		tried.add(hostOf(current));
-		const next = nextCdnUrl(current, tried);
-		if (next !== null) image.setAttribute("src", next);
-	});
-}
-var cdnFallbackFeature = {
-	id: FEATURE_ID$14,
-	label: FEATURE_LABEL$13,
-	pages: [...FEATURE_PAGES$13],
-	defaultEnabled: true,
-	css: "",
-	mount: mountCdnFallback
-};
 var n;
 var t$1;
 var u$2;
@@ -4327,7 +3975,7 @@ var a$2;
 var h$1 = Symbol.for("pv");
 var p$1 = {};
 var y$1 = [];
-var v$2 = /^m(i|n|o|s|text|space)$/;
+var v$1 = /^m(i|n|o|s|text|space)$/;
 var w$2 = Array.isArray;
 var d$1 = y$1.slice;
 var _$1 = Object.assign;
@@ -4549,7 +4197,7 @@ function F$1(t, r, u, i, f, o, e, l, c, a) {
 		if (a = "template" == C && t.content || t, o = "textarea" == C && null != x.defaultValue ? null : o && d$1.call(a.childNodes), !l && o) for ($ = {}, s = 0; s < t.attributes.length; s++) $[(k = t.attributes[s]).name] = k.value;
 		for (s in $) k = $[s], "dangerouslySetInnerHTML" == s ? y = k : "children" == s || s in x || "value" == s && "defaultValue" in x || "checked" == s && "defaultChecked" in x || N(t, s, null, k, f);
 		for (s in x) k = x[s], "children" == s ? _ = k : "dangerouslySetInnerHTML" == s ? h = k : "value" == s ? b = k : "checked" == s ? m = k : l && "function" != typeof k || $[s] === k || N(t, s, k, $[s], f);
-		h ? (l || y && (h.__html == y.__html || h.__html == t.innerHTML) || (t.innerHTML = h.__html), r.__k = []) : (y && (t.textContent = ""), ("foreignObject" == C || "http://www.w3.org/1998/Math/MathML" == f && v$2.test(C)) && (f = "http://www.w3.org/1999/xhtml"), I(a, w$2(_) ? _ : [_], r, u, i, f, o, e, o ? o[0] : u.__k && S(u, 0), l, c), o && o.some(g$1)), l && "textarea" != C || (s = "value", "progress" == C && null == b ? t.removeAttribute(s) : null == b || b === t[s] && ("progress" != C || b) || N(t, s, b, $[s], f), s = "checked", null != m && m != t[s] && N(t, s, m, $[s], f));
+		h ? (l || y && (h.__html == y.__html || h.__html == t.innerHTML) || (t.innerHTML = h.__html), r.__k = []) : (y && (t.textContent = ""), ("foreignObject" == C || "http://www.w3.org/1998/Math/MathML" == f && v$1.test(C)) && (f = "http://www.w3.org/1999/xhtml"), I(a, w$2(_) ? _ : [_], r, u, i, f, o, e, o ? o[0] : u.__k && S(u, 0), l, c), o && o.some(g$1)), l && "textarea" != C || (s = "value", "progress" == C && null == b ? t.removeAttribute(s) : null == b || b === t[s] && ("progress" != C || b) || N(t, s, b, $[s], f), s = "checked", null != m && m != t[s] && N(t, s, m, $[s], f));
 	} else $ === x || l && t.data == x || (t.data = x);
 	return t;
 }
@@ -4616,7 +4264,7 @@ var f$1 = 0;
 var c = [];
 var e = [];
 var a$1 = n;
-var v$1 = a$1.__b;
+var v$2 = a$1.__b;
 var l = a$1.__r;
 var m = a$1.diffed;
 var h = a$1.__c;
@@ -4706,7 +4354,7 @@ function g() {
 	} while (e.length);
 }
 a$1.__b = function(n) {
-	r = null, v$1 && v$1(n);
+	r = null, v$2 && v$2(n);
 }, a$1.__ = function(n, t) {
 	n && t.__k && t.__k.__m && (n.__m = t.__k.__m), p && p(n, t);
 }, a$1.__r = function(n) {
@@ -4816,7 +4464,7 @@ function a(t, e, n$6, u, a, i) {
 var KEY_ARROW_DOWN = "ArrowDown";
 var KEY_ARROW_UP = "ArrowUp";
 var KEY_ENTER$1 = "Enter";
-var KEY_ESCAPE$3 = "Escape";
+var KEY_ESCAPE$2 = "Escape";
 var NO_ACTIVE_INDEX = -1;
 var AUTOCOMPLETE_FIELD_CSS = `
 ${KIT_FOCUS_CSS}
@@ -4957,7 +4605,7 @@ function AutocompleteField(props) {
 					if (hasSuggestions) setOpen(true);
 				},
 				onKeyDown: (event) => {
-					if (event.key === KEY_ESCAPE$3) {
+					if (event.key === KEY_ESCAPE$2) {
 						if (listOpen) {
 							event.preventDefault();
 							setOpen(false);
@@ -5486,11 +5134,11 @@ var DIALOG_FIELD_QUERY = "query";
 var DEFAULT_NAME_LABEL = "Name";
 var DEFAULT_QUERY_LABEL = "Query";
 var DEFAULT_CONFIRM_TONE = "primary";
-var KEY_ESCAPE$2 = "Escape";
+var KEY_ESCAPE$1 = "Escape";
 var ROLE_COMBOBOX = "combobox";
 var ARIA_TRUE = "true";
 var KEY_TAB = "Tab";
-var EVENT_KEYDOWN$2 = "keydown";
+var EVENT_KEYDOWN$1 = "keydown";
 var EVENT_MOUSEDOWN$1 = "mousedown";
 var DIALOG_Z_INDEX = 40;
 var DIALOG_MAX_WIDTH_PX = 360;
@@ -5682,7 +5330,7 @@ function Dialog(props) {
 			}
 		}
 		const onKeyDown = (event) => {
-			if (event.key === KEY_ESCAPE$2) {
+			if (event.key === KEY_ESCAPE$1) {
 				if (isOpenCombobox(event)) return;
 				event.preventDefault();
 				event.stopPropagation();
@@ -5720,10 +5368,10 @@ function Dialog(props) {
 			if (pathIncludesNode$1(event.composedPath(), currentPanel)) return;
 			props.onClose();
 		};
-		document.addEventListener(EVENT_KEYDOWN$2, onKeyDown, true);
+		document.addEventListener(EVENT_KEYDOWN$1, onKeyDown, true);
 		document.addEventListener(EVENT_MOUSEDOWN$1, onPointerDown, true);
 		return () => {
-			document.removeEventListener(EVENT_KEYDOWN$2, onKeyDown, true);
+			document.removeEventListener(EVENT_KEYDOWN$1, onKeyDown, true);
 			document.removeEventListener(EVENT_MOUSEDOWN$1, onPointerDown, true);
 		};
 	}, [
@@ -5981,8 +5629,8 @@ n.vnode = function(t) {
 		writable: true
 	}), t.$$typeof = P, Q && Q(t);
 };
-var KEY_ESCAPE$1 = "Escape";
-var EVENT_KEYDOWN$1 = "keydown";
+var KEY_ESCAPE$3 = "Escape";
+var EVENT_KEYDOWN$2 = "keydown";
 var EVENT_MOUSEDOWN = "mousedown";
 var EVENT_SCROLL = "scroll";
 var EVENT_RESIZE = "resize";
@@ -6041,7 +5689,7 @@ function Popover(props) {
 		}
 		wasOpenRef.current = true;
 		const onKeyDown = (event) => {
-			if (event.key === KEY_ESCAPE$1) {
+			if (event.key === KEY_ESCAPE$3) {
 				event.preventDefault();
 				props.onClose();
 			}
@@ -6054,10 +5702,10 @@ function Popover(props) {
 			if (pathIncludesNode(path, props.anchorRef?.current ?? null)) return;
 			props.onClose();
 		};
-		document.addEventListener(EVENT_KEYDOWN$1, onKeyDown);
+		document.addEventListener(EVENT_KEYDOWN$2, onKeyDown);
 		document.addEventListener(EVENT_MOUSEDOWN, onPointerDown);
 		return () => {
-			document.removeEventListener(EVENT_KEYDOWN$1, onKeyDown);
+			document.removeEventListener(EVENT_KEYDOWN$2, onKeyDown);
 			document.removeEventListener(EVENT_MOUSEDOWN, onPointerDown);
 		};
 	}, [
@@ -6710,6 +6358,693 @@ function Toast(props) {
 	})] });
 }
 /**
+* The sticky header and sidebar: the site's header stays at the top of the
+* window while the page scrolls, and the sidebar of Posts and of a post stays
+* beside the content. On by default; one setting switches both off.
+*
+* Whatever else sticks to the top (the Favorites header, the toolbars of
+* Collections and Following) then has to sit under it, so the header's height
+* is kept in a custom property on <html> that those bars read.
+*
+* No imports: used before the first paint as well as from settings.
+*/
+var STICKY_HEADER_SETTING_ID = exports("bJ","sticky-header");
+var STICKY_HEADER_SETTING_LABEL = exports("av","Keep the header and the sidebar in place while scrolling");
+var STICKY_HEADER_SWITCH_ID = exports("aw","rdw-sticky-header");
+var STICKY_HEADER_CLASS = "rdw-sticky-header";
+/** Height of the sticky header; absent while the header is not sticky. */
+var HEADER_HEIGHT_VAR = "--rdw-header-h";
+/** Where a bar that sticks to the top of the window goes. */
+var STICKY_TOP = exports("bT",`var(${HEADER_HEIGHT_VAR}, 0px)`);
+var HEADER_SELECTOR$2 = "div#header";
+var HEADER_Z_INDEX$1 = 25;
+/**
+* The sidebar of a search page and of a post page. It is taller than the
+* window (the tag list), so it scrolls inside itself once it is held.
+*/
+var SIDEBAR_SELECTORS = ["div#post-list > div.sidebar", "div#post-view > div.sidebar"];
+var SIDEBAR_GAP_PX = 8;
+var SIDEBAR_SELECTOR = SIDEBAR_SELECTORS.join(", ");
+/**
+* How far the bottom of the sidebar's block is above the bottom of the window
+* right now, in px; 0 while the block reaches the window's bottom. A sticky
+* element cannot leave its block: at the end of the page the block ends above
+* the bottom of the window (the footer is under it), and a sidebar as tall as
+* the window would be pushed up under the header. Instead it gets shorter by
+* this much, so it is full height everywhere but at the very end of a page.
+*/
+var SIDEBAR_FOOT_VAR = "--rdw-sidebar-foot";
+/** On the sidebar while it has more content below what is shown. */
+var SIDEBAR_MORE_CLASS = "rdw-sidebar-more";
+var SIDEBAR_FADE_PX = 32;
+var SCROLL_END_SLACK_PX = 2;
+var STICKY_HEADER_CSS = `
+html.${STICKY_HEADER_CLASS} ${HEADER_SELECTOR$2} {
+  position: sticky;
+  top: 0;
+  z-index: ${String(HEADER_Z_INDEX$1)};
+}
+html.${STICKY_HEADER_CLASS} ${SIDEBAR_SELECTORS[0]},
+html.${STICKY_HEADER_CLASS} ${SIDEBAR_SELECTORS[1]} {
+  position: sticky;
+  top: calc(${STICKY_TOP} + ${String(SIDEBAR_GAP_PX)}px);
+  max-height: calc(100vh - ${STICKY_TOP} - ${String(16)}px - var(${SIDEBAR_FOOT_VAR}, 0px));
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--rdw-border) transparent;
+}
+html.${STICKY_HEADER_CLASS} div.sidebar.${SIDEBAR_MORE_CLASS} {
+  -webkit-mask-image: linear-gradient(to bottom, black calc(100% - ${String(SIDEBAR_FADE_PX)}px), transparent);
+  mask-image: linear-gradient(to bottom, black calc(100% - ${String(SIDEBAR_FADE_PX)}px), transparent);
+}
+`.trim();
+var observer = null;
+function writeHeight() {
+	const header = document.querySelector(HEADER_SELECTOR$2);
+	const root = document.documentElement;
+	if (header === null || !root.classList.contains("rdw-sticky-header")) {
+		root.style.removeProperty(HEADER_HEIGHT_VAR);
+		return;
+	}
+	const height = Math.round(header.getBoundingClientRect().height);
+	root.style.setProperty(HEADER_HEIGHT_VAR, `${String(height)}px`);
+	writeSidebarFoot();
+}
+function findSidebar() {
+	const sidebar = document.querySelector(SIDEBAR_SELECTOR);
+	return sidebar instanceof HTMLElement ? sidebar : null;
+}
+function writeSidebarFoot() {
+	const root = document.documentElement;
+	const sidebar = findSidebar();
+	const block = sidebar?.parentElement;
+	if (sidebar === null || block === null || block === void 0) {
+		root.style.removeProperty(SIDEBAR_FOOT_VAR);
+		return;
+	}
+	if (boundSidebar !== sidebar && document.documentElement.classList.contains("rdw-sticky-header")) {
+		boundSidebar?.removeEventListener("scroll", scheduleSidebarFoot);
+		boundSidebar = sidebar;
+		sidebar.addEventListener("scroll", scheduleSidebarFoot, { passive: true });
+	}
+	const foot = Math.max(0, Math.round(window.innerHeight - block.getBoundingClientRect().bottom));
+	root.style.setProperty(SIDEBAR_FOOT_VAR, `${String(foot)}px`);
+	const hidden = sidebar.scrollHeight - sidebar.scrollTop - sidebar.clientHeight;
+	sidebar.classList.toggle(SIDEBAR_MORE_CLASS, hidden > SCROLL_END_SLACK_PX);
+}
+/**
+* Runs on every scroll event. Browsers deliver those once per frame, and the
+* work is one rectangle read, so there is no throttle of its own (one made of
+* requestAnimationFrame would also stall while the tab is in the background).
+*/
+function scheduleSidebarFoot() {
+	writeSidebarFoot();
+}
+var boundSidebar = null;
+function bindScroll(enabled) {
+	window.removeEventListener("scroll", scheduleSidebarFoot);
+	window.removeEventListener("resize", scheduleSidebarFoot);
+	boundSidebar?.removeEventListener("scroll", scheduleSidebarFoot);
+	boundSidebar?.classList.remove(SIDEBAR_MORE_CLASS);
+	boundSidebar = null;
+	if (!enabled) return;
+	window.addEventListener("scroll", scheduleSidebarFoot, { passive: true });
+	window.addEventListener("resize", scheduleSidebarFoot, { passive: true });
+	boundSidebar = findSidebar();
+	boundSidebar?.addEventListener("scroll", scheduleSidebarFoot, { passive: true });
+}
+/** Switches the sticky header on or off and keeps the height property in step. */
+function applyStickyHeader(enabled) {
+	document.documentElement.classList.toggle(STICKY_HEADER_CLASS, enabled);
+	if (observer !== null) {
+		observer.disconnect();
+		observer = null;
+	}
+	const header = document.querySelector(HEADER_SELECTOR$2);
+	if (enabled && header !== null && typeof ResizeObserver === "function") {
+		observer = new ResizeObserver(writeHeight);
+		observer.observe(header);
+		if (document.body !== null) observer.observe(document.body);
+	}
+	bindScroll(enabled);
+	writeHeight();
+}
+var AUTOCOMPLETE_PATH = "/public/autocomplete.php";
+var AUTOCOMPLETE_TAG_TYPE_ARTIST = exports("c6","artist");
+var HTTP_TOO_MANY_REQUESTS = 429;
+var ABORT_ERROR_NAME = "AbortError";
+var AutocompleteResponseSchema = /* @__PURE__ */ array(/* @__PURE__ */ object({
+	label: /* @__PURE__ */ string(),
+	value: /* @__PURE__ */ string(),
+	type: /* @__PURE__ */ optional(/* @__PURE__ */ nullable(/* @__PURE__ */ string()))
+}));
+function buildAutocompleteUrl(query) {
+	const params = new URLSearchParams();
+	params.set("q", query);
+	return `${SITE_ORIGIN}${AUTOCOMPLETE_PATH}?${params.toString()}`;
+}
+function isAbortError$2(error) {
+	if (error instanceof DOMException && error.name === ABORT_ERROR_NAME) return true;
+	if (typeof error !== "object" || error === null || !("name" in error)) return false;
+	return error.name === ABORT_ERROR_NAME;
+}
+function normalizeItems(raw) {
+	const result = [];
+	for (const item of raw) {
+		const type = item.type === null || item.type === void 0 ? void 0 : item.type;
+		if (type === void 0) result.push({
+			label: item.label,
+			value: item.value
+		});
+		else result.push({
+			label: item.label,
+			value: item.value,
+			type
+		});
+	}
+	return result;
+}
+/** Artists (or another preferred type) first; relative order otherwise preserved. */
+function preferSuggestionType(items, preferType) {
+	const preferred = [];
+	const rest = [];
+	for (const item of items) if (item.type === preferType) preferred.push(item);
+	else rest.push(item);
+	return [...preferred, ...rest];
+}
+/**
+* GET /public/autocomplete.php?q=… (site redirects to ac.rule34.xxx).
+* Short queries and failed/429 responses return []. Aborts are silent.
+*/
+async function fetchAutocomplete(query, signal) {
+	const trimmed = query.trim();
+	if (trimmed.length < 2) return [];
+	let response;
+	try {
+		const init = {
+			method: "GET",
+			credentials: FETCH_CREDENTIALS
+		};
+		if (signal !== void 0) init.signal = signal;
+		response = await fetch(buildAutocompleteUrl(trimmed), init);
+	} catch (error) {
+		if (isAbortError$2(error) || signal?.aborted === true) return [];
+		log.error("autocomplete: fetch failed", error);
+		return [];
+	}
+	if (response.status === HTTP_TOO_MANY_REQUESTS) {
+		log.warn("autocomplete: rate limited", response.status);
+		return [];
+	}
+	if (!response.ok) {
+		log.warn("autocomplete: HTTP error", response.status);
+		return [];
+	}
+	let json;
+	try {
+		json = await response.json();
+	} catch (error) {
+		if (isAbortError$2(error) || signal?.aborted === true) return [];
+		log.error("autocomplete: invalid JSON", error);
+		return [];
+	}
+	const parsed = AutocompleteResponseSchema.safeParse(json);
+	if (!parsed.success) {
+		log.error("autocomplete: schema mismatch", parsed.error);
+		return [];
+	}
+	return normalizeItems(parsed.data);
+}
+/**
+* Debounced autocomplete with AbortController cancellation of the prior request.
+* Queries shorter than {@link AUTOCOMPLETE_MIN_CHARS} resolve to [] without a network call.
+*/
+function createAutocompleteQuerier(options = {}) {
+	let timer = null;
+	let controller = null;
+	const preferType = options.preferType;
+	const cancel = () => {
+		if (timer !== null) {
+			clearTimeout(timer);
+			timer = null;
+		}
+		if (controller !== null) {
+			controller.abort();
+			controller = null;
+		}
+	};
+	const query = (text, onResult) => {
+		cancel();
+		const trimmed = text.trim();
+		if (trimmed.length < 2) {
+			onResult([]);
+			return;
+		}
+		timer = setTimeout(() => {
+			timer = null;
+			const next = new AbortController();
+			controller = next;
+			fetchAutocomplete(trimmed, next.signal).then((items) => {
+				if (next.signal.aborted) return;
+				if (controller === next) controller = null;
+				onResult(preferType === void 0 ? items : preferSuggestionType(items, preferType));
+			});
+		}, 300);
+	};
+	return {
+		query,
+		cancel
+	};
+}
+/** `sort:random`, `score:>=10`, `id:>5`: a filter, not a tag name. */
+var FILTER_MARK$2 = ":";
+var TRAILING_SPACE = /\s$/;
+var LAST_TOKEN = /(\S+)$/;
+var SYNTAX_TOKENS = [
+	"(",
+	")",
+	"~"
+];
+/**
+* The tag the caret is on, taken as the last token of the query.
+* Null when the query ends with whitespace or the token is search syntax
+* (`(`, `)`, `~`) or a filter such as `sort:random`.
+*/
+function readLastQueryToken(query) {
+	if (query.length === 0 || TRAILING_SPACE.test(query)) return null;
+	const match = LAST_TOKEN.exec(query);
+	const token = match?.[1];
+	if (match === null || token === void 0) return null;
+	if (SYNTAX_TOKENS.includes(token) || token.includes(FILTER_MARK$2)) return null;
+	const prefix = token.startsWith("-") && token.length > 1 ? "-" : "";
+	const stem = token.slice(prefix.length);
+	if (stem === "-") return null;
+	return {
+		head: query.slice(0, match.index),
+		prefix,
+		stem
+	};
+}
+/** Query with its last token replaced by `tag`, ready for the next token. */
+function completeLastQueryToken(query, tag) {
+	const last = readLastQueryToken(query);
+	if (last === null) return `${query}${tag} `;
+	return `${last.head}${last.prefix}${tag} `;
+}
+/**
+* Search-query input with the site tag autocomplete on the token being typed.
+* Requests go out only while the user types, debounced, one at a time
+* (see {@link createAutocompleteQuerier}).
+*/
+function QueryField(props) {
+	const querierRef = T(createAutocompleteQuerier());
+	const [suggestions, setSuggestions] = d([]);
+	A(() => {
+		const querier = querierRef.current;
+		return () => {
+			querier.cancel();
+		};
+	}, []);
+	const clearSuggestions = () => {
+		querierRef.current.cancel();
+		setSuggestions([]);
+	};
+	const onTyped = (value) => {
+		props.onChange(value);
+		const last = readLastQueryToken(value);
+		if (last === null) {
+			clearSuggestions();
+			return;
+		}
+		querierRef.current.query(last.stem, setSuggestions);
+	};
+	const onPicked = (option) => {
+		props.onChange(completeLastQueryToken(props.value, option.value));
+		clearSuggestions();
+	};
+	return /* @__PURE__ */ a(AutocompleteField, {
+		...props.label === void 0 ? {} : { label: props.label },
+		...props.placeholder === void 0 ? {} : { placeholder: props.placeholder },
+		...props.id === void 0 ? {} : { id: props.id },
+		value: props.value,
+		suggestions,
+		replaceOnSelect: false,
+		onChange: onTyped,
+		onSelect: onPicked
+	});
+}var THUMB_CLASS = "rdw-thumb";
+/**
+* On <html> on the site's Favorites page, set before the first paint. The
+* skin rules for a favorites cell are held to it: the pool page has thumbs
+* of a similar shape, and their links carry an onclick too.
+*/
+var FAVORITES_PAGE_CLASS = "rdw-page-favorites";
+var THUMB_ANCHOR_NAME = "--rdw-img";
+/**
+* Anchor of a favorites picture. Its scope is the whole cell and comes from
+* the stylesheet, so it is there from the first layout; the buttons of a
+* favorites thumb are placed by it.
+*/
+var FAVORITE_IMAGE_ANCHOR_NAME = "--rdw-fav-img";
+var FEATURE_STYLE_ID_PREFIX = "rdw-feature-style-";
+var POST_ACTIONS_ID = "rdw-post-actions";
+function featureBodyClass(id) {
+	return `rdw-f-${id}`;
+}
+function featureChoiceBodyClass(id, value) {
+	return `rdw-f-${id}-${value}`;
+}
+function detectPageKind(search) {
+	const params = new URLSearchParams(search);
+	const page = params.get(SEARCH_PARAM_PAGE);
+	const section = params.get("s");
+	if (page === "post" && section === "list") return "list";
+	if (page === "post" && section === "view") return "post";
+	if (page === "favorites" && section === "view") return "favorites";
+	return "other";
+}
+function readPostIdFromSearch(search) {
+	const params = new URLSearchParams(search);
+	const page = params.get(SEARCH_PARAM_PAGE);
+	const section = params.get("s");
+	const id = params.get("id");
+	if (page !== "post" || section !== "view") return null;
+	if (id === null || id.trim().length === 0) return null;
+	if (!/^\d+$/.test(id)) return null;
+	return id;
+}
+var COOKIE_PAIR_SEPARATOR = ";";
+var COOKIE_NAME_VALUE_SEPARATOR$1 = "=";
+var BLACKLIST_SPLIT_PATTERN = /[, ]|%20+/g;
+var USER_ENTRY_PREFIX = "user:";
+var RATING_ENTRY_PREFIX = "rating:";
+var MS_PER_DAY$1 = 864e5;
+var DAYS_PER_YEAR = 365;
+var BLACKLIST_TAG_SEPARATOR = " ";
+var changeListeners = /* @__PURE__ */ new Set();
+/** Subscribe to writes of the site `tag_blacklist` cookie. */
+function onSiteBlacklistChange(cb) {
+	changeListeners.add(cb);
+	return () => {
+		changeListeners.delete(cb);
+	};
+}
+function readCookieValue(name) {
+	const pairs = document.cookie.split(COOKIE_PAIR_SEPARATOR);
+	const prefix = `${name}${COOKIE_NAME_VALUE_SEPARATOR$1}`;
+	for (const pair of pairs) {
+		const trimmed = pair.trim();
+		if (!trimmed.startsWith(prefix)) continue;
+		return trimmed.slice(prefix.length);
+	}
+	return null;
+}
+function normalizeBlacklistTags(tags) {
+	const seen = /* @__PURE__ */ new Set();
+	const result = [];
+	for (const raw of tags) {
+		const normalized = raw.trim().toLowerCase().replaceAll(" ", "_");
+		if (normalized.length === 0 || seen.has(normalized)) continue;
+		seen.add(normalized);
+		result.push(normalized);
+	}
+	return result;
+}
+function encodeBlacklistCookieValue(tags) {
+	if (tags.length === 0) return "";
+	return encodeURIComponent(encodeURIComponent(tags.join(BLACKLIST_TAG_SEPARATOR)));
+}
+function writeBlacklistCookie(value, expires) {
+	document.cookie = [
+		`${SITE_BLACKLIST_COOKIE_NAME}${COOKIE_NAME_VALUE_SEPARATOR$1}${value}`,
+		`expires=${expires.toUTCString()}`,
+		`path=/`
+	].join("; ");
+}
+/**
+* Reads the site `tag_blacklist` cookie using the site's decode + split rule.
+* Empty tokens are dropped; entries are lowercased.
+*/
+function readSiteBlacklist() {
+	const raw = readCookieValue(SITE_BLACKLIST_COOKIE_NAME);
+	if (raw === null || raw.length === 0) return [];
+	let decoded;
+	try {
+		decoded = decodeURIComponent(decodeURI(raw));
+	} catch {
+		return [];
+	}
+	const result = [];
+	for (const part of decoded.split(BLACKLIST_SPLIT_PATTERN)) {
+		const trimmed = part.trim().toLowerCase();
+		if (trimmed.length === 0) continue;
+		result.push(trimmed);
+	}
+	return result;
+}
+/**
+* Writes the site `tag_blacklist` cookie (browser cookie only; account list untouched).
+* Value encoding matches the live site: encodeURIComponent twice over space-joined tags.
+*/
+function writeSiteBlacklist(tags) {
+	const normalized = normalizeBlacklistTags(tags);
+	const expires = new Date(Date.now() + 5 * DAYS_PER_YEAR * MS_PER_DAY$1);
+	writeBlacklistCookie(encodeBlacklistCookieValue(normalized), expires);
+	for (const listener of changeListeners) listener(normalized);
+}
+/**
+* True when any blacklist entry matches a post tag or `rating:x`.
+* Entries starting with `user:` are ignored. `score` is reserved for callers.
+*/
+function isBlacklisted(tags, score, rating, list) {
+	if (list.length === 0) return false;
+	const tagSet = /* @__PURE__ */ new Set();
+	for (const tag of tags) {
+		const normalized = tag.trim().toLowerCase();
+		if (normalized.length > 0) tagSet.add(normalized);
+	}
+	const ratingNorm = rating.trim().toLowerCase();
+	for (const entry of list) {
+		if (entry.startsWith(USER_ENTRY_PREFIX)) continue;
+		if (entry.startsWith(RATING_ENTRY_PREFIX)) {
+			const value = entry.slice(7);
+			if (value.length > 0 && value === ratingNorm) return true;
+			continue;
+		}
+		if (tagSet.has(entry)) return true;
+	}
+	return false;
+}
+var SITE_SELECTORS = exports("S",{
+	thumb: "span.thumb",
+	thumbLink: "a[href*=\"s=view\"]",
+	previewImage: "img.preview",
+	cardFavButton: `button.${CSS_CLASS.cardFav}`,
+	favoritesDeleteLink: "a[onclick]",
+	tagSidebar: "ul#tag-sidebar",
+	tagTypeArtist: "li.tag-type-artist",
+	/** A tag row of the sidebar, any tag type. */
+	tagSidebarRow: "ul#tag-sidebar > li[class*=\"tag-type-\"]",
+	/** Number of posts with the tag, inside its sidebar row. */
+	tagCount: "span.tag-count",
+	imageList: "div.image-list",
+	/** Comments page: the list of posts with their comments. */
+	commentList: "div#comments div#comment-list",
+	/** Comments page: the preview cell of a post, `div#p{ID}.post > div.col1.thumb > a > img.preview`. */
+	commentThumb: "div#comments div#comment-list > div.post > div.col1.thumb",
+	/** Comments page: the whole tag list of a post, one `span` per tag. */
+	commentTags: "div#comments div#comment-list > div.post > div.col2 > div.header > div.tags",
+	postListContent: "#post-list div.content",
+	contentRoot: "#content",
+	artistFollowButton: `button.${CSS_CLASS.artistFollow}`,
+	/** Native AI filter checkbox (site owns click/cookie logic). */
+	filterAiCheckbox: "input.toggleSwitch#chkFilterAI",
+	/** Row wrapping the native AI filter control — hide when search-tools mirrors it. */
+	filterAiRow: "li:has(> label > span.switch > input.toggleSwitch#chkFilterAI)",
+	/** Post page: site link to the previous post of the last search (href="#", site JS). */
+	postPrevSearchLink: "a#prev_search_link",
+	/** Post page: site link to the next post of the last search (href="#", site JS). */
+	postNextSearchLink: "a#next_search_link",
+	/** List page pager. */
+	pagination: "div.pagination",
+	/** Pager link to the last results page; its `pid` is the offset of that page. */
+	paginationLastPage: "div.pagination a[alt=\"last page\"]",
+	/** Any pager link to another results page. */
+	paginationPageLink: "div.pagination > a[href]",
+	/** Stray Tags heading between #rdw-search-tools and the tag list. */
+	tagsHeadingAfterSearchTools: "#rdw-search-tools + h5"
+});
+var THUMB_ID_PATTERN = /^s(\d+)$/;
+var THUMB_LINK_ID_PATTERN = /^p(\d+)$/;
+var FAVORITES_DELETE_ID_PATTERN = /s=delete&id=(\d+)/;
+function extractPostIdFromThumb(thumb) {
+	const match = THUMB_ID_PATTERN.exec(thumb.id);
+	if (match === null) return null;
+	const postId = match[1];
+	return postId === void 0 ? null : postId;
+}
+/**
+* Post id from the thumb's link `a#p{ID}`. A favorites thumb has no `s{ID}`
+* id of its own, so this is the only place its post id is written.
+*/
+function extractPostIdFromThumbLink(thumb) {
+	const link = thumb.querySelector(SITE_SELECTORS.thumbLink);
+	if (link === null) return null;
+	const match = THUMB_LINK_ID_PATTERN.exec(link.id);
+	if (match === null) return null;
+	const postId = match[1];
+	return postId === void 0 ? null : postId;
+}
+/**
+* Post id of a Comments page preview: the cell has no id, the post around it
+* is `div#p{ID}.post`.
+*/
+function extractPostIdFromCommentThumb(thumb) {
+	const post = thumb.parentElement;
+	if (post === null) return null;
+	const match = THUMB_LINK_ID_PATTERN.exec(post.id);
+	if (match === null) return null;
+	const postId = match[1];
+	return postId === void 0 ? null : postId;
+}
+function extractPostIdFromFavoritesDeleteOnclick(onclick) {
+	const match = FAVORITES_DELETE_ID_PATTERN.exec(onclick);
+	if (match === null) return null;
+	const postId = match[1];
+	return postId === void 0 ? null : postId;
+}
+var FEATURE_ID$15 = "blacklist-hide";
+var FEATURE_LABEL$14 = "Hide blacklisted posts";
+var FEATURE_PAGES$14 = ["list"];
+var BODY_FEATURE_CLASS$3 = featureBodyClass(FEATURE_ID$15);
+var CLASS_BLACKLISTED$1 = "rdw-blacklisted";
+var SCORE_TOKEN_PREFIX$4 = "score:";
+var RATING_TOKEN_PREFIX$3 = "rating:";
+var WHITESPACE_SPLIT = /\s+/;
+var FEATURE_CSS$13 = `
+body.${BODY_FEATURE_CLASS$3} span.thumb.${CLASS_BLACKLISTED$1} {
+  display: none !important;
+}
+`.trim();
+var unsubscribeThumbsAdded$5;
+var unsubscribeBlacklistChange;
+function parseAltTags(alt) {
+	const tags = [];
+	for (const token of alt.trim().split(WHITESPACE_SPLIT)) {
+		if (token.length === 0) continue;
+		const lower = token.toLowerCase();
+		if (lower.startsWith(SCORE_TOKEN_PREFIX$4) || lower.startsWith(RATING_TOKEN_PREFIX$3)) continue;
+		tags.push(token);
+	}
+	return tags;
+}
+function parseTitleRating(title) {
+	for (const token of title.trim().split(WHITESPACE_SPLIT)) {
+		if (token.length === 0) continue;
+		if (token.toLowerCase().startsWith(RATING_TOKEN_PREFIX$3)) return token.slice(7);
+	}
+	return "";
+}
+function applyBlacklistToThumb(thumb, list) {
+	if (!(thumb instanceof HTMLElement)) return;
+	const img = thumb.querySelector(SITE_SELECTORS.previewImage);
+	const alt = img?.getAttribute("alt") ?? "";
+	const title = img?.getAttribute("title") ?? "";
+	const matched = isBlacklisted(parseAltTags(alt), 0, parseTitleRating(title), list);
+	thumb.classList.toggle(CLASS_BLACKLISTED$1, matched);
+}
+function applyBlacklistToRoot(root, list = readSiteBlacklist()) {
+	const thumbs = root.querySelectorAll(SITE_SELECTORS.thumb);
+	for (const thumb of thumbs) applyBlacklistToThumb(thumb, list);
+}
+function ensureSubscriptions() {
+	if (unsubscribeThumbsAdded$5 === void 0) unsubscribeThumbsAdded$5 = onThumbsAdded((root) => {
+		applyBlacklistToRoot(root);
+	});
+	if (unsubscribeBlacklistChange === void 0) unsubscribeBlacklistChange = onSiteBlacklistChange((list) => {
+		applyBlacklistToRoot(document, list);
+	});
+}
+function mountBlacklistHide(ctx) {
+	if (ctx.pageKind !== "list") return;
+	applyBlacklistToRoot(document);
+	ensureSubscriptions();
+}
+var blacklistHideFeature = {
+	id: FEATURE_ID$15,
+	label: FEATURE_LABEL$14,
+	pages: [...FEATURE_PAGES$14],
+	defaultEnabled: true,
+	cssOnly: true,
+	css: FEATURE_CSS$13,
+	mount: mountBlacklistHide
+};
+/**
+* When the image of a post fails to load, tries the same file on the site's
+* other image servers, one after another.
+*
+* The host list comes from the desktop RuleDesk, where it served API file
+* addresses. A retry happens only after a real load error, at most once per
+* host, and only for an address on one of these hosts.
+*/
+var FEATURE_ID$14 = "cdn-fallback";
+var FEATURE_LABEL$13 = "Retry a failed post image on other servers";
+var FEATURE_PAGES$13 = ["post"];
+var POST_IMAGE_SELECTOR$1 = "img#image";
+var EVENT_ERROR = "error";
+/** Image servers, in the order they are tried. */
+var CDN_IMAGE_HOSTS = [
+	"wimg.rule34.xxx",
+	"img.rule34.xxx",
+	"us.rule34.xxx",
+	"api-cdn.rule34.xxx"
+];
+/**
+* The same address on the next server that was not tried yet, or null when
+* the address is not on a known server or every server was tried.
+*/
+function nextCdnUrl(current, tried) {
+	let url;
+	try {
+		url = new URL(current, window.location.href);
+	} catch {
+		return null;
+	}
+	if (!CDN_IMAGE_HOSTS.includes(url.hostname)) return null;
+	for (const host of CDN_IMAGE_HOSTS) {
+		if (host === url.hostname || tried.has(host)) continue;
+		url.hostname = host;
+		return url.href;
+	}
+	return null;
+}
+function hostOf(address) {
+	try {
+		return new URL(address, window.location.href).hostname;
+	} catch {
+		return "";
+	}
+}
+function mountCdnFallback(_ctx) {
+	const image = document.querySelector(POST_IMAGE_SELECTOR$1);
+	if (!(image instanceof HTMLImageElement)) return;
+	const tried = /* @__PURE__ */ new Set();
+	image.addEventListener(EVENT_ERROR, () => {
+		const current = image.getAttribute("src") ?? "";
+		tried.add(hostOf(current));
+		const next = nextCdnUrl(current, tried);
+		if (next !== null) image.setAttribute("src", next);
+	});
+}
+var cdnFallbackFeature = {
+	id: FEATURE_ID$14,
+	label: FEATURE_LABEL$13,
+	pages: [...FEATURE_PAGES$13],
+	defaultEnabled: true,
+	css: "",
+	mount: mountCdnFallback
+};
+/**
 * Saves one file through the script manager (`GM_download`). The files are on
 * the site's CDN, another origin, so a plain download link cannot name or
 * save them. The download manager calls this for one file at a time.
@@ -6778,9 +7113,9 @@ function downloadFile(url, name) {
 * Nothing else in the script uses the API.
 */
 var API_CREDENTIALS_KEY = "ruledesk-web.api";
-var ApiCredentialsSchema = /* @__PURE__ */ object({
-	userId: (/* @__PURE__ */ string()).check(/* @__PURE__ */ _minLength(1)),
-	apiKey: (/* @__PURE__ */ string()).check(/* @__PURE__ */ _minLength(1))
+var ApiCredentialsSchema = object({
+	userId: string().check(_minLength(1)),
+	apiKey: string().check(_minLength(1))
 });
 function getApiCredentials() {
 	const parsed = ApiCredentialsSchema.safeParse(GM_getValue(API_CREDENTIALS_KEY));
@@ -6927,9 +7262,9 @@ var SORT_TOKEN_PREFIX$1 = "sort:";
 var ID_BELOW_PREFIX = "id:<";
 var TOKEN_SPLIT$3 = /\s+/;
 var ALL_QUERY = "all";
-var ApiPostSchema = /* @__PURE__ */ object({
+var ApiPostSchema = object({
 	id: int(),
-	file_url: (/* @__PURE__ */ string()).check(/* @__PURE__ */ _minLength(1))
+	file_url: string().check(_minLength(1))
 });
 function buildApiUrl(query, credentials) {
 	const params = new URLSearchParams();
@@ -7075,17 +7410,17 @@ var RUNNING_TAB_VALUE = "1";
 /** Wait before the one retry of a failed file. */
 var RETRY_DELAY_MS = 5e3;
 var NO_FILES_MESSAGE = "The API returned no files for this. Deleted posts have none.";
-var JobSchema = /* @__PURE__ */ object({
-	label: /* @__PURE__ */ string(),
-	folder: /* @__PURE__ */ string(),
-	files: /* @__PURE__ */ array(/* @__PURE__ */ object({
+var JobSchema = object({
+	label: string(),
+	folder: string(),
+	files: array(object({
 		postId: int(),
-		url: /* @__PURE__ */ string()
+		url: string()
 	}))
 });
-var PositionSchema = /* @__PURE__ */ object({
+var PositionSchema = object({
 	next: int(),
-	failed: /* @__PURE__ */ array(int())
+	failed: array(int())
 });
 var IDLE = {
 	phase: "idle",
@@ -7448,138 +7783,6 @@ var downloadsFeature = {
 ${GRID_SELECT_CSS}`,
 	mount: mountDownloads
 };
-/**
-* The sticky header and sidebar: the site's header stays at the top of the
-* window while the page scrolls, and the sidebar of Posts and of a post stays
-* beside the content. On by default; one setting switches both off.
-*
-* Whatever else sticks to the top (the Favorites header, the toolbars of
-* Collections and Following) then has to sit under it, so the header's height
-* is kept in a custom property on <html> that those bars read.
-*
-* No imports: used before the first paint as well as from settings.
-*/
-var STICKY_HEADER_SETTING_ID = exports("bJ","sticky-header");
-var STICKY_HEADER_SETTING_LABEL = exports("av","Keep the header and the sidebar in place while scrolling");
-var STICKY_HEADER_SWITCH_ID = exports("aw","rdw-sticky-header");
-var STICKY_HEADER_CLASS = "rdw-sticky-header";
-/** Height of the sticky header; absent while the header is not sticky. */
-var HEADER_HEIGHT_VAR = "--rdw-header-h";
-/** Where a bar that sticks to the top of the window goes. */
-var STICKY_TOP = exports("bT",`var(${HEADER_HEIGHT_VAR}, 0px)`);
-var HEADER_SELECTOR$1 = "div#header";
-var HEADER_Z_INDEX$1 = 25;
-/**
-* The sidebar of a search page and of a post page. It is taller than the
-* window (the tag list), so it scrolls inside itself once it is held.
-*/
-var SIDEBAR_SELECTORS = ["div#post-list > div.sidebar", "div#post-view > div.sidebar"];
-var SIDEBAR_GAP_PX = 8;
-var SIDEBAR_SELECTOR = SIDEBAR_SELECTORS.join(", ");
-/**
-* How far the bottom of the sidebar's block is above the bottom of the window
-* right now, in px; 0 while the block reaches the window's bottom. A sticky
-* element cannot leave its block: at the end of the page the block ends above
-* the bottom of the window (the footer is under it), and a sidebar as tall as
-* the window would be pushed up under the header. Instead it gets shorter by
-* this much, so it is full height everywhere but at the very end of a page.
-*/
-var SIDEBAR_FOOT_VAR = "--rdw-sidebar-foot";
-/** On the sidebar while it has more content below what is shown. */
-var SIDEBAR_MORE_CLASS = "rdw-sidebar-more";
-var SIDEBAR_FADE_PX = 32;
-var SCROLL_END_SLACK_PX = 2;
-var STICKY_HEADER_CSS = `
-html.${STICKY_HEADER_CLASS} ${HEADER_SELECTOR$1} {
-  position: sticky;
-  top: 0;
-  z-index: ${String(HEADER_Z_INDEX$1)};
-}
-html.${STICKY_HEADER_CLASS} ${SIDEBAR_SELECTORS[0]},
-html.${STICKY_HEADER_CLASS} ${SIDEBAR_SELECTORS[1]} {
-  position: sticky;
-  top: calc(${STICKY_TOP} + ${String(SIDEBAR_GAP_PX)}px);
-  max-height: calc(100vh - ${STICKY_TOP} - ${String(16)}px - var(${SIDEBAR_FOOT_VAR}, 0px));
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--rdw-border) transparent;
-}
-html.${STICKY_HEADER_CLASS} div.sidebar.${SIDEBAR_MORE_CLASS} {
-  -webkit-mask-image: linear-gradient(to bottom, black calc(100% - ${String(SIDEBAR_FADE_PX)}px), transparent);
-  mask-image: linear-gradient(to bottom, black calc(100% - ${String(SIDEBAR_FADE_PX)}px), transparent);
-}
-`.trim();
-var observer = null;
-function writeHeight() {
-	const header = document.querySelector(HEADER_SELECTOR$1);
-	const root = document.documentElement;
-	if (header === null || !root.classList.contains("rdw-sticky-header")) {
-		root.style.removeProperty(HEADER_HEIGHT_VAR);
-		return;
-	}
-	const height = Math.round(header.getBoundingClientRect().height);
-	root.style.setProperty(HEADER_HEIGHT_VAR, `${String(height)}px`);
-	writeSidebarFoot();
-}
-function findSidebar() {
-	const sidebar = document.querySelector(SIDEBAR_SELECTOR);
-	return sidebar instanceof HTMLElement ? sidebar : null;
-}
-function writeSidebarFoot() {
-	const root = document.documentElement;
-	const sidebar = findSidebar();
-	const block = sidebar?.parentElement;
-	if (sidebar === null || block === null || block === void 0) {
-		root.style.removeProperty(SIDEBAR_FOOT_VAR);
-		return;
-	}
-	if (boundSidebar !== sidebar && document.documentElement.classList.contains("rdw-sticky-header")) {
-		boundSidebar?.removeEventListener("scroll", scheduleSidebarFoot);
-		boundSidebar = sidebar;
-		sidebar.addEventListener("scroll", scheduleSidebarFoot, { passive: true });
-	}
-	const foot = Math.max(0, Math.round(window.innerHeight - block.getBoundingClientRect().bottom));
-	root.style.setProperty(SIDEBAR_FOOT_VAR, `${String(foot)}px`);
-	const hidden = sidebar.scrollHeight - sidebar.scrollTop - sidebar.clientHeight;
-	sidebar.classList.toggle(SIDEBAR_MORE_CLASS, hidden > SCROLL_END_SLACK_PX);
-}
-/**
-* Runs on every scroll event. Browsers deliver those once per frame, and the
-* work is one rectangle read, so there is no throttle of its own (one made of
-* requestAnimationFrame would also stall while the tab is in the background).
-*/
-function scheduleSidebarFoot() {
-	writeSidebarFoot();
-}
-var boundSidebar = null;
-function bindScroll(enabled) {
-	window.removeEventListener("scroll", scheduleSidebarFoot);
-	window.removeEventListener("resize", scheduleSidebarFoot);
-	boundSidebar?.removeEventListener("scroll", scheduleSidebarFoot);
-	boundSidebar?.classList.remove(SIDEBAR_MORE_CLASS);
-	boundSidebar = null;
-	if (!enabled) return;
-	window.addEventListener("scroll", scheduleSidebarFoot, { passive: true });
-	window.addEventListener("resize", scheduleSidebarFoot, { passive: true });
-	boundSidebar = findSidebar();
-	boundSidebar?.addEventListener("scroll", scheduleSidebarFoot, { passive: true });
-}
-/** Switches the sticky header on or off and keeps the height property in step. */
-function applyStickyHeader(enabled) {
-	document.documentElement.classList.toggle(STICKY_HEADER_CLASS, enabled);
-	if (observer !== null) {
-		observer.disconnect();
-		observer = null;
-	}
-	const header = document.querySelector(HEADER_SELECTOR$1);
-	if (enabled && header !== null && typeof ResizeObserver === "function") {
-		observer = new ResizeObserver(writeHeight);
-		observer.observe(header);
-		if (document.body !== null) observer.observe(document.body);
-	}
-	bindScroll(enabled);
-	writeHeight();
-}
 function buildAddFavUrl(postId) {
 	const params = new URLSearchParams();
 	params.set("id", postId);
@@ -7684,14 +7887,14 @@ var DB_NAME = "ruledesk-web.favorites-index";
 var DB_VERSION = 1;
 var STORE_NAME = "posts";
 var KEY_PATH = "id";
-var FavoriteIndexEntrySchema = /* @__PURE__ */ object({
+var FavoriteIndexEntrySchema = object({
 	id: int(),
 	/** The tag list as the site prints it on the preview, space separated. */
-	tags: /* @__PURE__ */ string(),
+	tags: string(),
 	/** Address of the preview image. */
-	thumb: /* @__PURE__ */ string(),
+	thumb: string(),
 	/** When the sync run that saw the post started, ms since epoch. */
-	run: /* @__PURE__ */ number(),
+	run: number(),
 	/** Place of the post in the site's list during that run, 0 is the newest favorite. */
 	pos: int()
 });
@@ -7823,6 +8026,41 @@ function matchesMedia(entry, media) {
 function filterFavoriteIndex(entries, favoriteIds, query, media) {
 	return entries.filter((entry) => favoriteIds.has(entry.id) && matchesMedia(entry, media) && matchesQuery(entry.tags.split(TERM_SEPARATOR), query)).sort((a, b) => b.run - a.run || a.pos - b.pos || b.id - a.id);
 }
+function topFavoriteTags(entries, favoriteIds, limit) {
+	const counts = /* @__PURE__ */ new Map();
+	for (const entry of entries) {
+		if (!favoriteIds.has(entry.id)) continue;
+		for (const tag of new Set(entry.tags.split(TERM_SEPARATOR))) if (tag.length > 0) counts.set(tag, (counts.get(tag) ?? 0) + 1);
+	}
+	return [...counts].map(([tag, count]) => ({
+		tag,
+		count
+	})).sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag)).slice(0, limit);
+}
+var SEED_STEP = 1831565813;
+var UINT32_RANGE = 4294967296;
+/** A repeatable random order: the same seed gives the same order. */
+function shuffleBySeed(items, seed) {
+	let state = seed >>> 0;
+	const next = () => {
+		state = state + SEED_STEP >>> 0;
+		let mixed = state;
+		mixed = Math.imul(mixed ^ mixed >>> 15, mixed | 1);
+		mixed ^= mixed + Math.imul(mixed ^ mixed >>> 7, mixed | 61);
+		return ((mixed ^ mixed >>> 14) >>> 0) / UINT32_RANGE;
+	};
+	const shuffled = [...items];
+	for (let index = shuffled.length - 1; index > 0; index -= 1) {
+		const other = Math.floor(next() * (index + 1));
+		const held = shuffled[index];
+		const swapped = shuffled[other];
+		if (held !== void 0 && swapped !== void 0) {
+			shuffled[index] = swapped;
+			shuffled[other] = held;
+		}
+	}
+	return shuffled;
+}
 /**
 * Search, the Images / Videos switch and endless scrolling on the Favorites
 * page, all from the local index (`src/storage/favorites-index.ts`), without
@@ -7853,6 +8091,11 @@ var MORE_LABEL$1 = "Show more";
 var LOCALE$1 = "en-US";
 var NO_INDEX_STATUS = "No index yet: run Full resync in RuleDesk → Favorites to search and scroll here.";
 var REMOVE_FAILED_STATUS = "Could not remove the favorite. Try again.";
+var SHUFFLE_LABEL = "Shuffle";
+var SHUFFLE_OFF_LABEL = "In order";
+var SHUFFLE_TITLE = "Show the favorites in a random order";
+var RANDOM_LABEL = "Random";
+var RANDOM_TITLE = "Open a random favorite";
 var MEDIA_OPTIONS$1 = [
 	{
 		value: "all",
@@ -8055,6 +8298,12 @@ function statusText(shown, indexed, favorites) {
 	if (indexed >= favorites) return found;
 	return `${found} · the index holds ${indexed.toLocaleString(LOCALE$1)} of ${favorites.toLocaleString(LOCALE$1)} favorites; Full resync in RuleDesk → Favorites adds the rest`;
 }
+/** Opens a random post of the local list of favorites. */
+function openRandomFavorite() {
+	const ids = [...loadFavSet()];
+	const id = ids[Math.floor(Math.random() * ids.length)];
+	if (id !== void 0) window.location.assign(`${POST_HREF_PREFIX}${String(id)}`);
+}
 function FavoritesBrowser() {
 	const [text, setText] = d("");
 	const [media, setMedia] = d("all");
@@ -8062,8 +8311,9 @@ function FavoritesBrowser() {
 	const [index, setIndex] = d(null);
 	const [status, setStatus] = d("");
 	const loadingRef = T(false);
+	const [shuffleSeed, setShuffleSeed] = d(null);
 	const query = parseFavoritesQuery(text);
-	const active = view === "scroll" || media !== "all" || !isEmptyFavoritesQuery(query);
+	const active = view === "scroll" || media !== "all" || shuffleSeed !== null || !isEmptyFavoritesQuery(query);
 	A(() => {
 		onRemoveFailed = () => {
 			setStatus(REMOVE_FAILED_STATUS);
@@ -8097,7 +8347,8 @@ function FavoritesBrowser() {
 				setStatus(NO_INDEX_STATUS);
 				return;
 			}
-			const results = filterFavoriteIndex(index, favorites, parseFavoritesQuery(text), media);
+			const matched = filterFavoriteIndex(index, favorites, parseFavoritesQuery(text), media);
+			const results = shuffleSeed === null ? matched : shuffleBySeed(matched, shuffleSeed);
 			showFavoriteResults(results);
 			const indexed = index.filter((entry) => favorites.has(entry.id)).length;
 			setStatus(statusText(results.length, indexed, favorites.size));
@@ -8109,7 +8360,8 @@ function FavoritesBrowser() {
 		active,
 		index,
 		text,
-		media
+		media,
+		shuffleSeed
 	]);
 	return /* @__PURE__ */ a("div", {
 		className: CONTROLS_CLASS,
@@ -8141,6 +8393,23 @@ function FavoritesBrowser() {
 						setView(value);
 					}
 				}
+			}),
+			/* @__PURE__ */ a(Button, {
+				variant: "secondary",
+				size: "s",
+				title: SHUFFLE_TITLE,
+				"aria-pressed": shuffleSeed !== null,
+				onClick: () => {
+					setShuffleSeed(shuffleSeed === null ? Date.now() : null);
+				},
+				children: shuffleSeed === null ? SHUFFLE_LABEL : SHUFFLE_OFF_LABEL
+			}),
+			/* @__PURE__ */ a(Button, {
+				variant: "secondary",
+				size: "s",
+				title: RANDOM_TITLE,
+				onClick: openRandomFavorite,
+				children: RANDOM_LABEL
 			}),
 			status.length > 0 ? /* @__PURE__ */ a("span", {
 				className: STATUS_CLASS$2,
@@ -8349,7 +8618,7 @@ function createAbortResult(total, page, pages) {
 		pages
 	};
 }
-function isAbortError$2(error) {
+function isAbortError$1(error) {
 	return error instanceof DOMException && error.name === "AbortError" || error instanceof Error && error.name === "AbortError";
 }
 function throwIfAborted(signal) {
@@ -8539,7 +8808,7 @@ async function fetchFavoritesPageOnce(url, signal) {
 			signal
 		});
 	} catch (error) {
-		if (isAbortError$2(error)) throw error;
+		if (isAbortError$1(error)) throw error;
 		const message = error instanceof Error ? error.message : "request failed";
 		log.warn("favorites sync: fetch failed", url, error);
 		return {
@@ -8781,7 +9050,7 @@ async function runFavoritesSync(options) {
 			page = pageIndexFromPid(pid);
 		}
 	} catch (error) {
-		if (isAbortError$2(error)) {
+		if (isAbortError$1(error)) {
 			writeProgress({ running: false });
 			log.info("favorites sync: aborted", {
 				pid,
@@ -8959,7 +9228,7 @@ function errorMessage(deleted, total, failedPostId) {
 function stoppedMessage(deleted, total) {
 	return `${TEXT_STOPPED_PREFIX}${String(deleted)}${TEXT_STOPPED_MID}${String(total)}${TEXT_STOPPED_SUFFIX}`;
 }
-function isAbortError$1(error) {
+function isAbortError(error) {
 	return error instanceof DOMException && error.name === "AbortError" || error instanceof Error && error.name === "AbortError";
 }
 function delay(ms, signal) {
@@ -9207,7 +9476,7 @@ function FavoritesBulkBar(props) {
 			setSelected(/* @__PURE__ */ new Set());
 			setPhase({ kind: "idle" });
 		} catch (error) {
-			if (isAbortError$1(error) || signal.aborted) {
+			if (isAbortError(error) || signal.aborted) {
 				setPhase({
 					kind: "stopped",
 					message: stoppedMessage(done, total)
@@ -9242,28 +9511,31 @@ function FavoritesBulkBar(props) {
 			children: TEXT_DOWNLOAD_ALL
 		}) : null]
 	});
-	if (phase.kind === "removing") return /* @__PURE__ */ a("div", {
-		className: BAR_CLASS,
-		children: [
-			/* @__PURE__ */ a("div", {
-				className: PROGRESS_WRAP_CLASS,
-				children: /* @__PURE__ */ a(ProgressBar, {
-					value: phase.total === 0 ? 0 : phase.done / phase.total,
-					label: progressLabel(phase.done, phase.total)
+	if (phase.kind === "removing") {
+		const ratio = phase.total === 0 ? 0 : phase.done / phase.total;
+		return /* @__PURE__ */ a("div", {
+			className: BAR_CLASS,
+			children: [
+				/* @__PURE__ */ a("div", {
+					className: PROGRESS_WRAP_CLASS,
+					children: /* @__PURE__ */ a(ProgressBar, {
+						value: ratio,
+						label: progressLabel(phase.done, phase.total)
+					})
+				}),
+				/* @__PURE__ */ a("span", {
+					className: STATUS_CLASS$1,
+					children: progressLabel(phase.done, phase.total)
+				}),
+				/* @__PURE__ */ a(Button, {
+					variant: "secondary",
+					size: "s",
+					onClick: stopRemoval,
+					children: TEXT_STOP
 				})
-			}),
-			/* @__PURE__ */ a("span", {
-				className: STATUS_CLASS$1,
-				children: progressLabel(phase.done, phase.total)
-			}),
-			/* @__PURE__ */ a(Button, {
-				variant: "secondary",
-				size: "s",
-				onClick: stopRemoval,
-				children: TEXT_STOP
-			})
-		]
-	});
+			]
+		});
+	}
 	if (phase.kind === "error" || phase.kind === "stopped") return /* @__PURE__ */ a("div", {
 		className: BAR_CLASS,
 		children: [/* @__PURE__ */ a("span", {
@@ -9473,6 +9745,204 @@ function deriveThumbUrlFromMedia(mediaUrl, postId) {
 	if (media === null) return null;
 	return `https://${THUMB_IMAGE_HOST}/${THUMB_DIRECTORY}/${media.dir}/${THUMB_FILE_PREFIX}${media.hash}.${THUMB_FILE_EXT}?${String(normalizedId)}`;
 }
+/**
+* Readers for a results page (`page=post&s=list`): the live document or one
+* parsed from a fetched page. They only read; nothing here makes a request.
+*/
+var QUERY_MARK = "?";
+var PID_PATTERN = /^\d+$/;
+var EXCLUDE_MARK = "-";
+var FILTER_MARK$1 = ":";
+var OR_MARKS = [
+	"(",
+	")",
+	"~"
+];
+var NON_DIGITS = /\D/g;
+var TOKEN_SPLIT$2 = /\s+/;
+var SCORE_TOKEN_PREFIX$3 = "score:";
+var RATING_TOKEN_PREFIX$2 = "rating:";
+/** Thumb URLs of the first `limit` posts in the grid, in page order. */
+function readFirstThumbUrls(root, limit) {
+	const imageList = root.querySelector(SITE_SELECTORS.imageList);
+	if (imageList === null) return [];
+	const urls = [];
+	const images = imageList.querySelectorAll(`${SITE_SELECTORS.thumb} ${SITE_SELECTORS.previewImage}`);
+	for (const image of images) {
+		const src = image.getAttribute("src");
+		if (src === null || src.trim().length === 0) continue;
+		urls.push(src.trim());
+		if (urls.length === limit) break;
+	}
+	return urls;
+}
+/** Largest post id among the thumbs of the grid, or 0 without thumbs. */
+function readNewestPostId(root) {
+	let newest = 0;
+	for (const thumb of root.querySelectorAll(SITE_SELECTORS.thumb)) {
+		const raw = extractPostIdFromThumb(thumb);
+		const id = raw === null ? NaN : Number(raw);
+		if (Number.isFinite(id) && id > newest) newest = id;
+	}
+	return newest;
+}
+/** Tags of a thumb, from its preview image title, without score and rating. */
+function readThumbTags(thumb) {
+	const image = thumb.querySelector(SITE_SELECTORS.previewImage);
+	const title = image?.getAttribute("title")?.trim() ?? "";
+	const text = title.length > 0 ? title : image?.getAttribute("alt")?.trim() ?? "";
+	const tags = [];
+	for (const token of text.split(TOKEN_SPLIT$2)) {
+		const lower = token.toLowerCase();
+		if (token.length === 0 || lower.startsWith(SCORE_TOKEN_PREFIX$3) || lower.startsWith(RATING_TOKEN_PREFIX$2)) continue;
+		tags.push(lower);
+	}
+	return tags;
+}
+function readPidFromLink(link) {
+	const href = link.getAttribute("href");
+	if (href === null) return null;
+	const query = href.slice(href.indexOf(QUERY_MARK) + 1);
+	const raw = new URLSearchParams(query).get("pid");
+	if (raw === null || !PID_PATTERN.test(raw)) return null;
+	return Number(raw);
+}
+/** The tag of a search that is exactly one plain tag, else null. */
+function readSingleTag(tagsParam) {
+	const tokens = withoutSortRandom(tagsParam).split(" ");
+	const tag = tokens[0];
+	if (tokens.length !== 1 || tag === void 0 || tag.length === 0) return null;
+	if (tag.startsWith(EXCLUDE_MARK) || tag.includes(FILTER_MARK$1) || OR_MARKS.includes(tag)) return null;
+	return tag.toLowerCase();
+}
+function rowLinksToTag(row, tag) {
+	for (const link of row.querySelectorAll("a[href]")) {
+		const href = link.getAttribute("href") ?? "";
+		const mark = href.indexOf(QUERY_MARK);
+		if (mark < 0) continue;
+		const linked = new URLSearchParams(href.slice(mark + 1)).get(SEARCH_PARAM_TAGS);
+		if (linked !== null && linked.trim().toLowerCase() === tag) return true;
+	}
+	return false;
+}
+/**
+* For a search of one tag the sidebar row of that tag shows the site's own
+* total, which is exact. Null when the row or its number is not on the page.
+*/
+function readSingleTagCount(root, tagsParam) {
+	const tag = readSingleTag(tagsParam);
+	if (tag === null) return null;
+	for (const row of root.querySelectorAll(SITE_SELECTORS.tagSidebarRow)) {
+		if (!rowLinksToTag(row, tag)) continue;
+		const digits = (row.querySelector(SITE_SELECTORS.tagCount)?.textContent ?? "").replace(NON_DIGITS, "");
+		if (digits.length === 0) return null;
+		return {
+			value: Number(digits),
+			exact: true
+		};
+	}
+	return null;
+}
+/**
+* Size of the search a first results page shows.
+* A search of one tag takes the exact total from the tag's sidebar row.
+* With a last-page link: at least its offset (`pid`), so the count is a lower
+* bound. With other page links only: the largest offset among them. With no
+* page links: the number of thumbs on the page, exact. No grid: null.
+*/
+function readResultCount(root, tagsParam) {
+	const tagCount = readSingleTagCount(root, tagsParam);
+	if (tagCount !== null) return tagCount;
+	const last = root.querySelector(SITE_SELECTORS.paginationLastPage);
+	if (last !== null) {
+		const pid = readPidFromLink(last);
+		if (pid !== null) return {
+			value: pid,
+			exact: false
+		};
+	}
+	let largest = null;
+	for (const link of root.querySelectorAll(SITE_SELECTORS.paginationPageLink)) {
+		const pid = readPidFromLink(link);
+		if (pid !== null && (largest === null || pid > largest)) largest = pid;
+	}
+	if (largest !== null) return {
+		value: largest,
+		exact: false
+	};
+	const imageList = root.querySelector(SITE_SELECTORS.imageList);
+	if (imageList === null) return null;
+	return {
+		value: imageList.querySelectorAll(SITE_SELECTORS.thumb).length,
+		exact: true
+	};
+}
+/**
+* Puts a post into the favorites search index at the moment it is made a
+* favorite, from what the page already shows. Without this a new favorite
+* would be missing from the search on the Favorites page until the next
+* "Sync favorites". No requests.
+*/
+var POST_IMAGE_SELECTOR = "img#image";
+var POST_VIDEO_SELECTOR = "video#gelcomVideoPlayer";
+var VIDEO_SOURCE_SELECTOR$1 = "source";
+var TAG_LINK_SELECTOR = "a[href*='tags=']";
+var TAG_JOIN = " ";
+/** The entry of a favorite made now: it sorts before everything indexed earlier. */
+function buildLiveEntry(postId, tags, thumb, now) {
+	const id = Number(postId);
+	if (!Number.isInteger(id) || id <= 0 || tags.length === 0) return null;
+	return {
+		id,
+		tags: tags.join(TAG_JOIN),
+		thumb: thumb !== null && isSiteUrl(thumb) ? thumb : "",
+		run: now,
+		pos: 0
+	};
+}
+function store(entry) {
+	if (entry !== null) putFavoriteIndexEntriesQuietly([entry]);
+}
+/** A favorite made by the star of a grid thumb: tags and preview are on the thumb. */
+function indexFavoriteFromThumb(postId, starButton) {
+	const thumb = starButton.closest(SITE_SELECTORS.thumb);
+	if (thumb === null) return;
+	const image = thumb.querySelector(SITE_SELECTORS.previewImage);
+	const src = image instanceof HTMLImageElement ? image.currentSrc || image.src : null;
+	store(buildLiveEntry(postId, readThumbTags(thumb), src, Date.now()));
+}
+/** The tags of a post page, from the links of its tag sidebar. */
+function readPostPageTags(root = document) {
+	const tags = [];
+	for (const row of root.querySelectorAll(SITE_SELECTORS.tagSidebarRow)) {
+		const links = row.querySelectorAll(TAG_LINK_SELECTOR);
+		const href = links[links.length - 1]?.getAttribute("href");
+		if (href === null || href === void 0) continue;
+		let tag = null;
+		try {
+			tag = new URL(href, window.location.href).searchParams.get(SEARCH_PARAM_TAGS);
+		} catch {
+			tag = null;
+		}
+		if (tag !== null && tag.trim().length > 0) tags.push(tag.trim().toLowerCase());
+	}
+	return tags;
+}
+function readPostMediaUrl() {
+	const image = document.querySelector(POST_IMAGE_SELECTOR);
+	if (image instanceof HTMLImageElement && image.src.length > 0) return image.src;
+	const video = document.querySelector(POST_VIDEO_SELECTOR);
+	if (!(video instanceof HTMLVideoElement)) return null;
+	const source = video.querySelector(VIDEO_SOURCE_SELECTOR$1);
+	const url = video.currentSrc || video.src || (source instanceof HTMLSourceElement ? source.src : "");
+	return url.length > 0 ? url : null;
+}
+/** A favorite made on the post page: tags from the sidebar, preview from the media address. */
+function indexFavoriteFromPostPage(postId) {
+	const media = readPostMediaUrl();
+	const thumb = media === null ? null : deriveThumbUrlFromMedia(media, Number(postId));
+	store(buildLiveEntry(postId, readPostPageTags(), thumb, Date.now()));
+}
 /** Kit IconButton root class — prefer for preview badges. */
 var KIT_ICON_BUTTON_CLASS = "rdw-icon-btn";
 function favAriaLabel(postId, marked) {
@@ -9541,6 +10011,7 @@ async function handleFavToggleClick(button, postId) {
 	const result = await addFavorite(postId);
 	if (result.status === "added" || result.status === "already") {
 		addFav(postId);
+		indexFavoriteFromThumb(postId, button);
 		applyFavButtonState(button, "marked", postId);
 		return;
 	}
@@ -10060,138 +10531,6 @@ function mountUpdatesBar(root = document, search = window.location.search, optio
 	}
 	mountFullBar(imageList, search, tagsParam, merged);
 }
-/**
-* Readers for a results page (`page=post&s=list`): the live document or one
-* parsed from a fetched page. They only read; nothing here makes a request.
-*/
-var QUERY_MARK = "?";
-var PID_PATTERN = /^\d+$/;
-var EXCLUDE_MARK = "-";
-var FILTER_MARK$2 = ":";
-var OR_MARKS = [
-	"(",
-	")",
-	"~"
-];
-var NON_DIGITS = /\D/g;
-var TOKEN_SPLIT$2 = /\s+/;
-var SCORE_TOKEN_PREFIX$3 = "score:";
-var RATING_TOKEN_PREFIX$2 = "rating:";
-/** Thumb URLs of the first `limit` posts in the grid, in page order. */
-function readFirstThumbUrls(root, limit) {
-	const imageList = root.querySelector(SITE_SELECTORS.imageList);
-	if (imageList === null) return [];
-	const urls = [];
-	const images = imageList.querySelectorAll(`${SITE_SELECTORS.thumb} ${SITE_SELECTORS.previewImage}`);
-	for (const image of images) {
-		const src = image.getAttribute("src");
-		if (src === null || src.trim().length === 0) continue;
-		urls.push(src.trim());
-		if (urls.length === limit) break;
-	}
-	return urls;
-}
-/** Largest post id among the thumbs of the grid, or 0 without thumbs. */
-function readNewestPostId(root) {
-	let newest = 0;
-	for (const thumb of root.querySelectorAll(SITE_SELECTORS.thumb)) {
-		const raw = extractPostIdFromThumb(thumb);
-		const id = raw === null ? NaN : Number(raw);
-		if (Number.isFinite(id) && id > newest) newest = id;
-	}
-	return newest;
-}
-/** Tags of a thumb, from its preview image title, without score and rating. */
-function readThumbTags(thumb) {
-	const image = thumb.querySelector(SITE_SELECTORS.previewImage);
-	const title = image?.getAttribute("title")?.trim() ?? "";
-	const text = title.length > 0 ? title : image?.getAttribute("alt")?.trim() ?? "";
-	const tags = [];
-	for (const token of text.split(TOKEN_SPLIT$2)) {
-		const lower = token.toLowerCase();
-		if (token.length === 0 || lower.startsWith(SCORE_TOKEN_PREFIX$3) || lower.startsWith(RATING_TOKEN_PREFIX$2)) continue;
-		tags.push(lower);
-	}
-	return tags;
-}
-function readPidFromLink(link) {
-	const href = link.getAttribute("href");
-	if (href === null) return null;
-	const query = href.slice(href.indexOf(QUERY_MARK) + 1);
-	const raw = new URLSearchParams(query).get("pid");
-	if (raw === null || !PID_PATTERN.test(raw)) return null;
-	return Number(raw);
-}
-/** The tag of a search that is exactly one plain tag, else null. */
-function readSingleTag(tagsParam) {
-	const tokens = withoutSortRandom(tagsParam).split(" ");
-	const tag = tokens[0];
-	if (tokens.length !== 1 || tag === void 0 || tag.length === 0) return null;
-	if (tag.startsWith(EXCLUDE_MARK) || tag.includes(FILTER_MARK$2) || OR_MARKS.includes(tag)) return null;
-	return tag.toLowerCase();
-}
-function rowLinksToTag(row, tag) {
-	for (const link of row.querySelectorAll("a[href]")) {
-		const href = link.getAttribute("href") ?? "";
-		const mark = href.indexOf(QUERY_MARK);
-		if (mark < 0) continue;
-		const linked = new URLSearchParams(href.slice(mark + 1)).get(SEARCH_PARAM_TAGS);
-		if (linked !== null && linked.trim().toLowerCase() === tag) return true;
-	}
-	return false;
-}
-/**
-* For a search of one tag the sidebar row of that tag shows the site's own
-* total, which is exact. Null when the row or its number is not on the page.
-*/
-function readSingleTagCount(root, tagsParam) {
-	const tag = readSingleTag(tagsParam);
-	if (tag === null) return null;
-	for (const row of root.querySelectorAll(SITE_SELECTORS.tagSidebarRow)) {
-		if (!rowLinksToTag(row, tag)) continue;
-		const digits = (row.querySelector(SITE_SELECTORS.tagCount)?.textContent ?? "").replace(NON_DIGITS, "");
-		if (digits.length === 0) return null;
-		return {
-			value: Number(digits),
-			exact: true
-		};
-	}
-	return null;
-}
-/**
-* Size of the search a first results page shows.
-* A search of one tag takes the exact total from the tag's sidebar row.
-* With a last-page link: at least its offset (`pid`), so the count is a lower
-* bound. With other page links only: the largest offset among them. With no
-* page links: the number of thumbs on the page, exact. No grid: null.
-*/
-function readResultCount(root, tagsParam) {
-	const tagCount = readSingleTagCount(root, tagsParam);
-	if (tagCount !== null) return tagCount;
-	const last = root.querySelector(SITE_SELECTORS.paginationLastPage);
-	if (last !== null) {
-		const pid = readPidFromLink(last);
-		if (pid !== null) return {
-			value: pid,
-			exact: false
-		};
-	}
-	let largest = null;
-	for (const link of root.querySelectorAll(SITE_SELECTORS.paginationPageLink)) {
-		const pid = readPidFromLink(link);
-		if (pid !== null && (largest === null || pid > largest)) largest = pid;
-	}
-	if (largest !== null) return {
-		value: largest,
-		exact: false
-	};
-	const imageList = root.querySelector(SITE_SELECTORS.imageList);
-	if (imageList === null) return null;
-	return {
-		value: imageList.querySelectorAll(SITE_SELECTORS.thumb).length,
-		exact: true
-	};
-}
 /** What a results page of one artist tag tells about the artist. */
 function readArtistSnapshot(root, tag) {
 	return {
@@ -10450,7 +10789,8 @@ function isMergedFeedPage(search, artistTags, groupSize) {
 	const params = new URLSearchParams(search);
 	const pid = params.get("pid");
 	if (pid !== null && pid.length > 0 && pid !== FIRST_PAGE_PID$1) return false;
-	return findFeedGroupIndex(params.get("tags") ?? "", artistTags, groupSize) === 0;
+	const tagsParam = params.get("tags") ?? "";
+	return findFeedGroupIndex(tagsParam, artistTags, groupSize) === 0;
 }
 /**
 * Starts the merged feed on a page for which {@link isMergedFeedPage} is true.
@@ -11283,210 +11623,6 @@ var menuCleanupFeature = {
 	css: FEATURE_CSS$8,
 	mount: mountMenuCleanup
 };
-var AUTOCOMPLETE_PATH = "/public/autocomplete.php";
-var AUTOCOMPLETE_TAG_TYPE_ARTIST = exports("c6","artist");
-var HTTP_TOO_MANY_REQUESTS = 429;
-var ABORT_ERROR_NAME = "AbortError";
-var AutocompleteResponseSchema = /* @__PURE__ */ array(/* @__PURE__ */ object({
-	label: /* @__PURE__ */ string(),
-	value: /* @__PURE__ */ string(),
-	type: /* @__PURE__ */ optional(/* @__PURE__ */ nullable(/* @__PURE__ */ string()))
-}));
-function buildAutocompleteUrl(query) {
-	const params = new URLSearchParams();
-	params.set("q", query);
-	return `${SITE_ORIGIN}${AUTOCOMPLETE_PATH}?${params.toString()}`;
-}
-function isAbortError(error) {
-	if (error instanceof DOMException && error.name === ABORT_ERROR_NAME) return true;
-	if (typeof error !== "object" || error === null || !("name" in error)) return false;
-	return error.name === ABORT_ERROR_NAME;
-}
-function normalizeItems(raw) {
-	const result = [];
-	for (const item of raw) {
-		const type = item.type === null || item.type === void 0 ? void 0 : item.type;
-		if (type === void 0) result.push({
-			label: item.label,
-			value: item.value
-		});
-		else result.push({
-			label: item.label,
-			value: item.value,
-			type
-		});
-	}
-	return result;
-}
-/** Artists (or another preferred type) first; relative order otherwise preserved. */
-function preferSuggestionType(items, preferType) {
-	const preferred = [];
-	const rest = [];
-	for (const item of items) if (item.type === preferType) preferred.push(item);
-	else rest.push(item);
-	return [...preferred, ...rest];
-}
-/**
-* GET /public/autocomplete.php?q=… (site redirects to ac.rule34.xxx).
-* Short queries and failed/429 responses return []. Aborts are silent.
-*/
-async function fetchAutocomplete(query, signal) {
-	const trimmed = query.trim();
-	if (trimmed.length < 2) return [];
-	let response;
-	try {
-		const init = {
-			method: "GET",
-			credentials: FETCH_CREDENTIALS
-		};
-		if (signal !== void 0) init.signal = signal;
-		response = await fetch(buildAutocompleteUrl(trimmed), init);
-	} catch (error) {
-		if (isAbortError(error) || signal?.aborted === true) return [];
-		log.error("autocomplete: fetch failed", error);
-		return [];
-	}
-	if (response.status === HTTP_TOO_MANY_REQUESTS) {
-		log.warn("autocomplete: rate limited", response.status);
-		return [];
-	}
-	if (!response.ok) {
-		log.warn("autocomplete: HTTP error", response.status);
-		return [];
-	}
-	let json;
-	try {
-		json = await response.json();
-	} catch (error) {
-		if (isAbortError(error) || signal?.aborted === true) return [];
-		log.error("autocomplete: invalid JSON", error);
-		return [];
-	}
-	const parsed = AutocompleteResponseSchema.safeParse(json);
-	if (!parsed.success) {
-		log.error("autocomplete: schema mismatch", parsed.error);
-		return [];
-	}
-	return normalizeItems(parsed.data);
-}
-/**
-* Debounced autocomplete with AbortController cancellation of the prior request.
-* Queries shorter than {@link AUTOCOMPLETE_MIN_CHARS} resolve to [] without a network call.
-*/
-function createAutocompleteQuerier(options = {}) {
-	let timer = null;
-	let controller = null;
-	const preferType = options.preferType;
-	const cancel = () => {
-		if (timer !== null) {
-			clearTimeout(timer);
-			timer = null;
-		}
-		if (controller !== null) {
-			controller.abort();
-			controller = null;
-		}
-	};
-	const query = (text, onResult) => {
-		cancel();
-		const trimmed = text.trim();
-		if (trimmed.length < 2) {
-			onResult([]);
-			return;
-		}
-		timer = setTimeout(() => {
-			timer = null;
-			const next = new AbortController();
-			controller = next;
-			fetchAutocomplete(trimmed, next.signal).then((items) => {
-				if (next.signal.aborted) return;
-				if (controller === next) controller = null;
-				onResult(preferType === void 0 ? items : preferSuggestionType(items, preferType));
-			});
-		}, 300);
-	};
-	return {
-		query,
-		cancel
-	};
-}
-/** `sort:random`, `score:>=10`, `id:>5`: a filter, not a tag name. */
-var FILTER_MARK$1 = ":";
-var TRAILING_SPACE = /\s$/;
-var LAST_TOKEN = /(\S+)$/;
-var SYNTAX_TOKENS = [
-	"(",
-	")",
-	"~"
-];
-/**
-* The tag the caret is on, taken as the last token of the query.
-* Null when the query ends with whitespace or the token is search syntax
-* (`(`, `)`, `~`) or a filter such as `sort:random`.
-*/
-function readLastQueryToken(query) {
-	if (query.length === 0 || TRAILING_SPACE.test(query)) return null;
-	const match = LAST_TOKEN.exec(query);
-	const token = match?.[1];
-	if (match === null || token === void 0) return null;
-	if (SYNTAX_TOKENS.includes(token) || token.includes(FILTER_MARK$1)) return null;
-	const prefix = token.startsWith("-") && token.length > 1 ? "-" : "";
-	const stem = token.slice(prefix.length);
-	if (stem === "-") return null;
-	return {
-		head: query.slice(0, match.index),
-		prefix,
-		stem
-	};
-}
-/** Query with its last token replaced by `tag`, ready for the next token. */
-function completeLastQueryToken(query, tag) {
-	const last = readLastQueryToken(query);
-	if (last === null) return `${query}${tag} `;
-	return `${last.head}${last.prefix}${tag} `;
-}
-/**
-* Search-query input with the site tag autocomplete on the token being typed.
-* Requests go out only while the user types, debounced, one at a time
-* (see {@link createAutocompleteQuerier}).
-*/
-function QueryField(props) {
-	const querierRef = T(createAutocompleteQuerier());
-	const [suggestions, setSuggestions] = d([]);
-	A(() => {
-		const querier = querierRef.current;
-		return () => {
-			querier.cancel();
-		};
-	}, []);
-	const clearSuggestions = () => {
-		querierRef.current.cancel();
-		setSuggestions([]);
-	};
-	const onTyped = (value) => {
-		props.onChange(value);
-		const last = readLastQueryToken(value);
-		if (last === null) {
-			clearSuggestions();
-			return;
-		}
-		querierRef.current.query(last.stem, setSuggestions);
-	};
-	const onPicked = (option) => {
-		props.onChange(completeLastQueryToken(props.value, option.value));
-		clearSuggestions();
-	};
-	return /* @__PURE__ */ a(AutocompleteField, {
-		...props.label === void 0 ? {} : { label: props.label },
-		...props.placeholder === void 0 ? {} : { placeholder: props.placeholder },
-		...props.id === void 0 ? {} : { id: props.id },
-		value: props.value,
-		suggestions,
-		replaceOnSelect: false,
-		onChange: onTyped,
-		onSelect: onPicked
-	});
-}
 var FEATURE_ID$7 = "playlist-bar";
 var FEATURE_LABEL$7 = "Collection header";
 var FEATURE_PAGES$7 = ["list"];
@@ -13518,6 +13654,7 @@ function PostPanel(props) {
 			const result = await addFavorite(props.postId);
 			if (result.status === "added" || result.status === "already") {
 				addFav(props.postId);
+				indexFavoriteFromPostPage(props.postId);
 				setFavorited(true);
 				if (result.status === "added" && result.score !== void 0) {
 					writeScoreText(props.postId, result.score);
@@ -15157,7 +15294,7 @@ var FEATURE_CSS$2 = [
 	"  outline-offset: 2px;",
 	"}"
 ].join("\n");
-var TagGroupsStateSchema = /* @__PURE__ */ object({ collapsed: /* @__PURE__ */ array(/* @__PURE__ */ string()) });
+var TagGroupsStateSchema = object({ collapsed: array(string()) });
 function defaultState() {
 	return { collapsed: [...DEFAULT_COLLAPSED] };
 }
@@ -17647,7 +17784,8 @@ function scheduleSiteDesktopStylesheet(theme) {
 /** Cookie only. Stylesheet swap is {@link scheduleSiteDesktopStylesheet}. */
 function writeSiteThemeCookie(theme) {
 	if (theme === "dark") {
-		writeThemeCookie(SITE_THEME_COOKIE_VALUE_DARK, new Date(Date.now() + 365 * MS_PER_DAY));
+		const expires = new Date(Date.now() + 365 * MS_PER_DAY);
+		writeThemeCookie(SITE_THEME_COOKIE_VALUE_DARK, expires);
 		return;
 	}
 	clearSiteThemeCookie();
@@ -18028,11 +18166,13 @@ function applyAppearanceToDocument(options) {
 	clearCustomThemeProperties(root);
 	const omitImage = options.omitBackgroundImage === true;
 	const backgroundImage = omitImage ? void 0 : options.backgroundDataUrl ?? appearance.custom?.backgroundImage;
-	if (appearance.theme === "custom" && appearance.custom !== void 0) applyCustomThemeProperties(root, backgroundImage !== void 0 && backgroundImage.length > 0 ? {
-		backgroundImage,
-		...appearance.custom.backgroundDim !== void 0 ? { backgroundDim: appearance.custom.backgroundDim } : {}
-	} : { ...appearance.custom.backgroundDim !== void 0 ? { backgroundDim: appearance.custom.backgroundDim } : {} });
-	else if (!omitImage && options.backgroundDataUrl !== void 0 && options.backgroundDataUrl.length > 0) applyCustomThemeProperties(root, { backgroundImage: options.backgroundDataUrl });
+	if (appearance.theme === "custom" && appearance.custom !== void 0) {
+		const overrides = backgroundImage !== void 0 && backgroundImage.length > 0 ? {
+			backgroundImage,
+			...appearance.custom.backgroundDim !== void 0 ? { backgroundDim: appearance.custom.backgroundDim } : {}
+		} : { ...appearance.custom.backgroundDim !== void 0 ? { backgroundDim: appearance.custom.backgroundDim } : {} };
+		applyCustomThemeProperties(root, overrides);
+	} else if (!omitImage && options.backgroundDataUrl !== void 0 && options.backgroundDataUrl.length > 0) applyCustomThemeProperties(root, { backgroundImage: options.backgroundDataUrl });
 }
 /**
 * Pre-paint appearance read: one GM_getValue + shape checks only (no zod).
@@ -18664,12 +18804,12 @@ startEarlyLayout();
 whenDomReady(() => {
 	applyLayoutBeforePaint();
 	scheduleAfterFirstPaint(() => {
-		module.import('./app-ZdxwVkN2-DLaAhNPb.js').then(({ startApp }) => {
+		module.import('./app-DYQSgpKT-BXmbR3m2.js').then(({ startApp }) => {
 			startApp();
 		});
 	});
 });})}}));
-System.register("./app-ZdxwVkN2-DLaAhNPb.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var yieldToMain,detectPageKind,mountGifMarks,mountCards,syncFavoritesPage,mountFavoriteVideoMarks,mountCommentsPage,runFeaturesYielding,getAppearance,applyAppearanceTheme,ensureDocumentStyles,SITE_SELECTORS,loadFavSet,log,SITE_ORIGIN,SEARCH_PARAM_TAGS,normalizeArtistTag,CSS_CLASS,getSyncState,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,HEADER_SELECTOR$2,RDW_OWN_PAGE_CLASS,MENU_ITEM_ID,getFeatureEnabled,applyHeaderLayout,parseRdwHash,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,runFavoritesSync,UI_TEXT,Q$1,RDW_PAGE_ROOT_ID,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,resolveFavoritesUserId,RDW_HASH_STATS,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,rdwPageHash,createFavoritesSyncTabId,APPEARANCE_BACKGROUND_KEY,readArtistsMirror,listArtistTags,writeArtistsMirror,reloadFromStorage,save,CURRENT_PAGE_CLASS$1,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,a,applyTokenProperties,resolveAppearancePalette,isCollectionDetailPage,menuRouteForPage,getSiteSkinCss,KIT_CONTROL_HEIGHT_VAR,KIT_CONTROL_FONT_VAR,$$1,setFeatureState,PANEL_UI_CLASS,TOKEN_VAR,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,SITE_LIGHT_C_BG,SITE_LIGHT_C_BG_ALT,SITE_DARK_C_BG,SITE_DARK_C_BORDER,APPEARANCE_BACKGROUND_TOO_LARGE,getFeatureState;return{setters:[function(module){yieldToMain=module.y;detectPageKind=module.d;mountGifMarks=module.m;mountCards=module.a;syncFavoritesPage=module.s;mountFavoriteVideoMarks=module.b;mountCommentsPage=module.c;runFeaturesYielding=module.r;getAppearance=module.g;applyAppearanceTheme=module.e;ensureDocumentStyles=module.f;SITE_SELECTORS=module.S;loadFavSet=module.l;log=module.h;SITE_ORIGIN=module.i;SEARCH_PARAM_TAGS=module.j;normalizeArtistTag=module.n;CSS_CLASS=module.C;getSyncState=module.k;ensureStyleElement=module.o;RDW_OWN_PAGE_STYLE_ID=module.R;buildOwnPageCss=module.p;HEADER_SELECTOR$2=module.H;RDW_OWN_PAGE_CLASS=module.q;MENU_ITEM_ID=module.M;getFeatureEnabled=module.t;applyHeaderLayout=module.u;parseRdwHash=module.v;readFavoritesSyncMode=module.w;FAVORITES_SYNC_MODE_FULL=module.F;runFavoritesSync=module.x;UI_TEXT=module.U;Q$1=module.Q;RDW_PAGE_ROOT_ID=module.z;NAVBAR_SELECTOR=module.N;FEED_MENU_ITEM_ID=module.A;RDW_HASH_COLLECTIONS=module.B;MENU_LABEL=module.D;RDW_HASH_FOLLOWING=module.E;resolveFavoritesUserId=module.G;RDW_HASH_STATS=module.I;MY_FAVORITES_CONTAINER_ID=module.J;RDW_HASH_SETTINGS=module.K;rdwPageHash=module.L;createFavoritesSyncTabId=module.O;APPEARANCE_BACKGROUND_KEY=module.P;readArtistsMirror=module.T;listArtistTags=module.V;writeArtistsMirror=module.W;reloadFromStorage=module.X;save=module.Y;CURRENT_PAGE_CLASS$1=module.Z;setSyncState=module._;SEARCH_PARAM_PAGE=module.$;FAVORITES_PAGE=module.a0;FAVORITES_SECTION_VIEW=module.a1;SEARCH_PATH=module.a2;a=module.a3;applyTokenProperties=module.a4;resolveAppearancePalette=module.a5;isCollectionDetailPage=module.a6;menuRouteForPage=module.a7;getSiteSkinCss=module.a8;KIT_CONTROL_HEIGHT_VAR=module.a9;KIT_CONTROL_FONT_VAR=module.aa;$$1=module.ab;setFeatureState=module.ac;PANEL_UI_CLASS=module.ad;TOKEN_VAR=module.ae;RDW_THEME_ATTR=module.af;APPEARANCE_THEME_SITE=module.ag;APPEARANCE_THEME_SITE_DARK=module.ah;SITE_LIGHT_C_BG=module.ai;SITE_LIGHT_C_BG_ALT=module.aj;SITE_DARK_C_BG=module.ak;SITE_DARK_C_BORDER=module.al;APPEARANCE_BACKGROUND_TOO_LARGE=module.am;getFeatureState=module.an;}],execute:(function(){exports({a:installSiteMenu,f:isViewMode,i:navigateToRdwRoute,m:writeViewMode,n:loadBackground,p:readViewMode,r:saveBackground,startApp:startApp,t:clearBackground});/** Matches host.tsx page title class (owned there; styled here for site polish). */
+System.register("./app-DYQSgpKT-BXmbR3m2.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var yieldToMain,detectPageKind,mountGifMarks,mountCards,syncFavoritesPage,mountFavoriteVideoMarks,mountCommentsPage,runFeaturesYielding,getAppearance,applyAppearanceTheme,ensureDocumentStyles,SITE_SELECTORS,loadFavSet,log,SITE_ORIGIN,SEARCH_PARAM_TAGS,normalizeArtistTag,CSS_CLASS,getSyncState,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,HEADER_SELECTOR$1,RDW_OWN_PAGE_CLASS,MENU_ITEM_ID,getFeatureEnabled,applyHeaderLayout,parseRdwHash,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,runFavoritesSync,UI_TEXT,Q$1,RDW_PAGE_ROOT_ID,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,resolveFavoritesUserId,RDW_HASH_STATS,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,rdwPageHash,createFavoritesSyncTabId,APPEARANCE_BACKGROUND_KEY,readArtistsMirror,listArtistTags,writeArtistsMirror,reloadFromStorage,save,CURRENT_PAGE_CLASS,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,a,applyTokenProperties,resolveAppearancePalette,isCollectionDetailPage,menuRouteForPage,getSiteSkinCss,KIT_CONTROL_HEIGHT_VAR,KIT_CONTROL_FONT_VAR,$$1,setFeatureState,PANEL_UI_CLASS,TOKEN_VAR,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,SITE_LIGHT_C_BG,SITE_LIGHT_C_BG_ALT,SITE_DARK_C_BG,SITE_DARK_C_BORDER,APPEARANCE_BACKGROUND_TOO_LARGE,getFeatureState;return{setters:[function(module){yieldToMain=module.y;detectPageKind=module.d;mountGifMarks=module.m;mountCards=module.a;syncFavoritesPage=module.s;mountFavoriteVideoMarks=module.b;mountCommentsPage=module.c;runFeaturesYielding=module.r;getAppearance=module.g;applyAppearanceTheme=module.e;ensureDocumentStyles=module.f;SITE_SELECTORS=module.S;loadFavSet=module.l;log=module.h;SITE_ORIGIN=module.i;SEARCH_PARAM_TAGS=module.j;normalizeArtistTag=module.n;CSS_CLASS=module.C;getSyncState=module.k;ensureStyleElement=module.o;RDW_OWN_PAGE_STYLE_ID=module.R;buildOwnPageCss=module.p;HEADER_SELECTOR$1=module.H;RDW_OWN_PAGE_CLASS=module.q;MENU_ITEM_ID=module.M;getFeatureEnabled=module.t;applyHeaderLayout=module.u;parseRdwHash=module.v;readFavoritesSyncMode=module.w;FAVORITES_SYNC_MODE_FULL=module.F;runFavoritesSync=module.x;UI_TEXT=module.U;Q$1=module.Q;RDW_PAGE_ROOT_ID=module.z;NAVBAR_SELECTOR=module.N;FEED_MENU_ITEM_ID=module.A;RDW_HASH_COLLECTIONS=module.B;MENU_LABEL=module.D;RDW_HASH_FOLLOWING=module.E;resolveFavoritesUserId=module.G;RDW_HASH_STATS=module.I;MY_FAVORITES_CONTAINER_ID=module.J;RDW_HASH_SETTINGS=module.K;rdwPageHash=module.L;createFavoritesSyncTabId=module.O;APPEARANCE_BACKGROUND_KEY=module.P;readArtistsMirror=module.T;listArtistTags=module.V;writeArtistsMirror=module.W;reloadFromStorage=module.X;save=module.Y;CURRENT_PAGE_CLASS=module.Z;setSyncState=module._;SEARCH_PARAM_PAGE=module.$;FAVORITES_PAGE=module.a0;FAVORITES_SECTION_VIEW=module.a1;SEARCH_PATH=module.a2;a=module.a3;applyTokenProperties=module.a4;resolveAppearancePalette=module.a5;isCollectionDetailPage=module.a6;menuRouteForPage=module.a7;getSiteSkinCss=module.a8;KIT_CONTROL_HEIGHT_VAR=module.a9;KIT_CONTROL_FONT_VAR=module.aa;$$1=module.ab;setFeatureState=module.ac;PANEL_UI_CLASS=module.ad;TOKEN_VAR=module.ae;RDW_THEME_ATTR=module.af;APPEARANCE_THEME_SITE=module.ag;APPEARANCE_THEME_SITE_DARK=module.ah;SITE_LIGHT_C_BG=module.ai;SITE_LIGHT_C_BG_ALT=module.aj;SITE_DARK_C_BG=module.ak;SITE_DARK_C_BORDER=module.al;APPEARANCE_BACKGROUND_TOO_LARGE=module.am;getFeatureState=module.an;}],execute:(function(){exports({a:installSiteMenu,f:isViewMode,i:navigateToRdwRoute,m:writeViewMode,n:loadBackground,p:readViewMode,r:saveBackground,startApp:startApp,t:clearBackground});/** Matches host.tsx page title class (owned there; styled here for site polish). */
 var PAGE_TITLE_CLASS$1 = "rdw-page-title";
 /** Matches kit SectionLabel class. */
 var SECTION_LABEL_CLASS = "rdw-section-label";
@@ -18960,35 +19100,35 @@ var followingFactory = null;
 var statsFactory = null;
 function getSettingsFactory() {
 	if (settingsFactory === null) settingsFactory = async () => {
-		const mod = await module.import('./settings-page-B7nfjDaF-D2oMot3I.js');
+		const mod = await module.import('./settings-page-DBrDCmI4-D_kTVRBQ.js');
 		return /* @__PURE__ */ a(mod.SettingsPage, {});
 	};
 	return settingsFactory;
 }
 function getCollectionsFactory() {
 	if (collectionsFactory === null) collectionsFactory = async () => {
-		const mod = await module.import('./collections-page-DY0aCXVj-BWa89B6O.js');
+		const mod = await module.import('./collections-page-C09969So-Cmu934CT.js');
 		return /* @__PURE__ */ a(mod.CollectionsPage, {});
 	};
 	return collectionsFactory;
 }
 function getFollowingFactory() {
 	if (followingFactory === null) followingFactory = async () => {
-		const mod = await module.import('./following-page-CeKW66DQ-CTLXh9EE.js');
+		const mod = await module.import('./following-page-Bb2RU3M3-NcMbFa2O.js');
 		return /* @__PURE__ */ a(mod.FollowingPage, {});
 	};
 	return followingFactory;
 }
 function getStatsFactory() {
 	if (statsFactory === null) statsFactory = async () => {
-		const mod = await module.import('./stats-section-C5hPWJln-B3G5vO88.js');
+		const mod = await module.import('./stats-section-CgKyeBDW-CfhzxM4V.js');
 		return /* @__PURE__ */ a(mod.StatsPage, {});
 	};
 	return statsFactory;
 }
 function collectionDetailFactory(collectionId) {
 	return async () => {
-		const mod = await module.import('./collection-detail-page-SR4J1ZtL-BLpWpoVi.js');
+		const mod = await module.import('./collection-detail-page-CvfTbc9B-CqOX_bQb.js');
 		return /* @__PURE__ */ a(mod.CollectionDetailPage, { collectionId }, collectionId);
 	};
 }
@@ -19090,7 +19230,7 @@ function findNavbar() {
 	return navbar instanceof HTMLUListElement ? navbar : null;
 }
 function findHeader$1() {
-	const header = document.querySelector(HEADER_SELECTOR$2);
+	const header = document.querySelector(HEADER_SELECTOR$1);
 	return header instanceof HTMLElement ? header : null;
 }
 /**
@@ -19212,28 +19352,28 @@ function captureSiteCurrentIfNeeded() {
 		savedSiteCurrent = null;
 		return;
 	}
-	const current = navbar.querySelector(`li.${CURRENT_PAGE_CLASS$1}`);
+	const current = navbar.querySelector(`li.${CURRENT_PAGE_CLASS}`);
 	savedSiteCurrent = current instanceof HTMLLIElement && !Object.values(MENU_ITEM_ID).includes(current.id) ? current : null;
 }
 function clearAllOwnCurrent() {
 	for (const id of Object.values(MENU_ITEM_ID)) {
 		const item = document.getElementById(id);
-		if (item instanceof HTMLLIElement) item.classList.remove(CURRENT_PAGE_CLASS$1);
+		if (item instanceof HTMLLIElement) item.classList.remove(CURRENT_PAGE_CLASS);
 	}
 }
 /** Mark the own-page nav item; remember site current-page for restore. */
 function setOwnPageCurrentHighlight(route) {
 	captureSiteCurrentIfNeeded();
 	const navbar = findNavbar();
-	if (navbar !== null) for (const child of navbar.querySelectorAll(`li.${CURRENT_PAGE_CLASS$1}`)) child.classList.remove(CURRENT_PAGE_CLASS$1);
+	if (navbar !== null) for (const child of navbar.querySelectorAll(`li.${CURRENT_PAGE_CLASS}`)) child.classList.remove(CURRENT_PAGE_CLASS);
 	clearAllOwnCurrent();
 	const item = document.getElementById(menuItemIdForRoute(route));
-	if (item instanceof HTMLLIElement) item.classList.add(CURRENT_PAGE_CLASS$1);
+	if (item instanceof HTMLLIElement) item.classList.add(CURRENT_PAGE_CLASS);
 }
 /** Restore site current-page after leaving #rdw/ routes. */
 function clearOwnPageCurrentHighlight() {
 	clearAllOwnCurrent();
-	if (savedSiteCurrent !== null && savedSiteCurrent.isConnected) savedSiteCurrent.classList.add(CURRENT_PAGE_CLASS$1);
+	if (savedSiteCurrent !== null && savedSiteCurrent.isConnected) savedSiteCurrent.classList.add(CURRENT_PAGE_CLASS);
 	savedSiteCurrent = null;
 	siteCurrentCaptured = false;
 }
@@ -19248,7 +19388,7 @@ function ensureOwnPageStyle() {
 	style.textContent = buildOwnPageCss();
 }
 function findHeader() {
-	const header = document.querySelector(HEADER_SELECTOR$2);
+	const header = document.querySelector(HEADER_SELECTOR$1);
 	return header instanceof HTMLElement ? header : null;
 }
 async function enterRoute(route) {
@@ -19792,7 +19932,7 @@ async function startApp() {
 	await yieldToMain();
 	maybeResumeFavoritesSync();
 }})}}));
-System.register("./settings-page-B7nfjDaF-D2oMot3I.js", ['./___monkey.entry.js','./app-ZdxwVkN2-DLaAhNPb.js'],(function(exports){'use strict';var d,a,PANEL_UI_CLASS,Switch,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,STATS_MENU_SETTING_LABEL,STATS_MENU_SWITCH_ID,setFeatureEnabled,STICKY_HEADER_SETTING_LABEL,STICKY_HEADER_SWITCH_ID,applyStickyHeader,NumberField,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,setGridFavButtonsVisible,IconChevronRight,IconChevronDown,Card,P$1,T,A,getAppearance,applyAppearanceTheme,getSiteSkinCss,APPEARANCE_THEME_CUSTOM,KIT_FOCUS_CSS,SectionLabel,Select,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,$$1,Segmented,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,TextField,Button,clampBackgroundDim,FEATURES,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,clearFeatureState,applyCssOnlyFeatureEnabled,isFeatureEnabled,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,applyCssOnlyFeatureChoice,getFeatureChoice,createAutocompleteQuerier,b,readSiteBlacklist,AutocompleteField,Chip,ProgressBar,createDefaultCustomTheme,AppearanceThemeSchema,prepareBackgroundImageFile,setFeatureState,writeSiteBlacklist,runFavoritesSync,log,FAVORITES_SYNC_PAGE_PAUSE_MS,clearApiCredentials,parseApiCredentials,setApiCredentials,load,createDefaultStorage,clearStorageCache,clearFavsCache,getSyncState,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,isSiteUrl,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,setAppearance,loadFavSet,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,gridDensityFeature,FAVORITES_SYNC_MODE_INCREMENTAL,FAVORITES_SYNC_MODE_FULL,STATS_MENU_SETTING_ID,STICKY_HEADER_SETTING_ID,hasApiCredentials,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureEnabled,getFeatureChoiceValue,getFeatureState,getScreenPixelSize,installSiteMenu,loadBackground,clearBackground,saveBackground;return{setters:[function(module){d=module.ao;a=module.a3;PANEL_UI_CLASS=module.ad;Switch=module.ap;UI_TEXT=module.U;TWEAKS_SWITCH_ID=module.aq;setTweaksEnabled=module.ar;STATS_MENU_SETTING_LABEL=module.as;STATS_MENU_SWITCH_ID=module.at;setFeatureEnabled=module.au;STICKY_HEADER_SETTING_LABEL=module.av;STICKY_HEADER_SWITCH_ID=module.aw;applyStickyHeader=module.ax;NumberField=module.ay;UPDATES_GROUP_SIZE_ID=module.az;setUpdatesGroupSize=module.aA;getUpdatesGroupSize=module.aB;PLAYLIST_CHUNK_SIZE_ID=module.aC;setPlaylistChunkSize=module.aD;getPlaylistChunkSize=module.aE;GRID_FAV_CHECKBOX_ID=module.aF;setGridFavButtonsEnabled=module.aG;setGridFavButtonsVisible=module.aH;IconChevronRight=module.aI;IconChevronDown=module.aJ;Card=module.aK;P$1=module.aL;T=module.aM;A=module.aN;getAppearance=module.g;applyAppearanceTheme=module.e;getSiteSkinCss=module.a8;APPEARANCE_THEME_CUSTOM=module.aO;KIT_FOCUS_CSS=module.aP;SectionLabel=module.aQ;Select=module.aR;APPEARANCE_THEME_SITE=module.ag;APPEARANCE_THEME_SITE_DARK=module.ah;APPEARANCE_THEME_LIGHT=module.aS;APPEARANCE_THEME_DARK=module.aT;$$1=module.ab;Segmented=module.aU;APPEARANCE_CUSTOM_BASE_LIGHT=module.aV;APPEARANCE_CUSTOM_BASE_DARK=module.aW;TextField=module.aX;Button=module.aY;clampBackgroundDim=module.aZ;FEATURES=module.a_;featurePanelLabel=module.a$;FEATURE_CHECKBOX_ID_PREFIX=module.b0;clearFeatureState=module.b1;applyCssOnlyFeatureEnabled=module.b2;isFeatureEnabled=module.b3;FEATURE_CHOICE_ID_PREFIX=module.b4;setFeatureChoiceValue=module.b5;applyCssOnlyFeatureChoice=module.b6;getFeatureChoice=module.b7;createAutocompleteQuerier=module.b8;b=module.b9;readSiteBlacklist=module.ba;AutocompleteField=module.bb;Chip=module.bc;ProgressBar=module.bd;createDefaultCustomTheme=module.be;AppearanceThemeSchema=module.bf;prepareBackgroundImageFile=module.bg;setFeatureState=module.ac;writeSiteBlacklist=module.bh;runFavoritesSync=module.x;log=module.h;FAVORITES_SYNC_PAGE_PAUSE_MS=module.bi;clearApiCredentials=module.bj;parseApiCredentials=module.bk;setApiCredentials=module.bl;load=module.bm;createDefaultStorage=module.bn;clearStorageCache=module.bo;clearFavsCache=module.bp;getSyncState=module.k;object=module.bq;StorageSchema=module.br;optional=module.bs;string=module.bt;FavsSchema=module.bu;literal=module.bv;IMPORT_SCHEMA_ERROR_PREFIX=module.bw;isSiteUrl=module.bx;stripLegacyPanelWindowSize=module.by;save=module.Y;migrateMarksFavToFavs=module.bz;FAVS_STORAGE_KEY=module.bA;createDefaultFavs=module.bB;parseFavsStrict=module.bC;setAppearance=module.bD;loadFavSet=module.l;STORAGE_BACKUP_KEY=module.bE;extractFavIdsFromMarks=module.bF;gridDensityFeature=module.bG;FAVORITES_SYNC_MODE_INCREMENTAL=module.bH;FAVORITES_SYNC_MODE_FULL=module.F;STATS_MENU_SETTING_ID=module.bI;STICKY_HEADER_SETTING_ID=module.bJ;hasApiCredentials=module.bK;getTweaksEnabled=module.bL;getGridFavButtonsEnabled=module.bM;getFeatureEnabled=module.t;getFeatureChoiceValue=module.bN;getFeatureState=module.an;getScreenPixelSize=module.bO;},function(module){installSiteMenu=module.a;loadBackground=module.n;clearBackground=module.t;saveBackground=module.r;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
+System.register("./settings-page-DBrDCmI4-D_kTVRBQ.js", ['./___monkey.entry.js','./app-DYQSgpKT-BXmbR3m2.js'],(function(exports){'use strict';var d,a,PANEL_UI_CLASS,Switch,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,STATS_MENU_SETTING_LABEL,STATS_MENU_SWITCH_ID,setFeatureEnabled,STICKY_HEADER_SETTING_LABEL,STICKY_HEADER_SWITCH_ID,applyStickyHeader,NumberField,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,setGridFavButtonsVisible,IconChevronRight,IconChevronDown,Card,P$1,T,A,getAppearance,applyAppearanceTheme,getSiteSkinCss,APPEARANCE_THEME_CUSTOM,KIT_FOCUS_CSS,SectionLabel,Select,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,$$1,Segmented,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,TextField,Button,clampBackgroundDim,FEATURES,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,clearFeatureState,applyCssOnlyFeatureEnabled,isFeatureEnabled,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,applyCssOnlyFeatureChoice,getFeatureChoice,createAutocompleteQuerier,b,readSiteBlacklist,AutocompleteField,Chip,ProgressBar,createDefaultCustomTheme,AppearanceThemeSchema,prepareBackgroundImageFile,setFeatureState,writeSiteBlacklist,runFavoritesSync,log,FAVORITES_SYNC_PAGE_PAUSE_MS,clearApiCredentials,parseApiCredentials,setApiCredentials,load,createDefaultStorage,clearStorageCache,clearFavsCache,getSyncState,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,isSiteUrl,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,setAppearance,loadFavSet,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,gridDensityFeature,FAVORITES_SYNC_MODE_INCREMENTAL,FAVORITES_SYNC_MODE_FULL,STATS_MENU_SETTING_ID,STICKY_HEADER_SETTING_ID,hasApiCredentials,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureEnabled,getFeatureChoiceValue,getFeatureState,getScreenPixelSize,installSiteMenu,loadBackground,clearBackground,saveBackground;return{setters:[function(module){d=module.ao;a=module.a3;PANEL_UI_CLASS=module.ad;Switch=module.ap;UI_TEXT=module.U;TWEAKS_SWITCH_ID=module.aq;setTweaksEnabled=module.ar;STATS_MENU_SETTING_LABEL=module.as;STATS_MENU_SWITCH_ID=module.at;setFeatureEnabled=module.au;STICKY_HEADER_SETTING_LABEL=module.av;STICKY_HEADER_SWITCH_ID=module.aw;applyStickyHeader=module.ax;NumberField=module.ay;UPDATES_GROUP_SIZE_ID=module.az;setUpdatesGroupSize=module.aA;getUpdatesGroupSize=module.aB;PLAYLIST_CHUNK_SIZE_ID=module.aC;setPlaylistChunkSize=module.aD;getPlaylistChunkSize=module.aE;GRID_FAV_CHECKBOX_ID=module.aF;setGridFavButtonsEnabled=module.aG;setGridFavButtonsVisible=module.aH;IconChevronRight=module.aI;IconChevronDown=module.aJ;Card=module.aK;P$1=module.aL;T=module.aM;A=module.aN;getAppearance=module.g;applyAppearanceTheme=module.e;getSiteSkinCss=module.a8;APPEARANCE_THEME_CUSTOM=module.aO;KIT_FOCUS_CSS=module.aP;SectionLabel=module.aQ;Select=module.aR;APPEARANCE_THEME_SITE=module.ag;APPEARANCE_THEME_SITE_DARK=module.ah;APPEARANCE_THEME_LIGHT=module.aS;APPEARANCE_THEME_DARK=module.aT;$$1=module.ab;Segmented=module.aU;APPEARANCE_CUSTOM_BASE_LIGHT=module.aV;APPEARANCE_CUSTOM_BASE_DARK=module.aW;TextField=module.aX;Button=module.aY;clampBackgroundDim=module.aZ;FEATURES=module.a_;featurePanelLabel=module.a$;FEATURE_CHECKBOX_ID_PREFIX=module.b0;clearFeatureState=module.b1;applyCssOnlyFeatureEnabled=module.b2;isFeatureEnabled=module.b3;FEATURE_CHOICE_ID_PREFIX=module.b4;setFeatureChoiceValue=module.b5;applyCssOnlyFeatureChoice=module.b6;getFeatureChoice=module.b7;createAutocompleteQuerier=module.b8;b=module.b9;readSiteBlacklist=module.ba;AutocompleteField=module.bb;Chip=module.bc;ProgressBar=module.bd;createDefaultCustomTheme=module.be;AppearanceThemeSchema=module.bf;prepareBackgroundImageFile=module.bg;setFeatureState=module.ac;writeSiteBlacklist=module.bh;runFavoritesSync=module.x;log=module.h;FAVORITES_SYNC_PAGE_PAUSE_MS=module.bi;clearApiCredentials=module.bj;parseApiCredentials=module.bk;setApiCredentials=module.bl;load=module.bm;createDefaultStorage=module.bn;clearStorageCache=module.bo;clearFavsCache=module.bp;getSyncState=module.k;object=module.bq;StorageSchema=module.br;optional=module.bs;string=module.bt;FavsSchema=module.bu;literal=module.bv;IMPORT_SCHEMA_ERROR_PREFIX=module.bw;isSiteUrl=module.bx;stripLegacyPanelWindowSize=module.by;save=module.Y;migrateMarksFavToFavs=module.bz;FAVS_STORAGE_KEY=module.bA;createDefaultFavs=module.bB;parseFavsStrict=module.bC;setAppearance=module.bD;loadFavSet=module.l;STORAGE_BACKUP_KEY=module.bE;extractFavIdsFromMarks=module.bF;gridDensityFeature=module.bG;FAVORITES_SYNC_MODE_INCREMENTAL=module.bH;FAVORITES_SYNC_MODE_FULL=module.F;STATS_MENU_SETTING_ID=module.bI;STICKY_HEADER_SETTING_ID=module.bJ;hasApiCredentials=module.bK;getTweaksEnabled=module.bL;getGridFavButtonsEnabled=module.bM;getFeatureEnabled=module.t;getFeatureChoiceValue=module.bN;getFeatureState=module.an;getScreenPixelSize=module.bO;},function(module){installSiteMenu=module.a;loadBackground=module.n;clearBackground=module.t;saveBackground=module.r;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
 var THEME_OPTIONS = [
 	{
 		value: APPEARANCE_THEME_SITE,
@@ -21467,7 +21607,7 @@ function SettingsPage() {
 		]
 	});
 }})}}));
-System.register("./collections-page-DY0aCXVj-BWa89B6O.js", ['./___monkey.entry.js','./filter-terms-Dqag3iAV-Bgq_MKCQ.js','./app-ZdxwVkN2-DLaAhNPb.js'],(function(exports){'use strict';var d,b,A,reloadFromStorage,load,a,Segmented,TextField,$$1,Button,UI_TEXT,IconPlus,EmptyState,Dialog,resolveCollectionKind,STICKY_TOP,deleteCollection,QueryField,isUnfilteredQuery,createDynamicCollection,createPlaylist,COLLECTION_KIND_POSTS,collectionDetailHash,readCoverMirror,COLLECTION_KIND_SEARCH,IconCheck,readCountMirror,buildSearchUrl,dynamicCollectionMarkHash,serialize,matchesAnyTerm,filterTerms,COLLECTION_TERM_SEPARATOR,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,PAGE_CENTRE_PADDING,COLLECTIONS_VIEW_STATE_ID,readViewMode;return{setters:[function(module){d=module.ao;b=module.b9;A=module.aN;reloadFromStorage=module.X;load=module.bm;a=module.a3;Segmented=module.aU;TextField=module.aX;$$1=module.ab;Button=module.aY;UI_TEXT=module.U;IconPlus=module.bP;EmptyState=module.bQ;Dialog=module.bR;resolveCollectionKind=module.bS;STICKY_TOP=module.bT;deleteCollection=module.bU;QueryField=module.bV;isUnfilteredQuery=module.bW;createDynamicCollection=module.bX;createPlaylist=module.bY;COLLECTION_KIND_POSTS=module.bZ;collectionDetailHash=module.b_;readCoverMirror=module.b$;COLLECTION_KIND_SEARCH=module.c0;IconCheck=module.c1;readCountMirror=module.c2;buildSearchUrl=module.c3;dynamicCollectionMarkHash=module.c4;serialize=module.c5;},function(module){matchesAnyTerm=module.m;filterTerms=module.f;COLLECTION_TERM_SEPARATOR=module.C;},function(module){VIEW_OPTIONS=module.d;VIEW_LABEL=module.l;isViewMode=module.f;writeViewMode=module.m;PAGE_CENTRE_PADDING=module.c;COLLECTIONS_VIEW_STATE_ID=module.o;readViewMode=module.p;}],execute:(function(){exports("CollectionsPage",CollectionsPage);var EVENT_PAGESHOW = "pageshow";
+System.register("./collections-page-C09969So-Cmu934CT.js", ['./___monkey.entry.js','./filter-terms-Dqag3iAV-Bgq_MKCQ.js','./app-DYQSgpKT-BXmbR3m2.js'],(function(exports){'use strict';var d,b,A,reloadFromStorage,load,a,Segmented,TextField,Select,setFeatureState,$$1,Button,UI_TEXT,IconPlus,EmptyState,Dialog,resolveCollectionKind,STICKY_TOP,deleteCollection,QueryField,isUnfilteredQuery,createDynamicCollection,createPlaylist,COLLECTION_KIND_POSTS,collectionDetailHash,readCoverMirror,COLLECTION_KIND_SEARCH,IconCheck,readCountMirror,buildSearchUrl,dynamicCollectionMarkHash,serialize,getFeatureState,matchesAnyTerm,filterTerms,COLLECTION_TERM_SEPARATOR,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,PAGE_CENTRE_PADDING,COLLECTIONS_VIEW_STATE_ID,readViewMode;return{setters:[function(module){d=module.ao;b=module.b9;A=module.aN;reloadFromStorage=module.X;load=module.bm;a=module.a3;Segmented=module.aU;TextField=module.aX;Select=module.aR;setFeatureState=module.ac;$$1=module.ab;Button=module.aY;UI_TEXT=module.U;IconPlus=module.bP;EmptyState=module.bQ;Dialog=module.bR;resolveCollectionKind=module.bS;STICKY_TOP=module.bT;deleteCollection=module.bU;QueryField=module.bV;isUnfilteredQuery=module.bW;createDynamicCollection=module.bX;createPlaylist=module.bY;COLLECTION_KIND_POSTS=module.bZ;collectionDetailHash=module.b_;readCoverMirror=module.b$;COLLECTION_KIND_SEARCH=module.c0;IconCheck=module.c1;readCountMirror=module.c2;buildSearchUrl=module.c3;dynamicCollectionMarkHash=module.c4;serialize=module.c5;getFeatureState=module.an;},function(module){matchesAnyTerm=module.m;filterTerms=module.f;COLLECTION_TERM_SEPARATOR=module.C;},function(module){VIEW_OPTIONS=module.d;VIEW_LABEL=module.l;isViewMode=module.f;writeViewMode=module.m;PAGE_CENTRE_PADDING=module.c;COLLECTIONS_VIEW_STATE_ID=module.o;readViewMode=module.p;}],execute:(function(){exports("CollectionsPage",CollectionsPage);var EVENT_PAGESHOW = "pageshow";
 var PAGE_CLASS = "rdw-collections-page";
 var HEADER_CLASS = "rdw-collections-header";
 var TOOLBAR_CLASS = "rdw-collections-toolbar";
@@ -21600,6 +21740,15 @@ var COLLECTIONS_PAGE_CSS = `
   min-width: 0;
   max-width: 100%;
   margin: 0;
+}
+/* The caption over the sort list would make the row taller; the options say what they sort by. */
+.${TOOLBAR_CLASS} .rdw-select__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 /* Starts short and grows with what is typed, up to the row. */
 .${FILTER_FIELD_CLASS} .rdw-field__input {
@@ -21804,6 +21953,48 @@ function visibleCollections(collections, filter, nameQuery) {
 		visible.push(collection);
 	}
 	return visible;
+}
+var SORT_CREATED = "created";
+var SORT_NAME = "name";
+var SORT_SIZE = "size";
+var SORT_STATE_ID = "collections-sort";
+var SORT_LABEL = "Sort";
+var SORT_OPTIONS = [
+	{
+		value: SORT_CREATED,
+		label: "As created"
+	},
+	{
+		value: SORT_NAME,
+		label: "By name"
+	},
+	{
+		value: SORT_SIZE,
+		label: "By size"
+	}
+];
+function isCollectionSort(value) {
+	return value === "created" || value === "name" || value === "size";
+}
+function readCollectionSort() {
+	const stored = getFeatureState(SORT_STATE_ID);
+	return isCollectionSort(stored) ? stored : SORT_CREATED;
+}
+/** Posts in a collection; a dynamic one whose count is not known yet counts as none. */
+function collectionSize(collection) {
+	return resolveCollectionKind(collection) === "posts" ? collection.postIds?.length ?? 0 : collection.postCount?.value ?? 0;
+}
+/** "As created" keeps the stored order; the other two break ties by name. */
+function sortCollections(collections, sort) {
+	const sorted = [...collections];
+	if (sort === "created") return sorted;
+	const byName = (a, b) => a.name.localeCompare(b.name, void 0, {
+		sensitivity: "base",
+		numeric: true
+	});
+	sorted.sort(byName);
+	if (sort === "size") sorted.sort((a, b) => collectionSize(b) - collectionSize(a));
+	return sorted;
 }
 function kindForFilter(filter) {
 	if (filter === FILTER_DYNAMIC) return KIND_DYNAMIC;
@@ -22055,6 +22246,7 @@ function CollectionsPage() {
 	const [filter, setFilter] = d(FILTER_ALL);
 	const [nameQuery, setNameQuery] = d("");
 	const [view, setView] = d(() => readViewMode(COLLECTIONS_VIEW_STATE_ID));
+	const [sort, setSort] = d(() => readCollectionSort());
 	const [dialogOpen, setDialogOpen] = d(false);
 	const [newKind, setNewKind] = d(KIND_CUSTOM);
 	const [nameDraft, setNameDraft] = d("");
@@ -22081,7 +22273,7 @@ function CollectionsPage() {
 		};
 	}, []);
 	const collections = load().collections;
-	const visible = visibleCollections(collections, filter, nameQuery);
+	const visible = sortCollections(visibleCollections(collections, filter, nameQuery), sort);
 	const emptyCopy = collections.length === 0 ? {
 		title: EMPTY_TITLE,
 		description: EMPTY_DESCRIPTION
@@ -22151,6 +22343,17 @@ function CollectionsPage() {
 							placeholder: FILTER_PLACEHOLDER,
 							"aria-label": FILTER_ARIA_LABEL,
 							onChange: setNameQuery
+						}),
+						/* @__PURE__ */ a(Select, {
+							label: SORT_LABEL,
+							options: SORT_OPTIONS,
+							value: sort,
+							onChange: (value) => {
+								if (isCollectionSort(value)) {
+									setFeatureState(SORT_STATE_ID, value);
+									setSort(value);
+								}
+							}
 						}),
 						/* @__PURE__ */ a(Segmented, {
 							label: VIEW_LABEL,
@@ -22262,7 +22465,7 @@ function CollectionsPage() {
 		]
 	});
 }})}}));
-System.register("./following-page-CeKW66DQ-CTLXh9EE.js", ['./___monkey.entry.js','./filter-terms-Dqag3iAV-Bgq_MKCQ.js','./app-ZdxwVkN2-DLaAhNPb.js'],(function(exports){'use strict';var d,T,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST,A,reloadFromStorage,getSeenPostId,a,EmptyState,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,$$1,Button,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,Segmented,TextField,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,Select,UI_TEXT,ProgressBar,Dialog,removeArtist,load,completeLastQueryToken,readLastQueryToken,STICKY_TOP,IconPlus,buildSearchUrl,TAG_TYPE_INCLUDE,IconCheck,IconButton,IconX,removeArtists,rememberArtistSnapshot,fetchArtistSnapshot,log,addArtists,AutocompleteField,filterTerms,matchesAnyTerm,ARTIST_TERM_SEPARATOR,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,PAGE_CENTRE_PADDING,FOLLOWING_VIEW_STATE_ID,readViewMode;return{setters:[function(module){d=module.ao;T=module.aM;createAutocompleteQuerier=module.b8;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.c6;A=module.aN;reloadFromStorage=module.X;getSeenPostId=module.c7;a=module.a3;EmptyState=module.bQ;ARTISTS_EMPTY_HINT=module.c8;ARTISTS_EMPTY_TITLE=module.c9;$$1=module.ab;Button=module.aY;SEARCH_PATH=module.a2;SEARCH_PARAM_PAGE=module.$;SEARCH_PAGE=module.ca;SEARCH_SECTION=module.cb;Segmented=module.aU;TextField=module.aX;ARTIST_FILTER_LABEL=module.cc;ARTIST_FILTER_ID=module.cd;Select=module.aR;UI_TEXT=module.U;ProgressBar=module.bd;Dialog=module.bR;removeArtist=module.ce;load=module.bm;completeLastQueryToken=module.cf;readLastQueryToken=module.cg;STICKY_TOP=module.bT;IconPlus=module.bP;buildSearchUrl=module.c3;TAG_TYPE_INCLUDE=module.ch;IconCheck=module.c1;IconButton=module.ci;IconX=module.cj;removeArtists=module.ck;rememberArtistSnapshot=module.cl;fetchArtistSnapshot=module.cm;log=module.h;addArtists=module.cn;AutocompleteField=module.bb;},function(module){filterTerms=module.f;matchesAnyTerm=module.m;ARTIST_TERM_SEPARATOR=module.A;},function(module){VIEW_OPTIONS=module.d;VIEW_LABEL=module.l;isViewMode=module.f;writeViewMode=module.m;PAGE_CENTRE_PADDING=module.c;FOLLOWING_VIEW_STATE_ID=module.s;readViewMode=module.p;}],execute:(function(){exports("FollowingPage",FollowingPage);var EVENT_PAGESHOW = "pageshow";
+System.register("./following-page-Bb2RU3M3-NcMbFa2O.js", ['./___monkey.entry.js','./filter-terms-Dqag3iAV-Bgq_MKCQ.js','./app-DYQSgpKT-BXmbR3m2.js'],(function(exports){'use strict';var d,T,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST,A,reloadFromStorage,getSeenPostId,a,EmptyState,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,$$1,Button,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,Segmented,TextField,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,Select,UI_TEXT,ProgressBar,Dialog,removeArtist,load,completeLastQueryToken,readLastQueryToken,STICKY_TOP,IconPlus,buildSearchUrl,TAG_TYPE_INCLUDE,IconCheck,IconButton,IconX,removeArtists,rememberArtistSnapshot,fetchArtistSnapshot,log,addArtists,AutocompleteField,filterTerms,matchesAnyTerm,ARTIST_TERM_SEPARATOR,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,PAGE_CENTRE_PADDING,FOLLOWING_VIEW_STATE_ID,readViewMode;return{setters:[function(module){d=module.ao;T=module.aM;createAutocompleteQuerier=module.b8;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.c6;A=module.aN;reloadFromStorage=module.X;getSeenPostId=module.c7;a=module.a3;EmptyState=module.bQ;ARTISTS_EMPTY_HINT=module.c8;ARTISTS_EMPTY_TITLE=module.c9;$$1=module.ab;Button=module.aY;SEARCH_PATH=module.a2;SEARCH_PARAM_PAGE=module.$;SEARCH_PAGE=module.ca;SEARCH_SECTION=module.cb;Segmented=module.aU;TextField=module.aX;ARTIST_FILTER_LABEL=module.cc;ARTIST_FILTER_ID=module.cd;Select=module.aR;UI_TEXT=module.U;ProgressBar=module.bd;Dialog=module.bR;removeArtist=module.ce;load=module.bm;completeLastQueryToken=module.cf;readLastQueryToken=module.cg;STICKY_TOP=module.bT;IconPlus=module.bP;buildSearchUrl=module.c3;TAG_TYPE_INCLUDE=module.ch;IconCheck=module.c1;IconButton=module.ci;IconX=module.cj;removeArtists=module.ck;rememberArtistSnapshot=module.cl;fetchArtistSnapshot=module.cm;log=module.h;addArtists=module.cn;AutocompleteField=module.bb;},function(module){filterTerms=module.f;matchesAnyTerm=module.m;ARTIST_TERM_SEPARATOR=module.A;},function(module){VIEW_OPTIONS=module.d;VIEW_LABEL=module.l;isViewMode=module.f;writeViewMode=module.m;PAGE_CENTRE_PADDING=module.c;FOLLOWING_VIEW_STATE_ID=module.s;readViewMode=module.p;}],execute:(function(){exports("FollowingPage",FollowingPage);var EVENT_PAGESHOW = "pageshow";
 var PAGE_CLASS = "rdw-following-page";
 var STICKY_CLASS = "rdw-following-sticky";
 var TOOLBAR_CLASS = "rdw-following-toolbar";
@@ -23171,7 +23374,7 @@ function matchesAnyTerm(texts, terms) {
 	const lowered = texts.map((text) => text.toLowerCase());
 	return terms.some((term) => lowered.some((text) => text.includes(term)));
 }})}}));
-System.register("./stats-section-C5hPWJln-B3G5vO88.js", ['./___monkey.entry.js'],(function(exports){'use strict';var a,PANEL_UI_CLASS,Card,loadFavSet,load,resolveCollectionKind,d,Button,$$1,setFeatureState,FETCH_CREDENTIALS,object,number,optional,string,SEARCH_PATH,SEARCH_PARAM_PAGE,int,getFeatureState;return{setters:[function(module){a=module.a3;PANEL_UI_CLASS=module.ad;Card=module.aK;loadFavSet=module.l;load=module.bm;resolveCollectionKind=module.bS;d=module.ao;Button=module.aY;$$1=module.ab;setFeatureState=module.ac;FETCH_CREDENTIALS=module.co;object=module.bq;number=module.cp;optional=module.bs;string=module.bt;SEARCH_PATH=module.a2;SEARCH_PARAM_PAGE=module.$;int=module.cq;getFeatureState=module.an;}],execute:(function(){exports("StatsPage",StatsPage);/**
+System.register("./stats-section-CgKyeBDW-CfhzxM4V.js", ['./___monkey.entry.js'],(function(exports){'use strict';var a,PANEL_UI_CLASS,Card,loadFavSet,load,resolveCollectionKind,d,A,readFavoriteIndex,topFavoriteTags,Button,$$1,setFeatureState,FETCH_CREDENTIALS,object,number,optional,string,SEARCH_PATH,SEARCH_PARAM_PAGE,int,getFeatureState;return{setters:[function(module){a=module.a3;PANEL_UI_CLASS=module.ad;Card=module.aK;loadFavSet=module.l;load=module.bm;resolveCollectionKind=module.bS;d=module.ao;A=module.aN;readFavoriteIndex=module.co;topFavoriteTags=module.cp;Button=module.aY;$$1=module.ab;setFeatureState=module.ac;FETCH_CREDENTIALS=module.cq;object=module.bq;number=module.cr;optional=module.bs;string=module.bt;SEARCH_PATH=module.a2;SEARCH_PARAM_PAGE=module.$;int=module.cs;getFeatureState=module.an;}],execute:(function(){exports("StatsPage",StatsPage);/**
 * The numbers of the user's own profile page on the site, for Statistics.
 *
 * Read only when the user presses "Refresh profile": two requests with a
@@ -23356,6 +23559,9 @@ var KIND_CUSTOM_LABEL = "Custom";
 var KIND_DYNAMIC_LABEL = "Dynamic";
 var TOP_HEADING = "Collections by posts";
 var TOP_EMPTY = "Collections show here once they hold posts or their count is known.";
+var TOP_TAGS_HEADING = "Top tags in favorites";
+var TOP_TAGS_EMPTY = "Run Full resync in RuleDesk → Favorites to fill this: it reads the tags of your favorites.";
+var TOP_TAGS_LIMIT = 20;
 var PROFILE_HEADING = "Site profile";
 var PROFILE_REFRESH_LABEL = "Refresh profile";
 var PROFILE_REFRESH_TITLE = "Reads your profile page on the site: two requests, a moment apart";
@@ -23689,6 +23895,53 @@ function formatDay(time) {
 		year: "numeric"
 	});
 }
+/** Bars of the most frequent tags among the favorites, from the local index. */
+function FavoriteTagsBlock() {
+	const [tags, setTags] = d(null);
+	A(() => {
+		let alive = true;
+		readFavoriteIndex().then((entries) => {
+			if (alive) setTags(topFavoriteTags(entries, loadFavSet(), TOP_TAGS_LIMIT));
+		}).catch(() => {
+			if (alive) setTags([]);
+		});
+		return () => {
+			alive = false;
+		};
+	}, []);
+	if (tags === null) return null;
+	const largest = tags[0]?.count ?? 0;
+	return /* @__PURE__ */ a("div", {
+		className: CHART_CLASS,
+		children: [/* @__PURE__ */ a("p", {
+			className: TILE_LABEL_CLASS,
+			children: TOP_TAGS_HEADING
+		}), largest === 0 ? /* @__PURE__ */ a("p", {
+			className: HINT_CLASS,
+			children: TOP_TAGS_EMPTY
+		}) : /* @__PURE__ */ a("ol", {
+			className: TOP_CLASS,
+			children: tags.map((entry) => /* @__PURE__ */ a("li", {
+				className: TOP_ROW_CLASS,
+				children: [
+					/* @__PURE__ */ a("span", {
+						title: entry.tag,
+						children: entry.tag.replaceAll("_", " ")
+					}),
+					/* @__PURE__ */ a("span", {
+						className: TOP_BAR_CLASS,
+						"aria-hidden": "true",
+						children: /* @__PURE__ */ a("span", {
+							className: TOP_FILL_CLASS,
+							style: { width: `${String(Math.max(MIN_BAR_PERCENT, Math.round(entry.count / largest * PERCENT)))}%` }
+						})
+					}),
+					/* @__PURE__ */ a("span", { children: formatNumber(entry.count) })
+				]
+			}, entry.tag))
+		})]
+	});
+}
 function ProfileBlock() {
 	const [profile, setProfile] = d(() => readStoredProfileStats());
 	const [busy, setBusy] = d(false);
@@ -23787,6 +24040,7 @@ function StatsSection() {
 					}), /* @__PURE__ */ a(CollectionBars, { collections: stats.topCollections })]
 				})]
 			}),
+			/* @__PURE__ */ a(FavoriteTagsBlock, {}),
 			/* @__PURE__ */ a(ProfileBlock, {}),
 			/* @__PURE__ */ a("p", {
 				className: HINT_CLASS,
@@ -23802,7 +24056,7 @@ function StatsPage() {
 		children: /* @__PURE__ */ a(StatsSection, {})
 	});
 }})}}));
-System.register("./collection-detail-page-SR4J1ZtL-BLpWpoVi.js", ['./___monkey.entry.js','./app-ZdxwVkN2-DLaAhNPb.js'],(function(exports){'use strict';var d,T,w$1,b,downloadsAvailable,a,$$1,Button,UI_TEXT,shuffleCollection,resetCollectionOrder,EmptyState,Dialog,TextField,Toast,getCollectionOrder,listPlaylists,RDW_HASH_COLLECTIONS,removePostsFromCollection,isDownloadBusy,startDownload,movePostInCollection,renameCollection,deleteCollection,RDW_ROUTE_COLLECTIONS,restorePosts,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION_VIEW,SEARCH_PATH,collectionQueueHash,navigateToRdwRoute;return{setters:[function(module){d=module.ao;T=module.aM;w$1=module.cr;b=module.b9;downloadsAvailable=module.cs;a=module.a3;$$1=module.ab;Button=module.aY;UI_TEXT=module.U;shuffleCollection=module.ct;resetCollectionOrder=module.cu;EmptyState=module.bQ;Dialog=module.bR;TextField=module.aX;Toast=module.cv;getCollectionOrder=module.cw;listPlaylists=module.cx;RDW_HASH_COLLECTIONS=module.B;removePostsFromCollection=module.cy;isDownloadBusy=module.cz;startDownload=module.cA;movePostInCollection=module.cB;renameCollection=module.cC;deleteCollection=module.bU;RDW_ROUTE_COLLECTIONS=module.cD;restorePosts=module.cE;SEARCH_PARAM_PAGE=module.$;SEARCH_PAGE=module.ca;SEARCH_SECTION_VIEW=module.cF;SEARCH_PATH=module.a2;collectionQueueHash=module.cG;},function(module){navigateToRdwRoute=module.i;}],execute:(function(){exports("CollectionDetailPage",CollectionDetailPage);var CELL_SIZE_PX = 200;
+System.register("./collection-detail-page-CvfTbc9B-CqOX_bQb.js", ['./___monkey.entry.js','./app-DYQSgpKT-BXmbR3m2.js'],(function(exports){'use strict';var d,T,w$1,b,downloadsAvailable,a,$$1,Button,UI_TEXT,shuffleCollection,resetCollectionOrder,EmptyState,Dialog,TextField,Toast,getCollectionOrder,listPlaylists,RDW_HASH_COLLECTIONS,removePostsFromCollection,isDownloadBusy,startDownload,movePostInCollection,renameCollection,deleteCollection,RDW_ROUTE_COLLECTIONS,restorePosts,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION_VIEW,SEARCH_PATH,collectionQueueHash,navigateToRdwRoute;return{setters:[function(module){d=module.ao;T=module.aM;w$1=module.ct;b=module.b9;downloadsAvailable=module.cu;a=module.a3;$$1=module.ab;Button=module.aY;UI_TEXT=module.U;shuffleCollection=module.cv;resetCollectionOrder=module.cw;EmptyState=module.bQ;Dialog=module.bR;TextField=module.aX;Toast=module.cx;getCollectionOrder=module.cy;listPlaylists=module.cz;RDW_HASH_COLLECTIONS=module.B;removePostsFromCollection=module.cA;isDownloadBusy=module.cB;startDownload=module.cC;movePostInCollection=module.cD;renameCollection=module.cE;deleteCollection=module.bU;RDW_ROUTE_COLLECTIONS=module.cF;restorePosts=module.cG;SEARCH_PARAM_PAGE=module.$;SEARCH_PAGE=module.ca;SEARCH_SECTION_VIEW=module.cH;SEARCH_PATH=module.a2;collectionQueueHash=module.cI;},function(module){navigateToRdwRoute=module.i;}],execute:(function(){exports("CollectionDetailPage",CollectionDetailPage);var CELL_SIZE_PX = 200;
 var GRID_GAP_PX = 4;
 var SECTION_GAP_PX = 12;
 var ACTIONS_GAP_PX = 8;

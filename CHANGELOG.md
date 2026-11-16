@@ -2,6 +2,13 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.34.0
+
+- Favorites: a post you make a favorite with the star is in the search on the Favorites page at once, without waiting for "Sync favorites"
+- Favorites: "Shuffle" shows the list in a random order, "Random" opens a random favorite
+- Statistics: "Top tags in favorites", the twenty most frequent tags among your favorites
+- Collections: a sort list, "As created", "By name" or "By size"; the choice is remembered
+
 ## 0.33.3
 
 - Animated GIFs carry a small "GIF" label in the corner of the thumbnail, on Posts, Feed, Favorites and Comments. The site marks them only with the `animated_gif` tag
