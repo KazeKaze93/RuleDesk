@@ -1,5 +1,4 @@
 import type { JSX } from "preact";
-import { createPortal } from "preact/compat";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 
 import { log } from "../log";
@@ -26,6 +25,7 @@ import {
   MEDIA_ALL,
   MEDIA_IMAGES,
   MEDIA_VIDEOS,
+  SORT_RANDOM,
   filterFavoriteIndex,
   isEmptyFavoritesQuery,
   isFavoritesMedia,
@@ -59,6 +59,10 @@ const SEARCH_TOOLS_CLASS = "rdw-fav-search-tools";
 const SEARCH_TOOL_CLASS = "rdw-fav-search-tool";
 const GROUP_LABEL_CLASS = "rdw-fav-group-label";
 const SYNTAX_CLASS = "rdw-fav-syntax";
+const SYNTAX_NOTE_CLASS = "rdw-fav-syntax-note";
+const COUNT_CLASS = "rdw-favorites-count";
+/** The right end of the row: the buttons the bulk bar puts there. */
+export const ACTIONS_CLASS = "rdw-favorites-head-actions";
 /**
  * How far the row of controls has been squeezed to fit, on the row itself:
  * 0 all of it, 1 without the group labels, 2 with the search field at its
@@ -69,7 +73,7 @@ export const FIT_STEPS = [0, 1, 2, 3] as const;
 const SEARCH_WIDTH_PX = 320;
 const SEARCH_MIN_WIDTH_PX = 200;
 const SEARCH_MAX_WIDTH_PX = 560;
-const SYNTAX_POPOVER_WIDTH_PX = 250;
+const SYNTAX_POPOVER_WIDTH_PX = 340;
 
 const VIEW_STATE_ID = "favorites-view";
 export const VIEW_PAGES = "pages";
@@ -89,9 +93,17 @@ const SYNTAX_LABEL = "Search syntax";
 /** What the search understands: an example and what it finds. */
 const SYNTAX_ROWS: readonly (readonly [string, string])[] = [
   ["cat dog", "posts with both tags"],
+  ["( cat ~ dog )", "posts with either tag; keep the spaces"],
   ["-video", "posts without the tag"],
-  ["cat*", "any tag that starts with cat"],
+  ["ca*t", "any tag that starts with ca and ends with t"],
+  ["sort:id:asc", "by post id, the oldest post first"],
+  ["sort:id:desc", "by post id, the newest post first"],
+  ["sort:random", "in a random order"],
 ];
+const SYNTAX_NOTE =
+  "This list knows the tags of a favorite and its id, nothing else. The site's other metatags (rating:, score:, user:, width:, md5:, parent: and the rest) and the fuzzy tag~ work in the search on Posts, not here.";
+const UNSUPPORTED_PREFIX = "Not searched here: ";
+const UNSUPPORTED_SUFFIX = ". See the ? in the search field.";
 const MEDIA_LABEL = "Type";
 const VIEW_LABEL = "View";
 const MORE_LABEL = "Show more";
@@ -223,8 +235,31 @@ body:not(.${FAVORITES_BROWSING_BODY_CLASS}) .${MORE_CLASS} {
   color: var(--rdw-muted);
 }
 .${STATUS_CLASS} {
+  flex: 0 0 100%;
   font: 12px var(--rdw-font);
   color: var(--rdw-muted);
+}
+.${COUNT_CLASS} {
+  margin-left: auto;
+  padding-left: 0.5rem;
+  font: 12px var(--rdw-font);
+  color: var(--rdw-muted);
+  white-space: nowrap;
+}
+.${CONTROLS_CLASS} .${ACTIONS_CLASS} {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+}
+.${CONTROLS_CLASS} .${ACTIONS_CLASS}:empty {
+  display: none;
+}
+.${SYNTAX_NOTE_CLASS} {
+  margin: 8px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--rdw-border);
+  color: var(--rdw-muted);
+  line-height: 1.4;
 }
 .${MORE_CLASS} {
   display: block;
@@ -434,12 +469,25 @@ export function resetFavoritesBrowserState(): void {
   onRemoveFailed = null;
 }
 
-function statusText(shown: number, indexed: number, favorites: number): string {
-  const found = `${shown.toLocaleString(LOCALE)} found`;
+/** "11,962 posts"; a count of none is said too, unlike in the page's own total. */
+export function postsLabel(count: number): string {
+  return `${count.toLocaleString(LOCALE)} ${count === 1 ? "post" : "posts"}`;
+}
+
+/** Says so when the index does not hold every favorite; nothing otherwise. */
+function indexNotice(indexed: number, favorites: number): string {
   if (indexed >= favorites) {
-    return found;
+    return "";
   }
-  return `${found} · the index holds ${indexed.toLocaleString(LOCALE)} of ${favorites.toLocaleString(LOCALE)} favorites; Full resync in RuleDesk → Favorites adds the rest`;
+  return `The index holds ${indexed.toLocaleString(LOCALE)} of ${favorites.toLocaleString(LOCALE)} favorites; Full resync in RuleDesk → Favorites adds the rest.`;
+}
+
+/** Names the typed terms the index cannot answer; nothing when there are none. */
+export function unsupportedNotice(terms: readonly string[]): string {
+  if (terms.length === 0) {
+    return "";
+  }
+  return `${UNSUPPORTED_PREFIX}${terms.join(", ")}${UNSUPPORTED_SUFFIX}`;
 }
 
 /** Opens a random post of the local list of favorites. */
@@ -483,8 +531,8 @@ export function favoritesFilterSummary(text: string, media: FavoritesMedia): str
 }
 
 export type FavoritesBrowserProps = {
-  /** Where the "N found" line goes; it is not drawn while this is null. */
-  readonly statusSlot?: HTMLElement | null;
+  /** Given the element at the right end of the row, for the page's buttons. */
+  readonly actionsRef?: (slot: HTMLElement | null) => void;
   /** Told what the list is narrowed to whenever that changes. */
   readonly onSummary?: (summary: string) => void;
 };
@@ -495,9 +543,14 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
   const [view, setView] = useState<FavoritesView>(() => readView());
   const [index, setIndex] = useState<readonly FavoriteIndexEntry[] | null>(null);
   const [status, setStatus] = useState("");
+  // How many favorites the list shows while it is narrowed; null on the site's own grid.
+  const [found, setFound] = useState<number | null>(null);
   const [syntaxOpen, setSyntaxOpen] = useState(false);
   const loadingRef = useRef(false);
   const rowRef = useRef<HTMLDivElement>(null);
+  const actionsSlotRef = useRef<HTMLDivElement>(null);
+  // One order for as long as the page lives: typing on does not reshuffle.
+  const randomSortSeedRef = useRef(Date.now());
   const syntaxButtonRef = useRef<HTMLButtonElement>(null);
 
   // A number while the list is shown in a random order, null otherwise.
@@ -528,6 +581,10 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
       fitControlsRow(row);
     });
     observer.observe(row);
+    // The buttons at the right end arrive after the row is drawn.
+    if (actionsSlotRef.current !== null) {
+      observer.observe(actionsSlotRef.current);
+    }
     return () => {
       observer.disconnect();
     };
@@ -546,6 +603,7 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
     if (!active) {
       hideFavoriteResults();
       setStatus("");
+      setFound(null);
       return undefined;
     }
     if (index === null) {
@@ -567,28 +625,40 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
       if (index.length === 0) {
         hideFavoriteResults();
         setStatus(NO_INDEX_STATUS);
+        setFound(null);
         return;
       }
-      const matched = filterFavoriteIndex(index, favorites, parseFavoritesQuery(text), media);
-      const results = shuffleSeed === null ? matched : shuffleBySeed(matched, shuffleSeed);
+      const parsed = parseFavoritesQuery(text);
+      const matched = filterFavoriteIndex(index, favorites, parsed, media);
+      // The Shuffle button wins over the order typed into the query.
+      const seed =
+        shuffleSeed ?? (parsed.sort === SORT_RANDOM ? randomSortSeedRef.current : null);
+      const results = seed === null ? matched : shuffleBySeed(matched, seed);
       showFavoriteResults(results);
       const indexed = index.filter((entry) => favorites.has(entry.id)).length;
-      setStatus(statusText(results.length, indexed, favorites.size));
+      setStatus(indexNotice(indexed, favorites.size));
+      setFound(results.length);
     }, TYPING_PAUSE_MS);
     return () => {
       window.clearTimeout(timer);
     };
   }, [active, index, text, media, shuffleSeed]);
 
-  const statusLine =
-    status.length > 0 ? (
-      <span className={STATUS_CLASS} role="status">
-        {status}
-      </span>
-    ) : null;
-  const statusSlot = props.statusSlot ?? null;
+  const notices = [unsupportedNotice(query.unsupported), status].filter(
+    (line) => line.length > 0,
+  );
+  const total = loadFavSet().size;
+  const count = found !== null ? postsLabel(found) : total > 0 ? postsLabel(total) : "";
+  const { actionsRef } = props;
+  useEffect(() => {
+    actionsRef?.(actionsSlotRef.current);
+    return () => {
+      actionsRef?.(null);
+    };
+  }, [actionsRef]);
 
   return (
+    <>
     <div className={CONTROLS_CLASS} ref={rowRef}>
       <style>{FAVORITES_BROWSER_CSS}</style>
       <div className={SEARCH_BOX_CLASS}>
@@ -648,6 +718,7 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
               </>
             ))}
           </dl>
+          <p className={SYNTAX_NOTE_CLASS}>{SYNTAX_NOTE}</p>
         </Popover>
       </div>
       <span className={GROUP_LABEL_CLASS} aria-hidden="true">
@@ -689,7 +760,18 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
         <IconShuffle size={14} />
         {SHUFFLE_LABEL}
       </Button>
-      {statusSlot !== null && statusLine !== null ? createPortal(statusLine, statusSlot) : null}
+      {count.length > 0 ? (
+        <span className={COUNT_CLASS} role="status">
+          {count}
+        </span>
+      ) : null}
+      <div className={ACTIONS_CLASS} ref={actionsSlotRef} />
     </div>
+    {notices.length > 0 ? (
+      <span className={STATUS_CLASS} role="status">
+        {notices.join(" ")}
+      </span>
+    ) : null}
+    </>
   );
 }

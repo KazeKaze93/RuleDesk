@@ -22,6 +22,8 @@ const PAGE_CONTROL_HEIGHT_PX = 32;
 const PAGE_CONTROL_FONT_PX = 13;
 const PAGE_SHELL_CLASS = "rdw-page-shell";
 const PAGE_TITLE_CLASS = "rdw-page-title";
+/** A title that is read out but not shown: the menu already says which page this is. */
+export const PAGE_TITLE_HIDDEN_CLASS = "rdw-page-title--hidden";
 /**
  * On the mount point of Collections and Following: the page spans the window
  * so that its tiles can; the page itself keeps the rest in the centred column.
@@ -67,11 +69,24 @@ const PAGE_HOST_CSS = `
   font-weight: 700;
   color: var(--rdw-text);
 }
+.${PAGE_TITLE_CLASS}.${PAGE_TITLE_HIDDEN_CLASS} {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 ${PAGE_CONTENT_CSS}
 `;
 
 type PageShellProps = {
   readonly title: string | null;
+  /** Keep the title for screen readers only. */
+  readonly titleHidden: boolean;
   readonly children: ComponentChild;
 };
 
@@ -81,7 +96,15 @@ function PageShell(props: PageShellProps): JSX.Element {
       <style>{PAGE_HOST_CSS}</style>
       <div className={PAGE_SHELL_CLASS}>
         {props.title !== null ? (
-          <h1 className={PAGE_TITLE_CLASS}>{props.title}</h1>
+          <h1
+            className={
+              props.titleHidden
+                ? `${PAGE_TITLE_CLASS} ${PAGE_TITLE_HIDDEN_CLASS}`
+                : PAGE_TITLE_CLASS
+            }
+          >
+            {props.title}
+          </h1>
         ) : null}
         {props.children}
       </div>
@@ -103,6 +126,14 @@ function titleForRoute(route: RdwPage): string | null {
     return MENU_LABEL.stats;
   }
   return MENU_LABEL.settings;
+}
+
+/**
+ * Collections and Following open with their own toolbar, and the menu marks
+ * them as the current section: a visible title would only repeat that.
+ */
+function titleHiddenForRoute(route: RdwPage): boolean {
+  return route === RDW_ROUTE_COLLECTIONS || route === RDW_ROUTE_FOLLOWING;
 }
 
 type PageFactory = () => Promise<JSX.Element>;
@@ -246,7 +277,9 @@ export async function showRdwPage(
   shownRoute = route;
   syncRdwPageLayout();
   preactRender(
-    <PageShell title={titleForRoute(route)}>{page}</PageShell>,
+    <PageShell title={titleForRoute(route)} titleHidden={titleHiddenForRoute(route)}>
+      {page}
+    </PageShell>,
     mount,
   );
 }

@@ -10,6 +10,7 @@ import { downloadsAvailable } from "./downloads/available";
 import {
   FAVORITES_BROWSING_BODY_CLASS,
   FavoritesBrowser,
+  postsLabel,
   bindInPlaceRemoval,
   favoritesGridRoot,
   openRandomFavorite,
@@ -50,8 +51,6 @@ const ROOT_CLASS = "rdw-favorites-bulk";
 export const PIN_ID = "rdw-favorites-pin";
 const PIN_CLASS = "rdw-favorites-pin";
 const FILTERS_CLASS = "rdw-favorites-filters";
-const HEAD_STATUS_CLASS = "rdw-favorites-head-status";
-const HEAD_ACTIONS_CLASS = "rdw-favorites-head-actions";
 const SUMMARY_CLASS = "rdw-favorites-bulk-summary";
 const MENU_CLASS = "rdw-favorites-menu";
 const MENU_ITEM_CLASS = "rdw-favorites-menu-item";
@@ -67,7 +66,6 @@ const CONFIRM_CLASS = "rdw-favorites-bulk-confirm";
 const CONFIRM_ROW_CLASS = "rdw-favorites-bulk-confirm-row";
 const PROGRESS_WRAP_CLASS = "rdw-favorites-bulk-progress";
 const TITLE_CLASS = "rdw-favorites-title";
-const COUNT_CLASS = "rdw-favorites-count";
 const TITLE_TEXT = "Favorites";
 const LOCALE = "en-US";
 /** Above the thumbs and their corner buttons. */
@@ -134,7 +132,6 @@ const BODY_CLASS = featureBodyClass(FEATURE_ID);
 const BODY_SELECTING_CLASS = `${BODY_CLASS}-selecting`;
 
 const FEATURE_CSS = `
-/* The page header: title, count and the buttons; stays at the top of the window. */
 body.${BODY_CLASS} .${ROOT_CLASS},
 body.${BODY_CLASS} .${PIN_CLASS} {
   display: flex;
@@ -147,15 +144,16 @@ body.${BODY_CLASS} .${PIN_CLASS} {
   flex: 0 0 100%;
   grid-column: 1 / -1;
 }
-/* The title row scrolls away with the page. */
+/* Holds only the page's heading, which is for screen readers: the menu
+   already shows where you are. */
 body.${BODY_CLASS} .${ROOT_CLASS} {
-  gap: 0.35rem 0.6rem;
-  padding: 0.5rem 0 0.15rem;
+  position: relative;
+  height: 0;
 }
-/* The row of search and filters (or of the selection) is the one that stays. */
+/* The row of search, filters and buttons (or of the selection) stays at the top. */
 body.${BODY_CLASS} .${PIN_CLASS} {
   gap: 0.35rem 0.5rem;
-  padding: 0.35rem 0 0.5rem;
+  padding: 0.5rem 0;
   position: sticky;
   top: ${STICKY_TOP};
   z-index: ${String(HEADER_Z_INDEX)};
@@ -163,6 +161,8 @@ body.${BODY_CLASS} .${PIN_CLASS} {
 }
 body.${BODY_CLASS} .${FILTERS_CLASS} {
   display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -170,20 +170,15 @@ body.${BODY_CLASS} .${FILTERS_CLASS}[hidden] {
   display: none;
 }
 body.${BODY_CLASS} .${TITLE_CLASS} {
-  margin: 0;
-  font: 700 18px var(--rdw-font);
-  color: var(--rdw-text);
-}
-body.${BODY_CLASS} .${HEAD_STATUS_CLASS} {
-  flex: 1 1 0;
-  min-width: 0;
-}
-body.${BODY_CLASS} .${HEAD_ACTIONS_CLASS} {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: 0.35rem 0.5rem;
-  margin-left: auto;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 body.${BODY_CLASS} .${ROOT_CLASS} .rdw-btn,
 body.${BODY_CLASS} .${PIN_CLASS} .rdw-btn {
@@ -257,10 +252,6 @@ body.${BODY_CLASS} .${SUMMARY_CLASS} {
   justify-content: flex-end;
   gap: 0.35rem 0.5rem;
   margin-top: 0.25rem;
-}
-body.${BODY_CLASS} .${COUNT_CLASS} {
-  font: 12px var(--rdw-font);
-  color: var(--rdw-muted);
 }
 body.${BODY_CLASS} .${BAR_CLASS} {
   display: flex;
@@ -517,7 +508,7 @@ type IdleActionsProps = {
   readonly onSelect: () => void;
 };
 
-/** The buttons of the title row: a random post, selecting, and the menu of rare actions. */
+/** The buttons at the right end of the row: a random post, selecting, and the menu of rare actions. */
 function IdleActions(props: IdleActionsProps): JSX.Element {
   const [menuOpen, setMenuOpen] = useState(false);
   const [downloadOpen, setDownloadOpen] = useState(false);
@@ -637,7 +628,7 @@ function IdleActions(props: IdleActionsProps): JSX.Element {
 
 type FavoritesBulkBarProps = {
   readonly onSelectionModeChange: (active: boolean) => void;
-  /** Where the buttons of the title row go while nothing is being selected. */
+  /** Where those buttons go while nothing is being selected: the right end of the row of filters. */
   readonly headSlot: HTMLElement | null;
   /** What the list is narrowed to, shown beside the count of selected posts. */
   readonly summary: string;
@@ -945,39 +936,34 @@ export function favoritesCountLabel(count: number): string {
   if (count <= 0) {
     return "";
   }
-  return `${count.toLocaleString(LOCALE)} ${count === 1 ? "post" : "posts"}`;
+  return postsLabel(count);
 }
 
 type FavoritesPanelProps = {
-  /** The pinned row, a sibling of the title row in the page. */
+  /** The pinned row, a sibling of the heading in the page. */
   readonly pin: HTMLElement;
   readonly onSelectionModeChange: (active: boolean) => void;
 };
 
 /**
- * The title row (title, count, the rare buttons) and, through a portal, the
- * pinned row under it. They are two elements of the page and not one: a sticky
- * element cannot leave its parent, so the pinned row has to be a child of the
- * same block the grid is in.
+ * The page's heading, kept for screen readers only, and, through a portal, the
+ * pinned row: search, filters, the count and the buttons. The row is its own
+ * element of the page: a sticky element cannot leave its parent, so it has to
+ * be a child of the same block the grid is in.
  */
 function FavoritesPanel(props: FavoritesPanelProps): JSX.Element {
   const [headActions, setHeadActions] = useState<HTMLElement | null>(null);
-  const [statusSlot, setStatusSlot] = useState<HTMLElement | null>(null);
   const [busy, setBusy] = useState(false);
   const [summary, setSummary] = useState("");
-  const count = favoritesCountLabel(loadFavSet().size);
 
   return (
     <>
-      <h2 className={TITLE_CLASS}>{TITLE_TEXT}</h2>
-      {count.length > 0 ? <span className={COUNT_CLASS}>{count}</span> : null}
-      <span className={HEAD_STATUS_CLASS} ref={setStatusSlot} />
-      <div className={HEAD_ACTIONS_CLASS} ref={setHeadActions} />
+      <h1 className={TITLE_CLASS}>{TITLE_TEXT}</h1>
       {createPortal(
         <>
           {/* Hidden, not removed, while posts are being selected: what was typed stays. */}
           <div className={FILTERS_CLASS} hidden={busy}>
-            <FavoritesBrowser statusSlot={statusSlot} onSummary={setSummary} />
+            <FavoritesBrowser actionsRef={setHeadActions} onSummary={setSummary} />
           </div>
           <FavoritesBulkBar
             onSelectionModeChange={props.onSelectionModeChange}

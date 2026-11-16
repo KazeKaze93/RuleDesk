@@ -214,7 +214,7 @@ describe("favoritesBulkFeature", () => {
     const pin = document.getElementById(PIN_ID);
     expect(root?.nextElementSibling).toBe(pin);
     expect(pin?.nextElementSibling).toBe(firstThumb);
-    expect(root?.textContent).toContain("Select");
+    expect(pin?.textContent).toContain("Select");
   });
 
   it("places the bar above the image-list grid, not inside it beside the first thumb", () => {
@@ -346,7 +346,7 @@ describe("favoritesBulkFeature", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(isFav(22)).toBe(false);
     expect(document.getElementById("s22")).toBeNull();
-    expect(document.getElementById(ROOT_ID)?.textContent).toContain("Select");
+    expect(document.getElementById(PIN_ID)?.textContent).toContain("Select");
   });
 
   it("removes adjacent Remove link and separators when Remove is outside the thumb", async () => {
@@ -460,16 +460,26 @@ describe("favoritesBulkFeature", () => {
     expect(url).toContain("id=55");
   });
 
-  it("keeps the filters in the pinned row and the rare buttons in the title row", () => {
+  it("keeps everything in the one pinned row: filters, the count, the buttons", () => {
     buildFavoritesPage([11, 22]);
+    addFav(11);
+    addFav(22);
     mountFeature();
 
     const root = document.getElementById(ROOT_ID);
     const pin = document.getElementById(PIN_ID);
     expect(pin?.querySelector('input[aria-label="Search favorites"]')).not.toBeNull();
-    expect(pin?.textContent).toContain("Shuffle");
-    expect(root?.textContent).toContain("Random post");
-    expect(root?.textContent).not.toContain("Shuffle");
+    const row = pin?.querySelector(".rdw-fav-controls");
+    const labels = [...(row?.children ?? [])].map((child) => child.textContent?.trim() ?? "");
+    // Search and filters first, then the count, then the buttons at the right end.
+    expect(labels.indexOf("Shuffle")).toBeGreaterThan(-1);
+    expect(labels.indexOf("2 posts")).toBeGreaterThan(labels.indexOf("Shuffle"));
+    expect(labels[labels.length - 1]).toContain("Random post");
+    expect(labels[labels.length - 1]).toContain("Select");
+    // The heading is still there for screen readers, and is all the first element holds.
+    expect(root?.querySelector("h1")?.textContent).toBe("Favorites");
+    expect(root?.textContent).toBe("Favorites");
+    expect(favoritesBulkFeature.css).toMatch(/\.rdw-favorites-title \{[^}]*clip: rect\(0, 0, 0, 0\)/);
     expect(favoritesBulkFeature.css).toMatch(/\.rdw-favorites-pin \{[^}]*position: sticky/);
     expect(favoritesBulkFeature.css).not.toMatch(/\.rdw-favorites-bulk \{[^}]*position: sticky/);
   });
@@ -483,11 +493,11 @@ describe("favoritesBulkFeature", () => {
     const filters = pin?.querySelector(".rdw-favorites-filters");
     expect(filters?.hasAttribute("hidden")).toBe(true);
     expect(pin?.textContent).toContain("0 selected");
-    expect(document.getElementById(ROOT_ID)?.textContent).not.toContain("Random post");
+    expect(pin?.textContent).not.toContain("Random post");
 
     clickButtonWithText("Cancel");
     expect(filters?.hasAttribute("hidden")).toBe(false);
-    expect(document.getElementById(ROOT_ID)?.textContent).toContain("Random post");
+    expect(pin?.textContent).toContain("Random post");
   });
 
   it("names the button Select loaded while the results grid is shown", () => {

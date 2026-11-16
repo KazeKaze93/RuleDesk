@@ -2,6 +2,13 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.35.1
+
+- Favorites: the top of the page is one row. The count, "Random post", "Select" and the "⋯" menu moved to the right end of the row of filters, and the row with the "Favorites" title is gone: the menu already shows where you are. While the list is narrowed the count is the number of posts found
+- Collections and Following: the title above the toolbar is gone for the same reason. On all three pages it is still there for screen readers
+- Favorites search understands more of the site's syntax: `( cat ~ dog )` for either tag, `sort:id:asc`, `sort:id:desc` and `sort:random`. The "?" in the field lists all of it
+- The site's other metatags (`rating:`, `score:`, `user:`, sizes and the rest) and the fuzzy `tag~` cannot be answered from the local list, which knows only the tags and the id of a favorite. They are no longer searched as tags, which found nothing: a line under the row names the terms that were set aside
+
 ## 0.35.0
 
 The header and the Favorites page, after a design review:
