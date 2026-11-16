@@ -17,6 +17,10 @@ export type PopoverProps = {
    * so a scrollport (post column) cannot clip it. Width is this many pixels.
    */
   readonly widthPx?: number;
+  /** "menu" for a list of actions. Default "dialog". */
+  readonly role?: "dialog" | "menu";
+  /** Line the popover up with the right edge of the anchor instead of the left. */
+  readonly alignEnd?: boolean;
 };
 
 const KEY_ESCAPE = "Escape";
@@ -148,7 +152,7 @@ export function Popover(props: PopoverProps): JSX.Element | null {
       }
       const rect = anchor.getBoundingClientRect();
       const position = computeAnchoredPopoverPosition(
-        rect.left,
+        props.alignEnd === true ? Math.max(0, rect.right - widthPx) : rect.left,
         rect.bottom,
         widthPx,
         window.innerWidth,
@@ -168,7 +172,7 @@ export function Popover(props: PopoverProps): JSX.Element | null {
       window.removeEventListener(EVENT_SCROLL, onScrollOrResize, true);
       window.removeEventListener(EVENT_RESIZE, onScrollOrResize);
     };
-  }, [props.open, props.anchorRef, widthPx]);
+  }, [props.open, props.anchorRef, props.alignEnd, widthPx]);
 
   if (!props.open) {
     return null;
@@ -188,7 +192,7 @@ export function Popover(props: PopoverProps): JSX.Element | null {
       <div
         ref={rootRef}
         className={className}
-        role="dialog"
+        role={props.role ?? "dialog"}
         aria-label={props["aria-label"]}
       >
         {props.children}

@@ -1,4 +1,4 @@
-import { CURRENT_PAGE_CLASS, MENU_ITEM_ID } from "../pages/constants";
+import { CURRENT_PAGE_CLASS, MENU_ITEM_ID, MY_FAVORITES_CONTAINER_ID } from "../pages/constants";
 import { STICKY_HEADER_CSS } from "./sticky-header";
 
 /**
@@ -8,6 +8,9 @@ import { STICKY_HEADER_CSS } from "./sticky-header";
  *   Favorites), as the site and the script put it;
  * - a "More" menu with the site's rarely used sections;
  * - right: Statistics, My Account and RuleDesk as icons.
+ *
+ * The site's title stands in the same row, before the menu, instead of in a
+ * row of its own above it.
  *
  * The second row (`ul#subnavbar`) stays the row of the current section. On
  * Posts its links get icons and the two upload links become buttons on the
@@ -86,6 +89,13 @@ const ICON = {
 } as const;
 
 const NAV = "div#header ul#navbar";
+/**
+ * The header when it is the title followed by the menu, as the site has it.
+ * Any other markup is left as it is.
+ */
+const ONE_ROW_HEADER = "div#header:has(> #site-title):has(> ul#navbar)";
+const FAVORITES_PAGE_PARAM = "favorites";
+const ARIA_CURRENT = "aria-current";
 const ICON_PX = 18;
 const SUBNAV_ICON_PX = 14;
 const MENU_Z_INDEX = 30;
@@ -104,6 +114,26 @@ function iconRule(selector: string, icon: string, px: number): string {
 }
 
 export const HEADER_LAYOUT_CSS = `
+${ONE_ROW_HEADER} {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+${ONE_ROW_HEADER} > * {
+  flex: 0 0 100%;
+  box-sizing: border-box;
+}
+${ONE_ROW_HEADER} > #site-title {
+  flex: none;
+  margin: 0;
+  padding: 0 2px 0 18px;
+  background-image: none;
+}
+${ONE_ROW_HEADER} > ul#navbar {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 6px 18px 6px 6px;
+}
 ${NAV} {
   display: flex;
   flex-wrap: wrap;
@@ -153,9 +183,10 @@ ${NAV} > li#${MORE_ITEM_ID} > button[aria-expanded="true"] {
   color: var(--rdw-text);
 }
 ${NAV} > li#${MORE_ITEM_ID}:has(li.${CURRENT_PAGE_CLASS}) > button {
-  background: var(--rdw-accent-soft);
-  color: var(--rdw-accent);
+  color: var(--rdw-text);
   font-weight: 600;
+  border-radius: 0;
+  box-shadow: inset 0 -2px 0 var(--rdw-accent);
 }
 ${NAV} > li#${MORE_ITEM_ID} > button::after {
   content: "";
@@ -332,10 +363,56 @@ function markSubnav(): void {
   }
 }
 
+/**
+ * The site does not mark its Favorites item as the current one on the
+ * Favorites page; nothing in the menu then says where you are.
+ */
+export function markFavoritesCurrent(navbar: Element): void {
+  if (new URLSearchParams(window.location.search).get("page") !== FAVORITES_PAGE_PARAM) {
+    return;
+  }
+  if (navbar.querySelector(`li.${CURRENT_PAGE_CLASS}`) !== null) {
+    return;
+  }
+  // The script's own Favorites item stands in for the site's, which is hidden then.
+  const item =
+    navbar.querySelector(`li#${MENU_ITEM_ID.favorites}`) ??
+    navbar.querySelector(`li#${MY_FAVORITES_CONTAINER_ID}`);
+  item?.classList.add(CURRENT_PAGE_CLASS);
+}
+
+/** Puts aria-current on the link of the current item and takes it off the others. */
+export function syncAriaCurrent(navbar: Element): void {
+  for (const link of navbar.querySelectorAll("li > a")) {
+    const current = link.parentElement?.classList.contains(CURRENT_PAGE_CLASS) === true;
+    if (current && link.getAttribute(ARIA_CURRENT) !== "page") {
+      link.setAttribute(ARIA_CURRENT, "page");
+    } else if (!current && link.hasAttribute(ARIA_CURRENT)) {
+      link.removeAttribute(ARIA_CURRENT);
+    }
+  }
+}
+
+const watchedNavbars = new WeakSet<Element>();
+
+/** The current item changes while the page lives (the script's own pages, the feed). */
+function watchCurrentItem(navbar: Element): void {
+  if (watchedNavbars.has(navbar) || typeof MutationObserver !== "function") {
+    return;
+  }
+  watchedNavbars.add(navbar);
+  new MutationObserver(() => {
+    syncAriaCurrent(navbar);
+  }).observe(navbar, { subtree: true, attributes: true, attributeFilter: ["class"] });
+}
+
 /** Lays the header out. Safe to call again: it adds what is missing. */
 export function applyHeaderLayout(navbar: Element): void {
   ensureStyle();
   groupRareSections(navbar);
   markIconItems(navbar);
   markSubnav();
+  markFavoritesCurrent(navbar);
+  syncAriaCurrent(navbar);
+  watchCurrentItem(navbar);
 }

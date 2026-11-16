@@ -1,4 +1,4 @@
-import { applyHeaderLayout } from "../boot/header-layout";
+import { applyHeaderLayout, markFavoritesCurrent } from "../boot/header-layout";
 import {
   FAVORITES_PAGE,
   FAVORITES_SECTION_VIEW,
@@ -317,4 +317,8 @@ export function clearOwnPageCurrentHighlight(): void {
   }
   savedSiteCurrent = null;
   siteCurrentCaptured = false;
+  const navbar = findNavbar();
+  if (navbar !== null) {
+    markFavoritesCurrent(navbar);
+  }
 }

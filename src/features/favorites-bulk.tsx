@@ -1,16 +1,20 @@
 import { STICKY_TOP } from "../boot/sticky-header";
 import { render } from "preact";
 import type { JSX } from "preact";
+import { createPortal } from "preact/compat";
 import { useEffect, useRef, useState } from "preact/hooks";
 
 import { UI_TEXT } from "../config/constants";
 import { log } from "../log";
 import { downloadsAvailable } from "./downloads/available";
 import {
+  FAVORITES_BROWSING_BODY_CLASS,
   FavoritesBrowser,
   bindInPlaceRemoval,
   favoritesGridRoot,
+  openRandomFavorite,
 } from "./favorites-browser";
+import { RDW_HASH_SETTINGS } from "../pages/constants";
 import { isDownloadBusy, startDownload } from "./downloads/queue";
 import { removeFavorite } from "../site/favorites";
 import {
@@ -21,8 +25,19 @@ import {
 } from "../site/favorites-page";
 import { FAVORITES_SYNC_PAGE_PAUSE_MS } from "../site/favorites-sync";
 import { SITE_SELECTORS } from "../site/selectors";
-import { loadFavSet, removeFav } from "../storage/favs";
-import { Button, Dialog, ProgressBar } from "../ui/kit";
+import { getSyncState, loadFavSet, removeFav } from "../storage/favs";
+import {
+  Button,
+  Dialog,
+  IconButton,
+  IconDice,
+  IconDots,
+  IconDownload,
+  IconRefresh,
+  IconTrash,
+  Popover,
+  ProgressBar,
+} from "../ui/kit";
 import { featureBodyClass, type Feature, type FeatureContext } from "./types";
 
 const FEATURE_ID = "favorites-bulk";
@@ -31,6 +46,21 @@ const FEATURE_PAGES = ["favorites"] as const;
 
 const ROOT_ID = "rdw-favorites-bulk";
 const ROOT_CLASS = "rdw-favorites-bulk";
+/** The row under the title that stays at the top of the window. */
+export const PIN_ID = "rdw-favorites-pin";
+const PIN_CLASS = "rdw-favorites-pin";
+const FILTERS_CLASS = "rdw-favorites-filters";
+const HEAD_STATUS_CLASS = "rdw-favorites-head-status";
+const HEAD_ACTIONS_CLASS = "rdw-favorites-head-actions";
+const SUMMARY_CLASS = "rdw-favorites-bulk-summary";
+const MENU_CLASS = "rdw-favorites-menu";
+const MENU_ITEM_CLASS = "rdw-favorites-menu-item";
+const DOWNLOAD_CLASS = "rdw-favorites-download";
+const DOWNLOAD_TITLE_CLASS = "rdw-favorites-download-title";
+const DOWNLOAD_NOTE_CLASS = "rdw-favorites-download-note";
+const DOWNLOAD_STALE_CLASS = "rdw-favorites-download-stale";
+const LINK_BUTTON_CLASS = "rdw-favorites-link";
+const MENU_WIDTH_PX = 200;
 const BAR_CLASS = "rdw-favorites-bulk-bar";
 const STATUS_CLASS = "rdw-favorites-bulk-status";
 const CONFIRM_CLASS = "rdw-favorites-bulk-confirm";
@@ -49,9 +79,21 @@ export const CLASS_THUMB_CHECK = "rdw-fav-bulk-check";
 
 const TEXT_SELECT = "Select";
 const TEXT_SELECT_PAGE = "Select page";
-const TEXT_DOWNLOAD_ALL = "Download all";
-const TEXT_DOWNLOAD_ALL_TITLE =
-  "Saves the original file of every favorite in the local list; Sync favorites first if it is out of date";
+/** The results grid has no pages: what is selected is what has been loaded so far. */
+const TEXT_SELECT_LOADED = "Select loaded";
+const TEXT_RANDOM = "Random post";
+const TEXT_RANDOM_TITLE = "Open a random favorite";
+const TEXT_MORE_ACTIONS = "More actions";
+const TEXT_DOWNLOAD_ALL = "Download all…";
+const TEXT_SYNC = "Sync favorites…";
+const TEXT_SYNC_FIRST = "Sync first";
+const TEXT_DOWNLOAD_TITLE = "Download all favorites?";
+const TEXT_DOWNLOAD_BUTTON = "Download";
+const TEXT_DOWNLOAD_ARIA = "Download all favorites";
+const TEXT_SELECTED_MARK = "Selected";
+const MS_PER_DAY = 86_400_000;
+/** A sync older than this is called out before a download of everything. */
+export const STALE_SYNC_DAYS = 7;
 /** Name of the download job and of its folder. */
 const DOWNLOAD_JOB_NAME = "Favorites";
 const TEXT_CLEAR = "Clear";
@@ -93,27 +135,128 @@ const BODY_SELECTING_CLASS = `${BODY_CLASS}-selecting`;
 
 const FEATURE_CSS = `
 /* The page header: title, count and the buttons; stays at the top of the window. */
-body.${BODY_CLASS} .${ROOT_CLASS} {
+body.${BODY_CLASS} .${ROOT_CLASS},
+body.${BODY_CLASS} .${PIN_CLASS} {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.35rem 1rem;
   box-sizing: border-box;
   width: 100%;
   max-width: 100%;
   margin: 0;
-  padding: 0.5rem 0;
   flex: 0 0 100%;
   grid-column: 1 / -1;
+}
+/* The title row scrolls away with the page. */
+body.${BODY_CLASS} .${ROOT_CLASS} {
+  gap: 0.35rem 0.6rem;
+  padding: 0.5rem 0 0.15rem;
+}
+/* The row of search and filters (or of the selection) is the one that stays. */
+body.${BODY_CLASS} .${PIN_CLASS} {
+  gap: 0.35rem 0.5rem;
+  padding: 0.35rem 0 0.5rem;
   position: sticky;
   top: ${STICKY_TOP};
   z-index: ${String(HEADER_Z_INDEX)};
   background: var(--rdw-bg);
 }
+body.${BODY_CLASS} .${FILTERS_CLASS} {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+body.${BODY_CLASS} .${FILTERS_CLASS}[hidden] {
+  display: none;
+}
 body.${BODY_CLASS} .${TITLE_CLASS} {
   margin: 0;
   font: 700 18px var(--rdw-font);
   color: var(--rdw-text);
+}
+body.${BODY_CLASS} .${HEAD_STATUS_CLASS} {
+  flex: 1 1 0;
+  min-width: 0;
+}
+body.${BODY_CLASS} .${HEAD_ACTIONS_CLASS} {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  margin-left: auto;
+}
+body.${BODY_CLASS} .${ROOT_CLASS} .rdw-btn,
+body.${BODY_CLASS} .${PIN_CLASS} .rdw-btn {
+  font-weight: 500;
+}
+body.${BODY_CLASS} .${PIN_CLASS} .${BAR_CLASS} {
+  flex: 1 1 auto;
+}
+body.${BODY_CLASS} .${SUMMARY_CLASS} {
+  flex: 1 1 8rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 12px var(--rdw-font);
+  color: var(--rdw-muted);
+}
+.${MENU_CLASS} {
+  padding: 6px;
+  gap: 2px;
+}
+.${MENU_ITEM_CLASS} {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 30px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--rdw-radius-s);
+  background: transparent;
+  color: var(--rdw-text);
+  font: 13px var(--rdw-font);
+  text-align: left;
+  cursor: pointer;
+}
+.${MENU_ITEM_CLASS}:hover,
+.${MENU_ITEM_CLASS}:focus-visible {
+  background: var(--rdw-surface-2);
+}
+.${DOWNLOAD_CLASS} {
+  display: grid;
+  gap: 0.5rem;
+}
+.${DOWNLOAD_TITLE_CLASS} {
+  margin: 0;
+  font: 700 15px var(--rdw-font);
+  color: var(--rdw-text);
+}
+.${DOWNLOAD_NOTE_CLASS},
+.${DOWNLOAD_STALE_CLASS} {
+  margin: 0;
+  font: 13px/1.4 var(--rdw-font);
+  color: var(--rdw-muted);
+}
+.${DOWNLOAD_STALE_CLASS} {
+  color: var(--rdw-text);
+}
+.${LINK_BUTTON_CLASS} {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--rdw-accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.${DOWNLOAD_CLASS} .${CONFIRM_ROW_CLASS} {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.35rem 0.5rem;
+  margin-top: 0.25rem;
 }
 body.${BODY_CLASS} .${COUNT_CLASS} {
   font: 12px var(--rdw-font);
@@ -128,7 +271,7 @@ body.${BODY_CLASS} .${BAR_CLASS} {
   box-sizing: border-box;
 }
 body.${BODY_CLASS} .${STATUS_CLASS} {
-  flex: 1 1 12rem;
+  flex: 0 1 auto;
   min-width: 0;
   font: inherit;
   font-size: 0.875rem;
@@ -246,7 +389,10 @@ function ensureCheckOverlay(thumb: HTMLElement): void {
   }
   const check = document.createElement("span");
   check.className = CLASS_THUMB_CHECK;
-  check.setAttribute("aria-hidden", "true");
+  // The tick is the sign of a selected cell that does not rely on colour;
+  // it is also what a screen reader is told.
+  check.setAttribute("role", "img");
+  check.setAttribute("aria-label", TEXT_SELECTED_MARK);
   check.textContent = CHECK_GLYPH;
 
   const postLink = thumb.querySelector(`a[id^="p"]`);
@@ -341,11 +487,165 @@ function removeDomCellForPost(postId: string): void {
   }
 }
 
-type FavoritesBulkBarProps = {
-  readonly onSelectionModeChange: (active: boolean) => void;
+/** How long ago the favorites were synced, and whether that is long enough to say so. */
+export function syncAge(
+  finishedAt: string | undefined,
+  now: number,
+): { readonly text: string; readonly stale: boolean } {
+  const parsed = finishedAt === undefined ? Number.NaN : Date.parse(finishedAt);
+  if (!Number.isFinite(parsed)) {
+    return { text: "Never synced.", stale: true };
+  }
+  const days = Math.max(0, Math.floor((now - parsed) / MS_PER_DAY));
+  const stale = days > STALE_SYNC_DAYS;
+  if (days === 0) {
+    return { text: "Synced today.", stale };
+  }
+  return { text: `Synced ${String(days)} ${days === 1 ? "day" : "days"} ago.`, stale };
+}
+
+function downloadNote(count: number): string {
+  const files = count === 1 ? "original file" : "original files";
+  return `${count.toLocaleString(LOCALE)} ${files}: every favorite in the local list, not only this page.`;
+}
+
+function openSyncSettings(): void {
+  window.location.hash = RDW_HASH_SETTINGS;
+}
+
+type IdleActionsProps = {
+  readonly onSelect: () => void;
 };
 
-function FavoritesBulkBar(props: FavoritesBulkBarProps): JSX.Element {
+/** The buttons of the title row: a random post, selecting, and the menu of rare actions. */
+function IdleActions(props: IdleActionsProps): JSX.Element {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [downloadOpen, setDownloadOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const count = loadFavSet().size;
+  const age = syncAge(getSyncState()?.finishedAt, Date.now());
+
+  const closeMenu = (): void => {
+    setMenuOpen(false);
+  };
+  const closeDownload = (): void => {
+    setDownloadOpen(false);
+  };
+
+  return (
+    <>
+      <Button variant="secondary" size="s" title={TEXT_RANDOM_TITLE} onClick={openRandomFavorite}>
+        <IconDice size={14} />
+        {TEXT_RANDOM}
+      </Button>
+      <Button variant="secondary" size="s" onClick={props.onSelect}>
+        {TEXT_SELECT}
+      </Button>
+      <IconButton
+        label={TEXT_MORE_ACTIONS}
+        menuOpen={menuOpen}
+        buttonRef={menuButtonRef}
+        onClick={() => {
+          setMenuOpen(!menuOpen);
+        }}
+      >
+        <IconDots size={16} />
+      </IconButton>
+      <Popover
+        open={menuOpen}
+        onClose={closeMenu}
+        anchorRef={menuButtonRef}
+        widthPx={MENU_WIDTH_PX}
+        alignEnd
+        role="menu"
+        aria-label={TEXT_MORE_ACTIONS}
+        className={MENU_CLASS}
+      >
+        {downloadsAvailable() ? (
+          <button
+            type="button"
+            role="menuitem"
+            className={`${MENU_ITEM_CLASS} rdw-kit-focusable`}
+            disabled={count === 0}
+            onClick={() => {
+              closeMenu();
+              setDownloadOpen(true);
+            }}
+          >
+            <IconDownload size={16} />
+            {TEXT_DOWNLOAD_ALL}
+          </button>
+        ) : null}
+        <button
+          type="button"
+          role="menuitem"
+          className={`${MENU_ITEM_CLASS} rdw-kit-focusable`}
+          onClick={() => {
+            closeMenu();
+            openSyncSettings();
+          }}
+        >
+          <IconRefresh size={16} />
+          {TEXT_SYNC}
+        </button>
+      </Popover>
+      <Dialog
+        open={downloadOpen}
+        onClose={closeDownload}
+        aria-label={TEXT_DOWNLOAD_ARIA}
+        className={DOWNLOAD_CLASS}
+      >
+        <h3 className={DOWNLOAD_TITLE_CLASS}>{TEXT_DOWNLOAD_TITLE}</h3>
+        <p className={DOWNLOAD_NOTE_CLASS}>
+          {downloadNote(count)}
+          {age.stale ? null : ` ${age.text}`}
+        </p>
+        {age.stale ? (
+          <p className={DOWNLOAD_STALE_CLASS}>
+            {age.text}{" "}
+            <button
+              type="button"
+              className={`${LINK_BUTTON_CLASS} rdw-kit-focusable`}
+              onClick={() => {
+                closeDownload();
+                openSyncSettings();
+              }}
+            >
+              {TEXT_SYNC_FIRST}
+            </button>
+          </p>
+        ) : null}
+        <div className={CONFIRM_ROW_CLASS}>
+          <Button variant="secondary" size="s" onClick={closeDownload}>
+            {TEXT_CANCEL}
+          </Button>
+          <Button
+            variant="primary"
+            size="s"
+            onClick={() => {
+              closeDownload();
+              downloadAllFavorites();
+            }}
+          >
+            {`${TEXT_DOWNLOAD_BUTTON} ${count.toLocaleString(LOCALE)}`}
+          </Button>
+        </div>
+      </Dialog>
+    </>
+  );
+}
+
+type FavoritesBulkBarProps = {
+  readonly onSelectionModeChange: (active: boolean) => void;
+  /** Where the buttons of the title row go while nothing is being selected. */
+  readonly headSlot: HTMLElement | null;
+  /** What the list is narrowed to, shown beside the count of selected posts. */
+  readonly summary: string;
+  /** True while the bar has the pinned row to itself: selecting, removing, a message. */
+  readonly onBusyChange: (busy: boolean) => void;
+};
+
+function FavoritesBulkBar(props: FavoritesBulkBarProps): JSX.Element | null {
   const [phase, setPhase] = useState<BulkPhase>({ kind: "idle" });
   const [selected, setSelected] = useState<ReadonlySet<string>>(
     () => new Set<string>(),
@@ -359,9 +659,15 @@ function FavoritesBulkBar(props: FavoritesBulkBarProps): JSX.Element {
     phase.kind === "confirm" ||
     phase.kind === "removing";
 
+  const { onSelectionModeChange, onBusyChange } = props;
   useEffect(() => {
-    props.onSelectionModeChange(selectionActive);
-  }, [props, selectionActive]);
+    onSelectionModeChange(selectionActive);
+  }, [onSelectionModeChange, selectionActive]);
+
+  const busy = phase.kind !== "idle";
+  useEffect(() => {
+    onBusyChange(busy);
+  }, [onBusyChange, busy]);
 
   useEffect(() => {
     if (!selectionActive) {
@@ -544,23 +850,9 @@ function FavoritesBulkBar(props: FavoritesBulkBarProps): JSX.Element {
   };
 
   if (phase.kind === "idle") {
-    return (
-      <div className={BAR_CLASS}>
-        <Button variant="secondary" size="s" onClick={enterSelecting}>
-          {TEXT_SELECT}
-        </Button>
-        {downloadsAvailable() ? (
-          <Button
-            variant="secondary"
-            size="s"
-            title={TEXT_DOWNLOAD_ALL_TITLE}
-            onClick={downloadAllFavorites}
-          >
-            {TEXT_DOWNLOAD_ALL}
-          </Button>
-        ) : null}
-      </div>
-    );
+    return props.headSlot === null
+      ? null
+      : createPortal(<IdleActions onSelect={enterSelecting} />, props.headSlot);
   }
 
   if (phase.kind === "removing") {
@@ -597,12 +889,14 @@ function FavoritesBulkBar(props: FavoritesBulkBarProps): JSX.Element {
   // selecting | confirm — same control row; confirm uses kit Dialog overlay.
   const count = selected.size;
   const confirmOpen = phase.kind === "confirm";
+  const browsing = document.body.classList.contains(FAVORITES_BROWSING_BODY_CLASS);
   return (
     <>
       <div className={BAR_CLASS}>
         <span className={STATUS_CLASS}>{selectedCountLabel(count)}</span>
+        <span className={SUMMARY_CLASS}>{props.summary}</span>
         <Button variant="secondary" size="s" onClick={selectPage}>
-          {TEXT_SELECT_PAGE}
+          {browsing ? TEXT_SELECT_LOADED : TEXT_SELECT_PAGE}
         </Button>
         <Button variant="secondary" size="s" onClick={clearSelection}>
           {TEXT_CLEAR}
@@ -613,6 +907,7 @@ function FavoritesBulkBar(props: FavoritesBulkBarProps): JSX.Element {
           disabled={count === 0 || confirmOpen}
           onClick={beginConfirm}
         >
+          <IconTrash size={14} />
           {removeSelectedLabel(count)}
         </Button>
         <Button variant="ghost" size="s" onClick={resetToIdle}>
@@ -653,12 +948,46 @@ export function favoritesCountLabel(count: number): string {
   return `${count.toLocaleString(LOCALE)} ${count === 1 ? "post" : "posts"}`;
 }
 
-function FavoritesHeader(): JSX.Element {
+type FavoritesPanelProps = {
+  /** The pinned row, a sibling of the title row in the page. */
+  readonly pin: HTMLElement;
+  readonly onSelectionModeChange: (active: boolean) => void;
+};
+
+/**
+ * The title row (title, count, the rare buttons) and, through a portal, the
+ * pinned row under it. They are two elements of the page and not one: a sticky
+ * element cannot leave its parent, so the pinned row has to be a child of the
+ * same block the grid is in.
+ */
+function FavoritesPanel(props: FavoritesPanelProps): JSX.Element {
+  const [headActions, setHeadActions] = useState<HTMLElement | null>(null);
+  const [statusSlot, setStatusSlot] = useState<HTMLElement | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [summary, setSummary] = useState("");
   const count = favoritesCountLabel(loadFavSet().size);
+
   return (
     <>
       <h2 className={TITLE_CLASS}>{TITLE_TEXT}</h2>
       {count.length > 0 ? <span className={COUNT_CLASS}>{count}</span> : null}
+      <span className={HEAD_STATUS_CLASS} ref={setStatusSlot} />
+      <div className={HEAD_ACTIONS_CLASS} ref={setHeadActions} />
+      {createPortal(
+        <>
+          {/* Hidden, not removed, while posts are being selected: what was typed stays. */}
+          <div className={FILTERS_CLASS} hidden={busy}>
+            <FavoritesBrowser statusSlot={statusSlot} onSummary={setSummary} />
+          </div>
+          <FavoritesBulkBar
+            onSelectionModeChange={props.onSelectionModeChange}
+            headSlot={headActions}
+            summary={summary}
+            onBusyChange={setBusy}
+          />
+        </>,
+        props.pin,
+      )}
     </>
   );
 }
@@ -672,7 +1001,11 @@ function mountFavoritesBulk(_ctx: FeatureContext): void {
   const root = document.createElement("div");
   root.id = ROOT_ID;
   root.className = ROOT_CLASS;
+  const pin = document.createElement("div");
+  pin.id = PIN_ID;
+  pin.className = PIN_CLASS;
   host.parent.insertBefore(root, host.before);
+  host.parent.insertBefore(pin, host.before);
 
   const siteGrid = document.querySelector(SITE_SELECTORS.imageList);
   if (siteGrid !== null) {
@@ -683,14 +1016,7 @@ function mountFavoritesBulk(_ctx: FeatureContext): void {
     document.body.classList.toggle(BODY_SELECTING_CLASS, active);
   };
 
-  render(
-    <>
-      <FavoritesHeader />
-      <FavoritesBulkBar onSelectionModeChange={onSelectionModeChange} />
-      <FavoritesBrowser />
-    </>,
-    root,
-  );
+  render(<FavoritesPanel pin={pin} onSelectionModeChange={onSelectionModeChange} />, root);
 }
 
 export const favoritesBulkFeature: Feature = {

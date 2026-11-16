@@ -2,6 +2,21 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.35.0
+
+The header and the Favorites page, after a design review:
+
+- The site's title stands in the row of the menu instead of in a row of its own: the header is one row shorter
+- The menu shows where you are on the Favorites page too. The current section is marked by the text colour and a line under it, not by a tinted background
+- Favorites, the top of the page in two rows. The title row has the count, "Random post", "Select" and a "⋯" menu; it scrolls away with the page. Only the row of search and filters stays at the top of the window
+- The search field is wider, has a magnifier and a button that clears it. What `-tag` and `tag*` mean is under the "?" in the field instead of in the placeholder
+- The two switches are named, "Type" and "View". "Shuffle" keeps its name and shows that it is on
+- "Download all" moved into the "⋯" menu and asks first: the dialog gives the number of files, says when the favorites were last synced, and offers "Sync first" when that was more than a week ago. "Sync favorites…" in the same menu opens RuleDesk settings, where the sync is
+- While posts are being selected, the selection bar takes the row that stays at the top, so "Remove selected" is at hand after scrolling. In a list without pages its button is "Select loaded"
+- In a narrow window the row gives up the names of the switches first, then the width of the search field, and wraps only after that
+- The chosen option of every switch of options (Favorites, Collections, Following, settings) now stands out from its track in all four themes
+- Secondary text is darker in Light and in Site default and lighter in Site dark: it was under the 4.5:1 contrast there
+
 ## 0.34.0
 
 - Favorites: a post you make a favorite with the star is in the search on the Favorites page at once, without waiting for "Sync favorites"

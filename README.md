@@ -13,7 +13,7 @@ A userscript for `rule34.xxx` that adds a feed of followed artists, collections,
 
 ## What it adds
 
-New items appear in the site's header menu: **Feed**, **Collections**, **Following**, **Favorites**, **Statistics** and **RuleDesk** (settings). The menu is laid out in three zones: the sections used most on the left, the site's other sections under **More**, and Statistics, My Account and RuleDesk as icons on the right.
+New items appear in the site's header menu: **Feed**, **Collections**, **Following**, **Favorites**, **Statistics** and **RuleDesk** (settings). The menu is laid out in three zones: the sections used most on the left, the site's other sections under **More**, and Statistics, My Account and RuleDesk as icons on the right. The site's title stands in the same row, and the current section is underlined.
 
 ### Feed
 
@@ -49,7 +49,7 @@ Favorite star and "+" on thumbnails, three grid sizes, infinite scroll, dimming 
 
 ### Favorites
 
-The local favorite list is kept in sync with the site by "Sync favorites" in settings. The Favorites page gets a header, bulk removal, the "+" button for collections, and, once "Full resync" has built a local index, search by tags, an Images / Videos switch and endless scrolling.
+The local favorite list is kept in sync with the site by "Sync favorites" in settings. The Favorites page gets a title row (count, "Random post", "Select" for bulk removal, a "⋯" menu with "Download all…" and "Sync favorites…") and the "+" button for collections. Once "Full resync" has built a local index, the row under the title, which stays at the top while you scroll, has search by tags (`tag`, `-tag`, `tag*`; the "?" in the field explains them), an Images / Videos switch, endless scrolling and Shuffle.
 
 ### Download manager
 

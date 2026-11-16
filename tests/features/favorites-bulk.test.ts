@@ -12,9 +12,26 @@ import {
 } from "../../src/features/types";
 import { FAVORITES_SYNC_PAGE_PAUSE_MS } from "../../src/site/favorites-sync";
 import { addFav, clearFavsCache, isFav } from "../../src/storage/favs";
+import { startDownload } from "../../src/features/downloads/queue";
 import { clearStorageCache } from "../../src/storage/store";
 
+vi.mock("../../src/features/downloads/available", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../src/features/downloads/available")>()),
+  downloadsAvailable: (): boolean => true,
+}));
+vi.mock("../../src/features/downloads/queue", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../src/features/downloads/queue")>()),
+  isDownloadBusy: (): boolean => false,
+  startDownload: vi.fn(async (): Promise<void> => {}),
+}));
+
 const ROOT_ID = "rdw-favorites-bulk";
+const PIN_ID = "rdw-favorites-pin";
+
+/** The text of both rows of the panel: the title row and the pinned one. */
+function panelText(): string {
+  return `${document.getElementById(ROOT_ID)?.textContent ?? ""} ${document.getElementById(PIN_ID)?.textContent ?? ""}`;
+}
 const BODY_CLASS = featureBodyClass("favorites-bulk");
 const IMAGE_LIST_CLASS = "image-list";
 
@@ -194,7 +211,9 @@ describe("favoritesBulkFeature", () => {
     expect(root).not.toBeNull();
     const firstThumb = document.querySelector("span.thumb");
     expect(firstThumb).not.toBeNull();
-    expect(root?.nextElementSibling).toBe(firstThumb);
+    const pin = document.getElementById(PIN_ID);
+    expect(root?.nextElementSibling).toBe(pin);
+    expect(pin?.nextElementSibling).toBe(firstThumb);
     expect(root?.textContent).toContain("Select");
   });
 
@@ -206,7 +225,10 @@ describe("favoritesBulkFeature", () => {
     const root = document.getElementById(ROOT_ID);
     expect(root).not.toBeNull();
     expect(list?.contains(root)).toBe(false);
-    expect(root?.nextElementSibling).toBe(list);
+    const pin = document.getElementById(PIN_ID);
+    expect(list?.contains(pin)).toBe(false);
+    expect(root?.nextElementSibling).toBe(pin);
+    expect(pin?.nextElementSibling).toBe(list);
     expect(favoritesBulkFeature.css).toContain("grid-column: 1 / -1");
     expect(favoritesBulkFeature.css).toContain("flex: 0 0 100%");
   });
@@ -216,7 +238,7 @@ describe("favoritesBulkFeature", () => {
     mountFeature();
     clickButtonWithText("Select");
 
-    const root = document.getElementById(ROOT_ID);
+    const root = document.getElementById(PIN_ID);
     const text = root?.textContent ?? "";
     expect(text).toContain("0 selected");
     expect(text).toContain("Select page");
@@ -248,7 +270,7 @@ describe("favoritesBulkFeature", () => {
       expect(postLink.contains(check)).toBe(false);
       expect(postLink.nextElementSibling).toBe(check);
     }
-    expect(document.getElementById(ROOT_ID)?.textContent).toContain("1 selected");
+    expect(panelText()).toContain("1 selected");
   });
 
   it("blocks navigation when toggling a thumb in selection mode", () => {
@@ -375,7 +397,7 @@ describe("favoritesBulkFeature", () => {
       await vi.advanceTimersByTimeAsync(0);
     });
 
-    const text = document.getElementById(ROOT_ID)?.textContent ?? "";
+    const text = panelText();
     expect(text).toContain("Deleted 1 of 3");
     expect(text).toContain("Failed on post 22");
     expect(document.getElementById("s11")).toBeNull();
@@ -411,7 +433,7 @@ describe("favoritesBulkFeature", () => {
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    const text = document.getElementById(ROOT_ID)?.textContent ?? "";
+    const text = panelText();
     expect(text).toContain("Stopped after 1 of 2");
     expect(document.getElementById("s22")).not.toBeNull();
   });
@@ -436,5 +458,112 @@ describe("favoritesBulkFeature", () => {
     expect(url).toContain("page=favorites");
     expect(url).toContain("s=delete");
     expect(url).toContain("id=55");
+  });
+
+  it("keeps the filters in the pinned row and the rare buttons in the title row", () => {
+    buildFavoritesPage([11, 22]);
+    mountFeature();
+
+    const root = document.getElementById(ROOT_ID);
+    const pin = document.getElementById(PIN_ID);
+    expect(pin?.querySelector('input[aria-label="Search favorites"]')).not.toBeNull();
+    expect(pin?.textContent).toContain("Shuffle");
+    expect(root?.textContent).toContain("Random post");
+    expect(root?.textContent).not.toContain("Shuffle");
+    expect(favoritesBulkFeature.css).toMatch(/\.rdw-favorites-pin \{[^}]*position: sticky/);
+    expect(favoritesBulkFeature.css).not.toMatch(/\.rdw-favorites-bulk \{[^}]*position: sticky/);
+  });
+
+  it("gives the pinned row to the selection and keeps the filters for later", () => {
+    buildFavoritesPage([11, 22]);
+    mountFeature();
+    clickButtonWithText("Select");
+
+    const pin = document.getElementById(PIN_ID);
+    const filters = pin?.querySelector(".rdw-favorites-filters");
+    expect(filters?.hasAttribute("hidden")).toBe(true);
+    expect(pin?.textContent).toContain("0 selected");
+    expect(document.getElementById(ROOT_ID)?.textContent).not.toContain("Random post");
+
+    clickButtonWithText("Cancel");
+    expect(filters?.hasAttribute("hidden")).toBe(false);
+    expect(document.getElementById(ROOT_ID)?.textContent).toContain("Random post");
+  });
+
+  it("names the button Select loaded while the results grid is shown", () => {
+    buildFavoritesPage([11, 22]);
+    mountFeature();
+    document.body.classList.add("rdw-fav-browsing");
+    clickButtonWithText("Select");
+
+    const text = document.getElementById(PIN_ID)?.textContent ?? "";
+    expect(text).toContain("Select loaded");
+    expect(text).not.toContain("Select page");
+  });
+
+  it("marks a selected cell with a tick that is read out, not by colour alone", () => {
+    buildFavoritesPage([11]);
+    mountFeature();
+    clickButtonWithText("Select");
+    clickButtonWithText("Select page");
+
+    const check = document.querySelector(`#s11 > .${CLASS_THUMB_CHECK}`);
+    expect(check?.getAttribute("role")).toBe("img");
+    expect(check?.getAttribute("aria-label")).toBe("Selected");
+  });
+
+  it("asks before downloading everything, with the count on the button", () => {
+    vi.mocked(startDownload).mockClear();
+    buildFavoritesPage([11, 22]);
+    addFav(11);
+    addFav(22);
+    mountFeature();
+
+    const more = document.querySelector('button[aria-label="More actions"]');
+    act(() => {
+      if (more instanceof HTMLButtonElement) {
+        more.click();
+      }
+    });
+    clickButtonWithText("Download all…");
+
+    const dialog = document.querySelector('[role="dialog"][aria-modal="true"]');
+    expect(dialog?.textContent).toContain("Download all favorites?");
+    expect(dialog?.textContent).toContain("2 original files");
+    expect(dialog?.textContent).toContain("Never synced.");
+    expect(dialog?.textContent).toContain("Sync first");
+    expect(startDownload).not.toHaveBeenCalled();
+
+    clickButtonWithText("Download 2");
+    expect(startDownload).toHaveBeenCalledTimes(1);
+    expect(startDownload).toHaveBeenCalledWith("Favorites", { kind: "ids", ids: [22, 11] });
+    expect(document.querySelector('[role="dialog"][aria-modal="true"]')).toBeNull();
+  });
+
+  it("opens a menu from the More actions button; Shuffle is a pressed button", () => {
+    buildFavoritesPage([11]);
+    mountFeature();
+
+    const more = document.querySelector('button[aria-label="More actions"]');
+    expect(more?.getAttribute("aria-haspopup")).toBe("menu");
+    expect(more?.getAttribute("aria-expanded")).toBe("false");
+    act(() => {
+      if (more instanceof HTMLButtonElement) {
+        more.click();
+      }
+    });
+    expect(more?.getAttribute("aria-expanded")).toBe("true");
+    const menu = document.querySelector('[role="menu"]');
+    expect(menu?.textContent).toContain("Sync favorites…");
+
+    const shuffle = [...document.querySelectorAll("button")].find(
+      (button) => button.textContent?.trim() === "Shuffle",
+    );
+    expect(shuffle?.getAttribute("aria-pressed")).toBe("false");
+    act(() => {
+      shuffle?.click();
+    });
+    expect(shuffle?.getAttribute("aria-pressed")).toBe("true");
+    expect(shuffle?.textContent?.trim()).toBe("Shuffle");
   });
 });

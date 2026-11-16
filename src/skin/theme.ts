@@ -27,7 +27,7 @@ import {
   SITE_DARK_C_ACCENT,
   SITE_DARK_C_BG,
   SITE_DARK_C_BORDER,
-  SITE_DARK_C_MUTED,
+  SITE_DARK_TEXT_SOFT_AA,
   SITE_DARK_C_SURFACE2,
   SITE_DARK_C_TEXT,
   SITE_LIGHT_C_BG,
@@ -35,7 +35,7 @@ import {
   SITE_LIGHT_C_BG_OVERLAY,
   SITE_LIGHT_C_LINK,
   SITE_LIGHT_C_TEXT,
-  SITE_LIGHT_C_TEXT_SOFT,
+  SITE_LIGHT_TEXT_SOFT_AA,
   TOKEN_VAR,
   type TokenPalette,
 } from "../ui/tokens";
@@ -72,6 +72,13 @@ const SITE_DARK_TAG_CHARACTER = "#f0f0a0";
 const SITE_DARK_TAG_COPYRIGHT = "#f0a0f0";
 const SITE_DARK_TAG_METADATA = "#90d9ed";
 
+/** Site default switch of options: a track darker than the page, 1.58:1 under the chosen option. */
+const SITE_DEFAULT_SEG_TRACK = "#74bc6b";
+/** 5.50:1 on that track. */
+const SITE_DEFAULT_SEG_TEXT = "#333333";
+/** Site dark: text of the chosen option, 5.76:1 on the border colour it is filled with. */
+const SITE_DARK_SEG_ON_TEXT = "#e6e6e6";
+
 /**
  * Script-page / token palette for Appearance theme "Site default".
  * Card surface = --c-bg; border = --c-bg-alt (aligned with page-css host cards).
@@ -83,7 +90,7 @@ export const SITE_DEFAULT_PALETTE: TokenPalette = {
   surface2: SITE_LIGHT_C_BG_OVERLAY,
   border: SITE_LIGHT_C_BG_ALT,
   text: SITE_LIGHT_C_TEXT,
-  muted: SITE_LIGHT_C_TEXT_SOFT,
+  muted: SITE_LIGHT_TEXT_SOFT_AA,
   accent: SITE_LIGHT_C_LINK,
   accentSoft: SITE_LIGHT_C_BG_ALT,
   danger: LIGHT_PALETTE.danger,
@@ -98,6 +105,10 @@ export const SITE_DEFAULT_PALETTE: TokenPalette = {
   shadow1: LIGHT_PALETTE.shadow1,
   shadow2: LIGHT_PALETTE.shadow2,
   font: LIGHT_PALETTE.font,
+  segTrack: SITE_DEFAULT_SEG_TRACK,
+  segText: SITE_DEFAULT_SEG_TEXT,
+  segOn: SITE_LIGHT_C_BG,
+  segOnText: SITE_LIGHT_C_TEXT,
 };
 
 /**
@@ -110,7 +121,7 @@ export const SITE_DARK_PALETTE: TokenPalette = {
   surface2: SITE_DARK_C_SURFACE2,
   border: SITE_DARK_C_BORDER,
   text: SITE_DARK_C_TEXT,
-  muted: SITE_DARK_C_MUTED,
+  muted: SITE_DARK_TEXT_SOFT_AA,
   accent: SITE_DARK_C_ACCENT,
   accentSoft: SITE_DARK_ACCENT_SOFT,
   danger: DARK_PALETTE.danger,
@@ -125,6 +136,10 @@ export const SITE_DARK_PALETTE: TokenPalette = {
   shadow1: DARK_PALETTE.shadow1,
   shadow2: DARK_PALETTE.shadow2,
   font: DARK_PALETTE.font,
+  segTrack: "transparent",
+  segText: SITE_DARK_TEXT_SOFT_AA,
+  segOn: SITE_DARK_C_BORDER,
+  segOnText: SITE_DARK_SEG_ON_TEXT,
 };
 
 /**

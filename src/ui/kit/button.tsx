@@ -1,4 +1,4 @@
-import type { ComponentChildren, JSX, MouseEventHandler } from "preact";
+import type { ComponentChildren, JSX, MouseEventHandler, RefObject } from "preact";
 
 import { KIT_CONTROL_FONT, KIT_CONTROL_HEIGHT, KIT_FOCUS_CSS } from "./shared";
 
@@ -17,6 +17,9 @@ export type ButtonProps = {
   readonly "aria-label"?: string;
   /** Native tooltip. */
   readonly title?: string;
+  /** A button that stays on: true or false sets aria-pressed and the "on" look. */
+  readonly pressed?: boolean;
+  readonly buttonRef?: RefObject<HTMLButtonElement | null>;
 };
 
 export const BUTTON_CSS = `
@@ -55,6 +58,11 @@ ${KIT_FOCUS_CSS}
 .rdw-btn--secondary {
   background: var(--rdw-surface);
   border-color: var(--rdw-border);
+  color: var(--rdw-text);
+}
+.rdw-btn[aria-pressed="true"] {
+  background: var(--rdw-accent-soft);
+  border-color: var(--rdw-accent);
   color: var(--rdw-text);
 }
 .rdw-btn--ghost {
@@ -110,6 +118,8 @@ export function Button(props: ButtonProps): JSX.Element {
         aria-busy={loading ? true : undefined}
         aria-label={props["aria-label"]}
         title={props.title}
+        aria-pressed={props.pressed}
+        {...(props.buttonRef === undefined ? {} : { ref: props.buttonRef })}
         onClick={props.onClick}
       >
         {loading ? <span className="rdw-btn__spinner" aria-hidden="true" /> : null}

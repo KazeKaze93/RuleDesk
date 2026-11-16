@@ -1,4 +1,4 @@
-import type { ComponentChildren, JSX, MouseEventHandler } from "preact";
+import type { ComponentChildren, JSX, MouseEventHandler, RefObject } from "preact";
 
 import { KIT_CONTROL_HEIGHT, KIT_FOCUS_CSS } from "./shared";
 
@@ -9,6 +9,9 @@ export type IconButtonProps = {
   readonly children: ComponentChildren;
   readonly onClick?: MouseEventHandler<HTMLButtonElement>;
   readonly className?: string;
+  /** Set on the button of a menu: aria-haspopup="menu" and aria-expanded. */
+  readonly menuOpen?: boolean;
+  readonly buttonRef?: RefObject<HTMLButtonElement | null>;
 };
 
 export const ICON_BUTTON_CSS = `
@@ -52,6 +55,9 @@ export function IconButton(props: IconButtonProps): JSX.Element {
         className={className}
         aria-label={props.label}
         aria-pressed={props.pressed}
+        aria-haspopup={props.menuOpen === undefined ? undefined : "menu"}
+        aria-expanded={props.menuOpen}
+        {...(props.buttonRef === undefined ? {} : { ref: props.buttonRef })}
         disabled={props.disabled}
         onClick={props.onClick}
       >

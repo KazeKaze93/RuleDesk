@@ -21,7 +21,7 @@ ${KIT_FOCUS_CSS}
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
-  background: var(--rdw-surface-2);
+  background: var(--rdw-seg-track, transparent);
   border: 1px solid var(--rdw-border);
   border-radius: var(--rdw-radius-m);
   padding: 2px;
@@ -38,17 +38,16 @@ ${KIT_FOCUS_CSS}
   border: 0;
   border-radius: var(--rdw-radius-s);
   background: transparent;
-  color: var(--rdw-muted);
+  color: var(--rdw-seg-text, var(--rdw-muted));
   font: inherit;
   font-size: ${KIT_CONTROL_FONT};
   cursor: pointer;
   padding: 0 8px;
 }
 .rdw-seg__btn[aria-checked="true"] {
-  background: var(--rdw-surface);
-  color: var(--rdw-text);
+  background: var(--rdw-seg-on, var(--rdw-surface));
+  color: var(--rdw-seg-on-text, var(--rdw-text));
   font-weight: 600;
-  box-shadow: var(--rdw-shadow-1);
 }
 `;
 

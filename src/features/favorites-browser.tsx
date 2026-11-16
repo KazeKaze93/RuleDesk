@@ -1,5 +1,6 @@
 import type { JSX } from "preact";
-import { useEffect, useRef, useState } from "preact/hooks";
+import { createPortal } from "preact/compat";
+import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 
 import { log } from "../log";
 import { removeFavorite } from "../site/favorites";
@@ -10,7 +11,17 @@ import {
   type FavoriteIndexEntry,
 } from "../storage/favorites-index";
 import { getFeatureState, setFeatureState } from "../storage/store";
-import { Button, Segmented, TextField, type SegmentedOption } from "../ui/kit";
+import {
+  Button,
+  IconHelp,
+  IconSearch,
+  IconShuffle,
+  IconX,
+  Popover,
+  Segmented,
+  TextField,
+  type SegmentedOption,
+} from "../ui/kit";
 import {
   MEDIA_ALL,
   MEDIA_IMAGES,
@@ -42,6 +53,23 @@ const MORE_CLASS = "rdw-fav-more";
 const CONTROLS_CLASS = "rdw-fav-controls";
 const STATUS_CLASS = "rdw-fav-status";
 const SEARCH_FIELD_CLASS = "rdw-fav-search";
+const SEARCH_BOX_CLASS = "rdw-fav-search-box";
+const SEARCH_ICON_CLASS = "rdw-fav-search-icon";
+const SEARCH_TOOLS_CLASS = "rdw-fav-search-tools";
+const SEARCH_TOOL_CLASS = "rdw-fav-search-tool";
+const GROUP_LABEL_CLASS = "rdw-fav-group-label";
+const SYNTAX_CLASS = "rdw-fav-syntax";
+/**
+ * How far the row of controls has been squeezed to fit, on the row itself:
+ * 0 all of it, 1 without the group labels, 2 with the search field at its
+ * least width, 3 on two lines.
+ */
+export const FIT_ATTRIBUTE = "data-fit";
+export const FIT_STEPS = [0, 1, 2, 3] as const;
+const SEARCH_WIDTH_PX = 320;
+const SEARCH_MIN_WIDTH_PX = 200;
+const SEARCH_MAX_WIDTH_PX = 560;
+const SYNTAX_POPOVER_WIDTH_PX = 250;
 
 const VIEW_STATE_ID = "favorites-view";
 export const VIEW_PAGES = "pages";
@@ -54,19 +82,25 @@ const TYPING_PAUSE_MS = 250;
 const MORE_ROOT_MARGIN = "600px";
 
 const SEARCH_FIELD_ID = "rdw-fav-search";
-const SEARCH_PLACEHOLDER = "Search favorites: tag -tag tag*";
-const MEDIA_LABEL = "Media";
-const VIEW_LABEL = "Paging";
+const SEARCH_PLACEHOLDER = "Search your favorites";
+const SEARCH_ARIA_LABEL = "Search favorites";
+const CLEAR_LABEL = "Clear search";
+const SYNTAX_LABEL = "Search syntax";
+/** What the search understands: an example and what it finds. */
+const SYNTAX_ROWS: readonly (readonly [string, string])[] = [
+  ["cat dog", "posts with both tags"],
+  ["-video", "posts without the tag"],
+  ["cat*", "any tag that starts with cat"],
+];
+const MEDIA_LABEL = "Type";
+const VIEW_LABEL = "View";
 const MORE_LABEL = "Show more";
 const LOCALE = "en-US";
 const NO_INDEX_STATUS =
   "No index yet: run Full resync in RuleDesk → Favorites to search and scroll here.";
 const REMOVE_FAILED_STATUS = "Could not remove the favorite. Try again.";
 const SHUFFLE_LABEL = "Shuffle";
-const SHUFFLE_OFF_LABEL = "In order";
 const SHUFFLE_TITLE = "Show the favorites in a random order";
-const RANDOM_LABEL = "Random";
-const RANDOM_TITLE = "Open a random favorite";
 
 const MEDIA_OPTIONS: readonly SegmentedOption[] = [
   { value: MEDIA_ALL, label: "All" },
@@ -96,14 +130,97 @@ body:not(.${FAVORITES_BROWSING_BODY_CLASS}) .${MORE_CLASS} {
 .${CONTROLS_CLASS} {
   display: flex;
   flex: 1 1 auto;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 0.35rem 0.5rem;
+  min-width: 0;
+  overflow: hidden;
+  /* Room for the focus outline of the controls at the edges. */
+  padding: 3px;
+  margin: -3px;
+}
+.${CONTROLS_CLASS} > * {
+  flex: none;
+}
+.${CONTROLS_CLASS} .rdw-btn {
+  font-weight: 500;
+}
+.${CONTROLS_CLASS} .${SEARCH_BOX_CLASS} {
+  position: relative;
+  flex: 1 1 ${String(SEARCH_WIDTH_PX)}px;
+  min-width: ${String(SEARCH_WIDTH_PX)}px;
+  max-width: ${String(SEARCH_MAX_WIDTH_PX)}px;
 }
 .${CONTROLS_CLASS} .${SEARCH_FIELD_CLASS} {
-  flex: 0 1 260px;
-  min-width: 0;
   margin: 0;
+}
+.${CONTROLS_CLASS} .${SEARCH_FIELD_CLASS} .rdw-field__input {
+  padding-left: 30px;
+  padding-right: 56px;
+}
+.${SEARCH_ICON_CLASS} {
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--rdw-muted);
+  pointer-events: none;
+}
+.${SEARCH_TOOLS_CLASS} {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  gap: 2px;
+}
+.${SEARCH_TOOL_CLASS} {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--rdw-radius-s);
+  background: transparent;
+  color: var(--rdw-muted);
+  cursor: pointer;
+}
+.${SEARCH_TOOL_CLASS}:hover,
+.${SEARCH_TOOL_CLASS}[aria-expanded="true"] {
+  color: var(--rdw-text);
+}
+.${GROUP_LABEL_CLASS} {
+  font: 12px var(--rdw-font);
+  color: var(--rdw-muted);
+}
+.${CONTROLS_CLASS}:not([${FIT_ATTRIBUTE}="0"]) .${GROUP_LABEL_CLASS} {
+  display: none;
+}
+.${CONTROLS_CLASS}[${FIT_ATTRIBUTE}="2"] .${SEARCH_BOX_CLASS},
+.${CONTROLS_CLASS}[${FIT_ATTRIBUTE}="3"] .${SEARCH_BOX_CLASS} {
+  min-width: ${String(SEARCH_MIN_WIDTH_PX)}px;
+}
+.${CONTROLS_CLASS}[${FIT_ATTRIBUTE}="3"] {
+  flex-wrap: wrap;
+}
+.${CONTROLS_CLASS}[${FIT_ATTRIBUTE}="3"] .${SEARCH_BOX_CLASS} {
+  flex: 1 0 100%;
+  max-width: none;
+}
+.${SYNTAX_CLASS} {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 12px;
+  margin: 0;
+}
+.${SYNTAX_CLASS} dt {
+  font-family: ui-monospace, monospace;
+  color: var(--rdw-text);
+}
+.${SYNTAX_CLASS} dd {
+  margin: 0;
+  color: var(--rdw-muted);
 }
 .${STATUS_CLASS} {
   font: 12px var(--rdw-font);
@@ -334,13 +451,54 @@ export function openRandomFavorite(): void {
   }
 }
 
-export function FavoritesBrowser(): JSX.Element {
+/**
+ * Squeezes the row of controls until it fits its width, a step at a time, and
+ * stops at the first step that fits. Measured, not tied to window widths: how
+ * wide the controls are depends on the theme's font and on the labels.
+ */
+export function fitControlsRow(row: HTMLElement): number {
+  let applied: number = FIT_STEPS[0];
+  for (const step of FIT_STEPS) {
+    applied = step;
+    row.setAttribute(FIT_ATTRIBUTE, String(step));
+    if (row.scrollWidth <= row.clientWidth) {
+      break;
+    }
+  }
+  return applied;
+}
+
+/** "cat* -video · Images": what the list is narrowed to, for the selection bar. */
+export function favoritesFilterSummary(text: string, media: FavoritesMedia): string {
+  const parts: string[] = [];
+  const query = text.trim();
+  if (query.length > 0) {
+    parts.push(query);
+  }
+  const option = MEDIA_OPTIONS.find((item) => item.value === media);
+  if (media !== MEDIA_ALL && option !== undefined) {
+    parts.push(option.label);
+  }
+  return parts.join(" · ");
+}
+
+export type FavoritesBrowserProps = {
+  /** Where the "N found" line goes; it is not drawn while this is null. */
+  readonly statusSlot?: HTMLElement | null;
+  /** Told what the list is narrowed to whenever that changes. */
+  readonly onSummary?: (summary: string) => void;
+};
+
+export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element {
   const [text, setText] = useState("");
   const [media, setMedia] = useState<FavoritesMedia>(MEDIA_ALL);
   const [view, setView] = useState<FavoritesView>(() => readView());
   const [index, setIndex] = useState<readonly FavoriteIndexEntry[] | null>(null);
   const [status, setStatus] = useState("");
+  const [syntaxOpen, setSyntaxOpen] = useState(false);
   const loadingRef = useRef(false);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const syntaxButtonRef = useRef<HTMLButtonElement>(null);
 
   // A number while the list is shown in a random order, null otherwise.
   const [shuffleSeed, setShuffleSeed] = useState<number | null>(null);
@@ -351,6 +509,29 @@ export function FavoritesBrowser(): JSX.Element {
     media !== MEDIA_ALL ||
     shuffleSeed !== null ||
     !isEmptyFavoritesQuery(query);
+
+  const { onSummary } = props;
+  useEffect(() => {
+    onSummary?.(favoritesFilterSummary(text, media));
+  }, [onSummary, text, media]);
+
+  useLayoutEffect(() => {
+    const row = rowRef.current;
+    if (row === null) {
+      return undefined;
+    }
+    fitControlsRow(row);
+    if (typeof ResizeObserver !== "function") {
+      return undefined;
+    }
+    const observer = new ResizeObserver(() => {
+      fitControlsRow(row);
+    });
+    observer.observe(row);
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
 
   useEffect(() => {
     onRemoveFailed = (): void => {
@@ -399,17 +580,79 @@ export function FavoritesBrowser(): JSX.Element {
     };
   }, [active, index, text, media, shuffleSeed]);
 
+  const statusLine =
+    status.length > 0 ? (
+      <span className={STATUS_CLASS} role="status">
+        {status}
+      </span>
+    ) : null;
+  const statusSlot = props.statusSlot ?? null;
+
   return (
-    <div className={CONTROLS_CLASS}>
+    <div className={CONTROLS_CLASS} ref={rowRef}>
       <style>{FAVORITES_BROWSER_CSS}</style>
-      <TextField
-        id={SEARCH_FIELD_ID}
-        className={SEARCH_FIELD_CLASS}
-        value={text}
-        placeholder={SEARCH_PLACEHOLDER}
-        aria-label={SEARCH_PLACEHOLDER}
-        onChange={setText}
-      />
+      <div className={SEARCH_BOX_CLASS}>
+        <IconSearch className={SEARCH_ICON_CLASS} size={14} />
+        <TextField
+          id={SEARCH_FIELD_ID}
+          className={SEARCH_FIELD_CLASS}
+          value={text}
+          placeholder={SEARCH_PLACEHOLDER}
+          aria-label={SEARCH_ARIA_LABEL}
+          onChange={setText}
+        />
+        <span className={SEARCH_TOOLS_CLASS}>
+          {text.length > 0 ? (
+            <button
+              type="button"
+              className={`${SEARCH_TOOL_CLASS} rdw-kit-focusable`}
+              aria-label={CLEAR_LABEL}
+              title={CLEAR_LABEL}
+              onClick={() => {
+                setText("");
+                document.getElementById(SEARCH_FIELD_ID)?.focus();
+              }}
+            >
+              <IconX size={14} />
+            </button>
+          ) : null}
+          <button
+            type="button"
+            ref={syntaxButtonRef}
+            className={`${SEARCH_TOOL_CLASS} rdw-kit-focusable`}
+            aria-label={SYNTAX_LABEL}
+            title={SYNTAX_LABEL}
+            aria-expanded={syntaxOpen}
+            onClick={() => {
+              setSyntaxOpen(!syntaxOpen);
+            }}
+          >
+            <IconHelp size={14} />
+          </button>
+        </span>
+        <Popover
+          open={syntaxOpen}
+          onClose={() => {
+            setSyntaxOpen(false);
+          }}
+          anchorRef={syntaxButtonRef}
+          widthPx={SYNTAX_POPOVER_WIDTH_PX}
+          alignEnd
+          aria-label={SYNTAX_LABEL}
+        >
+          <dl className={SYNTAX_CLASS}>
+            {SYNTAX_ROWS.map(([example, meaning]) => (
+              <>
+                <dt>{example}</dt>
+                <dd>{meaning}</dd>
+              </>
+            ))}
+          </dl>
+        </Popover>
+      </div>
+      <span className={GROUP_LABEL_CLASS} aria-hidden="true">
+        {MEDIA_LABEL}
+      </span>
       <Segmented
         label={MEDIA_LABEL}
         options={MEDIA_OPTIONS}
@@ -420,6 +663,9 @@ export function FavoritesBrowser(): JSX.Element {
           }
         }}
       />
+      <span className={GROUP_LABEL_CLASS} aria-hidden="true">
+        {VIEW_LABEL}
+      </span>
       <Segmented
         label={VIEW_LABEL}
         options={VIEW_OPTIONS}
@@ -435,21 +681,15 @@ export function FavoritesBrowser(): JSX.Element {
         variant="secondary"
         size="s"
         title={SHUFFLE_TITLE}
-        aria-pressed={shuffleSeed !== null}
+        pressed={shuffleSeed !== null}
         onClick={() => {
           setShuffleSeed(shuffleSeed === null ? Date.now() : null);
         }}
       >
-        {shuffleSeed === null ? SHUFFLE_LABEL : SHUFFLE_OFF_LABEL}
+        <IconShuffle size={14} />
+        {SHUFFLE_LABEL}
       </Button>
-      <Button variant="secondary" size="s" title={RANDOM_TITLE} onClick={openRandomFavorite}>
-        {RANDOM_LABEL}
-      </Button>
-      {status.length > 0 ? (
-        <span className={STATUS_CLASS} role="status">
-          {status}
-        </span>
-      ) : null}
+      {statusSlot !== null && statusLine !== null ? createPortal(statusLine, statusSlot) : null}
     </div>
   );
 }

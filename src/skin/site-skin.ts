@@ -281,11 +281,15 @@ ${ROOT} div#header ul#navbar li.current-page {
   background-image: none;
 }
 
+/* The current section: the text colour and a line under it, so that it does
+   not rest on colour alone. The accent on its soft fill was under 4.5:1. */
 ${ROOT} div#header ul#navbar li.current-page a,
 ${ROOT} #navbar li.current-page a {
-  background: ${v.accentSoft};
-  color: ${v.accent};
+  background: transparent;
+  color: ${v.text};
   font-weight: 600;
+  border-radius: 0;
+  box-shadow: inset 0 -2px 0 ${v.accent};
 }
 
 ${ROOT} div#header ul#subnavbar {

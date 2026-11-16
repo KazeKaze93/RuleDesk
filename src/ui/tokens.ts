@@ -24,6 +24,10 @@ export const TOKEN_VAR = {
   shadow1: "--rdw-shadow-1",
   shadow2: "--rdw-shadow-2",
   font: "--rdw-font",
+  segTrack: "--rdw-seg-track",
+  segText: "--rdw-seg-text",
+  segOn: "--rdw-seg-on",
+  segOnText: "--rdw-seg-on-text",
   backgroundImage: "--rdw-background-image",
   backgroundDim: "--rdw-background-dim",
 } as const;
@@ -51,6 +55,11 @@ export type TokenPalette = {
   readonly shadow1: string;
   readonly shadow2: string;
   readonly font: string;
+  /** A switch of options: its track, the text of an option, the chosen option and its text. */
+  readonly segTrack: string;
+  readonly segText: string;
+  readonly segOn: string;
+  readonly segOnText: string;
 };
 
 /** Light palette — page bg from mock-site-skin.html (.new); surfaces from mock-components. */
@@ -60,7 +69,7 @@ export const LIGHT_PALETTE: TokenPalette = {
   surface2: "#f4f6f8",
   border: "#cfd6dd",
   text: "#1c2228",
-  muted: "#66727e",
+  muted: "#5a6672",
   accent: "#2f6fed",
   accentSoft: "#e8f0fe",
   danger: "#c0392b",
@@ -75,6 +84,10 @@ export const LIGHT_PALETTE: TokenPalette = {
   shadow1: "0 1px 2px rgba(0, 0, 0, 0.06)",
   shadow2: "0 8px 24px rgba(0, 0, 0, 0.25)",
   font: 'system-ui, "Segoe UI", sans-serif',
+  segTrack: "#c9d1d9",
+  segText: "#4a5560",
+  segOn: "#ffffff",
+  segOnText: "#1c2228",
 };
 
 /** Dark palette for theme=dark / site-dark / custom base. */
@@ -99,6 +112,10 @@ export const DARK_PALETTE: TokenPalette = {
   shadow1: "0 1px 2px rgba(0, 0, 0, 0.35)",
   shadow2: "0 8px 24px rgba(0, 0, 0, 0.55)",
   font: 'system-ui, "Segoe UI", sans-serif',
+  segTrack: "transparent",
+  segText: "#8a96a3",
+  segOn: "#3a424c",
+  segOnText: "#e8edf2",
 };
 
 export type PaletteMode = "light" | "dark";
@@ -185,6 +202,11 @@ export const SITE_LIGHT_C_BG_OVERLAY = "#98d491";
 export const SITE_LIGHT_C_TEXT = "#000000";
 export const SITE_LIGHT_C_TEXT_SOFT = "#666666";
 export const SITE_LIGHT_C_LINK = "#000099";
+/**
+ * The script's own secondary text on the site's light background. The site's
+ * own soft text (#666666) is 3.95:1 there; this is 5.82:1.
+ */
+export const SITE_LIGHT_TEXT_SOFT_AA = "#4d4d4d";
 
 /** Site dark script-page chrome (theme=site-dark). */
 export const SITE_DARK_C_BG = "#303a30";
@@ -193,6 +215,11 @@ export const SITE_DARK_C_BORDER = "#505a50";
 export const SITE_DARK_C_TEXT = "#c0c0c0";
 export const SITE_DARK_C_MUTED = "#878787";
 export const SITE_DARK_C_ACCENT = "#b0e0b0";
+/**
+ * The script's own secondary text on the site's dark background. The site's
+ * own muted text (#878787) is 3.30:1 there; this is 4.98:1.
+ */
+export const SITE_DARK_TEXT_SOFT_AA = "#a8a8a8";
 
 /**
  * Site default switch ON track: green-family control color (not link blue).
@@ -293,6 +320,10 @@ export function tokensToCssDeclarations(palette: TokenPalette): string {
     `${TOKEN_VAR.shadow1}: ${escapeCssValue(palette.shadow1)};`,
     `${TOKEN_VAR.shadow2}: ${escapeCssValue(palette.shadow2)};`,
     `${TOKEN_VAR.font}: ${escapeCssValue(palette.font)};`,
+    `${TOKEN_VAR.segTrack}: ${escapeCssValue(palette.segTrack)};`,
+    `${TOKEN_VAR.segText}: ${escapeCssValue(palette.segText)};`,
+    `${TOKEN_VAR.segOn}: ${escapeCssValue(palette.segOn)};`,
+    `${TOKEN_VAR.segOnText}: ${escapeCssValue(palette.segOnText)};`,
   ].join("\n  ");
 }
 
@@ -329,6 +360,10 @@ export function applyTokenProperties(
   target.style.setProperty(TOKEN_VAR.shadow1, palette.shadow1);
   target.style.setProperty(TOKEN_VAR.shadow2, palette.shadow2);
   target.style.setProperty(TOKEN_VAR.font, palette.font);
+  target.style.setProperty(TOKEN_VAR.segTrack, palette.segTrack);
+  target.style.setProperty(TOKEN_VAR.segText, palette.segText);
+  target.style.setProperty(TOKEN_VAR.segOn, palette.segOn);
+  target.style.setProperty(TOKEN_VAR.segOnText, palette.segOnText);
 }
 
 export type CustomThemeOverrides = {
