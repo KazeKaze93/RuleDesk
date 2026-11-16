@@ -48,6 +48,7 @@ import { DataSection } from "./data-section";
 import { DownloadsSection } from "./downloads-section";
 import { FavoritesSyncSection } from "./favorites-sync-section";
 import {
+  STICKY_HEADER_DEFAULT,
   STICKY_HEADER_SETTING_ID,
   STICKY_HEADER_SETTING_LABEL,
   STICKY_HEADER_SWITCH_ID,
@@ -260,7 +261,7 @@ export function SettingsPage(): JSX.Element {
   );
 
   const [stickyHeader, setStickyHeader] = useState(() =>
-    getFeatureEnabled(STICKY_HEADER_SETTING_ID, false),
+    getFeatureEnabled(STICKY_HEADER_SETTING_ID, STICKY_HEADER_DEFAULT),
   );
 
   const [collapsed, setCollapsed] = useState<string[]>(() =>

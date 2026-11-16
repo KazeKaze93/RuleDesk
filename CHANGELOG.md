@@ -2,6 +2,11 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.33.1
+
+- The header now stays at the top by default. The setting is renamed to "Keep the header and the sidebar in place while scrolling" and still switches it off
+- With it, the sidebar of Posts and of a post page stays beside the content while you scroll. It is taller than the window, so it scrolls inside itself
+
 ## 0.33.0
 
 The header, redrawn:

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { BootLayoutSettings } from "../../src/boot/cheap-appearance";
 import { reserveSearchTools } from "../../src/boot/layout";
+import { HEADER_LAYOUT_CSS } from "../../src/boot/header-layout";
 import { installMenuSkeleton } from "../../src/boot/menu-skeleton";
 import {
   SEARCH_TOOLS_AI_ROW_BODY_CLASS,
@@ -35,6 +36,8 @@ function menuLabels(): string[] {
 describe("menu skeleton", () => {
   afterEach(() => {
     document.body.replaceChildren();
+    document.documentElement.className = "";
+    document.documentElement.removeAttribute("style");
     window.localStorage.clear();
   });
 
@@ -122,16 +125,22 @@ describe("menu skeleton", () => {
     ]);
   });
 
-  it("makes the header sticky only when the setting is on", () => {
+  it("keeps the header and the sidebar in place unless the setting is off", () => {
     buildHeader(false);
-    installMenuSkeleton(LAYOUT);
-    expect(document.documentElement.classList.contains("rdw-sticky-header")).toBe(false);
     installMenuSkeleton({
       tweaksEnabled: true,
-      features: { "sticky-header": true },
+      features: { "sticky-header": false },
       featureChoice: {},
     });
+    expect(document.documentElement.classList.contains("rdw-sticky-header")).toBe(false);
+    document.body.replaceChildren();
+    buildHeader(false);
+    installMenuSkeleton(LAYOUT);
     expect(document.documentElement.classList.contains("rdw-sticky-header")).toBe(true);
+    expect(HEADER_LAYOUT_CSS).toContain(
+      "html.rdw-sticky-header div#post-list > div.sidebar,",
+    );
+    expect(HEADER_LAYOUT_CSS).toContain("overflow-y: auto");
     document.documentElement.className = "";
     document.documentElement.removeAttribute("style");
   });

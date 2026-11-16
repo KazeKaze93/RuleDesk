@@ -21,7 +21,11 @@ import {
 } from "../pages/constants";
 import { resolveFeatureEnabled, type BootLayoutSettings } from "./cheap-appearance";
 import { applyHeaderLayout } from "./header-layout";
-import { STICKY_HEADER_SETTING_ID, applyStickyHeader } from "./sticky-header";
+import {
+  STICKY_HEADER_DEFAULT,
+  STICKY_HEADER_SETTING_ID,
+  applyStickyHeader,
+} from "./sticky-header";
 
 /**
  * Puts the script's items into the site menu as soon as the menu is parsed,
@@ -132,7 +136,7 @@ export function installMenuSkeleton(layout: BootLayoutSettings): boolean {
     navbar.append(makeItem(MENU_ITEM_ID.settings, MENU_LABEL.settings, RDW_HASH_SETTINGS));
   }
   applyHeaderLayout(navbar);
-  if (layout.features[STICKY_HEADER_SETTING_ID] === true) {
+  if ((layout.features[STICKY_HEADER_SETTING_ID] ?? STICKY_HEADER_DEFAULT) === true) {
     applyStickyHeader(true);
   }
   return true;
