@@ -1,5 +1,5 @@
 import { SITE_SELECTORS } from "./selectors";
-import { markVideoThumbs } from "./video-thumbs";
+import { markVideoThumbs, mountGifMarks } from "./video-thumbs";
 
 /**
  * The site's Comments page: a list of posts, each with its preview, its whole
@@ -110,5 +110,6 @@ export function mountCommentsPage(): void {
   }
   ensureStyle();
   markVideoThumbs(document, SITE_SELECTORS.commentThumb);
+  mountGifMarks(SITE_SELECTORS.commentThumb);
   foldLongTagLists();
 }

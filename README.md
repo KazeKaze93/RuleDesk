@@ -45,7 +45,7 @@ Favorite, Collections, Vote, "I came" and Original as buttons; post details and 
 
 ### Grid
 
-Favorite star and "+" on thumbnails, three grid sizes, infinite scroll, dimming of posts you already opened, hiding of blacklisted posts, optional video preview on hover, no tag tooltip over thumbnails. On the site's Comments page long tag lists are folded. Collections and Following can be shown as tiles or as a list.
+Favorite star and "+" on thumbnails, three grid sizes, infinite scroll, dimming of posts you already opened, hiding of blacklisted posts, optional video preview on hover, a "GIF" label on animated GIFs, no tag tooltip over thumbnails. On the site's Comments page long tag lists are folded. Collections and Following can be shown as tiles or as a list.
 
 ### Favorites
 

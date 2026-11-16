@@ -2,6 +2,11 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.33.3
+
+- Animated GIFs carry a small "GIF" label in the corner of the thumbnail, on Posts, Feed, Favorites and Comments. The site marks them only with the `animated_gif` tag
+- The held sidebar is full height again and gets shorter only at the very end of a page. While it has more below what is shown, its bottom edge fades out instead of being cut off
+
 ## 0.33.2
 
 - The held sidebar no longer slides up under the header at the end of a page

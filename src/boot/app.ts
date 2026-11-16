@@ -5,7 +5,8 @@ import { applyAppearanceTheme } from "../skin/theme";
 import { mountCommentsPage } from "../site/comments-page";
 import { syncFavoritesPage } from "../site/favorites-page";
 import { mountFavoritesPager } from "../site/favorites-pager";
-import { mountFavoriteVideoMarks } from "../site/video-thumbs";
+import { mountFavoriteVideoMarks, mountGifMarks } from "../site/video-thumbs";
+import { SITE_SELECTORS } from "../site/selectors";
 import { maybeResumeFavoritesSync } from "../site/favorites-sync-runner";
 import { detectPageKind } from "../site/pages";
 import { loadBackground } from "../storage/background-store";
@@ -41,6 +42,7 @@ export async function startApp(): Promise<void> {
   const search = window.location.search;
 
   if (pageKind === "list") {
+    mountGifMarks(SITE_SELECTORS.thumb);
     mountCards();
     await yieldToMain();
     mountArtistSidebar();
@@ -51,6 +53,7 @@ export async function startApp(): Promise<void> {
   } else if (pageKind === "favorites") {
     syncFavoritesPage();
     mountFavoriteVideoMarks();
+    mountGifMarks(SITE_SELECTORS.thumb);
     mountFavoritesPager();
     await yieldToMain();
   } else {

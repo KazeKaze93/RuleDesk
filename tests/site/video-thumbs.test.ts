@@ -8,7 +8,11 @@ import {
 import { videoPreviewFeature } from "../../src/features/video-preview";
 import {
   VIDEO_THUMB_CLASS,
+  GIF_THUMB_CLASS,
+  GIF_THUMB_CSS,
+  markGifThumbs,
   markVideoThumbs,
+  titleSaysGif,
   titleSaysVideo,
 } from "../../src/site/video-thumbs";
 import { extractPostIdFromThumbLink } from "../../src/site/selectors";
@@ -133,6 +137,26 @@ describe("favorites video marks", () => {
     expect(SITE_SKIN_CSS).toContain(
       "html.rdw-skin.rdw-page-favorites div.image-list > span > a[onclick] {",
     );
+  });
+
+  it("labels animated GIFs, also where the site cut the tag", () => {
+    expect(titleSaysGif("1girl animated animated_gif solo score:5 rating:e")).toBe(true);
+    expect(titleSaysGif("nimated_gif girls solo")).toBe(true);
+    expect(titleSaysGif("girls solo animated_gi")).toBe(true);
+    expect(titleSaysGif("1girl animated video sound")).toBe(false);
+    expect(titleSaysGif("")).toBe(false);
+
+    const gif = favoriteThumb("7", "girls animated animated_gif");
+    const still = favoriteThumb("8", "girls solo");
+    document.body.append(gif, still);
+    const before = gif.querySelector("a")?.outerHTML;
+    expect(markGifThumbs(document, "span.thumb")).toBe(1);
+    expect(gif.classList.contains(GIF_THUMB_CLASS)).toBe(true);
+    expect(still.classList.contains(GIF_THUMB_CLASS)).toBe(false);
+    // The label is a pseudo-element: nothing is put into the link or the thumb.
+    expect(gif.querySelector("a")?.outerHTML).toBe(before);
+    expect(gif.children).toHaveLength(1);
+    expect(GIF_THUMB_CSS).toContain('content: "GIF"');
   });
 
   it("gives a marked thumb the outline of a video", () => {
