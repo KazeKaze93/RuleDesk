@@ -2,6 +2,14 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.37.3
+
+- Fixed: "Save as collection" and the other dialogs opened from the search panel showed only a dimmed sidebar, and a click closed them. The fade at the bottom of the held sidebar hid everything drawn from inside it
+- Fixed: an animated GIF did not start by itself. It was given back the saved sound setting, and a browser stops a video that gets sound without a click
+- The file name is picked from a list of ready names in RuleDesk → Downloads. "Custom…" opens the field, where a click on a token adds it
+- "Check for new" pauses 1.5 seconds between searches again (the shorter pause got the site's "too many requests") and, after a refusal, waits and asks once more before it stops
+- The filters of Collections and Following have no "?" any more
+
 ## 0.37.2
 
 - The download button of a post could still save a web page instead of a picture: the picture host was asked without being told the request comes from the site. Downloads now say so

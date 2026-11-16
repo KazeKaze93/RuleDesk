@@ -8,7 +8,7 @@ import {
   parseApiCredentials,
   setApiCredentials,
 } from "../storage/api-credentials";
-import { Button, TextField } from "../ui/kit";
+import { Button, Select, TextField, type SelectOption } from "../ui/kit";
 import { DEFAULT_FILE_MASK, FILE_MASK_TOKENS, buildFileName } from "../site/download";
 import { readFileMask, writeFileMask } from "../storage/download-name";
 
@@ -23,16 +23,16 @@ import { readFileMask, writeFileMask } from "../storage/download-name";
 const SECTION_CLASS = "rdw-downloads-settings";
 const ACTIONS_CLASS = "rdw-downloads-settings-actions";
 const HINT_CLASS = "rdw-downloads-settings-hint";
+const MASK_TOKENS_CLASS = "rdw-downloads-settings-tokens";
+const MASK_TOKEN_CLASS = "rdw-downloads-settings-token";
 
 const API_FIELD_ID = "rdw-api-credentials";
 const MASK_FIELD_ID = "rdw-download-name";
 const MASK_FIELD_LABEL = "File name";
 const MASK_SAVED = "Saved.";
-const MASK_RESET_LABEL = "Default";
-const MASK_HINT_PREFIX = "What you can put in square brackets: ";
-const MASK_HINT_SUFFIX =
-  ". Anything else is kept as typed; the extension is added by itself. Keep [id] or [md5] in the name, or files will share one.";
-const MASK_PREVIEW_PREFIX = "For example: ";
+const MASK_HINT =
+  "Anything typed outside the brackets is kept as it is; the extension is added by itself. Keep id or md5 in the name, or files will share one.";
+const MASK_PREVIEW_PREFIX = "Files are saved as: ";
 /** A made-up post to show what a mask gives. */
 const MASK_SAMPLE = {
   postId: 19374686,
@@ -76,17 +76,63 @@ export const DOWNLOADS_SECTION_CSS = `
 .${SECTION_CLASS} .${HINT_CLASS} a {
   color: var(--rdw-accent);
 }
+.${MASK_TOKENS_CLASS} {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+}
+.${MASK_TOKEN_CLASS} {
+  min-height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--rdw-border);
+  border-radius: 12px;
+  background: var(--rdw-surface-2);
+  color: var(--rdw-text);
+  font: 12px var(--rdw-font);
+  cursor: pointer;
+}
+.${MASK_TOKEN_CLASS}:hover {
+  border-color: var(--rdw-accent);
+}
 `.trim();
 
-/** The setting of the name saved files get, for the manager and for a single post alike. */
+/** Ready masks to pick from; anything else is "Custom". */
+export const MASK_PRESETS: readonly string[] = [
+  DEFAULT_FILE_MASK,
+  "[id]",
+  "[md5]",
+  "[date] [id]",
+  "[id] [width]x[height]",
+  "[rating] [id]",
+  "[owner] [id]",
+];
+const MASK_CUSTOM = "custom";
+const MASK_CUSTOM_LABEL = "Custom…";
+const MASK_TOKENS_LABEL = "Add to the name:";
+
+function sample(mask: string): string {
+  return buildFileName(mask, MASK_SAMPLE);
+}
+
+/**
+ * The name saved files get, for the manager and for the button of a post
+ * alike. A ready mask is picked from the list and saved at once; "Custom…"
+ * opens a field, where a click on a token adds it to the name.
+ */
 function FileNameSetting(): JSX.Element {
   const [mask, setMask] = useState(() => readFileMask());
+  const [custom, setCustom] = useState(() => !MASK_PRESETS.includes(readFileMask()));
   const [saved, setSaved] = useState(false);
   const store = (value: string): void => {
     writeFileMask(value);
     setMask(readFileMask());
     setSaved(true);
   };
+  const options: SelectOption[] = [
+    ...MASK_PRESETS.map((preset) => ({ value: preset, label: sample(preset) })),
+    { value: MASK_CUSTOM, label: MASK_CUSTOM_LABEL },
+  ];
   return (
     <form
       className={SECTION_CLASS}
@@ -95,36 +141,59 @@ function FileNameSetting(): JSX.Element {
         store(mask);
       }}
     >
-      <TextField
-        id={MASK_FIELD_ID}
+      <Select
         label={MASK_FIELD_LABEL}
-        value={mask}
-        placeholder={DEFAULT_FILE_MASK}
+        options={options}
+        value={custom ? MASK_CUSTOM : mask}
         onChange={(value) => {
-          setMask(value);
-          setSaved(false);
+          if (value === MASK_CUSTOM) {
+            setCustom(true);
+            setSaved(false);
+            return;
+          }
+          setCustom(false);
+          store(value);
         }}
       />
-      <div className={ACTIONS_CLASS}>
-        <Button type="submit" variant="primary" size="s">
-          {UI_TEXT.save}
-        </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          size="s"
-          onClick={() => {
-            store(DEFAULT_FILE_MASK);
-          }}
-        >
-          {MASK_RESET_LABEL}
-        </Button>
-      </div>
+      {custom ? (
+        <>
+          <TextField
+            id={MASK_FIELD_ID}
+            value={mask}
+            placeholder={DEFAULT_FILE_MASK}
+            aria-label={MASK_FIELD_LABEL}
+            onChange={(value) => {
+              setMask(value);
+              setSaved(false);
+            }}
+          />
+          <div className={MASK_TOKENS_CLASS}>
+            <span className={HINT_CLASS}>{MASK_TOKENS_LABEL}</span>
+            {FILE_MASK_TOKENS.map((token) => (
+              <button
+                key={token}
+                type="button"
+                className={`${MASK_TOKEN_CLASS} rdw-kit-focusable`}
+                onClick={() => {
+                  const text = mask.trim();
+                  setMask(text.length > 0 ? `${text} [${token}]` : `[${token}]`);
+                  setSaved(false);
+                }}
+              >
+                {token}
+              </button>
+            ))}
+          </div>
+          <div className={ACTIONS_CLASS}>
+            <Button type="submit" variant="primary" size="s">
+              {UI_TEXT.save}
+            </Button>
+          </div>
+          <p className={HINT_CLASS}>{MASK_HINT}</p>
+        </>
+      ) : null}
       <p className={HINT_CLASS} role="status">
-        {`${MASK_PREVIEW_PREFIX}${buildFileName(mask, MASK_SAMPLE)}${saved ? ` ${MASK_SAVED}` : ""}`}
-      </p>
-      <p className={HINT_CLASS}>
-        {`${MASK_HINT_PREFIX}${FILE_MASK_TOKENS.map((token) => `[${token}]`).join(", ")}${MASK_HINT_SUFFIX}`}
+        {`${MASK_PREVIEW_PREFIX}${sample(mask)}${saved ? ` ${MASK_SAVED}` : ""}`}
       </p>
     </form>
   );

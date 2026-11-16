@@ -59,9 +59,19 @@ html.${STICKY_HEADER_CLASS} ${SIDEBAR_SELECTORS[1]} {
   scrollbar-width: thin;
   scrollbar-color: var(--rdw-border) transparent;
 }
-html.${STICKY_HEADER_CLASS} div.sidebar.${SIDEBAR_MORE_CLASS} {
-  -webkit-mask-image: linear-gradient(to bottom, black calc(100% - ${String(SIDEBAR_FADE_PX)}px), transparent);
-  mask-image: linear-gradient(to bottom, black calc(100% - ${String(SIDEBAR_FADE_PX)}px), transparent);
+/* A strip that stays at the bottom edge of the sidebar and fades its last
+   lines into the page. Not a mask on the sidebar: a mask hides everything
+   drawn from inside it that lies outside its box, and a dialog opened from
+   the search panel is drawn in the middle of the window. */
+html.${STICKY_HEADER_CLASS} div.sidebar.${SIDEBAR_MORE_CLASS}::after {
+  content: "";
+  position: sticky;
+  bottom: 0;
+  display: block;
+  height: ${String(SIDEBAR_FADE_PX)}px;
+  margin-top: -${String(SIDEBAR_FADE_PX)}px;
+  background: linear-gradient(to bottom, transparent, var(--rdw-bg));
+  pointer-events: none;
 }
 `.trim();
 

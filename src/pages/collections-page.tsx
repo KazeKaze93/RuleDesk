@@ -34,7 +34,7 @@ import {
   type SegmentedOption,
   type SelectOption,
 } from "../ui/kit";
-import { SearchField, type SearchHelp } from "../ui/kit/search-field";
+import { SearchField } from "../ui/kit/search-field";
 import { IconCheck, IconPlus } from "../ui/kit/icons";
 import { QueryField } from "../ui/query-field";
 import { collectionDetailHash, dynamicCollectionMarkHash } from "./constants";
@@ -91,15 +91,6 @@ const TYPE_SEGMENTED_LABEL = "Show";
 const KIND_SEGMENTED_LABEL = "Collection kind";
 const FILTER_ARIA_LABEL = "Filter by name; several names separated by commas";
 const FILTER_PLACEHOLDER = "Filter collections";
-/** What the filter takes beyond a word; the kind is the switch beside it. */
-const FILTER_HELP: SearchHelp = {
-  label: "Filter help",
-  widthPx: 300,
-  rows: [
-    ["cats", "names that contain cats"],
-    ["cats, dogs", "either name"],
-  ],
-};
 const GRID_LABEL = "Collections";
 const BADGE_CUSTOM = "Custom";
 const BADGE_DYNAMIC = "Dynamic";
@@ -978,7 +969,6 @@ export function CollectionsPage(): JSX.Element {
             value={nameQuery}
             placeholder={FILTER_PLACEHOLDER}
             aria-label={FILTER_ARIA_LABEL}
-            help={FILTER_HELP}
             onChange={setNameQuery}
           />
           <Select

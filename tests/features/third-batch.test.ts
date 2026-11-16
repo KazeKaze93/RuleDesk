@@ -3,7 +3,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { resolvePostFileUrl } from "../../src/features/post-panel/download-one";
 import { fileNameInfo } from "../../src/features/post-panel/post-panel";
 import { SITE_SEARCH_HELP, mountSiteSearchTools } from "../../src/features/site-search-tools";
-import { bindClickToToggle, playLikeGif } from "../../src/features/video-player";
+import {
+  bindClickToToggle,
+  playLikeGif,
+  resetVideoPlayerState,
+} from "../../src/features/video-player";
+import { MASK_PRESETS } from "../../src/pages/downloads-section";
 import { featureBodyClass } from "../../src/features/types";
 import { DEFAULT_FILE_MASK, buildFileName, isMediaFileUrl } from "../../src/site/download";
 
@@ -166,6 +171,30 @@ describe("the player", () => {
     const clip = makeVideo();
     expect(playLikeGif(clip.video, ["video", "sound"])).toBe(false);
     expect(clip.play).not.toHaveBeenCalled();
+  });
+});
+
+describe("ready file name masks", () => {
+  it("each gives a name of its own, and the first is the default", () => {
+    const names = MASK_PRESETS.map((mask) => buildFileName(mask, INFO, NOW));
+    expect(new Set(names).size).toBe(names.length);
+    expect(MASK_PRESETS[0]).toBe(DEFAULT_FILE_MASK);
+  });
+});
+
+describe("an animated GIF that is not ready yet", () => {
+  it("is started again once the player can play", () => {
+    resetVideoPlayerState();
+    const video = document.createElement("video");
+    const play = vi.fn(async () => undefined);
+    video.play = play;
+    Object.defineProperty(video, "paused", { get: () => true });
+    playLikeGif(video, ["animated_gif"]);
+    expect(play).toHaveBeenCalledTimes(1);
+    video.dispatchEvent(new Event("canplay"));
+    expect(play).toHaveBeenCalledTimes(2);
+    expect(video.muted).toBe(true);
+    resetVideoPlayerState();
   });
 });
 

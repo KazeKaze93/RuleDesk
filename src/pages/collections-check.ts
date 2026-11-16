@@ -17,8 +17,10 @@ import { setDynamicCover, setDynamicNewest, setDynamicPostCount } from "../stora
  * when asked too often, and going on would only make that worse.
  */
 
-/** Pause between two requests of a run. */
-export const CHECK_INTERVAL_MS = 700;
+/** Pause between two requests of a run. A shorter one got the site's 429. */
+export const CHECK_INTERVAL_MS = 1500;
+/** After a refusal the run waits this long and asks once more before it stops. */
+export const CHECK_RETRY_MS = 8000;
 /** How many previews a card cover takes. */
 const COVER_SIZE = 4;
 const SORT_TOKEN_PREFIX = "sort:";
@@ -84,7 +86,11 @@ export async function runCollectionsCheck(
       break;
     }
     try {
-      const page = await fetchNextPage(buildSearchUrl(collection.tags));
+      const url = buildSearchUrl(collection.tags);
+      const page = await fetchNextPage(url).catch(async () => {
+        await pause(CHECK_RETRY_MS);
+        return fetchNextPage(url);
+      });
       const list = page.thumbs[0]?.parentElement ?? null;
       const doc = page.thumbs[0]?.ownerDocument ?? null;
       if (list !== null) {
