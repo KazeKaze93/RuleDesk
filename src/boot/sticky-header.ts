@@ -29,6 +29,14 @@ const HEADER_Z_INDEX = 25;
  */
 const SIDEBAR_SELECTORS = ["div#post-list > div.sidebar", "div#post-view > div.sidebar"] as const;
 const SIDEBAR_GAP_PX = 8;
+const SIDEBAR_SELECTOR = SIDEBAR_SELECTORS.join(", ");
+/**
+ * What lies under the block the sidebar lives in (the page footer), in px. A
+ * sticky element cannot leave its block: at the end of the page the block
+ * ends above the bottom of the window, and a sidebar as tall as the window
+ * would be pushed up under the header. It is made shorter by this much.
+ */
+const SIDEBAR_FOOT_VAR = "--rdw-sidebar-foot";
 
 export const STICKY_HEADER_CSS = `
 html.${STICKY_HEADER_CLASS} ${HEADER_SELECTOR} {
@@ -40,9 +48,10 @@ html.${STICKY_HEADER_CLASS} ${SIDEBAR_SELECTORS[0]},
 html.${STICKY_HEADER_CLASS} ${SIDEBAR_SELECTORS[1]} {
   position: sticky;
   top: calc(${STICKY_TOP} + ${String(SIDEBAR_GAP_PX)}px);
-  max-height: calc(100vh - ${STICKY_TOP} - ${String(SIDEBAR_GAP_PX * 2)}px);
+  max-height: calc(100vh - ${STICKY_TOP} - ${String(SIDEBAR_GAP_PX * 2)}px - var(${SIDEBAR_FOOT_VAR}, 0px));
   overflow-y: auto;
   scrollbar-width: thin;
+  scrollbar-color: var(--rdw-border) transparent;
 }
 `.trim();
 
@@ -57,6 +66,19 @@ function writeHeight(): void {
   }
   const height = Math.round(header.getBoundingClientRect().height);
   root.style.setProperty(HEADER_HEIGHT_VAR, `${String(height)}px`);
+  writeSidebarFoot();
+}
+
+function writeSidebarFoot(): void {
+  const root = document.documentElement;
+  const block = document.querySelector(SIDEBAR_SELECTOR)?.parentElement;
+  if (block === null || block === undefined) {
+    root.style.removeProperty(SIDEBAR_FOOT_VAR);
+    return;
+  }
+  const blockBottom = block.getBoundingClientRect().bottom + window.scrollY;
+  const foot = Math.max(0, Math.round(root.scrollHeight - blockBottom));
+  root.style.setProperty(SIDEBAR_FOOT_VAR, `${String(foot)}px`);
 }
 
 /** Switches the sticky header on or off and keeps the height property in step. */
@@ -70,6 +92,10 @@ export function applyStickyHeader(enabled: boolean): void {
   if (enabled && header !== null && typeof ResizeObserver === "function") {
     observer = new ResizeObserver(writeHeight);
     observer.observe(header);
+    // The page grows while it loads; what is under the sidebar's block changes.
+    if (document.body !== null) {
+      observer.observe(document.body);
+    }
   }
   writeHeight();
 }

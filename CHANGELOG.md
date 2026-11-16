@@ -2,6 +2,11 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.33.2
+
+- The held sidebar no longer slides up under the header at the end of a page
+- Its scrollbar takes the colours of the theme instead of being white
+
 ## 0.33.1
 
 - The header now stays at the top by default. The setting is renamed to "Keep the header and the sidebar in place while scrolling" and still switches it off
