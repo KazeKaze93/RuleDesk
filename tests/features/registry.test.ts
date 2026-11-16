@@ -28,6 +28,7 @@ describe("FEATURES registry", () => {
       "sidebar-right",
       "motion",
       "feed-counter",
+      "tag-wiki",
     ]);
     expect(ids).not.toContain("top-bar");
     expect(ids).not.toContain("dark-theme");

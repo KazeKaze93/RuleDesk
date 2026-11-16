@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.38.0
+
+- A click on the "?" of a tag in the sidebar shows what the site's wiki says about the tag, in a small panel beside it: the name, the tag type and the text, with a link to the entry. A click with Ctrl or the middle button opens the wiki as before. The site keeps the text two pages away, so one click is two requests; an answer is kept until the page is left. Switch: RuleDesk → Page → "Tag description on the ? in the sidebar"
+
 ## 0.37.4
 
 - A post that is an animated GIF now moves on its page. The site shows a still copy there and keeps the GIF behind "Original image"; the picture of the page is pointed at the original at once. Switch: RuleDesk → Page → "Play GIFs on the post page"

@@ -16,6 +16,7 @@ import { playlistMenuFeature } from "./playlist-menu";
 import { postActionsFeature } from "./post-actions";
 import { searchToolsFeature } from "./search-tools";
 import { tagGroupsFeature } from "./tag-groups";
+import { tagWikiFeature } from "./tag-wiki";
 import { thumbTooltipFeature } from "./thumb-tooltip";
 import type { Feature } from "./types";
 import { videoPlayerFeature } from "./video-player";
@@ -44,4 +45,5 @@ export const FEATURES: Feature[] = [
   sidebarRightFeature,
   motionFeature,
   feedCounterFeature,
+  tagWikiFeature,
 ];

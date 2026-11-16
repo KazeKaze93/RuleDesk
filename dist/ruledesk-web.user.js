@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RuleDesk Web
 // @namespace    https://github.com/kazekaze93/ruledesk-web
-// @version      0.37.4
+// @version      0.38.0
 // @description  Collections, playlists, favorites, artist updates, and page tweaks for rule34.xxx
 // @downloadURL  https://raw.githubusercontent.com/KazeKaze93/RuleDesk/main/dist/ruledesk-web.user.js
 // @updateURL    https://raw.githubusercontent.com/KazeKaze93/RuleDesk/main/dist/ruledesk-web.user.js
@@ -6904,7 +6904,7 @@ var HEADER_Z_INDEX$1 = 25;
 */
 var SIDEBAR_SELECTORS = ["div#post-list > div.sidebar", "div#post-view > div.sidebar"];
 var SIDEBAR_GAP_PX = 8;
-var SIDEBAR_SELECTOR = SIDEBAR_SELECTORS.join(", ");
+var SIDEBAR_SELECTOR$1 = SIDEBAR_SELECTORS.join(", ");
 /**
 * How far the bottom of the sidebar's block is above the bottom of the window
 * right now, in px; 0 while the block reaches the window's bottom. A sticky
@@ -6961,7 +6961,7 @@ function writeHeight() {
 	writeSidebarFoot();
 }
 function findSidebar() {
-	const sidebar = document.querySelector(SIDEBAR_SELECTOR);
+	const sidebar = document.querySelector(SIDEBAR_SELECTOR$1);
 	return sidebar instanceof HTMLElement ? sidebar : null;
 }
 function writeSidebarFoot() {
@@ -6972,9 +6972,9 @@ function writeSidebarFoot() {
 		root.style.removeProperty(SIDEBAR_FOOT_VAR);
 		return;
 	}
-	if (boundSidebar !== sidebar && document.documentElement.classList.contains("rdw-sticky-header")) {
-		boundSidebar?.removeEventListener("scroll", scheduleSidebarFoot);
-		boundSidebar = sidebar;
+	if (boundSidebar$1 !== sidebar && document.documentElement.classList.contains("rdw-sticky-header")) {
+		boundSidebar$1?.removeEventListener("scroll", scheduleSidebarFoot);
+		boundSidebar$1 = sidebar;
 		sidebar.addEventListener("scroll", scheduleSidebarFoot, { passive: true });
 	}
 	let tallestOther = 0;
@@ -6992,18 +6992,18 @@ function writeSidebarFoot() {
 function scheduleSidebarFoot() {
 	writeSidebarFoot();
 }
-var boundSidebar = null;
+var boundSidebar$1 = null;
 function bindScroll(enabled) {
 	window.removeEventListener("scroll", scheduleSidebarFoot);
 	window.removeEventListener("resize", scheduleSidebarFoot);
-	boundSidebar?.removeEventListener("scroll", scheduleSidebarFoot);
-	boundSidebar?.classList.remove(SIDEBAR_MORE_CLASS);
-	boundSidebar = null;
+	boundSidebar$1?.removeEventListener("scroll", scheduleSidebarFoot);
+	boundSidebar$1?.classList.remove(SIDEBAR_MORE_CLASS);
+	boundSidebar$1 = null;
 	if (!enabled) return;
 	window.addEventListener("scroll", scheduleSidebarFoot, { passive: true });
 	window.addEventListener("resize", scheduleSidebarFoot, { passive: true });
-	boundSidebar = findSidebar();
-	boundSidebar?.addEventListener("scroll", scheduleSidebarFoot, { passive: true });
+	boundSidebar$1 = findSidebar();
+	boundSidebar$1?.addEventListener("scroll", scheduleSidebarFoot, { passive: true });
 }
 /** Switches the sticky header on or off and keeps the height property in step. */
 function applyStickyHeader(enabled) {
@@ -7499,15 +7499,15 @@ function isBlacklisted(tags, score, rating, list) {
 	}
 	return false;
 }
-var FEATURE_ID$18 = "blacklist-hide";
-var FEATURE_LABEL$17 = "Hide blacklisted posts";
+var FEATURE_ID$19 = "blacklist-hide";
+var FEATURE_LABEL$18 = "Hide blacklisted posts";
 var FEATURE_PAGES$14 = ["list"];
-var BODY_FEATURE_CLASS$3 = featureBodyClass(FEATURE_ID$18);
+var BODY_FEATURE_CLASS$3 = featureBodyClass(FEATURE_ID$19);
 var CLASS_BLACKLISTED$1 = "rdw-blacklisted";
 var SCORE_TOKEN_PREFIX$3 = "score:";
 var RATING_TOKEN_PREFIX$2 = "rating:";
 var WHITESPACE_SPLIT = /\s+/;
-var FEATURE_CSS$15 = `
+var FEATURE_CSS$16 = `
 body.${BODY_FEATURE_CLASS$3} span.thumb.${CLASS_BLACKLISTED$1} {
   display: none !important;
 }
@@ -7557,12 +7557,12 @@ function mountBlacklistHide(ctx) {
 	ensureSubscriptions();
 }
 var blacklistHideFeature = {
-	id: FEATURE_ID$18,
-	label: FEATURE_LABEL$17,
+	id: FEATURE_ID$19,
+	label: FEATURE_LABEL$18,
 	pages: [...FEATURE_PAGES$14],
 	defaultEnabled: true,
 	cssOnly: true,
-	css: FEATURE_CSS$15,
+	css: FEATURE_CSS$16,
 	mount: mountBlacklistHide
 };
 /**
@@ -7573,8 +7573,8 @@ var blacklistHideFeature = {
 * addresses. A retry happens only after a real load error, at most once per
 * host, and only for an address on one of these hosts.
 */
-var FEATURE_ID$17 = "cdn-fallback";
-var FEATURE_LABEL$16 = "Retry a failed post image on other servers";
+var FEATURE_ID$18 = "cdn-fallback";
+var FEATURE_LABEL$17 = "Retry a failed post image on other servers";
 var FEATURE_PAGES$13 = ["post"];
 var POST_IMAGE_SELECTOR$1 = "img#image";
 var EVENT_ERROR = "error";
@@ -7623,8 +7623,8 @@ function mountCdnFallback(_ctx) {
 	});
 }
 var cdnFallbackFeature = {
-	id: FEATURE_ID$17,
-	label: FEATURE_LABEL$16,
+	id: FEATURE_ID$18,
+	label: FEATURE_LABEL$17,
 	pages: [...FEATURE_PAGES$13],
 	defaultEnabled: true,
 	css: "",
@@ -8366,8 +8366,8 @@ function restoreDownloads() {
 * while a job exists. It shows what is being saved and holds Pause, Resume
 * and Cancel.
 */
-var FEATURE_ID$16 = DOWNLOADS_FEATURE_ID;
-var FEATURE_LABEL$15 = "Download manager";
+var FEATURE_ID$17 = DOWNLOADS_FEATURE_ID;
+var FEATURE_LABEL$16 = "Download manager";
 var FEATURE_PAGES$12 = [
 	"list",
 	"post",
@@ -8375,12 +8375,12 @@ var FEATURE_PAGES$12 = [
 	"other"
 ];
 var DOWNLOADS_PANEL_ID = RDW_DOWNLOADS_PANEL_ID;
-var TITLE_CLASS$3 = "rdw-downloads-title";
-var TEXT_CLASS = "rdw-downloads-text";
+var TITLE_CLASS$4 = "rdw-downloads-title";
+var TEXT_CLASS$1 = "rdw-downloads-text";
 var ACTIONS_CLASS$2 = "rdw-downloads-actions";
-var PANEL_WIDTH_PX$1 = 280;
+var PANEL_WIDTH_PX$2 = 280;
 var PANEL_INSET_PX = 16;
-var PANEL_Z_INDEX$1 = 30;
+var PANEL_Z_INDEX$2 = 30;
 var TEXT_COLLECTING = "Finding files: ";
 var TEXT_PAUSED = "Paused";
 var TEXT_DONE = "Finished";
@@ -8389,13 +8389,13 @@ var LABEL_PAUSE = "Pause";
 var LABEL_RESUME = "Resume";
 var LABEL_CANCEL = "Cancel";
 var LABEL_CLOSE$1 = "Close";
-var FEATURE_CSS$14 = `
+var FEATURE_CSS$15 = `
 #${DOWNLOADS_PANEL_ID} {
   position: fixed;
   right: ${String(PANEL_INSET_PX)}px;
   bottom: ${String(PANEL_INSET_PX)}px;
-  z-index: ${String(PANEL_Z_INDEX$1)};
-  width: ${String(PANEL_WIDTH_PX$1)}px;
+  z-index: ${String(PANEL_Z_INDEX$2)};
+  width: ${String(PANEL_WIDTH_PX$2)}px;
   max-width: calc(100vw - ${String(32)}px);
   box-sizing: border-box;
   display: flex;
@@ -8412,14 +8412,14 @@ var FEATURE_CSS$14 = `
 #${DOWNLOADS_PANEL_ID}:empty {
   display: none;
 }
-#${DOWNLOADS_PANEL_ID} .${TITLE_CLASS$3} {
+#${DOWNLOADS_PANEL_ID} .${TITLE_CLASS$4} {
   margin: 0;
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-#${DOWNLOADS_PANEL_ID} .${TEXT_CLASS} {
+#${DOWNLOADS_PANEL_ID} .${TEXT_CLASS$1} {
   margin: 0;
   color: var(--rdw-muted);
   word-break: break-word;
@@ -8450,7 +8450,7 @@ function DownloadsPanel() {
 	const processed = state.done + state.failed;
 	return /* @__PURE__ */ a($$1, { children: [
 		/* @__PURE__ */ a("p", {
-			className: TITLE_CLASS$3,
+			className: TITLE_CLASS$4,
 			title: state.label,
 			children: state.label
 		}),
@@ -8458,7 +8458,7 @@ function DownloadsPanel() {
 			waiting: true,
 			label: statusText(state)
 		}) : state.phase === "error" ? /* @__PURE__ */ a("p", {
-			className: TEXT_CLASS,
+			className: TEXT_CLASS$1,
 			role: "alert",
 			children: statusText(state)
 		}) : /* @__PURE__ */ a(ProgressBar, {
@@ -8499,11 +8499,11 @@ function mountDownloads(_ctx) {
 	restoreDownloads();
 }
 var downloadsFeature = {
-	id: FEATURE_ID$16,
-	label: FEATURE_LABEL$15,
+	id: FEATURE_ID$17,
+	label: FEATURE_LABEL$16,
 	pages: [...FEATURE_PAGES$12],
 	defaultEnabled: true,
-	css: `${FEATURE_CSS$14}
+	css: `${FEATURE_CSS$15}
 ${GRID_SELECT_CSS}`,
 	mount: mountDownloads
 };
@@ -9731,7 +9731,7 @@ function CollectionPicker(props) {
 var POST_IMAGE_SELECTOR = "img#image";
 var POST_VIDEO_SELECTOR = "video#gelcomVideoPlayer";
 var VIDEO_SOURCE_SELECTOR$1 = "source";
-var TAG_LINK_SELECTOR = "a[href*='tags=']";
+var TAG_LINK_SELECTOR$1 = "a[href*='tags=']";
 var TAG_JOIN = " ";
 /** The entry of a favorite made now: it sorts before everything indexed earlier. */
 function buildLiveEntry(postId, tags, thumb, now) {
@@ -9760,7 +9760,7 @@ function indexFavoriteFromThumb(postId, starButton) {
 function readPostPageTags(root = document) {
 	const tags = [];
 	for (const row of root.querySelectorAll(SITE_SELECTORS.tagSidebarRow)) {
-		const links = row.querySelectorAll(TAG_LINK_SELECTOR);
+		const links = row.querySelectorAll(TAG_LINK_SELECTOR$1);
 		const href = links[links.length - 1]?.getAttribute("href");
 		if (href === null || href === void 0) continue;
 		let tag = null;
@@ -9868,8 +9868,8 @@ async function handleFavToggleClick(button, postId) {
 	applyFavButtonState(button, "error", postId, UI_TEXT.cardFavErrorRequest);
 	log.warn("Favorite failed", postId, result);
 }
-var FEATURE_ID$15 = "playlist-menu";
-var FEATURE_LABEL$14 = "Add to collection button";
+var FEATURE_ID$16 = "playlist-menu";
+var FEATURE_LABEL$15 = "Add to collection button";
 var FEATURE_PAGES$11 = [
 	"list",
 	"post",
@@ -9898,8 +9898,8 @@ var FOCUS_OUTLINE_OFFSET = "2px";
 var EVENT_KEYDOWN = "keydown";
 var EVENT_POINTERDOWN = "pointerdown";
 var KEY_ESCAPE = "Escape";
-var BODY_SELECTOR$3 = `body.${featureBodyClass(FEATURE_ID$15)}`;
-var FEATURE_CSS$13 = `
+var BODY_SELECTOR$3 = `body.${featureBodyClass(FEATURE_ID$16)}`;
+var FEATURE_CSS$14 = `
 ${BODY_SELECTOR$3} .${CLASS_ADD} {
   position: absolute;
   top: ${String(BUTTON_BELOW_FAV_TOP_PX)}px;
@@ -10195,11 +10195,11 @@ function mountPlaylistMenu(ctx) {
 	ensureListSubscriptions$1();
 }
 var playlistMenuFeature = {
-	id: FEATURE_ID$15,
-	label: FEATURE_LABEL$14,
+	id: FEATURE_ID$16,
+	label: FEATURE_LABEL$15,
 	pages: [...FEATURE_PAGES$11],
 	defaultEnabled: true,
-	css: FEATURE_CSS$13,
+	css: FEATURE_CSS$14,
 	mount: mountPlaylistMenu
 };
 /**
@@ -10214,10 +10214,10 @@ var NAME_CLASS$1 = "rdw-bulk-collection-name";
 var COUNT_CLASS$1 = "rdw-bulk-collection-count";
 var NEW_CLASS = "rdw-bulk-collection-new";
 var NEW_FIELD_CLASS = "rdw-bulk-collection-new-field";
-var TITLE_CLASS$2 = "rdw-bulk-collection-title";
+var TITLE_CLASS$3 = "rdw-bulk-collection-title";
 var NOTE_CLASS = "rdw-bulk-collection-note";
 var ERROR_CLASS = "rdw-bulk-collection-error";
-var FOOT_CLASS$1 = "rdw-bulk-collection-foot";
+var FOOT_CLASS$2 = "rdw-bulk-collection-foot";
 var LIST_MAX_HEIGHT_PX = 260;
 /** The name filter appears once the list is longer than this. */
 var FILTER_MIN = 8;
@@ -10239,7 +10239,7 @@ var BULK_COLLECTION_CSS = `
   color: var(--rdw-text);
   font: 13px/1.4 var(--rdw-font);
 }
-.${TITLE_CLASS$2} {
+.${TITLE_CLASS$3} {
   margin: 0;
   font: 700 15px var(--rdw-font);
   color: var(--rdw-text);
@@ -10311,7 +10311,7 @@ form.${NEW_CLASS} {
   margin: 0;
   color: var(--rdw-danger);
 }
-.${FOOT_CLASS$1} {
+.${FOOT_CLASS$2} {
   display: flex;
   justify-content: flex-end;
 }
@@ -10374,7 +10374,7 @@ function BulkCollectionDialog(props) {
 		children: [
 			/* @__PURE__ */ a("style", { children: BULK_COLLECTION_CSS }),
 			/* @__PURE__ */ a("h3", {
-				className: TITLE_CLASS$2,
+				className: TITLE_CLASS$3,
 				children: bulkCollectionTitle(props.posts.length)
 			}),
 			filterShown ? /* @__PURE__ */ a(TextField, {
@@ -10433,7 +10433,7 @@ function BulkCollectionDialog(props) {
 				children: error
 			}) : null,
 			/* @__PURE__ */ a("div", {
-				className: FOOT_CLASS$1,
+				className: FOOT_CLASS$2,
 				children: /* @__PURE__ */ a(Button, {
 					variant: "secondary",
 					size: "s",
@@ -11092,8 +11092,8 @@ async function runFavoritesSync(options) {
 		};
 	}
 }
-var FEATURE_ID$14 = "favorites-bulk";
-var FEATURE_LABEL$13 = "Bulk remove favorites";
+var FEATURE_ID$15 = "favorites-bulk";
+var FEATURE_LABEL$14 = "Bulk remove favorites";
 var FEATURE_PAGES$10 = ["favorites"];
 var ROOT_ID$2 = "rdw-favorites-bulk";
 var ROOT_CLASS$2 = "rdw-favorites-bulk";
@@ -11117,7 +11117,7 @@ var STATUS_CLASS$1 = "rdw-favorites-bulk-status";
 var CONFIRM_CLASS = "rdw-favorites-bulk-confirm";
 var CONFIRM_ROW_CLASS = "rdw-favorites-bulk-confirm-row";
 var PROGRESS_WRAP_CLASS = "rdw-favorites-bulk-progress";
-var TITLE_CLASS$1 = "rdw-favorites-title";
+var TITLE_CLASS$2 = "rdw-favorites-title";
 var TITLE_TEXT = "Favorites";
 var LOCALE = "en-US";
 /** Above the thumbs and their corner buttons. */
@@ -11173,11 +11173,11 @@ var CHECK_SIZE = "1.25rem";
 var CHECK_INSET = "0.25rem";
 var CHECK_Z_INDEX = 2;
 var CHECK_FONT_SIZE = "0.75rem";
-var BODY_CLASS$7 = featureBodyClass(FEATURE_ID$14);
-var BODY_SELECTING_CLASS = `${BODY_CLASS$7}-selecting`;
-var FEATURE_CSS$12 = `
-body.${BODY_CLASS$7} .${ROOT_CLASS$2},
-body.${BODY_CLASS$7} .${PIN_CLASS} {
+var BODY_CLASS$8 = featureBodyClass(FEATURE_ID$15);
+var BODY_SELECTING_CLASS = `${BODY_CLASS$8}-selecting`;
+var FEATURE_CSS$13 = `
+body.${BODY_CLASS$8} .${ROOT_CLASS$2},
+body.${BODY_CLASS$8} .${PIN_CLASS} {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -11190,17 +11190,17 @@ body.${BODY_CLASS$7} .${PIN_CLASS} {
 }
 /* Holds only the page's heading, which is for screen readers: the menu
    already shows where you are. */
-body.${BODY_CLASS$7} .${ROOT_CLASS$2} {
+body.${BODY_CLASS$8} .${ROOT_CLASS$2} {
   position: relative;
   height: 0;
 }
 /* The space under the header is the row's own padding, so that the row has
    the same space above it as below it, held or not. */
-body.${BODY_CLASS$7} div#header {
+body.${BODY_CLASS$8} div#header {
   margin-bottom: 0 !important;
 }
 /* The row of search, filters and buttons (or of the selection) stays at the top. */
-body.${BODY_CLASS$7} .${PIN_CLASS} {
+body.${BODY_CLASS$8} .${PIN_CLASS} {
   gap: 0.35rem 0.5rem;
   padding: ${String(PIN_PADDING_PX)}px 0;
   position: sticky;
@@ -11208,17 +11208,17 @@ body.${BODY_CLASS$7} .${PIN_CLASS} {
   z-index: ${String(HEADER_Z_INDEX)};
   background: var(--rdw-bg);
 }
-body.${BODY_CLASS$7} .${FILTERS_CLASS} {
+body.${BODY_CLASS$8} .${FILTERS_CLASS} {
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
   flex: 1 1 auto;
   min-width: 0;
 }
-body.${BODY_CLASS$7} .${FILTERS_CLASS}[hidden] {
+body.${BODY_CLASS$8} .${FILTERS_CLASS}[hidden] {
   display: none;
 }
-body.${BODY_CLASS$7} .${TITLE_CLASS$1} {
+body.${BODY_CLASS$8} .${TITLE_CLASS$2} {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -11229,14 +11229,14 @@ body.${BODY_CLASS$7} .${TITLE_CLASS$1} {
   white-space: nowrap;
   border: 0;
 }
-body.${BODY_CLASS$7} .${ROOT_CLASS$2} .rdw-btn,
-body.${BODY_CLASS$7} .${PIN_CLASS} .rdw-btn {
+body.${BODY_CLASS$8} .${ROOT_CLASS$2} .rdw-btn,
+body.${BODY_CLASS$8} .${PIN_CLASS} .rdw-btn {
   font-weight: 500;
 }
-body.${BODY_CLASS$7} .${PIN_CLASS} .${BAR_CLASS$1} {
+body.${BODY_CLASS$8} .${PIN_CLASS} .${BAR_CLASS$1} {
   flex: 1 1 auto;
 }
-body.${BODY_CLASS$7} .${SUMMARY_CLASS} {
+body.${BODY_CLASS$8} .${SUMMARY_CLASS} {
   flex: 1 1 8rem;
   min-width: 0;
   overflow: hidden;
@@ -11302,7 +11302,7 @@ body.${BODY_CLASS$7} .${SUMMARY_CLASS} {
   gap: 0.35rem 0.5rem;
   margin-top: 0.25rem;
 }
-body.${BODY_CLASS$7} .${BAR_CLASS$1} {
+body.${BODY_CLASS$8} .${BAR_CLASS$1} {
   display: flex;
   flex: 0 1 auto;
   flex-wrap: wrap;
@@ -11310,35 +11310,35 @@ body.${BODY_CLASS$7} .${BAR_CLASS$1} {
   gap: 0.35rem 0.5rem;
   box-sizing: border-box;
 }
-body.${BODY_CLASS$7} .${STATUS_CLASS$1} {
+body.${BODY_CLASS$8} .${STATUS_CLASS$1} {
   flex: 0 1 auto;
   min-width: 0;
   font: inherit;
   font-size: 0.875rem;
   line-height: 1.3;
 }
-body.${BODY_CLASS$7} .${CONFIRM_CLASS} {
+body.${BODY_CLASS$8} .${CONFIRM_CLASS} {
   display: grid;
   gap: 0.75rem;
 }
-body.${BODY_CLASS$7} .${CONFIRM_ROW_CLASS} {
+body.${BODY_CLASS$8} .${CONFIRM_ROW_CLASS} {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem 0.5rem;
 }
-body.${BODY_CLASS$7} .${PROGRESS_WRAP_CLASS} {
+body.${BODY_CLASS$8} .${PROGRESS_WRAP_CLASS} {
   flex: 1 1 12rem;
   min-width: 8rem;
   max-width: 24rem;
 }
-body.${BODY_CLASS$7} span.thumb {
+body.${BODY_CLASS$8} span.thumb {
   position: relative;
 }
-body.${BODY_CLASS$7} span.thumb.${CLASS_THUMB_SELECTED} {
+body.${BODY_CLASS$8} span.thumb.${CLASS_THUMB_SELECTED} {
   outline: ${SELECT_OUTLINE_WIDTH} solid var(--rdw-accent, ${ACCENT_FALLBACK});
   outline-offset: ${SELECT_OUTLINE_OFFSET};
 }
-body.${BODY_CLASS$7} span.thumb > .${CLASS_THUMB_CHECK} {
+body.${BODY_CLASS$8} span.thumb > .${CLASS_THUMB_CHECK} {
   position: absolute;
   top: ${CHECK_INSET};
   left: ${CHECK_INSET};
@@ -11356,7 +11356,7 @@ body.${BODY_CLASS$7} span.thumb > .${CLASS_THUMB_CHECK} {
   line-height: 1;
   pointer-events: none;
 }
-body.${BODY_CLASS$7} span.thumb.${CLASS_THUMB_SELECTED} > .${CLASS_THUMB_CHECK} {
+body.${BODY_CLASS$8} span.thumb.${CLASS_THUMB_SELECTED} > .${CLASS_THUMB_CHECK} {
   display: inline-flex;
 }
 `.trim();
@@ -11950,7 +11950,7 @@ function FavoritesPanel(props) {
 	const [busy, setBusy] = d(false);
 	const [summary, setSummary] = d("");
 	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("h1", {
-		className: TITLE_CLASS$1,
+		className: TITLE_CLASS$2,
 		children: TITLE_TEXT
 	}), U(/* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("div", {
 		className: FILTERS_CLASS,
@@ -11988,11 +11988,11 @@ function mountFavoritesBulk(_ctx) {
 	}), root);
 }
 var favoritesBulkFeature = {
-	id: FEATURE_ID$14,
-	label: FEATURE_LABEL$13,
+	id: FEATURE_ID$15,
+	label: FEATURE_LABEL$14,
 	pages: [...FEATURE_PAGES$10],
 	defaultEnabled: true,
-	css: FEATURE_CSS$12,
+	css: FEATURE_CSS$13,
 	mount: mountFavoritesBulk
 };
 /**
@@ -12872,8 +12872,8 @@ function mountFeedMerge(options) {
 	pump();
 	return true;
 }
-var FEATURE_ID$13 = "feed";
-var FEATURE_LABEL$12 = "Feed in site menu";
+var FEATURE_ID$14 = "feed";
+var FEATURE_LABEL$13 = "Feed in site menu";
 var FEATURE_PAGES$9 = [
 	"list",
 	"post",
@@ -12909,12 +12909,12 @@ var NEW_PLAQUE_LEFT_PX = 6;
 var NEW_PLAQUE_TOP_PX = 6;
 var EVENT_PAGESHOW$1 = "pageshow";
 var EVENT_CLICK$2 = "click";
-var BODY_CLASS$6 = featureBodyClass(FEATURE_ID$13);
-var FEATURE_CSS$11 = `
-body.${BODY_CLASS$6} span.thumb.new.${THUMB_CLASS} {
+var BODY_CLASS$7 = featureBodyClass(FEATURE_ID$14);
+var FEATURE_CSS$12 = `
+body.${BODY_CLASS$7} span.thumb.new.${THUMB_CLASS} {
   position: relative;
 }
-body.${BODY_CLASS$6} span.thumb.new.${THUMB_CLASS}::after {
+body.${BODY_CLASS$7} span.thumb.new.${THUMB_CLASS}::after {
   content: "NEW";
   position: absolute;
   z-index: 4;
@@ -12929,7 +12929,7 @@ body.${BODY_CLASS$6} span.thumb.new.${THUMB_CLASS}::after {
   pointer-events: none;
 }
 @supports (anchor-name: --a) {
-  body.${BODY_CLASS$6} span.thumb.new.${THUMB_CLASS}::after {
+  body.${BODY_CLASS$7} span.thumb.new.${THUMB_CLASS}::after {
     position-anchor: ${THUMB_ANCHOR_NAME};
     left: calc(anchor(left) + ${String(NEW_PLAQUE_LEFT_PX)}px);
     top: calc(anchor(top) + ${String(NEW_PLAQUE_TOP_PX)}px);
@@ -13074,11 +13074,11 @@ function mountFeed(ctx) {
 	});
 }
 var feedFeature = {
-	id: FEATURE_ID$13,
-	label: FEATURE_LABEL$12,
+	id: FEATURE_ID$14,
+	label: FEATURE_LABEL$13,
 	pages: [...FEATURE_PAGES$9],
 	defaultEnabled: true,
-	css: `${FEATURE_CSS$11}\n${FEED_MERGE_CSS}`,
+	css: `${FEATURE_CSS$12}\n${FEED_MERGE_CSS}`,
 	mount: mountFeed
 };
 /**
@@ -13090,15 +13090,15 @@ var feedFeature = {
 * The answer is kept for a while, so going from page to page does not repeat
 * it. With several feed groups only the first is counted.
 */
-var FEATURE_ID$12 = "feed-counter";
-var FEATURE_LABEL$11 = "New posts counter beside Feed";
+var FEATURE_ID$13 = "feed-counter";
+var FEATURE_LABEL$12 = "New posts counter beside Feed";
 var FEED_COUNT_CLASS = "rdw-feed-count";
 var FEED_COUNT_CACHE_KEY = "ruledesk-web.feed-count";
-var BODY_CLASS$5 = featureBodyClass(FEATURE_ID$12);
+var BODY_CLASS$6 = featureBodyClass(FEATURE_ID$13);
 /** Every post of the page is new: there are more behind it. */
 var MORE_MARK = "+";
-var FEATURE_CSS$10 = `
-body.${BODY_CLASS$5} .${FEED_COUNT_CLASS} {
+var FEATURE_CSS$11 = `
+body.${BODY_CLASS$6} .${FEED_COUNT_CLASS} {
   display: inline-block;
   min-width: 16px;
   margin-left: 6px;
@@ -13110,7 +13110,7 @@ body.${BODY_CLASS$5} .${FEED_COUNT_CLASS} {
   text-align: center;
   vertical-align: middle;
 }
-body:not(.${BODY_CLASS$5}) .${FEED_COUNT_CLASS} {
+body:not(.${BODY_CLASS$6}) .${FEED_COUNT_CLASS} {
   display: none;
 }
 `.trim();
@@ -13207,8 +13207,8 @@ function mountFeedCounter(_ctx) {
 	});
 }
 var feedCounterFeature = {
-	id: FEATURE_ID$12,
-	label: FEATURE_LABEL$11,
+	id: FEATURE_ID$13,
+	label: FEATURE_LABEL$12,
 	pages: [
 		"list",
 		"post",
@@ -13217,7 +13217,7 @@ var feedCounterFeature = {
 	],
 	defaultEnabled: true,
 	settingsCaption: "Asks the site for the first page of the feed when a page loads, at most once in 15 minutes. Counts the first feed group only.",
-	css: FEATURE_CSS$10,
+	css: FEATURE_CSS$11,
 	mount: mountFeedCounter
 };
 /** Read-only helpers for native post-page markup used by the side panel. */
@@ -13550,8 +13550,8 @@ function readCommentCount() {
 * The one thing this asks the site for is the GIF itself, the file of the
 * post the user has opened.
 */
-var FEATURE_ID$11 = "gif-post";
-var FEATURE_LABEL$10 = "Play GIFs on the post page";
+var FEATURE_ID$12 = "gif-post";
+var FEATURE_LABEL$11 = "Play GIFs on the post page";
 var GIF_PATH = /\.gif$/i;
 var GIF_PLAYING_ATTRIBUTE = "data-rdw-gif";
 function pathOf(url) {
@@ -13579,25 +13579,25 @@ function playGifOnPage(root = document, originalHref) {
 	return true;
 }
 function mountGifPost(_ctx) {
-	if (document.body.classList.contains(featureBodyClass(FEATURE_ID$11))) playGifOnPage();
+	if (document.body.classList.contains(featureBodyClass(FEATURE_ID$12))) playGifOnPage();
 }
 var gifPostFeature = {
-	id: FEATURE_ID$11,
-	label: FEATURE_LABEL$10,
+	id: FEATURE_ID$12,
+	label: FEATURE_LABEL$11,
 	pages: ["post"],
 	defaultEnabled: true,
 	settingsCaption: "The site shows a still copy of a GIF until its original is opened. With this on, the original is loaded at once.",
 	css: "",
 	mount: mountGifPost
 };
-var FEATURE_ID$10 = "grid-density";
+var FEATURE_ID$11 = "grid-density";
 var COMPACT_PX = 150;
 var LARGE_PX = 250;
 var CHOICE_DEFAULT = "default";
 var CHOICE_COMPACT = "compact";
 var CHOICE_LARGE = "large";
 function sizeCss(choiceValue, px) {
-	const bodyClass = featureChoiceBodyClass(FEATURE_ID$10, choiceValue);
+	const bodyClass = featureChoiceBodyClass(FEATURE_ID$11, choiceValue);
 	return [
 		`body.${bodyClass} span.thumb,`,
 		`body.${bodyClass} span.thumb > a {`,
@@ -13613,14 +13613,14 @@ function sizeCss(choiceValue, px) {
 /** Same gap on both axes for Default, Compact, and Large. Does not set cell size. */
 function gapCss() {
 	return [
-		`body.${featureBodyClass(FEATURE_ID$10)} div.image-list {`,
+		`body.${featureBodyClass(FEATURE_ID$11)} div.image-list {`,
 		`  column-gap: ${String(4)}px !important;`,
 		`  row-gap: ${String(4)}px !important;`,
 		`}`
 	].join("\n");
 }
 var gridDensityFeature = exports("bS",{
-	id: FEATURE_ID$10,
+	id: FEATURE_ID$11,
 	label: "Grid size",
 	pages: ["list", "favorites"],
 	defaultEnabled: true,
@@ -13720,9 +13720,9 @@ body.${featureBodyClass(SEEN_DIM_FEATURE_ID)} .${SEEN_CLASS}:hover img.preview {
 * The viewer shows the original file (the site's own "Original image" link),
 * so the one thing it asks the site for is that file, and only on the click.
 */
-var FEATURE_ID$9 = "image-zoom";
-var FEATURE_LABEL$9 = "Zoom the picture on click";
-var BODY_CLASS$4 = featureBodyClass(FEATURE_ID$9);
+var FEATURE_ID$10 = "image-zoom";
+var FEATURE_LABEL$10 = "Zoom the picture on click";
+var BODY_CLASS$5 = featureBodyClass(FEATURE_ID$10);
 var VIEWER_ID = "rdw-image-viewer";
 var STAGE_CLASS = "rdw-image-viewer-stage";
 var IMAGE_CLASS = "rdw-image-viewer-image";
@@ -13746,8 +13746,8 @@ var TEXT_ZOOM_OUT = "−";
 var TEXT_FIT = "Fit";
 var TEXT_ACTUAL = "1:1";
 var TEXT_CLOSE = "✕";
-var FEATURE_CSS$9 = `
-body.${BODY_CLASS$4} img#${IMAGE_ID} {
+var FEATURE_CSS$10 = `
+body.${BODY_CLASS$5} img#${IMAGE_ID} {
   cursor: zoom-in;
 }
 #${VIEWER_ID} {
@@ -13874,11 +13874,11 @@ function closeImageViewer() {
 	const { root, opener } = viewer;
 	viewer = null;
 	root.remove();
-	document.removeEventListener("keydown", onKeyDown, true);
+	document.removeEventListener("keydown", onKeyDown$1, true);
 	window.removeEventListener("resize", onResize);
 	opener?.focus();
 }
-function onKeyDown(event) {
+function onKeyDown$1(event) {
 	if (viewer === null) return;
 	if (event.key === "Escape") {
 		event.preventDefault();
@@ -14007,13 +14007,13 @@ function openImageViewer(url, opener) {
 	});
 	viewer = created;
 	document.body.append(root);
-	document.addEventListener("keydown", onKeyDown, true);
+	document.addEventListener("keydown", onKeyDown$1, true);
 	window.addEventListener("resize", onResize);
 	render(created);
 	root.focus();
 }
 function onImageClick(event) {
-	if (!document.body.classList.contains(BODY_CLASS$4)) return;
+	if (!document.body.classList.contains(BODY_CLASS$5)) return;
 	const target = event.target;
 	if (!(target instanceof HTMLImageElement) || target.id !== "image") return;
 	if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
@@ -14029,19 +14029,19 @@ function mountImageZoom(_ctx) {
 	document.addEventListener("click", onImageClick, true);
 }
 var imageZoomFeature = {
-	id: FEATURE_ID$9,
-	label: FEATURE_LABEL$9,
+	id: FEATURE_ID$10,
+	label: FEATURE_LABEL$10,
 	pages: ["post"],
 	defaultEnabled: true,
 	cssOnly: true,
 	settingsCaption: "Pictures and GIFs. Scroll to zoom, drag to move, Esc to close.",
-	css: FEATURE_CSS$9,
+	css: FEATURE_CSS$10,
 	mount: mountImageZoom
 };
-var FEATURE_ID$8 = "infinite-scroll";
-var FEATURE_LABEL$8 = "Infinite scroll";
+var FEATURE_ID$9 = "infinite-scroll";
+var FEATURE_LABEL$9 = "Infinite scroll";
 var FEATURE_PAGES$8 = ["list"];
-var BODY_FEATURE_CLASS$2 = featureBodyClass(FEATURE_ID$8);
+var BODY_FEATURE_CLASS$2 = featureBodyClass(FEATURE_ID$9);
 /** Prefetch when remaining distance to list end ≤ this many viewport heights. */
 var PREFETCH_REMAINING_VIEWPORT_HEIGHTS = 2;
 var MIN_REQUEST_INTERVAL_MS = 1e3;
@@ -14050,7 +14050,7 @@ var CLASS_STATUS = "rdw-infinite-status";
 var CLASS_SEPARATOR = "rdw-infinite-page";
 var CLASS_RETRY = "rdw-infinite-retry";
 var CLASS_BLACKLISTED = "rdw-blacklisted";
-var TEXT_LOADING = "Loading…";
+var TEXT_LOADING$1 = "Loading…";
 var TEXT_END = "End of results";
 var TEXT_ERROR = "Failed to load more";
 var TEXT_RETRY = "Retry";
@@ -14061,7 +14061,7 @@ var PAGINATION_NEXT_SELECTOR = "div.pagination a[alt=\"next\"]";
 var WARN_MISSING = "infinite-scroll: missing image-list or next link; not mounted";
 var SCORE_TOKEN_PREFIX$1 = "score:";
 var RATING_TOKEN_PREFIX = "rating:";
-var FEATURE_CSS$8 = `
+var FEATURE_CSS$9 = `
 body.${BODY_FEATURE_CLASS$2} .${CLASS_SENTINEL} {
   display: block;
   width: 100%;
@@ -14189,7 +14189,7 @@ function createUi(imageList) {
 }
 function setStatusLoading(status) {
 	status.replaceChildren();
-	status.textContent = TEXT_LOADING;
+	status.textContent = TEXT_LOADING$1;
 }
 function setStatusEnd(status) {
 	status.replaceChildren();
@@ -14359,11 +14359,11 @@ function mountInfiniteScroll(_ctx) {
 	observer.observe(sentinel);
 }
 var infiniteScrollFeature = {
-	id: FEATURE_ID$8,
-	label: FEATURE_LABEL$8,
+	id: FEATURE_ID$9,
+	label: FEATURE_LABEL$9,
 	pages: [...FEATURE_PAGES$8],
 	defaultEnabled: true,
-	css: FEATURE_CSS$8,
+	css: FEATURE_CSS$9,
 	mount: mountInfiniteScroll
 };
 /**
@@ -14503,11 +14503,11 @@ var motionFeature = {
 	css: MOTION_CSS,
 	mount: () => void 0
 };
-var FEATURE_ID$7 = "menu-cleanup";
-var FEATURE_LABEL$7 = "Clean header menu";
+var FEATURE_ID$8 = "menu-cleanup";
+var FEATURE_LABEL$8 = "Clean header menu";
 var CONTENT_ID$1 = "content";
 var HIDDEN_CLASS = "rdw-menu-hidden";
-var BODY_FEATURE_CLASS$1 = featureBodyClass(FEATURE_ID$7);
+var BODY_FEATURE_CLASS$1 = featureBodyClass(FEATURE_ID$8);
 var MISSING_MENU_WARN = "Header menu not found";
 var HIDE_LINK_TEXT_SET = /* @__PURE__ */ new Set([
 	"iCame Top 100",
@@ -14526,7 +14526,7 @@ var FEATURE_PAGES$7 = [
 	"favorites",
 	"other"
 ];
-var FEATURE_CSS$7 = `body.${BODY_FEATURE_CLASS$1} li.${HIDDEN_CLASS} { display:none !important; }`;
+var FEATURE_CSS$8 = `body.${BODY_FEATURE_CLASS$1} li.${HIDDEN_CLASS} { display:none !important; }`;
 function isHeaderMenuLink(anchor, content) {
 	const listItem = anchor.closest("li");
 	if (listItem === null) return false;
@@ -14559,20 +14559,20 @@ function mountMenuCleanup(_ctx) {
 	}
 }
 var menuCleanupFeature = {
-	id: FEATURE_ID$7,
-	label: FEATURE_LABEL$7,
+	id: FEATURE_ID$8,
+	label: FEATURE_LABEL$8,
 	pages: [...FEATURE_PAGES$7],
 	defaultEnabled: true,
 	cssOnly: true,
-	css: FEATURE_CSS$7,
+	css: FEATURE_CSS$8,
 	mount: mountMenuCleanup
 };
-var FEATURE_ID$6 = "playlist-bar";
-var FEATURE_LABEL$6 = "Collection header";
+var FEATURE_ID$7 = "playlist-bar";
+var FEATURE_LABEL$7 = "Collection header";
 var FEATURE_PAGES$6 = ["list"];
 var ROOT_ID$1 = "rdw-playlist-bar";
 var ROOT_CLASS$1 = "rdw-playlist-bar";
-var TITLE_CLASS = "rdw-playlist-bar-title";
+var TITLE_CLASS$1 = "rdw-playlist-bar-title";
 var NAME_CLASS = "rdw-playlist-bar-name";
 var COUNT_CLASS = "rdw-playlist-bar-count";
 var PARTS_CLASS = "rdw-playlist-bar-parts";
@@ -14606,9 +14606,9 @@ var BAR_BUTTON_SIZE = "s";
 var NAME_FONT_PX = 18;
 var ACTIONS_GAP_PX = 8;
 var WARN_MISSING_HOST = "playlist-bar: image-list not found; playlist bar not mounted";
-var BODY_CLASS$3 = featureBodyClass(FEATURE_ID$6);
-var FEATURE_CSS$6 = `
-body.${BODY_CLASS$3} .${ROOT_CLASS$1} {
+var BODY_CLASS$4 = featureBodyClass(FEATURE_ID$7);
+var FEATURE_CSS$7 = `
+body.${BODY_CLASS$4} .${ROOT_CLASS$1} {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
@@ -14617,7 +14617,7 @@ body.${BODY_CLASS$3} .${ROOT_CLASS$1} {
   color: var(--rdw-text);
   box-sizing: border-box;
 }
-body.${BODY_CLASS$3} .${TITLE_CLASS} {
+body.${BODY_CLASS$4} .${TITLE_CLASS$1} {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
@@ -14626,14 +14626,14 @@ body.${BODY_CLASS$3} .${TITLE_CLASS} {
   font: inherit;
   line-height: 1.3;
 }
-body.${BODY_CLASS$3} .${NAME_CLASS} {
+body.${BODY_CLASS$4} .${NAME_CLASS} {
   font-size: ${String(NAME_FONT_PX)}px;
   font-weight: 700;
 }
-body.${BODY_CLASS$3} .${COUNT_CLASS} {
+body.${BODY_CLASS$4} .${COUNT_CLASS} {
   opacity: 0.85;
 }
-body.${BODY_CLASS$3} .${PARTS_CLASS} {
+body.${BODY_CLASS$4} .${PARTS_CLASS} {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -14642,25 +14642,25 @@ body.${BODY_CLASS$3} .${PARTS_CLASS} {
   font: inherit;
   line-height: 1.3;
 }
-body.${BODY_CLASS$3} .${PART_LABEL_CLASS} {
+body.${BODY_CLASS$4} .${PART_LABEL_CLASS} {
   flex: 0 0 auto;
 }
-body.${BODY_CLASS$3} a.${PART_LINK_CLASS} {
+body.${BODY_CLASS$4} a.${PART_LINK_CLASS} {
   color: inherit;
   text-decoration: underline;
 }
-body.${BODY_CLASS$3} a.${PART_LINK_CLASS}:focus-visible {
+body.${BODY_CLASS$4} a.${PART_LINK_CLASS}:focus-visible {
   outline: 2px solid var(--rdw-accent);
   outline-offset: 2px;
 }
-body.${BODY_CLASS$3} .${CAPTION_CLASS} {
+body.${BODY_CLASS$4} .${CAPTION_CLASS} {
   margin: 0;
   font: inherit;
   font-size: 0.875rem;
   line-height: 1.35;
   opacity: 0.8;
 }
-body.${BODY_CLASS$3} .${ACTIONS_CLASS} {
+body.${BODY_CLASS$4} .${ACTIONS_CLASS} {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -14767,7 +14767,7 @@ function createBar(match) {
 	bar.id = ROOT_ID$1;
 	bar.className = ROOT_CLASS$1;
 	const title = document.createElement("div");
-	title.className = TITLE_CLASS;
+	title.className = TITLE_CLASS$1;
 	const name = document.createElement("span");
 	name.className = NAME_CLASS;
 	name.textContent = match.playlist.name;
@@ -14916,7 +14916,7 @@ function DynamicCollectionBar(props) {
 	const fieldsOpen = dialog === DIALOG_EDIT_QUERY || dialog === DIALOG_RENAME;
 	const fieldsTitle = dialog === DIALOG_RENAME ? UI_TEXT.rename : TEXT_EDIT_QUERY;
 	const onFieldsSubmit = dialog === DIALOG_RENAME ? onRenameSubmit : onEditSubmit;
-	return k$1($$1, null, k$1("div", { className: TITLE_CLASS }, k$1("span", { className: NAME_CLASS }, name)), k$1("div", { className: ACTIONS_CLASS }, k$1(Button, {
+	return k$1($$1, null, k$1("div", { className: TITLE_CLASS$1 }, k$1("span", { className: NAME_CLASS }, name)), k$1("div", { className: ACTIONS_CLASS }, k$1(Button, {
 		variant: BAR_BUTTON_VARIANT,
 		size: BAR_BUTTON_SIZE,
 		onClick: onShuffle
@@ -15021,11 +15021,11 @@ function mountPlaylistBar(ctx) {
 	mountDynamicBar(tagsParam, ctx.search);
 }
 var playlistBarFeature = {
-	id: FEATURE_ID$6,
-	label: FEATURE_LABEL$6,
+	id: FEATURE_ID$7,
+	label: FEATURE_LABEL$7,
 	pages: [...FEATURE_PAGES$6],
 	defaultEnabled: true,
-	css: FEATURE_CSS$6,
+	css: FEATURE_CSS$7,
 	mount: mountPlaylistBar
 };
 var CLASS_STRIP = "rdw-post-panel-collection-queue";
@@ -15288,8 +15288,8 @@ function scheduleAfterFirstPaint(callback) {
 * Does not replace the Fluid wrapper or rename its classes — only the
 * wrapper size via explicit width/height (overrides Fluid's intrinsic px).
 */
-var FEATURE_ID$5 = VIDEO_PLAYER_FEATURE_ID;
-var FEATURE_LABEL$5 = "Video player tweaks";
+var FEATURE_ID$6 = VIDEO_PLAYER_FEATURE_ID;
+var FEATURE_LABEL$6 = "Video player tweaks";
 var FEATURE_PAGES$5 = ["post"];
 var VIDEO_ELEMENT_ID = "gelcomVideoPlayer";
 var FLUID_WRAPPER_ID = "fluid_video_wrapper_gelcomVideoPlayer";
@@ -15297,8 +15297,8 @@ var FLUID_WRAPPER_CLASS = "fluid_video_wrapper";
 var VOLUME_MIN = 0;
 var VOLUME_MAX = 1;
 var CHROME_GAP_PX = 12;
-var BODY_CLASS$2 = featureBodyClass(FEATURE_ID$5);
-var BODY_SELECTOR$2 = `body.${BODY_CLASS$2}`;
+var BODY_CLASS$3 = featureBodyClass(FEATURE_ID$6);
+var BODY_SELECTOR$2 = `body.${BODY_CLASS$3}`;
 var WRAPPER_SELECTOR = `#${FLUID_WRAPPER_ID}.${FLUID_WRAPPER_CLASS}`;
 var SIZE_LABEL_FIT_HEIGHT = "Fit height";
 var SIZE_LABEL_FIT_WIDTH = "Fit width";
@@ -15310,7 +15310,7 @@ var SIZE_MODE_VALUES = [
 ];
 /** Settings caption under the Video player tweaks switch. */
 var VIDEO_PLAYER_SETTING_CAPTION = "Fit height fills under the header (may upscale). Fit width uses the media column. Original is native pixels.";
-var FEATURE_CSS$5 = [
+var FEATURE_CSS$6 = [
 	`${BODY_SELECTOR$2} ${WRAPPER_SELECTOR} {`,
 	`  box-sizing: border-box;`,
 	`}`
@@ -15369,7 +15369,7 @@ function findWrapper() {
 	return node;
 }
 function readSizeModeFromBody() {
-	for (const value of SIZE_MODE_VALUES) if (document.body.classList.contains(featureChoiceBodyClass(FEATURE_ID$5, value))) return value;
+	for (const value of SIZE_MODE_VALUES) if (document.body.classList.contains(featureChoiceBodyClass(FEATURE_ID$6, value))) return value;
 	return resolveVideoSize(DEFAULT_VIDEO_SIZE);
 }
 function measureMediaColumnWidthPx(wrapper) {
@@ -15386,7 +15386,7 @@ function clearWrapperSize(wrapper) {
 	wrapper.style.removeProperty("height");
 }
 function applyWrapperSize(wrapper, video) {
-	if (!document.body.classList.contains(BODY_CLASS$2)) {
+	if (!document.body.classList.contains(BODY_CLASS$3)) {
 		clearWrapperSize(wrapper);
 		return;
 	}
@@ -15463,7 +15463,7 @@ function bindPlayer(ctx, video) {
 */
 function bindClickToToggle(video) {
 	video.addEventListener("click", (event) => {
-		if (!document.body.classList.contains(BODY_CLASS$2) || event.button !== 0) return;
+		if (!document.body.classList.contains(BODY_CLASS$3) || event.button !== 0) return;
 		event.preventDefault();
 		event.stopImmediatePropagation();
 		if (video.paused) video.play().catch(() => void 0);
@@ -15479,8 +15479,8 @@ function mountVideoPlayer(ctx) {
 	});
 }
 var videoPlayerFeature = {
-	id: FEATURE_ID$5,
-	label: FEATURE_LABEL$5,
+	id: FEATURE_ID$6,
+	label: FEATURE_LABEL$6,
 	pages: [...FEATURE_PAGES$5],
 	defaultEnabled: true,
 	cssOnly: true,
@@ -15503,7 +15503,7 @@ var videoPlayerFeature = {
 		],
 		defaultValue: DEFAULT_VIDEO_SIZE
 	},
-	css: FEATURE_CSS$5,
+	css: FEATURE_CSS$6,
 	mount: mountVideoPlayer
 };
 var TEXT_COLLECTIONS = "Collections";
@@ -16013,14 +16013,14 @@ function StatRowView(props) {
 		children: row.value
 	})] });
 }
-var FEATURE_ID$4 = "post-actions";
-var FEATURE_LABEL$4 = "Post side panel";
+var FEATURE_ID$5 = "post-actions";
+var FEATURE_LABEL$5 = "Post side panel";
 var FEATURE_PAGES$4 = ["post"];
 /** Body class while the panel host is in the document — CSS hide handoff for G. */
 var POST_PANEL_MOUNTED_CLASS = "rdw-post-panel-mounted";
 var NARROW_BREAKPOINT_PX = 1100;
 var NARROW_MEDIA_QUERY = `(max-width: ${String(1099)}px)`;
-var PANEL_WIDTH_PX = 360;
+var PANEL_WIDTH_PX$1 = 360;
 var PANEL_MIN_WIDTH_PX = 320;
 var PANEL_MAX_WIDTH_PX = 420;
 var PANEL_FONT_SIZE_PX = 13;
@@ -16030,7 +16030,7 @@ var PANEL_BUTTON_GAP_PX = 8;
 var PANEL_CARD_PADDING_PX = 12;
 var PANEL_STICKY_GAP_PX = 12;
 var PANEL_MEDIA_GAP_PX = 12;
-var PANEL_Z_INDEX = 100;
+var PANEL_Z_INDEX$1 = 100;
 var STAT_LABEL_WIDTH_PX = 62;
 var ORIGINAL_BUTTON_SIZE_PX = 34;
 var STICKY_TOP_VAR = "--rdw-post-panel-sticky-top";
@@ -16038,8 +16038,8 @@ var CLASS_PANEL = "rdw-post-actions";
 var CLASS_MODE_WIDE = "rdw-post-actions--wide";
 var CLASS_MODE_NARROW = "rdw-post-actions--narrow";
 var WARN_NO_FLEXI = "post-actions: div.flexi missing; panel not mounted";
-var BODY_SELECTOR$1 = `body.${featureBodyClass(FEATURE_ID$4)}`;
-var FEATURE_CSS$4 = `
+var BODY_SELECTOR$1 = `body.${featureBodyClass(FEATURE_ID$5)}`;
+var FEATURE_CSS$5 = `
 ${BODY_SELECTOR$1} #fit-to-screen div.flexi,
 ${BODY_SELECTOR$1} div#right-col div.flexi,
 ${BODY_SELECTOR$1} div.flexi {
@@ -16050,11 +16050,11 @@ ${BODY_SELECTOR$1} div.flexi {
 }
 ${BODY_SELECTOR$1} #${POST_ACTIONS_ID}.${CLASS_PANEL} {
   box-sizing: border-box;
-  width: ${String(PANEL_WIDTH_PX)}px;
+  width: ${String(PANEL_WIDTH_PX$1)}px;
   min-width: ${String(PANEL_MIN_WIDTH_PX)}px;
   max-width: min(${String(PANEL_MAX_WIDTH_PX)}px, 100%);
-  flex: 0 1 ${String(PANEL_WIDTH_PX)}px;
-  z-index: ${String(PANEL_Z_INDEX)};
+  flex: 0 1 ${String(PANEL_WIDTH_PX$1)}px;
+  z-index: ${String(PANEL_Z_INDEX$1)};
   font: ${String(PANEL_FONT_SIZE_PX)}px/1.35 var(--rdw-font);
   color: var(--rdw-text);
 }
@@ -16264,7 +16264,7 @@ function mountPostActions(ctx) {
 	host.id = POST_ACTIONS_ID;
 	host.className = CLASS_PANEL;
 	host.setAttribute("role", "complementary");
-	host.setAttribute("aria-label", FEATURE_LABEL$4);
+	host.setAttribute("aria-label", FEATURE_LABEL$5);
 	const postId = readPostIdFromSearch(ctx.search);
 	panelHost = host;
 	document.body.classList.add(POST_PANEL_MOUNTED_CLASS);
@@ -16273,11 +16273,11 @@ function mountPostActions(ctx) {
 	Q$1(k$1(PostPanel, { postId }), host);
 }
 var postActionsFeature = {
-	id: FEATURE_ID$4,
-	label: FEATURE_LABEL$4,
+	id: FEATURE_ID$5,
+	label: FEATURE_LABEL$5,
 	pages: [...FEATURE_PAGES$4],
 	defaultEnabled: true,
-	css: FEATURE_CSS$4,
+	css: FEATURE_CSS$5,
 	mount: mountPostActions
 };
 /**
@@ -16756,8 +16756,8 @@ function mountSiteSearchTools(input) {
 	box.append(tools);
 	Q$1(/* @__PURE__ */ a(SiteSearchTools, { input }), tools);
 }
-var FEATURE_ID$3 = "search-tools";
-var FEATURE_LABEL$3 = "Search tools";
+var FEATURE_ID$4 = "search-tools";
+var FEATURE_LABEL$4 = "Search tools";
 var FEATURE_PAGES$3 = ["list", "post"];
 /**
 * Followed artists for the Feed chip (read-only).
@@ -16781,7 +16781,7 @@ var CHIP_ATTR_TOGGLE = "data-chip-toggle";
 var CHIP_ATTR_REMOVE = "data-chip-remove";
 var FIELD_CLASS = "rdw-search-tools-field";
 var ROW_SORT_CLASS = "rdw-search-tools-row-sort";
-var FOOT_CLASS = "rdw-search-tools-foot";
+var FOOT_CLASS$1 = "rdw-search-tools-foot";
 var RESET_CLASS = "rdw-search-tools-reset";
 var TOKEN_SPLIT_RE = /\s+/;
 var MULTI_SPACE_RE = /\s+/g;
@@ -16803,7 +16803,7 @@ var EVENT_CHANGE = "change";
 var EVENT_CLICK = "click";
 var EVENT_AWESOMPLETE_SELECT = "awesomplete-selectcomplete";
 var WARN_NO_FORM = "search-tools: search form not found; not mounted";
-var BODY_CLASS$1 = featureBodyClass(FEATURE_ID$3);
+var BODY_CLASS$2 = featureBodyClass(FEATURE_ID$4);
 var FILTER_AI_WAIT_TIMEOUT_MS = 4e3;
 var FILTER_AI_OBSERVER_OPTIONS = {
 	childList: true,
@@ -16872,55 +16872,55 @@ var SORT_OPTIONS = [
 var SORT_TOKEN_TO_MODE = /* @__PURE__ */ new Map();
 for (const option of SORT_OPTIONS) if (option.token !== null) SORT_TOKEN_TO_MODE.set(option.token, option.value);
 var SEARCH_ICON_MASK = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E\") center / contain no-repeat";
-var FEATURE_CSS$3 = [
-	`body.${BODY_CLASS$1} .${ROOT_CLASS} {`,
+var FEATURE_CSS$4 = [
+	`body.${BODY_CLASS$2} .${ROOT_CLASS} {`,
 	"  margin-top: 8px;",
 	"  max-width: 100%;",
 	"  box-sizing: border-box;",
 	"}",
-	`body.${BODY_CLASS$1} .${CARD_CLASS} {`,
+	`body.${BODY_CLASS$2} .${CARD_CLASS} {`,
 	"  padding: 10px;",
 	"  display: grid;",
 	"  gap: 10px;",
 	"}",
-	`body.${BODY_CLASS$1} .${CHIPS_CLASS} {`,
+	`body.${BODY_CLASS$2} .${CHIPS_CLASS} {`,
 	"  display: flex;",
 	"  flex-wrap: wrap;",
 	"  gap: 5px;",
 	"}",
-	`body.${BODY_CLASS$1} .${CHIP_CLASS} {`,
+	`body.${BODY_CLASS$2} .${CHIP_CLASS} {`,
 	"  cursor: default;",
 	"}",
-	`body.${BODY_CLASS$1} .${CHIP_CLASS}[${CHIP_ATTR_TOGGLE}="1"] {`,
+	`body.${BODY_CLASS$2} .${CHIP_CLASS}[${CHIP_ATTR_TOGGLE}="1"] {`,
 	"  cursor: pointer;",
 	"}",
-	`body.${BODY_CLASS$1} .${FIELD_CLASS} {`,
+	`body.${BODY_CLASS$2} .${FIELD_CLASS} {`,
 	"  display: grid;",
 	"  gap: 0;",
 	"  min-width: 0;",
 	"}",
-	`body.${BODY_CLASS$1} .${ROW_SORT_CLASS} {`,
+	`body.${BODY_CLASS$2} .${ROW_SORT_CLASS} {`,
 	"  display: grid;",
 	"  grid-template-columns: 1fr 72px;",
 	"  gap: 8px;",
 	"  align-items: start;",
 	"}",
-	`body.${BODY_CLASS$1} .${FOOT_CLASS} {`,
+	`body.${BODY_CLASS$2} .${FOOT_CLASS$1} {`,
 	"  display: flex;",
 	"  flex-wrap: wrap;",
 	"  gap: 6px;",
 	"  border-top: 1px solid var(--rdw-border);",
 	"  padding-top: 10px;",
 	"}",
-	`body.${BODY_CLASS$1} .${FOOT_CLASS} > button {`,
+	`body.${BODY_CLASS$2} .${FOOT_CLASS$1} > button {`,
 	"  flex: 1 1 auto;",
 	"  white-space: nowrap;",
 	"}",
-	`body.${BODY_CLASS$1} .${SITE_SEARCH_BOX_CLASS} {`,
+	`body.${BODY_CLASS$2} .${SITE_SEARCH_BOX_CLASS} {`,
 	"  position: relative;",
 	"  display: block;",
 	"}",
-	`body.${BODY_CLASS$1} .${SITE_SEARCH_BOX_CLASS}::before {`,
+	`body.${BODY_CLASS$2} .${SITE_SEARCH_BOX_CLASS}::before {`,
 	"  content: \"\";",
 	"  position: absolute;",
 	"  left: 9px;",
@@ -16934,12 +16934,12 @@ var FEATURE_CSS$3 = [
 	`  mask: ${SEARCH_ICON_MASK};`,
 	"  pointer-events: none;",
 	"}",
-	`body.${BODY_CLASS$1} .${SITE_SEARCH_BOX_CLASS} > input[name="tags"] {`,
+	`body.${BODY_CLASS$2} .${SITE_SEARCH_BOX_CLASS} > input[name="tags"] {`,
 	"  padding-left: 30px !important;",
 	"  padding-right: 54px !important;",
 	"  box-sizing: border-box;",
 	"}",
-	`body.${BODY_CLASS$1} .${SITE_SEARCH_TOOLS_CLASS} {`,
+	`body.${BODY_CLASS$2} .${SITE_SEARCH_TOOLS_CLASS} {`,
 	"  position: absolute;",
 	"  right: 4px;",
 	"  top: 50%;",
@@ -16948,7 +16948,7 @@ var FEATURE_CSS$3 = [
 	"  display: flex;",
 	"  gap: 2px;",
 	"}",
-	`body.${BODY_CLASS$1} button.${SITE_SEARCH_TOOL_CLASS} {`,
+	`body.${BODY_CLASS$2} button.${SITE_SEARCH_TOOL_CLASS} {`,
 	"  display: inline-grid;",
 	"  place-items: center;",
 	"  width: 22px;",
@@ -16962,10 +16962,10 @@ var FEATURE_CSS$3 = [
 	"  color: var(--rdw-muted);",
 	"  cursor: pointer;",
 	"}",
-	`body.${BODY_CLASS$1} button.${SITE_SEARCH_TOOL_CLASS}:hover {`,
+	`body.${BODY_CLASS$2} button.${SITE_SEARCH_TOOL_CLASS}:hover {`,
 	"  color: var(--rdw-text);",
 	"}",
-	`body.${BODY_CLASS$1} .${FOOT_CLASS} > .${SELECT_NOTE_CLASS} {`,
+	`body.${BODY_CLASS$2} .${FOOT_CLASS$1} > .${SELECT_NOTE_CLASS} {`,
 	"  flex: 1 1 100%;",
 	"  font: 12px/1.4 var(--rdw-font);",
 	"  color: var(--rdw-muted);",
@@ -17594,7 +17594,7 @@ function SearchToolsPanel(props) {
 				})]
 			}) : null,
 			/* @__PURE__ */ a("div", {
-				className: FOOT_CLASS,
+				className: FOOT_CLASS$1,
 				children: [
 					/* @__PURE__ */ a(Button, {
 						variant: "secondary",
@@ -17633,19 +17633,19 @@ function mountSearchTools(_ctx) {
 	else window.requestAnimationFrame(remember);
 }
 var searchToolsFeature = {
-	id: FEATURE_ID$3,
-	label: FEATURE_LABEL$3,
+	id: FEATURE_ID$4,
+	label: FEATURE_LABEL$4,
 	pages: [...FEATURE_PAGES$3],
 	defaultEnabled: true,
-	css: FEATURE_CSS$3,
+	css: FEATURE_CSS$4,
 	mount: mountSearchTools
 };
-var FEATURE_ID$2 = "tag-groups";
-var FEATURE_LABEL$2 = "Collapse tags";
+var FEATURE_ID$3 = "tag-groups";
+var FEATURE_LABEL$3 = "Collapse tags";
 var TAG_SIDEBAR_SELECTOR$1 = "ul#tag-sidebar";
 var TOGGLE_CLASS = "rdw-tag-group-toggle";
 var COLLAPSED_CLASS = "rdw-tag-group-collapsed";
-var BODY_FEATURE_CLASS = featureBodyClass(FEATURE_ID$2);
+var BODY_FEATURE_CLASS = featureBodyClass(FEATURE_ID$3);
 var MISSING_SIDEBAR_WARN = "Tag sidebar not found";
 var GROUP_HEADER_NAME_SET = /* @__PURE__ */ new Set([
 	"Copyright",
@@ -17664,7 +17664,7 @@ var FEATURE_PAGES$2 = ["list", "post"];
 var COLLAPSED_ROW = `ul#tag-sidebar > li.${COLLAPSED_CLASS}`;
 var HIDE_COLLAPSED_WITH_SKIN = `html.${RDW_SKIN_CLASS} body.${BODY_FEATURE_CLASS} ${COLLAPSED_ROW}`;
 var HIDE_COLLAPSED_SITE_THEME = `body.${BODY_FEATURE_CLASS} ${COLLAPSED_ROW}`;
-var FEATURE_CSS$2 = [
+var FEATURE_CSS$3 = [
 	`${HIDE_COLLAPSED_WITH_SKIN},`,
 	`${HIDE_COLLAPSED_SITE_THEME} { display: none; }`,
 	`body.${BODY_FEATURE_CLASS} button.${TOGGLE_CLASS} {`,
@@ -17758,13 +17758,297 @@ function mountTagGroups(ctx) {
 	for (const group of groups) mountToggle(group, collapsedNames, ctx);
 }
 var tagGroupsFeature = {
-	id: FEATURE_ID$2,
-	label: FEATURE_LABEL$2,
+	id: FEATURE_ID$3,
+	label: FEATURE_LABEL$3,
 	pages: [...FEATURE_PAGES$2],
 	defaultEnabled: true,
-	css: FEATURE_CSS$2,
+	css: FEATURE_CSS$3,
 	resetStateOnToggle: true,
 	mount: mountTagGroups
+};
+/**
+* A click on the "?" of a tag in the sidebar shows what the site's wiki says
+* about the tag, in a small panel beside it, instead of leaving the page.
+*
+* The "?" leads to a search of the wiki, not to the entry, so one click is two
+* requests: that search, then the entry it lists. Both only on the click, and
+* an answer is kept until the page is left. A click with a modifier key, or
+* the middle button, opens the wiki as before.
+*/
+var FEATURE_ID$2 = "tag-wiki";
+var FEATURE_LABEL$2 = "Tag description on the ? in the sidebar";
+var BODY_CLASS$1 = featureBodyClass(FEATURE_ID$2);
+var SIDEBAR_SELECTOR = "ul#tag-sidebar";
+var HELP_LINK_TEXT = "?";
+var WIKI_HREF_MARK = "page=wiki";
+var ENTRY_LINK_SELECTOR = "table.highlightable a[href*=\"page=wiki\"][href*=\"s=view\"]";
+/** The left half of an entry page: heading, tag type, the text, then the site's own notes. */
+var ENTRY_BODY_SELECTOR = "div#content > div.flexi > div";
+var TAG_LINK_SELECTOR = `a[href*="${SEARCH_PARAM_TAGS}="]`;
+var TITLE_PREFIX = "Now Viewing:";
+var TYPE_PREFIX = "Tag type:";
+var NOTES_HEADING = "Other Wiki Information";
+var PANEL_ID = "rdw-tag-wiki";
+var TITLE_CLASS = "rdw-tag-wiki-title";
+var TYPE_CLASS = "rdw-tag-wiki-type";
+var TEXT_CLASS = "rdw-tag-wiki-text";
+var FOOT_CLASS = "rdw-tag-wiki-foot";
+var PANEL_WIDTH_PX = 320;
+var PANEL_GAP_PX = 8;
+var PANEL_Z_INDEX = 2147483e3;
+var TEXT_LOADING = "Reading the wiki…";
+var TEXT_NO_ENTRY = "The wiki has no entry for this tag.";
+var TEXT_EMPTY_ENTRY = "The wiki entry has no description.";
+var TEXT_FAILED = "Could not read the wiki. Try again later.";
+var TEXT_OPEN = "Open in the wiki";
+var PANEL_LABEL = "Tag description";
+var FEATURE_CSS$2 = `
+#${PANEL_ID} {
+  position: fixed;
+  z-index: ${String(PANEL_Z_INDEX)};
+  box-sizing: border-box;
+  width: ${String(PANEL_WIDTH_PX)}px;
+  max-width: calc(100vw - ${String(16)}px);
+  padding: 10px 12px;
+  border: 1px solid var(--rdw-border);
+  border-radius: var(--rdw-radius-l);
+  background: var(--rdw-surface);
+  box-shadow: var(--rdw-shadow-2);
+  color: var(--rdw-text);
+  font: 12px/1.45 var(--rdw-font);
+}
+#${PANEL_ID} .${TITLE_CLASS} {
+  margin: 0;
+  font: 700 13px var(--rdw-font);
+  overflow-wrap: anywhere;
+}
+#${PANEL_ID} .${TYPE_CLASS} {
+  margin: 2px 0 0;
+  color: var(--rdw-muted);
+}
+#${PANEL_ID} .${TEXT_CLASS} {
+  margin: 8px 0 0;
+  max-height: 240px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+#${PANEL_ID} .${FOOT_CLASS} {
+  margin: 8px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--rdw-border);
+}
+#${PANEL_ID} .${FOOT_CLASS} a {
+  color: var(--rdw-accent);
+}
+`.trim();
+/** A tag as the wiki and the sidebar may spell it: case and underscores aside. */
+function foldTag(tag) {
+	return tag.trim().toLowerCase().replaceAll(" ", "_");
+}
+/** The address of the entry for `tag` among the results of a wiki search, or null. */
+function findWikiEntryHref(results, tag) {
+	const wanted = foldTag(tag);
+	for (const link of results.querySelectorAll(ENTRY_LINK_SELECTOR)) if (foldTag(link.textContent ?? "") === wanted) return link.getAttribute("href");
+	return null;
+}
+function nodeText(node) {
+	if (node instanceof HTMLBRElement) return "\n";
+	return node.textContent ?? "";
+}
+/** What an entry page says: the heading, the tag type and the text between them and the site's notes. */
+function readWikiEntry(page) {
+	const body = page.querySelector(ENTRY_BODY_SELECTOR);
+	const heading = body?.querySelector("h2") ?? null;
+	if (body === null || body === void 0 || heading === null) return null;
+	const title = (heading.textContent ?? "").replace(TITLE_PREFIX, "").trim();
+	let type = "";
+	let text = "";
+	let started = false;
+	for (const node of body.childNodes) {
+		const content = (node.textContent ?? "").trim();
+		if (node === heading) {
+			started = true;
+			continue;
+		}
+		if (!started) continue;
+		if (node instanceof HTMLElement && content.startsWith(TYPE_PREFIX)) {
+			type = content.slice(9).trim();
+			continue;
+		}
+		if (node instanceof HTMLElement && content === NOTES_HEADING) break;
+		text += nodeText(node);
+	}
+	const clean = text.split("\n").map((line) => line.replace(/\s+/g, " ").trim()).join("\n").replace(/\n{3,}/g, "\n\n").trim();
+	return {
+		title,
+		type,
+		text: clean
+	};
+}
+var answers = /* @__PURE__ */ new Map();
+async function fetchDocument(url) {
+	const absolute = new URL(url, window.location.href);
+	if (absolute.origin !== window.location.origin) throw new Error("cross-origin wiki address");
+	const response = await fetch(absolute.href, {
+		method: "GET",
+		credentials: FETCH_CREDENTIALS
+	});
+	if (!response.ok) throw new Error(`HTTP ${String(response.status)}`);
+	return new DOMParser().parseFromString(await response.text(), "text/html");
+}
+async function readAnswer(tag, searchHref) {
+	const known = answers.get(tag);
+	if (known !== void 0 && known.kind !== "failed") return known;
+	let answer;
+	try {
+		const entryHref = findWikiEntryHref(await fetchDocument(searchHref), tag);
+		if (entryHref === null) answer = {
+			kind: "none",
+			href: searchHref
+		};
+		else {
+			const entry = readWikiEntry(await fetchDocument(entryHref));
+			answer = entry === null ? {
+				kind: "none",
+				href: entryHref
+			} : {
+				kind: "entry",
+				entry,
+				href: entryHref
+			};
+		}
+	} catch (error) {
+		log.warn("tag-wiki: request failed", tag, error);
+		answer = {
+			kind: "failed",
+			href: searchHref
+		};
+	}
+	answers.set(tag, answer);
+	return answer;
+}
+var openFor = null;
+function closeTagWiki() {
+	document.getElementById(PANEL_ID)?.remove();
+	document.removeEventListener("keydown", onKeyDown, true);
+	document.removeEventListener("pointerdown", onPointerDown, true);
+	const opener = openFor;
+	openFor = null;
+	opener?.focus();
+}
+function onKeyDown(event) {
+	if (event.key === "Escape") {
+		event.preventDefault();
+		closeTagWiki();
+	}
+}
+function onPointerDown(event) {
+	const panel = document.getElementById(PANEL_ID);
+	const target = event.target;
+	if (panel === null || !(target instanceof Node)) return;
+	if (!panel.contains(target) && !(openFor?.contains(target) ?? false)) closeTagWiki();
+}
+function line(className, text) {
+	const element = document.createElement("p");
+	element.className = className;
+	element.textContent = text;
+	return element;
+}
+function fill(panel, tag, answer) {
+	const parts = [line(TITLE_CLASS, answer?.kind === "entry" ? answer.entry.title : tag)];
+	if (answer === null) parts.push(line(TEXT_CLASS, TEXT_LOADING));
+	else if (answer.kind === "entry") {
+		if (answer.entry.type.length > 0) parts.push(line(TYPE_CLASS, answer.entry.type));
+		parts.push(line(TEXT_CLASS, answer.entry.text.length > 0 ? answer.entry.text : TEXT_EMPTY_ENTRY));
+	} else parts.push(line(TEXT_CLASS, answer.kind === "none" ? TEXT_NO_ENTRY : TEXT_FAILED));
+	if (answer !== null) {
+		const foot = document.createElement("p");
+		foot.className = FOOT_CLASS;
+		const link = document.createElement("a");
+		link.href = answer.href;
+		link.textContent = TEXT_OPEN;
+		foot.append(link);
+		parts.push(foot);
+	}
+	panel.replaceChildren(...parts);
+}
+function place(panel, anchor) {
+	const rect = anchor.getBoundingClientRect();
+	const width = Math.min(PANEL_WIDTH_PX, window.innerWidth - 16);
+	let left = rect.right + PANEL_GAP_PX;
+	if (left + width > window.innerWidth - PANEL_GAP_PX) left = Math.max(PANEL_GAP_PX, rect.left - width - PANEL_GAP_PX);
+	const height = panel.offsetHeight;
+	const top = Math.max(PANEL_GAP_PX, Math.min(rect.top, window.innerHeight - height - PANEL_GAP_PX));
+	panel.style.left = `${String(left)}px`;
+	panel.style.top = `${String(top)}px`;
+}
+/** The tag a row of the sidebar is about, from its search link. */
+function sidebarRowTag(row) {
+	const links = row.querySelectorAll(TAG_LINK_SELECTOR);
+	const href = links[links.length - 1]?.getAttribute("href") ?? null;
+	if (href === null) return null;
+	try {
+		const tag = new URL(href, window.location.href).searchParams.get(SEARCH_PARAM_TAGS);
+		return tag === null || tag.trim().length === 0 ? null : tag.trim();
+	} catch {
+		return null;
+	}
+}
+function showFor(link, tag) {
+	if (openFor === link) {
+		closeTagWiki();
+		return;
+	}
+	closeTagWiki();
+	const panel = document.createElement("div");
+	panel.id = PANEL_ID;
+	panel.setAttribute("role", "dialog");
+	panel.setAttribute("aria-label", PANEL_LABEL);
+	fill(panel, tag, null);
+	document.body.append(panel);
+	place(panel, link);
+	openFor = link;
+	document.addEventListener("keydown", onKeyDown, true);
+	document.addEventListener("pointerdown", onPointerDown, true);
+	readAnswer(tag, link.href).then((answer) => {
+		if (openFor === link && panel.isConnected) {
+			fill(panel, tag, answer);
+			place(panel, link);
+		}
+	});
+}
+function onSidebarClick(event) {
+	if (!document.body.classList.contains(BODY_CLASS$1)) return;
+	if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+	const target = event.target;
+	const link = target instanceof Element ? target.closest("a") : null;
+	if (!(link instanceof HTMLAnchorElement) || (link.textContent ?? "").trim() !== HELP_LINK_TEXT || !(link.getAttribute("href") ?? "").includes(WIKI_HREF_MARK)) return;
+	const row = link.closest("li");
+	const tag = row === null ? null : sidebarRowTag(row);
+	if (tag === null) return;
+	event.preventDefault();
+	event.stopPropagation();
+	showFor(link, tag);
+}
+var boundSidebar = null;
+function mountTagWiki(_ctx) {
+	const sidebar = document.querySelector(SIDEBAR_SELECTOR);
+	if (sidebar === null || sidebar === boundSidebar) return;
+	boundSidebar = sidebar;
+	sidebar.addEventListener("click", (event) => {
+		if (event instanceof MouseEvent) onSidebarClick(event);
+	});
+}
+var tagWikiFeature = {
+	id: FEATURE_ID$2,
+	label: FEATURE_LABEL$2,
+	pages: ["list", "post"],
+	defaultEnabled: true,
+	cssOnly: true,
+	settingsCaption: "Shows the wiki text beside the tag instead of opening the wiki. Two requests on a click: the wiki search and the entry.",
+	css: FEATURE_CSS$2,
+	mount: mountTagWiki
 };
 /**
 * Hides the browser tooltip with the full tag list that shows when the pointer
@@ -18142,7 +18426,8 @@ var FEATURES = exports("b6",[
 	gifPostFeature,
 	sidebarRightFeature,
 	motionFeature,
-	feedCounterFeature
+	feedCounterFeature,
+	tagWikiFeature
 ]);
 var mountedIds = /* @__PURE__ */ new Set();
 var activePageKind = null;
@@ -21296,12 +21581,12 @@ startEarlyLayout();
 whenDomReady(() => {
 	applyLayoutBeforePaint();
 	scheduleAfterFirstPaint(() => {
-		module.import('./app-BtHARii--HwyisAL0.js').then(function(n){return n.g}).then(({ startApp }) => {
+		module.import('./app-CYnTJljk-M4J1VxXu.js').then(function(n){return n.g}).then(({ startApp }) => {
 			startApp();
 		});
 	});
 });})}}));
-System.register("./app-BtHARii--HwyisAL0.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var load,setFeatureState,loadFavSet,getFeatureState,yieldToMain,detectPageKind,mountGifMarks,mountCards,syncFavoritesPage,mountFavoriteVideoMarks,mountCommentsPage,runFeaturesYielding,getAppearance,applyAppearanceTheme,ensureDocumentStyles,SITE_SELECTORS,FOLLOW_KIND_ARTIST,FOLLOW_KIND_CHARACTER,FOLLOW_KIND_COPYRIGHT,log,SITE_ORIGIN,SEARCH_PARAM_TAGS,normalizeArtistTag,CSS_CLASS,getSyncState,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,HEADER_SELECTOR$1,RDW_OWN_PAGE_CLASS,MENU_ITEM_ID,getFeatureEnabled,applyHeaderLayout,parseRdwHash,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,runFavoritesSync,UI_TEXT,createDynamicCollection,Q$1,RDW_PAGE_ROOT_ID,markFavoritesCurrent,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,resolveFavoritesUserId,RDW_HASH_STATS,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,NAV_DUE_CLASS,rdwPageHash,createFavoritesSyncTabId,APPEARANCE_BACKGROUND_KEY,readArtistsMirror,listArtistTags,writeArtistsMirror,reloadFromStorage,save,CURRENT_PAGE_CLASS,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,a,applyTokenProperties,resolveAppearancePalette,isCollectionDetailPage,menuRouteForPage,getSiteSkinCss,KIT_CONTROL_HEIGHT_VAR,KIT_CONTROL_FONT_VAR,MOTION_PAGE_CSS,$$1,PANEL_UI_CLASS,TOKEN_VAR,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,SITE_LIGHT_C_BG,SITE_LIGHT_C_BG_ALT,SITE_DARK_C_BG,SITE_DARK_C_BORDER,APPEARANCE_BACKGROUND_TOO_LARGE;return{setters:[function(module){load=module.l;setFeatureState=module.s;loadFavSet=module.a;getFeatureState=module.g;yieldToMain=module.y;detectPageKind=module.d;mountGifMarks=module.m;mountCards=module.b;syncFavoritesPage=module.c;mountFavoriteVideoMarks=module.e;mountCommentsPage=module.f;runFeaturesYielding=module.r;getAppearance=module.h;applyAppearanceTheme=module.i;ensureDocumentStyles=module.j;SITE_SELECTORS=module.S;FOLLOW_KIND_ARTIST=module.F;FOLLOW_KIND_CHARACTER=module.k;FOLLOW_KIND_COPYRIGHT=module.n;log=module.o;SITE_ORIGIN=module.p;SEARCH_PARAM_TAGS=module.q;normalizeArtistTag=module.t;CSS_CLASS=module.C;getSyncState=module.u;ensureStyleElement=module.v;RDW_OWN_PAGE_STYLE_ID=module.R;buildOwnPageCss=module.w;HEADER_SELECTOR$1=module.H;RDW_OWN_PAGE_CLASS=module.x;MENU_ITEM_ID=module.M;getFeatureEnabled=module.z;applyHeaderLayout=module.A;parseRdwHash=module.B;readFavoritesSyncMode=module.D;FAVORITES_SYNC_MODE_FULL=module.E;runFavoritesSync=module.G;UI_TEXT=module.U;createDynamicCollection=module.I;Q$1=module.Q;RDW_PAGE_ROOT_ID=module.J;markFavoritesCurrent=module.K;NAVBAR_SELECTOR=module.N;FEED_MENU_ITEM_ID=module.L;RDW_HASH_COLLECTIONS=module.O;MENU_LABEL=module.P;RDW_HASH_FOLLOWING=module.T;resolveFavoritesUserId=module.V;RDW_HASH_STATS=module.W;MY_FAVORITES_CONTAINER_ID=module.X;RDW_HASH_SETTINGS=module.Y;NAV_DUE_CLASS=module.Z;rdwPageHash=module._;createFavoritesSyncTabId=module.$;APPEARANCE_BACKGROUND_KEY=module.a0;readArtistsMirror=module.a1;listArtistTags=module.a2;writeArtistsMirror=module.a3;reloadFromStorage=module.a4;save=module.a5;CURRENT_PAGE_CLASS=module.a6;setSyncState=module.a7;SEARCH_PARAM_PAGE=module.a8;FAVORITES_PAGE=module.a9;FAVORITES_SECTION_VIEW=module.aa;SEARCH_PATH=module.ab;a=module.ac;applyTokenProperties=module.ad;resolveAppearancePalette=module.ae;isCollectionDetailPage=module.af;menuRouteForPage=module.ag;getSiteSkinCss=module.ah;KIT_CONTROL_HEIGHT_VAR=module.ai;KIT_CONTROL_FONT_VAR=module.aj;MOTION_PAGE_CSS=module.ak;$$1=module.al;PANEL_UI_CLASS=module.am;TOKEN_VAR=module.an;RDW_THEME_ATTR=module.ao;APPEARANCE_THEME_SITE=module.ap;APPEARANCE_THEME_SITE_DARK=module.aq;SITE_LIGHT_C_BG=module.ar;SITE_LIGHT_C_BG_ALT=module.as;SITE_DARK_C_BG=module.at;SITE_DARK_C_BORDER=module.au;APPEARANCE_BACKGROUND_TOO_LARGE=module.av;}],execute:(function(){exports({a:clearBackground,c:currentBackupStatus,d:isViewMode,e:readViewMode,f:readStatsHistory,i:installSiteMenu,l:loadBackground,m:markBackupDue,n:navigateToRdwRoute,r:rememberBackup,s:saveBackground,w:writeViewMode});/**
+System.register("./app-CYnTJljk-M4J1VxXu.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var load,setFeatureState,loadFavSet,getFeatureState,yieldToMain,detectPageKind,mountGifMarks,mountCards,syncFavoritesPage,mountFavoriteVideoMarks,mountCommentsPage,runFeaturesYielding,getAppearance,applyAppearanceTheme,ensureDocumentStyles,SITE_SELECTORS,FOLLOW_KIND_ARTIST,FOLLOW_KIND_CHARACTER,FOLLOW_KIND_COPYRIGHT,log,SITE_ORIGIN,SEARCH_PARAM_TAGS,normalizeArtistTag,CSS_CLASS,getSyncState,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,HEADER_SELECTOR$1,RDW_OWN_PAGE_CLASS,MENU_ITEM_ID,getFeatureEnabled,applyHeaderLayout,parseRdwHash,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,runFavoritesSync,UI_TEXT,createDynamicCollection,Q$1,RDW_PAGE_ROOT_ID,markFavoritesCurrent,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,resolveFavoritesUserId,RDW_HASH_STATS,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,NAV_DUE_CLASS,rdwPageHash,createFavoritesSyncTabId,APPEARANCE_BACKGROUND_KEY,readArtistsMirror,listArtistTags,writeArtistsMirror,reloadFromStorage,save,CURRENT_PAGE_CLASS,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,a,applyTokenProperties,resolveAppearancePalette,isCollectionDetailPage,menuRouteForPage,getSiteSkinCss,KIT_CONTROL_HEIGHT_VAR,KIT_CONTROL_FONT_VAR,MOTION_PAGE_CSS,$$1,PANEL_UI_CLASS,TOKEN_VAR,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,SITE_LIGHT_C_BG,SITE_LIGHT_C_BG_ALT,SITE_DARK_C_BG,SITE_DARK_C_BORDER,APPEARANCE_BACKGROUND_TOO_LARGE;return{setters:[function(module){load=module.l;setFeatureState=module.s;loadFavSet=module.a;getFeatureState=module.g;yieldToMain=module.y;detectPageKind=module.d;mountGifMarks=module.m;mountCards=module.b;syncFavoritesPage=module.c;mountFavoriteVideoMarks=module.e;mountCommentsPage=module.f;runFeaturesYielding=module.r;getAppearance=module.h;applyAppearanceTheme=module.i;ensureDocumentStyles=module.j;SITE_SELECTORS=module.S;FOLLOW_KIND_ARTIST=module.F;FOLLOW_KIND_CHARACTER=module.k;FOLLOW_KIND_COPYRIGHT=module.n;log=module.o;SITE_ORIGIN=module.p;SEARCH_PARAM_TAGS=module.q;normalizeArtistTag=module.t;CSS_CLASS=module.C;getSyncState=module.u;ensureStyleElement=module.v;RDW_OWN_PAGE_STYLE_ID=module.R;buildOwnPageCss=module.w;HEADER_SELECTOR$1=module.H;RDW_OWN_PAGE_CLASS=module.x;MENU_ITEM_ID=module.M;getFeatureEnabled=module.z;applyHeaderLayout=module.A;parseRdwHash=module.B;readFavoritesSyncMode=module.D;FAVORITES_SYNC_MODE_FULL=module.E;runFavoritesSync=module.G;UI_TEXT=module.U;createDynamicCollection=module.I;Q$1=module.Q;RDW_PAGE_ROOT_ID=module.J;markFavoritesCurrent=module.K;NAVBAR_SELECTOR=module.N;FEED_MENU_ITEM_ID=module.L;RDW_HASH_COLLECTIONS=module.O;MENU_LABEL=module.P;RDW_HASH_FOLLOWING=module.T;resolveFavoritesUserId=module.V;RDW_HASH_STATS=module.W;MY_FAVORITES_CONTAINER_ID=module.X;RDW_HASH_SETTINGS=module.Y;NAV_DUE_CLASS=module.Z;rdwPageHash=module._;createFavoritesSyncTabId=module.$;APPEARANCE_BACKGROUND_KEY=module.a0;readArtistsMirror=module.a1;listArtistTags=module.a2;writeArtistsMirror=module.a3;reloadFromStorage=module.a4;save=module.a5;CURRENT_PAGE_CLASS=module.a6;setSyncState=module.a7;SEARCH_PARAM_PAGE=module.a8;FAVORITES_PAGE=module.a9;FAVORITES_SECTION_VIEW=module.aa;SEARCH_PATH=module.ab;a=module.ac;applyTokenProperties=module.ad;resolveAppearancePalette=module.ae;isCollectionDetailPage=module.af;menuRouteForPage=module.ag;getSiteSkinCss=module.ah;KIT_CONTROL_HEIGHT_VAR=module.ai;KIT_CONTROL_FONT_VAR=module.aj;MOTION_PAGE_CSS=module.ak;$$1=module.al;PANEL_UI_CLASS=module.am;TOKEN_VAR=module.an;RDW_THEME_ATTR=module.ao;APPEARANCE_THEME_SITE=module.ap;APPEARANCE_THEME_SITE_DARK=module.aq;SITE_LIGHT_C_BG=module.ar;SITE_LIGHT_C_BG_ALT=module.as;SITE_DARK_C_BG=module.at;SITE_DARK_C_BORDER=module.au;APPEARANCE_BACKGROUND_TOO_LARGE=module.av;}],execute:(function(){exports({a:clearBackground,c:currentBackupStatus,d:isViewMode,e:readViewMode,f:readStatsHistory,i:installSiteMenu,l:loadBackground,m:markBackupDue,n:navigateToRdwRoute,r:rememberBackup,s:saveBackground,w:writeViewMode});/**
 * Two small records kept with the settings:
 *
 * - a point a day of how much the script holds (favorites, followed tags,
@@ -21709,35 +21994,35 @@ var followingFactory = null;
 var statsFactory = null;
 function getSettingsFactory() {
 	if (settingsFactory === null) settingsFactory = async () => {
-		const mod = await module.import('./settings-page-CdMN5Zuz-C5EMcK4L.js');
+		const mod = await module.import('./settings-page-DnZWmqiJ-DfeZ-Fde.js');
 		return /* @__PURE__ */ a(mod.SettingsPage, {});
 	};
 	return settingsFactory;
 }
 function getCollectionsFactory() {
 	if (collectionsFactory === null) collectionsFactory = async () => {
-		const mod = await module.import('./collections-page-CCFPf9-i-I_mivy_s.js');
+		const mod = await module.import('./collections-page-C-T6MvfJ-CXClSvEv.js');
 		return /* @__PURE__ */ a(mod.CollectionsPage, {});
 	};
 	return collectionsFactory;
 }
 function getFollowingFactory() {
 	if (followingFactory === null) followingFactory = async () => {
-		const mod = await module.import('./following-page-B9RTGDAj-Damd1Y9A.js');
+		const mod = await module.import('./following-page-CydywuDv-CBTCFEww.js');
 		return /* @__PURE__ */ a(mod.FollowingPage, {});
 	};
 	return followingFactory;
 }
 function getStatsFactory() {
 	if (statsFactory === null) statsFactory = async () => {
-		const mod = await module.import('./stats-section-CeqnAv73-BK7ya6RS.js');
+		const mod = await module.import('./stats-section-B8BH7h0W-BP_5mdNM.js');
 		return /* @__PURE__ */ a(mod.StatsPage, {});
 	};
 	return statsFactory;
 }
 function collectionDetailFactory(collectionId) {
 	return async () => {
-		const mod = await module.import('./collection-detail-page-D--gNDBy-1-DwNXE_.js');
+		const mod = await module.import('./collection-detail-page-CvW88q12-CqcyTMoB.js');
 		return /* @__PURE__ */ a(mod.CollectionDetailPage, { collectionId }, collectionId);
 	};
 }
@@ -22861,8 +23146,8 @@ async function startApp() {
 	await yieldToMain();
 	maybeResumeFavoritesSync();
 	recordStatsPoint();
-}var appBtHARii_=/*#__PURE__*/Object.freeze({__proto__:null,a:installSiteMenu,c:FOLLOWING_VIEW_STATE_ID,d:VIEW_LIST,f:VIEW_OPTIONS,h:writeViewMode,i:navigateToRdwRoute,l:PAGE_CENTRE_PADDING,m:readViewMode,n:loadBackground,o:markBackupDue,p:isViewMode,r:saveBackground,s:COLLECTIONS_VIEW_STATE_ID,startApp:startApp,t:clearBackground,u:VIEW_LABEL});exports("g",appBtHARii_);})}}));
-System.register("./settings-page-CdMN5Zuz-C5EMcK4L.js", ['./___monkey.entry.js','./app-BtHARii--HwyisAL0.js'],(function(exports){'use strict';var d,a,PANEL_UI_CLASS,Switch,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,STATS_MENU_SETTING_LABEL,STATS_MENU_SWITCH_ID,setFeatureEnabled,STICKY_HEADER_SETTING_LABEL,STICKY_HEADER_SWITCH_ID,applyStickyHeader,NumberField,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,setGridFavButtonsVisible,IconChevronRight,IconChevronDown,Card,P$1,T,A,getAppearance,applyAppearanceTheme,getSiteSkinCss,APPEARANCE_THEME_CUSTOM,KIT_FOCUS_CSS,SectionLabel,Select,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,$$1,Segmented,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,TextField,Button,clampBackgroundDim,FEATURES,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,clearFeatureState,applyCssOnlyFeatureEnabled,isFeatureEnabled,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,applyCssOnlyFeatureChoice,getFeatureChoice,createAutocompleteQuerier,b,readSiteBlacklist,AutocompleteField,Chip,ProgressBar,createDefaultCustomTheme,AppearanceThemeSchema,prepareBackgroundImageFile,setFeatureState,writeSiteBlacklist,runFavoritesSync,log,FAVORITES_SYNC_PAGE_PAUSE_MS,clearApiCredentials,parseApiCredentials,setApiCredentials,DEFAULT_FILE_MASK,FILE_MASK_TOKENS,load,createDefaultStorage,clearStorageCache,clearFavsCache,getSyncState,buildFileName,writeFileMask,readFileMask,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,isSiteUrl,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,setAppearance,loadFavSet,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,gridDensityFeature,FAVORITES_SYNC_MODE_INCREMENTAL,FAVORITES_SYNC_MODE_FULL,STATS_MENU_SETTING_ID,STICKY_HEADER_SETTING_ID,hasApiCredentials,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureEnabled,getFeatureChoiceValue,getFeatureState,getScreenPixelSize,installSiteMenu,loadBackground,currentBackupStatus,markBackupDue,clearBackground,saveBackground,rememberBackup;return{setters:[function(module){d=module.aw;a=module.ac;PANEL_UI_CLASS=module.am;Switch=module.ax;UI_TEXT=module.U;TWEAKS_SWITCH_ID=module.ay;setTweaksEnabled=module.az;STATS_MENU_SETTING_LABEL=module.aA;STATS_MENU_SWITCH_ID=module.aB;setFeatureEnabled=module.aC;STICKY_HEADER_SETTING_LABEL=module.aD;STICKY_HEADER_SWITCH_ID=module.aE;applyStickyHeader=module.aF;NumberField=module.aG;UPDATES_GROUP_SIZE_ID=module.aH;setUpdatesGroupSize=module.aI;getUpdatesGroupSize=module.aJ;PLAYLIST_CHUNK_SIZE_ID=module.aK;setPlaylistChunkSize=module.aL;getPlaylistChunkSize=module.aM;GRID_FAV_CHECKBOX_ID=module.aN;setGridFavButtonsEnabled=module.aO;setGridFavButtonsVisible=module.aP;IconChevronRight=module.aQ;IconChevronDown=module.aR;Card=module.aS;P$1=module.aT;T=module.aU;A=module.aV;getAppearance=module.h;applyAppearanceTheme=module.i;getSiteSkinCss=module.ah;APPEARANCE_THEME_CUSTOM=module.aW;KIT_FOCUS_CSS=module.aX;SectionLabel=module.aY;Select=module.aZ;APPEARANCE_THEME_SITE=module.ap;APPEARANCE_THEME_SITE_DARK=module.aq;APPEARANCE_THEME_LIGHT=module.a_;APPEARANCE_THEME_DARK=module.a$;$$1=module.al;Segmented=module.b0;APPEARANCE_CUSTOM_BASE_LIGHT=module.b1;APPEARANCE_CUSTOM_BASE_DARK=module.b2;TextField=module.b3;Button=module.b4;clampBackgroundDim=module.b5;FEATURES=module.b6;featurePanelLabel=module.b7;FEATURE_CHECKBOX_ID_PREFIX=module.b8;clearFeatureState=module.b9;applyCssOnlyFeatureEnabled=module.ba;isFeatureEnabled=module.bb;FEATURE_CHOICE_ID_PREFIX=module.bc;setFeatureChoiceValue=module.bd;applyCssOnlyFeatureChoice=module.be;getFeatureChoice=module.bf;createAutocompleteQuerier=module.bg;b=module.bh;readSiteBlacklist=module.bi;AutocompleteField=module.bj;Chip=module.bk;ProgressBar=module.bl;createDefaultCustomTheme=module.bm;AppearanceThemeSchema=module.bn;prepareBackgroundImageFile=module.bo;setFeatureState=module.s;writeSiteBlacklist=module.bp;runFavoritesSync=module.G;log=module.o;FAVORITES_SYNC_PAGE_PAUSE_MS=module.bq;clearApiCredentials=module.br;parseApiCredentials=module.bs;setApiCredentials=module.bt;DEFAULT_FILE_MASK=module.bu;FILE_MASK_TOKENS=module.bv;load=module.l;createDefaultStorage=module.bw;clearStorageCache=module.bx;clearFavsCache=module.by;getSyncState=module.u;buildFileName=module.bz;writeFileMask=module.bA;readFileMask=module.bB;object=module.bC;StorageSchema=module.bD;optional=module.bE;string=module.bF;FavsSchema=module.bG;literal=module.bH;IMPORT_SCHEMA_ERROR_PREFIX=module.bI;isSiteUrl=module.bJ;stripLegacyPanelWindowSize=module.bK;save=module.a5;migrateMarksFavToFavs=module.bL;FAVS_STORAGE_KEY=module.bM;createDefaultFavs=module.bN;parseFavsStrict=module.bO;setAppearance=module.bP;loadFavSet=module.a;STORAGE_BACKUP_KEY=module.bQ;extractFavIdsFromMarks=module.bR;gridDensityFeature=module.bS;FAVORITES_SYNC_MODE_INCREMENTAL=module.bT;FAVORITES_SYNC_MODE_FULL=module.E;STATS_MENU_SETTING_ID=module.bU;STICKY_HEADER_SETTING_ID=module.bV;hasApiCredentials=module.bW;getTweaksEnabled=module.bX;getGridFavButtonsEnabled=module.bY;getFeatureEnabled=module.z;getFeatureChoiceValue=module.bZ;getFeatureState=module.g;getScreenPixelSize=module.b_;},function(module){installSiteMenu=module.i;loadBackground=module.l;currentBackupStatus=module.c;markBackupDue=module.m;clearBackground=module.a;saveBackground=module.s;rememberBackup=module.r;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
+}var appCYnTJljk=/*#__PURE__*/Object.freeze({__proto__:null,a:installSiteMenu,c:FOLLOWING_VIEW_STATE_ID,d:VIEW_LIST,f:VIEW_OPTIONS,h:writeViewMode,i:navigateToRdwRoute,l:PAGE_CENTRE_PADDING,m:readViewMode,n:loadBackground,o:markBackupDue,p:isViewMode,r:saveBackground,s:COLLECTIONS_VIEW_STATE_ID,startApp:startApp,t:clearBackground,u:VIEW_LABEL});exports("g",appCYnTJljk);})}}));
+System.register("./settings-page-DnZWmqiJ-DfeZ-Fde.js", ['./___monkey.entry.js','./app-CYnTJljk-M4J1VxXu.js'],(function(exports){'use strict';var d,a,PANEL_UI_CLASS,Switch,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,STATS_MENU_SETTING_LABEL,STATS_MENU_SWITCH_ID,setFeatureEnabled,STICKY_HEADER_SETTING_LABEL,STICKY_HEADER_SWITCH_ID,applyStickyHeader,NumberField,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,setGridFavButtonsVisible,IconChevronRight,IconChevronDown,Card,P$1,T,A,getAppearance,applyAppearanceTheme,getSiteSkinCss,APPEARANCE_THEME_CUSTOM,KIT_FOCUS_CSS,SectionLabel,Select,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,$$1,Segmented,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,TextField,Button,clampBackgroundDim,FEATURES,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,clearFeatureState,applyCssOnlyFeatureEnabled,isFeatureEnabled,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,applyCssOnlyFeatureChoice,getFeatureChoice,createAutocompleteQuerier,b,readSiteBlacklist,AutocompleteField,Chip,ProgressBar,createDefaultCustomTheme,AppearanceThemeSchema,prepareBackgroundImageFile,setFeatureState,writeSiteBlacklist,runFavoritesSync,log,FAVORITES_SYNC_PAGE_PAUSE_MS,clearApiCredentials,parseApiCredentials,setApiCredentials,DEFAULT_FILE_MASK,FILE_MASK_TOKENS,load,createDefaultStorage,clearStorageCache,clearFavsCache,getSyncState,buildFileName,writeFileMask,readFileMask,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,isSiteUrl,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,setAppearance,loadFavSet,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,gridDensityFeature,FAVORITES_SYNC_MODE_INCREMENTAL,FAVORITES_SYNC_MODE_FULL,STATS_MENU_SETTING_ID,STICKY_HEADER_SETTING_ID,hasApiCredentials,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureEnabled,getFeatureChoiceValue,getFeatureState,getScreenPixelSize,installSiteMenu,loadBackground,currentBackupStatus,markBackupDue,clearBackground,saveBackground,rememberBackup;return{setters:[function(module){d=module.aw;a=module.ac;PANEL_UI_CLASS=module.am;Switch=module.ax;UI_TEXT=module.U;TWEAKS_SWITCH_ID=module.ay;setTweaksEnabled=module.az;STATS_MENU_SETTING_LABEL=module.aA;STATS_MENU_SWITCH_ID=module.aB;setFeatureEnabled=module.aC;STICKY_HEADER_SETTING_LABEL=module.aD;STICKY_HEADER_SWITCH_ID=module.aE;applyStickyHeader=module.aF;NumberField=module.aG;UPDATES_GROUP_SIZE_ID=module.aH;setUpdatesGroupSize=module.aI;getUpdatesGroupSize=module.aJ;PLAYLIST_CHUNK_SIZE_ID=module.aK;setPlaylistChunkSize=module.aL;getPlaylistChunkSize=module.aM;GRID_FAV_CHECKBOX_ID=module.aN;setGridFavButtonsEnabled=module.aO;setGridFavButtonsVisible=module.aP;IconChevronRight=module.aQ;IconChevronDown=module.aR;Card=module.aS;P$1=module.aT;T=module.aU;A=module.aV;getAppearance=module.h;applyAppearanceTheme=module.i;getSiteSkinCss=module.ah;APPEARANCE_THEME_CUSTOM=module.aW;KIT_FOCUS_CSS=module.aX;SectionLabel=module.aY;Select=module.aZ;APPEARANCE_THEME_SITE=module.ap;APPEARANCE_THEME_SITE_DARK=module.aq;APPEARANCE_THEME_LIGHT=module.a_;APPEARANCE_THEME_DARK=module.a$;$$1=module.al;Segmented=module.b0;APPEARANCE_CUSTOM_BASE_LIGHT=module.b1;APPEARANCE_CUSTOM_BASE_DARK=module.b2;TextField=module.b3;Button=module.b4;clampBackgroundDim=module.b5;FEATURES=module.b6;featurePanelLabel=module.b7;FEATURE_CHECKBOX_ID_PREFIX=module.b8;clearFeatureState=module.b9;applyCssOnlyFeatureEnabled=module.ba;isFeatureEnabled=module.bb;FEATURE_CHOICE_ID_PREFIX=module.bc;setFeatureChoiceValue=module.bd;applyCssOnlyFeatureChoice=module.be;getFeatureChoice=module.bf;createAutocompleteQuerier=module.bg;b=module.bh;readSiteBlacklist=module.bi;AutocompleteField=module.bj;Chip=module.bk;ProgressBar=module.bl;createDefaultCustomTheme=module.bm;AppearanceThemeSchema=module.bn;prepareBackgroundImageFile=module.bo;setFeatureState=module.s;writeSiteBlacklist=module.bp;runFavoritesSync=module.G;log=module.o;FAVORITES_SYNC_PAGE_PAUSE_MS=module.bq;clearApiCredentials=module.br;parseApiCredentials=module.bs;setApiCredentials=module.bt;DEFAULT_FILE_MASK=module.bu;FILE_MASK_TOKENS=module.bv;load=module.l;createDefaultStorage=module.bw;clearStorageCache=module.bx;clearFavsCache=module.by;getSyncState=module.u;buildFileName=module.bz;writeFileMask=module.bA;readFileMask=module.bB;object=module.bC;StorageSchema=module.bD;optional=module.bE;string=module.bF;FavsSchema=module.bG;literal=module.bH;IMPORT_SCHEMA_ERROR_PREFIX=module.bI;isSiteUrl=module.bJ;stripLegacyPanelWindowSize=module.bK;save=module.a5;migrateMarksFavToFavs=module.bL;FAVS_STORAGE_KEY=module.bM;createDefaultFavs=module.bN;parseFavsStrict=module.bO;setAppearance=module.bP;loadFavSet=module.a;STORAGE_BACKUP_KEY=module.bQ;extractFavIdsFromMarks=module.bR;gridDensityFeature=module.bS;FAVORITES_SYNC_MODE_INCREMENTAL=module.bT;FAVORITES_SYNC_MODE_FULL=module.E;STATS_MENU_SETTING_ID=module.bU;STICKY_HEADER_SETTING_ID=module.bV;hasApiCredentials=module.bW;getTweaksEnabled=module.bX;getGridFavButtonsEnabled=module.bY;getFeatureEnabled=module.z;getFeatureChoiceValue=module.bZ;getFeatureState=module.g;getScreenPixelSize=module.b_;},function(module){installSiteMenu=module.i;loadBackground=module.l;currentBackupStatus=module.c;markBackupDue=module.m;clearBackground=module.a;saveBackground=module.s;rememberBackup=module.r;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
 var THEME_OPTIONS = [
 	{
 		value: APPEARANCE_THEME_SITE,
@@ -24696,7 +24981,7 @@ function SettingsPage() {
 		]
 	});
 }})}}));
-System.register("./collections-page-CCFPf9-i-I_mivy_s.js", ['./___monkey.entry.js','./filter-terms-Dqag3iAV-Bgq_MKCQ.js','./app-BtHARii--HwyisAL0.js'],(function(exports){'use strict';var d,T,A,b,reloadFromStorage,load,a,Segmented,SearchField,Select,setFeatureState,$$1,Button,UI_TEXT,IconPlus,EmptyState,Dialog,resolveCollectionKind,STICKY_TOP,isUnfilteredQuery,dynamicHasNew,deleteCollection,TextField,QueryField,createDynamicCollection,createPlaylist,buildSearchUrl,fetchNextPage,setDynamicCover,readFirstThumbUrls,readResultCount,setDynamicPostCount,setDynamicNewest,COLLECTION_KIND_POSTS,collectionDetailHash,readCoverMirror,COLLECTION_KIND_SEARCH,extractPostIdFromThumb,IconCheck,readCountMirror,dynamicCollectionMarkHash,serialize,getFeatureState,matchesAnyTerm,filterTerms,COLLECTION_TERM_SEPARATOR,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,PAGE_CENTRE_PADDING,COLLECTIONS_VIEW_STATE_ID,readViewMode;return{setters:[function(module){d=module.aw;T=module.aU;A=module.aV;b=module.bh;reloadFromStorage=module.a4;load=module.l;a=module.ac;Segmented=module.b0;SearchField=module.b$;Select=module.aZ;setFeatureState=module.s;$$1=module.al;Button=module.b4;UI_TEXT=module.U;IconPlus=module.c0;EmptyState=module.c1;Dialog=module.c2;resolveCollectionKind=module.c3;STICKY_TOP=module.c4;isUnfilteredQuery=module.c5;dynamicHasNew=module.c6;deleteCollection=module.c7;TextField=module.b3;QueryField=module.c8;createDynamicCollection=module.I;createPlaylist=module.c9;buildSearchUrl=module.ca;fetchNextPage=module.cb;setDynamicCover=module.cc;readFirstThumbUrls=module.cd;readResultCount=module.ce;setDynamicPostCount=module.cf;setDynamicNewest=module.cg;COLLECTION_KIND_POSTS=module.ch;collectionDetailHash=module.ci;readCoverMirror=module.cj;COLLECTION_KIND_SEARCH=module.ck;extractPostIdFromThumb=module.cl;IconCheck=module.cm;readCountMirror=module.cn;dynamicCollectionMarkHash=module.co;serialize=module.cp;getFeatureState=module.g;},function(module){matchesAnyTerm=module.m;filterTerms=module.f;COLLECTION_TERM_SEPARATOR=module.C;},function(module){VIEW_OPTIONS=module.V;VIEW_LABEL=module.b;isViewMode=module.d;writeViewMode=module.w;PAGE_CENTRE_PADDING=module.P;COLLECTIONS_VIEW_STATE_ID=module.C;readViewMode=module.e;}],execute:(function(){exports("CollectionsPage",CollectionsPage);/**
+System.register("./collections-page-C-T6MvfJ-CXClSvEv.js", ['./___monkey.entry.js','./filter-terms-Dqag3iAV-Bgq_MKCQ.js','./app-CYnTJljk-M4J1VxXu.js'],(function(exports){'use strict';var d,T,A,b,reloadFromStorage,load,a,Segmented,SearchField,Select,setFeatureState,$$1,Button,UI_TEXT,IconPlus,EmptyState,Dialog,resolveCollectionKind,STICKY_TOP,isUnfilteredQuery,dynamicHasNew,deleteCollection,TextField,QueryField,createDynamicCollection,createPlaylist,buildSearchUrl,fetchNextPage,setDynamicCover,readFirstThumbUrls,readResultCount,setDynamicPostCount,setDynamicNewest,COLLECTION_KIND_POSTS,collectionDetailHash,readCoverMirror,COLLECTION_KIND_SEARCH,extractPostIdFromThumb,IconCheck,readCountMirror,dynamicCollectionMarkHash,serialize,getFeatureState,matchesAnyTerm,filterTerms,COLLECTION_TERM_SEPARATOR,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,PAGE_CENTRE_PADDING,COLLECTIONS_VIEW_STATE_ID,readViewMode;return{setters:[function(module){d=module.aw;T=module.aU;A=module.aV;b=module.bh;reloadFromStorage=module.a4;load=module.l;a=module.ac;Segmented=module.b0;SearchField=module.b$;Select=module.aZ;setFeatureState=module.s;$$1=module.al;Button=module.b4;UI_TEXT=module.U;IconPlus=module.c0;EmptyState=module.c1;Dialog=module.c2;resolveCollectionKind=module.c3;STICKY_TOP=module.c4;isUnfilteredQuery=module.c5;dynamicHasNew=module.c6;deleteCollection=module.c7;TextField=module.b3;QueryField=module.c8;createDynamicCollection=module.I;createPlaylist=module.c9;buildSearchUrl=module.ca;fetchNextPage=module.cb;setDynamicCover=module.cc;readFirstThumbUrls=module.cd;readResultCount=module.ce;setDynamicPostCount=module.cf;setDynamicNewest=module.cg;COLLECTION_KIND_POSTS=module.ch;collectionDetailHash=module.ci;readCoverMirror=module.cj;COLLECTION_KIND_SEARCH=module.ck;extractPostIdFromThumb=module.cl;IconCheck=module.cm;readCountMirror=module.cn;dynamicCollectionMarkHash=module.co;serialize=module.cp;getFeatureState=module.g;},function(module){matchesAnyTerm=module.m;filterTerms=module.f;COLLECTION_TERM_SEPARATOR=module.C;},function(module){VIEW_OPTIONS=module.V;VIEW_LABEL=module.b;isViewMode=module.d;writeViewMode=module.w;PAGE_CENTRE_PADDING=module.P;COLLECTIONS_VIEW_STATE_ID=module.C;readViewMode=module.e;}],execute:(function(){exports("CollectionsPage",CollectionsPage);/**
 * "Check for new" on the Collections page: reads the first results page of
 * every saved search. From it the card gets its cover and post count (as on a
 * visit to the search), and the newest post is remembered, so a card can say
@@ -25686,7 +25971,7 @@ function CollectionsPage() {
 		]
 	});
 }})}}));
-System.register("./following-page-B9RTGDAj-Damd1Y9A.js", ['./___monkey.entry.js','./filter-terms-Dqag3iAV-Bgq_MKCQ.js','./app-BtHARii--HwyisAL0.js'],(function(exports){'use strict';var d,T,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST,A,reloadFromStorage,getSeenPostId,listFollowGroups,followKindOf,FOLLOW_KIND_ARTIST,a,EmptyState,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,$$1,Button,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,Segmented,SearchField,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,Select,FOLLOW_KIND_CHARACTER,FOLLOW_KIND_COPYRIGHT,UI_TEXT,ProgressBar,Dialog,TextField,removeArtist,load,completeLastQueryToken,readLastQueryToken,STICKY_TOP,IconPlus,buildSearchUrl,TAG_TYPE_INCLUDE,IconCheck,IconButton,IconX,setFollowGroup,removeArtists,rememberArtistSnapshot,fetchArtistSnapshot,log,addArtists,AutocompleteField,filterTerms,matchesAnyTerm,ARTIST_TERM_SEPARATOR,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,PAGE_CENTRE_PADDING,FOLLOWING_VIEW_STATE_ID,readViewMode;return{setters:[function(module){d=module.aw;T=module.aU;createAutocompleteQuerier=module.bg;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.cq;A=module.aV;reloadFromStorage=module.a4;getSeenPostId=module.cr;listFollowGroups=module.cs;followKindOf=module.ct;FOLLOW_KIND_ARTIST=module.F;a=module.ac;EmptyState=module.c1;ARTISTS_EMPTY_HINT=module.cu;ARTISTS_EMPTY_TITLE=module.cv;$$1=module.al;Button=module.b4;SEARCH_PATH=module.ab;SEARCH_PARAM_PAGE=module.a8;SEARCH_PAGE=module.cw;SEARCH_SECTION=module.cx;Segmented=module.b0;SearchField=module.b$;ARTIST_FILTER_LABEL=module.cy;ARTIST_FILTER_ID=module.cz;Select=module.aZ;FOLLOW_KIND_CHARACTER=module.k;FOLLOW_KIND_COPYRIGHT=module.n;UI_TEXT=module.U;ProgressBar=module.bl;Dialog=module.c2;TextField=module.b3;removeArtist=module.cA;load=module.l;completeLastQueryToken=module.cB;readLastQueryToken=module.cC;STICKY_TOP=module.c4;IconPlus=module.c0;buildSearchUrl=module.ca;TAG_TYPE_INCLUDE=module.cD;IconCheck=module.cm;IconButton=module.cE;IconX=module.cF;setFollowGroup=module.cG;removeArtists=module.cH;rememberArtistSnapshot=module.cI;fetchArtistSnapshot=module.cJ;log=module.o;addArtists=module.cK;AutocompleteField=module.bj;},function(module){filterTerms=module.f;matchesAnyTerm=module.m;ARTIST_TERM_SEPARATOR=module.A;},function(module){VIEW_OPTIONS=module.V;VIEW_LABEL=module.b;isViewMode=module.d;writeViewMode=module.w;PAGE_CENTRE_PADDING=module.P;FOLLOWING_VIEW_STATE_ID=module.F;readViewMode=module.e;}],execute:(function(){exports("FollowingPage",FollowingPage);var EVENT_PAGESHOW = "pageshow";
+System.register("./following-page-CydywuDv-CBTCFEww.js", ['./___monkey.entry.js','./filter-terms-Dqag3iAV-Bgq_MKCQ.js','./app-CYnTJljk-M4J1VxXu.js'],(function(exports){'use strict';var d,T,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST,A,reloadFromStorage,getSeenPostId,listFollowGroups,followKindOf,FOLLOW_KIND_ARTIST,a,EmptyState,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,$$1,Button,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,Segmented,SearchField,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,Select,FOLLOW_KIND_CHARACTER,FOLLOW_KIND_COPYRIGHT,UI_TEXT,ProgressBar,Dialog,TextField,removeArtist,load,completeLastQueryToken,readLastQueryToken,STICKY_TOP,IconPlus,buildSearchUrl,TAG_TYPE_INCLUDE,IconCheck,IconButton,IconX,setFollowGroup,removeArtists,rememberArtistSnapshot,fetchArtistSnapshot,log,addArtists,AutocompleteField,filterTerms,matchesAnyTerm,ARTIST_TERM_SEPARATOR,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,PAGE_CENTRE_PADDING,FOLLOWING_VIEW_STATE_ID,readViewMode;return{setters:[function(module){d=module.aw;T=module.aU;createAutocompleteQuerier=module.bg;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.cq;A=module.aV;reloadFromStorage=module.a4;getSeenPostId=module.cr;listFollowGroups=module.cs;followKindOf=module.ct;FOLLOW_KIND_ARTIST=module.F;a=module.ac;EmptyState=module.c1;ARTISTS_EMPTY_HINT=module.cu;ARTISTS_EMPTY_TITLE=module.cv;$$1=module.al;Button=module.b4;SEARCH_PATH=module.ab;SEARCH_PARAM_PAGE=module.a8;SEARCH_PAGE=module.cw;SEARCH_SECTION=module.cx;Segmented=module.b0;SearchField=module.b$;ARTIST_FILTER_LABEL=module.cy;ARTIST_FILTER_ID=module.cz;Select=module.aZ;FOLLOW_KIND_CHARACTER=module.k;FOLLOW_KIND_COPYRIGHT=module.n;UI_TEXT=module.U;ProgressBar=module.bl;Dialog=module.c2;TextField=module.b3;removeArtist=module.cA;load=module.l;completeLastQueryToken=module.cB;readLastQueryToken=module.cC;STICKY_TOP=module.c4;IconPlus=module.c0;buildSearchUrl=module.ca;TAG_TYPE_INCLUDE=module.cD;IconCheck=module.cm;IconButton=module.cE;IconX=module.cF;setFollowGroup=module.cG;removeArtists=module.cH;rememberArtistSnapshot=module.cI;fetchArtistSnapshot=module.cJ;log=module.o;addArtists=module.cK;AutocompleteField=module.bj;},function(module){filterTerms=module.f;matchesAnyTerm=module.m;ARTIST_TERM_SEPARATOR=module.A;},function(module){VIEW_OPTIONS=module.V;VIEW_LABEL=module.b;isViewMode=module.d;writeViewMode=module.w;PAGE_CENTRE_PADDING=module.P;FOLLOWING_VIEW_STATE_ID=module.F;readViewMode=module.e;}],execute:(function(){exports("FollowingPage",FollowingPage);var EVENT_PAGESHOW = "pageshow";
 var PAGE_CLASS = "rdw-following-page";
 var STICKY_CLASS = "rdw-following-sticky";
 var TOOLBAR_CLASS = "rdw-following-toolbar";
@@ -26776,7 +27061,7 @@ function matchesAnyTerm(texts, terms) {
 	const lowered = texts.map((text) => text.toLowerCase());
 	return terms.some((term) => lowered.some((text) => text.includes(term)));
 }})}}));
-System.register("./stats-section-CeqnAv73-BK7ya6RS.js", ['./___monkey.entry.js','./app-BtHARii--HwyisAL0.js'],(function(exports){'use strict';var a,PANEL_UI_CLASS,Card,loadFavSet,load,resolveCollectionKind,d,A,readFavoriteIndex,topFavoriteTags,Button,$$1,setFeatureState,FETCH_CREDENTIALS,object,number,optional,string,SEARCH_PATH,SEARCH_PARAM_PAGE,int,getFeatureState,readStatsHistory;return{setters:[function(module){a=module.ac;PANEL_UI_CLASS=module.am;Card=module.aS;loadFavSet=module.a;load=module.l;resolveCollectionKind=module.c3;d=module.aw;A=module.aV;readFavoriteIndex=module.cL;topFavoriteTags=module.cM;Button=module.b4;$$1=module.al;setFeatureState=module.s;FETCH_CREDENTIALS=module.cN;object=module.bC;number=module.cO;optional=module.bE;string=module.bF;SEARCH_PATH=module.ab;SEARCH_PARAM_PAGE=module.a8;int=module.cP;getFeatureState=module.g;},function(module){readStatsHistory=module.f;}],execute:(function(){exports("StatsPage",StatsPage);/**
+System.register("./stats-section-B8BH7h0W-BP_5mdNM.js", ['./___monkey.entry.js','./app-CYnTJljk-M4J1VxXu.js'],(function(exports){'use strict';var a,PANEL_UI_CLASS,Card,loadFavSet,load,resolveCollectionKind,d,A,readFavoriteIndex,topFavoriteTags,Button,$$1,setFeatureState,FETCH_CREDENTIALS,object,number,optional,string,SEARCH_PATH,SEARCH_PARAM_PAGE,int,getFeatureState,readStatsHistory;return{setters:[function(module){a=module.ac;PANEL_UI_CLASS=module.am;Card=module.aS;loadFavSet=module.a;load=module.l;resolveCollectionKind=module.c3;d=module.aw;A=module.aV;readFavoriteIndex=module.cL;topFavoriteTags=module.cM;Button=module.b4;$$1=module.al;setFeatureState=module.s;FETCH_CREDENTIALS=module.cN;object=module.bC;number=module.cO;optional=module.bE;string=module.bF;SEARCH_PATH=module.ab;SEARCH_PARAM_PAGE=module.a8;int=module.cP;getFeatureState=module.g;},function(module){readStatsHistory=module.f;}],execute:(function(){exports("StatsPage",StatsPage);/**
 * The numbers of the user's own profile page on the site, for Statistics.
 *
 * Read only when the user presses "Refresh profile": two requests with a
@@ -27592,7 +27877,7 @@ function StatsPage() {
 		children: /* @__PURE__ */ a(StatsSection, {})
 	});
 }})}}));
-System.register("./collection-detail-page-D--gNDBy-1-DwNXE_.js", ['./___monkey.entry.js','./app-BtHARii--HwyisAL0.js'],(function(exports){'use strict';var d,T,w$1,b,downloadsAvailable,a,$$1,Button,UI_TEXT,shuffleCollection,resetCollectionOrder,EmptyState,Dialog,TextField,Toast,getCollectionOrder,listPlaylists,RDW_HASH_COLLECTIONS,removePostsFromCollection,isDownloadBusy,startDownload,movePostInCollection,renameCollection,deleteCollection,RDW_ROUTE_COLLECTIONS,restorePosts,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION_VIEW,SEARCH_PATH,collectionQueueHash,navigateToRdwRoute;return{setters:[function(module){d=module.aw;T=module.aU;w$1=module.cQ;b=module.bh;downloadsAvailable=module.cR;a=module.ac;$$1=module.al;Button=module.b4;UI_TEXT=module.U;shuffleCollection=module.cS;resetCollectionOrder=module.cT;EmptyState=module.c1;Dialog=module.c2;TextField=module.b3;Toast=module.cU;getCollectionOrder=module.cV;listPlaylists=module.cW;RDW_HASH_COLLECTIONS=module.O;removePostsFromCollection=module.cX;isDownloadBusy=module.cY;startDownload=module.cZ;movePostInCollection=module.c_;renameCollection=module.c$;deleteCollection=module.c7;RDW_ROUTE_COLLECTIONS=module.d0;restorePosts=module.d1;SEARCH_PARAM_PAGE=module.a8;SEARCH_PAGE=module.cw;SEARCH_SECTION_VIEW=module.d2;SEARCH_PATH=module.ab;collectionQueueHash=module.d3;},function(module){navigateToRdwRoute=module.n;}],execute:(function(){exports("CollectionDetailPage",CollectionDetailPage);var CELL_SIZE_PX = 200;
+System.register("./collection-detail-page-CvW88q12-CqcyTMoB.js", ['./___monkey.entry.js','./app-CYnTJljk-M4J1VxXu.js'],(function(exports){'use strict';var d,T,w$1,b,downloadsAvailable,a,$$1,Button,UI_TEXT,shuffleCollection,resetCollectionOrder,EmptyState,Dialog,TextField,Toast,getCollectionOrder,listPlaylists,RDW_HASH_COLLECTIONS,removePostsFromCollection,isDownloadBusy,startDownload,movePostInCollection,renameCollection,deleteCollection,RDW_ROUTE_COLLECTIONS,restorePosts,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION_VIEW,SEARCH_PATH,collectionQueueHash,navigateToRdwRoute;return{setters:[function(module){d=module.aw;T=module.aU;w$1=module.cQ;b=module.bh;downloadsAvailable=module.cR;a=module.ac;$$1=module.al;Button=module.b4;UI_TEXT=module.U;shuffleCollection=module.cS;resetCollectionOrder=module.cT;EmptyState=module.c1;Dialog=module.c2;TextField=module.b3;Toast=module.cU;getCollectionOrder=module.cV;listPlaylists=module.cW;RDW_HASH_COLLECTIONS=module.O;removePostsFromCollection=module.cX;isDownloadBusy=module.cY;startDownload=module.cZ;movePostInCollection=module.c_;renameCollection=module.c$;deleteCollection=module.c7;RDW_ROUTE_COLLECTIONS=module.d0;restorePosts=module.d1;SEARCH_PARAM_PAGE=module.a8;SEARCH_PAGE=module.cw;SEARCH_SECTION_VIEW=module.d2;SEARCH_PATH=module.ab;collectionQueueHash=module.d3;},function(module){navigateToRdwRoute=module.n;}],execute:(function(){exports("CollectionDetailPage",CollectionDetailPage);var CELL_SIZE_PX = 200;
 var GRID_GAP_PX = 4;
 var SECTION_GAP_PX = 12;
 var ACTIONS_GAP_PX = 8;
