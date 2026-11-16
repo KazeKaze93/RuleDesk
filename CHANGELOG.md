@@ -2,17 +2,21 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.37.4
+
+- A post that is an animated GIF now moves on its page. The site shows a still copy there and keeps the GIF behind "Original image"; the picture of the page is pointed at the original at once. Switch: RuleDesk → Page → "Play GIFs on the post page"
+- Taken back: the change of 0.37.1 and 0.37.3 that started a video tagged `animated_gif` muted and looped. A GIF post has no video player, so it did nothing for GIFs
+
 ## 0.37.3
 
 - Fixed: "Save as collection" and the other dialogs opened from the search panel showed only a dimmed sidebar, and a click closed them. The fade at the bottom of the held sidebar hid everything drawn from inside it
-- Fixed: an animated GIF did not start by itself. It was given back the saved sound setting, and a browser stops a video that gets sound without a click
 - The file name is picked from a list of ready names in RuleDesk → Downloads. "Custom…" opens the field, where a click on a token adds it
 - "Check for new" pauses 1.5 seconds between searches again (the shorter pause got the site's "too many requests") and, after a refusal, waits and asks once more before it stops
 - The filters of Collections and Following have no "?" any more
 
 ## 0.37.2
 
-- The download button of a post could still save a web page instead of a picture: the picture host was asked without being told the request comes from the site. Downloads now say so
+- Downloads tell the picture host that the request comes from the site. Added on a guess about a file that had saved as a web page; the guess was not confirmed
 
 ## 0.37.1
 
@@ -24,7 +28,6 @@ Fixed:
 
 - The download button of a post saved a web page instead of the file on some posts. The file is now taken from the player for a video, from the "Original image" link for a picture, and an address that is not a picture or a video is never downloaded
 - A click anywhere on the picture of the player plays and pauses, every time. It used to work only through the play mark, which is gone once playback has started
-- An animated GIF, which the site shows through the video player, starts by itself, muted and looped
 - The tag list in the sidebar was cut off on a page whose content is shorter than the window
 - "Check for new" now also refreshes the cover and the post count of every saved search, so a new saved search gets its cover without being opened. The run is about twice as fast. A search checked for the first time becomes the point later checks are measured from
 - Artists: the Follow button now appears in every row

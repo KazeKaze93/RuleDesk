@@ -4,6 +4,7 @@ import { downloadsFeature } from "./downloads/panel";
 import { favoritesBulkFeature } from "./favorites-bulk";
 import { feedFeature } from "./feed";
 import { feedCounterFeature } from "./feed-counter";
+import { gifPostFeature } from "./gif-post";
 import { gridDensityFeature } from "./grid-density";
 import { seenDimFeature } from "./grid-marks";
 import { imageZoomFeature } from "./image-zoom";
@@ -39,6 +40,7 @@ export const FEATURES: Feature[] = [
   cdnFallbackFeature,
   downloadsFeature,
   imageZoomFeature,
+  gifPostFeature,
   sidebarRightFeature,
   motionFeature,
   feedCounterFeature,

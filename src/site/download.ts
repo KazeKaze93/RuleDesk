@@ -164,8 +164,9 @@ export function downloadFile(url: string, name: string): Promise<void> {
     GM_download({
       url,
       name,
-      // The picture host answers a request that does not come from the site
-      // with a web page instead of the file: say where the request comes from.
+      // Says where the request comes from, as a request of the page itself
+      // would. Added on a guess that the picture host refuses a request
+      // without it; the guess was not confirmed, the header does no harm.
       headers: { Referer: `${window.location.origin}/` },
       onload: () => {
         resolve();

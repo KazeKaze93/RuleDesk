@@ -3,11 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { resolvePostFileUrl } from "../../src/features/post-panel/download-one";
 import { fileNameInfo } from "../../src/features/post-panel/post-panel";
 import { SITE_SEARCH_HELP, mountSiteSearchTools } from "../../src/features/site-search-tools";
-import {
-  bindClickToToggle,
-  playLikeGif,
-  resetVideoPlayerState,
-} from "../../src/features/video-player";
+import { isGifUrl, playGifOnPage } from "../../src/features/gif-post";
+import { bindClickToToggle } from "../../src/features/video-player";
 import { MASK_PRESETS } from "../../src/pages/downloads-section";
 import { featureBodyClass } from "../../src/features/types";
 import { DEFAULT_FILE_MASK, buildFileName, isMediaFileUrl } from "../../src/site/download";
@@ -161,17 +158,6 @@ describe("the player", () => {
     expect(play).not.toHaveBeenCalled();
     expect(site).toHaveBeenCalledTimes(1);
   });
-
-  it("starts an animated GIF by itself, muted and looped; a video is left alone", () => {
-    const gif = makeVideo();
-    expect(playLikeGif(gif.video, ["1girl", "animated_gif"])).toBe(true);
-    expect(gif.video.loop).toBe(true);
-    expect(gif.video.muted).toBe(true);
-    expect(gif.play).toHaveBeenCalledTimes(1);
-    const clip = makeVideo();
-    expect(playLikeGif(clip.video, ["video", "sound"])).toBe(false);
-    expect(clip.play).not.toHaveBeenCalled();
-  });
 });
 
 describe("ready file name masks", () => {
@@ -182,19 +168,38 @@ describe("ready file name masks", () => {
   });
 });
 
-describe("an animated GIF that is not ready yet", () => {
-  it("is started again once the player can play", () => {
-    resetVideoPlayerState();
-    const video = document.createElement("video");
-    const play = vi.fn(async () => undefined);
-    video.play = play;
-    Object.defineProperty(video, "paused", { get: () => true });
-    playLikeGif(video, ["animated_gif"]);
-    expect(play).toHaveBeenCalledTimes(1);
-    video.dispatchEvent(new Event("canplay"));
-    expect(play).toHaveBeenCalledTimes(2);
-    expect(video.muted).toBe(true);
-    resetVideoPlayerState();
+describe("a GIF post", () => {
+  const SAMPLE = "https://wimg.rule34.xxx//samples/480/sample_5e049d.jpg?19374463";
+  const ORIGINAL = "https://wimg.rule34.xxx//images/480/5e049d.gif?19374463";
+
+  beforeEach(() => {
+    document.body.innerHTML = `<img id="image" src="${SAMPLE}" width="850" height="944" onclick="Note.toggle();">`;
+  });
+
+  it("tells a GIF by the end of its address", () => {
+    expect(isGifUrl(ORIGINAL)).toBe(true);
+    expect(isGifUrl(SAMPLE)).toBe(false);
+    expect(isGifUrl("https://x.rule34.xxx/a/gif.png")).toBe(false);
+  });
+
+  it("puts the original in place of the still copy and keeps the picture's size", () => {
+    expect(playGifOnPage(document, ORIGINAL)).toBe(true);
+    const image = document.getElementById("image");
+    expect(image?.getAttribute("src")).toBe(ORIGINAL);
+    expect(image?.getAttribute("width")).toBe("850");
+    expect(image?.getAttribute("height")).toBe("944");
+    // Once is enough: the picture already shows the GIF.
+    expect(playGifOnPage(document, ORIGINAL)).toBe(false);
+  });
+
+  it("leaves a post alone whose original is not a GIF", () => {
+    expect(playGifOnPage(document, "https://wimg.rule34.xxx//images/480/5e049d.png?1")).toBe(false);
+    expect(document.getElementById("image")?.getAttribute("src")).toBe(SAMPLE);
+  });
+
+  it("does nothing on a post without a picture", () => {
+    document.body.innerHTML = `<video id="gelcomVideoPlayer"></video>`;
+    expect(playGifOnPage(document, ORIGINAL)).toBe(false);
   });
 });
 

@@ -19,7 +19,6 @@ import {
   type VideoPlayerState,
   type VideoSize,
 } from "../storage/schema";
-import { readPostPageTags } from "./favorites-index-live";
 import { measureHeaderOffsetPx } from "./post-panel/site-reads";
 import {
   featureBodyClass,
@@ -234,14 +233,9 @@ function applyPersistedPlayback(
   const muted = state.muted ?? false;
   const playbackRate = state.playbackRate ?? 1;
   video.volume = clampVolume(volume);
-  // A GIF stays muted whatever was saved: a browser stops a video that is
-  // given sound without a click, and a GIF has to start by itself.
-  video.muted = gifMode || muted;
+  video.muted = muted;
   video.playbackRate = playbackRate;
 }
-
-/** True on a post the site shows as a video but that is an animated GIF. */
-let gifMode = false;
 
 function persistFromVideo(
   ctx: FeatureContext,
@@ -276,10 +270,7 @@ function bindPlayer(ctx: FeatureContext, video: HTMLVideoElement): void {
   video.addEventListener("loadedmetadata", onLoadedMetadata);
 
   video.addEventListener("volumechange", () => {
-    // The muting of a GIF is the script's, not a choice of the user's to keep.
-    if (!gifMode) {
-      persistFromVideo(ctx, video);
-    }
+    persistFromVideo(ctx, video);
   });
   video.addEventListener("ratechange", () => {
     persistFromVideo(ctx, video);
@@ -325,37 +316,6 @@ export function bindClickToToggle(video: HTMLVideoElement): void {
   );
 }
 
-const GIF_TAG = "animated_gif";
-
-/**
- * The site shows an animated GIF through the same player as a video. A GIF is
- * expected to move by itself and to go round: it is started muted (a browser
- * lets a muted video start without a click) and looped.
- */
-export function playLikeGif(video: HTMLVideoElement, tags: readonly string[]): boolean {
-  if (!tags.includes(GIF_TAG)) {
-    return false;
-  }
-  gifMode = true;
-  video.loop = true;
-  video.muted = true;
-  const start = (): void => {
-    if (video.paused) {
-      video.muted = true;
-      void video.play().catch(() => undefined);
-    }
-  };
-  start();
-  // The player may not have its file yet: try again once it can play.
-  video.addEventListener("canplay", start, { once: true });
-  return true;
-}
-
-/** Forgets the GIF mode (tests). */
-export function resetVideoPlayerState(): void {
-  gifMode = false;
-}
-
 function mountVideoPlayer(ctx: FeatureContext): void {
   scheduleAfterFirstPaint(() => {
     const video = findVideo();
@@ -363,8 +323,6 @@ function mountVideoPlayer(ctx: FeatureContext): void {
     if (video === null) {
       return;
     }
-    // Before the saved volume is applied: a GIF must not be given sound.
-    playLikeGif(video, readPostPageTags());
     bindPlayer(ctx, video);
     bindClickToToggle(video);
   });

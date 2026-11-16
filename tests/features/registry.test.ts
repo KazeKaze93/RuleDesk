@@ -24,6 +24,7 @@ describe("FEATURES registry", () => {
       "cdn-fallback",
       "downloads",
       "image-zoom",
+      "gif-post",
       "sidebar-right",
       "motion",
       "feed-counter",
