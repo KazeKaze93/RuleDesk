@@ -5,7 +5,6 @@ import {
   MEDIA_ALL,
   SORT_ID_ASC,
   SORT_ID_DESC,
-  SORT_RANDOM,
   filterFavoriteIndex,
   isEmptyFavoritesQuery,
   parseFavoritesQuery,
@@ -67,12 +66,14 @@ describe("favorites search: order", () => {
   it("reads the order off the query, and an order alone is a query", () => {
     expect(parseFavoritesQuery("sort:id:asc").sort).toBe(SORT_ID_ASC);
     expect(parseFavoritesQuery("sort:id").sort).toBe(SORT_ID_DESC);
-    expect(parseFavoritesQuery("cat sort:random").sort).toBe(SORT_RANDOM);
     expect(parseFavoritesQuery("cat").sort).toBeNull();
-    expect(isEmptyFavoritesQuery(parseFavoritesQuery("sort:random"))).toBe(false);
+    expect(isEmptyFavoritesQuery(parseFavoritesQuery("sort:id:asc"))).toBe(false);
   });
 
-  it("leaves the site's order to the caller for sort:random", () => {
+  it("does not take sort:random: a random order is the Shuffle button", () => {
+    const query = parseFavoritesQuery("cat sort:random");
+    expect(query.sort).toBeNull();
+    expect(query.unsupported).toEqual(["sort:random"]);
     expect(find("sort:random")).toEqual([30, 10, 40, 20]);
   });
 });

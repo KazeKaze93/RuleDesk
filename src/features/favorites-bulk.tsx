@@ -60,6 +60,8 @@ const DOWNLOAD_NOTE_CLASS = "rdw-favorites-download-note";
 const DOWNLOAD_STALE_CLASS = "rdw-favorites-download-stale";
 const LINK_BUTTON_CLASS = "rdw-favorites-link";
 const MENU_WIDTH_PX = 200;
+/** Above and below the controls of the pinned row. */
+const PIN_PADDING_PX = 12;
 const BAR_CLASS = "rdw-favorites-bulk-bar";
 const STATUS_CLASS = "rdw-favorites-bulk-status";
 const CONFIRM_CLASS = "rdw-favorites-bulk-confirm";
@@ -150,10 +152,15 @@ body.${BODY_CLASS} .${ROOT_CLASS} {
   position: relative;
   height: 0;
 }
+/* The space under the header is the row's own padding, so that the row has
+   the same space above it as below it, held or not. */
+body.${BODY_CLASS} div#header {
+  margin-bottom: 0 !important;
+}
 /* The row of search, filters and buttons (or of the selection) stays at the top. */
 body.${BODY_CLASS} .${PIN_CLASS} {
   gap: 0.35rem 0.5rem;
-  padding: 0.5rem 0;
+  padding: ${String(PIN_PADDING_PX)}px 0;
   position: sticky;
   top: ${STICKY_TOP};
   z-index: ${String(HEADER_Z_INDEX)};

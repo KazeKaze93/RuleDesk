@@ -25,7 +25,6 @@ import {
   MEDIA_ALL,
   MEDIA_IMAGES,
   MEDIA_VIDEOS,
-  SORT_RANDOM,
   filterFavoriteIndex,
   isEmptyFavoritesQuery,
   isFavoritesMedia,
@@ -74,6 +73,7 @@ const SEARCH_WIDTH_PX = 320;
 const SEARCH_MIN_WIDTH_PX = 200;
 const SEARCH_MAX_WIDTH_PX = 560;
 const SYNTAX_POPOVER_WIDTH_PX = 340;
+const SYNTAX_FONT = 'ui-monospace, "Cascadia Mono", Consolas, "Courier New", monospace';
 
 const VIEW_STATE_ID = "favorites-view";
 export const VIEW_PAGES = "pages";
@@ -94,14 +94,15 @@ const SYNTAX_LABEL = "Search syntax";
 const SYNTAX_ROWS: readonly (readonly [string, string])[] = [
   ["cat dog", "posts with both tags"],
   ["( cat ~ dog )", "posts with either tag; keep the spaces"],
-  ["-video", "posts without the tag"],
+  ["-sketch", "posts without the tag"],
   ["ca*t", "any tag that starts with ca and ends with t"],
   ["sort:id:asc", "by post id, the oldest post first"],
   ["sort:id:desc", "by post id, the newest post first"],
-  ["sort:random", "in a random order"],
 ];
 const SYNTAX_NOTE =
-  "This list knows the tags of a favorite and its id, nothing else. The site's other metatags (rating:, score:, user:, width:, md5:, parent: and the rest) and the fuzzy tag~ work in the search on Posts, not here.";
+  "Favorites search uses tags and post id only. Other metatags (rating:, score:, user:, width:, md5:, parent:) and fuzzy tag~ work in Posts search. For a random order use Shuffle.";
+/** Shown while Shuffle is on and the query asks for an order: one of them has to give way. */
+export const SHUFFLE_OVER_SORT_NOTICE = "Shuffle is on: the order in the search is not applied.";
 const UNSUPPORTED_PREFIX = "Not searched here: ";
 const UNSUPPORTED_SUFFIX = ". See the ? in the search field.";
 const MEDIA_LABEL = "Type";
@@ -226,8 +227,12 @@ body:not(.${FAVORITES_BROWSING_BODY_CLASS}) .${MORE_CLASS} {
   gap: 4px 12px;
   margin: 0;
 }
-.${SYNTAX_CLASS} dt {
-  font-family: ui-monospace, monospace;
+/* The site styles dt on its own (bold, its own font); a command has to be in
+   a fixed-width font, or the spaces that matter in it cannot be seen. */
+.rdw-popover .${SYNTAX_CLASS} dt {
+  margin: 0;
+  font: 400 12px/1.4 ${SYNTAX_FONT} !important;
+  white-space: pre;
   color: var(--rdw-text);
 }
 .${SYNTAX_CLASS} dd {
@@ -549,8 +554,6 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
   const loadingRef = useRef(false);
   const rowRef = useRef<HTMLDivElement>(null);
   const actionsSlotRef = useRef<HTMLDivElement>(null);
-  // One order for as long as the page lives: typing on does not reshuffle.
-  const randomSortSeedRef = useRef(Date.now());
   const syntaxButtonRef = useRef<HTMLButtonElement>(null);
 
   // A number while the list is shown in a random order, null otherwise.
@@ -630,10 +633,8 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
       }
       const parsed = parseFavoritesQuery(text);
       const matched = filterFavoriteIndex(index, favorites, parsed, media);
-      // The Shuffle button wins over the order typed into the query.
-      const seed =
-        shuffleSeed ?? (parsed.sort === SORT_RANDOM ? randomSortSeedRef.current : null);
-      const results = seed === null ? matched : shuffleBySeed(matched, seed);
+      // Shuffle wins over an order typed into the query; the page says so.
+      const results = shuffleSeed === null ? matched : shuffleBySeed(matched, shuffleSeed);
       showFavoriteResults(results);
       const indexed = index.filter((entry) => favorites.has(entry.id)).length;
       setStatus(indexNotice(indexed, favorites.size));
@@ -644,7 +645,11 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
     };
   }, [active, index, text, media, shuffleSeed]);
 
-  const notices = [unsupportedNotice(query.unsupported), status].filter(
+  const notices = [
+    unsupportedNotice(query.unsupported),
+    shuffleSeed !== null && query.sort !== null ? SHUFFLE_OVER_SORT_NOTICE : "",
+    status,
+  ].filter(
     (line) => line.length > 0,
   );
   const total = loadFavSet().size;

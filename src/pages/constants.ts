@@ -232,5 +232,11 @@ html.${RDW_OWN_PAGE_CLASS} ${HEADER_SELECTOR} ~ *:not(#${RDW_PAGE_ROOT_ID}):not(
   box-sizing: border-box;
   width: 100%;
 }
+/* The space under the header is the page's own (the shell's top padding), so
+   that a toolbar right under the header can have the same space above it as
+   below it. */
+html.${RDW_OWN_PAGE_CLASS} ${HEADER_SELECTOR} {
+  margin-bottom: 0 !important;
+}
 `;
 }

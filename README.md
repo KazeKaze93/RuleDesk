@@ -49,7 +49,7 @@ Favorite star and "+" on thumbnails, three grid sizes, infinite scroll, dimming 
 
 ### Favorites
 
-The local favorite list is kept in sync with the site by "Sync favorites" in settings. The Favorites page gets one row at the top (the count, "Random post", "Select" for bulk removal, a "⋯" menu with "Download all…" and "Sync favorites…") and the "+" button for collections. Once "Full resync" has built a local index, that row, which stays at the top while you scroll, also has search by tags (`tag`, `-tag`, `ta*g`, `( a ~ b )`, `sort:id:asc`, `sort:random`; the "?" in the field lists them), an Images / Videos switch, endless scrolling and Shuffle. The search runs over the local list, which holds the tags and the id of a favorite: the site's other metatags, such as `rating:` or `score:`, work only in the search on Posts.
+The local favorite list is kept in sync with the site by "Sync favorites" in settings. The Favorites page gets one row at the top (the count, "Random post", "Select" for bulk removal, a "⋯" menu with "Download all…" and "Sync favorites…") and the "+" button for collections. Once "Full resync" has built a local index, that row, which stays at the top while you scroll, also has search by tags (`tag`, `-tag`, `ta*g`, `( a ~ b )`, `sort:id:asc`; the "?" in the field lists them), an Images / Videos switch, endless scrolling and Shuffle. The search runs over the local list, which holds the tags and the id of a favorite: the site's other metatags, such as `rating:` or `score:`, work only in the search on Posts.
 
 ### Download manager
 

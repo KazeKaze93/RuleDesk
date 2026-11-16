@@ -2,11 +2,18 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.35.2
+
+- The row at the top of Favorites and the toolbars of Collections and Following have the same space above them as below them. The space under the header used to add to the one above
+- Favorites search no longer takes `sort:random`: a random order is the Shuffle button, which shows whether it is on. With Shuffle on, an order typed into the search is not applied, and a line under the row says so
+- The commands in the search help are in a fixed-width font, so the spaces in `( cat ~ dog )` can be seen; the note under them is shorter
+- The example of leaving a tag out in the search help is `-sketch` instead of `-video`, which read like the Videos switch beside it
+
 ## 0.35.1
 
 - Favorites: the top of the page is one row. The count, "Random post", "Select" and the "⋯" menu moved to the right end of the row of filters, and the row with the "Favorites" title is gone: the menu already shows where you are. While the list is narrowed the count is the number of posts found
 - Collections and Following: the title above the toolbar is gone for the same reason. On all three pages it is still there for screen readers
-- Favorites search understands more of the site's syntax: `( cat ~ dog )` for either tag, `sort:id:asc`, `sort:id:desc` and `sort:random`. The "?" in the field lists all of it
+- Favorites search understands more of the site's syntax: `( cat ~ dog )` for either tag, `sort:id:asc` and `sort:id:desc`. The "?" in the field lists all of it
 - The site's other metatags (`rating:`, `score:`, `user:`, sizes and the rest) and the fuzzy `tag~` cannot be answered from the local list, which knows only the tags and the id of a favorite. They are no longer searched as tags, which found nothing: a line under the row names the terms that were set aside
 
 ## 0.35.0

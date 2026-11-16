@@ -21,6 +21,12 @@ import { PAGE_CENTRE_PADDING } from "./view-mode";
 const PAGE_CONTROL_HEIGHT_PX = 32;
 const PAGE_CONTROL_FONT_PX = 13;
 const PAGE_SHELL_CLASS = "rdw-page-shell";
+/** A page that opens with its toolbar, without a visible title above it. */
+export const PAGE_SHELL_BARE_CLASS = "rdw-page-shell--bare";
+/** Between the blocks of a page; also above the toolbar of a page without a title. */
+const PAGE_GAP_PX = 12;
+/** Above the title of a page: the header no longer keeps a margin of its own. */
+const PAGE_TOP_PX = 24;
 const PAGE_TITLE_CLASS = "rdw-page-title";
 /** A title that is read out but not shown: the menu already says which page this is. */
 export const PAGE_TITLE_HIDDEN_CLASS = "rdw-page-title--hidden";
@@ -50,15 +56,19 @@ const PAGE_HOST_CSS = `
   box-sizing: border-box;
   max-width: ${String(PAGE_CONTENT_MAX_WIDTH_PX)}px;
   margin: 0 auto;
-  padding: 16px 12px 32px;
+  padding: ${String(PAGE_TOP_PX)}px 12px 32px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: ${String(PAGE_GAP_PX)}px;
 }
 .${LAYOUT_WIDE_CLASS} .${PAGE_SHELL_CLASS} {
   max-width: none;
   margin: 0;
-  padding: 16px 20px 32px;
+  padding: ${String(PAGE_TOP_PX)}px 20px 32px;
+}
+/* The toolbar gets the same space above it as there is between it and the list. */
+.${PAGE_SHELL_CLASS}.${PAGE_SHELL_BARE_CLASS} {
+  padding-top: ${String(PAGE_GAP_PX)}px;
 }
 .${LAYOUT_WIDE_CLASS} .${PAGE_TITLE_CLASS} {
   padding-inline: ${PAGE_CENTRE_PADDING};
@@ -94,7 +104,11 @@ function PageShell(props: PageShellProps): JSX.Element {
   return (
     <>
       <style>{PAGE_HOST_CSS}</style>
-      <div className={PAGE_SHELL_CLASS}>
+      <div
+        className={
+          props.titleHidden ? `${PAGE_SHELL_CLASS} ${PAGE_SHELL_BARE_CLASS}` : PAGE_SHELL_CLASS
+        }
+      >
         {props.title !== null ? (
           <h1
             className={

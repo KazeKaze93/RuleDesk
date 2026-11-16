@@ -14,7 +14,11 @@ import type { FavoriteIndexEntry } from "../storage/favorites-index";
  * - `( cat ~ dog )`: at least one tag of the group must be on the post; the
  *   spaces around the brackets matter, as on the site, because a tag may end
  *   in a bracket;
- * - `sort:id:asc`, `sort:id:desc`, `sort:random`: the order.
+ * - `sort:id:asc`, `sort:id:desc`: the order.
+ *
+ * A random order is the Shuffle button of the page, and only that: one way to
+ * do it, and one that shows whether it is on. `sort:random` is therefore not
+ * taken here.
  *
  * The site's other metatags (`rating:`, `score:`, `user:`, sizes, the other
  * sorts) and the fuzzy `tag~` ask for what the index does not hold. They are
@@ -29,8 +33,7 @@ export type FavoritesMedia = typeof MEDIA_ALL | typeof MEDIA_IMAGES | typeof MED
 
 export const SORT_ID_ASC = "id-asc";
 export const SORT_ID_DESC = "id-desc";
-export const SORT_RANDOM = "random";
-export type FavoritesSort = typeof SORT_ID_ASC | typeof SORT_ID_DESC | typeof SORT_RANDOM;
+export type FavoritesSort = typeof SORT_ID_ASC | typeof SORT_ID_DESC;
 
 export type FavoritesQuery = {
   readonly include: readonly RegExp[];
@@ -56,7 +59,6 @@ const SORTS: ReadonlyMap<string, FavoritesSort> = new Map([
   ["sort:id:asc", SORT_ID_ASC],
   ["sort:id:desc", SORT_ID_DESC],
   ["sort:id", SORT_ID_DESC],
-  ["sort:random", SORT_RANDOM],
 ]);
 /**
  * The names of the site's metatags. Only these are taken for metatags: a
@@ -183,9 +185,8 @@ function matchesMedia(entry: FavoriteIndexEntry, media: FavoritesMedia): boolean
 
 /**
  * The favorites that match, in the site's order (the newest favorite first)
- * or by post id when the query asks for that. `sort:random` is left to the
- * caller, who holds the seed. A post that is no longer a favorite is left out
- * even while the index still holds it.
+ * or by post id when the query asks for that. A post that is no longer a
+ * favorite is left out even while the index still holds it.
  */
 export function filterFavoriteIndex(
   entries: readonly FavoriteIndexEntry[],
