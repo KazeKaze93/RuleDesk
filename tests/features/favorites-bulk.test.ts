@@ -13,7 +13,7 @@ import {
 import { FAVORITES_SYNC_PAGE_PAUSE_MS } from "../../src/site/favorites-sync";
 import { addFav, clearFavsCache, isFav } from "../../src/storage/favs";
 import { startDownload } from "../../src/features/downloads/queue";
-import { clearStorageCache } from "../../src/storage/store";
+import { clearStorageCache, createPlaylist, listPlaylists } from "../../src/storage/store";
 
 vi.mock("../../src/features/downloads/available", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../src/features/downloads/available")>()),
@@ -520,6 +520,64 @@ describe("favoritesBulkFeature", () => {
     const check = document.querySelector(`#s11 > .${CLASS_THUMB_CHECK}`);
     expect(check?.getAttribute("role")).toBe("img");
     expect(check?.getAttribute("aria-label")).toBe("Selected");
+  });
+
+  it("adds the selected posts to a collection picked in a dialog, and says what it did", () => {
+    buildFavoritesPage([11, 22, 33]);
+    mountFeature();
+    createPlaylist("Keep");
+    clickButtonWithText("Select");
+    act(() => {
+      document.getElementById("p11")?.click();
+    });
+    act(() => {
+      document.getElementById("p33")?.click();
+    });
+    clickButtonWithText("Add to collection");
+
+    const dialog = document.querySelector('[role="dialog"][aria-modal="true"]');
+    expect(dialog?.textContent).toContain("Add 2 posts to a collection");
+    const row = [...(dialog?.querySelectorAll("button") ?? [])].find((button) =>
+      button.textContent?.startsWith("Keep"),
+    );
+    act(() => {
+      row?.click();
+    });
+
+    expect(listPlaylists()[0]?.postIds).toEqual([11, 33]);
+    expect(document.querySelector('[role="dialog"][aria-modal="true"]')).toBeNull();
+    const pin = document.getElementById(PIN_ID);
+    expect(pin?.textContent).toContain("Added 2 posts to “Keep”.");
+    // The selection stays: the same posts can go on to be removed from favorites.
+    expect(pin?.textContent).toContain("2 selected");
+  });
+
+  it("makes a new collection from the dialog and refuses a name that is taken", () => {
+    buildFavoritesPage([11, 22]);
+    mountFeature();
+    createPlaylist("Keep");
+    clickButtonWithText("Select");
+    clickButtonWithText("Select page");
+    clickButtonWithText("Add to collection");
+
+    const field = document.querySelector('input[aria-label="New collection name"]');
+    const type = (value: string): void => {
+      act(() => {
+        if (field instanceof HTMLInputElement) {
+          field.value = value;
+          field.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+      });
+    };
+    type("keep");
+    clickButtonWithText("Create and add");
+    expect(document.body.textContent).toContain("A collection with this name already exists.");
+    expect(listPlaylists()).toHaveLength(1);
+
+    type("Fresh");
+    clickButtonWithText("Create and add");
+    const fresh = listPlaylists().find((item) => item.name === "Fresh");
+    expect(fresh?.postIds).toEqual([11, 22]);
   });
 
   it("asks before downloading everything, with the count on the button", () => {

@@ -2,6 +2,12 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.36.0
+
+- Several posts go into a custom collection at once. On Posts: "Select posts" under the search panel, pick posts on the page, "Add to collection (N)". On Favorites: "Select", pick posts, "Add to collection". A dialog lists your custom collections and has a field for a new one; afterwards a line says how many posts were added and how many were already there
+- "Select posts" on Posts no longer needs the download manager: it is there without an API key. "Download selected" and "Download results" still need the key
+- A post picked on Posts gets a tick in its corner as well as the outline
+
 ## 0.35.2
 
 - The row at the top of Favorites and the toolbars of Collections and Following have the same space above them as below them. The space under the header used to add to the one above

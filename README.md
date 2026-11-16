@@ -33,7 +33,7 @@ Every followed artist as a card with a cover, post count and a "new" mark.
 - **Custom collection**: posts you pick by hand with the "+" button on a thumbnail or on the post page
 - **Dynamic collection**: a saved search. Type tags in the search panel and press "Save as collection"
 
-Both kinds show a cover and a post count. A collection can be shuffled, renamed and deleted; Select on the Collections page deletes several at once. In a custom collection posts are reordered by dragging. A post opened from a custom collection gets previous / next arrows that walk the collection.
+Both kinds show a cover and a post count. A collection can be shuffled, renamed and deleted; Select on the Collections page deletes several at once. Several posts can be added at once: "Select posts" under the search panel on Posts, or "Select" on Favorites, then "Add to collection". In a custom collection posts are reordered by dragging. A post opened from a custom collection gets previous / next arrows that walk the collection.
 
 ### Search panel
 

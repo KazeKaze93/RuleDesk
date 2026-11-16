@@ -566,6 +566,57 @@ export function addPostToCollection(
   return target;
 }
 
+/** A post to put into a custom collection, with its preview when the page shows one. */
+export type CollectionPostInput = {
+  readonly id: number;
+  readonly thumbUrl?: string | null;
+};
+
+/**
+ * Appends several posts to a custom collection in one write, by the rules of
+ * {@link addPostToCollection}. `added` counts the posts that were not in the
+ * collection before. A missing or non-posts collection returns null.
+ */
+export function addPostsToCollection(
+  collectionId: string,
+  posts: readonly CollectionPostInput[],
+): { collection: Collection; added: number } | null {
+  const data = reloadFromStorage();
+  const target = findPlaylist(data, collectionId);
+  if (target === null) {
+    return null;
+  }
+  const postIds = [...(target.postIds ?? [])];
+  const present = new Set(postIds);
+  const thumbs = { ...(target.thumbs ?? {}) };
+  const fresh = new Set<number>();
+  for (const post of posts) {
+    const normalized = normalizePostId(post.id);
+    if (normalized === null) {
+      continue;
+    }
+    if (!present.has(normalized)) {
+      present.add(normalized);
+      postIds.push(normalized);
+      fresh.add(normalized);
+    }
+    const incoming = normalizeThumbUrl(post.thumbUrl ?? undefined);
+    const nextThumb = incoming ?? readThumb(thumbs, normalized);
+    if (nextThumb !== null) {
+      thumbs[thumbKey(normalized)] = nextThumb;
+    }
+  }
+  if (fresh.size > 0 && target.shuffledOrder !== undefined && target.shuffledOrder !== null) {
+    target.shuffledOrder = target.shuffledOrder.filter((id) => !fresh.has(id));
+  }
+  target.postIds = postIds;
+  target.thumbs = thumbs;
+  ensurePostsMedia(target);
+  CollectionSchema.parse(target);
+  save(data);
+  return { collection: target, added: fresh.size };
+}
+
 export function addPostToPlaylist(
   id: string,
   postId: number,

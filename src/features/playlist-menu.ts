@@ -196,7 +196,7 @@ function readImageAddress(img: HTMLImageElement): string | null {
  * A preview outside `a#p{id}` wins. The copy nested in the link is used only
  * when that is the only preview (rule34 puts `img.preview` inside the anchor).
  */
-function readPreviewThumbUrl(thumb: HTMLElement, postId: string): string | null {
+export function readPreviewThumbUrl(thumb: HTMLElement, postId: string): string | null {
   const anchor = thumb.querySelector(postAnchorSelector(postId));
   const images = thumb.querySelectorAll(SITE_SELECTORS.previewImage);
   let nestedImage: HTMLImageElement | null = null;
@@ -342,6 +342,19 @@ function syncAddButtonsForPost(postId: number): void {
       continue;
     }
     applyAddButtonState(node, postId);
+  }
+}
+
+/**
+ * Brings every "+" on the page in step with the collections, after posts were
+ * added by something other than the "+" itself (the selection bar).
+ */
+export function refreshAddButtons(): void {
+  for (const node of document.querySelectorAll(`button.${CLASS_ADD}[${ATTR_POST_ID}]`)) {
+    const postId = Number(node.getAttribute(ATTR_POST_ID));
+    if (node instanceof HTMLButtonElement && Number.isFinite(postId)) {
+      applyAddButtonState(node, postId);
+    }
   }
 }
 

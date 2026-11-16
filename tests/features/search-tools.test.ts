@@ -552,7 +552,7 @@ describe("searchToolsFeature", () => {
     const root = document.getElementById(ROOT_ID);
     const foot = root?.querySelector(`.${FOOT_CLASS}`);
     const buttons = Array.from(foot?.querySelectorAll("button") ?? []);
-    expect(buttons.map((button) => button.textContent)).toEqual(["Reset"]);
+    expect(buttons.map((button) => button.textContent)).toEqual(["Reset", "Select posts"]);
     expect(root?.textContent).not.toContain("Typing needs");
     expect(root?.textContent).not.toContain("Collections");
   });
@@ -569,6 +569,7 @@ describe("searchToolsFeature", () => {
     expect(buttons.map((button) => button.textContent)).toEqual([
       "Reset",
       "Save as collection",
+      "Select posts",
     ]);
     for (const button of buttons) {
       expect(button.className).toContain("rdw-btn--secondary");

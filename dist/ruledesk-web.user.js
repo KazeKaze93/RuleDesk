@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RuleDesk Web
 // @namespace    https://github.com/kazekaze93/ruledesk-web
-// @version      0.35.2
+// @version      0.36.0
 // @description  Collections, playlists, favorites, artist updates, and page tweaks for rule34.xxx
 // @downloadURL  https://raw.githubusercontent.com/KazeKaze93/RuleDesk/main/dist/ruledesk-web.user.js
 // @updateURL    https://raw.githubusercontent.com/KazeKaze93/RuleDesk/main/dist/ruledesk-web.user.js
@@ -3503,6 +3503,41 @@ function addPostToCollection(collectionId, postId, thumbUrl) {
 	CollectionSchema.parse(target);
 	save(data);
 	return target;
+}
+/**
+* Appends several posts to a custom collection in one write, by the rules of
+* {@link addPostToCollection}. `added` counts the posts that were not in the
+* collection before. A missing or non-posts collection returns null.
+*/
+function addPostsToCollection(collectionId, posts) {
+	const data = reloadFromStorage();
+	const target = findPlaylist(data, collectionId);
+	if (target === null) return null;
+	const postIds = [...target.postIds ?? []];
+	const present = new Set(postIds);
+	const thumbs = { ...target.thumbs ?? {} };
+	const fresh = /* @__PURE__ */ new Set();
+	for (const post of posts) {
+		const normalized = normalizePostId(post.id);
+		if (normalized === null) continue;
+		if (!present.has(normalized)) {
+			present.add(normalized);
+			postIds.push(normalized);
+			fresh.add(normalized);
+		}
+		const nextThumb = normalizeThumbUrl(post.thumbUrl ?? void 0) ?? readThumb(thumbs, normalized);
+		if (nextThumb !== null) thumbs[thumbKey(normalized)] = nextThumb;
+	}
+	if (fresh.size > 0 && target.shuffledOrder !== void 0 && target.shuffledOrder !== null) target.shuffledOrder = target.shuffledOrder.filter((id) => !fresh.has(id));
+	target.postIds = postIds;
+	target.thumbs = thumbs;
+	ensurePostsMedia(target);
+	CollectionSchema.parse(target);
+	save(data);
+	return {
+		collection: target,
+		added: fresh.size
+	};
 }
 /**
 * Phase 2 HANDOFF: drops the given ids from a custom collection.
@@ -7343,8 +7378,8 @@ function downloadsAvailable() {
 	return getTweaksEnabled() && getFeatureEnabled("downloads", true) && canDownload() && hasApiCredentials();
 }
 /**
-* Picking posts on a results page for the download manager. While it is on, a
-* click on a thumbnail marks the post instead of opening it. Only a class on
+* Picking posts on a results page, to add them to a collection or to download
+* them. While it is on, a click on a thumbnail marks the post instead of opening it. Only a class on
 * `span.thumb` changes; nothing inside the post link is touched.
 */
 var GRID_SELECT_BODY_CLASS = "rdw-dl-select";
@@ -7359,7 +7394,39 @@ body.${GRID_SELECT_BODY_CLASS} ${SITE_SELECTORS.thumb}.${GRID_SELECTED_CLASS} {
   outline-offset: -3px;
   border-radius: var(--rdw-radius-m);
 }
+/* A tick as well: the outline alone would mark a post by colour only. */
+body.${GRID_SELECT_BODY_CLASS} ${SITE_SELECTORS.thumb}.${GRID_SELECTED_CLASS} {
+  position: relative;
+}
+body.${GRID_SELECT_BODY_CLASS} ${SITE_SELECTORS.thumb}.${GRID_SELECTED_CLASS}::after {
+  content: "✓";
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--rdw-accent);
+  color: var(--rdw-surface);
+  font: 700 12px/1 var(--rdw-font);
+  pointer-events: none;
+}
 `.trim();
+var STYLE_ID$2 = "rdw-grid-select-style";
+/**
+* Selecting works without the download manager too, so the styles are put in
+* when selecting starts and do not depend on that feature's stylesheet.
+*/
+function ensureStyle$2() {
+	if (document.getElementById(STYLE_ID$2) !== null) return;
+	const style = document.createElement("style");
+	style.id = STYLE_ID$2;
+	style.textContent = GRID_SELECT_CSS;
+	document.head.append(style);
+}
 var onCountChange = null;
 /** Ids of the marked posts, in page order. */
 function readSelectedPostIds() {
@@ -7381,12 +7448,26 @@ function onGridClick$1(event) {
 	thumb.classList.toggle(GRID_SELECTED_CLASS);
 	onCountChange?.(readSelectedPostIds().length);
 }
+/** The marked posts with the address of their preview, in page order. */
+function readSelectedPosts(readThumbUrl) {
+	const posts = [];
+	for (const thumb of document.querySelectorAll(`${SITE_SELECTORS.thumb}.${GRID_SELECTED_CLASS}`)) {
+		const raw = extractPostIdFromThumb(thumb);
+		const id = raw === null ? NaN : Number(raw);
+		if (raw !== null && Number.isFinite(id) && thumb instanceof HTMLElement) posts.push({
+			id,
+			thumbUrl: readThumbUrl(thumb, raw)
+		});
+	}
+	return posts;
+}
 function isGridSelecting() {
 	return document.body.classList.contains(GRID_SELECT_BODY_CLASS);
 }
 /** Turns picking on. `onChange` gets the number of marked posts after each click. */
 function startGridSelect(onChange) {
 	if (isGridSelecting()) return;
+	ensureStyle$2();
 	onCountChange = onChange;
 	document.body.classList.add(GRID_SELECT_BODY_CLASS);
 	document.addEventListener(EVENT_CLICK$3, onGridClick$1, true);
@@ -7822,7 +7903,7 @@ var FEATURE_PAGES$12 = [
 	"other"
 ];
 var DOWNLOADS_PANEL_ID = RDW_DOWNLOADS_PANEL_ID;
-var TITLE_CLASS$2 = "rdw-downloads-title";
+var TITLE_CLASS$3 = "rdw-downloads-title";
 var TEXT_CLASS = "rdw-downloads-text";
 var ACTIONS_CLASS$2 = "rdw-downloads-actions";
 var PANEL_WIDTH_PX$1 = 280;
@@ -7859,7 +7940,7 @@ var FEATURE_CSS$12 = `
 #${DOWNLOADS_PANEL_ID}:empty {
   display: none;
 }
-#${DOWNLOADS_PANEL_ID} .${TITLE_CLASS$2} {
+#${DOWNLOADS_PANEL_ID} .${TITLE_CLASS$3} {
   margin: 0;
   font-weight: 600;
   overflow: hidden;
@@ -7897,7 +7978,7 @@ function DownloadsPanel() {
 	const processed = state.done + state.failed;
 	return /* @__PURE__ */ a($$1, { children: [
 		/* @__PURE__ */ a("p", {
-			className: TITLE_CLASS$2,
+			className: TITLE_CLASS$3,
 			title: state.label,
 			children: state.label
 		}),
@@ -8323,7 +8404,7 @@ var SEARCH_TOOL_CLASS = "rdw-fav-search-tool";
 var GROUP_LABEL_CLASS = "rdw-fav-group-label";
 var SYNTAX_CLASS = "rdw-fav-syntax";
 var SYNTAX_NOTE_CLASS = "rdw-fav-syntax-note";
-var COUNT_CLASS$1 = "rdw-favorites-count";
+var COUNT_CLASS$2 = "rdw-favorites-count";
 /** The right end of the row: the buttons the bulk bar puts there. */
 var ACTIONS_CLASS$1 = "rdw-favorites-head-actions";
 /**
@@ -8370,7 +8451,7 @@ var UNSUPPORTED_SUFFIX = ". See the ? in the search field.";
 var MEDIA_LABEL = "Type";
 var VIEW_LABEL = "View";
 var MORE_LABEL$1 = "Show more";
-var LOCALE$1 = "en-US";
+var LOCALE$2 = "en-US";
 var NO_INDEX_STATUS = "No index yet: run Full resync in RuleDesk → Favorites to search and scroll here.";
 var REMOVE_FAILED_STATUS = "Could not remove the favorite. Try again.";
 var SHUFFLE_LABEL = "Shuffle";
@@ -8514,7 +8595,7 @@ body:not(.${FAVORITES_BROWSING_BODY_CLASS}) .${MORE_CLASS} {
   font: 12px var(--rdw-font);
   color: var(--rdw-muted);
 }
-.${COUNT_CLASS$1} {
+.${COUNT_CLASS$2} {
   margin-left: auto;
   padding-left: 0.5rem;
   font: 12px var(--rdw-font);
@@ -8684,12 +8765,12 @@ function hideFavoriteResults() {
 }
 /** "11,962 posts"; a count of none is said too, unlike in the page's own total. */
 function postsLabel(count) {
-	return `${count.toLocaleString(LOCALE$1)} ${count === 1 ? "post" : "posts"}`;
+	return `${count.toLocaleString(LOCALE$2)} ${count === 1 ? "post" : "posts"}`;
 }
 /** Says so when the index does not hold every favorite; nothing otherwise. */
 function indexNotice(indexed, favorites) {
 	if (indexed >= favorites) return "";
-	return `The index holds ${indexed.toLocaleString(LOCALE$1)} of ${favorites.toLocaleString(LOCALE$1)} favorites; Full resync in RuleDesk → Favorites adds the rest.`;
+	return `The index holds ${indexed.toLocaleString(LOCALE$2)} of ${favorites.toLocaleString(LOCALE$2)} favorites; Full resync in RuleDesk → Favorites adds the rest.`;
 }
 /** Names the typed terms the index cannot answer; nothing when there are none. */
 function unsupportedNotice(terms) {
@@ -8933,7 +9014,7 @@ function FavoritesBrowser(props = {}) {
 				children: [/* @__PURE__ */ a(IconShuffle, { size: 14 }), SHUFFLE_LABEL]
 			}),
 			count.length > 0 ? /* @__PURE__ */ a("span", {
-				className: COUNT_CLASS$1,
+				className: COUNT_CLASS$2,
 				role: "status",
 				children: count
 			}) : null,
@@ -8947,6 +9028,1202 @@ function FavoritesBrowser(props = {}) {
 		role: "status",
 		children: notices.join(" ")
 	}) : null] });
+}
+var BASE_GRID_CSS = `
+.${THUMB_CLASS} {
+  position: relative;
+  anchor-scope: ${THUMB_ANCHOR_NAME};
+}
+
+.${THUMB_CLASS} img.preview,
+.${THUMB_CLASS} > a > img {
+  anchor-name: ${THUMB_ANCHOR_NAME};
+}
+`;
+/** Grid thumbnail CDN host (rule34.xxx). */
+var THUMB_IMAGE_HOST = "wimg.rule34.xxx";
+/**
+* Video CDN origin. Path after origin starts with `//images/` (verified double
+* slash on ws-cdn-video.rule34.xxx).
+*/
+var VIDEO_CDN_ORIGIN = "https://ws-cdn-video.rule34.xxx";
+/** Repeated slashes are accepted: the favorites page writes `/thumbnails//<dir>/`. */
+var THUMB_PATH_PATTERN = /^\/+thumbnails\/+([^/]+)\/+thumbnail_([^/]+)\.jpg$/i;
+var HTTPS_PROTOCOL = "https:";
+var THUMB_DIRECTORY = "thumbnails";
+var THUMB_FILE_PREFIX = "thumbnail_";
+var THUMB_FILE_EXT = "jpg";
+var MIN_POST_ID = 0;
+var VIDEO_CDN_HOST = new URL(VIDEO_CDN_ORIGIN).hostname;
+/** `/samples/<dir>/sample_<hash>.<ext>` with repeated slashes allowed. */
+var SAMPLE_MEDIA_PATTERN = /^\/+samples\/+([^/]+)\/+sample_([^/]+)\.[^/.]+$/i;
+/** `/images/<dir>/<hash>.<ext>` with repeated slashes allowed. */
+var IMAGE_MEDIA_PATTERN = /^\/+images\/+([^/]+)\/+([^/]+)\.[^/.]+$/i;
+function normalizeMediaPostId(postId) {
+	if (!Number.isInteger(postId) || postId < MIN_POST_ID) return null;
+	return postId;
+}
+function readMediaDirAndHash(pathname) {
+	const sample = SAMPLE_MEDIA_PATTERN.exec(pathname);
+	const image = sample === null ? IMAGE_MEDIA_PATTERN.exec(pathname) : null;
+	const match = sample ?? image;
+	if (match === null) return null;
+	const dir = match[1];
+	const hash = match[2];
+	if (dir === void 0 || hash === void 0 || dir.length === 0 || hash.length === 0) return null;
+	return {
+		dir,
+		hash
+	};
+}
+function ensureThumbAnchor(thumb) {
+	thumb.classList.add(THUMB_CLASS);
+}
+/**
+* Build the CDN mp4 URL from a grid webm thumb `img.preview` src.
+* Thumb: `https://wimg.rule34.xxx/thumbnails/<dir>/thumbnail_<hash>.jpg?<id>`,
+* or the same path on `rule34.xxx` for a post uploaded minutes ago
+* Video: `https://ws-cdn-video.rule34.xxx//images/<dir>/<hash>.mp4?<id>`
+* Unparseable input → null (no guessing).
+*/
+function buildVideoUrlFromThumbUrl(thumbUrl) {
+	let parsed;
+	try {
+		parsed = new URL(thumbUrl);
+	} catch {
+		return null;
+	}
+	if (!isSiteUrl(thumbUrl)) return null;
+	const match = THUMB_PATH_PATTERN.exec(parsed.pathname);
+	if (match === null) return null;
+	const dir = match[1];
+	const hash = match[2];
+	if (dir === void 0 || hash === void 0 || dir.length === 0 || hash.length === 0) return null;
+	return `${VIDEO_CDN_ORIGIN}//images/${dir}/${hash}.mp4${parsed.search}`;
+}
+/**
+* Thumb URL for a sample or full-media CDN URL.
+* Sample: `https://wimg.rule34.xxx//samples/<dir>/sample_<hash>.<ext>?<id>`
+* Image/video: `https://ws-cdn-video.rule34.xxx//images/<dir>/<hash>.<ext>?<id>`
+* Result: `https://wimg.rule34.xxx/thumbnails/<dir>/thumbnail_<hash>.jpg?<postId>`
+* Repeated slashes in the path are accepted. Unparseable input → null.
+* The query is `postId` (the caller’s post), not whatever query the media URL had.
+*/
+function deriveThumbUrlFromMedia(mediaUrl, postId) {
+	const normalizedId = normalizeMediaPostId(postId);
+	if (normalizedId === null) return null;
+	let parsed;
+	try {
+		parsed = new URL(mediaUrl);
+	} catch {
+		return null;
+	}
+	if (parsed.protocol !== HTTPS_PROTOCOL) return null;
+	if (parsed.hostname !== "wimg.rule34.xxx" && parsed.hostname !== VIDEO_CDN_HOST) return null;
+	const media = readMediaDirAndHash(parsed.pathname);
+	if (media === null) return null;
+	return `https://${THUMB_IMAGE_HOST}/${THUMB_DIRECTORY}/${media.dir}/${THUMB_FILE_PREFIX}${media.hash}.${THUMB_FILE_EXT}?${String(normalizedId)}`;
+}
+var COLLECTION_PICKER_CLASS = "rdw-collection-picker";
+var COLLECTION_PICKER_ITEM_CLASS = "rdw-collection-picker-item";
+var COLLECTION_PICKER_COUNT_CLASS = "rdw-collection-picker-count";
+var COLLECTION_PICKER_NEW_CLASS = "rdw-collection-picker-new";
+var CLASS_LIST = "rdw-collection-picker-list";
+var CLASS_CHECK = "rdw-collection-picker-check";
+var CLASS_NAME$1 = "rdw-collection-picker-name";
+var CLASS_EMPTY = "rdw-collection-picker-empty";
+var CLASS_NEW_FIELD = "rdw-collection-picker-new-field";
+var CLASS_ERROR$1 = "rdw-collection-picker-error";
+var COLLECTION_PICKER_TEXT = {
+	create: "Create",
+	newName: "New collection name",
+	filter: "Filter collections…",
+	empty: "No collections yet",
+	noMatch: "No matching collections",
+	togglePrefix: "Toggle collection",
+	nameTaken: "A collection with this name already exists.",
+	list: "Custom collections"
+};
+var MEMBER_ROLE = "menuitemcheckbox";
+var CHECK_ICON_PX = 12;
+var CHECK_BOX_PX = 15;
+var ROW_GAP_PX = 8;
+var STACK_GAP_PX = 6;
+var COLLECTION_PICKER_CSS = `
+.${COLLECTION_PICKER_CLASS} {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: ${String(STACK_GAP_PX)}px;
+  min-width: 0;
+  color: var(--rdw-text);
+  font: 12px/1.35 var(--rdw-font);
+}
+.${CLASS_LIST} {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+  max-height: ${String(232)}px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+button.${COLLECTION_PICKER_ITEM_CLASS} {
+  display: flex;
+  align-items: center;
+  gap: ${String(ROW_GAP_PX)}px;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: ${String(28)}px;
+  margin: 0;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--rdw-radius-s);
+  background: transparent;
+  color: var(--rdw-text);
+  font: inherit;
+  font-weight: 400;
+  text-align: left;
+  cursor: pointer;
+}
+button.${COLLECTION_PICKER_ITEM_CLASS}:hover,
+button.${COLLECTION_PICKER_ITEM_CLASS}:focus-visible {
+  background: var(--rdw-surface-2);
+}
+button.${COLLECTION_PICKER_ITEM_CLASS}:focus-visible {
+  outline: 2px solid var(--rdw-accent);
+  outline-offset: -2px;
+}
+.${CLASS_CHECK} {
+  flex: 0 0 ${String(CHECK_BOX_PX)}px;
+  display: inline-grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: ${String(CHECK_BOX_PX)}px;
+  height: ${String(CHECK_BOX_PX)}px;
+  border: 1px solid var(--rdw-border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--rdw-surface);
+}
+.${COLLECTION_PICKER_ITEM_CLASS}[aria-checked="true"] .${CLASS_CHECK} {
+  background: var(--rdw-accent);
+  border-color: var(--rdw-accent);
+}
+.${CLASS_NAME$1} {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.${COLLECTION_PICKER_COUNT_CLASS} {
+  flex: 0 0 auto;
+  color: var(--rdw-muted);
+  font-variant-numeric: tabular-nums;
+}
+.${CLASS_EMPTY} {
+  margin: 0;
+  padding: 4px 6px;
+  color: var(--rdw-muted);
+}
+form.${COLLECTION_PICKER_NEW_CLASS} {
+  display: flex;
+  align-items: center;
+  gap: ${String(STACK_GAP_PX)}px;
+  margin: 0;
+  padding-top: ${String(STACK_GAP_PX)}px;
+  border-top: 1px solid var(--rdw-border);
+}
+.${CLASS_ERROR$1} {
+  margin: 0;
+  color: var(--rdw-danger);
+}
+.${COLLECTION_PICKER_NEW_CLASS} .${CLASS_NEW_FIELD} {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+}
+`.trim();
+function foldName$1(name) {
+	return name.trim().toLowerCase();
+}
+function matchesFilter(collection, filter) {
+	const needle = foldName$1(filter);
+	return needle.length === 0 || collection.name.toLowerCase().includes(needle);
+}
+function addPost(collectionId, postId, readThumbUrl) {
+	const thumbUrl = readThumbUrl();
+	if (thumbUrl === null) {
+		addPostToCollection(collectionId, postId);
+		return;
+	}
+	addPostToCollection(collectionId, postId, thumbUrl);
+}
+/**
+* Custom collections of one post: a checkbox row per collection with its post
+* count, and a "name + Create" row. Used by the post panel and the grid "+" menu.
+* A new name that any collection already has (custom or dynamic, ignoring
+* case) is refused, as on the Collections page.
+*/
+function CollectionPicker(props) {
+	const [filter, setFilter] = d("");
+	const [newName, setNewName] = d("");
+	const [error, setError] = d("");
+	const [, setRevision] = d(0);
+	const collections = listPlaylists();
+	const memberIds = new Set(playlistsContaining(props.postId).map((item) => item.id));
+	const filterShown = collections.length > 8;
+	const visible = filterShown ? collections.filter((item) => matchesFilter(item, filter)) : collections;
+	const changed = () => {
+		setRevision((value) => value + 1);
+		props.onChange?.();
+	};
+	const toggle = (collectionId) => {
+		if (memberIds.has(collectionId)) removePostFromPlaylist(collectionId, props.postId);
+		else addPost(collectionId, props.postId, props.readThumbUrl);
+		changed();
+	};
+	const createFromName = () => {
+		const name = newName.trim();
+		if (name.length === 0) return;
+		if (load().collections.some((item) => foldName$1(item.name) === foldName$1(name))) {
+			setError(COLLECTION_PICKER_TEXT.nameTaken);
+			return;
+		}
+		addPost(createPlaylist(name).id, props.postId, props.readThumbUrl);
+		setNewName("");
+		changed();
+	};
+	const emptyText = collections.length === 0 ? COLLECTION_PICKER_TEXT.empty : COLLECTION_PICKER_TEXT.noMatch;
+	return /* @__PURE__ */ a("div", {
+		className: COLLECTION_PICKER_CLASS,
+		children: [
+			/* @__PURE__ */ a("style", { children: COLLECTION_PICKER_CSS }),
+			filterShown ? /* @__PURE__ */ a(TextField, {
+				value: filter,
+				onChange: setFilter,
+				placeholder: COLLECTION_PICKER_TEXT.filter,
+				"aria-label": COLLECTION_PICKER_TEXT.filter
+			}) : null,
+			visible.length === 0 ? /* @__PURE__ */ a("p", {
+				className: CLASS_EMPTY,
+				children: emptyText
+			}) : /* @__PURE__ */ a("div", {
+				className: CLASS_LIST,
+				role: "group",
+				"aria-label": COLLECTION_PICKER_TEXT.list,
+				children: visible.map((collection) => /* @__PURE__ */ a("button", {
+					type: "button",
+					className: COLLECTION_PICKER_ITEM_CLASS,
+					role: MEMBER_ROLE,
+					"aria-checked": memberIds.has(collection.id),
+					"aria-label": `${COLLECTION_PICKER_TEXT.togglePrefix} ${collection.name}`,
+					onClick: (event) => {
+						event.preventDefault();
+						event.stopPropagation();
+						toggle(collection.id);
+					},
+					children: [
+						/* @__PURE__ */ a("span", {
+							className: CLASS_CHECK,
+							"aria-hidden": "true",
+							children: memberIds.has(collection.id) ? /* @__PURE__ */ a(IconCheck, { size: CHECK_ICON_PX }) : null
+						}),
+						/* @__PURE__ */ a("span", {
+							className: CLASS_NAME$1,
+							children: collection.name
+						}),
+						/* @__PURE__ */ a("span", {
+							className: COLLECTION_PICKER_COUNT_CLASS,
+							children: String(collection.postIds?.length ?? 0)
+						})
+					]
+				}, collection.id))
+			}),
+			/* @__PURE__ */ a("form", {
+				className: COLLECTION_PICKER_NEW_CLASS,
+				onSubmit: (event) => {
+					event.preventDefault();
+					event.stopPropagation();
+					createFromName();
+				},
+				children: [/* @__PURE__ */ a(TextField, {
+					className: CLASS_NEW_FIELD,
+					value: newName,
+					onChange: (value) => {
+						setNewName(value);
+						setError("");
+					},
+					placeholder: COLLECTION_PICKER_TEXT.newName,
+					"aria-label": COLLECTION_PICKER_TEXT.newName
+				}), /* @__PURE__ */ a(Button, {
+					type: "submit",
+					variant: "primary",
+					size: "s",
+					disabled: newName.trim().length === 0,
+					children: COLLECTION_PICKER_TEXT.create
+				})]
+			}),
+			error.length > 0 ? /* @__PURE__ */ a("p", {
+				className: CLASS_ERROR$1,
+				role: "alert",
+				children: error
+			}) : null
+		]
+	});
+}
+/**
+* Readers for a results page (`page=post&s=list`): the live document or one
+* parsed from a fetched page. They only read; nothing here makes a request.
+*/
+var QUERY_MARK = "?";
+var PID_PATTERN = /^\d+$/;
+var EXCLUDE_MARK = "-";
+var FILTER_MARK$1 = ":";
+var OR_MARKS = [
+	"(",
+	")",
+	"~"
+];
+var NON_DIGITS = /\D/g;
+var TOKEN_SPLIT$2 = /\s+/;
+var SCORE_TOKEN_PREFIX$3 = "score:";
+var RATING_TOKEN_PREFIX$2 = "rating:";
+/** Thumb URLs of the first `limit` posts in the grid, in page order. */
+function readFirstThumbUrls(root, limit) {
+	const imageList = root.querySelector(SITE_SELECTORS.imageList);
+	if (imageList === null) return [];
+	const urls = [];
+	const images = imageList.querySelectorAll(`${SITE_SELECTORS.thumb} ${SITE_SELECTORS.previewImage}`);
+	for (const image of images) {
+		const src = image.getAttribute("src");
+		if (src === null || src.trim().length === 0) continue;
+		urls.push(src.trim());
+		if (urls.length === limit) break;
+	}
+	return urls;
+}
+/** Largest post id among the thumbs of the grid, or 0 without thumbs. */
+function readNewestPostId(root) {
+	let newest = 0;
+	for (const thumb of root.querySelectorAll(SITE_SELECTORS.thumb)) {
+		const raw = extractPostIdFromThumb(thumb);
+		const id = raw === null ? NaN : Number(raw);
+		if (Number.isFinite(id) && id > newest) newest = id;
+	}
+	return newest;
+}
+/** Tags of a thumb, from its preview image title, without score and rating. */
+function readThumbTags(thumb) {
+	const image = thumb.querySelector(SITE_SELECTORS.previewImage);
+	const title = image?.getAttribute("title")?.trim() ?? "";
+	const text = title.length > 0 ? title : image?.getAttribute("alt")?.trim() ?? "";
+	const tags = [];
+	for (const token of text.split(TOKEN_SPLIT$2)) {
+		const lower = token.toLowerCase();
+		if (token.length === 0 || lower.startsWith(SCORE_TOKEN_PREFIX$3) || lower.startsWith(RATING_TOKEN_PREFIX$2)) continue;
+		tags.push(lower);
+	}
+	return tags;
+}
+function readPidFromLink(link) {
+	const href = link.getAttribute("href");
+	if (href === null) return null;
+	const query = href.slice(href.indexOf(QUERY_MARK) + 1);
+	const raw = new URLSearchParams(query).get("pid");
+	if (raw === null || !PID_PATTERN.test(raw)) return null;
+	return Number(raw);
+}
+/** The tag of a search that is exactly one plain tag, else null. */
+function readSingleTag(tagsParam) {
+	const tokens = withoutSortRandom(tagsParam).split(" ");
+	const tag = tokens[0];
+	if (tokens.length !== 1 || tag === void 0 || tag.length === 0) return null;
+	if (tag.startsWith(EXCLUDE_MARK) || tag.includes(FILTER_MARK$1) || OR_MARKS.includes(tag)) return null;
+	return tag.toLowerCase();
+}
+function rowLinksToTag(row, tag) {
+	for (const link of row.querySelectorAll("a[href]")) {
+		const href = link.getAttribute("href") ?? "";
+		const mark = href.indexOf(QUERY_MARK);
+		if (mark < 0) continue;
+		const linked = new URLSearchParams(href.slice(mark + 1)).get(SEARCH_PARAM_TAGS);
+		if (linked !== null && linked.trim().toLowerCase() === tag) return true;
+	}
+	return false;
+}
+/**
+* For a search of one tag the sidebar row of that tag shows the site's own
+* total, which is exact. Null when the row or its number is not on the page.
+*/
+function readSingleTagCount(root, tagsParam) {
+	const tag = readSingleTag(tagsParam);
+	if (tag === null) return null;
+	for (const row of root.querySelectorAll(SITE_SELECTORS.tagSidebarRow)) {
+		if (!rowLinksToTag(row, tag)) continue;
+		const digits = (row.querySelector(SITE_SELECTORS.tagCount)?.textContent ?? "").replace(NON_DIGITS, "");
+		if (digits.length === 0) return null;
+		return {
+			value: Number(digits),
+			exact: true
+		};
+	}
+	return null;
+}
+/**
+* Size of the search a first results page shows.
+* A search of one tag takes the exact total from the tag's sidebar row.
+* With a last-page link: at least its offset (`pid`), so the count is a lower
+* bound. With other page links only: the largest offset among them. With no
+* page links: the number of thumbs on the page, exact. No grid: null.
+*/
+function readResultCount(root, tagsParam) {
+	const tagCount = readSingleTagCount(root, tagsParam);
+	if (tagCount !== null) return tagCount;
+	const last = root.querySelector(SITE_SELECTORS.paginationLastPage);
+	if (last !== null) {
+		const pid = readPidFromLink(last);
+		if (pid !== null) return {
+			value: pid,
+			exact: false
+		};
+	}
+	let largest = null;
+	for (const link of root.querySelectorAll(SITE_SELECTORS.paginationPageLink)) {
+		const pid = readPidFromLink(link);
+		if (pid !== null && (largest === null || pid > largest)) largest = pid;
+	}
+	if (largest !== null) return {
+		value: largest,
+		exact: false
+	};
+	const imageList = root.querySelector(SITE_SELECTORS.imageList);
+	if (imageList === null) return null;
+	return {
+		value: imageList.querySelectorAll(SITE_SELECTORS.thumb).length,
+		exact: true
+	};
+}
+/**
+* Puts a post into the favorites search index at the moment it is made a
+* favorite, from what the page already shows. Without this a new favorite
+* would be missing from the search on the Favorites page until the next
+* "Sync favorites". No requests.
+*/
+var POST_IMAGE_SELECTOR = "img#image";
+var POST_VIDEO_SELECTOR = "video#gelcomVideoPlayer";
+var VIDEO_SOURCE_SELECTOR$1 = "source";
+var TAG_LINK_SELECTOR = "a[href*='tags=']";
+var TAG_JOIN = " ";
+/** The entry of a favorite made now: it sorts before everything indexed earlier. */
+function buildLiveEntry(postId, tags, thumb, now) {
+	const id = Number(postId);
+	if (!Number.isInteger(id) || id <= 0 || tags.length === 0) return null;
+	return {
+		id,
+		tags: tags.join(TAG_JOIN),
+		thumb: thumb !== null && isSiteUrl(thumb) ? thumb : "",
+		run: now,
+		pos: 0
+	};
+}
+function store(entry) {
+	if (entry !== null) putFavoriteIndexEntriesQuietly([entry]);
+}
+/** A favorite made by the star of a grid thumb: tags and preview are on the thumb. */
+function indexFavoriteFromThumb(postId, starButton) {
+	const thumb = starButton.closest(SITE_SELECTORS.thumb);
+	if (thumb === null) return;
+	const image = thumb.querySelector(SITE_SELECTORS.previewImage);
+	const src = image instanceof HTMLImageElement ? image.currentSrc || image.src : null;
+	store(buildLiveEntry(postId, readThumbTags(thumb), src, Date.now()));
+}
+/** The tags of a post page, from the links of its tag sidebar. */
+function readPostPageTags(root = document) {
+	const tags = [];
+	for (const row of root.querySelectorAll(SITE_SELECTORS.tagSidebarRow)) {
+		const links = row.querySelectorAll(TAG_LINK_SELECTOR);
+		const href = links[links.length - 1]?.getAttribute("href");
+		if (href === null || href === void 0) continue;
+		let tag = null;
+		try {
+			tag = new URL(href, window.location.href).searchParams.get(SEARCH_PARAM_TAGS);
+		} catch {
+			tag = null;
+		}
+		if (tag !== null && tag.trim().length > 0) tags.push(tag.trim().toLowerCase());
+	}
+	return tags;
+}
+function readPostMediaUrl() {
+	const image = document.querySelector(POST_IMAGE_SELECTOR);
+	if (image instanceof HTMLImageElement && image.src.length > 0) return image.src;
+	const video = document.querySelector(POST_VIDEO_SELECTOR);
+	if (!(video instanceof HTMLVideoElement)) return null;
+	const source = video.querySelector(VIDEO_SOURCE_SELECTOR$1);
+	const url = video.currentSrc || video.src || (source instanceof HTMLSourceElement ? source.src : "");
+	return url.length > 0 ? url : null;
+}
+/** A favorite made on the post page: tags from the sidebar, preview from the media address. */
+function indexFavoriteFromPostPage(postId) {
+	const media = readPostMediaUrl();
+	const thumb = media === null ? null : deriveThumbUrlFromMedia(media, Number(postId));
+	store(buildLiveEntry(postId, readPostPageTags(), thumb, Date.now()));
+}
+/** Kit IconButton root class — prefer for preview badges. */
+var KIT_ICON_BUTTON_CLASS = "rdw-icon-btn";
+function favAriaLabel(postId, marked) {
+	return `${marked ? UI_TEXT.cardFavRemoveLabel : UI_TEXT.cardFavAddLabel} ${postId}`;
+}
+function applyFavButtonState(button, state, postId, errorTitle) {
+	if (state === "pending") {
+		button.disabled = true;
+		button.classList.add(CSS_CLASS.cardFavPending);
+		return;
+	}
+	button.classList.remove(CSS_CLASS.cardFavMarked, CSS_CLASS.cardFavError, CSS_CLASS.cardFavPending);
+	button.disabled = false;
+	button.removeAttribute("title");
+	if (state === "marked") {
+		button.setAttribute("aria-pressed", "true");
+		button.setAttribute("aria-label", favAriaLabel(postId, true));
+		button.classList.add(CSS_CLASS.cardFavMarked);
+		return;
+	}
+	if (state === "marked_error") {
+		button.setAttribute("aria-pressed", "true");
+		button.setAttribute("aria-label", favAriaLabel(postId, true));
+		button.classList.add(CSS_CLASS.cardFavMarked, CSS_CLASS.cardFavError);
+		button.title = errorTitle ?? UI_TEXT.cardFavErrorRequest;
+		return;
+	}
+	if (state === "error") {
+		button.setAttribute("aria-pressed", "false");
+		button.setAttribute("aria-label", favAriaLabel(postId, false));
+		button.classList.add(CSS_CLASS.cardFavError);
+		button.title = errorTitle ?? UI_TEXT.cardFavErrorRequest;
+		return;
+	}
+	button.setAttribute("aria-pressed", "false");
+	button.setAttribute("aria-label", favAriaLabel(postId, false));
+}
+function createFavButton(postId, marked, className = CSS_CLASS.cardFav) {
+	const button = document.createElement("button");
+	button.type = "button";
+	button.className = className;
+	button.textContent = UI_TEXT.cardFavGlyph;
+	applyFavButtonState(button, marked ? "marked" : "idle", postId);
+	button.addEventListener("click", (event) => {
+		event.preventDefault();
+		event.stopPropagation();
+		handleFavToggleClick(button, postId);
+	});
+	return button;
+}
+async function handleFavToggleClick(button, postId) {
+	if (button.disabled) return;
+	const currentlyMarked = button.getAttribute("aria-pressed") === "true";
+	applyFavButtonState(button, "pending", postId);
+	if (currentlyMarked) {
+		const result = await removeFavorite(postId);
+		if (result.status === "removed") {
+			removeFav(postId);
+			applyFavButtonState(button, "idle", postId);
+			return;
+		}
+		applyFavButtonState(button, "marked_error", postId, UI_TEXT.cardFavErrorRequest);
+		log.warn("Remove favorite failed", postId, result);
+		return;
+	}
+	const result = await addFavorite(postId);
+	if (result.status === "added" || result.status === "already") {
+		addFav(postId);
+		indexFavoriteFromThumb(postId, button);
+		applyFavButtonState(button, "marked", postId);
+		return;
+	}
+	if (result.status === "not_logged_in") {
+		applyFavButtonState(button, "error", postId, UI_TEXT.cardFavErrorNotLoggedIn);
+		log.warn("Favorite requires login", postId);
+		return;
+	}
+	applyFavButtonState(button, "error", postId, UI_TEXT.cardFavErrorRequest);
+	log.warn("Favorite failed", postId, result);
+}
+var FEATURE_ID$12 = "playlist-menu";
+var FEATURE_LABEL$11 = "Add to collection button";
+var FEATURE_PAGES$11 = [
+	"list",
+	"post",
+	"favorites"
+];
+var CLASS_ADD = "rdw-playlist-add";
+var CLASS_ADD_IN = "rdw-playlist-add--in";
+var CLASS_MENU = "rdw-playlist-menu";
+var CLASS_MENU_POPUP = "rdw-playlist-menu--popup";
+var ATTR_POST_ID = "data-rdw-post-id";
+var TEXT_ADD_GLYPH = "+";
+var LABEL_ADD = "Add to collection";
+var MENU_Z_INDEX$1 = 2147483645;
+var MENU_WIDTH_PX$1 = 260;
+var MENU_PADDING_PX = 8;
+var MENU_GAP_PX = 4;
+var BUTTON_SIZE_PX = 28;
+var BUTTON_OFFSET_PX = 6;
+var BUTTON_BELOW_FAV_TOP_PX = 38;
+/** A favorites thumb: `div.image-list > span > span.thumb` (a search thumb has no wrapper). */
+var FAVORITE_THUMB_SELECTOR = "div.image-list > span > span.thumb";
+/** Set by the favorites bulk feature while posts are being selected. */
+var FAVORITES_SELECTING_BODY_CLASS = "rdw-f-favorites-bulk-selecting";
+var FOCUS_OUTLINE = "2px solid var(--rdw-accent)";
+var FOCUS_OUTLINE_OFFSET = "2px";
+var EVENT_KEYDOWN = "keydown";
+var EVENT_POINTERDOWN = "pointerdown";
+var KEY_ESCAPE = "Escape";
+var BODY_SELECTOR$3 = `body.${featureBodyClass(FEATURE_ID$12)}`;
+var FEATURE_CSS$11 = `
+${BODY_SELECTOR$3} .${CLASS_ADD} {
+  position: absolute;
+  top: ${String(BUTTON_BELOW_FAV_TOP_PX)}px;
+  right: ${String(BUTTON_OFFSET_PX)}px;
+  position-anchor: --rdw-img;
+  top: calc(anchor(top) + ${String(BUTTON_BELOW_FAV_TOP_PX)}px);
+  right: calc(anchor(right) + ${String(BUTTON_OFFSET_PX)}px);
+  z-index: 5;
+  box-sizing: border-box;
+  display: inline-grid;
+  place-items: center;
+  min-width: ${String(BUTTON_SIZE_PX)}px;
+  min-height: ${String(BUTTON_SIZE_PX)}px;
+  width: ${String(BUTTON_SIZE_PX)}px;
+  height: ${String(BUTTON_SIZE_PX)}px;
+  padding: 0;
+  border: 1px solid rgba(0, 0, 0, 0.13);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.93);
+  color: #1c2228;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  opacity: 0;
+}
+${BODY_SELECTOR$3} ${FAVORITE_THUMB_SELECTOR} > .${CLASS_ADD} {
+  position-anchor: ${FAVORITE_IMAGE_ANCHOR_NAME};
+}
+${BODY_SELECTOR$3}.${FAVORITES_SELECTING_BODY_CLASS} ${FAVORITE_THUMB_SELECTOR} > .${CLASS_ADD} {
+  display: none;
+}
+${BODY_SELECTOR$3} .${THUMB_CLASS}:hover .${CLASS_ADD},
+${BODY_SELECTOR$3} .${CLASS_ADD}:focus-visible {
+  opacity: 0.65;
+}
+${BODY_SELECTOR$3} .${THUMB_CLASS} .${CLASS_ADD}:hover,
+${BODY_SELECTOR$3} .${CLASS_ADD}:focus-visible {
+  opacity: 1;
+}
+${BODY_SELECTOR$3} .${CLASS_ADD}:focus-visible {
+  outline: ${FOCUS_OUTLINE};
+  outline-offset: ${FOCUS_OUTLINE_OFFSET};
+}
+${BODY_SELECTOR$3} .${CLASS_ADD}.${CLASS_ADD_IN} {
+  background: #ffd75e;
+  border-color: #c79a00;
+  color: #5c4500;
+}
+${BODY_SELECTOR$3} .${CLASS_MENU} {
+  box-sizing: border-box;
+  width: ${String(MENU_WIDTH_PX$1)}px;
+  max-width: calc(100vw - ${String(8)}px);
+  padding: ${String(MENU_PADDING_PX)}px;
+  border: 1px solid var(--rdw-border);
+  border-radius: var(--rdw-radius-l);
+  background: var(--rdw-surface);
+  color: var(--rdw-text);
+  font: 12px/1.35 var(--rdw-font);
+}
+${BODY_SELECTOR$3} .${CLASS_MENU}.${CLASS_MENU_POPUP} {
+  position: fixed;
+  z-index: ${String(MENU_Z_INDEX$1)};
+  box-shadow: var(--rdw-shadow-2);
+}
+`;
+var NO_THUMB_URL = () => null;
+var unsubscribeThumbsAdded$4;
+var openPopup = null;
+var escapeBound = false;
+var pointerBound = false;
+function parsePostId(value) {
+	if (value === null || value.length === 0) return null;
+	const parsed = Number(value);
+	if (!Number.isFinite(parsed)) return null;
+	const truncated = Math.trunc(parsed);
+	return truncated < 0 ? null : truncated;
+}
+function postInAnyPlaylist(postId) {
+	return playlistsContaining(postId).length > 0;
+}
+function applyAddButtonState(button, postId) {
+	const inPlaylist = postInAnyPlaylist(postId);
+	button.classList.toggle(CLASS_ADD_IN, inPlaylist);
+	button.setAttribute("aria-pressed", inPlaylist ? "true" : "false");
+	button.setAttribute("aria-label", `${LABEL_ADD} ${String(postId)}`);
+}
+function postAnchorSelector(postId) {
+	return `#p${postId}`;
+}
+function readImageAddress(img) {
+	const current = img.currentSrc.trim();
+	if (current.length > 0) return current;
+	const attribute = img.getAttribute("src");
+	if (attribute === null) return null;
+	const trimmed = attribute.trim();
+	if (trimmed.length === 0) return null;
+	return trimmed;
+}
+/**
+* Thumb URL from this post's `img.preview`.
+* A preview outside `a#p{id}` wins. The copy nested in the link is used only
+* when that is the only preview (rule34 puts `img.preview` inside the anchor).
+*/
+function readPreviewThumbUrl(thumb, postId) {
+	const anchor = thumb.querySelector(postAnchorSelector(postId));
+	const images = thumb.querySelectorAll(SITE_SELECTORS.previewImage);
+	let nestedImage = null;
+	for (const node of images) {
+		if (!(node instanceof HTMLImageElement)) continue;
+		if (anchor instanceof Element && anchor.contains(node)) {
+			if (nestedImage === null) nestedImage = node;
+			continue;
+		}
+		const url = readImageAddress(node);
+		if (url !== null) return url;
+	}
+	if (nestedImage !== null) return readImageAddress(nestedImage);
+	const plain = thumb.querySelector(THUMB_IMAGE_SELECTOR);
+	return plain instanceof HTMLImageElement ? readImageAddress(plain) : null;
+}
+function readThumbUrlFromTrigger(button) {
+	const postId = button.getAttribute(ATTR_POST_ID);
+	if (postId === null || postId.length === 0) return null;
+	const thumb = button.closest(SITE_SELECTORS.thumb);
+	if (!(thumb instanceof HTMLElement)) return null;
+	return readPreviewThumbUrl(thumb, postId);
+}
+function findThumbLink$2(thumb, postId) {
+	const byId = thumb.querySelector(postAnchorSelector(postId));
+	if (byId instanceof HTMLAnchorElement) return byId;
+	const byHref = thumb.querySelector(SITE_SELECTORS.thumbLink);
+	return byHref instanceof HTMLAnchorElement ? byHref : null;
+}
+function closeOpenMenu() {
+	if (openPopup === null) return;
+	Q$1(null, openPopup.menu);
+	openPopup.menu.remove();
+	openPopup.trigger.setAttribute("aria-expanded", "false");
+	openPopup = null;
+	unbindGlobalCloseListeners();
+}
+function onDocumentKeydown(event) {
+	if (event.key !== KEY_ESCAPE) return;
+	if (openPopup === null) return;
+	event.preventDefault();
+	closeOpenMenu();
+}
+function onDocumentPointerDown(event) {
+	if (openPopup === null) return;
+	const target = event.target;
+	if (!(target instanceof Node)) return;
+	if (openPopup.menu.contains(target) || openPopup.trigger.contains(target)) return;
+	closeOpenMenu();
+}
+function bindGlobalCloseListeners() {
+	if (!escapeBound) {
+		escapeBound = true;
+		document.addEventListener(EVENT_KEYDOWN, onDocumentKeydown);
+	}
+	if (!pointerBound) {
+		pointerBound = true;
+		document.addEventListener(EVENT_POINTERDOWN, onDocumentPointerDown, true);
+	}
+}
+function unbindGlobalCloseListeners() {
+	if (escapeBound) {
+		document.removeEventListener(EVENT_KEYDOWN, onDocumentKeydown);
+		escapeBound = false;
+	}
+	if (pointerBound) {
+		document.removeEventListener(EVENT_POINTERDOWN, onDocumentPointerDown, true);
+		pointerBound = false;
+	}
+}
+function positionMenuNear(menu, anchor) {
+	const rect = anchor.getBoundingClientRect();
+	const viewportWidth = window.innerWidth;
+	const viewportHeight = window.innerHeight;
+	menu.style.visibility = "hidden";
+	menu.style.left = "0";
+	menu.style.top = "0";
+	document.body.append(menu);
+	const menuWidth = menu.offsetWidth;
+	const menuHeight = menu.offsetHeight;
+	let left = rect.right - menuWidth;
+	if (left < MENU_GAP_PX) left = Math.min(rect.left, viewportWidth - menuWidth - MENU_GAP_PX);
+	left = Math.max(MENU_GAP_PX, Math.min(left, viewportWidth - menuWidth - MENU_GAP_PX));
+	let top = rect.bottom + MENU_GAP_PX;
+	if (top + menuHeight > viewportHeight - MENU_GAP_PX) top = rect.top - menuHeight - MENU_GAP_PX;
+	if (top < MENU_GAP_PX) top = MENU_GAP_PX;
+	menu.style.left = `${String(left)}px`;
+	menu.style.top = `${String(top)}px`;
+	menu.style.visibility = "";
+}
+function syncAddButtonsForPost(postId) {
+	const buttons = document.querySelectorAll(`button.${CLASS_ADD}[${ATTR_POST_ID}="${String(postId)}"]`);
+	for (const node of buttons) {
+		if (!(node instanceof HTMLButtonElement)) continue;
+		applyAddButtonState(node, postId);
+	}
+}
+/**
+* Brings every "+" on the page in step with the collections, after posts were
+* added by something other than the "+" itself (the selection bar).
+*/
+function refreshAddButtons() {
+	for (const node of document.querySelectorAll(`button.${CLASS_ADD}[${ATTR_POST_ID}]`)) {
+		const postId = Number(node.getAttribute(ATTR_POST_ID));
+		if (node instanceof HTMLButtonElement && Number.isFinite(postId)) applyAddButtonState(node, postId);
+	}
+}
+/**
+* Builds the collection menu for a post: a themed panel holding the shared
+* collection picker. Callers own placement; the list page keeps one open at a time.
+*/
+function createPlaylistMenu(postId, options) {
+	const root = document.createElement("div");
+	root.className = CLASS_MENU;
+	root.setAttribute("role", "menu");
+	root.setAttribute(ATTR_POST_ID, String(postId));
+	const onChange = options?.onChange;
+	Q$1(k$1(CollectionPicker, {
+		postId,
+		readThumbUrl: options?.readThumbUrl ?? NO_THUMB_URL,
+		...onChange === void 0 ? {} : { onChange }
+	}), root);
+	return root;
+}
+function openMenuForButton(button, postId) {
+	if (openPopup !== null && openPopup.trigger === button) {
+		closeOpenMenu();
+		return;
+	}
+	closeOpenMenu();
+	const menu = createPlaylistMenu(postId, {
+		onChange: () => {
+			syncAddButtonsForPost(postId);
+		},
+		readThumbUrl: () => readThumbUrlFromTrigger(button)
+	});
+	menu.classList.add(CLASS_MENU_POPUP);
+	positionMenuNear(menu, button);
+	button.setAttribute("aria-expanded", "true");
+	openPopup = {
+		menu,
+		trigger: button,
+		postId
+	};
+	bindGlobalCloseListeners();
+}
+function attachAddButton(thumb, postId) {
+	if (thumb.querySelector(`button.${CLASS_ADD}`) !== null) return;
+	const numericId = parsePostId(postId);
+	if (numericId === null) return;
+	const link = findThumbLink$2(thumb, postId);
+	if (link === null) return;
+	ensureThumbAnchor(thumb);
+	const button = document.createElement("button");
+	button.type = "button";
+	button.className = `${KIT_ICON_BUTTON_CLASS} ${CLASS_ADD}`;
+	button.textContent = TEXT_ADD_GLYPH;
+	button.setAttribute(ATTR_POST_ID, String(numericId));
+	button.setAttribute("aria-haspopup", "menu");
+	button.setAttribute("aria-expanded", "false");
+	applyAddButtonState(button, numericId);
+	button.addEventListener("click", (event) => {
+		event.preventDefault();
+		event.stopPropagation();
+		openMenuForButton(button, numericId);
+	});
+	link.after(button);
+}
+function stampPlaylistButtons(root = document) {
+	const thumbs = root.querySelectorAll(SITE_SELECTORS.thumb);
+	for (const thumb of thumbs) {
+		if (!(thumb instanceof HTMLElement)) continue;
+		const postId = extractPostIdFromThumb(thumb) ?? extractPostIdFromThumbLink(thumb);
+		if (postId === null) continue;
+		attachAddButton(thumb, postId);
+	}
+}
+function ensureListSubscriptions$1() {
+	if (unsubscribeThumbsAdded$4 !== void 0) return;
+	unsubscribeThumbsAdded$4 = onThumbsAdded((root) => {
+		stampPlaylistButtons(root);
+	});
+}
+function mountPlaylistMenu(ctx) {
+	if (ctx.pageKind !== "list" && ctx.pageKind !== "favorites") return;
+	stampPlaylistButtons(document);
+	ensureListSubscriptions$1();
+}
+var playlistMenuFeature = {
+	id: FEATURE_ID$12,
+	label: FEATURE_LABEL$11,
+	pages: [...FEATURE_PAGES$11],
+	defaultEnabled: true,
+	css: FEATURE_CSS$11,
+	mount: mountPlaylistMenu
+};
+/**
+* Adds several posts to one custom collection at once: pick a collection, or
+* name a new one. Used by the selection bars of Posts and Favorites. Nothing
+* is requested: the posts and their previews are what the page already shows.
+*/
+var BULK_COLLECTION_CLASS = "rdw-bulk-collection";
+var LIST_CLASS = "rdw-bulk-collection-list";
+var ITEM_CLASS = "rdw-bulk-collection-item";
+var NAME_CLASS$1 = "rdw-bulk-collection-name";
+var COUNT_CLASS$1 = "rdw-bulk-collection-count";
+var NEW_CLASS = "rdw-bulk-collection-new";
+var NEW_FIELD_CLASS = "rdw-bulk-collection-new-field";
+var TITLE_CLASS$2 = "rdw-bulk-collection-title";
+var NOTE_CLASS = "rdw-bulk-collection-note";
+var ERROR_CLASS = "rdw-bulk-collection-error";
+var FOOT_CLASS$1 = "rdw-bulk-collection-foot";
+var LIST_MAX_HEIGHT_PX = 260;
+/** The name filter appears once the list is longer than this. */
+var FILTER_MIN = 8;
+var LOCALE$1 = "en-US";
+var TEXT = {
+	aria: "Add posts to a collection",
+	filter: "Filter collections…",
+	empty: "No custom collections yet. Name one below.",
+	noMatch: "No matching collections",
+	newName: "New collection name",
+	create: "Create and add",
+	nameTaken: "A collection with this name already exists."
+};
+var BULK_COLLECTION_CSS = `
+.${BULK_COLLECTION_CLASS} {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  color: var(--rdw-text);
+  font: 13px/1.4 var(--rdw-font);
+}
+.${TITLE_CLASS$2} {
+  margin: 0;
+  font: 700 15px var(--rdw-font);
+  color: var(--rdw-text);
+}
+.${NOTE_CLASS} {
+  margin: 0;
+  color: var(--rdw-muted);
+}
+.${LIST_CLASS} {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+  max-height: ${String(LIST_MAX_HEIGHT_PX)}px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+button.${ITEM_CLASS} {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 32px;
+  margin: 0;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--rdw-radius-s);
+  background: transparent;
+  color: var(--rdw-text);
+  font: inherit;
+  font-weight: 400;
+  text-align: left;
+  cursor: pointer;
+}
+button.${ITEM_CLASS}:hover,
+button.${ITEM_CLASS}:focus-visible {
+  background: var(--rdw-surface-2);
+}
+button.${ITEM_CLASS}:focus-visible {
+  outline: 2px solid var(--rdw-accent);
+  outline-offset: -2px;
+}
+.${NAME_CLASS$1} {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.${COUNT_CLASS$1} {
+  flex: none;
+  color: var(--rdw-muted);
+  font-variant-numeric: tabular-nums;
+}
+form.${NEW_CLASS} {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--rdw-border);
+}
+.${NEW_CLASS} .${NEW_FIELD_CLASS} {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+}
+.${ERROR_CLASS} {
+  margin: 0;
+  color: var(--rdw-danger);
+}
+.${FOOT_CLASS$1} {
+  display: flex;
+  justify-content: flex-end;
+}
+`.trim();
+function foldName(name) {
+	return name.trim().toLowerCase();
+}
+function postsWord(count) {
+	return `${count.toLocaleString(LOCALE$1)} ${count === 1 ? "post" : "posts"}`;
+}
+/** "Add 12 posts to a collection". */
+function bulkCollectionTitle(count) {
+	return `Add ${postsWord(count)} to a collection`;
+}
+/** "Added 12 posts to “name”." or "Added 3 of 12 posts to “name”; the rest were already there." */
+function bulkCollectionSummary(result) {
+	if (result.added === result.total) return `Added ${postsWord(result.total)} to “${result.name}”.`;
+	if (result.added === 0) return `All ${postsWord(result.total)} were already in “${result.name}”.`;
+	return `Added ${result.added.toLocaleString(LOCALE$1)} of ${postsWord(result.total)} to “${result.name}”; the rest were already there.`;
+}
+function BulkCollectionDialog(props) {
+	const [filter, setFilter] = d("");
+	const [newName, setNewName] = d("");
+	const [error, setError] = d("");
+	const collections = props.open ? listPlaylists() : [];
+	const filterShown = collections.length > FILTER_MIN;
+	const needle = foldName(filter);
+	const visible = filterShown && needle.length > 0 ? collections.filter((item) => item.name.toLowerCase().includes(needle)) : collections;
+	const close = () => {
+		setFilter("");
+		setNewName("");
+		setError("");
+		props.onClose();
+	};
+	const addTo = (collectionId) => {
+		const result = addPostsToCollection(collectionId, props.posts);
+		if (result === null) return;
+		const done = {
+			name: result.collection.name,
+			added: result.added,
+			total: props.posts.length
+		};
+		close();
+		props.onDone(done);
+	};
+	const createAndAdd = () => {
+		const name = newName.trim();
+		if (name.length === 0) return;
+		if (load().collections.some((item) => foldName(item.name) === foldName(name))) {
+			setError(TEXT.nameTaken);
+			return;
+		}
+		addTo(createPlaylist(name).id);
+	};
+	return /* @__PURE__ */ a(Dialog, {
+		open: props.open,
+		onClose: close,
+		"aria-label": TEXT.aria,
+		className: BULK_COLLECTION_CLASS,
+		children: [
+			/* @__PURE__ */ a("style", { children: BULK_COLLECTION_CSS }),
+			/* @__PURE__ */ a("h3", {
+				className: TITLE_CLASS$2,
+				children: bulkCollectionTitle(props.posts.length)
+			}),
+			filterShown ? /* @__PURE__ */ a(TextField, {
+				value: filter,
+				onChange: setFilter,
+				placeholder: TEXT.filter,
+				"aria-label": TEXT.filter
+			}) : null,
+			visible.length === 0 ? /* @__PURE__ */ a("p", {
+				className: NOTE_CLASS,
+				children: collections.length === 0 ? TEXT.empty : TEXT.noMatch
+			}) : /* @__PURE__ */ a("div", {
+				className: LIST_CLASS,
+				children: visible.map((collection) => /* @__PURE__ */ a("button", {
+					type: "button",
+					className: ITEM_CLASS,
+					onClick: () => {
+						addTo(collection.id);
+					},
+					children: [/* @__PURE__ */ a("span", {
+						className: NAME_CLASS$1,
+						children: collection.name
+					}), /* @__PURE__ */ a("span", {
+						className: COUNT_CLASS$1,
+						children: String(collection.postIds?.length ?? 0)
+					})]
+				}, collection.id))
+			}),
+			/* @__PURE__ */ a("form", {
+				className: NEW_CLASS,
+				onSubmit: (event) => {
+					event.preventDefault();
+					event.stopPropagation();
+					createAndAdd();
+				},
+				children: [/* @__PURE__ */ a(TextField, {
+					className: NEW_FIELD_CLASS,
+					value: newName,
+					onChange: (value) => {
+						setNewName(value);
+						setError("");
+					},
+					placeholder: TEXT.newName,
+					"aria-label": TEXT.newName
+				}), /* @__PURE__ */ a(Button, {
+					type: "submit",
+					variant: "primary",
+					size: "s",
+					disabled: newName.trim().length === 0,
+					children: TEXT.create
+				})]
+			}),
+			error.length > 0 ? /* @__PURE__ */ a("p", {
+				className: ERROR_CLASS,
+				role: "alert",
+				children: error
+			}) : null,
+			/* @__PURE__ */ a("div", {
+				className: FOOT_CLASS$1,
+				children: /* @__PURE__ */ a(Button, {
+					variant: "secondary",
+					size: "s",
+					onClick: close,
+					children: UI_TEXT.cancel
+				})
+			})
+		]
+	});
 }
 var removeClickBound = false;
 var POST_LINK_ID_PREFIX = "p";
@@ -9596,9 +10873,9 @@ async function runFavoritesSync(options) {
 		};
 	}
 }
-var FEATURE_ID$12 = "favorites-bulk";
-var FEATURE_LABEL$11 = "Bulk remove favorites";
-var FEATURE_PAGES$11 = ["favorites"];
+var FEATURE_ID$11 = "favorites-bulk";
+var FEATURE_LABEL$10 = "Bulk remove favorites";
+var FEATURE_PAGES$10 = ["favorites"];
 var ROOT_ID$2 = "rdw-favorites-bulk";
 var ROOT_CLASS$2 = "rdw-favorites-bulk";
 /** The row under the title that stays at the top of the window. */
@@ -9613,7 +10890,7 @@ var DOWNLOAD_TITLE_CLASS = "rdw-favorites-download-title";
 var DOWNLOAD_NOTE_CLASS = "rdw-favorites-download-note";
 var DOWNLOAD_STALE_CLASS = "rdw-favorites-download-stale";
 var LINK_BUTTON_CLASS = "rdw-favorites-link";
-var MENU_WIDTH_PX$1 = 200;
+var MENU_WIDTH_PX = 200;
 /** Above and below the controls of the pinned row. */
 var PIN_PADDING_PX = 12;
 var BAR_CLASS = "rdw-favorites-bulk-bar";
@@ -9633,6 +10910,7 @@ var TEXT_SELECT = "Select";
 var TEXT_SELECT_PAGE = "Select page";
 /** The results grid has no pages: what is selected is what has been loaded so far. */
 var TEXT_SELECT_LOADED = "Select loaded";
+var TEXT_ADD_TO_COLLECTION = "Add to collection";
 var TEXT_RANDOM = "Random post";
 var TEXT_RANDOM_TITLE = "Open a random favorite";
 var TEXT_MORE_ACTIONS = "More actions";
@@ -9676,9 +10954,9 @@ var CHECK_SIZE = "1.25rem";
 var CHECK_INSET = "0.25rem";
 var CHECK_Z_INDEX = 2;
 var CHECK_FONT_SIZE = "0.75rem";
-var BODY_CLASS$5 = featureBodyClass(FEATURE_ID$12);
+var BODY_CLASS$5 = featureBodyClass(FEATURE_ID$11);
 var BODY_SELECTING_CLASS = `${BODY_CLASS$5}-selecting`;
-var FEATURE_CSS$11 = `
+var FEATURE_CSS$10 = `
 body.${BODY_CLASS$5} .${ROOT_CLASS$2},
 body.${BODY_CLASS$5} .${PIN_CLASS} {
   display: flex;
@@ -10056,7 +11334,7 @@ function IdleActions(props) {
 			open: menuOpen,
 			onClose: closeMenu,
 			anchorRef: menuButtonRef,
-			widthPx: MENU_WIDTH_PX$1,
+			widthPx: MENU_WIDTH_PX,
 			alignEnd: true,
 			role: "menu",
 			"aria-label": TEXT_MORE_ACTIONS,
@@ -10133,12 +11411,27 @@ function IdleActions(props) {
 		})
 	] });
 }
+/** The selected posts that are on the page, with their previews, in page order. */
+function selectedPostsOnPage(selected) {
+	const posts = [];
+	for (const entry of listFavoriteThumbEntries(favoritesGridRoot())) {
+		if (!selected.has(entry.postId)) continue;
+		const id = Number(entry.postId);
+		if (Number.isInteger(id) && id > 0) posts.push({
+			id,
+			thumbUrl: readPreviewThumbUrl(entry.thumb, entry.postId)
+		});
+	}
+	return posts;
+}
 function FavoritesBulkBar(props) {
 	const [phase, setPhase] = d({ kind: "idle" });
 	const [selected, setSelected] = d(() => /* @__PURE__ */ new Set());
 	const abortRef = T(null);
 	const selectedRef = T(selected);
 	selectedRef.current = selected;
+	const [collectionPosts, setCollectionPosts] = d(null);
+	const [note, setNote] = d("");
 	const selectionActive = phase.kind === "selecting" || phase.kind === "confirm" || phase.kind === "removing";
 	const { onSelectionModeChange, onBusyChange } = props;
 	A(() => {
@@ -10175,6 +11468,7 @@ function FavoritesBulkBar(props) {
 			event.preventDefault();
 			event.stopPropagation();
 			if (phase.kind === "confirm") return;
+			setNote("");
 			setSelected((prev) => {
 				const next = new Set(prev);
 				if (next.has(postId)) next.delete(postId);
@@ -10191,6 +11485,7 @@ function FavoritesBulkBar(props) {
 		abortRef.current?.abort();
 		abortRef.current = null;
 		clearThumbSelectionChrome();
+		setNote("");
 		setSelected(/* @__PURE__ */ new Set());
 		setPhase({ kind: "idle" });
 	};
@@ -10338,68 +11633,92 @@ function FavoritesBulkBar(props) {
 	const count = selected.size;
 	const confirmOpen = phase.kind === "confirm";
 	const browsing = document.body.classList.contains(FAVORITES_BROWSING_BODY_CLASS);
-	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("div", {
-		className: BAR_CLASS,
-		children: [
-			/* @__PURE__ */ a("span", {
+	return /* @__PURE__ */ a($$1, { children: [
+		/* @__PURE__ */ a("div", {
+			className: BAR_CLASS,
+			children: [
+				/* @__PURE__ */ a("span", {
+					className: STATUS_CLASS$1,
+					children: selectedCountLabel(count)
+				}),
+				/* @__PURE__ */ a("span", {
+					className: SUMMARY_CLASS,
+					role: note.length > 0 ? "status" : void 0,
+					children: note.length > 0 ? note : props.summary
+				}),
+				/* @__PURE__ */ a(Button, {
+					variant: "secondary",
+					size: "s",
+					onClick: selectPage,
+					children: browsing ? TEXT_SELECT_LOADED : TEXT_SELECT_PAGE
+				}),
+				/* @__PURE__ */ a(Button, {
+					variant: "secondary",
+					size: "s",
+					onClick: clearSelection,
+					children: TEXT_CLEAR
+				}),
+				/* @__PURE__ */ a(Button, {
+					variant: "secondary",
+					size: "s",
+					disabled: count === 0 || confirmOpen,
+					onClick: () => {
+						setCollectionPosts(selectedPostsOnPage(selectedRef.current));
+					},
+					children: TEXT_ADD_TO_COLLECTION
+				}),
+				/* @__PURE__ */ a(Button, {
+					variant: "danger",
+					size: "s",
+					disabled: count === 0 || confirmOpen,
+					onClick: beginConfirm,
+					children: [/* @__PURE__ */ a(IconTrash, { size: 14 }), removeSelectedLabel(count)]
+				}),
+				/* @__PURE__ */ a(Button, {
+					variant: "ghost",
+					size: "s",
+					onClick: resetToIdle,
+					children: TEXT_CANCEL
+				})
+			]
+		}),
+		/* @__PURE__ */ a(BulkCollectionDialog, {
+			open: collectionPosts !== null,
+			posts: collectionPosts ?? [],
+			onClose: () => {
+				setCollectionPosts(null);
+			},
+			onDone: (result) => {
+				refreshAddButtons();
+				setNote(bulkCollectionSummary(result));
+			}
+		}),
+		/* @__PURE__ */ a(Dialog, {
+			open: confirmOpen,
+			onClose: closeConfirm,
+			"aria-label": TEXT_CONFIRM_ARIA,
+			className: CONFIRM_CLASS,
+			children: [/* @__PURE__ */ a("p", {
 				className: STATUS_CLASS$1,
-				children: selectedCountLabel(count)
-			}),
-			/* @__PURE__ */ a("span", {
-				className: SUMMARY_CLASS,
-				children: props.summary
-			}),
-			/* @__PURE__ */ a(Button, {
-				variant: "secondary",
-				size: "s",
-				onClick: selectPage,
-				children: browsing ? TEXT_SELECT_LOADED : TEXT_SELECT_PAGE
-			}),
-			/* @__PURE__ */ a(Button, {
-				variant: "secondary",
-				size: "s",
-				onClick: clearSelection,
-				children: TEXT_CLEAR
-			}),
-			/* @__PURE__ */ a(Button, {
-				variant: "danger",
-				size: "s",
-				disabled: count === 0 || confirmOpen,
-				onClick: beginConfirm,
-				children: [/* @__PURE__ */ a(IconTrash, { size: 14 }), removeSelectedLabel(count)]
-			}),
-			/* @__PURE__ */ a(Button, {
-				variant: "ghost",
-				size: "s",
-				onClick: resetToIdle,
-				children: TEXT_CANCEL
-			})
-		]
-	}), /* @__PURE__ */ a(Dialog, {
-		open: confirmOpen,
-		onClose: closeConfirm,
-		"aria-label": TEXT_CONFIRM_ARIA,
-		className: CONFIRM_CLASS,
-		children: [/* @__PURE__ */ a("p", {
-			className: STATUS_CLASS$1,
-			children: confirmMessage(count)
-		}), /* @__PURE__ */ a("div", {
-			className: CONFIRM_ROW_CLASS,
-			children: [/* @__PURE__ */ a(Button, {
-				variant: "danger",
-				size: "s",
-				onClick: () => {
-					runRemoval();
-				},
-				children: TEXT_CONFIRM
-			}), /* @__PURE__ */ a(Button, {
-				variant: "secondary",
-				size: "s",
-				onClick: closeConfirm,
-				children: TEXT_CANCEL
+				children: confirmMessage(count)
+			}), /* @__PURE__ */ a("div", {
+				className: CONFIRM_ROW_CLASS,
+				children: [/* @__PURE__ */ a(Button, {
+					variant: "danger",
+					size: "s",
+					onClick: () => {
+						runRemoval();
+					},
+					children: TEXT_CONFIRM
+				}), /* @__PURE__ */ a(Button, {
+					variant: "secondary",
+					size: "s",
+					onClick: closeConfirm,
+					children: TEXT_CANCEL
+				})]
 			})]
-		})]
-	})] });
+		})
+	] });
 }
 /**
 * The page's heading, kept for screen readers only, and, through a portal, the
@@ -10450,386 +11769,13 @@ function mountFavoritesBulk(_ctx) {
 	}), root);
 }
 var favoritesBulkFeature = {
-	id: FEATURE_ID$12,
-	label: FEATURE_LABEL$11,
-	pages: [...FEATURE_PAGES$11],
+	id: FEATURE_ID$11,
+	label: FEATURE_LABEL$10,
+	pages: [...FEATURE_PAGES$10],
 	defaultEnabled: true,
-	css: FEATURE_CSS$11,
+	css: FEATURE_CSS$10,
 	mount: mountFavoritesBulk
 };
-var BASE_GRID_CSS = `
-.${THUMB_CLASS} {
-  position: relative;
-  anchor-scope: ${THUMB_ANCHOR_NAME};
-}
-
-.${THUMB_CLASS} img.preview,
-.${THUMB_CLASS} > a > img {
-  anchor-name: ${THUMB_ANCHOR_NAME};
-}
-`;
-/** Grid thumbnail CDN host (rule34.xxx). */
-var THUMB_IMAGE_HOST = "wimg.rule34.xxx";
-/**
-* Video CDN origin. Path after origin starts with `//images/` (verified double
-* slash on ws-cdn-video.rule34.xxx).
-*/
-var VIDEO_CDN_ORIGIN = "https://ws-cdn-video.rule34.xxx";
-/** Repeated slashes are accepted: the favorites page writes `/thumbnails//<dir>/`. */
-var THUMB_PATH_PATTERN = /^\/+thumbnails\/+([^/]+)\/+thumbnail_([^/]+)\.jpg$/i;
-var HTTPS_PROTOCOL = "https:";
-var THUMB_DIRECTORY = "thumbnails";
-var THUMB_FILE_PREFIX = "thumbnail_";
-var THUMB_FILE_EXT = "jpg";
-var MIN_POST_ID = 0;
-var VIDEO_CDN_HOST = new URL(VIDEO_CDN_ORIGIN).hostname;
-/** `/samples/<dir>/sample_<hash>.<ext>` with repeated slashes allowed. */
-var SAMPLE_MEDIA_PATTERN = /^\/+samples\/+([^/]+)\/+sample_([^/]+)\.[^/.]+$/i;
-/** `/images/<dir>/<hash>.<ext>` with repeated slashes allowed. */
-var IMAGE_MEDIA_PATTERN = /^\/+images\/+([^/]+)\/+([^/]+)\.[^/.]+$/i;
-function normalizeMediaPostId(postId) {
-	if (!Number.isInteger(postId) || postId < MIN_POST_ID) return null;
-	return postId;
-}
-function readMediaDirAndHash(pathname) {
-	const sample = SAMPLE_MEDIA_PATTERN.exec(pathname);
-	const image = sample === null ? IMAGE_MEDIA_PATTERN.exec(pathname) : null;
-	const match = sample ?? image;
-	if (match === null) return null;
-	const dir = match[1];
-	const hash = match[2];
-	if (dir === void 0 || hash === void 0 || dir.length === 0 || hash.length === 0) return null;
-	return {
-		dir,
-		hash
-	};
-}
-function ensureThumbAnchor(thumb) {
-	thumb.classList.add(THUMB_CLASS);
-}
-/**
-* Build the CDN mp4 URL from a grid webm thumb `img.preview` src.
-* Thumb: `https://wimg.rule34.xxx/thumbnails/<dir>/thumbnail_<hash>.jpg?<id>`,
-* or the same path on `rule34.xxx` for a post uploaded minutes ago
-* Video: `https://ws-cdn-video.rule34.xxx//images/<dir>/<hash>.mp4?<id>`
-* Unparseable input → null (no guessing).
-*/
-function buildVideoUrlFromThumbUrl(thumbUrl) {
-	let parsed;
-	try {
-		parsed = new URL(thumbUrl);
-	} catch {
-		return null;
-	}
-	if (!isSiteUrl(thumbUrl)) return null;
-	const match = THUMB_PATH_PATTERN.exec(parsed.pathname);
-	if (match === null) return null;
-	const dir = match[1];
-	const hash = match[2];
-	if (dir === void 0 || hash === void 0 || dir.length === 0 || hash.length === 0) return null;
-	return `${VIDEO_CDN_ORIGIN}//images/${dir}/${hash}.mp4${parsed.search}`;
-}
-/**
-* Thumb URL for a sample or full-media CDN URL.
-* Sample: `https://wimg.rule34.xxx//samples/<dir>/sample_<hash>.<ext>?<id>`
-* Image/video: `https://ws-cdn-video.rule34.xxx//images/<dir>/<hash>.<ext>?<id>`
-* Result: `https://wimg.rule34.xxx/thumbnails/<dir>/thumbnail_<hash>.jpg?<postId>`
-* Repeated slashes in the path are accepted. Unparseable input → null.
-* The query is `postId` (the caller’s post), not whatever query the media URL had.
-*/
-function deriveThumbUrlFromMedia(mediaUrl, postId) {
-	const normalizedId = normalizeMediaPostId(postId);
-	if (normalizedId === null) return null;
-	let parsed;
-	try {
-		parsed = new URL(mediaUrl);
-	} catch {
-		return null;
-	}
-	if (parsed.protocol !== HTTPS_PROTOCOL) return null;
-	if (parsed.hostname !== "wimg.rule34.xxx" && parsed.hostname !== VIDEO_CDN_HOST) return null;
-	const media = readMediaDirAndHash(parsed.pathname);
-	if (media === null) return null;
-	return `https://${THUMB_IMAGE_HOST}/${THUMB_DIRECTORY}/${media.dir}/${THUMB_FILE_PREFIX}${media.hash}.${THUMB_FILE_EXT}?${String(normalizedId)}`;
-}
-/**
-* Readers for a results page (`page=post&s=list`): the live document or one
-* parsed from a fetched page. They only read; nothing here makes a request.
-*/
-var QUERY_MARK = "?";
-var PID_PATTERN = /^\d+$/;
-var EXCLUDE_MARK = "-";
-var FILTER_MARK$1 = ":";
-var OR_MARKS = [
-	"(",
-	")",
-	"~"
-];
-var NON_DIGITS = /\D/g;
-var TOKEN_SPLIT$2 = /\s+/;
-var SCORE_TOKEN_PREFIX$3 = "score:";
-var RATING_TOKEN_PREFIX$2 = "rating:";
-/** Thumb URLs of the first `limit` posts in the grid, in page order. */
-function readFirstThumbUrls(root, limit) {
-	const imageList = root.querySelector(SITE_SELECTORS.imageList);
-	if (imageList === null) return [];
-	const urls = [];
-	const images = imageList.querySelectorAll(`${SITE_SELECTORS.thumb} ${SITE_SELECTORS.previewImage}`);
-	for (const image of images) {
-		const src = image.getAttribute("src");
-		if (src === null || src.trim().length === 0) continue;
-		urls.push(src.trim());
-		if (urls.length === limit) break;
-	}
-	return urls;
-}
-/** Largest post id among the thumbs of the grid, or 0 without thumbs. */
-function readNewestPostId(root) {
-	let newest = 0;
-	for (const thumb of root.querySelectorAll(SITE_SELECTORS.thumb)) {
-		const raw = extractPostIdFromThumb(thumb);
-		const id = raw === null ? NaN : Number(raw);
-		if (Number.isFinite(id) && id > newest) newest = id;
-	}
-	return newest;
-}
-/** Tags of a thumb, from its preview image title, without score and rating. */
-function readThumbTags(thumb) {
-	const image = thumb.querySelector(SITE_SELECTORS.previewImage);
-	const title = image?.getAttribute("title")?.trim() ?? "";
-	const text = title.length > 0 ? title : image?.getAttribute("alt")?.trim() ?? "";
-	const tags = [];
-	for (const token of text.split(TOKEN_SPLIT$2)) {
-		const lower = token.toLowerCase();
-		if (token.length === 0 || lower.startsWith(SCORE_TOKEN_PREFIX$3) || lower.startsWith(RATING_TOKEN_PREFIX$2)) continue;
-		tags.push(lower);
-	}
-	return tags;
-}
-function readPidFromLink(link) {
-	const href = link.getAttribute("href");
-	if (href === null) return null;
-	const query = href.slice(href.indexOf(QUERY_MARK) + 1);
-	const raw = new URLSearchParams(query).get("pid");
-	if (raw === null || !PID_PATTERN.test(raw)) return null;
-	return Number(raw);
-}
-/** The tag of a search that is exactly one plain tag, else null. */
-function readSingleTag(tagsParam) {
-	const tokens = withoutSortRandom(tagsParam).split(" ");
-	const tag = tokens[0];
-	if (tokens.length !== 1 || tag === void 0 || tag.length === 0) return null;
-	if (tag.startsWith(EXCLUDE_MARK) || tag.includes(FILTER_MARK$1) || OR_MARKS.includes(tag)) return null;
-	return tag.toLowerCase();
-}
-function rowLinksToTag(row, tag) {
-	for (const link of row.querySelectorAll("a[href]")) {
-		const href = link.getAttribute("href") ?? "";
-		const mark = href.indexOf(QUERY_MARK);
-		if (mark < 0) continue;
-		const linked = new URLSearchParams(href.slice(mark + 1)).get(SEARCH_PARAM_TAGS);
-		if (linked !== null && linked.trim().toLowerCase() === tag) return true;
-	}
-	return false;
-}
-/**
-* For a search of one tag the sidebar row of that tag shows the site's own
-* total, which is exact. Null when the row or its number is not on the page.
-*/
-function readSingleTagCount(root, tagsParam) {
-	const tag = readSingleTag(tagsParam);
-	if (tag === null) return null;
-	for (const row of root.querySelectorAll(SITE_SELECTORS.tagSidebarRow)) {
-		if (!rowLinksToTag(row, tag)) continue;
-		const digits = (row.querySelector(SITE_SELECTORS.tagCount)?.textContent ?? "").replace(NON_DIGITS, "");
-		if (digits.length === 0) return null;
-		return {
-			value: Number(digits),
-			exact: true
-		};
-	}
-	return null;
-}
-/**
-* Size of the search a first results page shows.
-* A search of one tag takes the exact total from the tag's sidebar row.
-* With a last-page link: at least its offset (`pid`), so the count is a lower
-* bound. With other page links only: the largest offset among them. With no
-* page links: the number of thumbs on the page, exact. No grid: null.
-*/
-function readResultCount(root, tagsParam) {
-	const tagCount = readSingleTagCount(root, tagsParam);
-	if (tagCount !== null) return tagCount;
-	const last = root.querySelector(SITE_SELECTORS.paginationLastPage);
-	if (last !== null) {
-		const pid = readPidFromLink(last);
-		if (pid !== null) return {
-			value: pid,
-			exact: false
-		};
-	}
-	let largest = null;
-	for (const link of root.querySelectorAll(SITE_SELECTORS.paginationPageLink)) {
-		const pid = readPidFromLink(link);
-		if (pid !== null && (largest === null || pid > largest)) largest = pid;
-	}
-	if (largest !== null) return {
-		value: largest,
-		exact: false
-	};
-	const imageList = root.querySelector(SITE_SELECTORS.imageList);
-	if (imageList === null) return null;
-	return {
-		value: imageList.querySelectorAll(SITE_SELECTORS.thumb).length,
-		exact: true
-	};
-}
-/**
-* Puts a post into the favorites search index at the moment it is made a
-* favorite, from what the page already shows. Without this a new favorite
-* would be missing from the search on the Favorites page until the next
-* "Sync favorites". No requests.
-*/
-var POST_IMAGE_SELECTOR = "img#image";
-var POST_VIDEO_SELECTOR = "video#gelcomVideoPlayer";
-var VIDEO_SOURCE_SELECTOR$1 = "source";
-var TAG_LINK_SELECTOR = "a[href*='tags=']";
-var TAG_JOIN = " ";
-/** The entry of a favorite made now: it sorts before everything indexed earlier. */
-function buildLiveEntry(postId, tags, thumb, now) {
-	const id = Number(postId);
-	if (!Number.isInteger(id) || id <= 0 || tags.length === 0) return null;
-	return {
-		id,
-		tags: tags.join(TAG_JOIN),
-		thumb: thumb !== null && isSiteUrl(thumb) ? thumb : "",
-		run: now,
-		pos: 0
-	};
-}
-function store(entry) {
-	if (entry !== null) putFavoriteIndexEntriesQuietly([entry]);
-}
-/** A favorite made by the star of a grid thumb: tags and preview are on the thumb. */
-function indexFavoriteFromThumb(postId, starButton) {
-	const thumb = starButton.closest(SITE_SELECTORS.thumb);
-	if (thumb === null) return;
-	const image = thumb.querySelector(SITE_SELECTORS.previewImage);
-	const src = image instanceof HTMLImageElement ? image.currentSrc || image.src : null;
-	store(buildLiveEntry(postId, readThumbTags(thumb), src, Date.now()));
-}
-/** The tags of a post page, from the links of its tag sidebar. */
-function readPostPageTags(root = document) {
-	const tags = [];
-	for (const row of root.querySelectorAll(SITE_SELECTORS.tagSidebarRow)) {
-		const links = row.querySelectorAll(TAG_LINK_SELECTOR);
-		const href = links[links.length - 1]?.getAttribute("href");
-		if (href === null || href === void 0) continue;
-		let tag = null;
-		try {
-			tag = new URL(href, window.location.href).searchParams.get(SEARCH_PARAM_TAGS);
-		} catch {
-			tag = null;
-		}
-		if (tag !== null && tag.trim().length > 0) tags.push(tag.trim().toLowerCase());
-	}
-	return tags;
-}
-function readPostMediaUrl() {
-	const image = document.querySelector(POST_IMAGE_SELECTOR);
-	if (image instanceof HTMLImageElement && image.src.length > 0) return image.src;
-	const video = document.querySelector(POST_VIDEO_SELECTOR);
-	if (!(video instanceof HTMLVideoElement)) return null;
-	const source = video.querySelector(VIDEO_SOURCE_SELECTOR$1);
-	const url = video.currentSrc || video.src || (source instanceof HTMLSourceElement ? source.src : "");
-	return url.length > 0 ? url : null;
-}
-/** A favorite made on the post page: tags from the sidebar, preview from the media address. */
-function indexFavoriteFromPostPage(postId) {
-	const media = readPostMediaUrl();
-	const thumb = media === null ? null : deriveThumbUrlFromMedia(media, Number(postId));
-	store(buildLiveEntry(postId, readPostPageTags(), thumb, Date.now()));
-}
-/** Kit IconButton root class — prefer for preview badges. */
-var KIT_ICON_BUTTON_CLASS = "rdw-icon-btn";
-function favAriaLabel(postId, marked) {
-	return `${marked ? UI_TEXT.cardFavRemoveLabel : UI_TEXT.cardFavAddLabel} ${postId}`;
-}
-function applyFavButtonState(button, state, postId, errorTitle) {
-	if (state === "pending") {
-		button.disabled = true;
-		button.classList.add(CSS_CLASS.cardFavPending);
-		return;
-	}
-	button.classList.remove(CSS_CLASS.cardFavMarked, CSS_CLASS.cardFavError, CSS_CLASS.cardFavPending);
-	button.disabled = false;
-	button.removeAttribute("title");
-	if (state === "marked") {
-		button.setAttribute("aria-pressed", "true");
-		button.setAttribute("aria-label", favAriaLabel(postId, true));
-		button.classList.add(CSS_CLASS.cardFavMarked);
-		return;
-	}
-	if (state === "marked_error") {
-		button.setAttribute("aria-pressed", "true");
-		button.setAttribute("aria-label", favAriaLabel(postId, true));
-		button.classList.add(CSS_CLASS.cardFavMarked, CSS_CLASS.cardFavError);
-		button.title = errorTitle ?? UI_TEXT.cardFavErrorRequest;
-		return;
-	}
-	if (state === "error") {
-		button.setAttribute("aria-pressed", "false");
-		button.setAttribute("aria-label", favAriaLabel(postId, false));
-		button.classList.add(CSS_CLASS.cardFavError);
-		button.title = errorTitle ?? UI_TEXT.cardFavErrorRequest;
-		return;
-	}
-	button.setAttribute("aria-pressed", "false");
-	button.setAttribute("aria-label", favAriaLabel(postId, false));
-}
-function createFavButton(postId, marked, className = CSS_CLASS.cardFav) {
-	const button = document.createElement("button");
-	button.type = "button";
-	button.className = className;
-	button.textContent = UI_TEXT.cardFavGlyph;
-	applyFavButtonState(button, marked ? "marked" : "idle", postId);
-	button.addEventListener("click", (event) => {
-		event.preventDefault();
-		event.stopPropagation();
-		handleFavToggleClick(button, postId);
-	});
-	return button;
-}
-async function handleFavToggleClick(button, postId) {
-	if (button.disabled) return;
-	const currentlyMarked = button.getAttribute("aria-pressed") === "true";
-	applyFavButtonState(button, "pending", postId);
-	if (currentlyMarked) {
-		const result = await removeFavorite(postId);
-		if (result.status === "removed") {
-			removeFav(postId);
-			applyFavButtonState(button, "idle", postId);
-			return;
-		}
-		applyFavButtonState(button, "marked_error", postId, UI_TEXT.cardFavErrorRequest);
-		log.warn("Remove favorite failed", postId, result);
-		return;
-	}
-	const result = await addFavorite(postId);
-	if (result.status === "added" || result.status === "already") {
-		addFav(postId);
-		indexFavoriteFromThumb(postId, button);
-		applyFavButtonState(button, "marked", postId);
-		return;
-	}
-	if (result.status === "not_logged_in") {
-		applyFavButtonState(button, "error", postId, UI_TEXT.cardFavErrorNotLoggedIn);
-		log.warn("Favorite requires login", postId);
-		return;
-	}
-	applyFavButtonState(button, "error", postId, UI_TEXT.cardFavErrorRequest);
-	log.warn("Favorite failed", postId, result);
-}
 /**
 * Document-level CSS for grid fav buttons, artist Follow, updates bar.
 * Owned with cards / preview chrome (not panel Shadow DOM).
@@ -10979,7 +11925,7 @@ body.${CSS_CLASS.gridFavsHidden} .${CSS_CLASS.cardFav} {
   align-items: center;
 }
 `;
-var unsubscribeThumbsAdded$4;
+var unsubscribeThumbsAdded$3;
 /**
 * Document overlays for preview badges + feed bar (mock layout 1).
 * Appended after CARD_CSS so hover-only visibility wins over marked-always-visible.
@@ -11085,8 +12031,8 @@ ${ICON_BUTTON_CSS}
 }
 `;
 function ensureThumbsAddedSubscription() {
-	if (unsubscribeThumbsAdded$4 !== void 0) return;
-	unsubscribeThumbsAdded$4 = onThumbsAdded((root) => {
+	if (unsubscribeThumbsAdded$3 !== void 0) return;
+	unsubscribeThumbsAdded$3 = onThumbsAdded((root) => {
 		mountCards(root);
 	});
 }
@@ -11097,7 +12043,7 @@ function ensureDocumentStyles() {
 	style.textContent = `${BASE_GRID_CSS}\n${CARD_CSS}\n${DOCUMENT_OVERLAY_CSS}`;
 	document.head.append(style);
 }
-function findThumbLink$2(thumb, postId) {
+function findThumbLink$1(thumb, postId) {
 	const byId = thumb.querySelector(`#p${postId}`);
 	if (byId instanceof HTMLAnchorElement) return byId;
 	const byHref = thumb.querySelector(SITE_SELECTORS.thumbLink);
@@ -11105,7 +12051,7 @@ function findThumbLink$2(thumb, postId) {
 }
 function attachFavButton(thumb, postId, marked) {
 	if (thumb.querySelector(SITE_SELECTORS.cardFavButton) !== null) return;
-	const link = findThumbLink$2(thumb, postId);
+	const link = findThumbLink$1(thumb, postId);
 	if (link === null) return;
 	ensureThumbAnchor(thumb);
 	const button = createFavButton(postId, marked);
@@ -11707,9 +12653,9 @@ function mountFeedMerge(options) {
 	pump();
 	return true;
 }
-var FEATURE_ID$11 = "feed";
-var FEATURE_LABEL$10 = "Feed in site menu";
-var FEATURE_PAGES$10 = [
+var FEATURE_ID$10 = "feed";
+var FEATURE_LABEL$9 = "Feed in site menu";
+var FEATURE_PAGES$9 = [
 	"list",
 	"post",
 	"favorites",
@@ -11744,8 +12690,8 @@ var NEW_PLAQUE_LEFT_PX = 6;
 var NEW_PLAQUE_TOP_PX = 6;
 var EVENT_PAGESHOW$1 = "pageshow";
 var EVENT_CLICK$2 = "click";
-var BODY_CLASS$4 = featureBodyClass(FEATURE_ID$11);
-var FEATURE_CSS$10 = `
+var BODY_CLASS$4 = featureBodyClass(FEATURE_ID$10);
+var FEATURE_CSS$9 = `
 body.${BODY_CLASS$4} span.thumb.new.${THUMB_CLASS} {
   position: relative;
 }
@@ -11771,7 +12717,7 @@ body.${BODY_CLASS$4} span.thumb.new.${THUMB_CLASS}::after {
   }
 }
 `;
-var unsubscribeThumbsAdded$3;
+var unsubscribeThumbsAdded$2;
 var pageshowBound$1 = false;
 var boundFeedLink = null;
 function findPostsMenuItem() {
@@ -11882,8 +12828,8 @@ function markNewThumbs(root, seenPostId) {
 	}
 }
 function ensureNewThumbsSubscription() {
-	if (unsubscribeThumbsAdded$3 !== void 0) return;
-	unsubscribeThumbsAdded$3 = onThumbsAdded((root) => {
+	if (unsubscribeThumbsAdded$2 !== void 0) return;
+	unsubscribeThumbsAdded$2 = onThumbsAdded((root) => {
 		markNewThumbs(root, getSeenPostId());
 	});
 }
@@ -11909,21 +12855,21 @@ function mountFeed(ctx) {
 	});
 }
 var feedFeature = {
-	id: FEATURE_ID$11,
-	label: FEATURE_LABEL$10,
-	pages: [...FEATURE_PAGES$10],
+	id: FEATURE_ID$10,
+	label: FEATURE_LABEL$9,
+	pages: [...FEATURE_PAGES$9],
 	defaultEnabled: true,
-	css: `${FEATURE_CSS$10}\n${FEED_MERGE_CSS}`,
+	css: `${FEATURE_CSS$9}\n${FEED_MERGE_CSS}`,
 	mount: mountFeed
 };
-var FEATURE_ID$10 = "grid-density";
+var FEATURE_ID$9 = "grid-density";
 var COMPACT_PX = 150;
 var LARGE_PX = 250;
 var CHOICE_DEFAULT = "default";
 var CHOICE_COMPACT = "compact";
 var CHOICE_LARGE = "large";
 function sizeCss(choiceValue, px) {
-	const bodyClass = featureChoiceBodyClass(FEATURE_ID$10, choiceValue);
+	const bodyClass = featureChoiceBodyClass(FEATURE_ID$9, choiceValue);
 	return [
 		`body.${bodyClass} span.thumb,`,
 		`body.${bodyClass} span.thumb > a {`,
@@ -11939,14 +12885,14 @@ function sizeCss(choiceValue, px) {
 /** Same gap on both axes for Default, Compact, and Large. Does not set cell size. */
 function gapCss() {
 	return [
-		`body.${featureBodyClass(FEATURE_ID$10)} div.image-list {`,
+		`body.${featureBodyClass(FEATURE_ID$9)} div.image-list {`,
 		`  column-gap: ${String(4)}px !important;`,
 		`  row-gap: ${String(4)}px !important;`,
 		`}`
 	].join("\n");
 }
 var gridDensityFeature = exports("bH",{
-	id: FEATURE_ID$10,
+	id: FEATURE_ID$9,
 	label: "Grid size",
 	pages: ["list", "favorites"],
 	defaultEnabled: true,
@@ -11981,7 +12927,7 @@ var SEEN_DIM_LABEL = "Dim seen posts";
 var SEEN_DIM_OPACITY = "0.65";
 var SEEN_DIM_HOVER_OPACITY = "1";
 var EVENT_PAGESHOW = "pageshow";
-var unsubscribeThumbsAdded$2;
+var unsubscribeThumbsAdded$1;
 var pageshowBound = false;
 function stampSeenOnThumbs(root = document) {
 	const marks = load().marks;
@@ -11998,8 +12944,8 @@ function onPageShow(event) {
 	reloadFromStorage();
 	stampSeenOnThumbs(document);
 }
-function ensureListSubscriptions$1() {
-	if (unsubscribeThumbsAdded$2 === void 0) unsubscribeThumbsAdded$2 = onThumbsAdded((root) => {
+function ensureListSubscriptions() {
+	if (unsubscribeThumbsAdded$1 === void 0) unsubscribeThumbsAdded$1 = onThumbsAdded((root) => {
 		stampSeenOnThumbs(root);
 	});
 	if (!pageshowBound) {
@@ -12019,7 +12965,7 @@ function mountSeenDim(ctx) {
 	}
 	if (ctx.pageKind !== "list") return;
 	stampSeenOnThumbs(document);
-	ensureListSubscriptions$1();
+	ensureListSubscriptions();
 }
 var seenDimFeature = {
 	id: SEEN_DIM_FEATURE_ID,
@@ -12038,10 +12984,10 @@ body.${featureBodyClass(SEEN_DIM_FEATURE_ID)} .${SEEN_CLASS}:hover img.preview {
 `,
 	mount: mountSeenDim
 };
-var FEATURE_ID$9 = "infinite-scroll";
-var FEATURE_LABEL$9 = "Infinite scroll";
-var FEATURE_PAGES$9 = ["list"];
-var BODY_FEATURE_CLASS$2 = featureBodyClass(FEATURE_ID$9);
+var FEATURE_ID$8 = "infinite-scroll";
+var FEATURE_LABEL$8 = "Infinite scroll";
+var FEATURE_PAGES$8 = ["list"];
+var BODY_FEATURE_CLASS$2 = featureBodyClass(FEATURE_ID$8);
 /** Prefetch when remaining distance to list end ≤ this many viewport heights. */
 var PREFETCH_REMAINING_VIEWPORT_HEIGHTS = 2;
 var MIN_REQUEST_INTERVAL_MS = 1e3;
@@ -12061,7 +13007,7 @@ var PAGINATION_NEXT_SELECTOR = "div.pagination a[alt=\"next\"]";
 var WARN_MISSING = "infinite-scroll: missing image-list or next link; not mounted";
 var SCORE_TOKEN_PREFIX$1 = "score:";
 var RATING_TOKEN_PREFIX = "rating:";
-var FEATURE_CSS$9 = `
+var FEATURE_CSS$8 = `
 body.${BODY_FEATURE_CLASS$2} .${CLASS_SENTINEL} {
   display: block;
   width: 100%;
@@ -12359,18 +13305,18 @@ function mountInfiniteScroll(_ctx) {
 	observer.observe(sentinel);
 }
 var infiniteScrollFeature = {
-	id: FEATURE_ID$9,
-	label: FEATURE_LABEL$9,
-	pages: [...FEATURE_PAGES$9],
+	id: FEATURE_ID$8,
+	label: FEATURE_LABEL$8,
+	pages: [...FEATURE_PAGES$8],
 	defaultEnabled: true,
-	css: FEATURE_CSS$9,
+	css: FEATURE_CSS$8,
 	mount: mountInfiniteScroll
 };
-var FEATURE_ID$8 = "menu-cleanup";
-var FEATURE_LABEL$8 = "Clean header menu";
+var FEATURE_ID$7 = "menu-cleanup";
+var FEATURE_LABEL$7 = "Clean header menu";
 var CONTENT_ID$1 = "content";
 var HIDDEN_CLASS = "rdw-menu-hidden";
-var BODY_FEATURE_CLASS$1 = featureBodyClass(FEATURE_ID$8);
+var BODY_FEATURE_CLASS$1 = featureBodyClass(FEATURE_ID$7);
 var MISSING_MENU_WARN = "Header menu not found";
 var HIDE_LINK_TEXT_SET = /* @__PURE__ */ new Set([
 	"iCame Top 100",
@@ -12383,13 +13329,13 @@ var HIDE_LINK_TEXT_SET = /* @__PURE__ */ new Set([
 	"TOS",
 	"My Favorites"
 ]);
-var FEATURE_PAGES$8 = [
+var FEATURE_PAGES$7 = [
 	"list",
 	"post",
 	"favorites",
 	"other"
 ];
-var FEATURE_CSS$8 = `body.${BODY_FEATURE_CLASS$1} li.${HIDDEN_CLASS} { display:none !important; }`;
+var FEATURE_CSS$7 = `body.${BODY_FEATURE_CLASS$1} li.${HIDDEN_CLASS} { display:none !important; }`;
 function isHeaderMenuLink(anchor, content) {
 	const listItem = anchor.closest("li");
 	if (listItem === null) return false;
@@ -12422,17 +13368,17 @@ function mountMenuCleanup(_ctx) {
 	}
 }
 var menuCleanupFeature = {
-	id: FEATURE_ID$8,
-	label: FEATURE_LABEL$8,
-	pages: [...FEATURE_PAGES$8],
+	id: FEATURE_ID$7,
+	label: FEATURE_LABEL$7,
+	pages: [...FEATURE_PAGES$7],
 	defaultEnabled: true,
 	cssOnly: true,
-	css: FEATURE_CSS$8,
+	css: FEATURE_CSS$7,
 	mount: mountMenuCleanup
 };
-var FEATURE_ID$7 = "playlist-bar";
-var FEATURE_LABEL$7 = "Collection header";
-var FEATURE_PAGES$7 = ["list"];
+var FEATURE_ID$6 = "playlist-bar";
+var FEATURE_LABEL$6 = "Collection header";
+var FEATURE_PAGES$6 = ["list"];
 var ROOT_ID$1 = "rdw-playlist-bar";
 var ROOT_CLASS$1 = "rdw-playlist-bar";
 var TITLE_CLASS = "rdw-playlist-bar-title";
@@ -12469,8 +13415,8 @@ var BAR_BUTTON_SIZE = "s";
 var NAME_FONT_PX = 18;
 var ACTIONS_GAP_PX = 8;
 var WARN_MISSING_HOST = "playlist-bar: image-list not found; playlist bar not mounted";
-var BODY_CLASS$3 = featureBodyClass(FEATURE_ID$7);
-var FEATURE_CSS$7 = `
+var BODY_CLASS$3 = featureBodyClass(FEATURE_ID$6);
+var FEATURE_CSS$6 = `
 body.${BODY_CLASS$3} .${ROOT_CLASS$1} {
   display: flex;
   flex-direction: column;
@@ -12883,583 +13829,12 @@ function mountPlaylistBar(ctx) {
 	mountDynamicBar(tagsParam, ctx.search);
 }
 var playlistBarFeature = {
-	id: FEATURE_ID$7,
-	label: FEATURE_LABEL$7,
-	pages: [...FEATURE_PAGES$7],
-	defaultEnabled: true,
-	css: FEATURE_CSS$7,
-	mount: mountPlaylistBar
-};
-var COLLECTION_PICKER_CLASS = "rdw-collection-picker";
-var COLLECTION_PICKER_ITEM_CLASS = "rdw-collection-picker-item";
-var COLLECTION_PICKER_COUNT_CLASS = "rdw-collection-picker-count";
-var COLLECTION_PICKER_NEW_CLASS = "rdw-collection-picker-new";
-var CLASS_LIST = "rdw-collection-picker-list";
-var CLASS_CHECK = "rdw-collection-picker-check";
-var CLASS_NAME$1 = "rdw-collection-picker-name";
-var CLASS_EMPTY = "rdw-collection-picker-empty";
-var CLASS_NEW_FIELD = "rdw-collection-picker-new-field";
-var CLASS_ERROR$1 = "rdw-collection-picker-error";
-var COLLECTION_PICKER_TEXT = {
-	create: "Create",
-	newName: "New collection name",
-	filter: "Filter collections…",
-	empty: "No collections yet",
-	noMatch: "No matching collections",
-	togglePrefix: "Toggle collection",
-	nameTaken: "A collection with this name already exists.",
-	list: "Custom collections"
-};
-var MEMBER_ROLE = "menuitemcheckbox";
-var CHECK_ICON_PX = 12;
-var CHECK_BOX_PX = 15;
-var ROW_GAP_PX = 8;
-var STACK_GAP_PX = 6;
-var COLLECTION_PICKER_CSS = `
-.${COLLECTION_PICKER_CLASS} {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: ${String(STACK_GAP_PX)}px;
-  min-width: 0;
-  color: var(--rdw-text);
-  font: 12px/1.35 var(--rdw-font);
-}
-.${CLASS_LIST} {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 2px;
-  max-height: ${String(232)}px;
-  overflow-x: hidden;
-  overflow-y: auto;
-}
-button.${COLLECTION_PICKER_ITEM_CLASS} {
-  display: flex;
-  align-items: center;
-  gap: ${String(ROW_GAP_PX)}px;
-  box-sizing: border-box;
-  width: 100%;
-  min-height: ${String(28)}px;
-  margin: 0;
-  padding: 0 6px;
-  border: 0;
-  border-radius: var(--rdw-radius-s);
-  background: transparent;
-  color: var(--rdw-text);
-  font: inherit;
-  font-weight: 400;
-  text-align: left;
-  cursor: pointer;
-}
-button.${COLLECTION_PICKER_ITEM_CLASS}:hover,
-button.${COLLECTION_PICKER_ITEM_CLASS}:focus-visible {
-  background: var(--rdw-surface-2);
-}
-button.${COLLECTION_PICKER_ITEM_CLASS}:focus-visible {
-  outline: 2px solid var(--rdw-accent);
-  outline-offset: -2px;
-}
-.${CLASS_CHECK} {
-  flex: 0 0 ${String(CHECK_BOX_PX)}px;
-  display: inline-grid;
-  place-items: center;
-  box-sizing: border-box;
-  width: ${String(CHECK_BOX_PX)}px;
-  height: ${String(CHECK_BOX_PX)}px;
-  border: 1px solid var(--rdw-border);
-  border-radius: 4px;
-  background: transparent;
-  color: var(--rdw-surface);
-}
-.${COLLECTION_PICKER_ITEM_CLASS}[aria-checked="true"] .${CLASS_CHECK} {
-  background: var(--rdw-accent);
-  border-color: var(--rdw-accent);
-}
-.${CLASS_NAME$1} {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.${COLLECTION_PICKER_COUNT_CLASS} {
-  flex: 0 0 auto;
-  color: var(--rdw-muted);
-  font-variant-numeric: tabular-nums;
-}
-.${CLASS_EMPTY} {
-  margin: 0;
-  padding: 4px 6px;
-  color: var(--rdw-muted);
-}
-form.${COLLECTION_PICKER_NEW_CLASS} {
-  display: flex;
-  align-items: center;
-  gap: ${String(STACK_GAP_PX)}px;
-  margin: 0;
-  padding-top: ${String(STACK_GAP_PX)}px;
-  border-top: 1px solid var(--rdw-border);
-}
-.${CLASS_ERROR$1} {
-  margin: 0;
-  color: var(--rdw-danger);
-}
-.${COLLECTION_PICKER_NEW_CLASS} .${CLASS_NEW_FIELD} {
-  flex: 1 1 auto;
-  min-width: 0;
-  margin: 0;
-}
-`.trim();
-function foldName(name) {
-	return name.trim().toLowerCase();
-}
-function matchesFilter(collection, filter) {
-	const needle = foldName(filter);
-	return needle.length === 0 || collection.name.toLowerCase().includes(needle);
-}
-function addPost(collectionId, postId, readThumbUrl) {
-	const thumbUrl = readThumbUrl();
-	if (thumbUrl === null) {
-		addPostToCollection(collectionId, postId);
-		return;
-	}
-	addPostToCollection(collectionId, postId, thumbUrl);
-}
-/**
-* Custom collections of one post: a checkbox row per collection with its post
-* count, and a "name + Create" row. Used by the post panel and the grid "+" menu.
-* A new name that any collection already has (custom or dynamic, ignoring
-* case) is refused, as on the Collections page.
-*/
-function CollectionPicker(props) {
-	const [filter, setFilter] = d("");
-	const [newName, setNewName] = d("");
-	const [error, setError] = d("");
-	const [, setRevision] = d(0);
-	const collections = listPlaylists();
-	const memberIds = new Set(playlistsContaining(props.postId).map((item) => item.id));
-	const filterShown = collections.length > 8;
-	const visible = filterShown ? collections.filter((item) => matchesFilter(item, filter)) : collections;
-	const changed = () => {
-		setRevision((value) => value + 1);
-		props.onChange?.();
-	};
-	const toggle = (collectionId) => {
-		if (memberIds.has(collectionId)) removePostFromPlaylist(collectionId, props.postId);
-		else addPost(collectionId, props.postId, props.readThumbUrl);
-		changed();
-	};
-	const createFromName = () => {
-		const name = newName.trim();
-		if (name.length === 0) return;
-		if (load().collections.some((item) => foldName(item.name) === foldName(name))) {
-			setError(COLLECTION_PICKER_TEXT.nameTaken);
-			return;
-		}
-		addPost(createPlaylist(name).id, props.postId, props.readThumbUrl);
-		setNewName("");
-		changed();
-	};
-	const emptyText = collections.length === 0 ? COLLECTION_PICKER_TEXT.empty : COLLECTION_PICKER_TEXT.noMatch;
-	return /* @__PURE__ */ a("div", {
-		className: COLLECTION_PICKER_CLASS,
-		children: [
-			/* @__PURE__ */ a("style", { children: COLLECTION_PICKER_CSS }),
-			filterShown ? /* @__PURE__ */ a(TextField, {
-				value: filter,
-				onChange: setFilter,
-				placeholder: COLLECTION_PICKER_TEXT.filter,
-				"aria-label": COLLECTION_PICKER_TEXT.filter
-			}) : null,
-			visible.length === 0 ? /* @__PURE__ */ a("p", {
-				className: CLASS_EMPTY,
-				children: emptyText
-			}) : /* @__PURE__ */ a("div", {
-				className: CLASS_LIST,
-				role: "group",
-				"aria-label": COLLECTION_PICKER_TEXT.list,
-				children: visible.map((collection) => /* @__PURE__ */ a("button", {
-					type: "button",
-					className: COLLECTION_PICKER_ITEM_CLASS,
-					role: MEMBER_ROLE,
-					"aria-checked": memberIds.has(collection.id),
-					"aria-label": `${COLLECTION_PICKER_TEXT.togglePrefix} ${collection.name}`,
-					onClick: (event) => {
-						event.preventDefault();
-						event.stopPropagation();
-						toggle(collection.id);
-					},
-					children: [
-						/* @__PURE__ */ a("span", {
-							className: CLASS_CHECK,
-							"aria-hidden": "true",
-							children: memberIds.has(collection.id) ? /* @__PURE__ */ a(IconCheck, { size: CHECK_ICON_PX }) : null
-						}),
-						/* @__PURE__ */ a("span", {
-							className: CLASS_NAME$1,
-							children: collection.name
-						}),
-						/* @__PURE__ */ a("span", {
-							className: COLLECTION_PICKER_COUNT_CLASS,
-							children: String(collection.postIds?.length ?? 0)
-						})
-					]
-				}, collection.id))
-			}),
-			/* @__PURE__ */ a("form", {
-				className: COLLECTION_PICKER_NEW_CLASS,
-				onSubmit: (event) => {
-					event.preventDefault();
-					event.stopPropagation();
-					createFromName();
-				},
-				children: [/* @__PURE__ */ a(TextField, {
-					className: CLASS_NEW_FIELD,
-					value: newName,
-					onChange: (value) => {
-						setNewName(value);
-						setError("");
-					},
-					placeholder: COLLECTION_PICKER_TEXT.newName,
-					"aria-label": COLLECTION_PICKER_TEXT.newName
-				}), /* @__PURE__ */ a(Button, {
-					type: "submit",
-					variant: "primary",
-					size: "s",
-					disabled: newName.trim().length === 0,
-					children: COLLECTION_PICKER_TEXT.create
-				})]
-			}),
-			error.length > 0 ? /* @__PURE__ */ a("p", {
-				className: CLASS_ERROR$1,
-				role: "alert",
-				children: error
-			}) : null
-		]
-	});
-}
-var FEATURE_ID$6 = "playlist-menu";
-var FEATURE_LABEL$6 = "Add to collection button";
-var FEATURE_PAGES$6 = [
-	"list",
-	"post",
-	"favorites"
-];
-var CLASS_ADD = "rdw-playlist-add";
-var CLASS_ADD_IN = "rdw-playlist-add--in";
-var CLASS_MENU = "rdw-playlist-menu";
-var CLASS_MENU_POPUP = "rdw-playlist-menu--popup";
-var ATTR_POST_ID = "data-rdw-post-id";
-var TEXT_ADD_GLYPH = "+";
-var LABEL_ADD = "Add to collection";
-var MENU_Z_INDEX$1 = 2147483645;
-var MENU_WIDTH_PX = 260;
-var MENU_PADDING_PX = 8;
-var MENU_GAP_PX = 4;
-var BUTTON_SIZE_PX = 28;
-var BUTTON_OFFSET_PX = 6;
-var BUTTON_BELOW_FAV_TOP_PX = 38;
-/** A favorites thumb: `div.image-list > span > span.thumb` (a search thumb has no wrapper). */
-var FAVORITE_THUMB_SELECTOR = "div.image-list > span > span.thumb";
-/** Set by the favorites bulk feature while posts are being selected. */
-var FAVORITES_SELECTING_BODY_CLASS = "rdw-f-favorites-bulk-selecting";
-var FOCUS_OUTLINE = "2px solid var(--rdw-accent)";
-var FOCUS_OUTLINE_OFFSET = "2px";
-var EVENT_KEYDOWN = "keydown";
-var EVENT_POINTERDOWN = "pointerdown";
-var KEY_ESCAPE = "Escape";
-var BODY_SELECTOR$3 = `body.${featureBodyClass(FEATURE_ID$6)}`;
-var FEATURE_CSS$6 = `
-${BODY_SELECTOR$3} .${CLASS_ADD} {
-  position: absolute;
-  top: ${String(BUTTON_BELOW_FAV_TOP_PX)}px;
-  right: ${String(BUTTON_OFFSET_PX)}px;
-  position-anchor: --rdw-img;
-  top: calc(anchor(top) + ${String(BUTTON_BELOW_FAV_TOP_PX)}px);
-  right: calc(anchor(right) + ${String(BUTTON_OFFSET_PX)}px);
-  z-index: 5;
-  box-sizing: border-box;
-  display: inline-grid;
-  place-items: center;
-  min-width: ${String(BUTTON_SIZE_PX)}px;
-  min-height: ${String(BUTTON_SIZE_PX)}px;
-  width: ${String(BUTTON_SIZE_PX)}px;
-  height: ${String(BUTTON_SIZE_PX)}px;
-  padding: 0;
-  border: 1px solid rgba(0, 0, 0, 0.13);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.93);
-  color: #1c2228;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-  opacity: 0;
-}
-${BODY_SELECTOR$3} ${FAVORITE_THUMB_SELECTOR} > .${CLASS_ADD} {
-  position-anchor: ${FAVORITE_IMAGE_ANCHOR_NAME};
-}
-${BODY_SELECTOR$3}.${FAVORITES_SELECTING_BODY_CLASS} ${FAVORITE_THUMB_SELECTOR} > .${CLASS_ADD} {
-  display: none;
-}
-${BODY_SELECTOR$3} .${THUMB_CLASS}:hover .${CLASS_ADD},
-${BODY_SELECTOR$3} .${CLASS_ADD}:focus-visible {
-  opacity: 0.65;
-}
-${BODY_SELECTOR$3} .${THUMB_CLASS} .${CLASS_ADD}:hover,
-${BODY_SELECTOR$3} .${CLASS_ADD}:focus-visible {
-  opacity: 1;
-}
-${BODY_SELECTOR$3} .${CLASS_ADD}:focus-visible {
-  outline: ${FOCUS_OUTLINE};
-  outline-offset: ${FOCUS_OUTLINE_OFFSET};
-}
-${BODY_SELECTOR$3} .${CLASS_ADD}.${CLASS_ADD_IN} {
-  background: #ffd75e;
-  border-color: #c79a00;
-  color: #5c4500;
-}
-${BODY_SELECTOR$3} .${CLASS_MENU} {
-  box-sizing: border-box;
-  width: ${String(MENU_WIDTH_PX)}px;
-  max-width: calc(100vw - ${String(8)}px);
-  padding: ${String(MENU_PADDING_PX)}px;
-  border: 1px solid var(--rdw-border);
-  border-radius: var(--rdw-radius-l);
-  background: var(--rdw-surface);
-  color: var(--rdw-text);
-  font: 12px/1.35 var(--rdw-font);
-}
-${BODY_SELECTOR$3} .${CLASS_MENU}.${CLASS_MENU_POPUP} {
-  position: fixed;
-  z-index: ${String(MENU_Z_INDEX$1)};
-  box-shadow: var(--rdw-shadow-2);
-}
-`;
-var NO_THUMB_URL = () => null;
-var unsubscribeThumbsAdded$1;
-var openPopup = null;
-var escapeBound = false;
-var pointerBound = false;
-function parsePostId(value) {
-	if (value === null || value.length === 0) return null;
-	const parsed = Number(value);
-	if (!Number.isFinite(parsed)) return null;
-	const truncated = Math.trunc(parsed);
-	return truncated < 0 ? null : truncated;
-}
-function postInAnyPlaylist(postId) {
-	return playlistsContaining(postId).length > 0;
-}
-function applyAddButtonState(button, postId) {
-	const inPlaylist = postInAnyPlaylist(postId);
-	button.classList.toggle(CLASS_ADD_IN, inPlaylist);
-	button.setAttribute("aria-pressed", inPlaylist ? "true" : "false");
-	button.setAttribute("aria-label", `${LABEL_ADD} ${String(postId)}`);
-}
-function postAnchorSelector(postId) {
-	return `#p${postId}`;
-}
-function readImageAddress(img) {
-	const current = img.currentSrc.trim();
-	if (current.length > 0) return current;
-	const attribute = img.getAttribute("src");
-	if (attribute === null) return null;
-	const trimmed = attribute.trim();
-	if (trimmed.length === 0) return null;
-	return trimmed;
-}
-/**
-* Thumb URL from this post's `img.preview`.
-* A preview outside `a#p{id}` wins. The copy nested in the link is used only
-* when that is the only preview (rule34 puts `img.preview` inside the anchor).
-*/
-function readPreviewThumbUrl(thumb, postId) {
-	const anchor = thumb.querySelector(postAnchorSelector(postId));
-	const images = thumb.querySelectorAll(SITE_SELECTORS.previewImage);
-	let nestedImage = null;
-	for (const node of images) {
-		if (!(node instanceof HTMLImageElement)) continue;
-		if (anchor instanceof Element && anchor.contains(node)) {
-			if (nestedImage === null) nestedImage = node;
-			continue;
-		}
-		const url = readImageAddress(node);
-		if (url !== null) return url;
-	}
-	if (nestedImage !== null) return readImageAddress(nestedImage);
-	const plain = thumb.querySelector(THUMB_IMAGE_SELECTOR);
-	return plain instanceof HTMLImageElement ? readImageAddress(plain) : null;
-}
-function readThumbUrlFromTrigger(button) {
-	const postId = button.getAttribute(ATTR_POST_ID);
-	if (postId === null || postId.length === 0) return null;
-	const thumb = button.closest(SITE_SELECTORS.thumb);
-	if (!(thumb instanceof HTMLElement)) return null;
-	return readPreviewThumbUrl(thumb, postId);
-}
-function findThumbLink$1(thumb, postId) {
-	const byId = thumb.querySelector(postAnchorSelector(postId));
-	if (byId instanceof HTMLAnchorElement) return byId;
-	const byHref = thumb.querySelector(SITE_SELECTORS.thumbLink);
-	return byHref instanceof HTMLAnchorElement ? byHref : null;
-}
-function closeOpenMenu() {
-	if (openPopup === null) return;
-	Q$1(null, openPopup.menu);
-	openPopup.menu.remove();
-	openPopup.trigger.setAttribute("aria-expanded", "false");
-	openPopup = null;
-	unbindGlobalCloseListeners();
-}
-function onDocumentKeydown(event) {
-	if (event.key !== KEY_ESCAPE) return;
-	if (openPopup === null) return;
-	event.preventDefault();
-	closeOpenMenu();
-}
-function onDocumentPointerDown(event) {
-	if (openPopup === null) return;
-	const target = event.target;
-	if (!(target instanceof Node)) return;
-	if (openPopup.menu.contains(target) || openPopup.trigger.contains(target)) return;
-	closeOpenMenu();
-}
-function bindGlobalCloseListeners() {
-	if (!escapeBound) {
-		escapeBound = true;
-		document.addEventListener(EVENT_KEYDOWN, onDocumentKeydown);
-	}
-	if (!pointerBound) {
-		pointerBound = true;
-		document.addEventListener(EVENT_POINTERDOWN, onDocumentPointerDown, true);
-	}
-}
-function unbindGlobalCloseListeners() {
-	if (escapeBound) {
-		document.removeEventListener(EVENT_KEYDOWN, onDocumentKeydown);
-		escapeBound = false;
-	}
-	if (pointerBound) {
-		document.removeEventListener(EVENT_POINTERDOWN, onDocumentPointerDown, true);
-		pointerBound = false;
-	}
-}
-function positionMenuNear(menu, anchor) {
-	const rect = anchor.getBoundingClientRect();
-	const viewportWidth = window.innerWidth;
-	const viewportHeight = window.innerHeight;
-	menu.style.visibility = "hidden";
-	menu.style.left = "0";
-	menu.style.top = "0";
-	document.body.append(menu);
-	const menuWidth = menu.offsetWidth;
-	const menuHeight = menu.offsetHeight;
-	let left = rect.right - menuWidth;
-	if (left < MENU_GAP_PX) left = Math.min(rect.left, viewportWidth - menuWidth - MENU_GAP_PX);
-	left = Math.max(MENU_GAP_PX, Math.min(left, viewportWidth - menuWidth - MENU_GAP_PX));
-	let top = rect.bottom + MENU_GAP_PX;
-	if (top + menuHeight > viewportHeight - MENU_GAP_PX) top = rect.top - menuHeight - MENU_GAP_PX;
-	if (top < MENU_GAP_PX) top = MENU_GAP_PX;
-	menu.style.left = `${String(left)}px`;
-	menu.style.top = `${String(top)}px`;
-	menu.style.visibility = "";
-}
-function syncAddButtonsForPost(postId) {
-	const buttons = document.querySelectorAll(`button.${CLASS_ADD}[${ATTR_POST_ID}="${String(postId)}"]`);
-	for (const node of buttons) {
-		if (!(node instanceof HTMLButtonElement)) continue;
-		applyAddButtonState(node, postId);
-	}
-}
-/**
-* Builds the collection menu for a post: a themed panel holding the shared
-* collection picker. Callers own placement; the list page keeps one open at a time.
-*/
-function createPlaylistMenu(postId, options) {
-	const root = document.createElement("div");
-	root.className = CLASS_MENU;
-	root.setAttribute("role", "menu");
-	root.setAttribute(ATTR_POST_ID, String(postId));
-	const onChange = options?.onChange;
-	Q$1(k$1(CollectionPicker, {
-		postId,
-		readThumbUrl: options?.readThumbUrl ?? NO_THUMB_URL,
-		...onChange === void 0 ? {} : { onChange }
-	}), root);
-	return root;
-}
-function openMenuForButton(button, postId) {
-	if (openPopup !== null && openPopup.trigger === button) {
-		closeOpenMenu();
-		return;
-	}
-	closeOpenMenu();
-	const menu = createPlaylistMenu(postId, {
-		onChange: () => {
-			syncAddButtonsForPost(postId);
-		},
-		readThumbUrl: () => readThumbUrlFromTrigger(button)
-	});
-	menu.classList.add(CLASS_MENU_POPUP);
-	positionMenuNear(menu, button);
-	button.setAttribute("aria-expanded", "true");
-	openPopup = {
-		menu,
-		trigger: button,
-		postId
-	};
-	bindGlobalCloseListeners();
-}
-function attachAddButton(thumb, postId) {
-	if (thumb.querySelector(`button.${CLASS_ADD}`) !== null) return;
-	const numericId = parsePostId(postId);
-	if (numericId === null) return;
-	const link = findThumbLink$1(thumb, postId);
-	if (link === null) return;
-	ensureThumbAnchor(thumb);
-	const button = document.createElement("button");
-	button.type = "button";
-	button.className = `${KIT_ICON_BUTTON_CLASS} ${CLASS_ADD}`;
-	button.textContent = TEXT_ADD_GLYPH;
-	button.setAttribute(ATTR_POST_ID, String(numericId));
-	button.setAttribute("aria-haspopup", "menu");
-	button.setAttribute("aria-expanded", "false");
-	applyAddButtonState(button, numericId);
-	button.addEventListener("click", (event) => {
-		event.preventDefault();
-		event.stopPropagation();
-		openMenuForButton(button, numericId);
-	});
-	link.after(button);
-}
-function stampPlaylistButtons(root = document) {
-	const thumbs = root.querySelectorAll(SITE_SELECTORS.thumb);
-	for (const thumb of thumbs) {
-		if (!(thumb instanceof HTMLElement)) continue;
-		const postId = extractPostIdFromThumb(thumb) ?? extractPostIdFromThumbLink(thumb);
-		if (postId === null) continue;
-		attachAddButton(thumb, postId);
-	}
-}
-function ensureListSubscriptions() {
-	if (unsubscribeThumbsAdded$1 !== void 0) return;
-	unsubscribeThumbsAdded$1 = onThumbsAdded((root) => {
-		stampPlaylistButtons(root);
-	});
-}
-function mountPlaylistMenu(ctx) {
-	if (ctx.pageKind !== "list" && ctx.pageKind !== "favorites") return;
-	stampPlaylistButtons(document);
-	ensureListSubscriptions();
-}
-var playlistMenuFeature = {
 	id: FEATURE_ID$6,
 	label: FEATURE_LABEL$6,
 	pages: [...FEATURE_PAGES$6],
 	defaultEnabled: true,
 	css: FEATURE_CSS$6,
-	mount: mountPlaylistMenu
+	mount: mountPlaylistBar
 };
 var CLASS_STRIP = "rdw-post-panel-collection-queue";
 var CLASS_NAME = "rdw-post-panel-collection-queue-name";
@@ -14941,14 +15316,20 @@ function rememberSearchToolsHeight(height) {
 	} catch {}
 }
 /**
-* Download buttons of the search panel, on results pages only: the whole
-* search, or posts picked on the page. Rendered only when the download
-* manager is available (see {@link downloadsAvailable}).
+* The buttons at the foot of the search panel that act on posts, on results
+* pages only. "Select posts" picks posts on the page; what was picked can be
+* added to a custom collection and, when the download manager is available
+* (see {@link downloadsAvailable}), downloaded. "Download results" takes the
+* whole search and needs the manager too.
 */
 var LABEL_DOWNLOAD_RESULTS = "Download results";
 var TITLE_DOWNLOAD_RESULTS = "Download every post of this search";
 var LABEL_SELECT = "Select posts";
-var TITLE_SELECT = "Pick posts on this page to download";
+var TITLE_SELECT = "Pick posts on this page to add to a collection";
+var TITLE_SELECT_WITH_DOWNLOADS = "Pick posts on this page to add to a collection or to download";
+var ADD_SELECTED_PREFIX = "Add to collection (";
+var ADD_SELECTED_SUFFIX = ")";
+var SELECT_NOTE_CLASS = "rdw-select-note";
 var DOWNLOAD_SELECTED_PREFIX = "Download selected (";
 var DOWNLOAD_SELECTED_SUFFIX = ")";
 var DIALOG_TITLE = "Download results";
@@ -14976,11 +15357,14 @@ function DownloadControls() {
 	const [selecting, setSelecting] = d(false);
 	const [count, setCount] = d(0);
 	const [confirmOpen, setConfirmOpen] = d(false);
+	const [collectionPosts, setCollectionPosts] = d(null);
+	const [note, setNote] = d("");
 	A(() => () => {
 		stopGridSelect();
 	}, []);
 	const search = window.location.search;
-	if (!isResultsPage(search) || !downloadsAvailable()) return null;
+	if (!isResultsPage(search)) return null;
+	const canDownload = downloadsAvailable();
 	const query = pageQuery(search);
 	const label = jobLabel(query);
 	const leaveSelect = () => {
@@ -14988,27 +15372,51 @@ function DownloadControls() {
 		setSelecting(false);
 		setCount(0);
 	};
-	if (selecting) return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a(Button, {
-		variant: "primary",
-		size: "s",
-		disabled: count === 0,
-		onClick: () => {
-			const ids = readSelectedPostIds();
-			leaveSelect();
-			if (ids.length > 0 && !isDownloadBusy()) startDownload(label.length > 0 ? `${label}${SELECTION_LABEL_SUFFIX}` : UNNAMED_SELECTION, {
-				kind: "ids",
-				ids
-			});
-		},
-		children: `${DOWNLOAD_SELECTED_PREFIX}${String(count)}${DOWNLOAD_SELECTED_SUFFIX}`
-	}), /* @__PURE__ */ a(Button, {
-		variant: "secondary",
-		size: "s",
-		onClick: leaveSelect,
-		children: UI_TEXT.cancel
-	})] });
+	if (selecting) return /* @__PURE__ */ a($$1, { children: [
+		/* @__PURE__ */ a(Button, {
+			variant: "primary",
+			size: "s",
+			disabled: count === 0,
+			onClick: () => {
+				setCollectionPosts(readSelectedPosts(readPreviewThumbUrl));
+			},
+			children: `${ADD_SELECTED_PREFIX}${String(count)}${ADD_SELECTED_SUFFIX}`
+		}),
+		canDownload ? /* @__PURE__ */ a(Button, {
+			variant: "secondary",
+			size: "s",
+			disabled: count === 0,
+			onClick: () => {
+				const ids = readSelectedPostIds();
+				leaveSelect();
+				if (ids.length > 0 && !isDownloadBusy()) startDownload(label.length > 0 ? `${label}${SELECTION_LABEL_SUFFIX}` : UNNAMED_SELECTION, {
+					kind: "ids",
+					ids
+				});
+			},
+			children: `${DOWNLOAD_SELECTED_PREFIX}${String(count)}${DOWNLOAD_SELECTED_SUFFIX}`
+		}) : null,
+		/* @__PURE__ */ a(Button, {
+			variant: "secondary",
+			size: "s",
+			onClick: leaveSelect,
+			children: UI_TEXT.cancel
+		}),
+		/* @__PURE__ */ a(BulkCollectionDialog, {
+			open: collectionPosts !== null,
+			posts: collectionPosts ?? [],
+			onClose: () => {
+				setCollectionPosts(null);
+			},
+			onDone: (result) => {
+				leaveSelect();
+				refreshAddButtons();
+				setNote(bulkCollectionSummary(result));
+			}
+		})
+	] });
 	return /* @__PURE__ */ a($$1, { children: [
-		isUnfilteredQuery(query) ? null : /* @__PURE__ */ a(Button, {
+		!canDownload || isUnfilteredQuery(query) ? null : /* @__PURE__ */ a(Button, {
 			variant: "secondary",
 			size: "s",
 			title: TITLE_DOWNLOAD_RESULTS,
@@ -15020,13 +15428,19 @@ function DownloadControls() {
 		/* @__PURE__ */ a(Button, {
 			variant: "secondary",
 			size: "s",
-			title: TITLE_SELECT,
+			title: canDownload ? TITLE_SELECT_WITH_DOWNLOADS : TITLE_SELECT,
 			onClick: () => {
+				setNote("");
 				startGridSelect(setCount);
 				setSelecting(true);
 			},
 			children: LABEL_SELECT
 		}),
+		note.length > 0 ? /* @__PURE__ */ a("span", {
+			className: SELECT_NOTE_CLASS,
+			role: "status",
+			children: note
+		}) : null,
 		/* @__PURE__ */ a(Dialog, {
 			variant: "confirm",
 			open: confirmOpen,
@@ -15391,6 +15805,11 @@ var FEATURE_CSS$3 = [
 	`body.${BODY_CLASS$1} .${FOOT_CLASS} > button {`,
 	"  flex: 1 1 auto;",
 	"  white-space: nowrap;",
+	"}",
+	`body.${BODY_CLASS$1} .${FOOT_CLASS} > .${SELECT_NOTE_CLASS} {`,
+	"  flex: 1 1 100%;",
+	"  font: 12px/1.4 var(--rdw-font);",
+	"  color: var(--rdw-muted);",
 	"}"
 ].join("\n");
 function findTagsInput() {
@@ -19693,12 +20112,12 @@ startEarlyLayout();
 whenDomReady(() => {
 	applyLayoutBeforePaint();
 	scheduleAfterFirstPaint(() => {
-		module.import('./app-CYx_o8xx-dmNCYlk6.js').then(({ startApp }) => {
+		module.import('./app-disausPu-BgwH9kcG.js').then(({ startApp }) => {
 			startApp();
 		});
 	});
 });})}}));
-System.register("./app-CYx_o8xx-dmNCYlk6.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var yieldToMain,detectPageKind,mountGifMarks,mountCards,syncFavoritesPage,mountFavoriteVideoMarks,mountCommentsPage,runFeaturesYielding,getAppearance,applyAppearanceTheme,ensureDocumentStyles,SITE_SELECTORS,loadFavSet,log,SITE_ORIGIN,SEARCH_PARAM_TAGS,normalizeArtistTag,CSS_CLASS,getSyncState,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,HEADER_SELECTOR$1,RDW_OWN_PAGE_CLASS,MENU_ITEM_ID,getFeatureEnabled,applyHeaderLayout,parseRdwHash,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,runFavoritesSync,UI_TEXT,Q$1,RDW_PAGE_ROOT_ID,markFavoritesCurrent,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,resolveFavoritesUserId,RDW_HASH_STATS,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,rdwPageHash,createFavoritesSyncTabId,APPEARANCE_BACKGROUND_KEY,readArtistsMirror,listArtistTags,writeArtistsMirror,reloadFromStorage,save,CURRENT_PAGE_CLASS,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,a,applyTokenProperties,resolveAppearancePalette,isCollectionDetailPage,menuRouteForPage,getSiteSkinCss,KIT_CONTROL_HEIGHT_VAR,KIT_CONTROL_FONT_VAR,$$1,setFeatureState,PANEL_UI_CLASS,TOKEN_VAR,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,SITE_LIGHT_C_BG,SITE_LIGHT_C_BG_ALT,SITE_DARK_C_BG,SITE_DARK_C_BORDER,APPEARANCE_BACKGROUND_TOO_LARGE,getFeatureState;return{setters:[function(module){yieldToMain=module.y;detectPageKind=module.d;mountGifMarks=module.m;mountCards=module.a;syncFavoritesPage=module.s;mountFavoriteVideoMarks=module.b;mountCommentsPage=module.c;runFeaturesYielding=module.r;getAppearance=module.g;applyAppearanceTheme=module.e;ensureDocumentStyles=module.f;SITE_SELECTORS=module.S;loadFavSet=module.l;log=module.h;SITE_ORIGIN=module.i;SEARCH_PARAM_TAGS=module.j;normalizeArtistTag=module.n;CSS_CLASS=module.C;getSyncState=module.k;ensureStyleElement=module.o;RDW_OWN_PAGE_STYLE_ID=module.R;buildOwnPageCss=module.p;HEADER_SELECTOR$1=module.H;RDW_OWN_PAGE_CLASS=module.q;MENU_ITEM_ID=module.M;getFeatureEnabled=module.t;applyHeaderLayout=module.u;parseRdwHash=module.v;readFavoritesSyncMode=module.w;FAVORITES_SYNC_MODE_FULL=module.F;runFavoritesSync=module.x;UI_TEXT=module.U;Q$1=module.Q;RDW_PAGE_ROOT_ID=module.z;markFavoritesCurrent=module.A;NAVBAR_SELECTOR=module.N;FEED_MENU_ITEM_ID=module.B;RDW_HASH_COLLECTIONS=module.D;MENU_LABEL=module.E;RDW_HASH_FOLLOWING=module.G;resolveFavoritesUserId=module.I;RDW_HASH_STATS=module.J;MY_FAVORITES_CONTAINER_ID=module.K;RDW_HASH_SETTINGS=module.L;rdwPageHash=module.O;createFavoritesSyncTabId=module.P;APPEARANCE_BACKGROUND_KEY=module.T;readArtistsMirror=module.V;listArtistTags=module.W;writeArtistsMirror=module.X;reloadFromStorage=module.Y;save=module.Z;CURRENT_PAGE_CLASS=module._;setSyncState=module.$;SEARCH_PARAM_PAGE=module.a0;FAVORITES_PAGE=module.a1;FAVORITES_SECTION_VIEW=module.a2;SEARCH_PATH=module.a3;a=module.a4;applyTokenProperties=module.a5;resolveAppearancePalette=module.a6;isCollectionDetailPage=module.a7;menuRouteForPage=module.a8;getSiteSkinCss=module.a9;KIT_CONTROL_HEIGHT_VAR=module.aa;KIT_CONTROL_FONT_VAR=module.ab;$$1=module.ac;setFeatureState=module.ad;PANEL_UI_CLASS=module.ae;TOKEN_VAR=module.af;RDW_THEME_ATTR=module.ag;APPEARANCE_THEME_SITE=module.ah;APPEARANCE_THEME_SITE_DARK=module.ai;SITE_LIGHT_C_BG=module.aj;SITE_LIGHT_C_BG_ALT=module.ak;SITE_DARK_C_BG=module.al;SITE_DARK_C_BORDER=module.am;APPEARANCE_BACKGROUND_TOO_LARGE=module.an;getFeatureState=module.ao;}],execute:(function(){exports({a:installSiteMenu,f:isViewMode,i:navigateToRdwRoute,m:writeViewMode,n:loadBackground,p:readViewMode,r:saveBackground,startApp:startApp,t:clearBackground});/** Matches host.tsx page title class (owned there; styled here for site polish). */
+System.register("./app-disausPu-BgwH9kcG.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var yieldToMain,detectPageKind,mountGifMarks,mountCards,syncFavoritesPage,mountFavoriteVideoMarks,mountCommentsPage,runFeaturesYielding,getAppearance,applyAppearanceTheme,ensureDocumentStyles,SITE_SELECTORS,loadFavSet,log,SITE_ORIGIN,SEARCH_PARAM_TAGS,normalizeArtistTag,CSS_CLASS,getSyncState,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,HEADER_SELECTOR$1,RDW_OWN_PAGE_CLASS,MENU_ITEM_ID,getFeatureEnabled,applyHeaderLayout,parseRdwHash,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,runFavoritesSync,UI_TEXT,Q$1,RDW_PAGE_ROOT_ID,markFavoritesCurrent,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,resolveFavoritesUserId,RDW_HASH_STATS,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,rdwPageHash,createFavoritesSyncTabId,APPEARANCE_BACKGROUND_KEY,readArtistsMirror,listArtistTags,writeArtistsMirror,reloadFromStorage,save,CURRENT_PAGE_CLASS,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,a,applyTokenProperties,resolveAppearancePalette,isCollectionDetailPage,menuRouteForPage,getSiteSkinCss,KIT_CONTROL_HEIGHT_VAR,KIT_CONTROL_FONT_VAR,$$1,setFeatureState,PANEL_UI_CLASS,TOKEN_VAR,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,SITE_LIGHT_C_BG,SITE_LIGHT_C_BG_ALT,SITE_DARK_C_BG,SITE_DARK_C_BORDER,APPEARANCE_BACKGROUND_TOO_LARGE,getFeatureState;return{setters:[function(module){yieldToMain=module.y;detectPageKind=module.d;mountGifMarks=module.m;mountCards=module.a;syncFavoritesPage=module.s;mountFavoriteVideoMarks=module.b;mountCommentsPage=module.c;runFeaturesYielding=module.r;getAppearance=module.g;applyAppearanceTheme=module.e;ensureDocumentStyles=module.f;SITE_SELECTORS=module.S;loadFavSet=module.l;log=module.h;SITE_ORIGIN=module.i;SEARCH_PARAM_TAGS=module.j;normalizeArtistTag=module.n;CSS_CLASS=module.C;getSyncState=module.k;ensureStyleElement=module.o;RDW_OWN_PAGE_STYLE_ID=module.R;buildOwnPageCss=module.p;HEADER_SELECTOR$1=module.H;RDW_OWN_PAGE_CLASS=module.q;MENU_ITEM_ID=module.M;getFeatureEnabled=module.t;applyHeaderLayout=module.u;parseRdwHash=module.v;readFavoritesSyncMode=module.w;FAVORITES_SYNC_MODE_FULL=module.F;runFavoritesSync=module.x;UI_TEXT=module.U;Q$1=module.Q;RDW_PAGE_ROOT_ID=module.z;markFavoritesCurrent=module.A;NAVBAR_SELECTOR=module.N;FEED_MENU_ITEM_ID=module.B;RDW_HASH_COLLECTIONS=module.D;MENU_LABEL=module.E;RDW_HASH_FOLLOWING=module.G;resolveFavoritesUserId=module.I;RDW_HASH_STATS=module.J;MY_FAVORITES_CONTAINER_ID=module.K;RDW_HASH_SETTINGS=module.L;rdwPageHash=module.O;createFavoritesSyncTabId=module.P;APPEARANCE_BACKGROUND_KEY=module.T;readArtistsMirror=module.V;listArtistTags=module.W;writeArtistsMirror=module.X;reloadFromStorage=module.Y;save=module.Z;CURRENT_PAGE_CLASS=module._;setSyncState=module.$;SEARCH_PARAM_PAGE=module.a0;FAVORITES_PAGE=module.a1;FAVORITES_SECTION_VIEW=module.a2;SEARCH_PATH=module.a3;a=module.a4;applyTokenProperties=module.a5;resolveAppearancePalette=module.a6;isCollectionDetailPage=module.a7;menuRouteForPage=module.a8;getSiteSkinCss=module.a9;KIT_CONTROL_HEIGHT_VAR=module.aa;KIT_CONTROL_FONT_VAR=module.ab;$$1=module.ac;setFeatureState=module.ad;PANEL_UI_CLASS=module.ae;TOKEN_VAR=module.af;RDW_THEME_ATTR=module.ag;APPEARANCE_THEME_SITE=module.ah;APPEARANCE_THEME_SITE_DARK=module.ai;SITE_LIGHT_C_BG=module.aj;SITE_LIGHT_C_BG_ALT=module.ak;SITE_DARK_C_BG=module.al;SITE_DARK_C_BORDER=module.am;APPEARANCE_BACKGROUND_TOO_LARGE=module.an;getFeatureState=module.ao;}],execute:(function(){exports({a:installSiteMenu,f:isViewMode,i:navigateToRdwRoute,m:writeViewMode,n:loadBackground,p:readViewMode,r:saveBackground,startApp:startApp,t:clearBackground});/** Matches host.tsx page title class (owned there; styled here for site polish). */
 var PAGE_TITLE_CLASS$1 = "rdw-page-title";
 /** Matches kit SectionLabel class. */
 var SECTION_LABEL_CLASS = "rdw-section-label";
@@ -20019,35 +20438,35 @@ var followingFactory = null;
 var statsFactory = null;
 function getSettingsFactory() {
 	if (settingsFactory === null) settingsFactory = async () => {
-		const mod = await module.import('./settings-page-CFjEkEGW-dMJQrbob.js');
+		const mod = await module.import('./settings-page-D-Oo3UDl-CtpMeyt1.js');
 		return /* @__PURE__ */ a(mod.SettingsPage, {});
 	};
 	return settingsFactory;
 }
 function getCollectionsFactory() {
 	if (collectionsFactory === null) collectionsFactory = async () => {
-		const mod = await module.import('./collections-page-CYL49Uy_--UsPdh91.js');
+		const mod = await module.import('./collections-page-Cub0MLXR-C369ZlBz.js');
 		return /* @__PURE__ */ a(mod.CollectionsPage, {});
 	};
 	return collectionsFactory;
 }
 function getFollowingFactory() {
 	if (followingFactory === null) followingFactory = async () => {
-		const mod = await module.import('./following-page-BdWf_dbr-OtaDdFpC.js');
+		const mod = await module.import('./following-page-CUEDXJoa-Bhp0wC_l.js');
 		return /* @__PURE__ */ a(mod.FollowingPage, {});
 	};
 	return followingFactory;
 }
 function getStatsFactory() {
 	if (statsFactory === null) statsFactory = async () => {
-		const mod = await module.import('./stats-section-DyR9yNmi-4CM4Mh8n.js');
+		const mod = await module.import('./stats-section-BZDnfdeY-4CM4Mh8n.js');
 		return /* @__PURE__ */ a(mod.StatsPage, {});
 	};
 	return statsFactory;
 }
 function collectionDetailFactory(collectionId) {
 	return async () => {
-		const mod = await module.import('./collection-detail-page-Cc6bjLif-DtSAOwQs.js');
+		const mod = await module.import('./collection-detail-page-EIdcSdoE-B4iofZoO.js');
 		return /* @__PURE__ */ a(mod.CollectionDetailPage, { collectionId }, collectionId);
 	};
 }
@@ -20854,7 +21273,7 @@ async function startApp() {
 	await yieldToMain();
 	maybeResumeFavoritesSync();
 }})}}));
-System.register("./settings-page-CFjEkEGW-dMJQrbob.js", ['./___monkey.entry.js','./app-CYx_o8xx-dmNCYlk6.js'],(function(exports){'use strict';var d,a,PANEL_UI_CLASS,Switch,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,STATS_MENU_SETTING_LABEL,STATS_MENU_SWITCH_ID,setFeatureEnabled,STICKY_HEADER_SETTING_LABEL,STICKY_HEADER_SWITCH_ID,applyStickyHeader,NumberField,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,setGridFavButtonsVisible,IconChevronRight,IconChevronDown,Card,P$1,T,A,getAppearance,applyAppearanceTheme,getSiteSkinCss,APPEARANCE_THEME_CUSTOM,KIT_FOCUS_CSS,SectionLabel,Select,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,$$1,Segmented,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,TextField,Button,clampBackgroundDim,FEATURES,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,clearFeatureState,applyCssOnlyFeatureEnabled,isFeatureEnabled,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,applyCssOnlyFeatureChoice,getFeatureChoice,createAutocompleteQuerier,b,readSiteBlacklist,AutocompleteField,Chip,ProgressBar,createDefaultCustomTheme,AppearanceThemeSchema,prepareBackgroundImageFile,setFeatureState,writeSiteBlacklist,runFavoritesSync,log,FAVORITES_SYNC_PAGE_PAUSE_MS,clearApiCredentials,parseApiCredentials,setApiCredentials,load,createDefaultStorage,clearStorageCache,clearFavsCache,getSyncState,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,isSiteUrl,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,setAppearance,loadFavSet,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,gridDensityFeature,FAVORITES_SYNC_MODE_INCREMENTAL,FAVORITES_SYNC_MODE_FULL,STATS_MENU_SETTING_ID,STICKY_HEADER_SETTING_ID,hasApiCredentials,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureEnabled,getFeatureChoiceValue,getFeatureState,getScreenPixelSize,installSiteMenu,loadBackground,clearBackground,saveBackground;return{setters:[function(module){d=module.ap;a=module.a4;PANEL_UI_CLASS=module.ae;Switch=module.aq;UI_TEXT=module.U;TWEAKS_SWITCH_ID=module.ar;setTweaksEnabled=module.as;STATS_MENU_SETTING_LABEL=module.at;STATS_MENU_SWITCH_ID=module.au;setFeatureEnabled=module.av;STICKY_HEADER_SETTING_LABEL=module.aw;STICKY_HEADER_SWITCH_ID=module.ax;applyStickyHeader=module.ay;NumberField=module.az;UPDATES_GROUP_SIZE_ID=module.aA;setUpdatesGroupSize=module.aB;getUpdatesGroupSize=module.aC;PLAYLIST_CHUNK_SIZE_ID=module.aD;setPlaylistChunkSize=module.aE;getPlaylistChunkSize=module.aF;GRID_FAV_CHECKBOX_ID=module.aG;setGridFavButtonsEnabled=module.aH;setGridFavButtonsVisible=module.aI;IconChevronRight=module.aJ;IconChevronDown=module.aK;Card=module.aL;P$1=module.aM;T=module.aN;A=module.aO;getAppearance=module.g;applyAppearanceTheme=module.e;getSiteSkinCss=module.a9;APPEARANCE_THEME_CUSTOM=module.aP;KIT_FOCUS_CSS=module.aQ;SectionLabel=module.aR;Select=module.aS;APPEARANCE_THEME_SITE=module.ah;APPEARANCE_THEME_SITE_DARK=module.ai;APPEARANCE_THEME_LIGHT=module.aT;APPEARANCE_THEME_DARK=module.aU;$$1=module.ac;Segmented=module.aV;APPEARANCE_CUSTOM_BASE_LIGHT=module.aW;APPEARANCE_CUSTOM_BASE_DARK=module.aX;TextField=module.aY;Button=module.aZ;clampBackgroundDim=module.a_;FEATURES=module.a$;featurePanelLabel=module.b0;FEATURE_CHECKBOX_ID_PREFIX=module.b1;clearFeatureState=module.b2;applyCssOnlyFeatureEnabled=module.b3;isFeatureEnabled=module.b4;FEATURE_CHOICE_ID_PREFIX=module.b5;setFeatureChoiceValue=module.b6;applyCssOnlyFeatureChoice=module.b7;getFeatureChoice=module.b8;createAutocompleteQuerier=module.b9;b=module.ba;readSiteBlacklist=module.bb;AutocompleteField=module.bc;Chip=module.bd;ProgressBar=module.be;createDefaultCustomTheme=module.bf;AppearanceThemeSchema=module.bg;prepareBackgroundImageFile=module.bh;setFeatureState=module.ad;writeSiteBlacklist=module.bi;runFavoritesSync=module.x;log=module.h;FAVORITES_SYNC_PAGE_PAUSE_MS=module.bj;clearApiCredentials=module.bk;parseApiCredentials=module.bl;setApiCredentials=module.bm;load=module.bn;createDefaultStorage=module.bo;clearStorageCache=module.bp;clearFavsCache=module.bq;getSyncState=module.k;object=module.br;StorageSchema=module.bs;optional=module.bt;string=module.bu;FavsSchema=module.bv;literal=module.bw;IMPORT_SCHEMA_ERROR_PREFIX=module.bx;isSiteUrl=module.by;stripLegacyPanelWindowSize=module.bz;save=module.Z;migrateMarksFavToFavs=module.bA;FAVS_STORAGE_KEY=module.bB;createDefaultFavs=module.bC;parseFavsStrict=module.bD;setAppearance=module.bE;loadFavSet=module.l;STORAGE_BACKUP_KEY=module.bF;extractFavIdsFromMarks=module.bG;gridDensityFeature=module.bH;FAVORITES_SYNC_MODE_INCREMENTAL=module.bI;FAVORITES_SYNC_MODE_FULL=module.F;STATS_MENU_SETTING_ID=module.bJ;STICKY_HEADER_SETTING_ID=module.bK;hasApiCredentials=module.bL;getTweaksEnabled=module.bM;getGridFavButtonsEnabled=module.bN;getFeatureEnabled=module.t;getFeatureChoiceValue=module.bO;getFeatureState=module.ao;getScreenPixelSize=module.bP;},function(module){installSiteMenu=module.a;loadBackground=module.n;clearBackground=module.t;saveBackground=module.r;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
+System.register("./settings-page-D-Oo3UDl-CtpMeyt1.js", ['./___monkey.entry.js','./app-disausPu-BgwH9kcG.js'],(function(exports){'use strict';var d,a,PANEL_UI_CLASS,Switch,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,STATS_MENU_SETTING_LABEL,STATS_MENU_SWITCH_ID,setFeatureEnabled,STICKY_HEADER_SETTING_LABEL,STICKY_HEADER_SWITCH_ID,applyStickyHeader,NumberField,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,setGridFavButtonsVisible,IconChevronRight,IconChevronDown,Card,P$1,T,A,getAppearance,applyAppearanceTheme,getSiteSkinCss,APPEARANCE_THEME_CUSTOM,KIT_FOCUS_CSS,SectionLabel,Select,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,$$1,Segmented,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,TextField,Button,clampBackgroundDim,FEATURES,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,clearFeatureState,applyCssOnlyFeatureEnabled,isFeatureEnabled,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,applyCssOnlyFeatureChoice,getFeatureChoice,createAutocompleteQuerier,b,readSiteBlacklist,AutocompleteField,Chip,ProgressBar,createDefaultCustomTheme,AppearanceThemeSchema,prepareBackgroundImageFile,setFeatureState,writeSiteBlacklist,runFavoritesSync,log,FAVORITES_SYNC_PAGE_PAUSE_MS,clearApiCredentials,parseApiCredentials,setApiCredentials,load,createDefaultStorage,clearStorageCache,clearFavsCache,getSyncState,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,isSiteUrl,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,setAppearance,loadFavSet,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,gridDensityFeature,FAVORITES_SYNC_MODE_INCREMENTAL,FAVORITES_SYNC_MODE_FULL,STATS_MENU_SETTING_ID,STICKY_HEADER_SETTING_ID,hasApiCredentials,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureEnabled,getFeatureChoiceValue,getFeatureState,getScreenPixelSize,installSiteMenu,loadBackground,clearBackground,saveBackground;return{setters:[function(module){d=module.ap;a=module.a4;PANEL_UI_CLASS=module.ae;Switch=module.aq;UI_TEXT=module.U;TWEAKS_SWITCH_ID=module.ar;setTweaksEnabled=module.as;STATS_MENU_SETTING_LABEL=module.at;STATS_MENU_SWITCH_ID=module.au;setFeatureEnabled=module.av;STICKY_HEADER_SETTING_LABEL=module.aw;STICKY_HEADER_SWITCH_ID=module.ax;applyStickyHeader=module.ay;NumberField=module.az;UPDATES_GROUP_SIZE_ID=module.aA;setUpdatesGroupSize=module.aB;getUpdatesGroupSize=module.aC;PLAYLIST_CHUNK_SIZE_ID=module.aD;setPlaylistChunkSize=module.aE;getPlaylistChunkSize=module.aF;GRID_FAV_CHECKBOX_ID=module.aG;setGridFavButtonsEnabled=module.aH;setGridFavButtonsVisible=module.aI;IconChevronRight=module.aJ;IconChevronDown=module.aK;Card=module.aL;P$1=module.aM;T=module.aN;A=module.aO;getAppearance=module.g;applyAppearanceTheme=module.e;getSiteSkinCss=module.a9;APPEARANCE_THEME_CUSTOM=module.aP;KIT_FOCUS_CSS=module.aQ;SectionLabel=module.aR;Select=module.aS;APPEARANCE_THEME_SITE=module.ah;APPEARANCE_THEME_SITE_DARK=module.ai;APPEARANCE_THEME_LIGHT=module.aT;APPEARANCE_THEME_DARK=module.aU;$$1=module.ac;Segmented=module.aV;APPEARANCE_CUSTOM_BASE_LIGHT=module.aW;APPEARANCE_CUSTOM_BASE_DARK=module.aX;TextField=module.aY;Button=module.aZ;clampBackgroundDim=module.a_;FEATURES=module.a$;featurePanelLabel=module.b0;FEATURE_CHECKBOX_ID_PREFIX=module.b1;clearFeatureState=module.b2;applyCssOnlyFeatureEnabled=module.b3;isFeatureEnabled=module.b4;FEATURE_CHOICE_ID_PREFIX=module.b5;setFeatureChoiceValue=module.b6;applyCssOnlyFeatureChoice=module.b7;getFeatureChoice=module.b8;createAutocompleteQuerier=module.b9;b=module.ba;readSiteBlacklist=module.bb;AutocompleteField=module.bc;Chip=module.bd;ProgressBar=module.be;createDefaultCustomTheme=module.bf;AppearanceThemeSchema=module.bg;prepareBackgroundImageFile=module.bh;setFeatureState=module.ad;writeSiteBlacklist=module.bi;runFavoritesSync=module.x;log=module.h;FAVORITES_SYNC_PAGE_PAUSE_MS=module.bj;clearApiCredentials=module.bk;parseApiCredentials=module.bl;setApiCredentials=module.bm;load=module.bn;createDefaultStorage=module.bo;clearStorageCache=module.bp;clearFavsCache=module.bq;getSyncState=module.k;object=module.br;StorageSchema=module.bs;optional=module.bt;string=module.bu;FavsSchema=module.bv;literal=module.bw;IMPORT_SCHEMA_ERROR_PREFIX=module.bx;isSiteUrl=module.by;stripLegacyPanelWindowSize=module.bz;save=module.Z;migrateMarksFavToFavs=module.bA;FAVS_STORAGE_KEY=module.bB;createDefaultFavs=module.bC;parseFavsStrict=module.bD;setAppearance=module.bE;loadFavSet=module.l;STORAGE_BACKUP_KEY=module.bF;extractFavIdsFromMarks=module.bG;gridDensityFeature=module.bH;FAVORITES_SYNC_MODE_INCREMENTAL=module.bI;FAVORITES_SYNC_MODE_FULL=module.F;STATS_MENU_SETTING_ID=module.bJ;STICKY_HEADER_SETTING_ID=module.bK;hasApiCredentials=module.bL;getTweaksEnabled=module.bM;getGridFavButtonsEnabled=module.bN;getFeatureEnabled=module.t;getFeatureChoiceValue=module.bO;getFeatureState=module.ao;getScreenPixelSize=module.bP;},function(module){installSiteMenu=module.a;loadBackground=module.n;clearBackground=module.t;saveBackground=module.r;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
 var THEME_OPTIONS = [
 	{
 		value: APPEARANCE_THEME_SITE,
@@ -22529,7 +22948,7 @@ function SettingsPage() {
 		]
 	});
 }})}}));
-System.register("./collections-page-CYL49Uy_--UsPdh91.js", ['./___monkey.entry.js','./filter-terms-Dqag3iAV-Bgq_MKCQ.js','./app-CYx_o8xx-dmNCYlk6.js'],(function(exports){'use strict';var d,b,A,reloadFromStorage,load,a,Segmented,TextField,Select,setFeatureState,$$1,Button,UI_TEXT,IconPlus,EmptyState,Dialog,resolveCollectionKind,STICKY_TOP,deleteCollection,QueryField,isUnfilteredQuery,createDynamicCollection,createPlaylist,COLLECTION_KIND_POSTS,collectionDetailHash,readCoverMirror,COLLECTION_KIND_SEARCH,IconCheck,readCountMirror,buildSearchUrl,dynamicCollectionMarkHash,serialize,getFeatureState,matchesAnyTerm,filterTerms,COLLECTION_TERM_SEPARATOR,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,PAGE_CENTRE_PADDING,COLLECTIONS_VIEW_STATE_ID,readViewMode;return{setters:[function(module){d=module.ap;b=module.ba;A=module.aO;reloadFromStorage=module.Y;load=module.bn;a=module.a4;Segmented=module.aV;TextField=module.aY;Select=module.aS;setFeatureState=module.ad;$$1=module.ac;Button=module.aZ;UI_TEXT=module.U;IconPlus=module.bQ;EmptyState=module.bR;Dialog=module.bS;resolveCollectionKind=module.bT;STICKY_TOP=module.bU;deleteCollection=module.bV;QueryField=module.bW;isUnfilteredQuery=module.bX;createDynamicCollection=module.bY;createPlaylist=module.bZ;COLLECTION_KIND_POSTS=module.b_;collectionDetailHash=module.b$;readCoverMirror=module.c0;COLLECTION_KIND_SEARCH=module.c1;IconCheck=module.c2;readCountMirror=module.c3;buildSearchUrl=module.c4;dynamicCollectionMarkHash=module.c5;serialize=module.c6;getFeatureState=module.ao;},function(module){matchesAnyTerm=module.m;filterTerms=module.f;COLLECTION_TERM_SEPARATOR=module.C;},function(module){VIEW_OPTIONS=module.d;VIEW_LABEL=module.l;isViewMode=module.f;writeViewMode=module.m;PAGE_CENTRE_PADDING=module.c;COLLECTIONS_VIEW_STATE_ID=module.o;readViewMode=module.p;}],execute:(function(){exports("CollectionsPage",CollectionsPage);var EVENT_PAGESHOW = "pageshow";
+System.register("./collections-page-Cub0MLXR-C369ZlBz.js", ['./___monkey.entry.js','./filter-terms-Dqag3iAV-Bgq_MKCQ.js','./app-disausPu-BgwH9kcG.js'],(function(exports){'use strict';var d,b,A,reloadFromStorage,load,a,Segmented,TextField,Select,setFeatureState,$$1,Button,UI_TEXT,IconPlus,EmptyState,Dialog,resolveCollectionKind,STICKY_TOP,deleteCollection,QueryField,isUnfilteredQuery,createDynamicCollection,createPlaylist,COLLECTION_KIND_POSTS,collectionDetailHash,readCoverMirror,COLLECTION_KIND_SEARCH,IconCheck,readCountMirror,buildSearchUrl,dynamicCollectionMarkHash,serialize,getFeatureState,matchesAnyTerm,filterTerms,COLLECTION_TERM_SEPARATOR,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,PAGE_CENTRE_PADDING,COLLECTIONS_VIEW_STATE_ID,readViewMode;return{setters:[function(module){d=module.ap;b=module.ba;A=module.aO;reloadFromStorage=module.Y;load=module.bn;a=module.a4;Segmented=module.aV;TextField=module.aY;Select=module.aS;setFeatureState=module.ad;$$1=module.ac;Button=module.aZ;UI_TEXT=module.U;IconPlus=module.bQ;EmptyState=module.bR;Dialog=module.bS;resolveCollectionKind=module.bT;STICKY_TOP=module.bU;deleteCollection=module.bV;QueryField=module.bW;isUnfilteredQuery=module.bX;createDynamicCollection=module.bY;createPlaylist=module.bZ;COLLECTION_KIND_POSTS=module.b_;collectionDetailHash=module.b$;readCoverMirror=module.c0;COLLECTION_KIND_SEARCH=module.c1;IconCheck=module.c2;readCountMirror=module.c3;buildSearchUrl=module.c4;dynamicCollectionMarkHash=module.c5;serialize=module.c6;getFeatureState=module.ao;},function(module){matchesAnyTerm=module.m;filterTerms=module.f;COLLECTION_TERM_SEPARATOR=module.C;},function(module){VIEW_OPTIONS=module.d;VIEW_LABEL=module.l;isViewMode=module.f;writeViewMode=module.m;PAGE_CENTRE_PADDING=module.c;COLLECTIONS_VIEW_STATE_ID=module.o;readViewMode=module.p;}],execute:(function(){exports("CollectionsPage",CollectionsPage);var EVENT_PAGESHOW = "pageshow";
 var PAGE_CLASS = "rdw-collections-page";
 var HEADER_CLASS = "rdw-collections-header";
 var TOOLBAR_CLASS = "rdw-collections-toolbar";
@@ -23387,7 +23806,7 @@ function CollectionsPage() {
 		]
 	});
 }})}}));
-System.register("./following-page-BdWf_dbr-OtaDdFpC.js", ['./___monkey.entry.js','./filter-terms-Dqag3iAV-Bgq_MKCQ.js','./app-CYx_o8xx-dmNCYlk6.js'],(function(exports){'use strict';var d,T,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST,A,reloadFromStorage,getSeenPostId,a,EmptyState,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,$$1,Button,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,Segmented,TextField,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,Select,UI_TEXT,ProgressBar,Dialog,removeArtist,load,completeLastQueryToken,readLastQueryToken,STICKY_TOP,IconPlus,buildSearchUrl,TAG_TYPE_INCLUDE,IconCheck,IconButton,IconX,removeArtists,rememberArtistSnapshot,fetchArtistSnapshot,log,addArtists,AutocompleteField,filterTerms,matchesAnyTerm,ARTIST_TERM_SEPARATOR,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,PAGE_CENTRE_PADDING,FOLLOWING_VIEW_STATE_ID,readViewMode;return{setters:[function(module){d=module.ap;T=module.aN;createAutocompleteQuerier=module.b9;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.c7;A=module.aO;reloadFromStorage=module.Y;getSeenPostId=module.c8;a=module.a4;EmptyState=module.bR;ARTISTS_EMPTY_HINT=module.c9;ARTISTS_EMPTY_TITLE=module.ca;$$1=module.ac;Button=module.aZ;SEARCH_PATH=module.a3;SEARCH_PARAM_PAGE=module.a0;SEARCH_PAGE=module.cb;SEARCH_SECTION=module.cc;Segmented=module.aV;TextField=module.aY;ARTIST_FILTER_LABEL=module.cd;ARTIST_FILTER_ID=module.ce;Select=module.aS;UI_TEXT=module.U;ProgressBar=module.be;Dialog=module.bS;removeArtist=module.cf;load=module.bn;completeLastQueryToken=module.cg;readLastQueryToken=module.ch;STICKY_TOP=module.bU;IconPlus=module.bQ;buildSearchUrl=module.c4;TAG_TYPE_INCLUDE=module.ci;IconCheck=module.c2;IconButton=module.cj;IconX=module.ck;removeArtists=module.cl;rememberArtistSnapshot=module.cm;fetchArtistSnapshot=module.cn;log=module.h;addArtists=module.co;AutocompleteField=module.bc;},function(module){filterTerms=module.f;matchesAnyTerm=module.m;ARTIST_TERM_SEPARATOR=module.A;},function(module){VIEW_OPTIONS=module.d;VIEW_LABEL=module.l;isViewMode=module.f;writeViewMode=module.m;PAGE_CENTRE_PADDING=module.c;FOLLOWING_VIEW_STATE_ID=module.s;readViewMode=module.p;}],execute:(function(){exports("FollowingPage",FollowingPage);var EVENT_PAGESHOW = "pageshow";
+System.register("./following-page-CUEDXJoa-Bhp0wC_l.js", ['./___monkey.entry.js','./filter-terms-Dqag3iAV-Bgq_MKCQ.js','./app-disausPu-BgwH9kcG.js'],(function(exports){'use strict';var d,T,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST,A,reloadFromStorage,getSeenPostId,a,EmptyState,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,$$1,Button,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,Segmented,TextField,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,Select,UI_TEXT,ProgressBar,Dialog,removeArtist,load,completeLastQueryToken,readLastQueryToken,STICKY_TOP,IconPlus,buildSearchUrl,TAG_TYPE_INCLUDE,IconCheck,IconButton,IconX,removeArtists,rememberArtistSnapshot,fetchArtistSnapshot,log,addArtists,AutocompleteField,filterTerms,matchesAnyTerm,ARTIST_TERM_SEPARATOR,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,PAGE_CENTRE_PADDING,FOLLOWING_VIEW_STATE_ID,readViewMode;return{setters:[function(module){d=module.ap;T=module.aN;createAutocompleteQuerier=module.b9;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.c7;A=module.aO;reloadFromStorage=module.Y;getSeenPostId=module.c8;a=module.a4;EmptyState=module.bR;ARTISTS_EMPTY_HINT=module.c9;ARTISTS_EMPTY_TITLE=module.ca;$$1=module.ac;Button=module.aZ;SEARCH_PATH=module.a3;SEARCH_PARAM_PAGE=module.a0;SEARCH_PAGE=module.cb;SEARCH_SECTION=module.cc;Segmented=module.aV;TextField=module.aY;ARTIST_FILTER_LABEL=module.cd;ARTIST_FILTER_ID=module.ce;Select=module.aS;UI_TEXT=module.U;ProgressBar=module.be;Dialog=module.bS;removeArtist=module.cf;load=module.bn;completeLastQueryToken=module.cg;readLastQueryToken=module.ch;STICKY_TOP=module.bU;IconPlus=module.bQ;buildSearchUrl=module.c4;TAG_TYPE_INCLUDE=module.ci;IconCheck=module.c2;IconButton=module.cj;IconX=module.ck;removeArtists=module.cl;rememberArtistSnapshot=module.cm;fetchArtistSnapshot=module.cn;log=module.h;addArtists=module.co;AutocompleteField=module.bc;},function(module){filterTerms=module.f;matchesAnyTerm=module.m;ARTIST_TERM_SEPARATOR=module.A;},function(module){VIEW_OPTIONS=module.d;VIEW_LABEL=module.l;isViewMode=module.f;writeViewMode=module.m;PAGE_CENTRE_PADDING=module.c;FOLLOWING_VIEW_STATE_ID=module.s;readViewMode=module.p;}],execute:(function(){exports("FollowingPage",FollowingPage);var EVENT_PAGESHOW = "pageshow";
 var PAGE_CLASS = "rdw-following-page";
 var STICKY_CLASS = "rdw-following-sticky";
 var TOOLBAR_CLASS = "rdw-following-toolbar";
@@ -24296,7 +24715,7 @@ function matchesAnyTerm(texts, terms) {
 	const lowered = texts.map((text) => text.toLowerCase());
 	return terms.some((term) => lowered.some((text) => text.includes(term)));
 }})}}));
-System.register("./stats-section-DyR9yNmi-4CM4Mh8n.js", ['./___monkey.entry.js'],(function(exports){'use strict';var a,PANEL_UI_CLASS,Card,loadFavSet,load,resolveCollectionKind,d,A,readFavoriteIndex,topFavoriteTags,Button,$$1,setFeatureState,FETCH_CREDENTIALS,object,number,optional,string,SEARCH_PATH,SEARCH_PARAM_PAGE,int,getFeatureState;return{setters:[function(module){a=module.a4;PANEL_UI_CLASS=module.ae;Card=module.aL;loadFavSet=module.l;load=module.bn;resolveCollectionKind=module.bT;d=module.ap;A=module.aO;readFavoriteIndex=module.cp;topFavoriteTags=module.cq;Button=module.aZ;$$1=module.ac;setFeatureState=module.ad;FETCH_CREDENTIALS=module.cr;object=module.br;number=module.cs;optional=module.bt;string=module.bu;SEARCH_PATH=module.a3;SEARCH_PARAM_PAGE=module.a0;int=module.ct;getFeatureState=module.ao;}],execute:(function(){exports("StatsPage",StatsPage);/**
+System.register("./stats-section-BZDnfdeY-4CM4Mh8n.js", ['./___monkey.entry.js'],(function(exports){'use strict';var a,PANEL_UI_CLASS,Card,loadFavSet,load,resolveCollectionKind,d,A,readFavoriteIndex,topFavoriteTags,Button,$$1,setFeatureState,FETCH_CREDENTIALS,object,number,optional,string,SEARCH_PATH,SEARCH_PARAM_PAGE,int,getFeatureState;return{setters:[function(module){a=module.a4;PANEL_UI_CLASS=module.ae;Card=module.aL;loadFavSet=module.l;load=module.bn;resolveCollectionKind=module.bT;d=module.ap;A=module.aO;readFavoriteIndex=module.cp;topFavoriteTags=module.cq;Button=module.aZ;$$1=module.ac;setFeatureState=module.ad;FETCH_CREDENTIALS=module.cr;object=module.br;number=module.cs;optional=module.bt;string=module.bu;SEARCH_PATH=module.a3;SEARCH_PARAM_PAGE=module.a0;int=module.ct;getFeatureState=module.ao;}],execute:(function(){exports("StatsPage",StatsPage);/**
 * The numbers of the user's own profile page on the site, for Statistics.
 *
 * Read only when the user presses "Refresh profile": two requests with a
@@ -24978,7 +25397,7 @@ function StatsPage() {
 		children: /* @__PURE__ */ a(StatsSection, {})
 	});
 }})}}));
-System.register("./collection-detail-page-Cc6bjLif-DtSAOwQs.js", ['./___monkey.entry.js','./app-CYx_o8xx-dmNCYlk6.js'],(function(exports){'use strict';var d,T,w$1,b,downloadsAvailable,a,$$1,Button,UI_TEXT,shuffleCollection,resetCollectionOrder,EmptyState,Dialog,TextField,Toast,getCollectionOrder,listPlaylists,RDW_HASH_COLLECTIONS,removePostsFromCollection,isDownloadBusy,startDownload,movePostInCollection,renameCollection,deleteCollection,RDW_ROUTE_COLLECTIONS,restorePosts,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION_VIEW,SEARCH_PATH,collectionQueueHash,navigateToRdwRoute;return{setters:[function(module){d=module.ap;T=module.aN;w$1=module.cu;b=module.ba;downloadsAvailable=module.cv;a=module.a4;$$1=module.ac;Button=module.aZ;UI_TEXT=module.U;shuffleCollection=module.cw;resetCollectionOrder=module.cx;EmptyState=module.bR;Dialog=module.bS;TextField=module.aY;Toast=module.cy;getCollectionOrder=module.cz;listPlaylists=module.cA;RDW_HASH_COLLECTIONS=module.D;removePostsFromCollection=module.cB;isDownloadBusy=module.cC;startDownload=module.cD;movePostInCollection=module.cE;renameCollection=module.cF;deleteCollection=module.bV;RDW_ROUTE_COLLECTIONS=module.cG;restorePosts=module.cH;SEARCH_PARAM_PAGE=module.a0;SEARCH_PAGE=module.cb;SEARCH_SECTION_VIEW=module.cI;SEARCH_PATH=module.a3;collectionQueueHash=module.cJ;},function(module){navigateToRdwRoute=module.i;}],execute:(function(){exports("CollectionDetailPage",CollectionDetailPage);var CELL_SIZE_PX = 200;
+System.register("./collection-detail-page-EIdcSdoE-B4iofZoO.js", ['./___monkey.entry.js','./app-disausPu-BgwH9kcG.js'],(function(exports){'use strict';var d,T,w$1,b,downloadsAvailable,a,$$1,Button,UI_TEXT,shuffleCollection,resetCollectionOrder,EmptyState,Dialog,TextField,Toast,getCollectionOrder,listPlaylists,RDW_HASH_COLLECTIONS,removePostsFromCollection,isDownloadBusy,startDownload,movePostInCollection,renameCollection,deleteCollection,RDW_ROUTE_COLLECTIONS,restorePosts,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION_VIEW,SEARCH_PATH,collectionQueueHash,navigateToRdwRoute;return{setters:[function(module){d=module.ap;T=module.aN;w$1=module.cu;b=module.ba;downloadsAvailable=module.cv;a=module.a4;$$1=module.ac;Button=module.aZ;UI_TEXT=module.U;shuffleCollection=module.cw;resetCollectionOrder=module.cx;EmptyState=module.bR;Dialog=module.bS;TextField=module.aY;Toast=module.cy;getCollectionOrder=module.cz;listPlaylists=module.cA;RDW_HASH_COLLECTIONS=module.D;removePostsFromCollection=module.cB;isDownloadBusy=module.cC;startDownload=module.cD;movePostInCollection=module.cE;renameCollection=module.cF;deleteCollection=module.bV;RDW_ROUTE_COLLECTIONS=module.cG;restorePosts=module.cH;SEARCH_PARAM_PAGE=module.a0;SEARCH_PAGE=module.cb;SEARCH_SECTION_VIEW=module.cI;SEARCH_PATH=module.a3;collectionQueueHash=module.cJ;},function(module){navigateToRdwRoute=module.i;}],execute:(function(){exports("CollectionDetailPage",CollectionDetailPage);var CELL_SIZE_PX = 200;
 var GRID_GAP_PX = 4;
 var SECTION_GAP_PX = 12;
 var ACTIONS_GAP_PX = 8;

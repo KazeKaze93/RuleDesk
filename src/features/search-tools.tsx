@@ -38,7 +38,7 @@ import {
   Segmented,
   Select,
 } from "../ui/kit";
-import { DownloadControls } from "./downloads/search-controls";
+import { DownloadControls, SELECT_NOTE_CLASS } from "./downloads/search-controls";
 import { SaveSearchButton } from "./save-search";
 import { featureBodyClass, type Feature, type FeatureContext } from "./types";
 
@@ -214,6 +214,11 @@ const FEATURE_CSS = [
   `body.${BODY_CLASS} .${FOOT_CLASS} > button {`,
   "  flex: 1 1 auto;",
   "  white-space: nowrap;",
+  "}",
+  `body.${BODY_CLASS} .${FOOT_CLASS} > .${SELECT_NOTE_CLASS} {`,
+  "  flex: 1 1 100%;",
+  "  font: 12px/1.4 var(--rdw-font);",
+  "  color: var(--rdw-muted);",
   "}",
 ].join("\n");
 

@@ -16,6 +16,12 @@ import {
   openRandomFavorite,
 } from "./favorites-browser";
 import { RDW_HASH_SETTINGS } from "../pages/constants";
+import { readPreviewThumbUrl, refreshAddButtons } from "./playlist-menu";
+import {
+  BulkCollectionDialog,
+  bulkCollectionSummary,
+} from "../ui/bulk-collection-dialog";
+import type { CollectionPostInput } from "../storage/store";
 import { isDownloadBusy, startDownload } from "./downloads/queue";
 import { removeFavorite } from "../site/favorites";
 import {
@@ -81,6 +87,7 @@ const TEXT_SELECT = "Select";
 const TEXT_SELECT_PAGE = "Select page";
 /** The results grid has no pages: what is selected is what has been loaded so far. */
 const TEXT_SELECT_LOADED = "Select loaded";
+const TEXT_ADD_TO_COLLECTION = "Add to collection";
 const TEXT_RANDOM = "Random post";
 const TEXT_RANDOM_TITLE = "Open a random favorite";
 const TEXT_MORE_ACTIONS = "More actions";
@@ -633,6 +640,21 @@ function IdleActions(props: IdleActionsProps): JSX.Element {
   );
 }
 
+/** The selected posts that are on the page, with their previews, in page order. */
+function selectedPostsOnPage(selected: ReadonlySet<string>): CollectionPostInput[] {
+  const posts: CollectionPostInput[] = [];
+  for (const entry of listFavoriteThumbEntries(favoritesGridRoot())) {
+    if (!selected.has(entry.postId)) {
+      continue;
+    }
+    const id = Number(entry.postId);
+    if (Number.isInteger(id) && id > 0) {
+      posts.push({ id, thumbUrl: readPreviewThumbUrl(entry.thumb, entry.postId) });
+    }
+  }
+  return posts;
+}
+
 type FavoritesBulkBarProps = {
   readonly onSelectionModeChange: (active: boolean) => void;
   /** Where those buttons go while nothing is being selected: the right end of the row of filters. */
@@ -651,6 +673,12 @@ function FavoritesBulkBar(props: FavoritesBulkBarProps): JSX.Element | null {
   const abortRef = useRef<AbortController | null>(null);
   const selectedRef = useRef(selected);
   selectedRef.current = selected;
+  // The posts the collection dialog is open for; null while it is closed.
+  const [collectionPosts, setCollectionPosts] = useState<readonly CollectionPostInput[] | null>(
+    null,
+  );
+  // What the last "Add to collection" did; shown until the selection changes.
+  const [note, setNote] = useState("");
 
   const selectionActive =
     phase.kind === "selecting" ||
@@ -715,6 +743,7 @@ function FavoritesBulkBar(props: FavoritesBulkBarProps): JSX.Element | null {
         return;
       }
 
+      setNote("");
       setSelected((prev) => {
         const next = new Set(prev);
         if (next.has(postId)) {
@@ -736,6 +765,7 @@ function FavoritesBulkBar(props: FavoritesBulkBarProps): JSX.Element | null {
     abortRef.current?.abort();
     abortRef.current = null;
     clearThumbSelectionChrome();
+    setNote("");
     setSelected(new Set());
     setPhase({ kind: "idle" });
   };
@@ -892,12 +922,24 @@ function FavoritesBulkBar(props: FavoritesBulkBarProps): JSX.Element | null {
     <>
       <div className={BAR_CLASS}>
         <span className={STATUS_CLASS}>{selectedCountLabel(count)}</span>
-        <span className={SUMMARY_CLASS}>{props.summary}</span>
+        <span className={SUMMARY_CLASS} role={note.length > 0 ? "status" : undefined}>
+          {note.length > 0 ? note : props.summary}
+        </span>
         <Button variant="secondary" size="s" onClick={selectPage}>
           {browsing ? TEXT_SELECT_LOADED : TEXT_SELECT_PAGE}
         </Button>
         <Button variant="secondary" size="s" onClick={clearSelection}>
           {TEXT_CLEAR}
+        </Button>
+        <Button
+          variant="secondary"
+          size="s"
+          disabled={count === 0 || confirmOpen}
+          onClick={() => {
+            setCollectionPosts(selectedPostsOnPage(selectedRef.current));
+          }}
+        >
+          {TEXT_ADD_TO_COLLECTION}
         </Button>
         <Button
           variant="danger"
@@ -912,6 +954,17 @@ function FavoritesBulkBar(props: FavoritesBulkBarProps): JSX.Element | null {
           {TEXT_CANCEL}
         </Button>
       </div>
+      <BulkCollectionDialog
+        open={collectionPosts !== null}
+        posts={collectionPosts ?? []}
+        onClose={() => {
+          setCollectionPosts(null);
+        }}
+        onDone={(result) => {
+          refreshAddButtons();
+          setNote(bulkCollectionSummary(result));
+        }}
+      />
       <Dialog
         open={confirmOpen}
         onClose={closeConfirm}

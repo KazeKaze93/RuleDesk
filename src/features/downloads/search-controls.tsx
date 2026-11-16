@@ -10,25 +10,38 @@ import {
 import { readDynamicCollectionMark } from "../../pages/constants";
 import { isUnfilteredQuery, withoutSortRandom } from "../../search/query";
 import { load } from "../../storage/store";
+import type { CollectionPostInput } from "../../storage/store";
+import {
+  BulkCollectionDialog,
+  bulkCollectionSummary,
+} from "../../ui/bulk-collection-dialog";
 import { Button, Dialog } from "../../ui/kit";
+import { readPreviewThumbUrl, refreshAddButtons } from "../playlist-menu";
 import { downloadsAvailable } from "./available";
 import {
   readSelectedPostIds,
+  readSelectedPosts,
   startGridSelect,
   stopGridSelect,
 } from "./grid-select";
 import { isDownloadBusy, startDownload } from "./queue";
 
 /**
- * Download buttons of the search panel, on results pages only: the whole
- * search, or posts picked on the page. Rendered only when the download
- * manager is available (see {@link downloadsAvailable}).
+ * The buttons at the foot of the search panel that act on posts, on results
+ * pages only. "Select posts" picks posts on the page; what was picked can be
+ * added to a custom collection and, when the download manager is available
+ * (see {@link downloadsAvailable}), downloaded. "Download results" takes the
+ * whole search and needs the manager too.
  */
 
 const LABEL_DOWNLOAD_RESULTS = "Download results";
 const TITLE_DOWNLOAD_RESULTS = "Download every post of this search";
 const LABEL_SELECT = "Select posts";
-const TITLE_SELECT = "Pick posts on this page to download";
+const TITLE_SELECT = "Pick posts on this page to add to a collection";
+const TITLE_SELECT_WITH_DOWNLOADS = "Pick posts on this page to add to a collection or to download";
+const ADD_SELECTED_PREFIX = "Add to collection (";
+const ADD_SELECTED_SUFFIX = ")";
+export const SELECT_NOTE_CLASS = "rdw-select-note";
 const DOWNLOAD_SELECTED_PREFIX = "Download selected (";
 const DOWNLOAD_SELECTED_SUFFIX = ")";
 const DIALOG_TITLE = "Download results";
@@ -63,6 +76,12 @@ export function DownloadControls(): JSX.Element | null {
   const [selecting, setSelecting] = useState(false);
   const [count, setCount] = useState(0);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  // The posts the collection dialog is open for; null while it is closed.
+  const [collectionPosts, setCollectionPosts] = useState<readonly CollectionPostInput[] | null>(
+    null,
+  );
+  // What the last "Add to collection" did.
+  const [note, setNote] = useState("");
 
   useEffect(
     () => (): void => {
@@ -72,9 +91,10 @@ export function DownloadControls(): JSX.Element | null {
   );
 
   const search = window.location.search;
-  if (!isResultsPage(search) || !downloadsAvailable()) {
+  if (!isResultsPage(search)) {
     return null;
   }
+  const canDownload = downloadsAvailable();
   const query = pageQuery(search);
   const label = jobLabel(query);
 
@@ -92,6 +112,17 @@ export function DownloadControls(): JSX.Element | null {
           size="s"
           disabled={count === 0}
           onClick={() => {
+            setCollectionPosts(readSelectedPosts(readPreviewThumbUrl));
+          }}
+        >
+          {`${ADD_SELECTED_PREFIX}${String(count)}${ADD_SELECTED_SUFFIX}`}
+        </Button>
+        {canDownload ? (
+        <Button
+          variant="secondary"
+          size="s"
+          disabled={count === 0}
+          onClick={() => {
             const ids = readSelectedPostIds();
             leaveSelect();
             if (ids.length > 0 && !isDownloadBusy()) {
@@ -104,16 +135,29 @@ export function DownloadControls(): JSX.Element | null {
         >
           {`${DOWNLOAD_SELECTED_PREFIX}${String(count)}${DOWNLOAD_SELECTED_SUFFIX}`}
         </Button>
+        ) : null}
         <Button variant="secondary" size="s" onClick={leaveSelect}>
           {UI_TEXT.cancel}
         </Button>
+        <BulkCollectionDialog
+          open={collectionPosts !== null}
+          posts={collectionPosts ?? []}
+          onClose={() => {
+            setCollectionPosts(null);
+          }}
+          onDone={(result) => {
+            leaveSelect();
+            refreshAddButtons();
+            setNote(bulkCollectionSummary(result));
+          }}
+        />
       </>
     );
   }
 
   return (
     <>
-      {isUnfilteredQuery(query) ? null : (
+      {!canDownload || isUnfilteredQuery(query) ? null : (
         <Button
           variant="secondary"
           size="s"
@@ -128,14 +172,20 @@ export function DownloadControls(): JSX.Element | null {
       <Button
         variant="secondary"
         size="s"
-        title={TITLE_SELECT}
+        title={canDownload ? TITLE_SELECT_WITH_DOWNLOADS : TITLE_SELECT}
         onClick={() => {
+          setNote("");
           startGridSelect(setCount);
           setSelecting(true);
         }}
       >
         {LABEL_SELECT}
       </Button>
+      {note.length > 0 ? (
+        <span className={SELECT_NOTE_CLASS} role="status">
+          {note}
+        </span>
+      ) : null}
       <Dialog
         variant="confirm"
         open={confirmOpen}
