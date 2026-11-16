@@ -2,16 +2,37 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.37.1
+
+Removed:
+
+- "Hide seen posts" and "Recent searches" are gone from the search panel
+
+Fixed:
+
+- The download button of a post saved a web page instead of the file on some posts. The file is now taken from the player for a video, from the "Original image" link for a picture, and an address that is not a picture or a video is never downloaded
+- A click anywhere on the picture of the player plays and pauses, every time. It used to work only through the play mark, which is gone once playback has started
+- An animated GIF, which the site shows through the video player, starts by itself, muted and looped
+- The tag list in the sidebar was cut off on a page whose content is shorter than the window
+- "Check for new" now also refreshes the cover and the post count of every saved search, so a new saved search gets its cover without being opened. The run is about twice as fast. A search checked for the first time becomes the point later checks are measured from
+- Artists: the Follow button now appears in every row
+- Tags: Follow and "Save as collection" now appear in every row
+- A setting written from one tab could undo what another tab had saved in the meantime, such as which tag groups are collapsed
+
+New:
+
+- RuleDesk → Downloads → "File name": the name saved files get, for the download manager and for the button of a post alike. In square brackets it takes [id], [md5], [rating], [score], [width], [height], [owner] and [date]; a line under the field shows what the mask gives
+- The search field of Posts and Feed has a magnifier, a button that clears it and a "?" with the site's search syntax. The filters of Collections and Following look the same and say in their "?" how to filter by several names
+- The RuleDesk item in the header is a gear
+
 ## 0.37.0
 
 Posts and a post page:
 
 - A post page has a download button beside "Original": it saves the original file of the post. No API key is needed
-- "Hide seen posts" in the search panel takes the posts you have already opened out of the grid
-- "Recent searches" in the search panel: the last eight, one click away, with "Clear"
 - A click on the picture of a post opens it over the page: scroll to zoom, drag to move, double click for actual size, Esc to close. Pictures and GIFs; a video keeps its player. Switch: RuleDesk → Page → "Zoom the picture on click"
 - "Sidebar on the right" in RuleDesk → Page puts the tag sidebar of Posts and of a post page on the right. Off by default
-- "Motion" in RuleDesk → Page: thumbnails lift a little under the pointer, buttons change smoothly, menus and dialogs fade in. On by default, and never shown when your system asks for reduced motion
+- "Motion" in RuleDesk → Page: thumbnails lift a little under the pointer, buttons change smoothly, menus and dialogs fade in. On by default
 
 Following and the feed:
 

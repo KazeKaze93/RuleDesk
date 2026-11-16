@@ -140,8 +140,7 @@ export const motionFeature: Feature = {
   pages: ["list", "post", "favorites", "other"],
   defaultEnabled: true,
   cssOnly: true,
-  settingsCaption:
-    "Thumbnails lift under the pointer, buttons change smoothly, menus fade in. Never shown when your system asks for reduced motion.",
+  settingsCaption: "Thumbnails lift under the pointer; buttons, menus and dialogs change smoothly.",
   css: MOTION_CSS,
   mount: () => undefined,
 };

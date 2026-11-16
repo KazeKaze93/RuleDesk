@@ -188,10 +188,16 @@ describe("createCollectionsPage", () => {
     expect(root.textContent).not.toContain("Saved searches");
     expect(root.textContent).not.toContain("New Custom Collection");
     expect(root.querySelector(".rdw-list")).toBeNull();
-    expect(pageButtons(root).map((button) => button.textContent?.trim())).toEqual([
+    // The filter field has a "?" button: it has a name, not a text.
+    expect(
+      pageButtons(root).map(
+        (button) => button.textContent?.trim() || button.getAttribute("aria-label"),
+      ),
+    ).toEqual([
       "All",
       "Custom",
       "Dynamic",
+      "Filter help",
       "As created",
       "Tiles",
       "List",

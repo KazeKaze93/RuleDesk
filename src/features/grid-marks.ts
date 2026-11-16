@@ -13,7 +13,7 @@ import {
 } from "./types";
 
 const SEEN_DIM_FEATURE_ID = "seen-dim";
-export const SEEN_CLASS = "rdw-seen";
+const SEEN_CLASS = "rdw-seen";
 const SEEN_DIM_LABEL = "Dim seen posts";
 const SEEN_DIM_OPACITY = "0.65";
 const SEEN_DIM_HOVER_OPACITY = "1";
@@ -55,16 +55,6 @@ function ensureListSubscriptions(): void {
     pageshowBound = true;
     window.addEventListener(EVENT_PAGESHOW, onPageShow);
   }
-}
-
-/**
- * Stamps the seen class on the thumbs of the page and keeps it in step as
- * thumbs are added. For "Hide seen posts", which needs the class whether or
- * not the dimming is switched on. Safe to call more than once.
- */
-export function ensureSeenStamps(): void {
-  stampSeenOnThumbs(document);
-  ensureListSubscriptions();
 }
 
 /** Clears thumbs/pageshow subscriptions (tests). */

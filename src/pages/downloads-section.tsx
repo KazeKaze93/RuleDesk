@@ -9,6 +9,8 @@ import {
   setApiCredentials,
 } from "../storage/api-credentials";
 import { Button, TextField } from "../ui/kit";
+import { DEFAULT_FILE_MASK, FILE_MASK_TOKENS, buildFileName } from "../site/download";
+import { readFileMask, writeFileMask } from "../storage/download-name";
 
 /**
  * Settings for the download manager: the user's own API credentials.
@@ -23,6 +25,24 @@ const ACTIONS_CLASS = "rdw-downloads-settings-actions";
 const HINT_CLASS = "rdw-downloads-settings-hint";
 
 const API_FIELD_ID = "rdw-api-credentials";
+const MASK_FIELD_ID = "rdw-download-name";
+const MASK_FIELD_LABEL = "File name";
+const MASK_SAVED = "Saved.";
+const MASK_RESET_LABEL = "Default";
+const MASK_HINT_PREFIX = "What you can put in square brackets: ";
+const MASK_HINT_SUFFIX =
+  ". Anything else is kept as typed; the extension is added by itself. Keep [id] or [md5] in the name, or files will share one.";
+const MASK_PREVIEW_PREFIX = "For example: ";
+/** A made-up post to show what a mask gives. */
+const MASK_SAMPLE = {
+  postId: 19374686,
+  url: "https://wimg.rule34.xxx/images/1234/0f3a9c7b2d1e4f5a6b7c8d9e0f1a2b3c.jpg",
+  rating: "explicit",
+  score: 42,
+  width: 1080,
+  height: 1632,
+  owner: "uploader",
+} as const;
 const API_FIELD_LABEL = "API credentials";
 const API_FIELD_PLACEHOLDER = "&api_key=…&user_id=…";
 const REMOVE_LABEL = "Remove key";
@@ -57,6 +77,58 @@ export const DOWNLOADS_SECTION_CSS = `
   color: var(--rdw-accent);
 }
 `.trim();
+
+/** The setting of the name saved files get, for the manager and for a single post alike. */
+function FileNameSetting(): JSX.Element {
+  const [mask, setMask] = useState(() => readFileMask());
+  const [saved, setSaved] = useState(false);
+  const store = (value: string): void => {
+    writeFileMask(value);
+    setMask(readFileMask());
+    setSaved(true);
+  };
+  return (
+    <form
+      className={SECTION_CLASS}
+      onSubmit={(event) => {
+        event.preventDefault();
+        store(mask);
+      }}
+    >
+      <TextField
+        id={MASK_FIELD_ID}
+        label={MASK_FIELD_LABEL}
+        value={mask}
+        placeholder={DEFAULT_FILE_MASK}
+        onChange={(value) => {
+          setMask(value);
+          setSaved(false);
+        }}
+      />
+      <div className={ACTIONS_CLASS}>
+        <Button type="submit" variant="primary" size="s">
+          {UI_TEXT.save}
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          size="s"
+          onClick={() => {
+            store(DEFAULT_FILE_MASK);
+          }}
+        >
+          {MASK_RESET_LABEL}
+        </Button>
+      </div>
+      <p className={HINT_CLASS} role="status">
+        {`${MASK_PREVIEW_PREFIX}${buildFileName(mask, MASK_SAMPLE)}${saved ? ` ${MASK_SAVED}` : ""}`}
+      </p>
+      <p className={HINT_CLASS}>
+        {`${MASK_HINT_PREFIX}${FILE_MASK_TOKENS.map((token) => `[${token}]`).join(", ")}${MASK_HINT_SUFFIX}`}
+      </p>
+    </form>
+  );
+}
 
 export function DownloadsSection(): JSX.Element {
   const [stored, setStored] = useState(() => hasApiCredentials());
@@ -126,6 +198,7 @@ export function DownloadsSection(): JSX.Element {
         </a>
         {HINT_AFTER}
       </p>
+      <FileNameSetting />
     </section>
   );
 }

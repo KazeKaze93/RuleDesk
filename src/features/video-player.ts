@@ -19,6 +19,7 @@ import {
   type VideoPlayerState,
   type VideoSize,
 } from "../storage/schema";
+import { readPostPageTags } from "./favorites-index-live";
 import { measureHeaderOffsetPx } from "./post-panel/site-reads";
 import {
   featureBodyClass,
@@ -290,6 +291,49 @@ function bindPlayer(ctx: FeatureContext, video: HTMLVideoElement): void {
   });
 }
 
+/**
+ * A click on the picture of the player plays and pauses, every time. The
+ * site's player does that only through its own play mark, which is gone once
+ * playback has started. The controls keep their own clicks: only a click that
+ * lands on the video itself is taken.
+ */
+export function bindClickToToggle(video: HTMLVideoElement): void {
+  video.addEventListener(
+    "click",
+    (event) => {
+      if (!document.body.classList.contains(BODY_CLASS) || event.button !== 0) {
+        return;
+      }
+      // Taken here so that the player's own handler does not toggle a second time.
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (video.paused) {
+        void video.play().catch(() => undefined);
+      } else {
+        video.pause();
+      }
+    },
+    true,
+  );
+}
+
+const GIF_TAG = "animated_gif";
+
+/**
+ * The site shows an animated GIF through the same player as a video. A GIF is
+ * expected to move by itself and to go round: it is started muted (a browser
+ * lets a muted video start without a click) and looped.
+ */
+export function playLikeGif(video: HTMLVideoElement, tags: readonly string[]): boolean {
+  if (!tags.includes(GIF_TAG)) {
+    return false;
+  }
+  video.loop = true;
+  video.muted = true;
+  void video.play().catch(() => undefined);
+  return true;
+}
+
 function mountVideoPlayer(ctx: FeatureContext): void {
   scheduleAfterFirstPaint(() => {
     const video = findVideo();
@@ -298,6 +342,8 @@ function mountVideoPlayer(ctx: FeatureContext): void {
       return;
     }
     bindPlayer(ctx, video);
+    bindClickToToggle(video);
+    playLikeGif(video, readPostPageTags());
   });
 }
 

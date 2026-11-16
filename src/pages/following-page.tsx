@@ -52,6 +52,7 @@ import {
   type SegmentedOption,
   type SelectOption,
 } from "../ui/kit";
+import { SearchField, type SearchHelp } from "../ui/kit/search-field";
 import { IconCheck, IconPlus, IconX } from "../ui/kit/icons";
 import { completeLastQueryToken, readLastQueryToken } from "../ui/query-field";
 import {
@@ -139,6 +140,16 @@ const FILTER_FIELD_WIDTH_PX = 220;
 /** Above the cards and their corner buttons. */
 const TOOLBAR_Z_INDEX = 5;
 
+const FOLLOW_FILTER_PLACEHOLDER = "Filter by name";
+/** What the filter takes beyond a word; new posts, kind and group are the controls beside it. */
+const FOLLOW_FILTER_HELP: SearchHelp = {
+  label: "Filter help",
+  widthPx: 320,
+  rows: [
+    ["nyx", "names that contain nyx"],
+    ["nyx maldo", "either name; a space or a comma between"],
+  ],
+};
 const KIND_ALL = "all";
 const KIND_LABEL = "Type";
 const KIND_OPTIONS: readonly SelectOption[] = [
@@ -996,12 +1007,13 @@ export function FollowingPage(): JSX.Element {
                 }
               }}
             />
-            <TextField
+            <SearchField
               id={ARTIST_FILTER_ID}
               className={FILTER_CLASS}
               value={filter}
-              placeholder={ARTIST_FILTER_LABEL}
+              placeholder={FOLLOW_FILTER_PLACEHOLDER}
               aria-label={ARTIST_FILTER_LABEL}
+              help={FOLLOW_FILTER_HELP}
               onChange={setFilter}
             />
             <Select

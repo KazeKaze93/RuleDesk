@@ -28,12 +28,32 @@ const ALL_QUERY = "all";
 const ApiPostSchema = z.object({
   id: z.int(),
   file_url: z.string().check(z.minLength(1)),
+  // For the file name mask only; a post without them still downloads.
+  rating: z.optional(z.unknown()),
+  score: z.optional(z.unknown()),
+  width: z.optional(z.unknown()),
+  height: z.optional(z.unknown()),
+  owner: z.optional(z.unknown()),
 });
 
 export type PostFile = {
   readonly postId: number;
   readonly url: string;
+  readonly rating?: string | undefined;
+  readonly score?: number | undefined;
+  readonly width?: number | undefined;
+  readonly height?: number | undefined;
+  readonly owner?: string | undefined;
 };
+
+function textOf(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+function numberOf(value: unknown): number | undefined {
+  const number = typeof value === "string" ? Number(value) : value;
+  return typeof number === "number" && Number.isFinite(number) ? number : undefined;
+}
 
 /** What to download: a search, or an explicit list of post ids. */
 export type DownloadSource =
@@ -104,7 +124,15 @@ export function parseApiPosts(body: string): PostFile[] {
     const parsed = ApiPostSchema.safeParse(item);
     // A file is taken only from the site's own servers, whatever the answer says.
     if (parsed.success && isSiteUrl(parsed.data.file_url)) {
-      files.push({ postId: parsed.data.id, url: parsed.data.file_url });
+      files.push({
+        postId: parsed.data.id,
+        url: parsed.data.file_url,
+        rating: textOf(parsed.data.rating),
+        score: numberOf(parsed.data.score),
+        width: numberOf(parsed.data.width),
+        height: numberOf(parsed.data.height),
+        owner: textOf(parsed.data.owner),
+      });
     }
   }
   return files;

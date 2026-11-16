@@ -12,13 +12,10 @@ import {
 import { getFeatureState, setFeatureState } from "../storage/store";
 import {
   Button,
-  IconHelp,
-  IconSearch,
   IconShuffle,
-  IconX,
-  Popover,
+  SearchField,
   Segmented,
-  TextField,
+  type SearchHelp,
   type SegmentedOption,
 } from "../ui/kit";
 import {
@@ -51,14 +48,8 @@ export const FAVORITES_RESULTS_CLASS = "rdw-fav-results";
 const MORE_CLASS = "rdw-fav-more";
 const CONTROLS_CLASS = "rdw-fav-controls";
 const STATUS_CLASS = "rdw-fav-status";
-const SEARCH_FIELD_CLASS = "rdw-fav-search";
 const SEARCH_BOX_CLASS = "rdw-fav-search-box";
-const SEARCH_ICON_CLASS = "rdw-fav-search-icon";
-const SEARCH_TOOLS_CLASS = "rdw-fav-search-tools";
-const SEARCH_TOOL_CLASS = "rdw-fav-search-tool";
 const GROUP_LABEL_CLASS = "rdw-fav-group-label";
-const SYNTAX_CLASS = "rdw-fav-syntax";
-const SYNTAX_NOTE_CLASS = "rdw-fav-syntax-note";
 const COUNT_CLASS = "rdw-favorites-count";
 /** The right end of the row: the buttons the bulk bar puts there. */
 export const ACTIONS_CLASS = "rdw-favorites-head-actions";
@@ -73,7 +64,6 @@ const SEARCH_WIDTH_PX = 320;
 const SEARCH_MIN_WIDTH_PX = 200;
 const SEARCH_MAX_WIDTH_PX = 560;
 const SYNTAX_POPOVER_WIDTH_PX = 340;
-const SYNTAX_FONT = 'ui-monospace, "Cascadia Mono", Consolas, "Courier New", monospace';
 
 const VIEW_STATE_ID = "favorites-view";
 export const VIEW_PAGES = "pages";
@@ -101,6 +91,12 @@ const SYNTAX_ROWS: readonly (readonly [string, string])[] = [
 ];
 const SYNTAX_NOTE =
   "Favorites search uses tags and post id only. Other metatags (rating:, score:, user:, width:, md5:, parent:) and fuzzy tag~ work in Posts search. For a random order use Shuffle.";
+const SEARCH_HELP: SearchHelp = {
+  label: SYNTAX_LABEL,
+  rows: SYNTAX_ROWS,
+  note: SYNTAX_NOTE,
+  widthPx: SYNTAX_POPOVER_WIDTH_PX,
+};
 /** Shown while Shuffle is on and the query asks for an order: one of them has to give way. */
 export const SHUFFLE_OVER_SORT_NOTICE = "Shuffle is on: the order in the search is not applied.";
 const UNSUPPORTED_PREFIX = "Not searched here: ";
@@ -159,49 +155,9 @@ body:not(.${FAVORITES_BROWSING_BODY_CLASS}) .${MORE_CLASS} {
   font-weight: 500;
 }
 .${CONTROLS_CLASS} .${SEARCH_BOX_CLASS} {
-  position: relative;
   flex: 1 1 ${String(SEARCH_WIDTH_PX)}px;
   min-width: ${String(SEARCH_WIDTH_PX)}px;
   max-width: ${String(SEARCH_MAX_WIDTH_PX)}px;
-}
-.${CONTROLS_CLASS} .${SEARCH_FIELD_CLASS} {
-  margin: 0;
-}
-.${CONTROLS_CLASS} .${SEARCH_FIELD_CLASS} .rdw-field__input {
-  padding-left: 30px;
-  padding-right: 56px;
-}
-.${SEARCH_ICON_CLASS} {
-  position: absolute;
-  left: 9px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--rdw-muted);
-  pointer-events: none;
-}
-.${SEARCH_TOOLS_CLASS} {
-  position: absolute;
-  right: 4px;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  gap: 2px;
-}
-.${SEARCH_TOOL_CLASS} {
-  display: inline-grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  border: 0;
-  border-radius: var(--rdw-radius-s);
-  background: transparent;
-  color: var(--rdw-muted);
-  cursor: pointer;
-}
-.${SEARCH_TOOL_CLASS}:hover,
-.${SEARCH_TOOL_CLASS}[aria-expanded="true"] {
-  color: var(--rdw-text);
 }
 .${GROUP_LABEL_CLASS} {
   font: 12px var(--rdw-font);
@@ -220,24 +176,6 @@ body:not(.${FAVORITES_BROWSING_BODY_CLASS}) .${MORE_CLASS} {
 .${CONTROLS_CLASS}[${FIT_ATTRIBUTE}="3"] .${SEARCH_BOX_CLASS} {
   flex: 1 0 100%;
   max-width: none;
-}
-.${SYNTAX_CLASS} {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 4px 12px;
-  margin: 0;
-}
-/* The site styles dt on its own (bold, its own font); a command has to be in
-   a fixed-width font, or the spaces that matter in it cannot be seen. */
-.rdw-popover .${SYNTAX_CLASS} dt {
-  margin: 0;
-  font: 400 12px/1.4 ${SYNTAX_FONT} !important;
-  white-space: pre;
-  color: var(--rdw-text);
-}
-.${SYNTAX_CLASS} dd {
-  margin: 0;
-  color: var(--rdw-muted);
 }
 .${STATUS_CLASS} {
   flex: 0 0 100%;
@@ -258,13 +196,6 @@ body:not(.${FAVORITES_BROWSING_BODY_CLASS}) .${MORE_CLASS} {
 }
 .${CONTROLS_CLASS} .${ACTIONS_CLASS}:empty {
   display: none;
-}
-.${SYNTAX_NOTE_CLASS} {
-  margin: 8px 0 0;
-  padding-top: 8px;
-  border-top: 1px solid var(--rdw-border);
-  color: var(--rdw-muted);
-  line-height: 1.4;
 }
 .${MORE_CLASS} {
   display: block;
@@ -550,11 +481,9 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
   const [status, setStatus] = useState("");
   // How many favorites the list shows while it is narrowed; null on the site's own grid.
   const [found, setFound] = useState<number | null>(null);
-  const [syntaxOpen, setSyntaxOpen] = useState(false);
   const loadingRef = useRef(false);
   const rowRef = useRef<HTMLDivElement>(null);
   const actionsSlotRef = useRef<HTMLDivElement>(null);
-  const syntaxButtonRef = useRef<HTMLButtonElement>(null);
 
   // A number while the list is shown in a random order, null otherwise.
   const [shuffleSeed, setShuffleSeed] = useState<number | null>(null);
@@ -666,66 +595,16 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
     <>
     <div className={CONTROLS_CLASS} ref={rowRef}>
       <style>{FAVORITES_BROWSER_CSS}</style>
-      <div className={SEARCH_BOX_CLASS}>
-        <IconSearch className={SEARCH_ICON_CLASS} size={14} />
-        <TextField
-          id={SEARCH_FIELD_ID}
-          className={SEARCH_FIELD_CLASS}
-          value={text}
-          placeholder={SEARCH_PLACEHOLDER}
-          aria-label={SEARCH_ARIA_LABEL}
-          onChange={setText}
-        />
-        <span className={SEARCH_TOOLS_CLASS}>
-          {text.length > 0 ? (
-            <button
-              type="button"
-              className={`${SEARCH_TOOL_CLASS} rdw-kit-focusable`}
-              aria-label={CLEAR_LABEL}
-              title={CLEAR_LABEL}
-              onClick={() => {
-                setText("");
-                document.getElementById(SEARCH_FIELD_ID)?.focus();
-              }}
-            >
-              <IconX size={14} />
-            </button>
-          ) : null}
-          <button
-            type="button"
-            ref={syntaxButtonRef}
-            className={`${SEARCH_TOOL_CLASS} rdw-kit-focusable`}
-            aria-label={SYNTAX_LABEL}
-            title={SYNTAX_LABEL}
-            aria-expanded={syntaxOpen}
-            onClick={() => {
-              setSyntaxOpen(!syntaxOpen);
-            }}
-          >
-            <IconHelp size={14} />
-          </button>
-        </span>
-        <Popover
-          open={syntaxOpen}
-          onClose={() => {
-            setSyntaxOpen(false);
-          }}
-          anchorRef={syntaxButtonRef}
-          widthPx={SYNTAX_POPOVER_WIDTH_PX}
-          alignEnd
-          aria-label={SYNTAX_LABEL}
-        >
-          <dl className={SYNTAX_CLASS}>
-            {SYNTAX_ROWS.map(([example, meaning]) => (
-              <>
-                <dt>{example}</dt>
-                <dd>{meaning}</dd>
-              </>
-            ))}
-          </dl>
-          <p className={SYNTAX_NOTE_CLASS}>{SYNTAX_NOTE}</p>
-        </Popover>
-      </div>
+      <SearchField
+        id={SEARCH_FIELD_ID}
+        className={SEARCH_BOX_CLASS}
+        value={text}
+        placeholder={SEARCH_PLACEHOLDER}
+        aria-label={SEARCH_ARIA_LABEL}
+        clearLabel={CLEAR_LABEL}
+        help={SEARCH_HELP}
+        onChange={setText}
+      />
       <span className={GROUP_LABEL_CLASS} aria-hidden="true">
         {MEDIA_LABEL}
       </span>

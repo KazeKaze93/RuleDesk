@@ -52,6 +52,11 @@ const SPACES = /\s+/g;
 // ---- artists and tags
 
 const ARTIST_ROW_SELECTOR = 'tr[id^="artist-"]';
+/** The name of an artist row: `<a href="index.php?page=artist&s=show&id=…">name</a>`. */
+const ARTIST_NAME_LINK_SELECTOR = 'a[href*="page=artist"][href*="s=show"]';
+/** A row of the Tags table carries no class; the header row is the one with `th`. */
+const TAGS_ROW_SELECTOR = "tr";
+const FIRST_WORD = /^[a-z]+/;
 const TAGS_PAGE_PARAM = "tags";
 export const ROW_ACTIONS_CLASS = "rdw-row-actions";
 export const SAVE_TAG_CLASS = "rdw-save-tag";
@@ -281,20 +286,29 @@ export function rowTagKind(row: Element): FollowKind | null {
       return kind;
     }
   }
+  // The Type cell reads "Artist (edit)", "Character, ambiguous (edit)": the
+  // first word is the type.
   for (const cell of row.querySelectorAll("td")) {
-    const kind = KIND_BY_TEXT.get((cell.textContent ?? "").trim().toLowerCase());
-    if (kind !== undefined) {
+    const word = FIRST_WORD.exec((cell.textContent ?? "").trim().toLowerCase())?.[0] ?? "";
+    const kind = KIND_BY_TEXT.get(word);
+    if (kind !== undefined && cell.querySelector(TAG_LINK_SELECTOR) === null) {
       return kind;
     }
   }
   return null;
 }
 
+/** The tag of an Artists row: the text of its name link. */
+export function artistRowTag(row: Element): string | null {
+  const name = row.querySelector(ARTIST_NAME_LINK_SELECTOR)?.textContent ?? "";
+  return name.trim().length === 0 ? null : normalizeArtistTag(name.trim());
+}
+
 function mountArtists(rows: readonly Element[]): void {
   ensureDocumentStyles();
   for (const row of rows) {
-    const tag = rowTag(row);
-    const cell = row.querySelector(TAG_LINK_SELECTOR)?.closest("td");
+    const tag = artistRowTag(row);
+    const cell = row.querySelector(ARTIST_NAME_LINK_SELECTOR)?.closest("td");
     if (tag !== null && cell instanceof HTMLElement) {
       attachFollowButton(cell, tag, FOLLOW_KIND_ARTIST);
     }
@@ -329,7 +343,9 @@ function buildSaveButton(tag: string): HTMLButtonElement {
 
 function mountTags(table: Element): void {
   ensureDocumentStyles();
-  const rows = [...table.querySelectorAll("tr.odd, tr.even")];
+  const rows = [...table.querySelectorAll(TAGS_ROW_SELECTOR)].filter(
+    (row) => row.querySelector("th") === null,
+  );
   let added = 0;
   for (const row of rows) {
     const tag = rowTag(row);
@@ -346,7 +362,7 @@ function mountTags(table: Element): void {
     row.append(cell);
     added += 1;
   }
-  const header = table.querySelector("tr.tableheader");
+  const header = table.querySelector("tr.tableheader") ?? table.querySelector("th")?.closest("tr") ?? null;
   if (added > 0 && header !== null && header.querySelector(`.${ROW_ACTIONS_CLASS}`) === null) {
     const heading = document.createElement("th");
     heading.className = ROW_ACTIONS_CLASS;

@@ -103,6 +103,31 @@ function parseNumericPostId(postId: string | null): number | null {
   return truncated < 0 ? null : truncated;
 }
 
+const SIZE_PATTERN = /^(\d+)\s*x\s*(\d+)$/i;
+
+function statValue(stats: readonly StatRow[], label: StatRow["label"]): string {
+  return stats.find((row) => row.label === label)?.value.trim() ?? "";
+}
+
+/** What the panel knows about the post that a file name mask may use. */
+export function fileNameInfo(
+  postId: number,
+  stats: readonly StatRow[],
+  scoreText: string,
+): { postId: number; rating?: string; score?: number; width?: number; height?: number; owner?: string } {
+  const size = SIZE_PATTERN.exec(statValue(stats, "Size"));
+  const score = Number(scoreText);
+  const rating = statValue(stats, "Rating").toLowerCase();
+  const owner = statValue(stats, "By");
+  return {
+    postId,
+    ...(rating.length > 0 ? { rating } : {}),
+    ...(scoreText.trim().length > 0 && Number.isFinite(score) ? { score } : {}),
+    ...(size === null ? {} : { width: Number(size[1]), height: Number(size[2]) }),
+    ...(owner.length > 0 ? { owner } : {}),
+  };
+}
+
 function voteLabel(scoreText: string): string {
   return `${TEXT_VOTE_PREFIX} ${scoreText}`;
 }
@@ -223,8 +248,7 @@ export function PostPanel(props: PostPanelProps): JSX.Element {
 
   const showInfoCard =
     stats.length > 0 || moreLinks.length > 0 || hasComments;
-  const showActionsRow2 =
-    props.postId !== null || iCame !== null || originalHref !== null;
+  const showActionsRow2 = props.postId !== null || iCame !== null || originalHref !== null;
 
   return (
     <div className={CLASS_ROOT}>
@@ -304,8 +328,12 @@ export function PostPanel(props: PostPanelProps): JSX.Element {
                 <IconExternalLink size={ORIGINAL_ICON_SIZE} />
               </a>
             ) : null}
-            {originalHref !== null && numericId !== null ? (
-              <DownloadOne url={originalHref} postId={numericId} className={CLASS_ORIGINAL} />
+            {numericId !== null ? (
+              <DownloadOne
+                originalHref={originalHref}
+                info={fileNameInfo(numericId, stats, scoreText)}
+                className={CLASS_ORIGINAL}
+              />
             ) : null}
           </div>
         ) : null}

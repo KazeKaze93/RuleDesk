@@ -48,6 +48,12 @@ export {
   type ProgressBarProps,
 } from "./progress-bar";
 export {
+  SearchField,
+  SEARCH_FIELD_CSS,
+  type SearchFieldProps,
+  type SearchHelp,
+} from "./search-field";
+export {
   SectionLabel,
   SECTION_LABEL_CSS,
   type SectionLabelProps,

@@ -1138,7 +1138,10 @@ export function getFeatureState(id: string): unknown {
 }
 
 export function setFeatureState(id: string, value: unknown): void {
-  const data = load();
+  // Read again first: another tab may have written since this page loaded, and
+  // a write from this page's older copy would undo it (the collapsed tag
+  // groups, the view of a page).
+  const data = reloadFromStorage();
   const settings = currentSettings(data);
   const featureState = { ...(settings.featureState ?? {}), [id]: value };
   data.settings = {

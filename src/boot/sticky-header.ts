@@ -99,7 +99,20 @@ function writeSidebarFoot(): void {
     boundSidebar = sidebar;
     sidebar.addEventListener("scroll", scheduleSidebarFoot, { passive: true });
   }
-  const foot = Math.max(0, Math.round(window.innerHeight - block.getBoundingClientRect().bottom));
+  // On a page whose content is shorter than the window the block is only as
+  // tall as the sidebar makes it: shortening the sidebar by the gap under the
+  // block would shrink the block, and so on until the tag list is gone. There
+  // the sidebar keeps its full height and the page scrolls as a whole.
+  let tallestOther = 0;
+  for (const child of block.children) {
+    if (child !== sidebar && child instanceof HTMLElement) {
+      tallestOther = Math.max(tallestOther, child.offsetHeight);
+    }
+  }
+  const foot =
+    tallestOther < window.innerHeight
+      ? 0
+      : Math.max(0, Math.round(window.innerHeight - block.getBoundingClientRect().bottom));
   root.style.setProperty(SIDEBAR_FOOT_VAR, `${String(foot)}px`);
   // The fade at the bottom says there is more to scroll to; none at the end.
   const hidden = sidebar.scrollHeight - sidebar.scrollTop - sidebar.clientHeight;

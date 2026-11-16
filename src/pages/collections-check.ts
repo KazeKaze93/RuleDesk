@@ -1,14 +1,16 @@
 import { COLLECTION_KIND_SEARCH } from "../config/constants";
 import { buildSearchUrl, isUnfilteredQuery } from "../search/query";
 import { fetchNextPage } from "../site/next-page";
+import { readFirstThumbUrls, readResultCount } from "../site/result-page";
 import { extractPostIdFromThumb } from "../site/selectors";
 import type { Collection } from "../storage/schema";
-import { setDynamicNewest } from "../storage/store";
+import { setDynamicCover, setDynamicNewest, setDynamicPostCount } from "../storage/store";
 
 /**
  * "Check for new" on the Collections page: reads the first results page of
- * every saved search and remembers its newest post, so a card can say that
- * there is something new since you last opened it.
+ * every saved search. From it the card gets its cover and post count (as on a
+ * visit to the search), and the newest post is remembered, so a card can say
+ * that there is something new since you last opened it.
  *
  * One request per saved search, one at a time with a pause, and only when the
  * button is pressed. The run stops at the first failure: the site answers 429
@@ -16,28 +18,30 @@ import { setDynamicNewest } from "../storage/store";
  */
 
 /** Pause between two requests of a run. */
-export const CHECK_INTERVAL_MS = 1500;
+export const CHECK_INTERVAL_MS = 700;
+/** How many previews a card cover takes. */
+const COVER_SIZE = 4;
 const SORT_TOKEN_PREFIX = "sort:";
 
-/**
- * The saved searches a check makes sense for: ones with a query, in the site's
- * default order. Under another order the first page does not hold the newest
- * post, so its top would say nothing.
- */
+/** The saved searches a check reads: every one with a query. */
 export function checkableCollections(collections: readonly Collection[]): Collection[] {
-  return collections.filter((collection) => {
-    if (collection.kind !== COLLECTION_KIND_SEARCH) {
-      return false;
-    }
-    const query = (collection.query ?? "").trim();
-    if (isUnfilteredQuery(query)) {
-      return false;
-    }
-    return !query
-      .toLowerCase()
-      .split(/\s+/)
-      .some((token) => token.startsWith(SORT_TOKEN_PREFIX));
-  });
+  return collections.filter(
+    (collection) =>
+      collection.kind === COLLECTION_KIND_SEARCH &&
+      !isUnfilteredQuery((collection.query ?? "").trim()),
+  );
+}
+
+/**
+ * True for a search in the site's default order. Under another order the
+ * first page does not hold the newest post, so its top says nothing about
+ * what is new.
+ */
+export function hasDefaultOrder(collection: Collection): boolean {
+  return !(collection.query ?? "")
+    .toLowerCase()
+    .split(/\s+/)
+    .some((token) => token.startsWith(SORT_TOKEN_PREFIX));
 }
 
 /** The largest post id among the thumbs, 0 when there are none. */
@@ -81,7 +85,26 @@ export async function runCollectionsCheck(
     }
     try {
       const page = await fetchNextPage(buildSearchUrl(collection.tags));
-      setDynamicNewest(collection.id, newestPostIdOf(page.thumbs), false);
+      const list = page.thumbs[0]?.parentElement ?? null;
+      const doc = page.thumbs[0]?.ownerDocument ?? null;
+      if (list !== null) {
+        setDynamicCover(collection.id, readFirstThumbUrls(list, COVER_SIZE));
+      }
+      if (doc !== null) {
+        const count = readResultCount(doc, (collection.query ?? "").trim());
+        if (count !== null) {
+          setDynamicPostCount(collection.id, count);
+        }
+      }
+      if (hasDefaultOrder(collection)) {
+        // A search never opened since marks exist has nothing to compare with:
+        // what it shows now becomes the point later checks are measured from.
+        setDynamicNewest(
+          collection.id,
+          newestPostIdOf(page.thumbs),
+          collection.openedPostId === undefined,
+        );
+      }
     } catch (error) {
       return {
         ok: false,

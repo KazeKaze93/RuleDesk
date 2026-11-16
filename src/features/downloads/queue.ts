@@ -6,7 +6,8 @@ import {
   type DownloadSource,
   type PostFile,
 } from "../../site/api";
-import { downloadFile, downloadFileName, downloadFolder } from "../../site/download";
+import { buildFileName, downloadFile, downloadFolder } from "../../site/download";
+import { readFileMask } from "../../storage/download-name";
 import { getApiCredentials } from "../../storage/api-credentials";
 
 /**
@@ -36,7 +37,17 @@ const NO_FILES_MESSAGE =
 const JobSchema = z.object({
   label: z.string(),
   folder: z.string(),
-  files: z.array(z.object({ postId: z.int(), url: z.string() })),
+  files: z.array(
+    z.object({
+      postId: z.int(),
+      url: z.string(),
+      rating: z.optional(z.string()),
+      score: z.optional(z.number()),
+      width: z.optional(z.number()),
+      height: z.optional(z.number()),
+      owner: z.optional(z.string()),
+    }),
+  ),
 });
 
 const PositionSchema = z.object({
@@ -139,7 +150,7 @@ function progress(phase: DownloadPhase, message = ""): DownloadState {
 }
 
 async function saveOne(file: PostFile, folder: string): Promise<boolean> {
-  const name = `${folder}/${downloadFileName(file.url, file.postId)}`;
+  const name = `${folder}/${buildFileName(readFileMask(), file)}`;
   try {
     await downloadFile(file.url, name);
     return true;

@@ -6,14 +6,17 @@ import {
   feedCountText,
   isFreshCount,
 } from "../../src/features/feed-counter";
-import { HIDE_SEEN_BODY_CLASS, applyHideSeen, countHiddenSeen } from "../../src/features/hide-seen";
 import { MAX_SCALE, clampScale, fitScale, zoomAt } from "../../src/features/image-zoom";
-import { RECENT_QUERIES_MAX, withRecentQuery } from "../../src/features/recent-queries";
-import { checkableCollections, newestPostIdOf } from "../../src/pages/collections-check";
+import {
+  checkableCollections,
+  hasDefaultOrder,
+  newestPostIdOf,
+} from "../../src/pages/collections-check";
 import { followCaption, matchesKindAndGroup } from "../../src/pages/following-page";
 import { changeText, sparklinePoints } from "../../src/pages/stats-history";
 import {
   FORUM_MEMORY_MAX,
+  artistRowTag,
   forumBadge,
   forumTopicKey,
   rowSignature,
@@ -64,46 +67,6 @@ function thumbs(ids: readonly number[]): Element[] {
     .join("");
   return [...list.children];
 }
-
-describe("recent searches", () => {
-  it("puts the newest first and moves a repeated search to the front", () => {
-    expect(withRecentQuery(["cat", "dog"], "bird")).toEqual(["bird", "cat", "dog"]);
-    expect(withRecentQuery(["cat", "dog", "bird"], "  DOG ")).toEqual(["DOG", "cat", "bird"]);
-  });
-
-  it("does not keep an empty search or the search of everything", () => {
-    expect(withRecentQuery(["cat"], "  ")).toEqual(["cat"]);
-    expect(withRecentQuery(["cat"], "all")).toEqual(["cat"]);
-  });
-
-  it("keeps a limited number", () => {
-    const many = Array.from({ length: RECENT_QUERIES_MAX }, (_unused, index) => `q${String(index)}`);
-    const next = withRecentQuery(many, "fresh");
-    expect(next).toHaveLength(RECENT_QUERIES_MAX);
-    expect(next[0]).toBe("fresh");
-    expect(next).not.toContain(`q${String(RECENT_QUERIES_MAX - 1)}`);
-  });
-});
-
-describe("hide seen posts", () => {
-  beforeEach(() => {
-    installGmMocks();
-    document.head.replaceChildren();
-    document.body.className = "";
-    document.body.innerHTML = `<div class="image-list">
-      <span class="thumb rdw-seen" id="s1"><a id="p1"></a></span>
-      <span class="thumb" id="s2"><a id="p2"></a></span></div>`;
-  });
-
-  it("hides by a class on the page and brings the posts back when switched off", () => {
-    applyHideSeen(true);
-    expect(document.body.classList.contains(HIDE_SEEN_BODY_CLASS)).toBe(true);
-    expect(document.head.textContent).toContain("display: none");
-    applyHideSeen(false);
-    expect(document.body.classList.contains(HIDE_SEEN_BODY_CLASS)).toBe(false);
-    expect(countHiddenSeen()).toBe(0);
-  });
-});
 
 describe("the picture viewer", () => {
   it("fits a large picture into the window and never enlarges a small one", () => {
@@ -181,12 +144,25 @@ describe("rows of the Tags and Artists pages", () => {
     expect(rowTag(row("<td>no link</td>"))).toBeNull();
   });
 
-  it("knows the kind from a class or from a cell that says it", () => {
+  it("knows the kind from a class or from the Type cell, whatever follows the type", () => {
     expect(rowTagKind(row('<td><span class="tag-type-character"><a href="?tags=x">x</a></span></td>'))).toBe(
       "character",
     );
-    expect(rowTagKind(row('<td><a href="?tags=x">x</a></td><td>Copyright</td>'))).toBe("copyright");
-    expect(rowTagKind(row('<td><a href="?tags=x">x</a></td><td>general</td>'))).toBeNull();
+    expect(rowTagKind(row('<td>1</td><td><a href="?tags=x">x</a></td><td>Copyright, ambiguous (<a href="#">edit</a>)</td>'))).toBe(
+      "copyright",
+    );
+    expect(rowTagKind(row('<td>2</td><td><a href="?tags=x">x</a></td><td>Artist (<a href="#">edit</a>)</td>'))).toBe("artist");
+    expect(rowTagKind(row('<td><a href="?tags=x">x</a></td><td>General (edit)</td>'))).toBeNull();
+    // A tag whose own name begins with a type word is not that type.
+    expect(rowTagKind(row('<td><a href="?tags=artist_request">artist request</a></td><td>General</td>'))).toBeNull();
+  });
+
+  it("reads the tag of an Artists row from its name link", () => {
+    const artist = row(
+      '<td>P <a href="index.php?page=artist&amp;s=update&amp;id=7" title="Edit artist">E</a></td><td><a href="index.php?page=artist&amp;s=show&amp;id=7">Sandy_Dust</a></td><td>Someone</td>',
+    );
+    expect(artistRowTag(artist)).toBe("sandy_dust");
+    expect(artistRowTag(row("<td>nothing</td>"))).toBeNull();
   });
 });
 
@@ -296,11 +272,13 @@ describe("groups and kinds of followed tags, new posts of saved searches", () =>
     expect(dynamicHasNew(read() ?? saved)).toBe(false);
   });
 
-  it("checks saved searches in the default order only", () => {
+  it("reads every saved search, and looks for new posts in the default order only", () => {
     createPlaylist("Custom");
     createDynamicCollection("Cats", "cat");
     createDynamicCollection("Top", "cat sort:score");
-    expect(checkableCollections(load().collections).map((item) => item.name)).toEqual(["Cats"]);
+    const checked = checkableCollections(load().collections);
+    expect(checked.map((item) => item.name)).toEqual(["Cats", "Top"]);
+    expect(checked.map(hasDefaultOrder)).toEqual([true, false]);
     expect(newestPostIdOf(thumbs([5, 90, 12]))).toBe(90);
     expect(newestPostIdOf([])).toBe(0);
   });
