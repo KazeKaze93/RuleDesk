@@ -64,14 +64,36 @@ export const CollectionSchema = z.object({
   query: z.optional(z.string()),
   cover: z.optional(z.array(z.string())),
   postCount: z.optional(PostCountSchema),
+  /** A saved search: the newest post id on its first page when you last opened it. */
+  openedPostId: z.optional(z.int()),
+  /** A saved search: the newest post id found by the last "Check for new". */
+  newestPostId: z.optional(z.int()),
 });
 
 /**
  * A followed artist. Everything except `tag` is what the Following page shows
  * and is filled in as it becomes known.
  */
+/**
+ * What a followed tag is. The list began as artists only, so an entry without
+ * a kind is an artist.
+ */
+export const FOLLOW_KIND_ARTIST = "artist";
+export const FOLLOW_KIND_CHARACTER = "character";
+export const FOLLOW_KIND_COPYRIGHT = "copyright";
+export const FollowKindSchema = z.enum([
+  FOLLOW_KIND_ARTIST,
+  FOLLOW_KIND_CHARACTER,
+  FOLLOW_KIND_COPYRIGHT,
+]);
+export type FollowKind = z.infer<typeof FollowKindSchema>;
+
 export const ArtistEntrySchema = z.object({
   tag: z.string().check(z.minLength(1)),
+  /** Absent for an artist. */
+  kind: z.optional(FollowKindSchema),
+  /** The group the user put the entry into on the Following page. */
+  group: z.optional(z.string()),
   /** When the artist was followed, ms since epoch. Absent for older entries. */
   addedAt: z.optional(z.number()),
   /** First thumbs of the artist's results page, for the card cover. */

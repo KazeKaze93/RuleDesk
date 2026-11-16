@@ -136,6 +136,22 @@ ${BODY_SELECTOR} #${POST_ACTIONS_ID} .rdw-post-panel-original {
   color: var(--rdw-text);
   text-decoration: none;
 }
+${BODY_SELECTOR} #${POST_ACTIONS_ID} button.rdw-post-panel-download {
+  font: inherit;
+  cursor: pointer;
+}
+${BODY_SELECTOR} #${POST_ACTIONS_ID} button.rdw-post-panel-download:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+${BODY_SELECTOR} #${POST_ACTIONS_ID} button.rdw-post-panel-download[data-phase="done"] {
+  border-color: var(--rdw-accent);
+  color: var(--rdw-accent);
+}
+${BODY_SELECTOR} #${POST_ACTIONS_ID} button.rdw-post-panel-download[data-phase="failed"] {
+  border-color: var(--rdw-danger);
+  color: var(--rdw-danger);
+}
 ${BODY_SELECTOR} #${POST_ACTIONS_ID} .rdw-post-panel-stats {
   display: grid;
   grid-template-columns: ${String(STAT_LABEL_WIDTH_PX)}px 1fr;

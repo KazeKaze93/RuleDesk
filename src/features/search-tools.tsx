@@ -40,6 +40,18 @@ import {
 } from "../ui/kit";
 import { DownloadControls, SELECT_NOTE_CLASS } from "./downloads/search-controls";
 import { SaveSearchButton } from "./save-search";
+import { applyHideSeen, isHideSeen } from "./hide-seen";
+import { rememberQueryOfPage } from "./recent-queries";
+import {
+  EXTRAS_SWITCH_ROW_CLASS,
+  HideSeenSwitch,
+  RECENT_CLASS,
+  RECENT_CLEAR_CLASS,
+  RECENT_HEAD_CLASS,
+  RECENT_ITEM_CLASS,
+  RECENT_LIST_CLASS,
+  RecentQueries,
+} from "./search-extras";
 import { featureBodyClass, type Feature, type FeatureContext } from "./types";
 
 const FEATURE_ID = "search-tools";
@@ -214,6 +226,51 @@ const FEATURE_CSS = [
   `body.${BODY_CLASS} .${FOOT_CLASS} > button {`,
   "  flex: 1 1 auto;",
   "  white-space: nowrap;",
+  "}",
+  `body.${BODY_CLASS} .${EXTRAS_SWITCH_ROW_CLASS} {`,
+  "  display: flex;",
+  "  align-items: center;",
+  "}",
+  `body.${BODY_CLASS} .${RECENT_CLASS} {`,
+  "  display: grid;",
+  "  gap: 6px;",
+  "  min-width: 0;",
+  "}",
+  `body.${BODY_CLASS} .${RECENT_HEAD_CLASS} {`,
+  "  display: flex;",
+  "  align-items: center;",
+  "  justify-content: space-between;",
+  "  gap: 8px;",
+  "}",
+  `body.${BODY_CLASS} .${RECENT_CLEAR_CLASS} {`,
+  "  padding: 0;",
+  "  border: 0;",
+  "  background: none;",
+  "  color: var(--rdw-muted);",
+  "  font: 11px var(--rdw-font);",
+  "  cursor: pointer;",
+  "}",
+  `body.${BODY_CLASS} .${RECENT_CLEAR_CLASS}:hover {`,
+  "  color: var(--rdw-text);",
+  "}",
+  `body.${BODY_CLASS} .${RECENT_LIST_CLASS} {`,
+  "  display: grid;",
+  "  gap: 2px;",
+  "  min-width: 0;",
+  "}",
+  `body.${BODY_CLASS} a.${RECENT_ITEM_CLASS} {`,
+  "  display: block;",
+  "  padding: 3px 6px;",
+  "  border-radius: var(--rdw-radius-s);",
+  "  color: var(--rdw-text);",
+  "  font: 12px/1.35 var(--rdw-font);",
+  "  text-decoration: none;",
+  "  overflow: hidden;",
+  "  text-overflow: ellipsis;",
+  "  white-space: nowrap;",
+  "}",
+  `body.${BODY_CLASS} a.${RECENT_ITEM_CLASS}:hover {`,
+  "  background: var(--rdw-surface-2);",
   "}",
   `body.${BODY_CLASS} .${FOOT_CLASS} > .${SELECT_NOTE_CLASS} {`,
   "  flex: 1 1 100%;",
@@ -1175,6 +1232,9 @@ function SearchToolsPanel(props: SearchToolsPanelProps): JSX.Element {
           </div>
         ) : null}
 
+        <HideSeenSwitch />
+        <RecentQueries />
+
         <div className={FOOT_CLASS}>
           <Button
             variant="secondary"
@@ -1205,6 +1265,9 @@ function mountSearchTools(_ctx: FeatureContext): void {
     return;
   }
 
+  // Before the panel is drawn: the list it shows leaves the page's own search out.
+  rememberQueryOfPage(window.location.search);
+  applyHideSeen(isHideSeen());
   const root = ensureRoot(form);
   render(<SearchToolsPanel input={input} />, root);
   // The place reserved before the first paint is no longer needed, and the

@@ -3,6 +3,8 @@ import { startRdwPages } from "../pages/router";
 import { getSiteSkinCss } from "../skin/site-skin";
 import { applyAppearanceTheme } from "../skin/theme";
 import { mountCommentsPage } from "../site/comments-page";
+import { mountListPages } from "../site/list-pages";
+import { recordStatsPoint } from "../storage/history";
 import { syncFavoritesPage } from "../site/favorites-page";
 import { mountFavoritesPager } from "../site/favorites-pager";
 import { mountFavoriteVideoMarks, mountGifMarks } from "../site/video-thumbs";
@@ -58,6 +60,7 @@ export async function startApp(): Promise<void> {
     await yieldToMain();
   } else {
     mountCommentsPage();
+    mountListPages();
     await yieldToMain();
   }
 
@@ -69,4 +72,6 @@ export async function startApp(): Promise<void> {
   await yieldToMain();
 
   maybeResumeFavoritesSync();
+  // Last and cheap: one small write on the first page of a day, none after.
+  recordStatsPoint();
 }

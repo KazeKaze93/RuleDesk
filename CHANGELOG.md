@@ -2,6 +2,35 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.37.0
+
+Posts and a post page:
+
+- A post page has a download button beside "Original": it saves the original file of the post. No API key is needed
+- "Hide seen posts" in the search panel takes the posts you have already opened out of the grid
+- "Recent searches" in the search panel: the last eight, one click away, with "Clear"
+- A click on the picture of a post opens it over the page: scroll to zoom, drag to move, double click for actual size, Esc to close. Pictures and GIFs; a video keeps its player. Switch: RuleDesk → Page → "Zoom the picture on click"
+- "Sidebar on the right" in RuleDesk → Page puts the tag sidebar of Posts and of a post page on the right. Off by default
+- "Motion" in RuleDesk → Page: thumbnails lift a little under the pointer, buttons change smoothly, menus and dialogs fade in. On by default, and never shown when your system asks for reduced motion
+
+Following and the feed:
+
+- Follow now works on characters and copyrights too: their rows in the tag sidebar get the same button. The Following page shows what each entry is and gets a "Type" filter once something other than an artist is followed
+- Groups on the Following page: "Select", pick entries, "Group…", name a group or pick one. A "Group" filter appears in the toolbar; a group exists while something is in it
+- A number beside "Feed" in the menu says how many posts of the feed's first page are new. For this the script asks the site for that page when a page loads, at most once in 15 minutes; switch: RuleDesk → Page → "New posts counter beside Feed"
+
+Collections and Statistics:
+
+- "Check for new" on the Collections page reads the first page of every saved search, one at a time with a pause, and marks the cards with posts newer than the ones you saw last: "Dynamic · new". Opening the search clears the mark
+- Statistics has a "History" block: a line for favorites, followed tags and collections, from a point kept for every day you open the site
+- A reminder to make a backup: a dot on the RuleDesk icon and a line in RuleDesk → Data when the last export is more than 30 days old, or when there has been none after two weeks of use
+
+The site's other sections:
+
+- Forum: a topic that is new, or whose row has changed since you opened it, is marked "new" or "updated", with "Mark all as read" above the list. Nothing is requested for it
+- Artists: a Follow button in every row
+- Tags: Follow (artists, characters, copyrights) and "Save as collection" in every row
+
 ## 0.36.0
 
 - Several posts go into a custom collection at once. On Posts: "Select posts" under the search panel, pick posts on the page, "Add to collection (N)". On Favorites: "Select", pick posts, "Add to collection". A dialog lists your custom collections and has a field for a new one; afterwards a line says how many posts were added and how many were already there

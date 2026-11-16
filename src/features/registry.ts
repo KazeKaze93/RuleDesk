@@ -3,9 +3,12 @@ import { cdnFallbackFeature } from "./cdn-fallback";
 import { downloadsFeature } from "./downloads/panel";
 import { favoritesBulkFeature } from "./favorites-bulk";
 import { feedFeature } from "./feed";
+import { feedCounterFeature } from "./feed-counter";
 import { gridDensityFeature } from "./grid-density";
 import { seenDimFeature } from "./grid-marks";
+import { imageZoomFeature } from "./image-zoom";
 import { infiniteScrollFeature } from "./infinite-scroll";
+import { motionFeature, sidebarRightFeature } from "./layout-options";
 import { menuCleanupFeature } from "./menu-cleanup";
 import { playlistBarFeature } from "./playlist-bar";
 import { playlistMenuFeature } from "./playlist-menu";
@@ -35,4 +38,8 @@ export const FEATURES: Feature[] = [
   videoPreviewFeature,
   cdnFallbackFeature,
   downloadsFeature,
+  imageZoomFeature,
+  sidebarRightFeature,
+  motionFeature,
+  feedCounterFeature,
 ];

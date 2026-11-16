@@ -14,6 +14,7 @@ import {
 } from "../site/profile";
 import { Button, Card } from "../ui/kit";
 import { PANEL_UI_CLASS } from "./constants";
+import { StatsHistory } from "./stats-history";
 
 /**
  * Numbers about what the script stores, computed from local data when the
@@ -560,6 +561,7 @@ export function StatsSection(): JSX.Element {
           <CollectionBars collections={stats.topCollections} />
         </div>
       </div>
+      <StatsHistory />
       <FavoriteTagsBlock />
       <ProfileBlock />
       <p className={HINT_CLASS}>{HINT}</p>

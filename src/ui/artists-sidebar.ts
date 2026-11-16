@@ -16,6 +16,12 @@ import {
   writeArtistsMirror,
 } from "../storage/artists-mirror";
 import {
+  FOLLOW_KIND_ARTIST,
+  FOLLOW_KIND_CHARACTER,
+  FOLLOW_KIND_COPYRIGHT,
+  type FollowKind,
+} from "../storage/schema";
+import {
   listArtistTags,
   reloadFromStorage,
   save,
@@ -103,26 +109,45 @@ function readMergedArtistTags(): string[] {
  * stored about them (cover, post count, newest post, follow date); only a
  * new one starts as a bare entry.
  */
-function persistArtistTags(tags: readonly string[]): void {
+function persistArtistTags(tags: readonly string[], fresh?: FreshFollow): void {
   const data = reloadFromStorage();
   const stored = new Map(data.artists.map((entry) => [entry.tag, entry]));
   const now = Date.now();
-  data.artists = tags.map((tag) => stored.get(tag) ?? { tag, addedAt: now });
+  data.artists = tags.map((tag) => {
+    const known = stored.get(tag);
+    if (known !== undefined) {
+      return known;
+    }
+    // An artist carries no kind: the list began as artists only.
+    return fresh !== undefined && fresh.tag === tag && fresh.kind !== FOLLOW_KIND_ARTIST
+      ? { tag, addedAt: now, kind: fresh.kind }
+      : { tag, addedAt: now };
+  });
   save(data);
   writeArtistsMirror(tags);
 }
+
+/** The tag being followed right now and what it is. */
+type FreshFollow = { readonly tag: string; readonly kind: FollowKind };
+
+/** The rows of the tag sidebar that get a Follow button, and what they hold. */
+const FOLLOW_ROWS: readonly (readonly [string, FollowKind])[] = [
+  [SITE_SELECTORS.tagTypeArtist, FOLLOW_KIND_ARTIST],
+  [SITE_SELECTORS.tagTypeCharacter, FOLLOW_KIND_CHARACTER],
+  [SITE_SELECTORS.tagTypeCopyright, FOLLOW_KIND_COPYRIGHT],
+];
 
 function isFollowingResolved(tag: string): boolean {
   return readMergedArtistTags().includes(tag);
 }
 
-function followArtist(tag: string): void {
+function followArtist(tag: string, kind: FollowKind): void {
   const current = readMergedArtistTags();
   if (current.includes(tag)) {
     persistArtistTags(current);
     return;
   }
-  persistArtistTags([...current, tag]);
+  persistArtistTags([...current, tag], { tag, kind });
 }
 
 function unfollowArtist(tag: string): void {
@@ -139,7 +164,8 @@ function applyFollowState(button: HTMLButtonElement, following: boolean): void {
   button.textContent = label;
 }
 
-function attachFollowButton(li: HTMLElement, tag: string): void {
+/** Appends a Follow button for `tag` to `li`: a row of the tag sidebar, or a table cell. */
+export function attachFollowButton(li: HTMLElement, tag: string, kind: FollowKind): void {
   if (li.querySelector(SITE_SELECTORS.artistFollowButton) !== null) {
     return;
   }
@@ -157,7 +183,7 @@ function attachFollowButton(li: HTMLElement, tag: string): void {
         unfollowArtist(tag);
         applyFollowState(button, false);
       } else {
-        followArtist(tag);
+        followArtist(tag, kind);
         applyFollowState(button, true);
       }
     } catch {
@@ -182,15 +208,16 @@ export function mountArtistSidebar(
     return;
   }
 
-  const rows = sidebar.querySelectorAll(SITE_SELECTORS.tagTypeArtist);
-  for (const row of rows) {
-    if (!(row instanceof HTMLElement)) {
-      continue;
+  for (const [selector, kind] of FOLLOW_ROWS) {
+    for (const row of sidebar.querySelectorAll(selector)) {
+      if (!(row instanceof HTMLElement)) {
+        continue;
+      }
+      const tag = extractArtistTagFromLi(row);
+      if (tag === null) {
+        continue;
+      }
+      attachFollowButton(row, tag, kind);
     }
-    const tag = extractArtistTagFromLi(row);
-    if (tag === null) {
-      continue;
-    }
-    attachFollowButton(row, tag);
   }
 }

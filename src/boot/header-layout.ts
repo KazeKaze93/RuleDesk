@@ -29,6 +29,8 @@ export const MORE_LIST_CLASS = "rdw-nav-more-list";
 export const ACCOUNT_ITEM_CLASS = "rdw-nav-account";
 export const ICON_ITEM_CLASS = "rdw-nav-icon";
 export const SUBNAV_ACTION_CLASS = "rdw-subnav-action";
+/** On the RuleDesk item while something there wants attention (a backup is due). */
+export const NAV_DUE_CLASS = "rdw-nav-due";
 const SUBNAV_ICON_CLASS_PREFIX = "rdw-subnav-";
 const STYLE_ID = "rdw-header-layout";
 const MORE_LABEL = "More";
@@ -166,6 +168,19 @@ ${NAV} > li.${ICON_ITEM_CLASS} > a {
 ${iconRule(`${NAV} > li#${MENU_ITEM_ID.stats} > a`, ICON.stats, ICON_PX)}
 ${iconRule(`${NAV} > li.${ACCOUNT_ITEM_CLASS} > a`, ICON.account, ICON_PX)}
 ${iconRule(`${NAV} > li#${MENU_ITEM_ID.settings} > a`, ICON.settings, ICON_PX)}
+${NAV} > li.${NAV_DUE_CLASS} > a {
+  position: relative;
+}
+${NAV} > li.${NAV_DUE_CLASS} > a::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--rdw-accent);
+}
 ${NAV} > li#${MORE_ITEM_ID} > button {
   display: inline-flex;
   align-items: center;

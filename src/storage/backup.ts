@@ -27,6 +27,7 @@ import {
   type FavsData,
   type StorageData,
 } from "./schema";
+import { rememberBackup } from "./history";
 import { clearStorageCache, load, save } from "./store";
 
 export const BACKUP_FORMAT = "ruledesk-web-backup" as const;
@@ -333,6 +334,7 @@ export async function exportBackupDownload(
 ): Promise<BackupFile> {
   const file = await buildBackupFile(options);
   downloadBackupText(serializeBackupFile(file), buildBackupFilename());
+  rememberBackup();
   return file;
 }
 

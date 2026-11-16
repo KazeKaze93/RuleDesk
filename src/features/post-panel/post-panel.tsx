@@ -28,6 +28,7 @@ import {
 } from "../../ui/kit";
 import { CollectionQueue } from "./collection-queue";
 import { CollectionsMenu } from "./collections-menu";
+import { DownloadOne } from "./download-one";
 import { PostActionsList } from "./post-actions-list";
 import {
   SOURCE_LINK_REL,
@@ -302,6 +303,9 @@ export function PostPanel(props: PostPanelProps): JSX.Element {
               >
                 <IconExternalLink size={ORIGINAL_ICON_SIZE} />
               </a>
+            ) : null}
+            {originalHref !== null && numericId !== null ? (
+              <DownloadOne url={originalHref} postId={numericId} className={CLASS_ORIGINAL} />
             ) : null}
           </div>
         ) : null}

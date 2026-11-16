@@ -1,7 +1,7 @@
 import { STICKY_TOP } from "../boot/sticky-header";
 import type { ComponentChildren, JSX } from "preact";
 import { render as preactRender } from "preact";
-import { useCallback, useEffect, useState } from "preact/hooks";
+import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 
 import {
   COLLECTION_KIND_POSTS,
@@ -18,6 +18,7 @@ import {
   createDynamicCollection,
   createPlaylist,
   deleteCollection,
+  dynamicHasNew,
   getFeatureState,
   load,
   reloadFromStorage,
@@ -36,6 +37,7 @@ import {
 import { IconCheck, IconPlus } from "../ui/kit/icons";
 import { QueryField } from "../ui/query-field";
 import { collectionDetailHash, dynamicCollectionMarkHash } from "./constants";
+import { checkableCollections, runCollectionsCheck } from "./collections-check";
 
 const EVENT_PAGESHOW = "pageshow";
 
@@ -91,6 +93,12 @@ const FILTER_PLACEHOLDER = "Filter by name, name…";
 const GRID_LABEL = "Collections";
 const BADGE_CUSTOM = "Custom";
 const BADGE_DYNAMIC = "Dynamic";
+/** A saved search in which "Check for new" found posts newer than the last ones you saw. */
+const BADGE_DYNAMIC_NEW = "Dynamic · new";
+const CHECK_LABEL = "Check for new";
+const CHECK_TITLE =
+  "Read the first page of every saved search and mark the ones with new posts. One request per search, with a pause";
+const CHECK_STATUS_CLASS = "rdw-collections-check-status";
 const SAVED_SEARCH_CAPTION = "saved search";
 const NO_QUERY_CAPTION = "no query";
 const COUNT_LOCALE = "en-US";
@@ -345,6 +353,11 @@ export const COLLECTIONS_PAGE_CSS = `
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 600;
+}
+.${CHECK_STATUS_CLASS} {
+  flex: 1 1 100%;
+  color: var(--rdw-muted);
+  font-size: 12px;
 }
 .${BADGE_CLASS} {
   flex: none;
@@ -706,7 +719,7 @@ function DynamicCard(props: CardProps): JSX.Element {
       collection={props.collection}
       href={dynamicHref(props.collection)}
       kind={COLLECTION_KIND_SEARCH}
-      badge={BADGE_DYNAMIC}
+      badge={dynamicHasNew(props.collection) ? BADGE_DYNAMIC_NEW : BADGE_DYNAMIC}
       meta={dynamicMeta(props.collection)}
       select={props.select}
     >
@@ -810,6 +823,47 @@ export function CollectionsPage(): JSX.Element {
   const [selecting, setSelecting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<readonly string[]>([]);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  // The line of a "Check for new" run; empty before the first run.
+  const [checkStatus, setCheckStatus] = useState("");
+  const [checking, setChecking] = useState(false);
+  const checkCancelledRef = useRef(false);
+
+  useEffect(
+    () => (): void => {
+      checkCancelledRef.current = true;
+    },
+    [],
+  );
+
+  const runCheck = (): void => {
+    const targets = checkableCollections(load().collections);
+    if (targets.length === 0 || checking) {
+      return;
+    }
+    checkCancelledRef.current = false;
+    setChecking(true);
+    setCheckStatus(`Checking 0 of ${String(targets.length)}…`);
+    void runCollectionsCheck(
+      targets,
+      (progress) => {
+        setCheckStatus(`Checking ${String(progress.done)} of ${String(progress.total)}…`);
+      },
+      () => checkCancelledRef.current,
+    ).then((result) => {
+      if (checkCancelledRef.current) {
+        return;
+      }
+      reloadFromStorage();
+      setChecking(false);
+      const withNew = load().collections.filter(dynamicHasNew).length;
+      setCheckStatus(
+        result.ok
+          ? `Checked ${String(result.checked)}; ${String(withNew)} with new posts.`
+          : `Stopped at “${result.name}” after ${String(result.checked)}: ${result.reason}. Try again later.`,
+      );
+      setRevision((value) => value + 1);
+    });
+  };
 
   const closeDialog = useCallback((): void => {
     setDialogOpen(false);
@@ -980,10 +1034,26 @@ export function CollectionsPage(): JSX.Element {
                   {SELECT_BUTTON_LABEL}
                 </Button>
               ) : null}
+              {checkableCollections(collections).length > 0 ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  title={CHECK_TITLE}
+                  disabled={checking}
+                  onClick={runCheck}
+                >
+                  {CHECK_LABEL}
+                </Button>
+              ) : null}
               <Button type="button" variant="primary" onClick={openDialog}>
                 <IconPlus size={ICON_PX} />
                 {NEW_BUTTON_LABEL}
               </Button>
+              {checkStatus.length > 0 ? (
+                <span className={CHECK_STATUS_CLASS} role="status">
+                  {checkStatus}
+                </span>
+              ) : null}
             </>
           )}
         </div>

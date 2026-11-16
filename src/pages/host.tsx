@@ -16,6 +16,7 @@ import {
   type RdwPage,
 } from "./constants";
 import { PAGE_CONTENT_CSS } from "./page-css";
+import { MOTION_PAGE_CSS } from "../features/layout-options";
 import { PAGE_CENTRE_PADDING } from "./view-mode";
 
 const PAGE_CONTROL_HEIGHT_PX = 32;
@@ -91,6 +92,7 @@ const PAGE_HOST_CSS = `
   border: 0;
 }
 ${PAGE_CONTENT_CSS}
+${MOTION_PAGE_CSS}
 `;
 
 type PageShellProps = {

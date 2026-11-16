@@ -1,4 +1,5 @@
-import { applyHeaderLayout, markFavoritesCurrent } from "../boot/header-layout";
+import { NAV_DUE_CLASS, applyHeaderLayout, markFavoritesCurrent } from "../boot/header-layout";
+import { currentBackupStatus } from "../storage/history";
 import {
   FAVORITES_PAGE,
   FAVORITES_SECTION_VIEW,
@@ -251,6 +252,23 @@ export function installSiteMenu(): void {
   }
   // Items added here (Favorites, Statistics) join the header layout.
   applyHeaderLayout(navbar);
+  markBackupDue();
+}
+
+const BACKUP_DUE_TITLE = "RuleDesk: time to export a backup (Data)";
+
+/** A dot on the RuleDesk item while a backup is due; gone once one is made. */
+export function markBackupDue(): void {
+  const item = document.getElementById(MENU_ITEM_ID.settings);
+  if (item === null) {
+    return;
+  }
+  const due = currentBackupStatus().due;
+  item.classList.toggle(NAV_DUE_CLASS, due);
+  const link = item.querySelector("a");
+  if (link !== null) {
+    link.title = due ? BACKUP_DUE_TITLE : MENU_LABEL.settings;
+  }
 }
 
 function menuItemIdForRoute(route: RdwRoute): string {

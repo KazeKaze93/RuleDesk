@@ -37,6 +37,8 @@ import { pruneMarksIfNeeded } from "./marks-prune";
 import {
   AppearanceSchema,
   ArtistEntrySchema,
+  FOLLOW_KIND_ARTIST,
+  type FollowKind,
   CollectionSchema,
   ExportBlobSchema,
   StorageSchema,
@@ -927,6 +929,48 @@ export function setDynamicPostCount(
   return true;
 }
 
+/**
+ * Remembers the newest post id of a saved search. `opened` is true when the
+ * user is looking at its results (they have then seen everything up to that
+ * post), false when a "Check for new" run found it. Writes only on a change.
+ */
+export function setDynamicNewest(collectionId: string, newestPostId: number, opened: boolean): boolean {
+  if (!Number.isInteger(newestPostId) || newestPostId <= 0) {
+    return false;
+  }
+  const cached = load().collections.find((item) => item.id === collectionId);
+  if (cached === undefined || isPlaylist(cached)) {
+    return false;
+  }
+  const unchanged =
+    cached.newestPostId === newestPostId && (!opened || cached.openedPostId === newestPostId);
+  if (unchanged) {
+    return false;
+  }
+  const data = reloadFromStorage();
+  const target = data.collections.find((item) => item.id === collectionId);
+  if (target === undefined || isPlaylist(target)) {
+    return false;
+  }
+  target.newestPostId = Math.max(target.newestPostId ?? 0, newestPostId);
+  if (opened) {
+    target.openedPostId = newestPostId;
+    target.newestPostId = newestPostId;
+  }
+  CollectionSchema.parse(target);
+  save(data);
+  return true;
+}
+
+/** True when a check found posts newer than the ones seen at the last opening. */
+export function dynamicHasNew(collection: Collection): boolean {
+  return (
+    collection.openedPostId !== undefined &&
+    collection.newestPostId !== undefined &&
+    collection.newestPostId > collection.openedPostId
+  );
+}
+
 function samePostCount(left: PostCount | undefined, right: PostCount): boolean {
   return (
     left !== undefined && left.value === right.value && left.exact === right.exact
@@ -1232,6 +1276,46 @@ export function addArtist(tag: string): ArtistEntry {
   data.artists.push(entry);
   save(data);
   return entry;
+}
+
+/** The kind of a followed entry; one saved before kinds existed is an artist. */
+export function followKindOf(entry: ArtistEntry): FollowKind {
+  return entry.kind ?? FOLLOW_KIND_ARTIST;
+}
+
+/** The names of the groups in use, in alphabetical order. */
+export function listFollowGroups(): string[] {
+  const names = new Set<string>();
+  for (const entry of load().artists) {
+    if (entry.group !== undefined && entry.group.length > 0) {
+      names.add(entry.group);
+    }
+  }
+  return [...names].sort((a, b) => a.localeCompare(b));
+}
+
+/**
+ * Puts the given followed tags into a group, or takes them out of theirs when
+ * `group` is null or blank. A group exists while something is in it. Returns
+ * how many entries changed.
+ */
+export function setFollowGroup(tags: readonly string[], group: string | null): number {
+  const name = group === null ? "" : group.trim();
+  const wanted = new Set(tags);
+  const data = reloadFromStorage();
+  let changed = 0;
+  data.artists = data.artists.map((entry) => {
+    if (!wanted.has(entry.tag) || (entry.group ?? "") === name) {
+      return entry;
+    }
+    changed += 1;
+    const { group: _dropped, ...rest } = entry;
+    return name.length > 0 ? { ...rest, group: name } : rest;
+  });
+  if (changed > 0) {
+    save(data);
+  }
+  return changed;
 }
 
 export type AddArtistsResult = {

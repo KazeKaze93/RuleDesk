@@ -33,7 +33,7 @@ Every followed artist as a card with a cover, post count and a "new" mark.
 - **Custom collection**: posts you pick by hand with the "+" button on a thumbnail or on the post page
 - **Dynamic collection**: a saved search. Type tags in the search panel and press "Save as collection"
 
-Both kinds show a cover and a post count. A collection can be shuffled, renamed and deleted; Select on the Collections page deletes several at once. Several posts can be added at once: "Select posts" under the search panel on Posts, or "Select" on Favorites, then "Add to collection". In a custom collection posts are reordered by dragging. A post opened from a custom collection gets previous / next arrows that walk the collection.
+Both kinds show a cover and a post count. A collection can be shuffled, renamed and deleted; Select on the Collections page deletes several at once. A saved search can be checked for new posts with "Check for new" on the Collections page. Several posts can be added at once: "Select posts" under the search panel on Posts, or "Select" on Favorites, then "Add to collection". In a custom collection posts are reordered by dragging. A post opened from a custom collection gets previous / next arrows that walk the collection.
 
 ### Search panel
 
@@ -94,7 +94,8 @@ To get the untouched site back: Appearance → Site theme → **Site default**, 
 - Collections, followed artists and settings live in the script manager's storage, in this browser only. Nothing is sent anywhere
 - **Data → Export** saves one JSON file; **Import** restores it (Merge adds to what you have, Replace overwrites)
 - The blacklist and the site theme are the site's own cookies and are not part of the export. Neither is the API key
-- The script reads the pages you open and makes a request only for an action of yours: favorite a post, sync favorites, start a download, type in a tag field, scroll for the next page, open a feed that spans several searches, press Refresh on Following. Requests go one at a time with a pause
+- The one request made without an action of yours is the counter beside Feed: the first page of the feed, at most once in 15 minutes, and it can be switched off in RuleDesk → Page
+- Otherwise the script reads the pages you open and makes a request only for an action of yours: favorite a post, sync favorites, start a download, type in a tag field, scroll for the next page, open a feed that spans several searches, press Refresh on Following. Requests go one at a time with a pause
 
 ## Limits
 

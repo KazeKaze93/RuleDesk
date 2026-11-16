@@ -24,7 +24,7 @@ import {
   dynamicCollectionMarkHash,
   readDynamicCollectionMark,
 } from "../pages/constants";
-import { readFirstThumbUrls, readResultCount } from "../site/result-page";
+import { readFirstThumbUrls, readNewestPostId, readResultCount } from "../site/result-page";
 import { SITE_SELECTORS } from "../site/selectors";
 import { isPlaylist, type Collection } from "../storage/schema";
 import {
@@ -35,6 +35,7 @@ import {
   load,
   renameCollection,
   setDynamicCover,
+  setDynamicNewest,
   setDynamicPostCount,
   updateDynamicQuery,
 } from "../storage/store";
@@ -662,6 +663,8 @@ function rememberDynamicCover(
   if (count !== null) {
     setDynamicPostCount(collectionId, count);
   }
+  // Opening the search is seeing its newest posts: the "new" mark of the card goes.
+  setDynamicNewest(collectionId, readNewestPostId(document), true);
 }
 
 function mountDynamicBar(tagsParam: string, search: string): void {

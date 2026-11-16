@@ -23,6 +23,10 @@ describe("FEATURES registry", () => {
       "video-preview",
       "cdn-fallback",
       "downloads",
+      "image-zoom",
+      "sidebar-right",
+      "motion",
+      "feed-counter",
     ]);
     expect(ids).not.toContain("top-bar");
     expect(ids).not.toContain("dark-theme");

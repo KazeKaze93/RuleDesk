@@ -10,6 +10,7 @@ import {
   resolveFeatureEnabled,
 } from "./cheap-appearance";
 import { gridDensityFeature } from "../features/grid-density";
+import { sidebarRightFeature } from "../features/layout-options";
 import { menuCleanupFeature } from "../features/menu-cleanup";
 import { applyFeatureChrome } from "../features/runtime";
 import { featureBodyClass, type Feature } from "../features/types";
@@ -34,6 +35,7 @@ const CONTENT_ID = "content";
 const LAYOUT_FEATURES: readonly Feature[] = [
   menuCleanupFeature,
   gridDensityFeature,
+  sidebarRightFeature,
 ];
 
 function buildSearchReserveCss(bodyClass: string): string {

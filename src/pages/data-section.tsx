@@ -17,10 +17,14 @@ import {
   Switch,
 } from "../ui/kit";
 import { readFileText } from "../ui/read-file";
+import { currentBackupStatus } from "../storage/history";
+import { markBackupDue } from "./menu";
 
 const SECTION_CLASS = "rdw-data-section";
 const ACTIONS_CLASS = "rdw-data-actions";
 const HINT_CLASS = "rdw-data-hint";
+const BACKUP_DUE_CLASS = "rdw-data-backup-due";
+const BACKUP_DUE_SUFFIX = "Time to export one.";
 const FILE_CLASS = "rdw-data-file";
 
 const HEADING = "Data";
@@ -59,6 +63,10 @@ export const DATA_SECTION_CSS = `
   color: var(--rdw-muted);
   font-size: 12px;
 }
+.${SECTION_CLASS} .${BACKUP_DUE_CLASS} {
+  color: var(--rdw-text);
+  font-weight: 600;
+}
 .${SECTION_CLASS} .${FILE_CLASS} {
   position: absolute;
   width: 1px;
@@ -87,12 +95,16 @@ export function DataSection(props: DataSectionProps = {}): JSX.Element {
   const [mode, setMode] = useState<BackupImportMode>(IMPORT_MODE_MERGE);
   const [error, setError] = useState("");
   const [summary, setSummary] = useState("");
+  const [backup, setBackup] = useState(() => currentBackupStatus());
 
   return (
     <>
       <style>{DATA_SECTION_CSS}</style>
       <section className={`rdw-section ${SECTION_CLASS}`}>
         {includeHeading ? <SectionLabel>{HEADING}</SectionLabel> : null}
+        <p className={backup.due ? `${HINT_CLASS} ${BACKUP_DUE_CLASS}` : HINT_CLASS}>
+          {backup.due ? `${backup.text} ${BACKUP_DUE_SUFFIX}` : backup.text}
+        </p>
         <Switch
           id={INCLUDE_BACKGROUND_ID}
           label={INCLUDE_BACKGROUND_LABEL}
@@ -128,7 +140,12 @@ export function DataSection(props: DataSectionProps = {}): JSX.Element {
               void exportBackupDownload({
                 includeBackground,
                 includeFavorites,
-              }).catch((caught: unknown) => {
+              })
+                .then(() => {
+                  setBackup(currentBackupStatus());
+                  markBackupDue();
+                })
+                .catch((caught: unknown) => {
                 const message =
                   caught instanceof Error
                     ? caught.message

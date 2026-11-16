@@ -861,12 +861,36 @@ describe("postActionsFeature", () => {
     expect(postActionsFeature.css).toMatch(/div\.flexi \{[^}]*gap: 12px;/);
   });
 
-  it("has no download button on the post page: downloads belong to the manager", () => {
-    vi.stubGlobal("GM_download", vi.fn());
+  it("saves the original file of the post with one button, without the API", async () => {
+    const seen: { url?: string; name?: string }[] = [];
+    const download = vi.fn((details: { url?: string; name?: string; onload?: () => void }) => {
+      seen.push(details);
+      details.onload?.();
+    });
+    vi.stubGlobal("GM_download", download);
+    buildPostDom({});
+    postActionsFeature.mount(makeCtx());
+    const button = document.querySelector(".rdw-post-panel-download");
+    expect(button).not.toBeNull();
+    const original = document.querySelector("a.rdw-post-panel-original");
+    await act(async () => {
+      if (button instanceof HTMLButtonElement) {
+        button.click();
+      }
+      await Promise.resolve();
+    });
+    expect(download).toHaveBeenCalledTimes(1);
+    const details = seen[0];
+    expect(details?.url).toBe(original?.getAttribute("href"));
+    expect(details?.name).toMatch(/^rule34-\d+\.[a-z0-9]+$/);
+    expect(button?.getAttribute("data-phase")).toBe("done");
+    vi.unstubAllGlobals();
+  });
+
+  it("shows no download button when the script manager cannot download", () => {
     buildPostDom({});
     postActionsFeature.mount(makeCtx());
     expect(document.querySelector(".rdw-post-panel-download")).toBeNull();
-    vi.unstubAllGlobals();
   });
 
   it("proxies I came click to native a[onclick^=iCame(]", () => {
