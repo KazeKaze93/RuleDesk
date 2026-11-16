@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.37.2
+
+- The download button of a post could still save a web page instead of a picture: the picture host was asked without being told the request comes from the site. Downloads now say so
+
 ## 0.37.1
 
 Removed:
