@@ -50,7 +50,10 @@ describe("favorites: index at the star, top tags, shuffle", () => {
   });
 
   it("counts a tag once per favorite and ranks by count", () => {
-    const entries = [entry(1, "cat solo cat"), entry(2, "cat dog"), entry(3, "dog bird")];
+    // Lists read whole, as at the star: every tag of them counts.
+    const entries = [entry(1, "cat solo cat"), entry(2, "cat dog"), entry(3, "dog bird")].map(
+      (item) => ({ ...item, cut: false }),
+    );
     expect(topFavoriteTags(entries, new Set([1, 2, 3]), 2)).toEqual([
       { tag: "cat", count: 2 },
       { tag: "dog", count: 2 },

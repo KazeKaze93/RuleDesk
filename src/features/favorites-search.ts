@@ -198,19 +198,18 @@ function hasTag(entry: FavoriteTags, pattern: TagPattern): boolean {
   const tags = entry.tagList;
   const lastAt = tags.length - 1;
   return tags.some((tag, at) => {
-    const first = at === 0 ? entry.firstEnd : END_WHOLE;
-    const last = at === lastAt ? entry.lastEnd : END_WHOLE;
-    // Whole unless the tag is known to be cut; cut spellings unless it is known whole.
-    if (first !== END_CUT && last !== END_CUT && pattern.whole.test(tag)) {
+    // The tag as it stands is always tried: even an end that looks cut may be
+    // a rare whole tag. The cut spellings are tried on an end not known whole.
+    if (pattern.whole.test(tag)) {
       return true;
     }
-    if (first !== END_WHOLE && last !== END_WHOLE && pattern.noEnds.test(tag)) {
-      return true;
-    }
-    if (first !== END_WHOLE && last !== END_CUT && pattern.noFirst.test(tag)) {
-      return true;
-    }
-    return last !== END_WHOLE && first !== END_CUT && pattern.noLast.test(tag);
+    const firstOpen = at === 0 && entry.firstEnd !== END_WHOLE;
+    const lastOpen = at === lastAt && entry.lastEnd !== END_WHOLE;
+    return (
+      (firstOpen && pattern.noFirst.test(tag)) ||
+      (lastOpen && pattern.noLast.test(tag)) ||
+      (firstOpen && lastOpen && pattern.noEnds.test(tag))
+    );
   });
 }
 

@@ -6,7 +6,8 @@ import type { FavoriteIndexEntry } from "../storage/favorites-index";
  * An entry read from a favorites page has a damaged tag list: the site cuts
  * one character off each end of it, so the first tag lacks its first letter
  * and the last tag its last (`ai_generated … zootopia` is kept as
- * `i_generated … zootopi`). An entry made when a post was made a favorite
+ * `i_generated … zootopi`). Not every list: some come whole, which is told
+ * only by the tags. An entry made when a post was made a favorite
  * from the grid or from its own page has the list whole.
  *
  * The damaged ends are restored from what is whole: the tags of whole
@@ -17,16 +18,18 @@ import type { FavoriteIndexEntry } from "../storage/favorites-index";
  * tags leave it out. Pure: no storage, no page. Nothing is written back: the
  * index keeps what was read, and the next "Full resync" flags every entry.
  *
- * `cut` on an entry says where it came from; an entry written before that
- * flag existed has none, and its ends are judged by the tags themselves.
+ * `cut: false` on an entry says its list was read whole. Any other entry may
+ * be cut, and its ends are judged by the tags themselves: the site does not
+ * cut every list, so an end that is a known tag is left as it is.
  */
 
 const TAG_SEPARATOR = /\s+/;
 const CUT_LENGTH = 1;
 
 /**
- * What is known of a tag at an end of the list: it is whole; it is cut and
- * could not be restored; or, on an entry without the flag, it may be either.
+ * What is known of a tag at an end of the list: it is whole (as read, or
+ * restored); it is no known tag and could not be restored, so most likely
+ * cut; or it is a known tag with a longer one beside it, and may be either.
  */
 export const END_WHOLE = "whole";
 export const END_CUT = "cut";
@@ -85,20 +88,15 @@ function restoreEnd(
   if (flagged === false) {
     return { tag: stored, state: END_WHOLE };
   }
+  // A list from a favorites page is not always cut: on some posts it comes
+  // whole (seen 17.11.2026: `1girls … zootopia` beside `girls … zootopi` on
+  // the same page). So the tag itself is asked, with or without the flag.
+  if (knownWhole) {
+    // A tag in its own right. With a longer tag known beside it, either.
+    return { tag: stored, state: candidates === undefined ? END_WHOLE : END_UNKNOWN };
+  }
   const single = only(candidates);
-  if (flagged === true) {
-    return single === null
-      ? { tag: stored, state: END_CUT }
-      : { tag: single, state: END_WHOLE };
-  }
-  // An entry without the flag: its end may be whole or cut.
-  if (knownWhole && candidates === undefined) {
-    return { tag: stored, state: END_WHOLE };
-  }
-  if (!knownWhole && single !== null) {
-    return { tag: single, state: END_WHOLE };
-  }
-  return { tag: stored, state: END_UNKNOWN };
+  return single === null ? { tag: stored, state: END_CUT } : { tag: single, state: END_WHOLE };
 }
 
 function restore(entries: readonly FavoriteIndexEntry[]): FavoriteTags[] {
@@ -139,7 +137,7 @@ function restore(entries: readonly FavoriteIndexEntry[]): FavoriteTags[] {
     }
     if (tags.length === 1) {
       // One tag cut at both ends: nothing to tell it by.
-      const state = entry.cut === true ? END_CUT : END_UNKNOWN;
+      const state = whole.has(first) ? END_UNKNOWN : END_CUT;
       return { ...entry, tagList: tags, firstEnd: state, lastEnd: state };
     }
     const head = restoreEnd(first, byNoFirst.get(first), whole.has(first), entry.cut);

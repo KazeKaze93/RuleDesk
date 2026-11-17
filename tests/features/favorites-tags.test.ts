@@ -73,7 +73,29 @@ describe("favorites tags: the ends the site cuts", () => {
     // known and has one longer spelling: restored.
     expect(first?.tagList).toEqual(["fox", "solo", "zootopia"]);
     expect(first?.firstEnd).toBe(END_WHOLE);
-    expect(restoreFavoriteTags(old)[1]?.firstEnd).toBe(END_UNKNOWN);
+    expect(restoreFavoriteTags(old)[1]?.firstEnd).toBe(END_CUT);
+  });
+
+  it("leaves whole a list the site did not cut", () => {
+    // From one favorites page (17.11.2026): the first list came whole, the others cut.
+    const page: readonly FavoriteIndexEntry[] = [
+      synced(1, "1girls 2boys watersports zootopia"),
+      synced(2, "girls anthro thighs zootopi"),
+      synced(3, "girls 2boys zootopia zootopia_"),
+    ];
+    const [whole, cut, longer] = restoreFavoriteTags(page);
+    expect(whole?.tagList).toEqual(["1girls", "2boys", "watersports", "zootopia"]);
+    expect(whole?.lastEnd).toBe(END_WHOLE);
+    expect(cut?.tagList[3]).toBe("zootopia");
+    expect(longer?.lastEnd).toBe(END_CUT);
+    const ids = new Set([1, 2, 3]);
+    const found = (text: string): number[] =>
+      filterFavoriteIndex(page, ids, parseFavoritesQuery(text), MEDIA_ALL)
+        .map((entry) => entry.id)
+        .sort((a, b) => a - b);
+    expect(found("zootopia")).toEqual([1, 2, 3]);
+    expect(found("zootopi")).toEqual([]);
+    expect(found("zootop*")).toEqual([1, 2, 3]);
   });
 
   it("gives the same answer for the same list without doing the work again", () => {
@@ -93,7 +115,8 @@ describe("favorites search over restored tags", () => {
   it("still tries the cut spelling on an end that could not be restored", () => {
     expect(find("cat")).toEqual([5, 6]);
     expect(find("bat")).toEqual([5, 6]);
-    expect(find("at")).toEqual([]);
+    // As it stands it is found too: it may be a rare tag and not a cut one.
+    expect(find("at")).toEqual([5]);
   });
 
   it("counts restored tags with their whole spelling and leaves cut ones out", () => {
