@@ -8,7 +8,9 @@ import { getFeatureState, setFeatureState } from "../storage/store";
  *   picture of it. The site's own field lies over the whole zone, so a click
  *   anywhere opens the file dialog and a file can be dropped on it.
  * - Under the tags a line says how many are missing, while there are fewer
- *   than the five the site asks for.
+ *   than the five the site asks for. A tag entered twice is taken out: this
+ *   is the one place where the script changes what is sent, and only by
+ *   dropping repeats.
  * - The long guidelines can be folded; the choice is remembered.
  *
  * The page is recognised by its markup. The layout is in the skin.
@@ -24,6 +26,7 @@ export const UPLOAD_FILE_NAME_CLASS = "rdw-upload-file-name";
 export const UPLOAD_PREVIEW_CLASS = "rdw-upload-preview";
 export const UPLOAD_HINT_CLASS = "rdw-upload-hint";
 export const UPLOAD_REMOVE_CLASS = "rdw-upload-remove";
+export const UPLOAD_PREVIEW_BOX_CLASS = "rdw-upload-preview-box";
 export const UPLOAD_TAG_COUNT_CLASS = "rdw-upload-tag-count";
 export const UPLOAD_TAG_COUNT_SHORT_CLASS = "rdw-upload-tag-count--short";
 export const UPLOAD_GUIDE_TOGGLE_CLASS = "rdw-upload-guide-toggle";
@@ -64,6 +67,25 @@ export function countTags(text: string): number {
 }
 
 /**
+ * The tags with every repeat taken out: the first of each stays, in the order
+ * typed, one space between them. Case does not make a tag another tag. A
+ * space at the end is kept, so that typing can go on after it.
+ */
+export function dedupeTags(text: string): string {
+  const seen = new Set<string>();
+  const kept: string[] = [];
+  for (const tag of text.split(TAG_SPLIT)) {
+    const key = tag.toLowerCase();
+    if (tag.length > 0 && !seen.has(key)) {
+      seen.add(key);
+      kept.push(tag);
+    }
+  }
+  const joined = kept.join(" ");
+  return kept.length > 0 && /\s$/.test(text) ? `${joined} ` : joined;
+}
+
+/**
  * "3 tags · 2 more to reach 5", "1 tag · 4 more to reach 5"; nothing once
  * there are enough: the line is a reminder, not a counter.
  */
@@ -93,14 +115,21 @@ function mountFileZone(input: HTMLInputElement): void {
   const remove = document.createElement("button");
   remove.type = "button";
   remove.className = UPLOAD_REMOVE_CLASS;
-  remove.textContent = REMOVE_LABEL;
+  // A cross in the corner of the picture; its name is for the tooltip and for screen readers.
+  remove.setAttribute("aria-label", REMOVE_LABEL);
+  remove.title = REMOVE_LABEL;
   remove.hidden = true;
   remove.addEventListener("click", () => {
     // The site's field is emptied the way a user would empty it, and told so.
     input.value = "";
     input.dispatchEvent(new Event("change", { bubbles: true }));
   });
-  zone.append(preview, hint, name, remove);
+  // The picture and its cross share a box, so that the cross sits in the
+  // picture's corner whatever size the picture is.
+  const box = document.createElement("span");
+  box.className = UPLOAD_PREVIEW_BOX_CLASS;
+  box.append(preview, remove);
+  zone.append(box, hint, name);
 
   let previewUrl: string | null = null;
   const show = (): void => {
@@ -151,6 +180,19 @@ function mountTagCount(tags: HTMLTextAreaElement): void {
     line.hidden = count >= MIN_TAGS;
     line.classList.toggle(UPLOAD_TAG_COUNT_SHORT_CLASS, count < MIN_TAGS);
   };
+  // A tag entered twice is taken out when the field is left, when a suggestion
+  // is picked and when the form is sent; not while typing, which would move
+  // the caret under the user's hands.
+  const dedupe = (): void => {
+    const clean = dedupeTags(tags.value);
+    if (clean !== tags.value) {
+      tags.value = clean;
+    }
+  };
+  for (const type of ["change", "blur", "awesomplete-selectcomplete"]) {
+    tags.addEventListener(type, dedupe);
+  }
+  cell.closest("form")?.addEventListener("submit", dedupe, true);
   // The site's suggestions and "My Tags" write into the field without typing.
   for (const type of ["input", "change", "keyup", "blur", "awesomplete-selectcomplete"]) {
     tags.addEventListener(type, sync);

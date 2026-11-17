@@ -131,6 +131,9 @@ const UPLOAD_FILE_NAME_CLASS = "rdw-upload-file-name";
 const UPLOAD_PREVIEW_CLASS = "rdw-upload-preview";
 const UPLOAD_HINT_CLASS = "rdw-upload-hint";
 const UPLOAD_REMOVE_CLASS = "rdw-upload-remove";
+const UPLOAD_PREVIEW_BOX_CLASS = "rdw-upload-preview-box";
+const UPLOAD_CROSS_MASK =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 6 6 18'/%3E%3Cpath d='m6 6 12 12'/%3E%3C/svg%3E\") center / contain no-repeat";
 const UPLOAD_TAG_COUNT_CLASS = "rdw-upload-tag-count";
 const UPLOAD_TAG_COUNT_SHORT_CLASS = "rdw-upload-tag-count--short";
 const UPLOAD_GUIDE_TOGGLE_CLASS = "rdw-upload-guide-toggle";
@@ -1289,6 +1292,9 @@ ${UPLOAD} > form > table > tbody {
     "file title"
     "file mytags"
     "submit submit";
+  /* The last row beside the file takes whatever a tall picture adds, so the
+     fields above it stay together instead of spreading down the column. */
+  grid-template-rows: auto auto auto auto auto 1fr auto;
   gap: 12px 20px;
   align-items: start;
   padding: 16px;
@@ -1516,9 +1522,10 @@ ${UPLOAD} .${UPLOAD_FILE_NAME_CLASS} {
   overflow-wrap: anywhere;
 }
 
+/* As large as the column lets it be: the zone grows with the picture. */
 ${UPLOAD} img.${UPLOAD_PREVIEW_CLASS} {
   max-width: 100%;
-  max-height: 220px;
+  height: auto;
   border-radius: ${v.radiusM};
 }
 
@@ -1531,22 +1538,49 @@ ${UPLOAD} td.${UPLOAD_HAS_FILE_CLASS} > .${UPLOAD_HINT_CLASS} {
   display: none;
 }
 
-${UPLOAD} button.${UPLOAD_REMOVE_CLASS} {
+${UPLOAD} .${UPLOAD_PREVIEW_BOX_CLASS} {
   position: relative;
+  display: inline-block;
+  max-width: 100%;
+  line-height: 0;
+}
+
+/* A file that is not a picture has none: the cross goes to the corner of the zone. */
+${UPLOAD} .${UPLOAD_PREVIEW_BOX_CLASS}:has(> img[hidden]) {
+  position: static;
+}
+
+/* A round cross in the top right corner, above the field that covers the zone. */
+${UPLOAD} button.${UPLOAD_REMOVE_CLASS} {
+  position: absolute;
+  top: 8px;
+  right: 8px;
   z-index: 2;
-  min-height: 28px;
-  padding: 0 12px;
+  width: 28px;
+  height: 28px;
+  min-height: 0;
+  padding: 0;
   border: 1px solid ${v.border};
-  border-radius: ${v.radiusM};
+  border-radius: 50%;
   background: ${v.surface};
-  color: ${v.text};
-  font: 600 12px ${v.font};
   cursor: pointer;
+}
+
+${UPLOAD} button.${UPLOAD_REMOVE_CLASS}::before {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  background: ${v.text};
+  -webkit-mask: ${UPLOAD_CROSS_MASK};
+  mask: ${UPLOAD_CROSS_MASK};
 }
 
 ${UPLOAD} button.${UPLOAD_REMOVE_CLASS}:hover {
   border-color: ${v.danger};
-  color: ${v.danger};
+}
+
+${UPLOAD} button.${UPLOAD_REMOVE_CLASS}:hover::before {
+  background: ${v.danger};
 }
 
 ${UPLOAD} button.${UPLOAD_REMOVE_CLASS}[hidden] {
@@ -1620,6 +1654,7 @@ ${UPLOAD} tr:has(input[type="submit"]) input[type="submit"] {
 @media (max-width: 860px) {
   ${UPLOAD} > form > table > tbody {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
     grid-template-areas:
       "guide"
       "file"

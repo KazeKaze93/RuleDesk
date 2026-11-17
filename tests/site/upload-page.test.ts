@@ -15,6 +15,7 @@ import {
   UPLOAD_TAG_COUNT_CLASS,
   UPLOAD_TAG_COUNT_SHORT_CLASS,
   countTags,
+  dedupeTags,
   formatFileSize,
   mountUploadPage,
   tagCountText,
@@ -54,6 +55,15 @@ describe("upload: counting and sizes", () => {
   it("counts different tags, however they are spaced or cased", () => {
     expect(countTags("  cat   dog\ncat  Dog bird ")).toBe(3);
     expect(countTags("   ")).toBe(0);
+  });
+
+  it("takes repeated tags out, keeps the first of each and the order", () => {
+    expect(
+      dedupeTags("thick_thighs thick_thighs thick_thighs green_eyes Thick_Thighs female_focus green_eyes"),
+    ).toBe("thick_thighs green_eyes female_focus");
+    expect(dedupeTags("  a   b\na  ")).toBe("a b ");
+    expect(dedupeTags("a b c")).toBe("a b c");
+    expect(dedupeTags("   ")).toBe("");
   });
 
   it("says how many are missing until there are enough", () => {
@@ -119,6 +129,10 @@ describe("the upload page", () => {
     expect(remove.hidden).toBe(false);
     // A button of its own: it does not send the form.
     expect(remove.type).toBe("button");
+    // A cross with a name, in one box with the picture.
+    expect(remove.textContent).toBe("");
+    expect(remove.getAttribute("aria-label")).toBe("Remove file");
+    expect(remove.parentElement?.querySelector("img")).not.toBeNull();
 
     Object.defineProperty(input, "files", { configurable: true, get: () => [] });
     remove.click();
@@ -147,6 +161,25 @@ describe("the upload page", () => {
     expect(line?.textContent).toBe("2 tags · 3 more to reach 5");
     // The line stands right after the field's box, not inside it.
     expect(line?.previousElementSibling?.classList.contains("awesomplete")).toBe(true);
+  });
+
+  it("takes repeats out of the field when it is left and when the form is sent", () => {
+    mountUploadPage();
+    const tags = document.getElementById("tags");
+    const form = document.querySelector("form");
+    if (!(tags instanceof HTMLTextAreaElement) || form === null) {
+      throw new Error("no tags field");
+    }
+    tags.value = "cat cat dog";
+    tags.dispatchEvent(new Event("input"));
+    // Not while typing.
+    expect(tags.value).toBe("cat cat dog");
+    tags.dispatchEvent(new Event("blur"));
+    expect(tags.value).toBe("cat dog");
+
+    tags.value = "a a b b c";
+    form.dispatchEvent(new Event("submit", { cancelable: true }));
+    expect(tags.value).toBe("a b c");
   });
 
   it("folds the guidelines and remembers it", () => {

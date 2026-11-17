@@ -2,6 +2,11 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.40.2
+
+- Upload: the picture of the chosen file is shown as large as the column allows instead of a small thumbnail, and the file is taken out by a cross in its top right corner
+- Upload: a tag entered twice is taken out of the tags field when you leave it, pick a suggestion or press Upload. The first of each stays, in the order typed
+
 ## 0.40.1
 
 - Upload, tidied: the file zone takes the whole left column and the fields on the right stand close together, without the gaps between them
