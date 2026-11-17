@@ -16,6 +16,7 @@ import {
   FAVORITES_SIDE_BAR_CLASS,
   FAVORITES_SIDE_CARD_CLASS,
   FAVORITES_SIDE_ID,
+  shownFavoriteIds,
   FAVORITES_SIDE_SLOT_CLASS,
   FavoritesBrowser,
   postsLabel,
@@ -104,6 +105,9 @@ const TEXT_DOWNLOAD_ALL = "Download all…";
 const TEXT_SYNC = "Sync favorites…";
 const TEXT_SYNC_FIRST = "Sync first";
 const TEXT_DOWNLOAD_TITLE = "Download all favorites?";
+const TEXT_DOWNLOAD_RESULTS = "Download results…";
+const TEXT_DOWNLOAD_RESULTS_TITLE = "Download the results?";
+const TEXT_DOWNLOAD_RESULTS_ARIA = "Download the results";
 const TEXT_DOWNLOAD_BUTTON = "Download";
 const TEXT_DOWNLOAD_ARIA = "Download all favorites";
 const TEXT_SELECTED_MARK = "Selected";
@@ -508,11 +512,12 @@ function findBarHost(): { parent: ParentNode; before: ChildNode | null } {
 }
 
 /**
- * Starts a download of every favorite in the local list, newest first. The
+ * Starts a download of favorites: of `only`, in that order, when the list is
+ * narrowed, otherwise of every favorite in the local list, newest first. The
  * manager finds the files through the API by post id and shows its own panel.
  */
-export function downloadAllFavorites(): void {
-  const ids = [...loadFavSet()].sort((a, b) => b - a);
+export function downloadAllFavorites(only: readonly number[] | null = null): void {
+  const ids = only === null ? [...loadFavSet()].sort((a, b) => b - a) : [...only];
   if (ids.length === 0 || isDownloadBusy()) {
     return;
   }
@@ -553,6 +558,12 @@ function downloadNote(count: number): string {
   return `${count.toLocaleString(LOCALE)} ${files}: every favorite in the local list, not only this page.`;
 }
 
+/** The same for a narrowed list: what narrows it is named, so that nothing else is expected. */
+function downloadResultsNote(count: number, summary: string): string {
+  const files = count === 1 ? "original file" : "original files";
+  return `${count.toLocaleString(LOCALE)} ${files}: the favorites shown now (${summary}), on all pages of the result.`;
+}
+
 /** Opens the settings page at its Favorites block, where the sync buttons are. */
 function openSyncSettings(): void {
   requestSettingsSection(SETTINGS_SECTION_FAVORITES);
@@ -563,6 +574,8 @@ type IdleActionsProps = {
   readonly onSelect: () => void;
   /** In the column every action is a button of its own; in the row the rare ones are in a menu. */
   readonly stacked: boolean;
+  /** What the list is narrowed to; empty when it is every favorite. */
+  readonly summary: string;
 };
 
 /** The buttons at the right end of the row: a random post, selecting, and the menu of rare actions. */
@@ -570,7 +583,18 @@ function IdleActions(props: IdleActionsProps): JSX.Element {
   const [menuOpen, setMenuOpen] = useState(false);
   const [downloadOpen, setDownloadOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const count = loadFavSet().size;
+  // With the list narrowed, the download is of what is shown, not of everything
+  // (Kaze, 17.11.2026: a filter was set and the dialog offered all 11,961).
+  // The ids are read when the dialog opens.
+  const [shownIds, setShownIds] = useState<readonly number[] | null>(null);
+  const narrowed = props.summary.length > 0;
+  const total = loadFavSet().size;
+  const count = narrowed && shownIds !== null ? shownIds.length : total;
+  const downloadLabel = narrowed ? TEXT_DOWNLOAD_RESULTS : TEXT_DOWNLOAD_ALL;
+  const openDownload = (): void => {
+    setShownIds(narrowed ? shownFavoriteIds() : null);
+    setDownloadOpen(true);
+  };
   const age = syncAge(getSyncState()?.finishedAt, Date.now());
 
   const closeMenu = (): void => {
@@ -595,13 +619,11 @@ function IdleActions(props: IdleActionsProps): JSX.Element {
             <Button
               variant="ghost"
               size="s"
-              disabled={count === 0}
-              onClick={() => {
-                setDownloadOpen(true);
-              }}
+              disabled={total === 0}
+              onClick={openDownload}
             >
               <IconDownload size={14} />
-              {TEXT_DOWNLOAD_ALL}
+              {downloadLabel}
             </Button>
           ) : null}
           <Button variant="ghost" size="s" onClick={openSyncSettings}>
@@ -636,14 +658,14 @@ function IdleActions(props: IdleActionsProps): JSX.Element {
             type="button"
             role="menuitem"
             className={`${MENU_ITEM_CLASS} rdw-kit-focusable`}
-            disabled={count === 0}
+            disabled={total === 0}
             onClick={() => {
               closeMenu();
-              setDownloadOpen(true);
+              openDownload();
             }}
           >
             <IconDownload size={16} />
-            {TEXT_DOWNLOAD_ALL}
+            {downloadLabel}
           </button>
         ) : null}
         <button
@@ -662,12 +684,14 @@ function IdleActions(props: IdleActionsProps): JSX.Element {
       <Dialog
         open={downloadOpen}
         onClose={closeDownload}
-        aria-label={TEXT_DOWNLOAD_ARIA}
+        aria-label={narrowed ? TEXT_DOWNLOAD_RESULTS_ARIA : TEXT_DOWNLOAD_ARIA}
         className={DOWNLOAD_CLASS}
       >
-        <h3 className={DOWNLOAD_TITLE_CLASS}>{TEXT_DOWNLOAD_TITLE}</h3>
+        <h3 className={DOWNLOAD_TITLE_CLASS}>
+          {narrowed ? TEXT_DOWNLOAD_RESULTS_TITLE : TEXT_DOWNLOAD_TITLE}
+        </h3>
         <p className={DOWNLOAD_NOTE_CLASS}>
-          {downloadNote(count)}
+          {narrowed ? downloadResultsNote(count, props.summary) : downloadNote(count)}
           {age.stale ? null : ` ${age.text}`}
         </p>
         {age.stale ? (
@@ -692,9 +716,10 @@ function IdleActions(props: IdleActionsProps): JSX.Element {
           <Button
             variant="primary"
             size="s"
+            disabled={count === 0}
             onClick={() => {
               closeDownload();
-              downloadAllFavorites();
+              downloadAllFavorites(narrowed ? shownIds : null);
             }}
           >
             {`${TEXT_DOWNLOAD_BUTTON} ${count.toLocaleString(LOCALE)}`}
@@ -934,6 +959,7 @@ function FavoritesBulkBar(props: FavoritesBulkBarProps): JSX.Element | null {
           <IdleActions
             onSelect={enterSelecting}
             stacked={props.headSlot.classList.contains(FAVORITES_SIDE_ACTIONS_CLASS)}
+            summary={props.summary}
           />,
           props.headSlot,
         );

@@ -4,6 +4,7 @@ import { act } from "preact/test-utils";
 import {
   CLASS_THUMB_CHECK,
   CLASS_THUMB_SELECTED,
+  downloadAllFavorites,
   favoritesBulkFeature,
 } from "../../src/features/favorites-bulk";
 import {
@@ -657,6 +658,19 @@ describe("favoritesBulkFeature", () => {
     expect(startDownload).toHaveBeenCalledTimes(1);
     expect(startDownload).toHaveBeenCalledWith("Favorites", { kind: "ids", ids: [22, 11] });
     expect(document.querySelector('[role="dialog"][aria-modal="true"]')).toBeNull();
+  });
+
+  it("downloads only the given favorites, in the given order, when the list is narrowed", () => {
+    vi.mocked(startDownload).mockClear();
+    addFav(11);
+    addFav(22);
+    addFav(33);
+    downloadAllFavorites([33, 11]);
+    expect(startDownload).toHaveBeenCalledWith("Favorites", { kind: "ids", ids: [33, 11] });
+
+    vi.mocked(startDownload).mockClear();
+    downloadAllFavorites([]);
+    expect(startDownload).not.toHaveBeenCalled();
   });
 
   it("opens a menu from the More actions button; Shuffle is an option of Sort", () => {

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RuleDesk Web
 // @namespace    https://github.com/kazekaze93/ruledesk-web
-// @version      0.45.2
+// @version      0.45.3
 // @description  Collections, playlists, favorites, artist updates, and page tweaks for rule34.xxx
 // @downloadURL  https://raw.githubusercontent.com/KazeKaze93/RuleDesk/main/dist/ruledesk-web.user.js
 // @updateURL    https://raw.githubusercontent.com/KazeKaze93/RuleDesk/main/dist/ruledesk-web.user.js
@@ -10444,6 +10444,15 @@ function showFavoriteResults(results) {
 	document.body.classList.add(FAVORITES_BROWSING_BODY_CLASS);
 	appendChunk(target);
 }
+/**
+* The ids of the favorites the filters leave, in the order shown and over all
+* the pages of the result; null while the site's own grid is on the page,
+* which is every favorite.
+*/
+function shownFavoriteIds() {
+	if (grid === null || !document.body.classList.contains("rdw-fav-browsing")) return null;
+	return grid.results.map((entry) => entry.id);
+}
 /** Shows `node` where the results would be: nothing matched. */
 function showFavoriteEmpty(node) {
 	const target = ensureGrid();
@@ -10566,13 +10575,17 @@ function openRandomFavorite() {
 	const id = ids[Math.floor(Math.random() * ids.length)];
 	if (id !== void 0) window.location.assign(`${POST_HREF_PREFIX}${String(id)}`);
 }
-/** "cat* -video · Images": what the list is narrowed to, for the selection bar. */
-function favoritesFilterSummary(text, media) {
+/**
+* "cat* -video · Images · wallpapers": what the list is narrowed to, for the
+* selection bar and for the download of the results. Empty when nothing narrows it.
+*/
+function favoritesFilterSummary(text, media, collection = "") {
 	const parts = [];
 	const query = text.trim();
 	if (query.length > 0) parts.push(query);
 	const option = MEDIA_OPTIONS$1.find((item) => item.value === media);
 	if (media !== "all" && option !== void 0) parts.push(option.label);
+	if (collection.length > 0) parts.push(collection);
 	return parts.join(" · ");
 }
 function FavoritesBrowser(props = {}) {
@@ -10597,11 +10610,13 @@ function FavoritesBrowser(props = {}) {
 	const active = view === "scroll" || media !== "all" || shuffleSeed !== null || order !== "newest" || collection !== "any" || !isEmptyFavoritesQuery(query);
 	const { onSummary } = props;
 	A(() => {
-		onSummary?.(favoritesFilterSummary(applied, media));
+		const picked = collection === "any" ? void 0 : collectionChoices(load().collections).find((option) => option.value === collection);
+		onSummary?.(favoritesFilterSummary(applied, media, picked?.label ?? ""));
 	}, [
 		onSummary,
 		applied,
-		media
+		media,
+		collection
 	]);
 	const loadIndex = () => {
 		if (loadingRef.current) return;
@@ -12707,6 +12722,9 @@ var TEXT_DOWNLOAD_ALL = "Download all…";
 var TEXT_SYNC = "Sync favorites…";
 var TEXT_SYNC_FIRST = "Sync first";
 var TEXT_DOWNLOAD_TITLE = "Download all favorites?";
+var TEXT_DOWNLOAD_RESULTS = "Download results…";
+var TEXT_DOWNLOAD_RESULTS_TITLE = "Download the results?";
+var TEXT_DOWNLOAD_RESULTS_ARIA = "Download the results";
 var TEXT_DOWNLOAD_BUTTON = "Download";
 var TEXT_DOWNLOAD_ARIA = "Download all favorites";
 var TEXT_SELECTED_MARK = "Selected";
@@ -13068,11 +13086,12 @@ function findBarHost() {
 	};
 }
 /**
-* Starts a download of every favorite in the local list, newest first. The
+* Starts a download of favorites: of `only`, in that order, when the list is
+* narrowed, otherwise of every favorite in the local list, newest first. The
 * manager finds the files through the API by post id and shows its own panel.
 */
-function downloadAllFavorites() {
-	const ids = [...loadFavSet()].sort((a, b) => b - a);
+function downloadAllFavorites(only = null) {
+	const ids = only === null ? [...loadFavSet()].sort((a, b) => b - a) : [...only];
 	if (ids.length === 0 || isDownloadBusy()) return;
 	startDownload(DOWNLOAD_JOB_NAME, {
 		kind: "ids",
@@ -13110,6 +13129,11 @@ function downloadNote(count) {
 	const files = count === 1 ? "original file" : "original files";
 	return `${count.toLocaleString(LOCALE)} ${files}: every favorite in the local list, not only this page.`;
 }
+/** The same for a narrowed list: what narrows it is named, so that nothing else is expected. */
+function downloadResultsNote(count, summary) {
+	const files = count === 1 ? "original file" : "original files";
+	return `${count.toLocaleString(LOCALE)} ${files}: the favorites shown now (${summary}), on all pages of the result.`;
+}
 /** Opens the settings page at its Favorites block, where the sync buttons are. */
 function openSyncSettings() {
 	requestSettingsSection(SETTINGS_SECTION_FAVORITES);
@@ -13120,7 +13144,15 @@ function IdleActions(props) {
 	const [menuOpen, setMenuOpen] = d(false);
 	const [downloadOpen, setDownloadOpen] = d(false);
 	const menuButtonRef = T(null);
-	const count = loadFavSet().size;
+	const [shownIds, setShownIds] = d(null);
+	const narrowed = props.summary.length > 0;
+	const total = loadFavSet().size;
+	const count = narrowed && shownIds !== null ? shownIds.length : total;
+	const downloadLabel = narrowed ? TEXT_DOWNLOAD_RESULTS : TEXT_DOWNLOAD_ALL;
+	const openDownload = () => {
+		setShownIds(narrowed ? shownFavoriteIds() : null);
+		setDownloadOpen(true);
+	};
 	const age = syncAge(getSyncState()?.finishedAt, Date.now());
 	const closeMenu = () => {
 		setMenuOpen(false);
@@ -13145,11 +13177,9 @@ function IdleActions(props) {
 		props.stacked ? /* @__PURE__ */ a($$1, { children: [downloadsAvailable() ? /* @__PURE__ */ a(Button, {
 			variant: "ghost",
 			size: "s",
-			disabled: count === 0,
-			onClick: () => {
-				setDownloadOpen(true);
-			},
-			children: [/* @__PURE__ */ a(IconDownload, { size: 14 }), TEXT_DOWNLOAD_ALL]
+			disabled: total === 0,
+			onClick: openDownload,
+			children: [/* @__PURE__ */ a(IconDownload, { size: 14 }), downloadLabel]
 		}) : null, /* @__PURE__ */ a(Button, {
 			variant: "ghost",
 			size: "s",
@@ -13177,12 +13207,12 @@ function IdleActions(props) {
 				type: "button",
 				role: "menuitem",
 				className: `${MENU_ITEM_CLASS} rdw-kit-focusable`,
-				disabled: count === 0,
+				disabled: total === 0,
 				onClick: () => {
 					closeMenu();
-					setDownloadOpen(true);
+					openDownload();
 				},
-				children: [/* @__PURE__ */ a(IconDownload, { size: 16 }), TEXT_DOWNLOAD_ALL]
+				children: [/* @__PURE__ */ a(IconDownload, { size: 16 }), downloadLabel]
 			}) : null, /* @__PURE__ */ a("button", {
 				type: "button",
 				role: "menuitem",
@@ -13197,16 +13227,16 @@ function IdleActions(props) {
 		/* @__PURE__ */ a(Dialog, {
 			open: downloadOpen,
 			onClose: closeDownload,
-			"aria-label": TEXT_DOWNLOAD_ARIA,
+			"aria-label": narrowed ? TEXT_DOWNLOAD_RESULTS_ARIA : TEXT_DOWNLOAD_ARIA,
 			className: DOWNLOAD_CLASS,
 			children: [
 				/* @__PURE__ */ a("h3", {
 					className: DOWNLOAD_TITLE_CLASS,
-					children: TEXT_DOWNLOAD_TITLE
+					children: narrowed ? TEXT_DOWNLOAD_RESULTS_TITLE : TEXT_DOWNLOAD_TITLE
 				}),
 				/* @__PURE__ */ a("p", {
 					className: DOWNLOAD_NOTE_CLASS,
-					children: [downloadNote(count), age.stale ? null : ` ${age.text}`]
+					children: [narrowed ? downloadResultsNote(count, props.summary) : downloadNote(count), age.stale ? null : ` ${age.text}`]
 				}),
 				age.stale ? /* @__PURE__ */ a("p", {
 					className: DOWNLOAD_STALE_CLASS,
@@ -13234,9 +13264,10 @@ function IdleActions(props) {
 					}), /* @__PURE__ */ a(Button, {
 						variant: "primary",
 						size: "s",
+						disabled: count === 0,
 						onClick: () => {
 							closeDownload();
-							downloadAllFavorites();
+							downloadAllFavorites(narrowed ? shownIds : null);
 						},
 						children: `${TEXT_DOWNLOAD_BUTTON} ${count.toLocaleString(LOCALE)}`
 					})]
@@ -13421,7 +13452,8 @@ function FavoritesBulkBar(props) {
 	};
 	if (phase.kind === "idle") return props.headSlot === null ? null : U(/* @__PURE__ */ a(IdleActions, {
 		onSelect: enterSelecting,
-		stacked: props.headSlot.classList.contains(FAVORITES_SIDE_ACTIONS_CLASS)
+		stacked: props.headSlot.classList.contains(FAVORITES_SIDE_ACTIONS_CLASS),
+		summary: props.summary
 	}), props.headSlot);
 	if (phase.kind === "removing") {
 		const ratio = phase.total === 0 ? 0 : phase.done / phase.total;
@@ -24092,12 +24124,12 @@ startEarlyLayout();
 whenDomReady(() => {
 	applyLayoutBeforePaint();
 	scheduleAfterFirstPaint(() => {
-		module.import('./app-BGSIucgi-CkzTwx6-.js').then(({ startApp }) => {
+		module.import('./app-Du1hpaW5-Bpz95AKo.js').then(({ startApp }) => {
 			startApp();
 		});
 	});
 });})}}));
-System.register("./app-BGSIucgi-CkzTwx6-.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var yieldToMain,detectPageKind,mountGifMarks,mountVideoMarks,mountCards,syncFavoritesPage,mountFavoriteVideoMarks,mountCommentsPage,runFeaturesYielding,getAppearance,applyAppearanceTheme,ensureDocumentStyles,SITE_SELECTORS,FOLLOW_KIND_ARTIST,FOLLOW_KIND_CHARACTER,FOLLOW_KIND_COPYRIGHT,loadFavSet,skinIsOn,log,load,setFeatureState,SITE_ORIGIN,SEARCH_PARAM_TAGS,normalizeArtistTag,CSS_CLASS,getSyncState,getFeatureState,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,HEADER_SELECTOR$1,RDW_OWN_PAGE_CLASS,MENU_ITEM_ID,getFeatureEnabled,applyHeaderLayout,parseRdwHash,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,runFavoritesSync,UI_TEXT,createDynamicCollection,Q$1,RDW_PAGE_ROOT_ID,markFavoritesCurrent,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,resolveFavoritesUserId,RDW_HASH_STATS,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,NAV_DUE_CLASS,rdwPageHash,createFavoritesSyncTabId,APPEARANCE_BACKGROUND_KEY,readArtistsMirror,listArtistTags,writeArtistsMirror,reloadFromStorage,save,CURRENT_PAGE_CLASS,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,a,OverlayInPlace,applyTokenProperties,resolveAppearancePalette,isCollectionDetailPage,RDW_ROUTE_STATS,menuRouteForPage,getSiteSkinCss,KIT_CONTROL_HEIGHT_VAR,KIT_CONTROL_FONT_VAR,MOTION_PAGE_CSS,$$1,PANEL_UI_CLASS,TOKEN_VAR,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,SITE_LIGHT_C_BG,SITE_LIGHT_C_BG_ALT,SITE_DARK_C_BG,SITE_DARK_C_BORDER,APPEARANCE_BACKGROUND_TOO_LARGE;return{setters:[function(module){yieldToMain=module.y;detectPageKind=module.d;mountGifMarks=module.m;mountVideoMarks=module.a;mountCards=module.b;syncFavoritesPage=module.s;mountFavoriteVideoMarks=module.c;mountCommentsPage=module.e;runFeaturesYielding=module.r;getAppearance=module.g;applyAppearanceTheme=module.f;ensureDocumentStyles=module.h;SITE_SELECTORS=module.S;FOLLOW_KIND_ARTIST=module.F;FOLLOW_KIND_CHARACTER=module.i;FOLLOW_KIND_COPYRIGHT=module.j;loadFavSet=module.l;skinIsOn=module.k;log=module.n;load=module.o;setFeatureState=module.p;SITE_ORIGIN=module.q;SEARCH_PARAM_TAGS=module.t;normalizeArtistTag=module.u;CSS_CLASS=module.C;getSyncState=module.v;getFeatureState=module.w;ensureStyleElement=module.x;RDW_OWN_PAGE_STYLE_ID=module.R;buildOwnPageCss=module.z;HEADER_SELECTOR$1=module.H;RDW_OWN_PAGE_CLASS=module.A;MENU_ITEM_ID=module.M;getFeatureEnabled=module.B;applyHeaderLayout=module.D;parseRdwHash=module.E;readFavoritesSyncMode=module.G;FAVORITES_SYNC_MODE_FULL=module.I;runFavoritesSync=module.J;UI_TEXT=module.U;createDynamicCollection=module.K;Q$1=module.Q;RDW_PAGE_ROOT_ID=module.L;markFavoritesCurrent=module.N;NAVBAR_SELECTOR=module.O;FEED_MENU_ITEM_ID=module.P;RDW_HASH_COLLECTIONS=module.T;MENU_LABEL=module.V;RDW_HASH_FOLLOWING=module.W;resolveFavoritesUserId=module.X;RDW_HASH_STATS=module.Y;MY_FAVORITES_CONTAINER_ID=module.Z;RDW_HASH_SETTINGS=module._;NAV_DUE_CLASS=module.$;rdwPageHash=module.a0;createFavoritesSyncTabId=module.a1;APPEARANCE_BACKGROUND_KEY=module.a2;readArtistsMirror=module.a3;listArtistTags=module.a4;writeArtistsMirror=module.a5;reloadFromStorage=module.a6;save=module.a7;CURRENT_PAGE_CLASS=module.a8;setSyncState=module.a9;SEARCH_PARAM_PAGE=module.aa;FAVORITES_PAGE=module.ab;FAVORITES_SECTION_VIEW=module.ac;SEARCH_PATH=module.ad;a=module.ae;OverlayInPlace=module.af;applyTokenProperties=module.ag;resolveAppearancePalette=module.ah;isCollectionDetailPage=module.ai;RDW_ROUTE_STATS=module.aj;menuRouteForPage=module.ak;getSiteSkinCss=module.al;KIT_CONTROL_HEIGHT_VAR=module.am;KIT_CONTROL_FONT_VAR=module.an;MOTION_PAGE_CSS=module.ao;$$1=module.ap;PANEL_UI_CLASS=module.aq;TOKEN_VAR=module.ar;RDW_THEME_ATTR=module.as;APPEARANCE_THEME_SITE=module.at;APPEARANCE_THEME_SITE_DARK=module.au;SITE_LIGHT_C_BG=module.av;SITE_LIGHT_C_BG_ALT=module.aw;SITE_DARK_C_BG=module.ax;SITE_DARK_C_BORDER=module.ay;APPEARANCE_BACKGROUND_TOO_LARGE=module.az;}],execute:(function(){exports({_:writeViewMode,a:installSiteMenu,c:rememberBackup,g:readViewMode,h:isViewMode,i:navigateToRdwRoute,n:loadBackground,o:markBackupDue,r:saveBackground,s:currentBackupStatus,startApp:startApp,t:clearBackground});/** Matches host.tsx page title class (owned there; styled here for site polish). */
+System.register("./app-Du1hpaW5-Bpz95AKo.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var yieldToMain,detectPageKind,mountGifMarks,mountVideoMarks,mountCards,syncFavoritesPage,mountFavoriteVideoMarks,mountCommentsPage,runFeaturesYielding,getAppearance,applyAppearanceTheme,ensureDocumentStyles,SITE_SELECTORS,FOLLOW_KIND_ARTIST,FOLLOW_KIND_CHARACTER,FOLLOW_KIND_COPYRIGHT,loadFavSet,skinIsOn,log,load,setFeatureState,SITE_ORIGIN,SEARCH_PARAM_TAGS,normalizeArtistTag,CSS_CLASS,getSyncState,getFeatureState,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,HEADER_SELECTOR$1,RDW_OWN_PAGE_CLASS,MENU_ITEM_ID,getFeatureEnabled,applyHeaderLayout,parseRdwHash,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,runFavoritesSync,UI_TEXT,createDynamicCollection,Q$1,RDW_PAGE_ROOT_ID,markFavoritesCurrent,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,resolveFavoritesUserId,RDW_HASH_STATS,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,NAV_DUE_CLASS,rdwPageHash,createFavoritesSyncTabId,APPEARANCE_BACKGROUND_KEY,readArtistsMirror,listArtistTags,writeArtistsMirror,reloadFromStorage,save,CURRENT_PAGE_CLASS,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,a,OverlayInPlace,applyTokenProperties,resolveAppearancePalette,isCollectionDetailPage,RDW_ROUTE_STATS,menuRouteForPage,getSiteSkinCss,KIT_CONTROL_HEIGHT_VAR,KIT_CONTROL_FONT_VAR,MOTION_PAGE_CSS,$$1,PANEL_UI_CLASS,TOKEN_VAR,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,SITE_LIGHT_C_BG,SITE_LIGHT_C_BG_ALT,SITE_DARK_C_BG,SITE_DARK_C_BORDER,APPEARANCE_BACKGROUND_TOO_LARGE;return{setters:[function(module){yieldToMain=module.y;detectPageKind=module.d;mountGifMarks=module.m;mountVideoMarks=module.a;mountCards=module.b;syncFavoritesPage=module.s;mountFavoriteVideoMarks=module.c;mountCommentsPage=module.e;runFeaturesYielding=module.r;getAppearance=module.g;applyAppearanceTheme=module.f;ensureDocumentStyles=module.h;SITE_SELECTORS=module.S;FOLLOW_KIND_ARTIST=module.F;FOLLOW_KIND_CHARACTER=module.i;FOLLOW_KIND_COPYRIGHT=module.j;loadFavSet=module.l;skinIsOn=module.k;log=module.n;load=module.o;setFeatureState=module.p;SITE_ORIGIN=module.q;SEARCH_PARAM_TAGS=module.t;normalizeArtistTag=module.u;CSS_CLASS=module.C;getSyncState=module.v;getFeatureState=module.w;ensureStyleElement=module.x;RDW_OWN_PAGE_STYLE_ID=module.R;buildOwnPageCss=module.z;HEADER_SELECTOR$1=module.H;RDW_OWN_PAGE_CLASS=module.A;MENU_ITEM_ID=module.M;getFeatureEnabled=module.B;applyHeaderLayout=module.D;parseRdwHash=module.E;readFavoritesSyncMode=module.G;FAVORITES_SYNC_MODE_FULL=module.I;runFavoritesSync=module.J;UI_TEXT=module.U;createDynamicCollection=module.K;Q$1=module.Q;RDW_PAGE_ROOT_ID=module.L;markFavoritesCurrent=module.N;NAVBAR_SELECTOR=module.O;FEED_MENU_ITEM_ID=module.P;RDW_HASH_COLLECTIONS=module.T;MENU_LABEL=module.V;RDW_HASH_FOLLOWING=module.W;resolveFavoritesUserId=module.X;RDW_HASH_STATS=module.Y;MY_FAVORITES_CONTAINER_ID=module.Z;RDW_HASH_SETTINGS=module._;NAV_DUE_CLASS=module.$;rdwPageHash=module.a0;createFavoritesSyncTabId=module.a1;APPEARANCE_BACKGROUND_KEY=module.a2;readArtistsMirror=module.a3;listArtistTags=module.a4;writeArtistsMirror=module.a5;reloadFromStorage=module.a6;save=module.a7;CURRENT_PAGE_CLASS=module.a8;setSyncState=module.a9;SEARCH_PARAM_PAGE=module.aa;FAVORITES_PAGE=module.ab;FAVORITES_SECTION_VIEW=module.ac;SEARCH_PATH=module.ad;a=module.ae;OverlayInPlace=module.af;applyTokenProperties=module.ag;resolveAppearancePalette=module.ah;isCollectionDetailPage=module.ai;RDW_ROUTE_STATS=module.aj;menuRouteForPage=module.ak;getSiteSkinCss=module.al;KIT_CONTROL_HEIGHT_VAR=module.am;KIT_CONTROL_FONT_VAR=module.an;MOTION_PAGE_CSS=module.ao;$$1=module.ap;PANEL_UI_CLASS=module.aq;TOKEN_VAR=module.ar;RDW_THEME_ATTR=module.as;APPEARANCE_THEME_SITE=module.at;APPEARANCE_THEME_SITE_DARK=module.au;SITE_LIGHT_C_BG=module.av;SITE_LIGHT_C_BG_ALT=module.aw;SITE_DARK_C_BG=module.ax;SITE_DARK_C_BORDER=module.ay;APPEARANCE_BACKGROUND_TOO_LARGE=module.az;}],execute:(function(){exports({_:writeViewMode,a:installSiteMenu,c:rememberBackup,g:readViewMode,h:isViewMode,i:navigateToRdwRoute,n:loadBackground,o:markBackupDue,r:saveBackground,s:currentBackupStatus,startApp:startApp,t:clearBackground});/** Matches host.tsx page title class (owned there; styled here for site polish). */
 var PAGE_TITLE_CLASS$1 = "rdw-page-title";
 /** Matches kit SectionLabel class. */
 var SECTION_LABEL_CLASS = "rdw-section-label";
@@ -24451,35 +24483,35 @@ var followingFactory = null;
 var statsFactory = null;
 function getSettingsFactory() {
 	if (settingsFactory === null) settingsFactory = async () => {
-		const mod = await module.import('./settings-page-BCNfYu8S-DXIe5Sjg.js');
+		const mod = await module.import('./settings-page-CM1DIaUQ-Bxp1SWeX.js');
 		return /* @__PURE__ */ a(mod.SettingsPage, {});
 	};
 	return settingsFactory;
 }
 function getCollectionsFactory() {
 	if (collectionsFactory === null) collectionsFactory = async () => {
-		const mod = await module.import('./collections-page-kDItDmXe-CJq_VQNg.js');
+		const mod = await module.import('./collections-page-NpYZiffN-BVJq0dtR.js');
 		return /* @__PURE__ */ a(mod.CollectionsPage, {});
 	};
 	return collectionsFactory;
 }
 function getFollowingFactory() {
 	if (followingFactory === null) followingFactory = async () => {
-		const mod = await module.import('./following-page-BcfxtCIK-CmBWRqJf.js');
+		const mod = await module.import('./following-page-BeuxUekr-BR9owbCD.js');
 		return /* @__PURE__ */ a(mod.FollowingPage, {});
 	};
 	return followingFactory;
 }
 function getStatsFactory() {
 	if (statsFactory === null) statsFactory = async () => {
-		const mod = await module.import('./stats-section-BAc49WNZ-CMqlJPNi.js');
+		const mod = await module.import('./stats-section-AAxCMc0o-CMqlJPNi.js');
 		return /* @__PURE__ */ a(mod.StatsPage, {});
 	};
 	return statsFactory;
 }
 function collectionDetailFactory(collectionId) {
 	return async () => {
-		const mod = await module.import('./collection-detail-page-BHTq0jrx-CtDvbGvy.js');
+		const mod = await module.import('./collection-detail-page-D-HYsMAj--HrZ6vMD.js');
 		return /* @__PURE__ */ a(mod.CollectionDetailPage, { collectionId }, collectionId);
 	};
 }
@@ -26029,7 +26061,7 @@ async function startApp() {
 	maybeResumeFavoritesSync();
 	recordStatsPoint();
 }})}}));
-System.register("./settings-page-BCNfYu8S-DXIe5Sjg.js", ['./___monkey.entry.js','./app-BGSIucgi-CkzTwx6-.js'],(function(exports){'use strict';var d,T,A,a,PANEL_UI_CLASS,Switch,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,STATS_MENU_SETTING_LABEL,STATS_MENU_SWITCH_ID,setFeatureEnabled,STICKY_HEADER_SETTING_LABEL,STICKY_HEADER_SWITCH_ID,applyStickyHeader,NumberField,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,setGridFavButtonsVisible,STICKY_TOP,IconChevronRight,IconChevronDown,Card,P$1,getAppearance,applyAppearanceTheme,getSiteSkinCss,APPEARANCE_THEME_CUSTOM,KIT_FOCUS_CSS,SectionLabel,Select,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,$$1,Segmented,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,TextField,Button,clampBackgroundDim,FEATURES,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,clearFeatureState,applyCssOnlyFeatureEnabled,isFeatureEnabled,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,applyCssOnlyFeatureChoice,getFeatureChoice,createAutocompleteQuerier,b,readSiteBlacklist,AutocompleteField,Chip,ProgressBar,SETTINGS_SECTION_FAVORITES,createDefaultCustomTheme,AppearanceThemeSchema,prepareBackgroundImageFile,setFeatureState,writeSiteBlacklist,runFavoritesSync,log,FAVORITES_SYNC_PAGE_PAUSE_MS,clearApiCredentials,parseApiCredentials,setApiCredentials,DEFAULT_FILE_MASK,FILE_MASK_TOKENS,toggleMaskToken,maskHasToken,load,createDefaultStorage,clearStorageCache,clearFavsCache,getSyncState,buildFileName,writeFileMask,readFileMask,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,isSiteUrl,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,setAppearance,loadFavSet,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,gridDensityFeature,FAVORITES_SYNC_MODE_INCREMENTAL,FAVORITES_SYNC_MODE_FULL,STATS_MENU_SETTING_ID,STICKY_HEADER_SETTING_ID,hasApiCredentials,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureEnabled,takeSettingsSection,getFeatureChoiceValue,getFeatureState,getScreenPixelSize,installSiteMenu,loadBackground,currentBackupStatus,markBackupDue,clearBackground,saveBackground,rememberBackup;return{setters:[function(module){d=module.aA;T=module.aB;A=module.aC;a=module.ae;PANEL_UI_CLASS=module.aq;Switch=module.aD;UI_TEXT=module.U;TWEAKS_SWITCH_ID=module.aE;setTweaksEnabled=module.aF;STATS_MENU_SETTING_LABEL=module.aG;STATS_MENU_SWITCH_ID=module.aH;setFeatureEnabled=module.aI;STICKY_HEADER_SETTING_LABEL=module.aJ;STICKY_HEADER_SWITCH_ID=module.aK;applyStickyHeader=module.aL;NumberField=module.aM;UPDATES_GROUP_SIZE_ID=module.aN;setUpdatesGroupSize=module.aO;getUpdatesGroupSize=module.aP;PLAYLIST_CHUNK_SIZE_ID=module.aQ;setPlaylistChunkSize=module.aR;getPlaylistChunkSize=module.aS;GRID_FAV_CHECKBOX_ID=module.aT;setGridFavButtonsEnabled=module.aU;setGridFavButtonsVisible=module.aV;STICKY_TOP=module.aW;IconChevronRight=module.aX;IconChevronDown=module.aY;Card=module.aZ;P$1=module.a_;getAppearance=module.g;applyAppearanceTheme=module.f;getSiteSkinCss=module.al;APPEARANCE_THEME_CUSTOM=module.a$;KIT_FOCUS_CSS=module.b0;SectionLabel=module.b1;Select=module.b2;APPEARANCE_THEME_SITE=module.at;APPEARANCE_THEME_SITE_DARK=module.au;APPEARANCE_THEME_LIGHT=module.b3;APPEARANCE_THEME_DARK=module.b4;$$1=module.ap;Segmented=module.b5;APPEARANCE_CUSTOM_BASE_LIGHT=module.b6;APPEARANCE_CUSTOM_BASE_DARK=module.b7;TextField=module.b8;Button=module.b9;clampBackgroundDim=module.ba;FEATURES=module.bb;featurePanelLabel=module.bc;FEATURE_CHECKBOX_ID_PREFIX=module.bd;clearFeatureState=module.be;applyCssOnlyFeatureEnabled=module.bf;isFeatureEnabled=module.bg;FEATURE_CHOICE_ID_PREFIX=module.bh;setFeatureChoiceValue=module.bi;applyCssOnlyFeatureChoice=module.bj;getFeatureChoice=module.bk;createAutocompleteQuerier=module.bl;b=module.bm;readSiteBlacklist=module.bn;AutocompleteField=module.bo;Chip=module.bp;ProgressBar=module.bq;SETTINGS_SECTION_FAVORITES=module.br;createDefaultCustomTheme=module.bs;AppearanceThemeSchema=module.bt;prepareBackgroundImageFile=module.bu;setFeatureState=module.p;writeSiteBlacklist=module.bv;runFavoritesSync=module.J;log=module.n;FAVORITES_SYNC_PAGE_PAUSE_MS=module.bw;clearApiCredentials=module.bx;parseApiCredentials=module.by;setApiCredentials=module.bz;DEFAULT_FILE_MASK=module.bA;FILE_MASK_TOKENS=module.bB;toggleMaskToken=module.bC;maskHasToken=module.bD;load=module.o;createDefaultStorage=module.bE;clearStorageCache=module.bF;clearFavsCache=module.bG;getSyncState=module.v;buildFileName=module.bH;writeFileMask=module.bI;readFileMask=module.bJ;object=module.bK;StorageSchema=module.bL;optional=module.bM;string=module.bN;FavsSchema=module.bO;literal=module.bP;IMPORT_SCHEMA_ERROR_PREFIX=module.bQ;isSiteUrl=module.bR;stripLegacyPanelWindowSize=module.bS;save=module.a7;migrateMarksFavToFavs=module.bT;FAVS_STORAGE_KEY=module.bU;createDefaultFavs=module.bV;parseFavsStrict=module.bW;setAppearance=module.bX;loadFavSet=module.l;STORAGE_BACKUP_KEY=module.bY;extractFavIdsFromMarks=module.bZ;gridDensityFeature=module.b_;FAVORITES_SYNC_MODE_INCREMENTAL=module.b$;FAVORITES_SYNC_MODE_FULL=module.I;STATS_MENU_SETTING_ID=module.c0;STICKY_HEADER_SETTING_ID=module.c1;hasApiCredentials=module.c2;getTweaksEnabled=module.c3;getGridFavButtonsEnabled=module.c4;getFeatureEnabled=module.B;takeSettingsSection=module.c5;getFeatureChoiceValue=module.c6;getFeatureState=module.w;getScreenPixelSize=module.c7;},function(module){installSiteMenu=module.a;loadBackground=module.n;currentBackupStatus=module.s;markBackupDue=module.o;clearBackground=module.t;saveBackground=module.r;rememberBackup=module.c;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
+System.register("./settings-page-CM1DIaUQ-Bxp1SWeX.js", ['./___monkey.entry.js','./app-Du1hpaW5-Bpz95AKo.js'],(function(exports){'use strict';var d,T,A,a,PANEL_UI_CLASS,Switch,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,STATS_MENU_SETTING_LABEL,STATS_MENU_SWITCH_ID,setFeatureEnabled,STICKY_HEADER_SETTING_LABEL,STICKY_HEADER_SWITCH_ID,applyStickyHeader,NumberField,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,setGridFavButtonsVisible,STICKY_TOP,IconChevronRight,IconChevronDown,Card,P$1,getAppearance,applyAppearanceTheme,getSiteSkinCss,APPEARANCE_THEME_CUSTOM,KIT_FOCUS_CSS,SectionLabel,Select,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,$$1,Segmented,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,TextField,Button,clampBackgroundDim,FEATURES,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,clearFeatureState,applyCssOnlyFeatureEnabled,isFeatureEnabled,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,applyCssOnlyFeatureChoice,getFeatureChoice,createAutocompleteQuerier,b,readSiteBlacklist,AutocompleteField,Chip,ProgressBar,SETTINGS_SECTION_FAVORITES,createDefaultCustomTheme,AppearanceThemeSchema,prepareBackgroundImageFile,setFeatureState,writeSiteBlacklist,runFavoritesSync,log,FAVORITES_SYNC_PAGE_PAUSE_MS,clearApiCredentials,parseApiCredentials,setApiCredentials,DEFAULT_FILE_MASK,FILE_MASK_TOKENS,toggleMaskToken,maskHasToken,load,createDefaultStorage,clearStorageCache,clearFavsCache,getSyncState,buildFileName,writeFileMask,readFileMask,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,isSiteUrl,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,setAppearance,loadFavSet,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,gridDensityFeature,FAVORITES_SYNC_MODE_INCREMENTAL,FAVORITES_SYNC_MODE_FULL,STATS_MENU_SETTING_ID,STICKY_HEADER_SETTING_ID,hasApiCredentials,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureEnabled,takeSettingsSection,getFeatureChoiceValue,getFeatureState,getScreenPixelSize,installSiteMenu,loadBackground,currentBackupStatus,markBackupDue,clearBackground,saveBackground,rememberBackup;return{setters:[function(module){d=module.aA;T=module.aB;A=module.aC;a=module.ae;PANEL_UI_CLASS=module.aq;Switch=module.aD;UI_TEXT=module.U;TWEAKS_SWITCH_ID=module.aE;setTweaksEnabled=module.aF;STATS_MENU_SETTING_LABEL=module.aG;STATS_MENU_SWITCH_ID=module.aH;setFeatureEnabled=module.aI;STICKY_HEADER_SETTING_LABEL=module.aJ;STICKY_HEADER_SWITCH_ID=module.aK;applyStickyHeader=module.aL;NumberField=module.aM;UPDATES_GROUP_SIZE_ID=module.aN;setUpdatesGroupSize=module.aO;getUpdatesGroupSize=module.aP;PLAYLIST_CHUNK_SIZE_ID=module.aQ;setPlaylistChunkSize=module.aR;getPlaylistChunkSize=module.aS;GRID_FAV_CHECKBOX_ID=module.aT;setGridFavButtonsEnabled=module.aU;setGridFavButtonsVisible=module.aV;STICKY_TOP=module.aW;IconChevronRight=module.aX;IconChevronDown=module.aY;Card=module.aZ;P$1=module.a_;getAppearance=module.g;applyAppearanceTheme=module.f;getSiteSkinCss=module.al;APPEARANCE_THEME_CUSTOM=module.a$;KIT_FOCUS_CSS=module.b0;SectionLabel=module.b1;Select=module.b2;APPEARANCE_THEME_SITE=module.at;APPEARANCE_THEME_SITE_DARK=module.au;APPEARANCE_THEME_LIGHT=module.b3;APPEARANCE_THEME_DARK=module.b4;$$1=module.ap;Segmented=module.b5;APPEARANCE_CUSTOM_BASE_LIGHT=module.b6;APPEARANCE_CUSTOM_BASE_DARK=module.b7;TextField=module.b8;Button=module.b9;clampBackgroundDim=module.ba;FEATURES=module.bb;featurePanelLabel=module.bc;FEATURE_CHECKBOX_ID_PREFIX=module.bd;clearFeatureState=module.be;applyCssOnlyFeatureEnabled=module.bf;isFeatureEnabled=module.bg;FEATURE_CHOICE_ID_PREFIX=module.bh;setFeatureChoiceValue=module.bi;applyCssOnlyFeatureChoice=module.bj;getFeatureChoice=module.bk;createAutocompleteQuerier=module.bl;b=module.bm;readSiteBlacklist=module.bn;AutocompleteField=module.bo;Chip=module.bp;ProgressBar=module.bq;SETTINGS_SECTION_FAVORITES=module.br;createDefaultCustomTheme=module.bs;AppearanceThemeSchema=module.bt;prepareBackgroundImageFile=module.bu;setFeatureState=module.p;writeSiteBlacklist=module.bv;runFavoritesSync=module.J;log=module.n;FAVORITES_SYNC_PAGE_PAUSE_MS=module.bw;clearApiCredentials=module.bx;parseApiCredentials=module.by;setApiCredentials=module.bz;DEFAULT_FILE_MASK=module.bA;FILE_MASK_TOKENS=module.bB;toggleMaskToken=module.bC;maskHasToken=module.bD;load=module.o;createDefaultStorage=module.bE;clearStorageCache=module.bF;clearFavsCache=module.bG;getSyncState=module.v;buildFileName=module.bH;writeFileMask=module.bI;readFileMask=module.bJ;object=module.bK;StorageSchema=module.bL;optional=module.bM;string=module.bN;FavsSchema=module.bO;literal=module.bP;IMPORT_SCHEMA_ERROR_PREFIX=module.bQ;isSiteUrl=module.bR;stripLegacyPanelWindowSize=module.bS;save=module.a7;migrateMarksFavToFavs=module.bT;FAVS_STORAGE_KEY=module.bU;createDefaultFavs=module.bV;parseFavsStrict=module.bW;setAppearance=module.bX;loadFavSet=module.l;STORAGE_BACKUP_KEY=module.bY;extractFavIdsFromMarks=module.bZ;gridDensityFeature=module.b_;FAVORITES_SYNC_MODE_INCREMENTAL=module.b$;FAVORITES_SYNC_MODE_FULL=module.I;STATS_MENU_SETTING_ID=module.c0;STICKY_HEADER_SETTING_ID=module.c1;hasApiCredentials=module.c2;getTweaksEnabled=module.c3;getGridFavButtonsEnabled=module.c4;getFeatureEnabled=module.B;takeSettingsSection=module.c5;getFeatureChoiceValue=module.c6;getFeatureState=module.w;getScreenPixelSize=module.c7;},function(module){installSiteMenu=module.a;loadBackground=module.n;currentBackupStatus=module.s;markBackupDue=module.o;clearBackground=module.t;saveBackground=module.r;rememberBackup=module.c;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
 var THEME_OPTIONS = [
 	{
 		value: APPEARANCE_THEME_SITE,
@@ -27900,7 +27932,7 @@ function SettingsPage() {
 		]
 	});
 }})}}));
-System.register("./collections-page-kDItDmXe-CJq_VQNg.js", ['./___monkey.entry.js','./filter-terms-Dqag3iAV-Bgq_MKCQ.js','./app-BGSIucgi-CkzTwx6-.js'],(function(exports){'use strict';var d,T,A,b,reloadFromStorage,load,a,Segmented,SearchField,Select,setFeatureState,$$1,Button,UI_TEXT,IconPlus,EmptyState,Dialog,resolveCollectionKind,STICKY_TOP,isUnfilteredQuery,dynamicHasNew,deleteCollection,TextField,QueryField,createDynamicCollection,createPlaylist,buildSearchUrl,fetchNextPage,setDynamicCover,readFirstThumbUrls,readResultCount,setDynamicPostCount,setDynamicNewest,COLLECTION_KIND_POSTS,collectionDetailHash,readCoverMirror,COLLECTION_KIND_SEARCH,extractPostIdFromThumb,IconCheck,readCountMirror,dynamicCollectionMarkHash,serialize,getFeatureState,matchesAnyTerm,filterTerms,COLLECTION_TERM_SEPARATOR,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,PAGE_CENTRE_PADDING,COLLECTIONS_VIEW_STATE_ID,readViewMode;return{setters:[function(module){d=module.aA;T=module.aB;A=module.aC;b=module.bm;reloadFromStorage=module.a6;load=module.o;a=module.ae;Segmented=module.b5;SearchField=module.c8;Select=module.b2;setFeatureState=module.p;$$1=module.ap;Button=module.b9;UI_TEXT=module.U;IconPlus=module.c9;EmptyState=module.ca;Dialog=module.cb;resolveCollectionKind=module.cc;STICKY_TOP=module.aW;isUnfilteredQuery=module.cd;dynamicHasNew=module.ce;deleteCollection=module.cf;TextField=module.b8;QueryField=module.cg;createDynamicCollection=module.K;createPlaylist=module.ch;buildSearchUrl=module.ci;fetchNextPage=module.cj;setDynamicCover=module.ck;readFirstThumbUrls=module.cl;readResultCount=module.cm;setDynamicPostCount=module.cn;setDynamicNewest=module.co;COLLECTION_KIND_POSTS=module.cp;collectionDetailHash=module.cq;readCoverMirror=module.cr;COLLECTION_KIND_SEARCH=module.cs;extractPostIdFromThumb=module.ct;IconCheck=module.cu;readCountMirror=module.cv;dynamicCollectionMarkHash=module.cw;serialize=module.cx;getFeatureState=module.w;},function(module){matchesAnyTerm=module.m;filterTerms=module.f;COLLECTION_TERM_SEPARATOR=module.C;},function(module){VIEW_OPTIONS=module.m;VIEW_LABEL=module.f;isViewMode=module.h;writeViewMode=module._;PAGE_CENTRE_PADDING=module.d;COLLECTIONS_VIEW_STATE_ID=module.l;readViewMode=module.g;}],execute:(function(){exports("CollectionsPage",CollectionsPage);/**
+System.register("./collections-page-NpYZiffN-BVJq0dtR.js", ['./___monkey.entry.js','./filter-terms-Dqag3iAV-Bgq_MKCQ.js','./app-Du1hpaW5-Bpz95AKo.js'],(function(exports){'use strict';var d,T,A,b,reloadFromStorage,load,a,Segmented,SearchField,Select,setFeatureState,$$1,Button,UI_TEXT,IconPlus,EmptyState,Dialog,resolveCollectionKind,STICKY_TOP,isUnfilteredQuery,dynamicHasNew,deleteCollection,TextField,QueryField,createDynamicCollection,createPlaylist,buildSearchUrl,fetchNextPage,setDynamicCover,readFirstThumbUrls,readResultCount,setDynamicPostCount,setDynamicNewest,COLLECTION_KIND_POSTS,collectionDetailHash,readCoverMirror,COLLECTION_KIND_SEARCH,extractPostIdFromThumb,IconCheck,readCountMirror,dynamicCollectionMarkHash,serialize,getFeatureState,matchesAnyTerm,filterTerms,COLLECTION_TERM_SEPARATOR,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,PAGE_CENTRE_PADDING,COLLECTIONS_VIEW_STATE_ID,readViewMode;return{setters:[function(module){d=module.aA;T=module.aB;A=module.aC;b=module.bm;reloadFromStorage=module.a6;load=module.o;a=module.ae;Segmented=module.b5;SearchField=module.c8;Select=module.b2;setFeatureState=module.p;$$1=module.ap;Button=module.b9;UI_TEXT=module.U;IconPlus=module.c9;EmptyState=module.ca;Dialog=module.cb;resolveCollectionKind=module.cc;STICKY_TOP=module.aW;isUnfilteredQuery=module.cd;dynamicHasNew=module.ce;deleteCollection=module.cf;TextField=module.b8;QueryField=module.cg;createDynamicCollection=module.K;createPlaylist=module.ch;buildSearchUrl=module.ci;fetchNextPage=module.cj;setDynamicCover=module.ck;readFirstThumbUrls=module.cl;readResultCount=module.cm;setDynamicPostCount=module.cn;setDynamicNewest=module.co;COLLECTION_KIND_POSTS=module.cp;collectionDetailHash=module.cq;readCoverMirror=module.cr;COLLECTION_KIND_SEARCH=module.cs;extractPostIdFromThumb=module.ct;IconCheck=module.cu;readCountMirror=module.cv;dynamicCollectionMarkHash=module.cw;serialize=module.cx;getFeatureState=module.w;},function(module){matchesAnyTerm=module.m;filterTerms=module.f;COLLECTION_TERM_SEPARATOR=module.C;},function(module){VIEW_OPTIONS=module.m;VIEW_LABEL=module.f;isViewMode=module.h;writeViewMode=module._;PAGE_CENTRE_PADDING=module.d;COLLECTIONS_VIEW_STATE_ID=module.l;readViewMode=module.g;}],execute:(function(){exports("CollectionsPage",CollectionsPage);/**
 * "Check for new" on the Collections page: reads the first results page of
 * every saved search. From it the card gets its cover and post count (as on a
 * visit to the search), and the newest post is remembered, so a card can say
@@ -28890,7 +28922,7 @@ function CollectionsPage() {
 		]
 	});
 }})}}));
-System.register("./following-page-BcfxtCIK-CmBWRqJf.js", ['./___monkey.entry.js','./filter-terms-Dqag3iAV-Bgq_MKCQ.js','./app-BGSIucgi-CkzTwx6-.js'],(function(exports){'use strict';var d,T,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST,A,reloadFromStorage,getSeenPostId,listFollowGroups,followKindOf,FOLLOW_KIND_ARTIST,a,EmptyState,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,$$1,Button,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,Segmented,SearchField,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,Select,FOLLOW_KIND_CHARACTER,FOLLOW_KIND_COPYRIGHT,UI_TEXT,ProgressBar,Dialog,TextField,removeArtist,load,completeLastQueryToken,readLastQueryToken,STICKY_TOP,IconPlus,buildSearchUrl,TAG_TYPE_INCLUDE,IconCheck,IconButton,IconX,setFollowGroup,removeArtists,rememberArtistSnapshot,fetchArtistSnapshot,log,addArtists,AutocompleteField,filterTerms,matchesAnyTerm,ARTIST_TERM_SEPARATOR,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,PAGE_CENTRE_PADDING,FOLLOWING_VIEW_STATE_ID,readViewMode;return{setters:[function(module){d=module.aA;T=module.aB;createAutocompleteQuerier=module.bl;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.cy;A=module.aC;reloadFromStorage=module.a6;getSeenPostId=module.cz;listFollowGroups=module.cA;followKindOf=module.cB;FOLLOW_KIND_ARTIST=module.F;a=module.ae;EmptyState=module.ca;ARTISTS_EMPTY_HINT=module.cC;ARTISTS_EMPTY_TITLE=module.cD;$$1=module.ap;Button=module.b9;SEARCH_PATH=module.ad;SEARCH_PARAM_PAGE=module.aa;SEARCH_PAGE=module.cE;SEARCH_SECTION=module.cF;Segmented=module.b5;SearchField=module.c8;ARTIST_FILTER_LABEL=module.cG;ARTIST_FILTER_ID=module.cH;Select=module.b2;FOLLOW_KIND_CHARACTER=module.i;FOLLOW_KIND_COPYRIGHT=module.j;UI_TEXT=module.U;ProgressBar=module.bq;Dialog=module.cb;TextField=module.b8;removeArtist=module.cI;load=module.o;completeLastQueryToken=module.cJ;readLastQueryToken=module.cK;STICKY_TOP=module.aW;IconPlus=module.c9;buildSearchUrl=module.ci;TAG_TYPE_INCLUDE=module.cL;IconCheck=module.cu;IconButton=module.cM;IconX=module.cN;setFollowGroup=module.cO;removeArtists=module.cP;rememberArtistSnapshot=module.cQ;fetchArtistSnapshot=module.cR;log=module.n;addArtists=module.cS;AutocompleteField=module.bo;},function(module){filterTerms=module.f;matchesAnyTerm=module.m;ARTIST_TERM_SEPARATOR=module.A;},function(module){VIEW_OPTIONS=module.m;VIEW_LABEL=module.f;isViewMode=module.h;writeViewMode=module._;PAGE_CENTRE_PADDING=module.d;FOLLOWING_VIEW_STATE_ID=module.u;readViewMode=module.g;}],execute:(function(){exports("FollowingPage",FollowingPage);var EVENT_PAGESHOW = "pageshow";
+System.register("./following-page-BeuxUekr-BR9owbCD.js", ['./___monkey.entry.js','./filter-terms-Dqag3iAV-Bgq_MKCQ.js','./app-Du1hpaW5-Bpz95AKo.js'],(function(exports){'use strict';var d,T,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST,A,reloadFromStorage,getSeenPostId,listFollowGroups,followKindOf,FOLLOW_KIND_ARTIST,a,EmptyState,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,$$1,Button,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,Segmented,SearchField,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,Select,FOLLOW_KIND_CHARACTER,FOLLOW_KIND_COPYRIGHT,UI_TEXT,ProgressBar,Dialog,TextField,removeArtist,load,completeLastQueryToken,readLastQueryToken,STICKY_TOP,IconPlus,buildSearchUrl,TAG_TYPE_INCLUDE,IconCheck,IconButton,IconX,setFollowGroup,removeArtists,rememberArtistSnapshot,fetchArtistSnapshot,log,addArtists,AutocompleteField,filterTerms,matchesAnyTerm,ARTIST_TERM_SEPARATOR,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,PAGE_CENTRE_PADDING,FOLLOWING_VIEW_STATE_ID,readViewMode;return{setters:[function(module){d=module.aA;T=module.aB;createAutocompleteQuerier=module.bl;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.cy;A=module.aC;reloadFromStorage=module.a6;getSeenPostId=module.cz;listFollowGroups=module.cA;followKindOf=module.cB;FOLLOW_KIND_ARTIST=module.F;a=module.ae;EmptyState=module.ca;ARTISTS_EMPTY_HINT=module.cC;ARTISTS_EMPTY_TITLE=module.cD;$$1=module.ap;Button=module.b9;SEARCH_PATH=module.ad;SEARCH_PARAM_PAGE=module.aa;SEARCH_PAGE=module.cE;SEARCH_SECTION=module.cF;Segmented=module.b5;SearchField=module.c8;ARTIST_FILTER_LABEL=module.cG;ARTIST_FILTER_ID=module.cH;Select=module.b2;FOLLOW_KIND_CHARACTER=module.i;FOLLOW_KIND_COPYRIGHT=module.j;UI_TEXT=module.U;ProgressBar=module.bq;Dialog=module.cb;TextField=module.b8;removeArtist=module.cI;load=module.o;completeLastQueryToken=module.cJ;readLastQueryToken=module.cK;STICKY_TOP=module.aW;IconPlus=module.c9;buildSearchUrl=module.ci;TAG_TYPE_INCLUDE=module.cL;IconCheck=module.cu;IconButton=module.cM;IconX=module.cN;setFollowGroup=module.cO;removeArtists=module.cP;rememberArtistSnapshot=module.cQ;fetchArtistSnapshot=module.cR;log=module.n;addArtists=module.cS;AutocompleteField=module.bo;},function(module){filterTerms=module.f;matchesAnyTerm=module.m;ARTIST_TERM_SEPARATOR=module.A;},function(module){VIEW_OPTIONS=module.m;VIEW_LABEL=module.f;isViewMode=module.h;writeViewMode=module._;PAGE_CENTRE_PADDING=module.d;FOLLOWING_VIEW_STATE_ID=module.u;readViewMode=module.g;}],execute:(function(){exports("FollowingPage",FollowingPage);var EVENT_PAGESHOW = "pageshow";
 var PAGE_CLASS = "rdw-following-page";
 var STICKY_CLASS = "rdw-following-sticky";
 var TOOLBAR_CLASS = "rdw-following-toolbar";
@@ -29980,7 +30012,7 @@ function matchesAnyTerm(texts, terms) {
 	const lowered = texts.map((text) => text.toLowerCase());
 	return terms.some((term) => lowered.some((text) => text.includes(term)));
 }})}}));
-System.register("./stats-section-BAc49WNZ-CMqlJPNi.js", ['./___monkey.entry.js'],(function(exports){'use strict';var a,PANEL_UI_CLASS,Card,loadFavSet,load,resolveCollectionKind,d,A,Button,$$1,readFavoriteIndex,topFavoriteTags,getFeatureState,object,number,optional,string,setFeatureState,int,FETCH_CREDENTIALS,SEARCH_PATH,SEARCH_PARAM_PAGE;return{setters:[function(module){a=module.ae;PANEL_UI_CLASS=module.aq;Card=module.aZ;loadFavSet=module.l;load=module.o;resolveCollectionKind=module.cc;d=module.aA;A=module.aC;Button=module.b9;$$1=module.ap;readFavoriteIndex=module.cT;topFavoriteTags=module.cU;getFeatureState=module.w;object=module.bK;number=module.cV;optional=module.bM;string=module.bN;setFeatureState=module.p;int=module.cW;FETCH_CREDENTIALS=module.cX;SEARCH_PATH=module.ad;SEARCH_PARAM_PAGE=module.aa;}],execute:(function(){exports("StatsPage",StatsPage);/**
+System.register("./stats-section-AAxCMc0o-CMqlJPNi.js", ['./___monkey.entry.js'],(function(exports){'use strict';var a,PANEL_UI_CLASS,Card,loadFavSet,load,resolveCollectionKind,d,A,Button,$$1,readFavoriteIndex,topFavoriteTags,getFeatureState,object,number,optional,string,setFeatureState,int,FETCH_CREDENTIALS,SEARCH_PATH,SEARCH_PARAM_PAGE;return{setters:[function(module){a=module.ae;PANEL_UI_CLASS=module.aq;Card=module.aZ;loadFavSet=module.l;load=module.o;resolveCollectionKind=module.cc;d=module.aA;A=module.aC;Button=module.b9;$$1=module.ap;readFavoriteIndex=module.cT;topFavoriteTags=module.cU;getFeatureState=module.w;object=module.bK;number=module.cV;optional=module.bM;string=module.bN;setFeatureState=module.p;int=module.cW;FETCH_CREDENTIALS=module.cX;SEARCH_PATH=module.ad;SEARCH_PARAM_PAGE=module.aa;}],execute:(function(){exports("StatsPage",StatsPage);/**
 * The numbers of the user's own profile page on the site, for Statistics.
 *
 * Read only when the user presses "Refresh profile": two requests with a
@@ -30697,7 +30729,7 @@ function StatsPage() {
 		children: /* @__PURE__ */ a(StatsSection, {})
 	});
 }})}}));
-System.register("./collection-detail-page-BHTq0jrx-CtDvbGvy.js", ['./___monkey.entry.js','./app-BGSIucgi-CkzTwx6-.js'],(function(exports){'use strict';var d,T,w$1,b,downloadsAvailable,a,$$1,Button,UI_TEXT,shuffleCollection,resetCollectionOrder,EmptyState,Dialog,TextField,Toast,getCollectionOrder,listPlaylists,RDW_HASH_COLLECTIONS,removePostsFromCollection,isDownloadBusy,startDownload,movePostInCollection,renameCollection,deleteCollection,RDW_ROUTE_COLLECTIONS,restorePosts,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION_VIEW,SEARCH_PATH,collectionQueueHash,navigateToRdwRoute;return{setters:[function(module){d=module.aA;T=module.aB;w$1=module.cY;b=module.bm;downloadsAvailable=module.cZ;a=module.ae;$$1=module.ap;Button=module.b9;UI_TEXT=module.U;shuffleCollection=module.c_;resetCollectionOrder=module.c$;EmptyState=module.ca;Dialog=module.cb;TextField=module.b8;Toast=module.d0;getCollectionOrder=module.d1;listPlaylists=module.d2;RDW_HASH_COLLECTIONS=module.T;removePostsFromCollection=module.d3;isDownloadBusy=module.d4;startDownload=module.d5;movePostInCollection=module.d6;renameCollection=module.d7;deleteCollection=module.cf;RDW_ROUTE_COLLECTIONS=module.d8;restorePosts=module.d9;SEARCH_PARAM_PAGE=module.aa;SEARCH_PAGE=module.cE;SEARCH_SECTION_VIEW=module.da;SEARCH_PATH=module.ad;collectionQueueHash=module.db;},function(module){navigateToRdwRoute=module.i;}],execute:(function(){exports("CollectionDetailPage",CollectionDetailPage);var CELL_SIZE_PX = 200;
+System.register("./collection-detail-page-D-HYsMAj--HrZ6vMD.js", ['./___monkey.entry.js','./app-Du1hpaW5-Bpz95AKo.js'],(function(exports){'use strict';var d,T,w$1,b,downloadsAvailable,a,$$1,Button,UI_TEXT,shuffleCollection,resetCollectionOrder,EmptyState,Dialog,TextField,Toast,getCollectionOrder,listPlaylists,RDW_HASH_COLLECTIONS,removePostsFromCollection,isDownloadBusy,startDownload,movePostInCollection,renameCollection,deleteCollection,RDW_ROUTE_COLLECTIONS,restorePosts,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION_VIEW,SEARCH_PATH,collectionQueueHash,navigateToRdwRoute;return{setters:[function(module){d=module.aA;T=module.aB;w$1=module.cY;b=module.bm;downloadsAvailable=module.cZ;a=module.ae;$$1=module.ap;Button=module.b9;UI_TEXT=module.U;shuffleCollection=module.c_;resetCollectionOrder=module.c$;EmptyState=module.ca;Dialog=module.cb;TextField=module.b8;Toast=module.d0;getCollectionOrder=module.d1;listPlaylists=module.d2;RDW_HASH_COLLECTIONS=module.T;removePostsFromCollection=module.d3;isDownloadBusy=module.d4;startDownload=module.d5;movePostInCollection=module.d6;renameCollection=module.d7;deleteCollection=module.cf;RDW_ROUTE_COLLECTIONS=module.d8;restorePosts=module.d9;SEARCH_PARAM_PAGE=module.aa;SEARCH_PAGE=module.cE;SEARCH_SECTION_VIEW=module.da;SEARCH_PATH=module.ad;collectionQueueHash=module.db;},function(module){navigateToRdwRoute=module.i;}],execute:(function(){exports("CollectionDetailPage",CollectionDetailPage);var CELL_SIZE_PX = 200;
 var GRID_GAP_PX = 4;
 var SECTION_GAP_PX = 12;
 var ACTIONS_GAP_PX = 8;

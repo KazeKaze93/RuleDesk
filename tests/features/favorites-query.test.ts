@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { postsLabel, unsupportedNotice } from "../../src/features/favorites-browser";
+import {
+  favoritesFilterSummary,
+  postsLabel,
+  unsupportedNotice,
+} from "../../src/features/favorites-browser";
 import {
   MEDIA_ALL,
   SORT_ID_ASC,
@@ -114,6 +118,21 @@ describe("favorites search: what the index cannot answer", () => {
       "rating:, user:, night~ don\u2019t work in Favorites. Favorites search uses tags only.",
     );
     expect(unsupportedNotice([])).toBe("");
+  });
+});
+
+describe("favorites: what the list is narrowed to", () => {
+  it("is empty when nothing narrows the list", () => {
+    expect(favoritesFilterSummary("  ", "all")).toBe("");
+  });
+
+  it("names the search, the type and the collection", () => {
+    expect(favoritesFilterSummary("zootopia -comic", "videos", "wallpapers")).toBe(
+      "zootopia -comic · Videos · wallpapers",
+    );
+    expect(favoritesFilterSummary("", "all", "Not in any collection")).toBe(
+      "Not in any collection",
+    );
   });
 });
 

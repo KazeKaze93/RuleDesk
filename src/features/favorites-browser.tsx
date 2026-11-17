@@ -722,6 +722,18 @@ export function showFavoriteResults(results: readonly FavoriteIndexEntry[]): voi
   appendChunk(target);
 }
 
+/**
+ * The ids of the favorites the filters leave, in the order shown and over all
+ * the pages of the result; null while the site's own grid is on the page,
+ * which is every favorite.
+ */
+export function shownFavoriteIds(): number[] | null {
+  if (grid === null || !document.body.classList.contains(FAVORITES_BROWSING_BODY_CLASS)) {
+    return null;
+  }
+  return grid.results.map((entry) => entry.id);
+}
+
 /** Shows `node` where the results would be: nothing matched. */
 export function showFavoriteEmpty(node: HTMLElement): void {
   const target = ensureGrid();
@@ -905,8 +917,15 @@ export function fitControlsRow(row: HTMLElement): number {
   return applied;
 }
 
-/** "cat* -video · Images": what the list is narrowed to, for the selection bar. */
-export function favoritesFilterSummary(text: string, media: FavoritesMedia): string {
+/**
+ * "cat* -video · Images · wallpapers": what the list is narrowed to, for the
+ * selection bar and for the download of the results. Empty when nothing narrows it.
+ */
+export function favoritesFilterSummary(
+  text: string,
+  media: FavoritesMedia,
+  collection = "",
+): string {
   const parts: string[] = [];
   const query = text.trim();
   if (query.length > 0) {
@@ -915,6 +934,9 @@ export function favoritesFilterSummary(text: string, media: FavoritesMedia): str
   const option = MEDIA_OPTIONS.find((item) => item.value === media);
   if (media !== MEDIA_ALL && option !== undefined) {
     parts.push(option.label);
+  }
+  if (collection.length > 0) {
+    parts.push(collection);
   }
   return parts.join(" · ");
 }
@@ -975,8 +997,12 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
 
   const { onSummary } = props;
   useEffect(() => {
-    onSummary?.(favoritesFilterSummary(applied, media));
-  }, [onSummary, applied, media]);
+    const picked =
+      collection === COLLECTION_ANY
+        ? undefined
+        : collectionChoices(loadStore().collections).find((option) => option.value === collection);
+    onSummary?.(favoritesFilterSummary(applied, media, picked?.label ?? ""));
+  }, [onSummary, applied, media, collection]);
 
   const loadIndex = (): void => {
     if (loadingRef.current) {

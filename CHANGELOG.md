@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.45.3
+
+- Favorites: with a search, a Type or a Collection set, the download is of what the list shows, not of every favorite. The button reads "Download results…", and the dialog names what narrows the list and the number of files, over all pages of the result and in the order shown. With nothing set it is "Download all…" as before
+
 ## 0.45.2
 
 - Selecting posts on Posts and on Favorites: a post is marked the moment the mouse button goes down. It used to be marked on a full click, and a pointer that moved a little while the button was down started dragging the picture instead, so posts clicked quickly, in passing, were left unmarked
