@@ -38,6 +38,7 @@ export function buildLiveEntry(
     thumb: thumb !== null && isSiteUrl(thumb) ? thumb : "",
     run: now,
     pos: 0,
+    cut: false,
   };
 }
 

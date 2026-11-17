@@ -198,6 +198,8 @@ The top of the Favorites page is two elements, both inserted before the grid by 
 
 The pinned row holds the filters (`FavoritesBrowser`: search, the switches, Shuffle, the count, and at its right end a slot the bulk bar fills with Random post, Select and the menu) or, while posts are being selected or removed, the selection bar; the filters are hidden then, not unmounted. The row is squeezed in steps by what fits (`fitControlsRow`, a `ResizeObserver` on the row), not by window width.
 
+The index is filled from the favorites pages, where the site cuts one character off each end of the tag list. `src/features/favorites-tags.ts` restores those ends from the whole spellings it knows (entries made at the star or on a post page, flagged `cut: false`, and the tags that stand inside a cut list) and marks what it could not restore; the search and the tag counts work on the restored lists. Nothing is written back to the index.
+
 `src/features/favorites-search.ts` parses the query into include, exclude, any-of groups and a sort; what the local index cannot answer (other metatags, fuzzy `tag~`) is reported back to the user instead of being ignored silently. While a search, the type switch, Scroll or Shuffle is on, the site's own grid and pager are hidden and the matching favorites are drawn in cells of the same markup the site uses, so everything that works on the site's cells works on these.
 
 ## Download manager

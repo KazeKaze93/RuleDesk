@@ -30,6 +30,7 @@ describe("favorites: index at the star, top tags, shuffle", () => {
       thumb: "https://wimg.rule34.xxx/thumbnails/1/thumbnail_a.jpg?42",
       run: 5000,
       pos: 0,
+      cut: false,
     });
     // An address that is not the site's is not kept; a post without tags is not indexed.
     expect(buildLiveEntry("42", ["solo"], "https://example.test/a.jpg", 1)?.thumb).toBe("");

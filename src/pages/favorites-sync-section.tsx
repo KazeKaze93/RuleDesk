@@ -28,7 +28,7 @@ const TEXT_FULL = "Full resync";
 const TEXT_RESUME = "Resume";
 const TEXT_STOP = "Stop";
 const TEXT_WARNING =
-  "Sync stops at the first page of already-known favorites (newest first). Full resync loads every page. One request per 1.5 s";
+  "Sync stops at the first page of already-known favorites (newest first). Full resync re-reads every page: use it to refresh tags changed on the site. One request per 1.5 s";
 const TEXT_NOTE =
   "Sync only adds favorites. Posts removed on the site stay in the local set.";
 const TEXT_IDLE_COUNT = (count: number): string =>

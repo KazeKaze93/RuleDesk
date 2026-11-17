@@ -90,9 +90,10 @@ describe("favorites search", () => {
         thumb: "https://wimg.rule34.xxx/thumbnails//231/thumbnail_a.jpg?19337851",
         run: 7000,
         pos: 50,
+        cut: true,
       },
       // An address that is not the site's is not kept.
-      { id: 5, tags: "girls solo", thumb: "", run: 7000, pos: 51 },
+      { id: 5, tags: "girls solo", thumb: "", run: 7000, pos: 51, cut: true },
     ]);
   });
 

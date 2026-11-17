@@ -2,6 +2,15 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.40.11
+
+Favorites search, the tags the site cuts:
+
+- The first and the last tag of a favorite, which the favorites page gives without one character, are restored from the whole spellings the script already knows. `zootopi` no longer finds anything, `zootopia` finds every post with the tag
+- Statistics → Top tags counts a restored tag with its whole spelling; a tag that could not be restored is left out instead of standing in the list as a second, shorter tag
+- RuleDesk → Favorites says what Full resync is for: it re-reads every page, so it is what refreshes tags changed on the site
+- Run "Full resync" once after this update: it marks every entry, and the restoring is exact from then on
+
 ## 0.40.10
 
 - Favorites search finds a tag that stands first or last in a post's tag list. The site cuts one character off each end of that list on the favorites page, so `zootopia` at the end was kept as `zootopi`: a search for the full tag missed those posts and found them only by the cut spelling

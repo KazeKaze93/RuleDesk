@@ -27,6 +27,12 @@ export const FavoriteIndexEntrySchema = z.object({
   run: z.number(),
   /** Place of the post in the site's list during that run, 0 is the newest favorite. */
   pos: z.int(),
+  /**
+   * True when the tag list was read from a favorites page, where the site
+   * cuts one character off each end of it; false when it was read whole.
+   * Absent on entries written before 0.40.11 (see features/favorites-tags.ts).
+   */
+  cut: z.optional(z.boolean()),
 });
 
 export type FavoriteIndexEntry = z.infer<typeof FavoriteIndexEntrySchema>;

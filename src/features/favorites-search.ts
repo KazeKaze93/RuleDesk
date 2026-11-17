@@ -1,5 +1,6 @@
 import { titleSaysVideo } from "../site/video-thumbs";
 import type { FavoriteIndexEntry } from "../storage/favorites-index";
+import { END_CUT, END_WHOLE, restoreFavoriteTags, type FavoriteTags } from "./favorites-tags";
 
 /**
  * Search over the local index of favorites. Pure: no storage, no page.
@@ -39,12 +40,10 @@ export type FavoritesSort = typeof SORT_ID_ASC | typeof SORT_ID_DESC;
  * One term of a query, ready to be tried on the tags of a favorite.
  *
  * The index is filled from the favorites pages, where the site cuts the first
- * and the last character off the tag list: the first tag of every favorite
- * lacks its first letter and the last one its last (`zootopia` at the end of
- * the list is kept as `zootopi`). The term is therefore also kept without its
- * first character, without its last, and without both, to be tried on the
- * tags at those two places. Without this a search for `zootopia` missed every
- * favorite where that tag was the last one.
+ * and the last character off the tag list (see favorites-tags.ts, which puts
+ * most of those ends right). For an end that could not be restored the term
+ * is also kept without its first character, without its last, and without
+ * both, to be tried on the tag at that place.
  */
 export type TagPattern = {
   readonly whole: RegExp;
@@ -195,28 +194,31 @@ export function isEmptyFavoritesQuery(query: FavoritesQuery): boolean {
   );
 }
 
-function hasTag(tags: readonly string[], pattern: TagPattern): boolean {
+function hasTag(entry: FavoriteTags, pattern: TagPattern): boolean {
+  const tags = entry.tagList;
   const lastAt = tags.length - 1;
-  // The whole term is tried at the ends too: an entry may hold an uncut list.
   return tags.some((tag, at) => {
-    if (pattern.whole.test(tag)) {
+    const first = at === 0 ? entry.firstEnd : END_WHOLE;
+    const last = at === lastAt ? entry.lastEnd : END_WHOLE;
+    // Whole unless the tag is known to be cut; cut spellings unless it is known whole.
+    if (first !== END_CUT && last !== END_CUT && pattern.whole.test(tag)) {
       return true;
     }
-    if (at === 0 && at === lastAt) {
-      return pattern.noEnds.test(tag) || pattern.noFirst.test(tag) || pattern.noLast.test(tag);
+    if (first !== END_WHOLE && last !== END_WHOLE && pattern.noEnds.test(tag)) {
+      return true;
     }
-    if (at === 0) {
-      return pattern.noFirst.test(tag);
+    if (first !== END_WHOLE && last !== END_CUT && pattern.noFirst.test(tag)) {
+      return true;
     }
-    return at === lastAt && pattern.noLast.test(tag);
+    return last !== END_WHOLE && first !== END_CUT && pattern.noLast.test(tag);
   });
 }
 
-function matchesQuery(tags: readonly string[], query: FavoritesQuery): boolean {
+function matchesQuery(entry: FavoriteTags, query: FavoritesQuery): boolean {
   return (
-    query.include.every((pattern) => hasTag(tags, pattern)) &&
-    !query.exclude.some((pattern) => hasTag(tags, pattern)) &&
-    query.anyOf.every((group) => group.some((pattern) => hasTag(tags, pattern)))
+    query.include.every((pattern) => hasTag(entry, pattern)) &&
+    !query.exclude.some((pattern) => hasTag(entry, pattern)) &&
+    query.anyOf.every((group) => group.some((pattern) => hasTag(entry, pattern)))
   );
 }
 
@@ -238,11 +240,9 @@ export function filterFavoriteIndex(
   query: FavoritesQuery,
   media: FavoritesMedia,
 ): FavoriteIndexEntry[] {
-  const matched = entries.filter(
+  const matched: FavoriteIndexEntry[] = restoreFavoriteTags(entries).filter(
     (entry) =>
-      favoriteIds.has(entry.id) &&
-      matchesMedia(entry, media) &&
-      matchesQuery(entry.tags.trim().split(TERM_SEPARATOR), query),
+      favoriteIds.has(entry.id) && matchesMedia(entry, media) && matchesQuery(entry, query),
   );
   if (query.sort === SORT_ID_ASC) {
     return matched.sort((a, b) => a.id - b.id);
@@ -262,14 +262,19 @@ export function topFavoriteTags(
   limit: number,
 ): TagCount[] {
   const counts = new Map<string, number>();
-  for (const entry of entries) {
+  for (const entry of restoreFavoriteTags(entries)) {
     if (!favoriteIds.has(entry.id)) {
       continue;
     }
-    for (const tag of new Set(entry.tags.split(TERM_SEPARATOR))) {
-      if (tag.length > 0) {
-        counts.set(tag, (counts.get(tag) ?? 0) + 1);
-      }
+    const lastAt = entry.tagList.length - 1;
+    // A tag still cut at an end is not a tag to count: it would stand in the
+    // list beside its whole spelling.
+    const whole = entry.tagList.filter(
+      (_tag, at) =>
+        !(at === 0 && entry.firstEnd === END_CUT) && !(at === lastAt && entry.lastEnd === END_CUT),
+    );
+    for (const tag of new Set(whole)) {
+      counts.set(tag, (counts.get(tag) ?? 0) + 1);
     }
   }
   return [...counts]

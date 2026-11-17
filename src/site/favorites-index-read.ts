@@ -50,6 +50,7 @@ export function readFavoriteIndexEntries(
       thumb: isSiteUrl(thumb) ? thumb : "",
       run,
       pos,
+      cut: true,
     });
     pos += 1;
   }
