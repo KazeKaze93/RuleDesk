@@ -140,14 +140,6 @@ const UNSUPPORTED_MANY = " don\u2019t work in Favorites.";
 const UNSUPPORTED_TAIL = " Favorites search uses tags only.";
 const META_SEPARATOR = ":";
 const RESET_LABEL = "Reset search";
-const TAGS_TITLE = "Tags in results";
-/** How many tags of the result are listed: past these come tags one or two posts have. */
-export const RESULT_TAGS_LIMIT = 30;
-const TAG_ADD_PREFIX = "Add ";
-const TAG_ADD_SUFFIX = " to the search";
-const TAG_EXCLUDE_PREFIX = "Exclude ";
-const TAG_ADD_SIGN = "+";
-const TAG_EXCLUDE_SIGN = "\u2212";
 const EXCLUDE_SIGN = "-";
 const MEDIA_LABEL = "Type";
 const VIEW_LABEL = "View";
@@ -185,12 +177,6 @@ export const SIDE_LOCKED_CLASS = "rdw-fav-side--locked";
 const SIDE_BODY_CLASS = "rdw-fav-side__body";
 const SIDE_HEAD_CLASS = "rdw-fav-side__head";
 const WARNING_CLASS = "rdw-fav-warning";
-const TAGS_CARD_CLASS = "rdw-fav-tags";
-const TAGS_LIST_CLASS = "rdw-fav-tags__list";
-const TAGS_ROW_CLASS = "rdw-fav-tags__row";
-const TAG_NAME_CLASS = "rdw-fav-tags__name";
-const TAG_COUNT_CLASS = "rdw-fav-tags__count";
-const TAG_SIGN_CLASS = "rdw-fav-tags__sign";
 /** The foot of the card: the bulk bar draws the buttons of the page into it. */
 export const FAVORITES_SIDE_ACTIONS_CLASS = "rdw-fav-side__actions";
 const SIDE_ACTIONS_CLASS = FAVORITES_SIDE_ACTIONS_CLASS;
@@ -332,66 +318,6 @@ body:not(.${FAVORITES_BROWSING_BODY_CLASS}) .${MORE_CLASS} {
   font-size: 12px;
   line-height: 1.4;
   overflow-wrap: anywhere;
-}
-/* The tags of what is shown: a card of its own under the filters, so that
-   the buttons above stay in the first screen of the column. */
-.${TAGS_CARD_CLASS} {
-  margin-top: 12px;
-}
-.${TAGS_LIST_CLASS} {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.${TAGS_ROW_CLASS} {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin: 0;
-  padding: 1px 0;
-  list-style: none;
-  border-bottom: 1px solid var(--rdw-border);
-}
-.${TAGS_ROW_CLASS}:last-child {
-  border-bottom: 0;
-}
-.${TAG_NAME_CLASS},
-.${TAG_SIGN_CLASS} {
-  border: 0;
-  background: none;
-  color: var(--rdw-text);
-  font: inherit;
-  cursor: pointer;
-}
-.${TAG_NAME_CLASS} {
-  flex: 1 1 auto;
-  min-width: 0;
-  padding: 3px 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: left;
-}
-.${TAG_NAME_CLASS}:hover {
-  color: var(--rdw-accent);
-}
-.${TAG_COUNT_CLASS} {
-  flex: none;
-  color: var(--rdw-muted);
-  font-variant-numeric: tabular-nums;
-}
-.${TAG_SIGN_CLASS} {
-  flex: none;
-  width: 20px;
-  height: 22px;
-  padding: 0;
-  border-radius: var(--rdw-radius-s);
-  color: var(--rdw-muted);
-  font-size: 13px;
-}
-.${TAG_SIGN_CLASS}:hover {
-  background: var(--rdw-surface-2);
-  color: var(--rdw-text);
 }
 /* The rare actions are quieter than the two used all the time. */
 .${SIDE_BODY_CLASS} .${SIDE_ACTIONS_CLASS} > .rdw-btn--ghost {
@@ -854,32 +780,6 @@ export function unsupportedNotice(terms: readonly string[]): string {
   return `${names.join(", ")}${names.length === 1 ? UNSUPPORTED_ONE : UNSUPPORTED_MANY}${UNSUPPORTED_TAIL}`;
 }
 
-/**
- * The tags to list beside a result: the most frequent ones among the shown
- * posts, without those the query already names (with or without a minus).
- */
-export function resultTags(
-  index: readonly FavoriteIndexEntry[],
-  shownIds: ReadonlySet<number>,
-  queryText: string,
-): TagCount[] {
-  const named = new Set<string>();
-  for (const chip of queryChips(queryText)) {
-    if (!chip.group) {
-      named.add(chip.label.toLowerCase());
-    }
-  }
-  return topFavoriteTags(index, shownIds, RESULT_TAGS_LIMIT + named.size)
-    .filter((item) => !named.has(item.tag))
-    .slice(0, RESULT_TAGS_LIMIT);
-}
-
-/** The query with one more word at its end. */
-export function appendWord(text: string, word: string): string {
-  const base = text.trim();
-  return base.length === 0 ? word : `${base} ${word}`;
-}
-
 /** Opens a random post of the local list of favorites. */
 export function openRandomFavorite(): void {
   const ids = [...loadFavSet()];
@@ -957,7 +857,6 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
   // other: choosing oldest first ends Shuffle, and Shuffle puts the switch back.
   const [order, setOrder] = useState<FavoritesOrder>(ORDER_NEWEST);
   // The most frequent tags of what is shown, for the list under the filters.
-  const [tags, setTags] = useState<readonly TagCount[]>([]);
   // The column: the card is drawn into `sideHost`, a child of it; the column
   // itself is what scrolls and what is locked.
   const { sideHost } = props;
@@ -998,23 +897,6 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
       loadIndex();
     }
   }, [text, index]);
-
-  // The list of tags needs the index from the start: with nothing typed, the
-  // result is every favorite. It is read once the page has been drawn.
-  useEffect(() => {
-    if (!stacked) {
-      return undefined;
-    }
-    const timer = window.setTimeout(loadIndex, 0);
-    return () => {
-      window.clearTimeout(timer);
-    };
-  }, [stacked]);
-  useEffect(() => {
-    if (!active && index !== null) {
-      setTags(resultTags(index, loadFavSet(), ""));
-    }
-  }, [active, index]);
 
   const tagCounts = useMemo(
     () => (index === null ? [] : favoriteTagCounts(index, loadFavSet())),
@@ -1107,7 +989,6 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
       } else {
         showFavoriteResults(results);
       }
-      setTags(resultTags(index, new Set(results.map((entry) => entry.id)), applied));
       const indexed = index.filter((entry) => favorites.has(entry.id)).length;
       setStatus(indexNotice(indexed, favorites.size));
       setFound(results.length);
@@ -1288,51 +1169,6 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
           <div className={`${ACTIONS_CLASS} ${SIDE_ACTIONS_CLASS}`} ref={actionsSlotRef} />
         ) : null}
       </div>
-      {stacked && tags.length > 0 ? (
-        <div
-          className={`${SIDE_BODY_CLASS} ${TAGS_CARD_CLASS}`}
-          {...(locked ? { inert: true } : {})}
-        >
-          <SectionLabel>{TAGS_TITLE}</SectionLabel>
-          <ul className={TAGS_LIST_CLASS}>
-            {tags.map((item) => (
-              <li key={item.tag} className={TAGS_ROW_CLASS}>
-                <button
-                  type="button"
-                  className={`${TAG_NAME_CLASS} rdw-kit-focusable`}
-                  title={`${TAG_ADD_PREFIX}${item.tag}${TAG_ADD_SUFFIX}`}
-                  onClick={() => {
-                    setQuery(appendWord(text, item.tag));
-                  }}
-                >
-                  {item.tag}
-                </button>
-                <span className={TAG_COUNT_CLASS}>{item.count.toLocaleString(LOCALE)}</span>
-                <button
-                  type="button"
-                  className={`${TAG_SIGN_CLASS} rdw-kit-focusable`}
-                  aria-label={`${TAG_ADD_PREFIX}${item.tag}${TAG_ADD_SUFFIX}`}
-                  onClick={() => {
-                    setQuery(appendWord(text, item.tag));
-                  }}
-                >
-                  {TAG_ADD_SIGN}
-                </button>
-                <button
-                  type="button"
-                  className={`${TAG_SIGN_CLASS} rdw-kit-focusable`}
-                  aria-label={`${TAG_EXCLUDE_PREFIX}${item.tag}`}
-                  onClick={() => {
-                    setQuery(appendWord(text, `${EXCLUDE_SIGN}${item.tag}`));
-                  }}
-                >
-                  {TAG_EXCLUDE_SIGN}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
     </>
   );
 

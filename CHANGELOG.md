@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.44.1
+
+- Favorites: the "Tags in results" card is taken out. A list of the most frequent tags named what nearly every post has and did not help to narrow a search. The column is the one card again, and the index of favorites is read when you start typing or pick a filter, not on opening the page
+
 ## 0.44.0
 
 Favorites, the rest of the column:

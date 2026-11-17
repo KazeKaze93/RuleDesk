@@ -168,7 +168,6 @@ The site's Favorites page, with a column at the left that holds everything the s
 - View: Pages (the site's paging) or Scroll (endless)
 - "Reset search", shown when there is a search or a type to reset; the order and the paging are left as they are
 - at the foot of the card, each a button of its own: **Random post**, **Select**, and, quieter, **Download all…** (with an API key) and **Sync favorites…**, which opens the settings at the Favorites block
-- under the card, **Tags in results**: the thirty most frequent tags of what is shown, with counts; a click adds a tag to the search, "−" excludes it
 - a condition that does not work here (`rating:`, `user:`…) is named in a warning plate under the field for as long as it stands there
 
 Select puts a selection bar at the top of the column: pick posts, then remove them from favorites or add them to a collection. While posts are being selected the filters under the bar are shown but locked.
