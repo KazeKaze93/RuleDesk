@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.40.3
+
+- Upload: the Upload button, with the note above it, stands in the right column under "My Tags" instead of under the picture
+
 ## 0.40.2
 
 - Upload: the picture of the chosen file is shown as large as the column allows instead of a small thumbnail, and the file is taken out by a cross in its top right corner

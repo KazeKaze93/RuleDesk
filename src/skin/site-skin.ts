@@ -1255,9 +1255,9 @@ ${ROOT} input[type="file"]${WHERE_NOT_OUR_CONTROL}::file-selector-button:hover {
 
 /*
  * —— upload ——
- * The image upload form: one card in two columns. The file and where it comes
- * from on the left; tags, rating and title on the right; the guidelines above
- * and the button below, across both. The site's table stays: its rows are
+ * The image upload form: one card in two columns. The file on the left; tags,
+ * rating, source, title and the button on the right; the guidelines above,
+ * across both. The site's table stays: its rows are
  * placed by a grid, each found by the field it holds, so a form with other
  * fields (the video upload) is left as it is.
  */
@@ -1291,10 +1291,10 @@ ${UPLOAD} > form > table > tbody {
     "file source"
     "file title"
     "file mytags"
-    "submit submit";
+    "file submit";
   /* The last row beside the file takes whatever a tall picture adds, so the
      fields above it stay together instead of spreading down the column. */
-  grid-template-rows: auto auto auto auto auto 1fr auto;
+  grid-template-rows: auto auto auto auto auto auto 1fr;
   gap: 12px 20px;
   align-items: start;
   padding: 16px;
