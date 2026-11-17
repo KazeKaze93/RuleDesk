@@ -23,6 +23,8 @@ import {
   MEDIA_ALL,
   MEDIA_IMAGES,
   MEDIA_VIDEOS,
+  SORT_ID_ASC,
+  SORT_ID_DESC,
   filterFavoriteIndex,
   isEmptyFavoritesQuery,
   isFavoritesMedia,
@@ -30,6 +32,7 @@ import {
   shuffleBySeed,
   topFavoriteTags,
   type FavoritesMedia,
+  type FavoritesSort,
   type TagCount,
 } from "./favorites-search";
 import {
@@ -106,11 +109,9 @@ const SYNTAX_ROWS: readonly (readonly [string, string])[] = [
   ["( cat ~ dog )", "posts with either tag; keep the spaces"],
   ["-sketch", "posts without the tag"],
   ["ca*t", "any tag that starts with ca and ends with t"],
-  ["sort:id:asc", "by post id, the oldest post first"],
-  ["sort:id:desc", "by post id, the newest post first"],
 ];
 const SYNTAX_NOTE =
-  "Favorites search uses tags and post id only. Other metatags (rating:, score:, user:, width:, md5:, parent:) and fuzzy tag~ work in Posts search. For a random order use Shuffle.";
+  "Favorites search uses tags only. Metatags (rating:, score:, user:, width:, md5:, parent:) and fuzzy tag~ work in Posts search. The order is set with Sort; for a random one use Shuffle.";
 const SEARCH_HELP: SearchHelp = {
   label: SYNTAX_LABEL,
   rows: SYNTAX_ROWS,
@@ -123,6 +124,20 @@ const UNSUPPORTED_PREFIX = "Not searched here: ";
 const UNSUPPORTED_SUFFIX = ". See the ? in the search field.";
 const MEDIA_LABEL = "Type";
 const VIEW_LABEL = "View";
+const SORT_LABEL = "Sort";
+/** The site's own order: the favorite added last comes first. */
+export const ORDER_ADDED = "added";
+export type FavoritesOrder = typeof ORDER_ADDED | FavoritesSort;
+/** "Added" is by when the post was made a favorite; the other two are by the post's own age. */
+const SORT_OPTIONS: readonly SegmentedOption[] = [
+  { value: ORDER_ADDED, label: "Added" },
+  { value: SORT_ID_DESC, label: "Newest" },
+  { value: SORT_ID_ASC, label: "Oldest" },
+];
+
+export function isFavoritesOrder(value: string): value is FavoritesOrder {
+  return value === ORDER_ADDED || value === SORT_ID_DESC || value === SORT_ID_ASC;
+}
 const MORE_LABEL = "Show more";
 const LOCALE = "en-US";
 const NO_INDEX_STATUS =
@@ -632,12 +647,16 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
 
   // A number while the list is shown in a random order, null otherwise.
   const [shuffleSeed, setShuffleSeed] = useState<number | null>(null);
+  // The order chosen with the Sort switch. Shuffle and it are one or the
+  // other: choosing an order ends Shuffle, and Shuffle puts the switch back.
+  const [order, setOrder] = useState<FavoritesOrder>(ORDER_ADDED);
 
   const query = parseFavoritesQuery(applied);
   const active =
     view === VIEW_SCROLL ||
     media !== MEDIA_ALL ||
     shuffleSeed !== null ||
+    order !== ORDER_ADDED ||
     !isEmptyFavoritesQuery(query);
 
   const { onSummary } = props;
@@ -734,11 +753,14 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
         setFound(null);
         return;
       }
-      const parsed = parseFavoritesQuery(applied);
+      const typed = parseFavoritesQuery(applied);
+      // An order typed into the query (sort:id:asc still works) goes before the switch.
+      const parsed =
+        typed.sort === null && order !== ORDER_ADDED ? { ...typed, sort: order } : typed;
       const matched = filterFavoriteIndex(index, favorites, parsed, media);
       // Shuffle wins over an order typed into the query; the page says so.
       const results = shuffleSeed === null ? matched : shuffleBySeed(matched, shuffleSeed);
-      if (results.length === 0 && !isEmptyFavoritesQuery(parsed)) {
+      if (results.length === 0 && !isEmptyFavoritesQuery(typed)) {
         // Nothing matched: say why, and offer the nearest tag for a word that is none.
         const empty = describeEmptyResult(applied, tagCounts);
         showFavoriteEmpty(
@@ -758,7 +780,7 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
     return () => {
       window.clearTimeout(timer);
     };
-  }, [active, index, applied, media, shuffleSeed, tagCounts]);
+  }, [active, index, applied, media, shuffleSeed, order, tagCounts]);
 
   const notices = [
     unsupportedNotice(query.unsupported),
@@ -822,6 +844,22 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
           }
         }}
       />
+      <span className={GROUP_LABEL_CLASS} aria-hidden="true">
+        {SORT_LABEL}
+      </span>
+      <Segmented
+        label={SORT_LABEL}
+        options={SORT_OPTIONS}
+        value={order}
+        onChange={(value) => {
+          if (isFavoritesOrder(value)) {
+            setOrder(value);
+            if (value !== ORDER_ADDED) {
+              setShuffleSeed(null);
+            }
+          }
+        }}
+      />
       <Button
         variant="secondary"
         size="s"
@@ -829,6 +867,7 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
         pressed={shuffleSeed !== null}
         onClick={() => {
           setShuffleSeed(shuffleSeed === null ? Date.now() : null);
+          setOrder(ORDER_ADDED);
         }}
       >
         <IconShuffle size={14} />

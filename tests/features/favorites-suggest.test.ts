@@ -8,7 +8,6 @@ import {
 import type { TagCount } from "../../src/features/favorites-search";
 import {
   EXCLUDE_HEADING,
-  GROUP_COMMAND,
   GROUP_INSIDE,
   GROUP_STARTS,
   closestTag,
@@ -80,14 +79,9 @@ describe("favorites suggestions: the list", () => {
     expect(found?.items[1]?.matchStart).toBe(6);
   });
 
-  it("offers the two orders for sort:", () => {
-    const found = suggestFor(TAGS, wordAtCaret("sort:", 5));
-    expect(found?.items.map((item) => [item.insert, item.caption, item.group])).toEqual([
-      ["sort:id:desc", "newest first", GROUP_COMMAND],
-      ["sort:id:asc", "oldest first", GROUP_COMMAND],
-    ]);
-    // A tag that begins the same way is still offered, after them.
-    expect(labels("sort")).toEqual(["sort:id:desc", "sort:id:asc", "sortie"]);
+  it("offers tags only: the order has its own switch on the page", () => {
+    expect(labels("sort:")).toEqual([]);
+    expect(labels("sort")).toEqual(["sortie"]);
   });
 
   it("offers nothing for grammar, a star, a whole tag with nothing longer, or no match", () => {

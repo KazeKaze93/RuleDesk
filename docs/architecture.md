@@ -68,7 +68,7 @@ Nothing heavy may be imported on the path of steps 1 and 2.
 | Collections | `pages/collections-page.tsx`, `pages/collection-detail-page.tsx`, `pages/collections-check.ts`, `ui/collection-picker.tsx`, `ui/bulk-collection-dialog.tsx` |
 | Favorites | `features/favorites-bulk.tsx`, `features/favorites-browser.tsx`, `features/favorites-search.ts`, `site/favorites*.ts`, `storage/favorites-index.ts` |
 | Downloads | `features/downloads/*`, `site/api.ts`, `site/download.ts`, `pages/downloads-section.tsx` |
-| Statistics | `pages/stats-section.tsx`, `pages/stats-history.tsx`, `storage/history.ts`, `site/profile.ts` |
+| Statistics | `pages/stats-section.tsx`, `site/profile.ts`; `storage/history.ts` keeps a point a day for the backup reminder |
 | Settings | `pages/settings-page.tsx`, `ui/appearance-section.tsx`, `pages/blacklist-section.tsx`, `pages/favorites-sync-section.tsx`, `pages/downloads-section.tsx`, `pages/data-section.tsx` |
 | Forum, Artists, Tags | `site/list-pages.ts` |
 | Comments | `site/comments-page.ts` |

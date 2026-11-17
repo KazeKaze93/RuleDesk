@@ -2,6 +2,13 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.41.1
+
+- Favorites: the order is a switch in the row, Sort: Added (when the post became a favorite, the site's order), Newest and Oldest (by the post itself). It replaces typing `sort:id:asc` into the search, which is no longer suggested or listed under "?"; typed, it still works
+- Sort and Shuffle are one or the other: choosing an order ends Shuffle, and Shuffle puts Sort back to Added
+- Statistics uses the width of the window: the numbers and the site profile on the left, the top tags on the right. On a wide screen the whole page is seen without scrolling
+- Statistics: the History block is removed
+
 ## 0.41.0
 
 Favorites search, suggestions:

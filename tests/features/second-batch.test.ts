@@ -13,7 +13,6 @@ import {
   newestPostIdOf,
 } from "../../src/pages/collections-check";
 import { followCaption, matchesKindAndGroup } from "../../src/pages/following-page";
-import { changeText, sparklinePoints } from "../../src/pages/stats-history";
 import {
   FORUM_MEMORY_MAX,
   artistRowTag,
@@ -196,13 +195,6 @@ describe("history and the backup reminder", () => {
     expect(backupStatus(null, old, false, NOW).due).toBe(false);
   });
 
-  it("draws a line through the points and says the change", () => {
-    expect(sparklinePoints([0, 10], 100, 20)).toBe("3.0,17.0 97.0,3.0");
-    expect(sparklinePoints([5, 5, 5], 100, 20)).toBe("3.0,10.0 50.0,10.0 97.0,10.0");
-    expect(changeText(point("2026-10-03", 0), 100, 220)).toBe("+120 since 3 Oct 2026");
-    expect(changeText(point("2026-10-03", 0), 10, 6)).toBe("−4 since 3 Oct 2026");
-    expect(changeText(point("2026-10-03", 0), 7, 7)).toBe("no change since 3 Oct 2026");
-  });
 });
 
 describe("the counter beside Feed", () => {

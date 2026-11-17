@@ -14,7 +14,6 @@ import {
 } from "../site/profile";
 import { Button, Card } from "../ui/kit";
 import { PANEL_UI_CLASS } from "./constants";
-import { StatsHistory } from "./stats-history";
 
 /**
  * Numbers about what the script stores, computed from local data when the
@@ -53,6 +52,11 @@ const BYTES_PER_KB = 1024;
 const PERCENT = 100;
 const MIN_BAR_PERCENT = 2;
 const TILE_MIN_PX = 130;
+const COLUMN_CLASS = "rdw-stats-column";
+const FOOT_CLASS = "rdw-stats-foot";
+const COLUMN_GAP_PX = 20;
+/** Narrower than this the two columns would be too tight for the bars. */
+const TWO_COLUMNS_FROM_PX = 1100;
 const CHART_MIN_PX = 260;
 const RING_SIZE_PX = 96;
 /** A circle of this radius has a circumference of 100, so a dash is a percentage. */
@@ -93,11 +97,29 @@ const MONTHS_PER_YEAR = 12;
 const HINT =
   "Counted from the script's own data in this browser, except the site profile. Seen posts keep only the newest marks.";
 
+/* The page uses the width of the window: the numbers on the left, the long
+   list of tags on the right, so that all of it is seen without scrolling.
+   In a narrow window the two stand one under the other. */
 export const STATS_SECTION_CSS = `
 .${SECTION_CLASS} {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px ${String(COLUMN_GAP_PX)}px;
+  align-items: start;
+}
+@media (min-width: ${String(TWO_COLUMNS_FROM_PX)}px) {
+  .${SECTION_CLASS} {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+.${COLUMN_CLASS} {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-width: 0;
+}
+.${FOOT_CLASS} {
+  grid-column: 1 / -1;
 }
 .${TILES_CLASS} {
   display: grid;
@@ -554,6 +576,7 @@ export function StatsSection(): JSX.Element {
   return (
     <section className={`rdw-section ${SECTION_CLASS}`}>
       <style>{STATS_SECTION_CSS}</style>
+      <div className={COLUMN_CLASS}>
       <div className={TILES_CLASS}>
         {stats.tiles.map((tile) => (
           <div key={tile.label} className={TILE_CLASS}>
@@ -577,10 +600,12 @@ export function StatsSection(): JSX.Element {
           <CollectionBars collections={stats.topCollections} />
         </div>
       </div>
-      <StatsHistory />
-      <FavoriteTagsBlock />
-      <ProfileBlock />
-      <p className={HINT_CLASS}>{HINT}</p>
+        <ProfileBlock />
+      </div>
+      <div className={COLUMN_CLASS}>
+        <FavoriteTagsBlock />
+      </div>
+      <p className={`${HINT_CLASS} ${FOOT_CLASS}`}>{HINT}</p>
     </section>
   );
 }

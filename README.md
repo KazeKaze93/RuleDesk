@@ -62,7 +62,7 @@ Saves the original files of a custom collection, a whole search, picked posts or
 
 ![The Statistics page](docs/img/statistics.jpg)
 
-Counts of what you keep, how they change day by day, the top tags of your favorites, and your site profile numbers on request.
+Counts of what you keep, the top tags of your favorites, and the numbers of your site profile, on one screen.
 
 ### The site's other pages
 

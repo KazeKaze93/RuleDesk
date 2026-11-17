@@ -156,12 +156,13 @@ Two kinds, one page:
 
 The site's Favorites page, with one row added at the top that stays in place while scrolling ("Bulk remove favorites" in settings):
 
-- a search over the user's own favorites: `tag`, `-tag`, `ta*g`, `( a ~ b )`, `sort:id:asc`; the "?" lists the syntax
+- a search over the user's own favorites: `tag`, `-tag`, `ta*g`, `( a ~ b )`; the "?" lists the syntax
 - suggestions under the field as a word is typed: tags the favorites have, with their counts, those that begin with the word first. Up, Down, Enter or Tab, Esc. While the list is open the page keeps the last result; the search is applied on a pick, on Enter, after a space, and when the field is left
 - when nothing matches, a line that says so in place of the grid, with the nearest tag offered for a word that is no tag
 - Type: All / Images / Videos
 - View: Pages (the site's paging) or Scroll (endless)
-- Shuffle
+- Sort: Added (the site's order, by when the post became a favorite), Newest, Oldest (by the post itself)
+- Shuffle; it and Sort are one or the other
 - the count, **Random post**, **Select**, and a "⋯" menu with "Download all…" and "Sync favorites…"
 
 Select turns the row into a selection bar: pick posts, then remove them from favorites or add them to a collection.
@@ -181,11 +182,10 @@ Saves original files in bulk: a custom collection (all of it or selected posts),
 
 ![The Statistics page](img/statistics.jpg)
 
-The script's own page, counted from its own data in this browser:
+The script's own page, counted from its own data in this browser. It uses the width of the window: the numbers on the left, the list of tags on the right, so that on a wide screen all of it is seen without scrolling:
 
 - tiles: followed, collections, posts in custom collections, favorites, seen posts, stored data size
 - collections by type and by post count
-- **History**: one point is kept for each day the site is opened; the lines show how favorites, followed and collections change
 - top tags in favorites (after a favorites sync)
 - **Site profile**: account age, level, uploads, comments, edits. Read from the user's profile page (two requests) when Statistics is opened, at most once in 15 minutes; "Refresh profile" reads it at once
 

@@ -8,7 +8,8 @@ import type { TagCount } from "./favorites-search";
  *
  * The word the caret stands in is the one completed; the rest of the query
  * is left alone. `-` before the word is kept, and the list then says that
- * the tag will be excluded. `sort:` offers the two orders the index knows.
+ * the tag will be excluded. Only tags are offered: the order has a switch of
+ * its own on the page.
  */
 
 export const SUGGEST_LIMIT = 20;
@@ -17,13 +18,10 @@ const GRAMMAR_WORDS: ReadonlySet<string> = new Set(["(", ")", "~"]);
 const EXCLUDE_PREFIX = "-";
 const WILDCARD = "*";
 const SPACE = /\s/;
-const SORT_WORD = "sort";
-const SORT_MIN_TYPED = 2;
 
-export const GROUP_COMMAND = "command";
 export const GROUP_STARTS = "starts";
 export const GROUP_INSIDE = "inside";
-export type SuggestGroup = typeof GROUP_COMMAND | typeof GROUP_STARTS | typeof GROUP_INSIDE;
+export type SuggestGroup = typeof GROUP_STARTS | typeof GROUP_INSIDE;
 
 export type Suggestion = {
   /** What is put into the field in place of the word. */
@@ -54,10 +52,6 @@ export type QueryWord = {
   readonly negated: boolean;
 };
 
-const SORT_COMMANDS: readonly (readonly [string, string])[] = [
-  ["sort:id:desc", "newest first"],
-  ["sort:id:asc", "oldest first"],
-];
 export const EXCLUDE_HEADING = "Exclude";
 
 /** The word the caret stands in or right after; null between words. */
@@ -99,21 +93,6 @@ export function suggestFor(tags: readonly TagCount[], word: QueryWord | null): S
   }
   const prefix = negated ? EXCLUDE_PREFIX : "";
   const items: Suggestion[] = [];
-  if (!negated && body.length >= SORT_MIN_TYPED && body.startsWith(SORT_WORD.slice(0, body.length))) {
-    for (const [command, caption] of SORT_COMMANDS) {
-      if (command.startsWith(body) && command !== body) {
-        items.push({
-          insert: command,
-          label: command,
-          matchStart: 0,
-          matchLength: body.length,
-          count: null,
-          caption,
-          group: GROUP_COMMAND,
-        });
-      }
-    }
-  }
   const starts: TagCount[] = [];
   const inside: TagCount[] = [];
   let exact: TagCount | null = null;

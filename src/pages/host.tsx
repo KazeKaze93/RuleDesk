@@ -36,6 +36,11 @@ export const PAGE_TITLE_HIDDEN_CLASS = "rdw-page-title--hidden";
  * so that its tiles can; the page itself keeps the rest in the centred column.
  */
 export const LAYOUT_WIDE_CLASS = "rdw-layout-wide";
+/**
+ * On the mount point of Statistics: the page and its title span the window,
+ * with nothing kept to a centred column.
+ */
+export const LAYOUT_FULL_CLASS = "rdw-layout-full";
 
 /**
  * Structural shell only — palette tokens come from applyTokenProperties on the
@@ -66,6 +71,11 @@ const PAGE_HOST_CSS = `
   gap: ${String(PAGE_GAP_PX)}px;
 }
 .${LAYOUT_WIDE_CLASS} .${PAGE_SHELL_CLASS} {
+  max-width: none;
+  margin: 0;
+  padding: ${String(PAGE_TOP_PX)}px 20px 32px;
+}
+.${LAYOUT_FULL_CLASS} .${PAGE_SHELL_CLASS} {
   max-width: none;
   margin: 0;
   padding: ${String(PAGE_TOP_PX)}px 20px 32px;
@@ -243,6 +253,7 @@ function syncRdwPageLayout(): void {
     return;
   }
   mountPoint.classList.toggle(LAYOUT_WIDE_CLASS, hasTiles(shownRoute));
+  mountPoint.classList.toggle(LAYOUT_FULL_CLASS, shownRoute === RDW_ROUTE_STATS);
 }
 
 let hostElement: HTMLElement | null = null;
