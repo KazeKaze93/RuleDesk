@@ -44,7 +44,7 @@ Under the site's search field: the tags of the query as chips (click to exclude,
 
 ### Search inside your favorites
 
-The site cannot search favorites. After one **Sync favorites**, the Favorites page gets a row that stays at the top: search by tags (`tag`, `-tag`, `ta*g`, `( a ~ b )`) with suggestions from your own favorites as you type, by rating, score and size when you have an API key, Images / Videos, endless scroll, Shuffle, Random post, and Select to remove several or add them to a collection.
+The site cannot search favorites. After one **Sync favorites**, the Favorites page gets a column of filters beside the grid, as on Posts: search by tags (`tag`, `-tag`, `ta*g`, `( a ~ b )`) with suggestions from your own favorites as you type, by rating, score and size when you have an API key, Images / Videos, endless scroll, Shuffle, Random post, and Select to remove several or add them to a collection.
 
 ### The post page
 

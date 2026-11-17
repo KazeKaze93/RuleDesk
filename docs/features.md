@@ -90,7 +90,8 @@ The sidebar lists the tags of the posts on the page by type: Copyright, Characte
 | Hide blacklisted posts | Posts with a tag from the blacklist are removed from the grid instead of being shown as a placeholder |
 | Hide tag tooltip on thumbnails | The browser tooltip with the full tag list does not pop up over a thumbnail |
 | Video preview on hover (off by default) | Pointing at a video thumbnail plays the video in its place. It loads the video file itself |
-| A "GIF" label | Animated GIFs are marked on the thumbnail; videos keep the site's outline |
+| A "GIF" label | Animated GIFs are marked on the thumbnail |
+| Play icon on video thumbnails | A video has a play sign in the same kind of plate, in place of the frame around the thumbnail. Off: the frame. In the site's own themes the site's frame stays |
 | Motion | Thumbnails lift a little under the pointer; buttons, menus and dialogs change smoothly. Off for those who want none of it |
 | Sidebar on the right | Moves the sidebar of Posts and of a post to the right side |
 
@@ -154,19 +155,23 @@ Two kinds, one page:
 
 ![The top row of the Favorites page](img/favorites.jpg)
 
-The site's Favorites page, with one row added at the top that stays in place while scrolling ("Bulk remove favorites" in settings):
+The site's Favorites page, with a column of filters at the left and a short strip over the grid; both stay in place while scrolling ("Bulk remove favorites" in settings). The grid itself is the site's and is not wrapped or moved. In the column:
 
 - a search over the user's own favorites: `tag`, `-tag`, `ta*g`, `( a ~ b )`; the "?" lists the syntax
 - with an API key: `rating:safe`, `-rating:explicit`, `score:>=50`, `width:>=1920`, `height:<1000`. The rating, score and size are read from the site API by "Read ratings and sizes" in settings, and after a "Full resync"; a favorite not read yet is left out of such a search, and the page says how many are
 - suggestions under the field as a word is typed: tags the favorites have, with their counts, those that begin with the word first. Up, Down, Enter or Tab, Esc. While the list is open the page keeps the last result; the search is applied on a pick, on Enter, after a space, and when the field is left
 - when nothing matches, a line that says so in place of the grid, with the nearest tag offered for a word that is no tag
+- the terms of the search as chips: a click excludes a tag or includes it again, the cross takes it out; a group `( a ~ b )` is one chip
 - Type: All / Images / Videos
-- View: Pages (the site's paging) or Scroll (endless)
-- Sort: Newest (the site's order: the post made a favorite last comes first) or Oldest (the same list turned over)
-- Shuffle; it and Sort are one or the other
-- the count, **Random post**, **Select**, and a "⋯" menu with "Download all…" and "Sync favorites…"
+- Sort: Newest (the site's order: the post made a favorite last comes first), Oldest (the same list turned over) or Shuffle; a click on Shuffle while it is chosen shuffles again
 
-Select turns the row into a selection bar: pick posts, then remove them from favorites or add them to a collection.
+In the strip over the grid:
+
+- the count of posts
+- View: Pages (the site's paging) or Scroll (endless)
+- **Random post**, **Select**, and a "⋯" menu with "Download all…" and "Sync favorites…"
+
+Select turns the strip into a selection bar: pick posts, then remove them from favorites or add them to a collection. While posts are being selected the column is shown but locked.
 
 The site has no search inside favorites. The script can offer one only because it keeps a local list: **Sync favorites** (settings → Favorites) walks the user's favorites pages once and stores ids and tags; "Full resync" rebuilds the list. Search, the type switch, Scroll and Shuffle appear after a full resync. The local list holds tags and ids, and, when read from the API, the rating, score and size. The site's other metatags (`user:`, `md5:`, `parent:`) do not work here; they do on Posts.
 

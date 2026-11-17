@@ -58,7 +58,7 @@ Nothing heavy may be imported on the path of steps 1 and 2.
 | Search panel | `features/search-tools.tsx`; the site's field: `features/site-search-tools.tsx` |
 | Sidebar tag groups, Follow buttons | `features/tag-groups.ts`, `ui/artists-sidebar.ts` |
 | Tag wiki on "?" | `features/tag-wiki.ts` |
-| Grid: star, "+", marks | `ui/fav-button.ts`, `features/playlist-menu.ts`, `features/grid-marks.ts`, `site/video-thumbs.ts` |
+| Grid: star, "+", marks | `ui/fav-button.ts`, `features/playlist-menu.ts`, `features/grid-marks.ts`, `site/video-thumbs.ts` (which thumbs are videos and GIFs), `features/video-mark.ts` (the play sign) |
 | Infinite scroll | `features/infinite-scroll.ts`, `site/next-page.ts` |
 | Dynamic collection bar | `features/playlist-bar.ts` |
 | Post panel | `features/post-actions.ts`, `features/post-panel/*` |
@@ -194,9 +194,9 @@ What Following shows about an entry (cover, exact count, newest post) is collect
 
 ## Favorites
 
-The top of the Favorites page is two elements, both inserted before the grid by `src/features/favorites-bulk.tsx`: `#rdw-favorites-bulk`, which holds only the page's heading for screen readers, and the pinned row `#rdw-favorites-pin`, which is sticky. The row is a child of the block the grid is in because a sticky element cannot leave its parent. One Preact tree draws both, the pinned row through a portal.
+The Favorites page gets three elements, all inserted before the grid by `src/features/favorites-bulk.tsx` as children of the block the grid is in: the slot of the column of filters (`.rdw-fav-side-slot`, holding `#rdw-favorites-side`), `#rdw-favorites-bulk`, which holds only the page's heading for screen readers, and the strip `#rdw-favorites-pin`, which is sticky. The block gets the class `rdw-fav-layout` and becomes a grid of two columns: the slot in the first, everything else in the second. Nothing of the site's is wrapped or moved. The slot spans every row and has `contain: size`, because a child that spans rows would otherwise make them taller by its own height; the column inside it is sticky and scrolls in itself. Where the grid has no block of its own (it stands in `body`) there is no column and the filters are drawn in the strip. One Preact tree draws all of it, through portals.
 
-The pinned row holds the filters (`FavoritesBrowser`: search, the switches, Shuffle, the count, and at its right end a slot the bulk bar fills with Random post, Select and the menu) or, while posts are being selected or removed, the selection bar; the filters are hidden then, not unmounted. The row is squeezed in steps by what fits (`fitControlsRow`, a `ResizeObserver` on the row), not by window width.
+`FavoritesBrowser` draws the column (search, the chips of the query from `queryChips` in `favorites-suggest.ts`, Type, Sort with Shuffle as its third option) and the strip (the count, View, and a slot the bulk bar fills with Random post, Select and the menu). While posts are being selected or removed the strip gives way to the selection bar and the column is locked (`inert`, a notice with Cancel); the filters stay mounted.
 
 The index is filled from the favorites pages, where the site cuts one character off each end of the tag list. `src/features/favorites-tags.ts` restores those ends from the whole spellings it knows (entries made at the star or on a post page, flagged `cut: false`, and the tags that stand inside a cut list) and marks what it could not restore; the search and the tag counts work on the restored lists. Nothing is written back to the index.
 

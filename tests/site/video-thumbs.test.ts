@@ -5,6 +5,7 @@ import {
   playlistMenuFeature,
   resetPlaylistMenuRuntimeState,
 } from "../../src/features/playlist-menu";
+import { videoMarkFeature } from "../../src/features/video-mark";
 import { videoPreviewFeature } from "../../src/features/video-preview";
 import {
   VIDEO_THUMB_CLASS,
@@ -161,5 +162,34 @@ describe("favorites video marks", () => {
 
   it("gives a marked thumb the outline of a video", () => {
     expect(SITE_SKIN_CSS).toContain(`.${VIDEO_THUMB_CLASS} > a > img,`);
+  });
+});
+
+describe("the label of a video", () => {
+  it("marks a thumb whose image the site itself calls a video, whatever its tags", () => {
+    document.body.innerHTML = `<div class="image-list">
+      <span class="thumb" id="s1"><a id="p1" href="#"><img class="preview webm-thumb" title="cat solo score:1 rating:safe"></a></span>
+      <span class="thumb" id="s2"><a id="p2" href="#"><img class="preview" title="cat solo score:1 rating:safe"></a></span>
+    </div>`;
+    expect(markVideoThumbs(document, "span.thumb")).toBe(1);
+    const first = document.getElementById("s1");
+    expect(first?.classList.contains(VIDEO_THUMB_CLASS)).toBe(true);
+    // The class the label is placed by.
+    expect(first?.classList.contains("rdw-thumb")).toBe(true);
+    expect(document.getElementById("s2")?.classList.contains(VIDEO_THUMB_CLASS)).toBe(false);
+    document.body.replaceChildren();
+  });
+
+  it("is drawn in the script's own themes only, in place of the frame, and can be switched off", () => {
+    const css = videoMarkFeature.css;
+    const scope = "html.rdw-skin body.rdw-f-video-mark";
+    expect(css).toContain(`${scope} .${VIDEO_THUMB_CLASS}::after`);
+    expect(css).toMatch(/\.webm-thumb\s*\{[^}]*border:\s*0/s);
+    // Every rule is under the feature's body class: off, the frame is back.
+    expect(css.match(/\.rdw-video-thumb|\.webm-thumb/g)?.length).toBe(
+      css.match(/body\.rdw-f-video-mark [^{,]*(\.rdw-video-thumb|\.webm-thumb)/g)?.length,
+    );
+    expect(videoMarkFeature.cssOnly).toBe(true);
+    expect(videoMarkFeature.defaultEnabled).toBe(true);
   });
 });

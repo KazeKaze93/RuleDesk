@@ -62,3 +62,26 @@ export type Feature = {
   resetStateOnToggle?: boolean;
   mount: (ctx: FeatureContext) => void;
 };
+
+/**
+ * On the element around the link of a video thumb (site/video-thumbs.ts puts
+ * it there). Kept here, in a module that imports nothing, because both the
+ * marking and the feature that draws the mark need it.
+ */
+export const VIDEO_THUMB_CLASS = "rdw-video-thumb";
+/** How far a label on a thumb stands from the corner of the picture. */
+export const THUMB_LABEL_INSET_PX = 6;
+/** How a label on a thumb looks: "GIF", and the play sign of a video. */
+export const THUMB_LABEL_RULES = `
+  position: absolute;
+  left: ${String(THUMB_LABEL_INSET_PX)}px;
+  bottom: ${String(THUMB_LABEL_INSET_PX)}px;
+  z-index: 2;
+  padding: 1px 5px;
+  border: 1px solid var(--rdw-border);
+  border-radius: 4px;
+  background: var(--rdw-surface);
+  color: var(--rdw-text);
+  font: 700 10px/1.4 var(--rdw-font);
+  letter-spacing: 0.04em;
+  pointer-events: none;`;

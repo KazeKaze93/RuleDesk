@@ -757,6 +757,8 @@ ${ROOT} #${FAV_BULK_ROOT_ID} .${FAV_BULK_STATUS_CLASS} {
   color: ${v.muted};
 }
 
+/* The frame of a video. With "Play icon on video thumbnails" on, the feature
+   takes it off and puts a label on the thumb instead (features/video-mark.ts). */
 ${ROOT} .${VIDEO_THUMB_CLASS} > a > img,
 ${ROOT} .webm-thumb {
   border: 1px solid ${v.accent};

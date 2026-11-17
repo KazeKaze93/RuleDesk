@@ -103,6 +103,19 @@ function appendFavoriteThumb(
   parent.append(br);
 }
 
+/** The grid in a block of its own, as on the site: the column of filters is put beside it. */
+function buildFavoritesBlock(ids: number[]): void {
+  const content = document.createElement("div");
+  content.id = "content";
+  const list = document.createElement("div");
+  list.className = IMAGE_LIST_CLASS;
+  content.append(list);
+  document.body.append(content);
+  for (const id of ids) {
+    appendFavoriteThumb(list, id);
+  }
+}
+
 function buildFavoritesPage(
   ids: number[],
   options: {
@@ -460,20 +473,33 @@ describe("favoritesBulkFeature", () => {
     expect(url).toContain("id=55");
   });
 
-  it("keeps everything in the one pinned row: filters, the count, the buttons", () => {
-    buildFavoritesPage([11, 22]);
+  it("puts the filters in a column beside the grid and the count and buttons in the strip over it", () => {
+    buildFavoritesBlock([11, 22]);
     addFav(11);
     addFav(22);
     mountFeature();
 
     const root = document.getElementById(ROOT_ID);
     const pin = document.getElementById(PIN_ID);
-    expect(pin?.querySelector('input[aria-label="Search favorites"]')).not.toBeNull();
+    const side = document.getElementById("rdw-favorites-side");
+    // The column: search, Type, Sort with Shuffle in it. It is a child of the
+    // block the grid is in, which is laid out by a class; the grid is not wrapped.
+    expect(side?.querySelector('input[aria-label="Search favorites"]')).not.toBeNull();
+    const sideText = side?.textContent ?? "";
+    expect(sideText).toContain("Images");
+    expect(sideText).toContain("Newest");
+    expect(sideText).toContain("Shuffle");
+    const grid = document.querySelector("div.image-list");
+    const slot = side?.parentElement;
+    expect(slot?.classList.contains("rdw-fav-side-slot")).toBe(true);
+    expect(slot?.parentElement).toBe(grid?.parentElement);
+    expect(slot?.parentElement?.classList.contains("rdw-fav-layout")).toBe(true);
+    // The strip: the count first, then how the list is paged, the buttons at the right end.
+    expect(pin?.querySelector('input[aria-label="Search favorites"]')).toBeNull();
     const row = pin?.querySelector(".rdw-fav-controls");
     const labels = [...(row?.children ?? [])].map((child) => child.textContent?.trim() ?? "");
-    // Search and filters first, then the count, then the buttons at the right end.
-    expect(labels.indexOf("Shuffle")).toBeGreaterThan(-1);
-    expect(labels.indexOf("2 posts")).toBeGreaterThan(labels.indexOf("Shuffle"));
+    expect(labels[0]).toBe("2 posts");
+    expect(labels.join(" ")).toContain("Pages");
     expect(labels[labels.length - 1]).toContain("Random post");
     expect(labels[labels.length - 1]).toContain("Select");
     // The heading is still there for screen readers, and is all the first element holds.
@@ -482,6 +508,35 @@ describe("favoritesBulkFeature", () => {
     expect(favoritesBulkFeature.css).toMatch(/\.rdw-favorites-title \{[^}]*clip: rect\(0, 0, 0, 0\)/);
     expect(favoritesBulkFeature.css).toMatch(/\.rdw-favorites-pin \{[^}]*position: sticky/);
     expect(favoritesBulkFeature.css).not.toMatch(/\.rdw-favorites-bulk \{[^}]*position: sticky/);
+  });
+
+  it("locks the column while posts are being selected, and its Cancel ends the selection", () => {
+    buildFavoritesBlock([11, 22]);
+    mountFeature();
+    const side = document.getElementById("rdw-favorites-side");
+    expect(side?.classList.contains("rdw-fav-side--locked")).toBe(false);
+    clickButtonWithText("Select");
+    expect(side?.classList.contains("rdw-fav-side--locked")).toBe(true);
+    expect(side?.textContent).toContain("Finish selecting to change filters.");
+    const cancel = [...(side?.querySelectorAll("button") ?? [])].find(
+      (button) => button.textContent?.trim() === "Cancel",
+    );
+    act(() => {
+      cancel?.click();
+    });
+    expect(side?.classList.contains("rdw-fav-side--locked")).toBe(false);
+    expect(document.getElementById(PIN_ID)?.textContent).toContain("Random post");
+  });
+
+  it("draws the filters in the row where the grid has no block of its own", () => {
+    // The thumbs straight in <body>: nothing to lay out in two columns.
+    buildFavoritesPage([11, 22]);
+    mountFeature();
+    expect(document.getElementById("rdw-favorites-side")).toBeNull();
+    expect(document.body.classList.contains("rdw-fav-layout")).toBe(false);
+    expect(
+      document.getElementById(PIN_ID)?.querySelector('input[aria-label="Search favorites"]'),
+    ).not.toBeNull();
   });
 
   it("gives the pinned row to the selection and keeps the filters for later", () => {
@@ -608,7 +663,7 @@ describe("favoritesBulkFeature", () => {
     expect(document.querySelector('[role="dialog"][aria-modal="true"]')).toBeNull();
   });
 
-  it("opens a menu from the More actions button; Shuffle is a pressed button", () => {
+  it("opens a menu from the More actions button; Shuffle is an option of Sort", () => {
     buildFavoritesPage([11]);
     mountFeature();
 
@@ -624,14 +679,28 @@ describe("favoritesBulkFeature", () => {
     const menu = document.querySelector('[role="menu"]');
     expect(menu?.textContent).toContain("Sync favorites…");
 
-    const shuffle = [...document.querySelectorAll("button")].find(
-      (button) => button.textContent?.trim() === "Shuffle",
-    );
-    expect(shuffle?.getAttribute("aria-pressed")).toBe("false");
+    // Shuffle is the third option of Sort: chosen, it is the checked one and Newest is not.
+    const option = (name: string): Element | undefined =>
+      [...document.querySelectorAll('[role="radio"]')].find(
+        (button) => button.textContent?.trim() === name,
+      );
+    expect(option("Newest")?.getAttribute("aria-checked")).toBe("true");
+    expect(option("Shuffle")?.getAttribute("aria-checked")).toBe("false");
     act(() => {
-      shuffle?.click();
+      const shuffle = option("Shuffle");
+      if (shuffle instanceof HTMLElement) {
+        shuffle.click();
+      }
     });
-    expect(shuffle?.getAttribute("aria-pressed")).toBe("true");
-    expect(shuffle?.textContent?.trim()).toBe("Shuffle");
+    expect(option("Shuffle")?.getAttribute("aria-checked")).toBe("true");
+    expect(option("Newest")?.getAttribute("aria-checked")).toBe("false");
+    act(() => {
+      const oldest = option("Oldest");
+      if (oldest instanceof HTMLElement) {
+        oldest.click();
+      }
+    });
+    expect(option("Shuffle")?.getAttribute("aria-checked")).toBe("false");
+    expect(option("Oldest")?.getAttribute("aria-checked")).toBe("true");
   });
 });

@@ -1,6 +1,8 @@
 import type { JSX } from "preact";
+import { createPortal } from "preact/compat";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 
+import { UI_TEXT } from "../config/constants";
 import { log } from "../log";
 import { removeFavorite } from "../site/favorites";
 import { SITE_SELECTORS, extractPostIdFromFavoritesDeleteOnclick } from "../site/selectors";
@@ -10,10 +12,12 @@ import {
   type FavoriteIndexEntry,
 } from "../storage/favorites-index";
 import { getFeatureState, setFeatureState } from "../storage/store";
+import { STICKY_TOP } from "../boot/sticky-header";
 import {
   Button,
-  IconShuffle,
+  Chip,
   SearchField,
+  SectionLabel,
   Segmented,
   type SearchHelp,
   type SegmentedOption,
@@ -37,7 +41,10 @@ import {
   GROUP_INSIDE,
   closestTag,
   completeWord,
+  queryChips,
+  removeChip,
   suggestFor,
+  toggleChip,
   unknownWords,
   wordAtCaret,
   type Suggestions,
@@ -60,6 +67,16 @@ export const FAVORITES_BROWSING_BODY_CLASS = "rdw-fav-browsing";
 export const FAVORITES_RESULTS_CLASS = "rdw-fav-results";
 const MORE_CLASS = "rdw-fav-more";
 const CONTROLS_CLASS = "rdw-fav-controls";
+/** On the block the grid is in, once the column of filters is put beside it. */
+export const FAVORITES_LAYOUT_CLASS = "rdw-fav-layout";
+export const FAVORITES_SIDE_ID = "rdw-favorites-side";
+export const FAVORITES_SIDE_CLASS = "rdw-fav-side";
+/** The child of the laid-out block that holds the column and gives it its place. */
+export const FAVORITES_SIDE_SLOT_CLASS = "rdw-fav-side-slot";
+/** The width of the sidebar of Posts in the skin: the same column here. */
+const FAVORITES_SIDE_WIDTH_PX = 228;
+/** The column spans every row of the block: more than the block will ever have. */
+const SIDE_ROW_SPAN = 60;
 const STATUS_CLASS = "rdw-fav-status";
 const SEARCH_BOX_CLASS = "rdw-fav-search-box";
 const GROUP_LABEL_CLASS = "rdw-fav-group-label";
@@ -135,10 +152,32 @@ const SORT_LABEL = "Sort";
 export const ORDER_NEWEST = "newest";
 export const ORDER_OLDEST = "oldest";
 export type FavoritesOrder = typeof ORDER_NEWEST | typeof ORDER_OLDEST;
+/**
+ * A random order is the third option of the same switch (the designer,
+ * 17.11.2026): as a button of its own it could be on while the switch still
+ * said "Newest". A click on it while it is chosen shuffles again.
+ */
+export const ORDER_SHUFFLE = "shuffle";
 const SORT_OPTIONS: readonly SegmentedOption[] = [
   { value: ORDER_NEWEST, label: "Newest" },
   { value: ORDER_OLDEST, label: "Oldest" },
+  { value: ORDER_SHUFFLE, label: "Shuffle" },
 ];
+const RESHUFFLE_HINT = "Click Shuffle again for another order.";
+const LOCKED_NOTICE = "Finish selecting to change filters.";
+const CHIPS_LABEL = "Search terms";
+const CHIP_EXCLUDE_TITLE = "Click to exclude, click again to include";
+const SIDE_GAP_PX = 12;
+const SIDE_FADE_PX = 28;
+const SCROLL_END_SLACK_PX = 2;
+export const SIDE_MORE_CLASS = "rdw-fav-side--more";
+export const SIDE_LOCKED_CLASS = "rdw-fav-side--locked";
+const SIDE_BODY_CLASS = "rdw-fav-side__body";
+const SIDE_GROUP_CLASS = "rdw-fav-side__group";
+const SIDE_LOCK_CLASS = "rdw-fav-side__lock";
+const SIDE_HINT_CLASS = "rdw-fav-side__hint";
+const CHIPS_CLASS = "rdw-fav-chips";
+const CHIP_BUTTON_CLASS = "rdw-fav-chip";
 
 export function isFavoritesOrder(value: string): value is FavoritesOrder {
   return value === ORDER_NEWEST || value === ORDER_OLDEST;
@@ -176,46 +215,122 @@ body:not(.${FAVORITES_BROWSING_BODY_CLASS}) .${FAVORITES_RESULTS_CLASS},
 body:not(.${FAVORITES_BROWSING_BODY_CLASS}) .${MORE_CLASS} {
   display: none;
 }
+/* The strip over the grid: the count, how the list is paged, the buttons. */
 .${CONTROLS_CLASS} {
   display: flex;
   flex: 1 1 auto;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.35rem 0.5rem;
+  gap: 0.35rem 0.75rem;
   min-width: 0;
-  overflow: hidden;
-  /* Room for the focus outline of the controls at the edges. */
-  padding: 3px;
-  margin: -3px;
-}
-.${CONTROLS_CLASS} > * {
-  flex: none;
 }
 .${CONTROLS_CLASS} .rdw-btn {
   font-weight: 500;
-}
-.${CONTROLS_CLASS} .${SEARCH_BOX_CLASS} {
-  flex: 1 1 ${String(SEARCH_WIDTH_PX)}px;
-  min-width: ${String(SEARCH_WIDTH_PX)}px;
-  max-width: ${String(SEARCH_MAX_WIDTH_PX)}px;
 }
 .${GROUP_LABEL_CLASS} {
   font: 12px var(--rdw-font);
   color: var(--rdw-muted);
 }
-.${CONTROLS_CLASS}:not([${FIT_ATTRIBUTE}="0"]) .${GROUP_LABEL_CLASS} {
-  display: none;
+/* The page in two columns: the filters, and everything the site put there.
+   Nothing of the site's is wrapped or moved; the block the grid is in becomes
+   a grid of its own, and the column of filters is one more child of it. */
+.${FAVORITES_LAYOUT_CLASS} {
+  display: grid !important;
+  grid-template-columns: ${String(FAVORITES_SIDE_WIDTH_PX)}px minmax(0, 1fr);
+  column-gap: 16px;
+  row-gap: 0;
+  align-items: start;
 }
-.${CONTROLS_CLASS}[${FIT_ATTRIBUTE}="2"] .${SEARCH_BOX_CLASS},
-.${CONTROLS_CLASS}[${FIT_ATTRIBUTE}="3"] .${SEARCH_BOX_CLASS} {
-  min-width: ${String(SEARCH_MIN_WIDTH_PX)}px;
+.${FAVORITES_LAYOUT_CLASS} > * {
+  grid-column: 2;
+  min-width: 0;
 }
-.${CONTROLS_CLASS}[${FIT_ATTRIBUTE}="3"] {
+/* The place of the column: the first column, every row. It takes no part in
+   the sizing of the rows (a child that spans rows makes them taller by its
+   own height), so its size is its place and nothing else. */
+.${FAVORITES_LAYOUT_CLASS} > .${FAVORITES_SIDE_SLOT_CLASS} {
+  grid-column: 1;
+  grid-row: 1 / span ${String(SIDE_ROW_SPAN)};
+  align-self: stretch;
+  contain: size;
+}
+/* Held beside the grid; taller than the window, it scrolls inside itself. */
+.${FAVORITES_SIDE_CLASS} {
+  box-sizing: border-box;
+  position: sticky;
+  top: calc(${STICKY_TOP} + ${String(SIDE_GAP_PX)}px);
+  max-height: calc(100vh - ${STICKY_TOP} - ${String(SIDE_GAP_PX * 2)}px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--rdw-border) transparent;
+  color: var(--rdw-text);
+  font: 12px/1.4 var(--rdw-font);
+}
+.${FAVORITES_SIDE_CLASS} * {
+  font-family: var(--rdw-font);
+}
+/* A strip that fades the last lines while there is more below. Not a mask:
+   the suggestions and the "?" open from inside the column. */
+.${FAVORITES_SIDE_CLASS}.${SIDE_MORE_CLASS}::after {
+  content: "";
+  position: sticky;
+  bottom: 0;
+  display: block;
+  height: ${String(SIDE_FADE_PX)}px;
+  margin-top: -${String(SIDE_FADE_PX)}px;
+  background: linear-gradient(to bottom, transparent, var(--rdw-bg));
+  pointer-events: none;
+}
+.${SIDE_BODY_CLASS} {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  /* Room for the focus ring of the controls at the edges. */
+  padding: 3px;
+}
+.${SIDE_GROUP_CLASS} {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.${SIDE_HINT_CLASS} {
+  margin: 0;
+  color: var(--rdw-muted);
+  font-size: 11.5px;
+}
+.${CHIPS_CLASS} {
+  display: flex;
   flex-wrap: wrap;
+  gap: 4px;
 }
-.${CONTROLS_CLASS}[${FIT_ATTRIBUTE}="3"] .${SEARCH_BOX_CLASS} {
-  flex: 1 0 100%;
-  max-width: none;
+.${CHIP_BUTTON_CLASS} {
+  display: inline-flex;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+/* While posts are being selected the filters cannot be changed. */
+.${SIDE_LOCK_CLASS} {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin: 3px 3px 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--rdw-accent);
+  border-radius: var(--rdw-radius-m);
+  background: var(--rdw-accent-soft);
+  color: var(--rdw-text);
+}
+.${FAVORITES_SIDE_CLASS}.${SIDE_LOCKED_CLASS} .${SIDE_BODY_CLASS} {
+  opacity: 0.45;
+  pointer-events: none;
 }
 /* In place of the grid when nothing matches. */
 .${EMPTY_CLASS} {
@@ -245,16 +360,16 @@ body:not(.${FAVORITES_BROWSING_BODY_CLASS}) .${MORE_CLASS} {
   color: var(--rdw-muted);
 }
 .${COUNT_CLASS} {
-  margin-left: auto;
-  padding-left: 0.5rem;
   font: 12px var(--rdw-font);
   color: var(--rdw-muted);
   white-space: nowrap;
 }
+/* The buttons stand at the right end of the strip. */
 .${CONTROLS_CLASS} .${ACTIONS_CLASS} {
   display: flex;
   align-items: center;
   gap: 0.35rem 0.5rem;
+  margin-left: auto;
 }
 .${CONTROLS_CLASS} .${ACTIONS_CLASS}:empty {
   display: none;
@@ -641,6 +756,15 @@ export type FavoritesBrowserProps = {
   readonly actionsRef?: (slot: HTMLElement | null) => void;
   /** Told what the list is narrowed to whenever that changes. */
   readonly onSummary?: (summary: string) => void;
+  /**
+   * The column the filters are drawn in, beside the grid. Without it they are
+   * drawn in place, before the strip (a page whose block could not be laid out).
+   */
+  readonly sideHost?: HTMLElement | null;
+  /** True while posts are being selected: the filters are shown but cannot be changed. */
+  readonly locked?: boolean;
+  /** Ends the selection; the button beside the notice of a locked column. */
+  readonly onUnlock?: () => void;
 };
 
 export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element {
@@ -716,27 +840,32 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
     [tagCounts],
   );
 
-  useLayoutEffect(() => {
-    const row = rowRef.current;
-    if (row === null) {
+  // The fade at the bottom of the column says there is more to scroll to.
+  const { sideHost } = props;
+  useEffect(() => {
+    if (sideHost === null || sideHost === undefined) {
       return undefined;
     }
-    fitControlsRow(row);
-    if (typeof ResizeObserver !== "function") {
-      return undefined;
-    }
-    const observer = new ResizeObserver(() => {
-      fitControlsRow(row);
-    });
-    observer.observe(row);
-    // The buttons at the right end arrive after the row is drawn.
-    if (actionsSlotRef.current !== null) {
-      observer.observe(actionsSlotRef.current);
-    }
-    return () => {
-      observer.disconnect();
+    const sync = (): void => {
+      const hidden = sideHost.scrollHeight - sideHost.scrollTop - sideHost.clientHeight;
+      sideHost.classList.toggle(SIDE_MORE_CLASS, hidden > SCROLL_END_SLACK_PX);
     };
-  }, []);
+    sync();
+    sideHost.addEventListener("scroll", sync, { passive: true });
+    window.addEventListener("resize", sync, { passive: true });
+    const observer = typeof ResizeObserver === "function" ? new ResizeObserver(sync) : null;
+    observer?.observe(sideHost);
+    return () => {
+      sideHost.removeEventListener("scroll", sync);
+      window.removeEventListener("resize", sync);
+      observer?.disconnect();
+    };
+  }, [sideHost]);
+
+  const locked = props.locked === true;
+  useEffect(() => {
+    sideHost?.classList.toggle(SIDE_LOCKED_CLASS, locked);
+  }, [sideHost, locked]);
 
   useEffect(() => {
     onRemoveFailed = (): void => {
@@ -820,92 +949,134 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
     };
   }, [actionsRef]);
 
+  const chips = queryChips(text);
+  const setQuery = (next: string): void => {
+    setText(next);
+    setApplied(next);
+  };
+  const sortValue = shuffleSeed !== null ? ORDER_SHUFFLE : order;
+
+  const filters = (
+    <>
+      {locked ? (
+        <div className={SIDE_LOCK_CLASS} role="status">
+          <span>{LOCKED_NOTICE}</span>
+          <Button variant="ghost" size="s" onClick={() => props.onUnlock?.()}>
+            {UI_TEXT.cancel}
+          </Button>
+        </div>
+      ) : null}
+      <div className={SIDE_BODY_CLASS} {...(locked ? { inert: true } : {})}>
+        <SearchField
+          id={SEARCH_FIELD_ID}
+          className={SEARCH_BOX_CLASS}
+          value={text}
+          placeholder={SEARCH_PLACEHOLDER}
+          aria-label={SEARCH_ARIA_LABEL}
+          clearLabel={CLEAR_LABEL}
+          help={SEARCH_HELP}
+          suggest={suggest}
+          // The index is read when the field is entered, so that the first letter has its list.
+          onFocus={loadIndex}
+          onChange={setText}
+          onCommit={setApplied}
+        />
+        {notices.length > 0 ? (
+          <span className={STATUS_CLASS} role="status">
+            {notices.join(" ")}
+          </span>
+        ) : null}
+        {chips.length > 0 ? (
+          <div className={CHIPS_CLASS} role="group" aria-label={CHIPS_LABEL}>
+            {chips.map((chip) => (
+              <button
+                key={`${String(chip.start)}:${chip.label}`}
+                type="button"
+                className={`${CHIP_BUTTON_CLASS} rdw-kit-focusable`}
+                title={chip.group ? undefined : CHIP_EXCLUDE_TITLE}
+                aria-pressed={chip.group ? undefined : chip.excluded}
+                onClick={(event) => {
+                  // The cross of the chip takes it out; anywhere else on it excludes the tag.
+                  const target = event.target;
+                  if (target instanceof Element && target.closest("button") !== event.currentTarget) {
+                    return;
+                  }
+                  setQuery(toggleChip(text, chip));
+                }}
+              >
+                <Chip
+                  label={chip.label}
+                  variant={chip.group ? "group" : chip.excluded ? "exclude" : "dot"}
+                  onRemove={() => {
+                    setQuery(removeChip(text, chip));
+                  }}
+                />
+              </button>
+            ))}
+          </div>
+        ) : null}
+        <div className={SIDE_GROUP_CLASS}>
+          <SectionLabel>{MEDIA_LABEL}</SectionLabel>
+          <Segmented
+            label={MEDIA_LABEL}
+            options={MEDIA_OPTIONS}
+            value={media}
+            onChange={(value) => {
+              if (isFavoritesMedia(value)) {
+                setMedia(value);
+              }
+            }}
+          />
+        </div>
+        <div className={SIDE_GROUP_CLASS}>
+          <SectionLabel>{SORT_LABEL}</SectionLabel>
+          <Segmented
+            label={SORT_LABEL}
+            options={SORT_OPTIONS}
+            value={sortValue}
+            onChange={(value) => {
+              if (value === ORDER_SHUFFLE) {
+                // Chosen again, it shuffles again.
+                setShuffleSeed(Date.now());
+                setOrder(ORDER_NEWEST);
+              } else if (isFavoritesOrder(value)) {
+                setShuffleSeed(null);
+                setOrder(value);
+              }
+            }}
+          />
+          {shuffleSeed !== null ? <p className={SIDE_HINT_CLASS}>{RESHUFFLE_HINT}</p> : null}
+        </div>
+      </div>
+    </>
+  );
+
   return (
     <>
-    <div className={CONTROLS_CLASS} ref={rowRef}>
       <style>{FAVORITES_BROWSER_CSS}</style>
-      <SearchField
-        id={SEARCH_FIELD_ID}
-        className={SEARCH_BOX_CLASS}
-        value={text}
-        placeholder={SEARCH_PLACEHOLDER}
-        aria-label={SEARCH_ARIA_LABEL}
-        clearLabel={CLEAR_LABEL}
-        help={SEARCH_HELP}
-        suggest={suggest}
-        // The index is read when the field is entered, so that the first letter has its list.
-        onFocus={loadIndex}
-        onChange={setText}
-        onCommit={setApplied}
-      />
-      <span className={GROUP_LABEL_CLASS} aria-hidden="true">
-        {MEDIA_LABEL}
-      </span>
-      <Segmented
-        label={MEDIA_LABEL}
-        options={MEDIA_OPTIONS}
-        value={media}
-        onChange={(value) => {
-          if (isFavoritesMedia(value)) {
-            setMedia(value);
-          }
-        }}
-      />
-      <span className={GROUP_LABEL_CLASS} aria-hidden="true">
-        {VIEW_LABEL}
-      </span>
-      <Segmented
-        label={VIEW_LABEL}
-        options={VIEW_OPTIONS}
-        value={view}
-        onChange={(value) => {
-          if (isFavoritesView(value)) {
-            setFeatureState(VIEW_STATE_ID, value);
-            setView(value);
-          }
-        }}
-      />
-      <span className={GROUP_LABEL_CLASS} aria-hidden="true">
-        {SORT_LABEL}
-      </span>
-      <Segmented
-        label={SORT_LABEL}
-        options={SORT_OPTIONS}
-        value={order}
-        onChange={(value) => {
-          if (isFavoritesOrder(value)) {
-            setOrder(value);
-            if (value !== ORDER_NEWEST) {
-              setShuffleSeed(null);
-            }
-          }
-        }}
-      />
-      <Button
-        variant="secondary"
-        size="s"
-        title={SHUFFLE_TITLE}
-        pressed={shuffleSeed !== null}
-        onClick={() => {
-          setShuffleSeed(shuffleSeed === null ? Date.now() : null);
-          setOrder(ORDER_NEWEST);
-        }}
-      >
-        <IconShuffle size={14} />
-        {SHUFFLE_LABEL}
-      </Button>
-      {count.length > 0 ? (
-        <span className={COUNT_CLASS} role="status">
-          {count}
+      {sideHost === null || sideHost === undefined ? filters : createPortal(filters, sideHost)}
+      <div className={CONTROLS_CLASS} ref={rowRef}>
+        {count.length > 0 ? (
+          <span className={COUNT_CLASS} role="status">
+            {count}
+          </span>
+        ) : null}
+        <span className={GROUP_LABEL_CLASS} aria-hidden="true">
+          {VIEW_LABEL}
         </span>
-      ) : null}
-      <div className={ACTIONS_CLASS} ref={actionsSlotRef} />
-    </div>
-    {notices.length > 0 ? (
-      <span className={STATUS_CLASS} role="status">
-        {notices.join(" ")}
-      </span>
-    ) : null}
+        <Segmented
+          label={VIEW_LABEL}
+          options={VIEW_OPTIONS}
+          value={view}
+          onChange={(value) => {
+            if (isFavoritesView(value)) {
+              setFeatureState(VIEW_STATE_ID, value);
+              setView(value);
+            }
+          }}
+        />
+        <div className={ACTIONS_CLASS} ref={actionsSlotRef} />
+      </div>
     </>
   );
 }

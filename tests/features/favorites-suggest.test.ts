@@ -12,6 +12,9 @@ import {
   GROUP_STARTS,
   closestTag,
   completeWord,
+  queryChips,
+  removeChip,
+  toggleChip,
   suggestFor,
   unknownWords,
   wordAtCaret,
@@ -150,5 +153,41 @@ describe("favorites suggestions: the list as the field draws it", () => {
     expect(suggestBox(20, 80, 250, 1920)).toEqual({ top: 84, left: 20, width: 320 });
     expect(suggestBox(20, 80, 560, 1920).width).toBe(480);
     expect(suggestBox(900, 80, 250, 1000)).toEqual({ top: 84, left: 672, width: 320 });
+  });
+});
+
+describe("favorites search: the query as chips", () => {
+  it("makes a chip of every word and one chip of a group", () => {
+    const chips = queryChips("cat -dog ( bird ~ fox ~ owl ) rating:safe");
+    expect(chips.map((chip) => [chip.label, chip.excluded, chip.group])).toEqual([
+      ["cat", false, false],
+      ["dog", true, false],
+      ["Any of 3 tags", false, true],
+      ["rating:safe", false, false],
+    ]);
+    // A group still being typed is one chip too.
+    expect(queryChips("cat ( bird ~").map((chip) => chip.label)).toEqual(["cat", "Any of 1 tag"]);
+    expect(queryChips("  ")).toEqual([]);
+  });
+
+  it("excludes a word and includes it again; leaves a group alone", () => {
+    const text = "cat -dog ( bird ~ fox )";
+    const [cat, dog, group] = queryChips(text);
+    if (cat === undefined || dog === undefined || group === undefined) {
+      throw new Error("no chips");
+    }
+    expect(toggleChip(text, cat)).toBe("-cat -dog ( bird ~ fox )");
+    expect(toggleChip(text, dog)).toBe("cat dog ( bird ~ fox )");
+    expect(toggleChip(text, group)).toBe(text);
+  });
+
+  it("takes a chip out, a whole group at once", () => {
+    const text = "cat -dog ( bird ~ fox ) solo";
+    const [cat, , group] = queryChips(text);
+    if (cat === undefined || group === undefined) {
+      throw new Error("no chips");
+    }
+    expect(removeChip(text, cat)).toBe("-dog ( bird ~ fox ) solo");
+    expect(removeChip(text, group)).toBe("cat -dog solo");
   });
 });

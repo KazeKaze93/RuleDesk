@@ -196,3 +196,92 @@ export function closestTag(tags: readonly TagCount[], word: string): TagCount | 
   }
   return best;
 }
+
+/** One chip of the query: a word, or a whole `( a ~ b )` group. */
+export type QueryChip = {
+  readonly start: number;
+  readonly end: number;
+  readonly label: string;
+  readonly excluded: boolean;
+  readonly group: boolean;
+};
+
+const GROUP_OPEN = "(";
+const GROUP_CLOSE = ")";
+const GROUP_OR = "~";
+const WORD = /\S+/g;
+
+/** "Any of 3 tags": what a group reads as on its chip. */
+export function groupChipLabel(count: number): string {
+  return `Any of ${String(count)} ${count === 1 ? "tag" : "tags"}`;
+}
+
+/** The query as chips, in the order typed. A group that is not closed yet is still one chip. */
+export function queryChips(text: string): QueryChip[] {
+  const chips: QueryChip[] = [];
+  let groupStart: number | null = null;
+  let groupCount = 0;
+  let lastEnd = 0;
+  for (const match of text.matchAll(WORD)) {
+    const word = match[0];
+    const start = match.index;
+    const end = start + word.length;
+    lastEnd = end;
+    if (groupStart !== null) {
+      if (word === GROUP_CLOSE) {
+        chips.push({
+          start: groupStart,
+          end,
+          label: groupChipLabel(groupCount),
+          excluded: false,
+          group: true,
+        });
+        groupStart = null;
+      } else if (word !== GROUP_OR) {
+        groupCount += 1;
+      }
+      continue;
+    }
+    if (word === GROUP_OPEN) {
+      groupStart = start;
+      groupCount = 0;
+      continue;
+    }
+    const excluded = word.startsWith(EXCLUDE_PREFIX) && word.length > EXCLUDE_PREFIX.length;
+    chips.push({
+      start,
+      end,
+      label: excluded ? word.slice(EXCLUDE_PREFIX.length) : word,
+      excluded,
+      group: false,
+    });
+  }
+  if (groupStart !== null) {
+    chips.push({
+      start: groupStart,
+      end: lastEnd,
+      label: groupChipLabel(groupCount),
+      excluded: false,
+      group: true,
+    });
+  }
+  return chips;
+}
+
+function tidy(text: string): string {
+  return text.replace(/\s+/g, " ").trim();
+}
+
+/** The query without the chip. */
+export function removeChip(text: string, chip: QueryChip): string {
+  return tidy(`${text.slice(0, chip.start)} ${text.slice(chip.end)}`);
+}
+
+/** The query with the chip's word excluded, or included again; a group is left as it is. */
+export function toggleChip(text: string, chip: QueryChip): string {
+  if (chip.group) {
+    return text;
+  }
+  const word = chip.excluded ? chip.label : `${EXCLUDE_PREFIX}${chip.label}`;
+  return tidy(`${text.slice(0, chip.start)}${word}${text.slice(chip.end)}`);
+}

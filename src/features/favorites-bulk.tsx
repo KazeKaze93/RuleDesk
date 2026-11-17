@@ -10,6 +10,10 @@ import { log } from "../log";
 import { downloadsAvailable } from "./downloads/available";
 import {
   FAVORITES_BROWSING_BODY_CLASS,
+  FAVORITES_LAYOUT_CLASS,
+  FAVORITES_SIDE_CLASS,
+  FAVORITES_SIDE_ID,
+  FAVORITES_SIDE_SLOT_CLASS,
   FavoritesBrowser,
   postsLabel,
   bindInPlaceRemoval,
@@ -154,6 +158,12 @@ body.${BODY_CLASS} .${PIN_CLASS} {
   flex: 0 0 100%;
   grid-column: 1 / -1;
 }
+/* Beside the column of filters both stand in the second column of the block. */
+body.${BODY_CLASS} .${FAVORITES_LAYOUT_CLASS} > .${ROOT_CLASS},
+body.${BODY_CLASS} .${FAVORITES_LAYOUT_CLASS} > .${PIN_CLASS} {
+  grid-column: 2;
+  width: auto;
+}
 /* Holds only the page's heading, which is for screen readers: the menu
    already shows where you are. */
 body.${BODY_CLASS} .${ROOT_CLASS} {
@@ -199,8 +209,14 @@ body.${BODY_CLASS} .${ROOT_CLASS} .rdw-btn,
 body.${BODY_CLASS} .${PIN_CLASS} .rdw-btn {
   font-weight: 500;
 }
+/* The strip turned into the selection: filled, so that it is seen without
+   reading it that a click on a thumbnail now selects (the designer, 17.11.2026). */
 body.${BODY_CLASS} .${PIN_CLASS} .${BAR_CLASS} {
   flex: 1 1 auto;
+  padding: 4px 8px;
+  border-radius: var(--rdw-radius-m);
+  background: var(--rdw-accent-soft);
+  color: var(--rdw-text);
 }
 body.${BODY_CLASS} .${SUMMARY_CLASS} {
   flex: 1 1 8rem;
@@ -666,6 +682,8 @@ type FavoritesBulkBarProps = {
   readonly summary: string;
   /** True while the bar has the pinned row to itself: selecting, removing, a message. */
   readonly onBusyChange: (busy: boolean) => void;
+  /** Given the bar's own "leave the selection", for a Cancel drawn elsewhere. */
+  readonly cancelRef?: { current: (() => void) | null };
 };
 
 function FavoritesBulkBar(props: FavoritesBulkBarProps): JSX.Element | null {
@@ -772,6 +790,10 @@ function FavoritesBulkBar(props: FavoritesBulkBarProps): JSX.Element | null {
     setSelected(new Set());
     setPhase({ kind: "idle" });
   };
+
+  if (props.cancelRef !== undefined) {
+    props.cancelRef.current = resetToIdle;
+  }
 
   const enterSelecting = (): void => {
     setSelected(new Set());
@@ -1005,6 +1027,8 @@ export function favoritesCountLabel(count: number): string {
 type FavoritesPanelProps = {
   /** The pinned row, a sibling of the heading in the page. */
   readonly pin: HTMLElement;
+  /** The column of filters beside the grid, or null where the page could not be laid out. */
+  readonly side: HTMLElement | null;
   readonly onSelectionModeChange: (active: boolean) => void;
 };
 
@@ -1018,6 +1042,8 @@ function FavoritesPanel(props: FavoritesPanelProps): JSX.Element {
   const [headActions, setHeadActions] = useState<HTMLElement | null>(null);
   const [busy, setBusy] = useState(false);
   const [summary, setSummary] = useState("");
+  // The bar's own way out of selecting, for the Cancel of the locked column.
+  const cancelRef = useRef<(() => void) | null>(null);
 
   return (
     <>
@@ -1026,13 +1052,22 @@ function FavoritesPanel(props: FavoritesPanelProps): JSX.Element {
         <>
           {/* Hidden, not removed, while posts are being selected: what was typed stays. */}
           <div className={FILTERS_CLASS} hidden={busy}>
-            <FavoritesBrowser actionsRef={setHeadActions} onSummary={setSummary} />
+            <FavoritesBrowser
+              actionsRef={setHeadActions}
+              onSummary={setSummary}
+              sideHost={props.side}
+              locked={busy}
+              onUnlock={() => {
+                cancelRef.current?.();
+              }}
+            />
           </div>
           <FavoritesBulkBar
             onSelectionModeChange={props.onSelectionModeChange}
             headSlot={headActions}
             summary={summary}
             onBusyChange={setBusy}
+            cancelRef={cancelRef}
           />
         </>,
         props.pin,
@@ -1055,6 +1090,24 @@ function mountFavoritesBulk(_ctx: FeatureContext): void {
   pin.className = PIN_CLASS;
   host.parent.insertBefore(root, host.before);
   host.parent.insertBefore(pin, host.before);
+  // The column of filters stands beside the grid: the block the grid is in is
+  // laid out in two columns by a class on it, and the column is one more
+  // child of that block. Nothing of the site's is wrapped or moved. Where the
+  // block is the page itself there is no such layout, and the filters are
+  // drawn in the row.
+  let side: HTMLElement | null = null;
+  if (host.parent instanceof HTMLElement && host.parent !== document.body) {
+    // The slot is the child of the block and has the column's place; the
+    // column itself is held inside it while the page scrolls.
+    const slot = document.createElement("div");
+    slot.className = FAVORITES_SIDE_SLOT_CLASS;
+    side = document.createElement("div");
+    side.id = FAVORITES_SIDE_ID;
+    side.className = FAVORITES_SIDE_CLASS;
+    slot.append(side);
+    host.parent.insertBefore(slot, root);
+    host.parent.classList.add(FAVORITES_LAYOUT_CLASS);
+  }
 
   const siteGrid = document.querySelector(SITE_SELECTORS.imageList);
   if (siteGrid !== null) {
@@ -1065,7 +1118,10 @@ function mountFavoritesBulk(_ctx: FeatureContext): void {
     document.body.classList.toggle(BODY_SELECTING_CLASS, active);
   };
 
-  render(<FavoritesPanel pin={pin} onSelectionModeChange={onSelectionModeChange} />, root);
+  render(
+    <FavoritesPanel pin={pin} side={side} onSelectionModeChange={onSelectionModeChange} />,
+    root,
+  );
 }
 
 export const favoritesBulkFeature: Feature = {

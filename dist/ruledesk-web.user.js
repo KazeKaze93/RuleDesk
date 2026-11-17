@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RuleDesk Web
 // @namespace    https://github.com/kazekaze93/ruledesk-web
-// @version      0.42.0
+// @version      0.43.0
 // @description  Collections, playlists, favorites, artist updates, and page tweaks for rule34.xxx
 // @downloadURL  https://raw.githubusercontent.com/KazeKaze93/RuleDesk/main/dist/ruledesk-web.user.js
 // @updateURL    https://raw.githubusercontent.com/KazeKaze93/RuleDesk/main/dist/ruledesk-web.user.js
@@ -15,31 +15,31 @@
 !function(){function e(e,t){return(t||"")+" (SystemJS Error#"+e+" https://github.com/systemjs/systemjs/blob/main/docs/errors.md#"+e+")"}function t(e,t){if(-1!==e.indexOf("\\")&&(e=e.replace(j,"/")),"/"===e[0]&&"/"===e[1])return t.slice(0,t.indexOf(":")+1)+e;if("."===e[0]&&("/"===e[1]||"."===e[1]&&("/"===e[2]||2===e.length&&(e+="/"))||1===e.length&&(e+="/"))||"/"===e[0]){var n,r=t.slice(0,t.indexOf(":")+1);if(n="/"===t[r.length+1]?"file:"!==r?(n=t.slice(r.length+2)).slice(n.indexOf("/")+1):t.slice(8):t.slice(r.length+("/"===t[r.length])),"/"===e[0])return t.slice(0,t.length-n.length-1)+e;for(var i=n.slice(0,n.lastIndexOf("/")+1)+e,o=[],s=-1,u=0;u<i.length;u++)-1!==s?"/"===i[u]&&(o.push(i.slice(s,u+1)),s=-1):"."===i[u]?"."!==i[u+1]||"/"!==i[u+2]&&u+2!==i.length?"/"===i[u+1]||u+1===i.length?u+=1:s=u:(o.pop(),u+=2):s=u;return-1!==s&&o.push(i.slice(s)),t.slice(0,t.length-n.length)+o.join("")}}function n(e,n){return t(e,n)||(-1!==e.indexOf(":")?e:t("./"+e,n))}function r(e,n,r,i,o){for(var s in e){var a=t(s,r)||s,f=e[s];if("string"==typeof f){var l=c(i,t(f,r)||f,o);l?n[a]=l:u("W1",s,f,"bare specifier did not resolve")}}}function i(e,t,i){var o;for(o in e.imports&&r(e.imports,i.imports,t,i,null),e.scopes||{}){var s=n(o,t);r(e.scopes[o],i.scopes[s]||(i.scopes[s]={}),t,i,s)}for(o in e.depcache||{})i.depcache[n(o,t)]=e.depcache[o];for(o in e.integrity||{})i.integrity[n(o,t)]=e.integrity[o]}function o(e,t){if(t[e])return e;var n=e.length;do{var r=e.slice(0,n+1);if(r in t)return r}while(-1!==(n=e.lastIndexOf("/",n-1)))}function s(e,t){var n=o(e,t);if(n){var r=t[n];if(null===r)return;if(!(e.length>n.length&&"/"!==r[r.length-1]))return r+e.slice(n.length);u("W2",n,r,"should have a trailing '/'")}}function u(t,n,r,i){console.warn(e(t,"Package target "+i+", resolving target '"+r+"' for "+n))}function c(e,t,n){for(var r=e.scopes,i=n&&o(n,r);i;){var u=s(t,r[i]);if(u)return u;i=o(i.slice(0,i.lastIndexOf("/")),r)}return s(t,e.imports)||-1!==t.indexOf(":")&&t}function a(){this[M]={}}function f(e){return e.id}function l(e,t,n,r){if(e.onload(n,t.id,t.d&&t.d.map(f),!!r),n)throw n}function d(t,n,r,i){var o=t[M][n];if(o)return o;var s=[],u=Object.create(null);P&&Object.defineProperty(u,P,{value:"Module"});var c=Promise.resolve().then((function(){return t.instantiate(n,r,i)})).then((function(r){if(!r)throw Error(e(2,"Module "+n+" did not instantiate"));var i=r[1]((function(e,t){o.h=!0;var n=!1;if("string"==typeof e)e in u&&u[e]===t||(u[e]=t,n=!0);else{for(var r in e)t=e[r],r in u&&u[r]===t||(u[r]=t,n=!0);e&&e.__esModule&&(u.__esModule=e.__esModule)}if(n)for(var i=0;i<s.length;i++){var c=s[i];c&&c(u)}return t}),2===r[1].length?{import:function(e,r){return t.import(e,n,r)},meta:t.createContext(n)}:void 0);return o.e=i.execute||function(){},[r[0],i.setters||[],r[2]||[]]}),(function(e){throw o.e=null,o.er=e,l(t,o,e,!0),e})),a=c.then((function(e){return Promise.all(e[0].map((function(r,i){var o=e[1][i],s=e[2][i];return Promise.resolve(t.resolve(r,n)).then((function(e){var r=d(t,e,n,s);return Promise.resolve(r.I).then((function(){return o&&(r.i.push(o),!r.h&&r.I||o(r.n)),r}))}))}))).then((function(e){o.d=e}))}));return o=t[M][n]={id:n,i:s,n:u,m:i,I:c,L:a,h:!1,d:void 0,e:void 0,er:void 0,E:void 0,C:void 0,p:void 0}}function h(e,t,n,r){if(!r[t.id])return r[t.id]=!0,Promise.resolve(t.L).then((function(){return t.p&&null!==t.p.e||(t.p=n),Promise.all(t.d.map((function(t){return h(e,t,n,r)})))})).catch((function(n){if(t.er)throw n;throw t.e=null,l(e,t,n,!1),n}))}function p(e,t){return t.C=h(e,t,t,{}).then((function(){return v(e,t,{})})).then((function(){return t.n}))}function v(e,t,n){function r(){try{var n=o.call(L);if(n)return n=n.then((function(){t.C=t.n,t.E=null,l(e,t,null,!0)}),(function(n){throw t.er=n,t.E=null,l(e,t,n,!0),n})),t.E=n;t.C=t.n,t.L=t.I=void 0}catch(r){throw t.er=r,r}finally{l(e,t,t.er,!0)}}if(!n[t.id]){if(n[t.id]=!0,!t.e){if(t.er)throw t.er;return t.E?t.E:void 0}var i,o=t.e;return t.e=null,t.d.forEach((function(r){try{var o=v(e,r,n);o&&(i=i||[]).push(o)}catch(s){throw t.er=s,l(e,t,s,!1),s}})),i?Promise.all(i).then(r):r()}}function m(){[].forEach.call(document.querySelectorAll("script"),(function(t){if(!t.sp)if("systemjs-module"===t.type){if(t.sp=!0,!t.src)return;System.import("import:"===t.src.slice(0,7)?t.src.slice(7):n(t.src,g)).catch((function(e){if(e.message.indexOf("https://github.com/systemjs/systemjs/blob/main/docs/errors.md#3")>-1){var n=document.createEvent("Event");n.initEvent("error",!1,!1),t.dispatchEvent(n)}return Promise.reject(e)}))}else if("systemjs-importmap"===t.type){t.sp=!0;var r=t.src?(System.fetch||fetch)(t.src,{integrity:t.integrity,priority:t.fetchPriority,passThrough:!0}).then((function(e){if(!e.ok)throw Error("Invalid status code: "+e.status);return e.text()})).catch((function(n){return n.message=e("W4","Error fetching systemjs-import map "+t.src)+"\n"+n.message,console.warn(n),"function"==typeof t.onerror&&t.onerror(),"{}"})):t.innerHTML;W=W.then((function(){return r})).then((function(n){!function(t,n,r){var o={};try{o=JSON.parse(n)}catch(s){console.warn(Error(e("W5","systemjs-importmap contains invalid JSON")+"\n\n"+n+"\n"))}i(o,r,t)}(N,n,t.src||g)}))}}))}var g,y="undefined"!=typeof Symbol,b="undefined"!=typeof self,S="undefined"!=typeof document,w=b?self:global;if(S){var O=document.querySelector("base[href]");O&&(g=O.href)}if(!g&&"undefined"!=typeof location){var E=(g=location.href.split("#")[0].split("?")[0]).lastIndexOf("/");-1!==E&&(g=g.slice(0,E+1))}var x,j=/\\/g,P=y&&Symbol.toStringTag,M=y?Symbol():"@",I=a.prototype;I.import=function(e,t,n){var r=this;return t&&"object"==typeof t&&(n=t,t=void 0),Promise.resolve(r.prepareImport()).then((function(){return r.resolve(e,t,n)})).then((function(e){var t=d(r,e,void 0,n);return t.C||p(r,t)}))},I.createContext=function(e){var t=this;return{url:e,resolve:function(n,r){return Promise.resolve(t.resolve(n,r||e))}}},I.onload=function(){},I.register=function(e,t,n){x=[e,t,n]},I.getRegister=function(){var e=x;return x=void 0,e};var L=Object.freeze(Object.create(null));w.System=new a;var C,R,W=Promise.resolve(),N={imports:{},scopes:{},depcache:{},integrity:{}},T=S;if(I.prepareImport=function(e){return(T||e)&&(m(),T=!1),W},I.getImportMap=function(){return JSON.parse(JSON.stringify(N))},S&&(m(),window.addEventListener("DOMContentLoaded",m)),I.addImportMap=function(e,t){i(e,t||g,N)},S){window.addEventListener("error",(function(e){J=e.filename,_=e.error}));var A=location.origin}I.createScript=function(e){var t=document.createElement("script");t.async=!0,e.indexOf(A+"/")&&(t.crossOrigin="anonymous");var n=N.integrity[e];return n&&(t.integrity=n),t.src=e,t};var J,_,k={},U=I.register;I.register=function(e,t){if(S&&"loading"===document.readyState&&"string"!=typeof e){var n=document.querySelectorAll("script[src]"),r=n[n.length-1];if(r){C=e;var i=this;R=setTimeout((function(){k[r.src]=[e,t],i.import(r.src)}))}}else C=void 0;return U.call(this,e,t)},I.instantiate=function(t,n){var r=k[t];if(r)return delete k[t],r;var i=this;return Promise.resolve(I.createScript(t)).then((function(r){return new Promise((function(o,s){r.addEventListener("error",(function(){s(Error(e(3,"Error loading "+t+(n?" from "+n:""))))})),r.addEventListener("load",(function(){if(document.head.removeChild(r),J===t)s(_);else{var e=i.getRegister(t);e&&e[0]===C&&clearTimeout(R),o(e)}})),document.head.appendChild(r)}))}))},I.shouldFetch=function(){return!1},"undefined"!=typeof fetch&&(I.fetch=fetch);var $=I.instantiate,B=/^(text|application)\/(x-)?javascript(;|$)/;I.instantiate=function(t,n,r){var i=this;return this.shouldFetch(t,n,r)?this.fetch(t,{credentials:"same-origin",integrity:N.integrity[t],meta:r}).then((function(r){if(!r.ok)throw Error(e(7,r.status+" "+r.statusText+", loading "+t+(n?" from "+n:"")));var o=r.headers.get("content-type");if(!o||!B.test(o))throw Error(e(4,'Unknown Content-Type "'+o+'", loading '+t+(n?" from "+n:"")));return r.text().then((function(e){return e.indexOf("//# sourceURL=")<0&&(e+="\n//# sourceURL="+t),(0,eval)(e),i.getRegister(t)}))})):$.apply(this,arguments)},I.resolve=function(n,r){return c(N,t(n,r=r||g)||n,r)||function(t,n){throw Error(e(8,"Unable to resolve bare specifier '"+t+(n?"' from "+n:"'")))}(n,r)};var F=I.instantiate;I.instantiate=function(e,t,n){var r=N.depcache[e];if(r)for(var i=0;i<r.length;i++)d(this,this.resolve(r[i],e),e);return F.call(this,e,t,n)},b&&"function"==typeof importScripts&&(I.instantiate=function(e){var t=this;return Promise.resolve().then((function(){return importScripts(e),t.getRegister(e)}))}),function(e){function t(t){return!e.hasOwnProperty(t)||!isNaN(t)&&t<e.length||a&&e[t]&&"undefined"!=typeof window&&e[t].parent===window}var n,r,i,o=e.System.constructor.prototype,s=o.import;o.import=function(o,u,c){return function(){for(var o in n=r=void 0,e)t(o)||(n?r||(r=o):n=o,i=o)}(),s.call(this,o,u,c)};var u=[[],function(){return{}}],c=o.getRegister;o.getRegister=function(){var o=c.call(this);if(o)return o;var s,a=function(o){var s,u,c=0;for(var a in e)if(!t(a)){if(0===c&&a!==n||1===c&&a!==r)return a;s?(i=a,u=o&&u||a):s=a===i,c++}return u}(this.firstGlobalProp);if(!a)return u;try{s=e[a]}catch(f){return u}return[[],function(e){return{execute:function(){e(s),e({default:s,__useDefault:!0})}}}]};var a="undefined"!=typeof navigator&&-1!==navigator.userAgent.indexOf("Trident")}("undefined"!=typeof self?self:global),function(e){var t=e.System.constructor.prototype,r=/^[^#?]+\.(css|html|json|wasm)([?#].*)?$/,i=t.shouldFetch.bind(t);t.shouldFetch=function(e){return i(e)||r.test(e)};var o=/^application\/json(;|$)/,s=/^text\/css(;|$)/,u=/^application\/wasm(;|$)/,c=t.fetch;t.fetch=function(t,r){return c(t,r).then((function(i){if(r.passThrough)return i;if(!i.ok)return i;var c=i.headers.get("content-type");return o.test(c)?i.json().then((function(e){return new Response(new Blob(['System.register([],function(e){return{execute:function(){e("default",'+JSON.stringify(e)+")}}})"],{type:"application/javascript"}))})):s.test(c)?i.text().then((function(e){return e=e.replace(/url\(\s*(?:(["'])((?:\\.|[^\n\\"'])+)\1|((?:\\.|[^\s,"'()\\])+))\s*\)/g,(function(e,r,i,o){return["url(",r,n(i||o,t),r,")"].join("")})),new Response(new Blob(["System.register([],function(e){return{execute:function(){var s=new CSSStyleSheet();s.replaceSync("+JSON.stringify(e)+');e("default",s)}}})'],{type:"application/javascript"}))})):u.test(c)?(WebAssembly.compileStreaming?WebAssembly.compileStreaming(i):i.arrayBuffer().then(WebAssembly.compile)).then((function(n){e.System.wasmModules||(e.System.wasmModules=Object.create(null)),e.System.wasmModules[t]=n;var r=[],i=[];return WebAssembly.Module.imports&&WebAssembly.Module.imports(n).forEach((function(e){var t=JSON.stringify(e.module);-1===r.indexOf(t)&&(r.push(t),i.push("function(m){i["+t+"]=m}"))})),new Response(new Blob(["System.register(["+r.join(",")+"],function(e){var i={};return{setters:["+i.join(",")+"],execute:function(){return WebAssembly.instantiate(System.wasmModules["+JSON.stringify(t)+"],i).then(function(m){e(m.exports)})}}})"],{type:"application/javascript"}))})):i}))}}("undefined"!=typeof self?self:global);var q="undefined"!=typeof Symbol&&Symbol.toStringTag;I.get=function(e){var t=this[M][e];if(t&&null===t.e&&!t.E)return t.er?null:t.n},I.set=function(t,n){try{new URL(t)}catch(s){console.warn(Error(e("W3",'"'+t+'" is not a valid URL to set in the module registry')))}var r;q&&"Module"===n[q]?r=n:(r=Object.assign(Object.create(null),n),q&&Object.defineProperty(r,q,{value:"Module"}));var i=Promise.resolve(r),o=this[M][t]||(this[M][t]={id:t,i:[],h:!1,d:[],e:null,er:void 0,E:void 0});return!o.e&&!o.E&&(Object.assign(o,{n:r,I:void 0,L:void 0,C:i}),r)},I.has=function(e){return!!this[M][e]},I.delete=function(e){var t=this[M],n=t[e];if(!n||n.p&&null!==n.p.e||n.E)return!1;var r=n.i;return n.d&&n.d.forEach((function(e){var t=e.i.indexOf(n);-1!==t&&e.i.splice(t,1)})),delete t[e],function(){var n=t[e];if(!n||!r||null!==n.e||n.E)return!1;r.forEach((function(e){n.i.push(e),e(n.n)})),r=null}};var D="undefined"!=typeof Symbol&&Symbol.iterator;I.entries=function(){var e,t,n=this,r=Object.keys(n[M]),i=0,o={next:function(){for(;void 0!==(t=r[i++])&&void 0===(e=n.get(t)););return{done:void 0===t,value:void 0!==t&&[t,e]}}};return o[D]=function(){return this},o}}();
 !function(t){function e(t){t.registerRegistry=Object.create(null),t.namedRegisterAliases=Object.create(null)}var r=t.System;e(r);var i,s,n=r.constructor.prototype,l=r.constructor,a=function(){l.call(this),e(this)};a.prototype=n,r.constructor=a;var o=n.register;n.register=function(t,e,r,n){if("string"!=typeof t)return o.apply(this,arguments);var l=[e,r,n];return this.registerRegistry[t]=l,i||(i=l,s=t),Promise.resolve().then((function(){i=null,s=null})),o.apply(this,[e,r,n])};var u=n.resolve;n.resolve=function(t,e){try{return u.call(this,t,e)}catch(r){if(t in this.registerRegistry)return this.namedRegisterAliases[t]||t;throw r}};var c=n.instantiate;n.instantiate=function(t,e,r){var i=this.registerRegistry[t];return i?(this.registerRegistry[t]=null,i):c.call(this,t,e,r)};var g=n.getRegister;n.getRegister=function(t){var e=g.call(this,t);s&&t&&(this.namedRegisterAliases[s]=t);var r=i||e;return i=null,s=null,r}}("undefined"!=typeof self?self:global);
 ;(typeof System!='undefined')&&(System=new System.constructor());
-System.register("./___monkey.entry.js", [],(function(exports,module){'use strict';return{execute:(function(){exports({$:rdwPageHash,A:getFeatureEnabled,B:applyHeaderLayout,D:parseRdwHash,E:readFavoritesSyncMode,I:runFavoritesSync,J:createDynamicCollection,L:markFavoritesCurrent,Q:Q$1,W:resolveFavoritesUserId,a:mountCards,a$:SectionLabel,a0:createFavoritesSyncTabId,a2:readArtistsMirror,a3:listArtistTags,a4:writeArtistsMirror,a5:reloadFromStorage,a6:save,a8:setSyncState,aA:A,aB:Switch,aD:setTweaksEnabled,aG:setFeatureEnabled,aJ:applyStickyHeader,aK:NumberField,aM:setUpdatesGroupSize,aN:getUpdatesGroupSize,aP:setPlaylistChunkSize,aQ:getPlaylistChunkSize,aS:setGridFavButtonsEnabled,aT:setGridFavButtonsVisible,aV:IconChevronRight,aW:IconChevronDown,aX:Card,aY:P$1,ad:a,ae:applyTokenProperties,af:resolveAppearancePalette,ag:isCollectionDetailPage,ai:menuRouteForPage,aj:getSiteSkinCss,an:$$1,ay:d,az:T,b:mountFavoriteVideoMarks,b0:Select,b3:Segmented,b6:TextField,b7:Button,b8:clampBackgroundDim,bA:clearApiCredentials,bB:parseApiCredentials,bC:setApiCredentials,bF:toggleMaskToken,bG:maskHasToken,bH:createDefaultStorage,bI:clearStorageCache,bJ:clearFavsCache,bK:buildFileName,bL:writeFileMask,bM:readFileMask,bN:object,bP:optional,bQ:string,bS:literal,bU:isSiteUrl,bV:stripLegacyPanelWindowSize,bW:migrateMarksFavToFavs,bY:createDefaultFavs,bZ:parseFavsStrict,b_:setAppearance,ba:featurePanelLabel,bc:clearFeatureState,bd:applyCssOnlyFeatureEnabled,be:isFeatureEnabled,bg:setFeatureChoiceValue,bh:applyCssOnlyFeatureChoice,bi:getFeatureChoice,bj:createAutocompleteQuerier,bk:b,bl:readSiteBlacklist,bm:AutocompleteField,bn:Chip,bo:ProgressBar,bp:hasApiCredentials,br:createDefaultCustomTheme,bt:prepareBackgroundImageFile,bu:writeSiteBlacklist,bv:getApiCredentials,bw:readFavoriteIndex,bx:collectPostDetails,by:putFavoriteDetails,c:mountCommentsPage,c$:shuffleCollection,c0:extractFavIdsFromMarks,c5:getTweaksEnabled,c6:getGridFavButtonsEnabled,c7:takeSettingsSection,c8:getFeatureChoiceValue,c9:getScreenPixelSize,cB:getSeenPostId,cC:listFollowGroups,cD:followKindOf,cK:removeArtist,cL:completeLastQueryToken,cM:readLastQueryToken,cO:IconButton,cP:IconX,cQ:setFollowGroup,cR:removeArtists,cS:rememberArtistSnapshot,cT:fetchArtistSnapshot,cU:addArtists,cV:topFavoriteTags,cW:number,cX:int,cZ:w$1,c_:downloadsAvailable,ca:SearchField,cb:IconPlus,cc:EmptyState,cd:Dialog,ce:resolveCollectionKind,cf:isUnfilteredQuery,cg:dynamicHasNew,ch:deleteCollection,ci:QueryField,cj:createPlaylist,ck:buildSearchUrl,cl:fetchNextPage,cm:setDynamicCover,cn:readFirstThumbUrls,co:readResultCount,cp:setDynamicPostCount,cq:setDynamicNewest,cs:collectionDetailHash,ct:readCoverMirror,cv:extractPostIdFromThumb,cw:IconCheck,cx:readCountMirror,cy:dynamicCollectionMarkHash,cz:serialize,d:detectPageKind,d0:resetCollectionOrder,d1:Toast,d2:getCollectionOrder,d3:listPlaylists,d4:removePostsFromCollection,d5:isDownloadBusy,d6:startDownload,d7:movePostInCollection,d8:renameCollection,da:restorePosts,dc:collectionQueueHash,e:applyAppearanceTheme,f:ensureDocumentStyles,g:getAppearance,j:skinIsOn,l:loadFavSet,m:mountGifMarks,n:load,o:setFeatureState,r:runFeaturesYielding,s:syncFavoritesPage,t:normalizeArtistTag,u:getSyncState,v:getFeatureState,w:ensureStyleElement,x:buildOwnPageCss,y:yieldToMain});var STORAGE_KEY = "ruledesk-web.storage";
-var STORAGE_BACKUP_KEY = exports("b$","ruledesk-web.storage.backup");
-var FAVS_STORAGE_KEY = exports("bX","ruledesk-web.favs");
+System.register("./___monkey.entry.js", [],(function(exports,module){'use strict';return{execute:(function(){exports({B:getFeatureEnabled,D:applyHeaderLayout,E:parseRdwHash,G:readFavoritesSyncMode,J:runFavoritesSync,K:createDynamicCollection,N:markFavoritesCurrent,Q:Q$1,X:resolveFavoritesUserId,a:mountVideoMarks,a0:rdwPageHash,a1:createFavoritesSyncTabId,a3:readArtistsMirror,a4:listArtistTags,a5:writeArtistsMirror,a6:reloadFromStorage,a7:save,a9:setSyncState,aA:T,aB:A,aC:Switch,aE:setTweaksEnabled,aH:setFeatureEnabled,aK:applyStickyHeader,aL:NumberField,aN:setUpdatesGroupSize,aO:getUpdatesGroupSize,aQ:setPlaylistChunkSize,aR:getPlaylistChunkSize,aT:setGridFavButtonsEnabled,aU:setGridFavButtonsVisible,aW:IconChevronRight,aX:IconChevronDown,aY:Card,aZ:P$1,ae:a,af:applyTokenProperties,ag:resolveAppearancePalette,ah:isCollectionDetailPage,aj:menuRouteForPage,ak:getSiteSkinCss,ao:$$1,az:d,b:mountCards,b$:setAppearance,b0:SectionLabel,b1:Select,b4:Segmented,b7:TextField,b8:Button,b9:clampBackgroundDim,bB:clearApiCredentials,bC:parseApiCredentials,bD:setApiCredentials,bG:toggleMaskToken,bH:maskHasToken,bI:createDefaultStorage,bJ:clearStorageCache,bK:clearFavsCache,bL:buildFileName,bM:writeFileMask,bN:readFileMask,bO:object,bQ:optional,bR:string,bT:literal,bV:isSiteUrl,bW:stripLegacyPanelWindowSize,bX:migrateMarksFavToFavs,bZ:createDefaultFavs,b_:parseFavsStrict,bb:featurePanelLabel,bd:clearFeatureState,be:applyCssOnlyFeatureEnabled,bf:isFeatureEnabled,bh:setFeatureChoiceValue,bi:applyCssOnlyFeatureChoice,bj:getFeatureChoice,bk:createAutocompleteQuerier,bl:b,bm:readSiteBlacklist,bn:AutocompleteField,bo:Chip,bp:ProgressBar,bq:hasApiCredentials,bs:createDefaultCustomTheme,bu:prepareBackgroundImageFile,bv:writeSiteBlacklist,bw:getApiCredentials,bx:readFavoriteIndex,by:collectPostDetails,bz:putFavoriteDetails,c:mountFavoriteVideoMarks,c$:downloadsAvailable,c1:extractFavIdsFromMarks,c6:getTweaksEnabled,c7:getGridFavButtonsEnabled,c8:takeSettingsSection,c9:getFeatureChoiceValue,cA:serialize,cC:getSeenPostId,cD:listFollowGroups,cE:followKindOf,cL:removeArtist,cM:completeLastQueryToken,cN:readLastQueryToken,cP:IconButton,cQ:IconX,cR:setFollowGroup,cS:removeArtists,cT:rememberArtistSnapshot,cU:fetchArtistSnapshot,cV:addArtists,cW:topFavoriteTags,cX:number,cY:int,c_:w$1,ca:getScreenPixelSize,cb:SearchField,cc:IconPlus,cd:EmptyState,ce:Dialog,cf:resolveCollectionKind,cg:isUnfilteredQuery,ch:dynamicHasNew,ci:deleteCollection,cj:QueryField,ck:createPlaylist,cl:buildSearchUrl,cm:fetchNextPage,cn:setDynamicCover,co:readFirstThumbUrls,cp:readResultCount,cq:setDynamicPostCount,cr:setDynamicNewest,ct:collectionDetailHash,cu:readCoverMirror,cw:extractPostIdFromThumb,cx:IconCheck,cy:readCountMirror,cz:dynamicCollectionMarkHash,d:detectPageKind,d0:shuffleCollection,d1:resetCollectionOrder,d2:Toast,d3:getCollectionOrder,d4:listPlaylists,d5:removePostsFromCollection,d6:isDownloadBusy,d7:startDownload,d8:movePostInCollection,d9:renameCollection,db:restorePosts,dd:collectionQueueHash,e:mountCommentsPage,f:applyAppearanceTheme,g:getAppearance,h:ensureDocumentStyles,k:skinIsOn,l:loadFavSet,m:mountGifMarks,o:load,p:setFeatureState,r:runFeaturesYielding,s:syncFavoritesPage,u:normalizeArtistTag,v:getSyncState,w:getFeatureState,x:ensureStyleElement,y:yieldToMain,z:buildOwnPageCss});var STORAGE_KEY = "ruledesk-web.storage";
+var STORAGE_BACKUP_KEY = exports("c0","ruledesk-web.storage.backup");
+var FAVS_STORAGE_KEY = exports("bY","ruledesk-web.favs");
 var DEBUG_KEY = "ruledesk-web.debug";
-var APPEARANCE_BACKGROUND_KEY = exports("a1","ruledesk-web.appearance.background");
-var APPEARANCE_BACKGROUND_TOO_LARGE = exports("ax","Background image is too large (max 1.5 MB).");
+var APPEARANCE_BACKGROUND_KEY = exports("a2","ruledesk-web.appearance.background");
+var APPEARANCE_BACKGROUND_TOO_LARGE = exports("ay","Background image is too large (max 1.5 MB).");
 var TOKEN_STYLE_ID = "ruledesk-web-tokens";
 var SITE_SKIN_STYLE_ID = "ruledesk-web-site-skin";
 var RDW_SKIN_CLASS = "rdw-skin";
-var RDW_THEME_ATTR = exports("aq","data-rdw-theme");
-var APPEARANCE_THEME_SITE = exports("ar","site");
-var APPEARANCE_THEME_SITE_DARK = exports("as","site-dark");
-var APPEARANCE_THEME_LIGHT = exports("b1","light");
-var APPEARANCE_THEME_DARK = exports("b2","dark");
-var APPEARANCE_THEME_CUSTOM = exports("aZ","custom");
+var RDW_THEME_ATTR = exports("ar","data-rdw-theme");
+var APPEARANCE_THEME_SITE = exports("as","site");
+var APPEARANCE_THEME_SITE_DARK = exports("at","site-dark");
+var APPEARANCE_THEME_LIGHT = exports("b2","light");
+var APPEARANCE_THEME_DARK = exports("b3","dark");
+var APPEARANCE_THEME_CUSTOM = exports("a_","custom");
 var DEFAULT_APPEARANCE_THEME = APPEARANCE_THEME_LIGHT;
-var SITE_ORIGIN = exports("p","https://rule34.xxx");
-var SEARCH_PATH = exports("ac","/index.php");
-var SEARCH_PAGE = exports("cG","post");
-var SEARCH_SECTION = exports("cH","list");
-var SEARCH_SECTION_VIEW = exports("db","view");
-var SEARCH_PARAM_PAGE = exports("a9","page");
-var SEARCH_PARAM_TAGS = exports("q","tags");
-var FAVORITES_PAGE = exports("aa","favorites");
-var FAVORITES_SECTION_VIEW = exports("ab","view");
+var SITE_ORIGIN = exports("q","https://rule34.xxx");
+var SEARCH_PATH = exports("ad","/index.php");
+var SEARCH_PAGE = exports("cH","post");
+var SEARCH_SECTION = exports("cI","list");
+var SEARCH_SECTION_VIEW = exports("dc","view");
+var SEARCH_PARAM_PAGE = exports("aa","page");
+var SEARCH_PARAM_TAGS = exports("t","tags");
+var FAVORITES_PAGE = exports("ab","favorites");
+var FAVORITES_SECTION_VIEW = exports("ac","view");
 var FAVORITES_SECTION_DELETE = "delete";
 var FAVORITES_PARAM_RETURN_PID = "return_pid";
 var ADDFAV_PATH = "/public/addfav.php";
@@ -48,13 +48,13 @@ var VOTE_PARAM_PAGE = "page";
 var VOTE_PARAM_TYPE = "type";
 var VOTE_PAGE = "post";
 var VOTE_SECTION = "vote";
-var FETCH_CREDENTIALS = exports("cY","same-origin");
-var TAG_TYPE_INCLUDE = exports("cN","include");
+var FETCH_CREDENTIALS = exports("cZ","same-origin");
+var TAG_TYPE_INCLUDE = exports("cO","include");
 var TAG_TYPE_EXCLUDE = "exclude";
 var UPDATES_ID_PREFIX = "id:>";
-var IMPORT_SCHEMA_ERROR_PREFIX = exports("bT","File is not a RuleDesk Web export");
-var COLLECTION_KIND_SEARCH = exports("cu","search");
-var COLLECTION_KIND_POSTS = exports("cr","posts");
+var IMPORT_SCHEMA_ERROR_PREFIX = exports("bU","File is not a RuleDesk Web export");
+var COLLECTION_KIND_SEARCH = exports("cv","search");
+var COLLECTION_KIND_POSTS = exports("cs","posts");
 var DOCUMENT_STYLE_ID = "ruledesk-web-document-style";
 var UPDATES_BAR_ID = "ruledesk-web-updates-bar";
 var SITE_THEME_COOKIE_NAME = "theme";
@@ -123,10 +123,10 @@ var CSS_CLASS = exports("C",{
 });
 /** Hash routes and DOM ids for RuleDesk own pages (replaces floating panel). */
 var RDW_HASH_PREFIX = "#rdw/";
-var RDW_ROUTE_COLLECTIONS = exports("d9","collections");
+var RDW_ROUTE_COLLECTIONS = exports("da","collections");
 var RDW_ROUTE_FOLLOWING = "following";
 var RDW_ROUTE_SETTINGS = "settings";
-var RDW_ROUTE_STATS = exports("ah","stats");
+var RDW_ROUTE_STATS = exports("ai","stats");
 var RDW_ROUTES = [
 	RDW_ROUTE_COLLECTIONS,
 	RDW_ROUTE_FOLLOWING,
@@ -142,25 +142,25 @@ var RDW_COLLECTION_QUEUE_HASH_PREFIX = "#rdw-c=";
 * query narrows nothing: its bar must not show on the plain post list.
 */
 var RDW_DYNAMIC_MARK_HASH_PREFIX = "#rdw-dc=";
-var RDW_HASH_COLLECTIONS = exports("P",`${RDW_HASH_PREFIX}${RDW_ROUTE_COLLECTIONS}`);
-var RDW_HASH_FOLLOWING = exports("V",`${RDW_HASH_PREFIX}${RDW_ROUTE_FOLLOWING}`);
-var RDW_HASH_SETTINGS = exports("Z",`${RDW_HASH_PREFIX}${RDW_ROUTE_SETTINGS}`);
-var RDW_HASH_STATS = exports("X",`${RDW_HASH_PREFIX}${RDW_ROUTE_STATS}`);
+var RDW_HASH_COLLECTIONS = exports("T",`${RDW_HASH_PREFIX}${RDW_ROUTE_COLLECTIONS}`);
+var RDW_HASH_FOLLOWING = exports("W",`${RDW_HASH_PREFIX}${RDW_ROUTE_FOLLOWING}`);
+var RDW_HASH_SETTINGS = exports("_",`${RDW_HASH_PREFIX}${RDW_ROUTE_SETTINGS}`);
+var RDW_HASH_STATS = exports("Y",`${RDW_HASH_PREFIX}${RDW_ROUTE_STATS}`);
 /**
 * Key in `settings.features` for showing Statistics in the site menu.
 * It is a plain switch, not a page tweak with a module.
 */
-var STATS_MENU_SETTING_ID = exports("c3","stats-menu");
-var STATS_MENU_SETTING_LABEL = exports("aE","Statistics in site menu");
-var STATS_MENU_SWITCH_ID = exports("aF","rdw-stats-menu");
-var RDW_OWN_PAGE_CLASS = exports("z","rdw-own-page");
-var RDW_PAGE_ROOT_ID = exports("K","rdw-page-root");
+var STATS_MENU_SETTING_ID = exports("c4","stats-menu");
+var STATS_MENU_SETTING_LABEL = exports("aF","Statistics in site menu");
+var STATS_MENU_SWITCH_ID = exports("aG","rdw-stats-menu");
+var RDW_OWN_PAGE_CLASS = exports("A","rdw-own-page");
+var RDW_PAGE_ROOT_ID = exports("L","rdw-page-root");
 /** The download manager's panel: stays visible over the script's own pages. */
 var RDW_DOWNLOADS_PANEL_ID = "rdw-downloads";
 var RDW_OWN_PAGE_STYLE_ID = exports("R","rdw-own-page-style");
 var HEADER_SELECTOR$1 = exports("H","div#header");
-var NAVBAR_SELECTOR = exports("N","div#header ul#navbar");
-var CURRENT_PAGE_CLASS$1 = exports("a7","current-page");
+var NAVBAR_SELECTOR = exports("O","div#header ul#navbar");
+var CURRENT_PAGE_CLASS$1 = exports("a8","current-page");
 var MENU_ITEM_ID = exports("M",{
 	collections: "rdw-nav-collections",
 	following: "rdw-nav-following",
@@ -168,7 +168,7 @@ var MENU_ITEM_ID = exports("M",{
 	stats: "rdw-nav-stats",
 	settings: "rdw-nav-settings"
 });
-var MENU_LABEL = exports("T",{
+var MENU_LABEL = exports("V",{
 	collections: "Collections",
 	following: "Following",
 	favorites: "Favorites",
@@ -176,10 +176,10 @@ var MENU_LABEL = exports("T",{
 	settings: "RuleDesk"
 });
 /** Site native favorites entry (submenu); hidden when our Favorites item is shown. */
-var MY_FAVORITES_CONTAINER_ID = exports("Y","my-favorites-container");
-var FEED_MENU_ITEM_ID = exports("O","rdw-feed-menu");
+var MY_FAVORITES_CONTAINER_ID = exports("Z","my-favorites-container");
+var FEED_MENU_ITEM_ID = exports("P","rdw-feed-menu");
 /** Shared class names for own-page section layouts (relocated from ui/panel). */
-var PANEL_UI_CLASS = exports("ao",{
+var PANEL_UI_CLASS = exports("ap",{
 	scrollRegion: "rdw-scroll-region",
 	settingsGroup: "rdw-settings-group",
 	settingsRow: "rdw-settings-row",
@@ -188,16 +188,16 @@ var PANEL_UI_CLASS = exports("ao",{
 	settingsCaption: "rdw-settings-caption",
 	pageCard: "rdw-page-card"
 });
-var ARTISTS_EMPTY_TITLE = exports("cF","No followed artists yet");
-var ARTISTS_EMPTY_HINT = exports("cE","Follow artists with the Follow button next to their name in the tag list.");
-var ARTIST_FILTER_LABEL = exports("cI","Filter artists (several: space or comma)");
-var FEATURE_CHECKBOX_ID_PREFIX = exports("bb","rdw-feature-");
-var FEATURE_CHOICE_ID_PREFIX = exports("bf","rdw-feature-choice-");
-var UPDATES_GROUP_SIZE_ID = exports("aL","rdw-updates-group-size");
-var PLAYLIST_CHUNK_SIZE_ID = exports("aO","rdw-playlist-chunk-size");
-var ARTIST_FILTER_ID = exports("cJ","rdw-artist-filter");
-var GRID_FAV_CHECKBOX_ID = exports("aR","rdw-grid-fav-buttons");
-var TWEAKS_SWITCH_ID = exports("aC","rdw-tweaks-enabled");
+var ARTISTS_EMPTY_TITLE = exports("cG","No followed artists yet");
+var ARTISTS_EMPTY_HINT = exports("cF","Follow artists with the Follow button next to their name in the tag list.");
+var ARTIST_FILTER_LABEL = exports("cJ","Filter artists (several: space or comma)");
+var FEATURE_CHECKBOX_ID_PREFIX = exports("bc","rdw-feature-");
+var FEATURE_CHOICE_ID_PREFIX = exports("bg","rdw-feature-choice-");
+var UPDATES_GROUP_SIZE_ID = exports("aM","rdw-updates-group-size");
+var PLAYLIST_CHUNK_SIZE_ID = exports("aP","rdw-playlist-chunk-size");
+var ARTIST_FILTER_ID = exports("cK","rdw-artist-filter");
+var GRID_FAV_CHECKBOX_ID = exports("aS","rdw-grid-fav-buttons");
+var TWEAKS_SWITCH_ID = exports("aD","rdw-tweaks-enabled");
 var TAG_GROUPS_PANEL_LABEL = "Collapse tags";
 function featurePanelLabel(featureId, fallback) {
 	if (featureId === "tag-groups") return TAG_GROUPS_PANEL_LABEL;
@@ -296,7 +296,7 @@ function isDebugEnabled() {
 		return false;
 	}
 }
-var log = exports("k",{
+var log = exports("n",{
 	debug(message, ...details) {
 		if (!isDebugEnabled()) return;
 		console.debug(`[ruledesk-web] ${message}`, ...details);
@@ -2289,7 +2289,7 @@ function pruneMarksIfNeeded(marks, keepLimit = MARKS_KEEP_LIMIT) {
 * Design tokens for RuleDesk Web UI and site skin.
 * Light values match docs/design/mock-components.html.
 */
-var TOKEN_VAR = exports("ap",{
+var TOKEN_VAR = exports("aq",{
 	bg: "--rdw-bg",
 	surface: "--rdw-surface",
 	surface2: "--rdw-surface-2",
@@ -2423,8 +2423,8 @@ var CONTRAST_OFFSET$1 = .05;
 * Hex equivalents of `docs/design/site-desktop.css` light `* { --c-* }`.
 * Script-page Site default chrome; keep in sync with skin/theme site palette.
 */
-var SITE_LIGHT_C_BG = exports("at","#aae5a4");
-var SITE_LIGHT_C_BG_ALT = exports("au","#89cf81");
+var SITE_LIGHT_C_BG = exports("au","#aae5a4");
+var SITE_LIGHT_C_BG_ALT = exports("av","#89cf81");
 var SITE_LIGHT_C_BG_OVERLAY = "#98d491";
 var SITE_LIGHT_C_TEXT = "#000000";
 var SITE_LIGHT_C_LINK = "#000099";
@@ -2434,9 +2434,9 @@ var SITE_LIGHT_C_LINK = "#000099";
 */
 var SITE_LIGHT_TEXT_SOFT_AA = "#4d4d4d";
 /** Site dark script-page chrome (theme=site-dark). */
-var SITE_DARK_C_BG = exports("av","#303a30");
+var SITE_DARK_C_BG = exports("aw","#303a30");
 var SITE_DARK_C_SURFACE2 = "#303030";
-var SITE_DARK_C_BORDER = exports("aw","#505a50");
+var SITE_DARK_C_BORDER = exports("ax","#505a50");
 var SITE_DARK_C_TEXT = "#c0c0c0";
 var SITE_DARK_C_ACCENT = "#b0e0b0";
 /**
@@ -2614,8 +2614,8 @@ var CollectionSchema = /* @__PURE__ */ object({
 * a kind is an artist.
 */
 var FOLLOW_KIND_ARTIST = exports("F","artist");
-var FOLLOW_KIND_CHARACTER = exports("h","character");
-var FOLLOW_KIND_COPYRIGHT = exports("i","copyright");
+var FOLLOW_KIND_CHARACTER = exports("i","character");
+var FOLLOW_KIND_COPYRIGHT = exports("j","copyright");
 var FollowKindSchema = /* @__PURE__ */ _enum([
 	FOLLOW_KIND_ARTIST,
 	FOLLOW_KIND_CHARACTER,
@@ -2642,15 +2642,15 @@ var MarkFlagsSchema = /* @__PURE__ */ object({
 	fav: /* @__PURE__ */ optional(/* @__PURE__ */ boolean()),
 	seen: /* @__PURE__ */ optional(/* @__PURE__ */ boolean())
 });
-var AppearanceThemeSchema = exports("bs",/* @__PURE__ */ _enum([
+var AppearanceThemeSchema = exports("bt",/* @__PURE__ */ _enum([
 	APPEARANCE_THEME_SITE,
 	APPEARANCE_THEME_SITE_DARK,
 	APPEARANCE_THEME_LIGHT,
 	APPEARANCE_THEME_DARK,
 	APPEARANCE_THEME_CUSTOM
 ]));
-var APPEARANCE_CUSTOM_BASE_LIGHT = exports("b4","light");
-var APPEARANCE_CUSTOM_BASE_DARK = exports("b5","dark");
+var APPEARANCE_CUSTOM_BASE_LIGHT = exports("b5","light");
+var APPEARANCE_CUSTOM_BASE_DARK = exports("b6","dark");
 var AppearanceCustomBaseSchema = /* @__PURE__ */ _enum([APPEARANCE_CUSTOM_BASE_LIGHT, APPEARANCE_CUSTOM_BASE_DARK]);
 /** Canonical custom theme: Light/Dark base + optional background image/dim. */
 var AppearanceCustomSchema = /* @__PURE__ */ object({
@@ -2714,7 +2714,7 @@ var SettingsSchema = /* @__PURE__ */ object({
 	appearance: /* @__PURE__ */ optional(AppearanceStoredSchema)
 });
 var UpdatesSchema = /* @__PURE__ */ object({ seenPostId: int().check(/* @__PURE__ */ _nonnegative()) });
-var StorageSchema = exports("bO",/* @__PURE__ */ object({
+var StorageSchema = exports("bP",/* @__PURE__ */ object({
 	version: /* @__PURE__ */ literal(1),
 	collections: /* @__PURE__ */ array(CollectionSchema),
 	artists: /* @__PURE__ */ array(ArtistEntrySchema),
@@ -2749,7 +2749,7 @@ var FavsSyncSchema = /* @__PURE__ */ object({
 	lock: /* @__PURE__ */ optional(FavsSyncLockSchema),
 	mode: /* @__PURE__ */ optional(FavsSyncModeSchema)
 });
-var FavsSchema = exports("bR",/* @__PURE__ */ object({
+var FavsSchema = exports("bS",/* @__PURE__ */ object({
 	version: /* @__PURE__ */ literal(1),
 	ids: /* @__PURE__ */ array(int()),
 	sync: /* @__PURE__ */ optional(FavsSyncSchema)
@@ -4654,14 +4654,14 @@ function G(n, t) {
 	return "function" == typeof t ? t(n) : t;
 }
 /** A page may make the kit's controls larger by setting these on its root. */
-var KIT_CONTROL_HEIGHT_VAR = exports("ak","--rdw-control-h");
-var KIT_CONTROL_FONT_VAR = exports("al","--rdw-control-font");
+var KIT_CONTROL_HEIGHT_VAR = exports("al","--rdw-control-h");
+var KIT_CONTROL_FONT_VAR = exports("am","--rdw-control-font");
 var KIT_CONTROL_FONT_PX = 12;
 /** Height of a button, a field, a switch of options; 28px unless the page says otherwise. */
 var KIT_CONTROL_HEIGHT = `var(${KIT_CONTROL_HEIGHT_VAR}, ${String(28)}px)`;
 /** Text size inside those controls; 12px unless the page says otherwise. */
 var KIT_CONTROL_FONT = `var(${KIT_CONTROL_FONT_VAR}, ${String(KIT_CONTROL_FONT_PX)}px)`;
-var KIT_FOCUS_CSS = exports("a_",`
+var KIT_FOCUS_CSS = exports("a$",`
 .rdw-kit-focusable:focus-visible {
   outline: 2px solid var(--rdw-accent);
   outline-offset: 2px;
@@ -5227,19 +5227,6 @@ function IconImage(props) {
 				r: "1.5"
 			}),
 			/* @__PURE__ */ a("polyline", { points: "21 15 16 10 5 21" })
-		]
-	});
-}
-function IconShuffle(props) {
-	return /* @__PURE__ */ a("svg", {
-		...baseProps(props.size ?? DEFAULT_SIZE, props.className, props.title),
-		children: [
-			props.title !== void 0 ? /* @__PURE__ */ a("title", { children: props.title }) : null,
-			/* @__PURE__ */ a("path", { d: "m18 14 4 4-4 4" }),
-			/* @__PURE__ */ a("path", { d: "m18 2 4 4-4 4" }),
-			/* @__PURE__ */ a("path", { d: "M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22" }),
-			/* @__PURE__ */ a("path", { d: "M2 6h1.972a4 4 0 0 1 3.6 2.2" }),
-			/* @__PURE__ */ a("path", { d: "M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45" })
 		]
 	});
 }
@@ -7197,14 +7184,14 @@ function Toast(props) {
 *
 * No imports: used before the first paint as well as from settings.
 */
-var STICKY_HEADER_SETTING_ID = exports("c4","sticky-header");
-var STICKY_HEADER_SETTING_LABEL = exports("aH","Keep the header and the sidebar in place while scrolling");
-var STICKY_HEADER_SWITCH_ID = exports("aI","rdw-sticky-header");
+var STICKY_HEADER_SETTING_ID = exports("c5","sticky-header");
+var STICKY_HEADER_SETTING_LABEL = exports("aI","Keep the header and the sidebar in place while scrolling");
+var STICKY_HEADER_SWITCH_ID = exports("aJ","rdw-sticky-header");
 var STICKY_HEADER_CLASS = "rdw-sticky-header";
 /** Height of the sticky header; absent while the header is not sticky. */
 var HEADER_HEIGHT_VAR = "--rdw-header-h";
 /** Where a bar that sticks to the top of the window goes. */
-var STICKY_TOP = exports("aU",`var(${HEADER_HEIGHT_VAR}, 0px)`);
+var STICKY_TOP = exports("aV",`var(${HEADER_HEIGHT_VAR}, 0px)`);
 var HEADER_SELECTOR$2 = "div#header";
 var HEADER_Z_INDEX$1 = 25;
 /** The class of the skin on <html>; the same as RDW_SKIN_CLASS (no imports here). */
@@ -7228,7 +7215,7 @@ var SIDEBAR_FOOT_VAR = "--rdw-sidebar-foot";
 /** On the sidebar while it has more content below what is shown. */
 var SIDEBAR_MORE_CLASS = "rdw-sidebar-more";
 var SIDEBAR_FADE_PX = 32;
-var SCROLL_END_SLACK_PX = 2;
+var SCROLL_END_SLACK_PX$1 = 2;
 var STICKY_HEADER_CSS = `
 html.${STICKY_HEADER_CLASS} ${HEADER_SELECTOR$2} {
   position: sticky;
@@ -7299,7 +7286,7 @@ function writeSidebarFoot() {
 	const foot = tallestOther < window.innerHeight ? 0 : Math.max(0, Math.round(window.innerHeight - block.getBoundingClientRect().bottom));
 	root.style.setProperty(SIDEBAR_FOOT_VAR, `${String(foot)}px`);
 	const hidden = sidebar.scrollHeight - sidebar.scrollTop - sidebar.clientHeight;
-	sidebar.classList.toggle(SIDEBAR_MORE_CLASS, hidden > SCROLL_END_SLACK_PX);
+	sidebar.classList.toggle(SIDEBAR_MORE_CLASS, hidden > SCROLL_END_SLACK_PX$1);
 }
 /**
 * Runs on every scroll event. Browsers deliver those once per frame, and the
@@ -7471,7 +7458,7 @@ function readResultCount(root, tagsParam) {
 	};
 }
 var AUTOCOMPLETE_PATH = "/public/autocomplete.php";
-var AUTOCOMPLETE_TAG_TYPE_ARTIST = exports("cA","artist");
+var AUTOCOMPLETE_TAG_TYPE_ARTIST = exports("cB","artist");
 var HTTP_TOO_MANY_REQUESTS$1 = 429;
 var ABORT_ERROR_NAME = "AbortError";
 var AutocompleteResponseSchema = /* @__PURE__ */ array(/* @__PURE__ */ object({
@@ -7695,6 +7682,26 @@ function featureBodyClass(id) {
 function featureChoiceBodyClass(id, value) {
 	return `rdw-f-${id}-${value}`;
 }
+/**
+* On the element around the link of a video thumb (site/video-thumbs.ts puts
+* it there). Kept here, in a module that imports nothing, because both the
+* marking and the feature that draws the mark need it.
+*/
+var VIDEO_THUMB_CLASS = "rdw-video-thumb";
+/** How a label on a thumb looks: "GIF", and the play sign of a video. */
+var THUMB_LABEL_RULES = `
+  position: absolute;
+  left: ${String(6)}px;
+  bottom: ${String(6)}px;
+  z-index: 2;
+  padding: 1px 5px;
+  border: 1px solid var(--rdw-border);
+  border-radius: 4px;
+  background: var(--rdw-surface);
+  color: var(--rdw-text);
+  font: 700 10px/1.4 var(--rdw-font);
+  letter-spacing: 0.04em;
+  pointer-events: none;`;
 function detectPageKind(search) {
 	const params = new URLSearchParams(search);
 	const page = params.get(SEARCH_PARAM_PAGE);
@@ -7817,7 +7824,7 @@ function isBlacklisted(tags, score, rating, list) {
 	return false;
 }
 var FEATURE_ID$19 = "blacklist-hide";
-var FEATURE_LABEL$18 = "Hide blacklisted posts";
+var FEATURE_LABEL$19 = "Hide blacklisted posts";
 var FEATURE_PAGES$14 = ["list"];
 var BODY_FEATURE_CLASS$3 = featureBodyClass(FEATURE_ID$19);
 var CLASS_BLACKLISTED$1 = "rdw-blacklisted";
@@ -7875,7 +7882,7 @@ function mountBlacklistHide(ctx) {
 }
 var blacklistHideFeature = {
 	id: FEATURE_ID$19,
-	label: FEATURE_LABEL$18,
+	label: FEATURE_LABEL$19,
 	pages: [...FEATURE_PAGES$14],
 	defaultEnabled: true,
 	cssOnly: true,
@@ -7891,7 +7898,7 @@ var blacklistHideFeature = {
 * host, and only for an address on one of these hosts.
 */
 var FEATURE_ID$18 = "cdn-fallback";
-var FEATURE_LABEL$17 = "Retry a failed post image on other servers";
+var FEATURE_LABEL$18 = "Retry a failed post image on other servers";
 var FEATURE_PAGES$13 = ["post"];
 var POST_IMAGE_SELECTOR$1 = "img#image";
 var EVENT_ERROR = "error";
@@ -7941,7 +7948,7 @@ function mountCdnFallback(_ctx) {
 }
 var cdnFallbackFeature = {
 	id: FEATURE_ID$18,
-	label: FEATURE_LABEL$17,
+	label: FEATURE_LABEL$18,
 	pages: [...FEATURE_PAGES$13],
 	defaultEnabled: true,
 	css: "",
@@ -7967,9 +7974,9 @@ function downloadFolder(label) {
 	return safe.length > 0 ? safe : FOLDER_FALLBACK;
 }
 /** The name a file gets when no mask is set: `rule34-<post id>`. */
-var DEFAULT_FILE_MASK = exports("bD","rule34-[id]");
+var DEFAULT_FILE_MASK = exports("bE","rule34-[id]");
 /** What a mask may hold, in square brackets. */
-var FILE_MASK_TOKENS = exports("bE",[
+var FILE_MASK_TOKENS = exports("bF",[
 	"id",
 	"md5",
 	"rating",
@@ -8786,7 +8793,7 @@ function restoreDownloads() {
 * and Cancel.
 */
 var FEATURE_ID$17 = DOWNLOADS_FEATURE_ID;
-var FEATURE_LABEL$16 = "Download manager";
+var FEATURE_LABEL$17 = "Download manager";
 var FEATURE_PAGES$12 = [
 	"list",
 	"post",
@@ -8919,7 +8926,7 @@ function mountDownloads(_ctx) {
 }
 var downloadsFeature = {
 	id: FEATURE_ID$17,
-	label: FEATURE_LABEL$16,
+	label: FEATURE_LABEL$17,
 	pages: [...FEATURE_PAGES$12],
 	defaultEnabled: true,
 	css: `${FEATURE_CSS$15}
@@ -8936,7 +8943,7 @@ ${GRID_SELECT_CSS}`,
 */
 var FOCUS_KEY = "ruledesk-web.settings-focus";
 /** The id of the Favorites block of the settings page. */
-var SETTINGS_SECTION_FAVORITES = exports("bq","favorites");
+var SETTINGS_SECTION_FAVORITES = exports("br","favorites");
 function requestSettingsSection(id) {
 	try {
 		window.sessionStorage.setItem(FOCUS_KEY, id);
@@ -9354,9 +9361,9 @@ var DETAIL_HEIGHT = "height";
 var TERM_SEPARATOR = /\s+/;
 var EXCLUDE_PREFIX$1 = "-";
 var WILDCARD$1 = "*";
-var GROUP_OPEN = "(";
-var GROUP_CLOSE = ")";
-var GROUP_OR = "~";
+var GROUP_OPEN$1 = "(";
+var GROUP_CLOSE$1 = ")";
+var GROUP_OR$1 = "~";
 var FUZZY_SUFFIX = "~";
 var META_SEPARATOR = ":";
 var SORT_PREFIX = "sort";
@@ -9488,13 +9495,13 @@ function parseFavoritesQuery(text) {
 	for (const raw of text.toLowerCase().split(TERM_SEPARATOR)) {
 		if (raw.length === 0) continue;
 		if (group !== null) {
-			if (raw === GROUP_CLOSE) {
+			if (raw === GROUP_CLOSE$1) {
 				if (group.length > 0) anyOf.push(group);
 				group = null;
-			} else if (raw !== GROUP_OR) group.push(termPattern(raw));
+			} else if (raw !== GROUP_OR$1) group.push(termPattern(raw));
 			continue;
 		}
-		if (raw === GROUP_OPEN) {
+		if (raw === GROUP_OPEN$1) {
 			group = [];
 			continue;
 		}
@@ -9703,6 +9710,74 @@ function closestTag(tags, word) {
 	}
 	return best;
 }
+var GROUP_OPEN = "(";
+var GROUP_CLOSE = ")";
+var GROUP_OR = "~";
+var WORD = /\S+/g;
+/** "Any of 3 tags": what a group reads as on its chip. */
+function groupChipLabel(count) {
+	return `Any of ${String(count)} ${count === 1 ? "tag" : "tags"}`;
+}
+/** The query as chips, in the order typed. A group that is not closed yet is still one chip. */
+function queryChips(text) {
+	const chips = [];
+	let groupStart = null;
+	let groupCount = 0;
+	let lastEnd = 0;
+	for (const match of text.matchAll(WORD)) {
+		const word = match[0];
+		const start = match.index;
+		const end = start + word.length;
+		lastEnd = end;
+		if (groupStart !== null) {
+			if (word === GROUP_CLOSE) {
+				chips.push({
+					start: groupStart,
+					end,
+					label: groupChipLabel(groupCount),
+					excluded: false,
+					group: true
+				});
+				groupStart = null;
+			} else if (word !== GROUP_OR) groupCount += 1;
+			continue;
+		}
+		if (word === GROUP_OPEN) {
+			groupStart = start;
+			groupCount = 0;
+			continue;
+		}
+		const excluded = word.startsWith(EXCLUDE_PREFIX) && word.length > 1;
+		chips.push({
+			start,
+			end,
+			label: excluded ? word.slice(1) : word,
+			excluded,
+			group: false
+		});
+	}
+	if (groupStart !== null) chips.push({
+		start: groupStart,
+		end: lastEnd,
+		label: groupChipLabel(groupCount),
+		excluded: false,
+		group: true
+	});
+	return chips;
+}
+function tidy(text) {
+	return text.replace(/\s+/g, " ").trim();
+}
+/** The query without the chip. */
+function removeChip(text, chip) {
+	return tidy(`${text.slice(0, chip.start)} ${text.slice(chip.end)}`);
+}
+/** The query with the chip's word excluded, or included again; a group is left as it is. */
+function toggleChip(text, chip) {
+	if (chip.group) return text;
+	const word = chip.excluded ? chip.label : `${EXCLUDE_PREFIX}${chip.label}`;
+	return tidy(`${text.slice(0, chip.start)}${word}${text.slice(chip.end)}`);
+}
 /**
 * Search, the Images / Videos switch and endless scrolling on the Favorites
 * page, all from the local index (`src/storage/favorites-index.ts`), without
@@ -9718,27 +9793,22 @@ var FAVORITES_BROWSING_BODY_CLASS = "rdw-fav-browsing";
 var FAVORITES_RESULTS_CLASS = "rdw-fav-results";
 var MORE_CLASS = "rdw-fav-more";
 var CONTROLS_CLASS = "rdw-fav-controls";
+/** On the block the grid is in, once the column of filters is put beside it. */
+var FAVORITES_LAYOUT_CLASS = "rdw-fav-layout";
+var FAVORITES_SIDE_ID = "rdw-favorites-side";
+var FAVORITES_SIDE_CLASS = "rdw-fav-side";
+/** The child of the laid-out block that holds the column and gives it its place. */
+var FAVORITES_SIDE_SLOT_CLASS = "rdw-fav-side-slot";
+/** The width of the sidebar of Posts in the skin: the same column here. */
+var FAVORITES_SIDE_WIDTH_PX = 228;
+/** The column spans every row of the block: more than the block will ever have. */
+var SIDE_ROW_SPAN = 60;
 var STATUS_CLASS$2 = "rdw-fav-status";
 var SEARCH_BOX_CLASS = "rdw-fav-search-box";
 var GROUP_LABEL_CLASS = "rdw-fav-group-label";
 var COUNT_CLASS$2 = "rdw-favorites-count";
 /** The right end of the row: the buttons the bulk bar puts there. */
 var ACTIONS_CLASS$1 = "rdw-favorites-head-actions";
-/**
-* How far the row of controls has been squeezed to fit, on the row itself:
-* 0 all of it, 1 without the group labels, 2 with the search field at its
-* least width, 3 on two lines.
-*/
-var FIT_ATTRIBUTE = "data-fit";
-var FIT_STEPS = [
-	0,
-	1,
-	2,
-	3
-];
-var SEARCH_WIDTH_PX = 320;
-var SEARCH_MIN_WIDTH_PX = 200;
-var SEARCH_MAX_WIDTH_PX = 560;
 var SYNTAX_POPOVER_WIDTH_PX = 340;
 var VIEW_STATE_ID = "favorites-view";
 var VIEW_PAGES = "pages";
@@ -9785,13 +9855,42 @@ var SORT_LABEL = "Sort";
 * taken out: beside "Newest" it read as the same thing. Kaze, 17.11.2026.)
 */
 var ORDER_NEWEST = "newest";
-var SORT_OPTIONS$1 = [{
-	value: ORDER_NEWEST,
-	label: "Newest"
-}, {
-	value: "oldest",
-	label: "Oldest"
-}];
+var ORDER_OLDEST = "oldest";
+/**
+* A random order is the third option of the same switch (the designer,
+* 17.11.2026): as a button of its own it could be on while the switch still
+* said "Newest". A click on it while it is chosen shuffles again.
+*/
+var ORDER_SHUFFLE = "shuffle";
+var SORT_OPTIONS$1 = [
+	{
+		value: ORDER_NEWEST,
+		label: "Newest"
+	},
+	{
+		value: ORDER_OLDEST,
+		label: "Oldest"
+	},
+	{
+		value: ORDER_SHUFFLE,
+		label: "Shuffle"
+	}
+];
+var RESHUFFLE_HINT = "Click Shuffle again for another order.";
+var LOCKED_NOTICE = "Finish selecting to change filters.";
+var CHIPS_LABEL = "Search terms";
+var CHIP_EXCLUDE_TITLE = "Click to exclude, click again to include";
+var SIDE_GAP_PX = 12;
+var SIDE_FADE_PX = 28;
+var SCROLL_END_SLACK_PX = 2;
+var SIDE_MORE_CLASS = "rdw-fav-side--more";
+var SIDE_LOCKED_CLASS = "rdw-fav-side--locked";
+var SIDE_BODY_CLASS = "rdw-fav-side__body";
+var SIDE_GROUP_CLASS = "rdw-fav-side__group";
+var SIDE_LOCK_CLASS = "rdw-fav-side__lock";
+var SIDE_HINT_CLASS = "rdw-fav-side__hint";
+var CHIPS_CLASS$1 = "rdw-fav-chips";
+var CHIP_BUTTON_CLASS = "rdw-fav-chip";
 function isFavoritesOrder(value) {
 	return value === "newest" || value === "oldest";
 }
@@ -9799,8 +9898,6 @@ var MORE_LABEL$1 = "Show more";
 var LOCALE$2 = "en-US";
 var NO_INDEX_STATUS = "No index yet: run Full resync in RuleDesk → Favorites to search and scroll here.";
 var REMOVE_FAILED_STATUS = "Could not remove the favorite. Try again.";
-var SHUFFLE_LABEL = "Shuffle";
-var SHUFFLE_TITLE = "Show the favorites in a random order";
 var MEDIA_OPTIONS$1 = [
 	{
 		value: "all",
@@ -9836,46 +9933,122 @@ body:not(.${FAVORITES_BROWSING_BODY_CLASS}) .${FAVORITES_RESULTS_CLASS},
 body:not(.${FAVORITES_BROWSING_BODY_CLASS}) .${MORE_CLASS} {
   display: none;
 }
+/* The strip over the grid: the count, how the list is paged, the buttons. */
 .${CONTROLS_CLASS} {
   display: flex;
   flex: 1 1 auto;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.35rem 0.5rem;
+  gap: 0.35rem 0.75rem;
   min-width: 0;
-  overflow: hidden;
-  /* Room for the focus outline of the controls at the edges. */
-  padding: 3px;
-  margin: -3px;
-}
-.${CONTROLS_CLASS} > * {
-  flex: none;
 }
 .${CONTROLS_CLASS} .rdw-btn {
   font-weight: 500;
-}
-.${CONTROLS_CLASS} .${SEARCH_BOX_CLASS} {
-  flex: 1 1 ${String(SEARCH_WIDTH_PX)}px;
-  min-width: ${String(SEARCH_WIDTH_PX)}px;
-  max-width: ${String(SEARCH_MAX_WIDTH_PX)}px;
 }
 .${GROUP_LABEL_CLASS} {
   font: 12px var(--rdw-font);
   color: var(--rdw-muted);
 }
-.${CONTROLS_CLASS}:not([${FIT_ATTRIBUTE}="0"]) .${GROUP_LABEL_CLASS} {
-  display: none;
+/* The page in two columns: the filters, and everything the site put there.
+   Nothing of the site's is wrapped or moved; the block the grid is in becomes
+   a grid of its own, and the column of filters is one more child of it. */
+.${FAVORITES_LAYOUT_CLASS} {
+  display: grid !important;
+  grid-template-columns: ${String(FAVORITES_SIDE_WIDTH_PX)}px minmax(0, 1fr);
+  column-gap: 16px;
+  row-gap: 0;
+  align-items: start;
 }
-.${CONTROLS_CLASS}[${FIT_ATTRIBUTE}="2"] .${SEARCH_BOX_CLASS},
-.${CONTROLS_CLASS}[${FIT_ATTRIBUTE}="3"] .${SEARCH_BOX_CLASS} {
-  min-width: ${String(SEARCH_MIN_WIDTH_PX)}px;
+.${FAVORITES_LAYOUT_CLASS} > * {
+  grid-column: 2;
+  min-width: 0;
 }
-.${CONTROLS_CLASS}[${FIT_ATTRIBUTE}="3"] {
+/* The place of the column: the first column, every row. It takes no part in
+   the sizing of the rows (a child that spans rows makes them taller by its
+   own height), so its size is its place and nothing else. */
+.${FAVORITES_LAYOUT_CLASS} > .${FAVORITES_SIDE_SLOT_CLASS} {
+  grid-column: 1;
+  grid-row: 1 / span ${String(SIDE_ROW_SPAN)};
+  align-self: stretch;
+  contain: size;
+}
+/* Held beside the grid; taller than the window, it scrolls inside itself. */
+.${FAVORITES_SIDE_CLASS} {
+  box-sizing: border-box;
+  position: sticky;
+  top: calc(${STICKY_TOP} + ${String(SIDE_GAP_PX)}px);
+  max-height: calc(100vh - ${STICKY_TOP} - ${String(24)}px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--rdw-border) transparent;
+  color: var(--rdw-text);
+  font: 12px/1.4 var(--rdw-font);
+}
+.${FAVORITES_SIDE_CLASS} * {
+  font-family: var(--rdw-font);
+}
+/* A strip that fades the last lines while there is more below. Not a mask:
+   the suggestions and the "?" open from inside the column. */
+.${FAVORITES_SIDE_CLASS}.${SIDE_MORE_CLASS}::after {
+  content: "";
+  position: sticky;
+  bottom: 0;
+  display: block;
+  height: ${String(SIDE_FADE_PX)}px;
+  margin-top: -${String(SIDE_FADE_PX)}px;
+  background: linear-gradient(to bottom, transparent, var(--rdw-bg));
+  pointer-events: none;
+}
+.${SIDE_BODY_CLASS} {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  /* Room for the focus ring of the controls at the edges. */
+  padding: 3px;
+}
+.${SIDE_GROUP_CLASS} {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.${SIDE_HINT_CLASS} {
+  margin: 0;
+  color: var(--rdw-muted);
+  font-size: 11.5px;
+}
+.${CHIPS_CLASS$1} {
+  display: flex;
   flex-wrap: wrap;
+  gap: 4px;
 }
-.${CONTROLS_CLASS}[${FIT_ATTRIBUTE}="3"] .${SEARCH_BOX_CLASS} {
-  flex: 1 0 100%;
-  max-width: none;
+.${CHIP_BUTTON_CLASS} {
+  display: inline-flex;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+/* While posts are being selected the filters cannot be changed. */
+.${SIDE_LOCK_CLASS} {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin: 3px 3px 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--rdw-accent);
+  border-radius: var(--rdw-radius-m);
+  background: var(--rdw-accent-soft);
+  color: var(--rdw-text);
+}
+.${FAVORITES_SIDE_CLASS}.${SIDE_LOCKED_CLASS} .${SIDE_BODY_CLASS} {
+  opacity: 0.45;
+  pointer-events: none;
 }
 /* In place of the grid when nothing matches. */
 .${EMPTY_CLASS} {
@@ -9905,16 +10078,16 @@ body:not(.${FAVORITES_BROWSING_BODY_CLASS}) .${MORE_CLASS} {
   color: var(--rdw-muted);
 }
 .${COUNT_CLASS$2} {
-  margin-left: auto;
-  padding-left: 0.5rem;
   font: 12px var(--rdw-font);
   color: var(--rdw-muted);
   white-space: nowrap;
 }
+/* The buttons stand at the right end of the strip. */
 .${CONTROLS_CLASS} .${ACTIONS_CLASS$1} {
   display: flex;
   align-items: center;
   gap: 0.35rem 0.5rem;
+  margin-left: auto;
 }
 .${CONTROLS_CLASS} .${ACTIONS_CLASS$1}:empty {
   display: none;
@@ -10168,20 +10341,6 @@ function openRandomFavorite() {
 	const id = ids[Math.floor(Math.random() * ids.length)];
 	if (id !== void 0) window.location.assign(`${POST_HREF_PREFIX}${String(id)}`);
 }
-/**
-* Squeezes the row of controls until it fits its width, a step at a time, and
-* stops at the first step that fits. Measured, not tied to window widths: how
-* wide the controls are depends on the theme's font and on the labels.
-*/
-function fitControlsRow(row) {
-	let applied = FIT_STEPS[0];
-	for (const step of FIT_STEPS) {
-		applied = step;
-		row.setAttribute(FIT_ATTRIBUTE, String(step));
-		if (row.scrollWidth <= row.clientWidth) break;
-	}
-	return applied;
-}
 /** "cat* -video · Images": what the list is narrowed to, for the selection bar. */
 function favoritesFilterSummary(text, media) {
 	const parts = [];
@@ -10237,20 +10396,28 @@ function FavoritesBrowser(props = {}) {
 			return word === null || item === void 0 ? null : completeWord(value, word, item.insert);
 		}
 	}), [tagCounts]);
-	F(() => {
-		const row = rowRef.current;
-		if (row === null) return;
-		fitControlsRow(row);
-		if (typeof ResizeObserver !== "function") return;
-		const observer = new ResizeObserver(() => {
-			fitControlsRow(row);
-		});
-		observer.observe(row);
-		if (actionsSlotRef.current !== null) observer.observe(actionsSlotRef.current);
-		return () => {
-			observer.disconnect();
+	const { sideHost } = props;
+	A(() => {
+		if (sideHost === null || sideHost === void 0) return;
+		const sync = () => {
+			const hidden = sideHost.scrollHeight - sideHost.scrollTop - sideHost.clientHeight;
+			sideHost.classList.toggle(SIDE_MORE_CLASS, hidden > SCROLL_END_SLACK_PX);
 		};
-	}, []);
+		sync();
+		sideHost.addEventListener("scroll", sync, { passive: true });
+		window.addEventListener("resize", sync, { passive: true });
+		const observer = typeof ResizeObserver === "function" ? new ResizeObserver(sync) : null;
+		observer?.observe(sideHost);
+		return () => {
+			sideHost.removeEventListener("scroll", sync);
+			window.removeEventListener("resize", sync);
+			observer?.disconnect();
+		};
+	}, [sideHost]);
+	const locked = props.locked === true;
+	A(() => {
+		sideHost?.classList.toggle(SIDE_LOCKED_CLASS, locked);
+	}, [sideHost, locked]);
 	A(() => {
 		onRemoveFailed = () => {
 			setStatus(REMOVE_FAILED_STATUS);
@@ -10319,11 +10486,25 @@ function FavoritesBrowser(props = {}) {
 			actionsRef?.(null);
 		};
 	}, [actionsRef]);
-	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("div", {
-		className: CONTROLS_CLASS,
-		ref: rowRef,
+	const chips = queryChips(text);
+	const setQuery = (next) => {
+		setText(next);
+		setApplied(next);
+	};
+	const sortValue = shuffleSeed !== null ? ORDER_SHUFFLE : order;
+	const filters = /* @__PURE__ */ a($$1, { children: [locked ? /* @__PURE__ */ a("div", {
+		className: SIDE_LOCK_CLASS,
+		role: "status",
+		children: [/* @__PURE__ */ a("span", { children: LOCKED_NOTICE }), /* @__PURE__ */ a(Button, {
+			variant: "ghost",
+			size: "s",
+			onClick: () => props.onUnlock?.(),
+			children: UI_TEXT.cancel
+		})]
+	}) : null, /* @__PURE__ */ a("div", {
+		className: SIDE_BODY_CLASS,
+		...locked ? { inert: true } : {},
 		children: [
-			/* @__PURE__ */ a("style", { children: FAVORITES_BROWSER_CSS }),
 			/* @__PURE__ */ a(SearchField, {
 				id: SEARCH_FIELD_ID,
 				className: SEARCH_BOX_CLASS,
@@ -10337,77 +10518,106 @@ function FavoritesBrowser(props = {}) {
 				onChange: setText,
 				onCommit: setApplied
 			}),
-			/* @__PURE__ */ a("span", {
-				className: GROUP_LABEL_CLASS,
-				"aria-hidden": "true",
-				children: MEDIA_LABEL
-			}),
-			/* @__PURE__ */ a(Segmented, {
-				label: MEDIA_LABEL,
-				options: MEDIA_OPTIONS$1,
-				value: media,
-				onChange: (value) => {
-					if (isFavoritesMedia(value)) setMedia(value);
-				}
-			}),
-			/* @__PURE__ */ a("span", {
-				className: GROUP_LABEL_CLASS,
-				"aria-hidden": "true",
-				children: VIEW_LABEL
-			}),
-			/* @__PURE__ */ a(Segmented, {
-				label: VIEW_LABEL,
-				options: VIEW_OPTIONS,
-				value: view,
-				onChange: (value) => {
-					if (isFavoritesView(value)) {
-						setFeatureState(VIEW_STATE_ID, value);
-						setView(value);
-					}
-				}
-			}),
-			/* @__PURE__ */ a("span", {
-				className: GROUP_LABEL_CLASS,
-				"aria-hidden": "true",
-				children: SORT_LABEL
-			}),
-			/* @__PURE__ */ a(Segmented, {
-				label: SORT_LABEL,
-				options: SORT_OPTIONS$1,
-				value: order,
-				onChange: (value) => {
-					if (isFavoritesOrder(value)) {
-						setOrder(value);
-						if (value !== "newest") setShuffleSeed(null);
-					}
-				}
-			}),
-			/* @__PURE__ */ a(Button, {
-				variant: "secondary",
-				size: "s",
-				title: SHUFFLE_TITLE,
-				pressed: shuffleSeed !== null,
-				onClick: () => {
-					setShuffleSeed(shuffleSeed === null ? Date.now() : null);
-					setOrder(ORDER_NEWEST);
-				},
-				children: [/* @__PURE__ */ a(IconShuffle, { size: 14 }), SHUFFLE_LABEL]
-			}),
-			count.length > 0 ? /* @__PURE__ */ a("span", {
-				className: COUNT_CLASS$2,
+			notices.length > 0 ? /* @__PURE__ */ a("span", {
+				className: STATUS_CLASS$2,
 				role: "status",
-				children: count
+				children: notices.join(" ")
+			}) : null,
+			chips.length > 0 ? /* @__PURE__ */ a("div", {
+				className: CHIPS_CLASS$1,
+				role: "group",
+				"aria-label": CHIPS_LABEL,
+				children: chips.map((chip) => /* @__PURE__ */ a("button", {
+					type: "button",
+					className: `${CHIP_BUTTON_CLASS} rdw-kit-focusable`,
+					title: chip.group ? void 0 : CHIP_EXCLUDE_TITLE,
+					"aria-pressed": chip.group ? void 0 : chip.excluded,
+					onClick: (event) => {
+						const target = event.target;
+						if (target instanceof Element && target.closest("button") !== event.currentTarget) return;
+						setQuery(toggleChip(text, chip));
+					},
+					children: /* @__PURE__ */ a(Chip, {
+						label: chip.label,
+						variant: chip.group ? "group" : chip.excluded ? "exclude" : "dot",
+						onRemove: () => {
+							setQuery(removeChip(text, chip));
+						}
+					})
+				}, `${String(chip.start)}:${chip.label}`))
 			}) : null,
 			/* @__PURE__ */ a("div", {
-				className: ACTIONS_CLASS$1,
-				ref: actionsSlotRef
+				className: SIDE_GROUP_CLASS,
+				children: [/* @__PURE__ */ a(SectionLabel, { children: MEDIA_LABEL }), /* @__PURE__ */ a(Segmented, {
+					label: MEDIA_LABEL,
+					options: MEDIA_OPTIONS$1,
+					value: media,
+					onChange: (value) => {
+						if (isFavoritesMedia(value)) setMedia(value);
+					}
+				})]
+			}),
+			/* @__PURE__ */ a("div", {
+				className: SIDE_GROUP_CLASS,
+				children: [
+					/* @__PURE__ */ a(SectionLabel, { children: SORT_LABEL }),
+					/* @__PURE__ */ a(Segmented, {
+						label: SORT_LABEL,
+						options: SORT_OPTIONS$1,
+						value: sortValue,
+						onChange: (value) => {
+							if (value === "shuffle") {
+								setShuffleSeed(Date.now());
+								setOrder(ORDER_NEWEST);
+							} else if (isFavoritesOrder(value)) {
+								setShuffleSeed(null);
+								setOrder(value);
+							}
+						}
+					}),
+					shuffleSeed !== null ? /* @__PURE__ */ a("p", {
+						className: SIDE_HINT_CLASS,
+						children: RESHUFFLE_HINT
+					}) : null
+				]
 			})
 		]
-	}), notices.length > 0 ? /* @__PURE__ */ a("span", {
-		className: STATUS_CLASS$2,
-		role: "status",
-		children: notices.join(" ")
-	}) : null] });
+	})] });
+	return /* @__PURE__ */ a($$1, { children: [
+		/* @__PURE__ */ a("style", { children: FAVORITES_BROWSER_CSS }),
+		sideHost === null || sideHost === void 0 ? filters : U(filters, sideHost),
+		/* @__PURE__ */ a("div", {
+			className: CONTROLS_CLASS,
+			ref: rowRef,
+			children: [
+				count.length > 0 ? /* @__PURE__ */ a("span", {
+					className: COUNT_CLASS$2,
+					role: "status",
+					children: count
+				}) : null,
+				/* @__PURE__ */ a("span", {
+					className: GROUP_LABEL_CLASS,
+					"aria-hidden": "true",
+					children: VIEW_LABEL
+				}),
+				/* @__PURE__ */ a(Segmented, {
+					label: VIEW_LABEL,
+					options: VIEW_OPTIONS,
+					value: view,
+					onChange: (value) => {
+						if (isFavoritesView(value)) {
+							setFeatureState(VIEW_STATE_ID, value);
+							setView(value);
+						}
+					}
+				}),
+				/* @__PURE__ */ a("div", {
+					className: ACTIONS_CLASS$1,
+					ref: actionsSlotRef
+				})
+			]
+		})
+	] });
 }
 var BASE_GRID_CSS = `
 .${THUMB_CLASS} {
@@ -10899,7 +11109,7 @@ async function handleFavToggleClick(button, postId) {
 	log.warn("Favorite failed", postId, result);
 }
 var FEATURE_ID$16 = "playlist-menu";
-var FEATURE_LABEL$15 = "Add to collection button";
+var FEATURE_LABEL$16 = "Add to collection button";
 var FEATURE_PAGES$11 = [
 	"list",
 	"post",
@@ -11226,7 +11436,7 @@ function mountPlaylistMenu(ctx) {
 }
 var playlistMenuFeature = {
 	id: FEATURE_ID$16,
-	label: FEATURE_LABEL$15,
+	label: FEATURE_LABEL$16,
 	pages: [...FEATURE_PAGES$11],
 	defaultEnabled: true,
 	css: FEATURE_CSS$14,
@@ -11643,15 +11853,15 @@ function readFavoriteIndexEntries(page, run, firstPos, base = window.location.hr
 	return entries;
 }
 /** Minimum pause between sequential favorites page fetches. */
-var FAVORITES_SYNC_PAGE_PAUSE_MS = exports("bz",1500);
+var FAVORITES_SYNC_PAGE_PAUSE_MS = exports("bA",1500);
 /** Pauses before each of the three retries (HTTP error / missing paginator). */
 var FAVORITES_SYNC_RETRY_DELAYS_MS = [
 	1e4,
 	3e4,
 	6e4
 ];
-var FAVORITES_SYNC_MODE_INCREMENTAL = exports("c2",FAVS_SYNC_MODE_INCREMENTAL);
-var FAVORITES_SYNC_MODE_FULL = exports("G",FAVS_SYNC_MODE_FULL);
+var FAVORITES_SYNC_MODE_INCREMENTAL = exports("c3",FAVS_SYNC_MODE_INCREMENTAL);
+var FAVORITES_SYNC_MODE_FULL = exports("I",FAVS_SYNC_MODE_FULL);
 var MY_FAVORITES_LINK_SELECTOR$1 = "li#my-favorites-container a[href*=\"page=favorites\"]";
 var THUMB_SELECTOR$1 = "span.thumb";
 var THUMB_POST_LINK_SELECTOR = "span.thumb a[id^=\"p\"]";
@@ -12124,7 +12334,7 @@ async function runFavoritesSync(options) {
 	}
 }
 var FEATURE_ID$15 = "favorites-bulk";
-var FEATURE_LABEL$14 = "Bulk remove favorites";
+var FEATURE_LABEL$15 = "Bulk remove favorites";
 var FEATURE_PAGES$10 = ["favorites"];
 var ROOT_ID$2 = "rdw-favorites-bulk";
 var ROOT_CLASS$2 = "rdw-favorites-bulk";
@@ -12204,11 +12414,11 @@ var CHECK_SIZE = "1.25rem";
 var CHECK_INSET = "0.25rem";
 var CHECK_Z_INDEX = 2;
 var CHECK_FONT_SIZE = "0.75rem";
-var BODY_CLASS$8 = featureBodyClass(FEATURE_ID$15);
-var BODY_SELECTING_CLASS = `${BODY_CLASS$8}-selecting`;
+var BODY_CLASS$9 = featureBodyClass(FEATURE_ID$15);
+var BODY_SELECTING_CLASS = `${BODY_CLASS$9}-selecting`;
 var FEATURE_CSS$13 = `
-body.${BODY_CLASS$8} .${ROOT_CLASS$2},
-body.${BODY_CLASS$8} .${PIN_CLASS} {
+body.${BODY_CLASS$9} .${ROOT_CLASS$2},
+body.${BODY_CLASS$9} .${PIN_CLASS} {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -12219,19 +12429,25 @@ body.${BODY_CLASS$8} .${PIN_CLASS} {
   flex: 0 0 100%;
   grid-column: 1 / -1;
 }
+/* Beside the column of filters both stand in the second column of the block. */
+body.${BODY_CLASS$9} .${FAVORITES_LAYOUT_CLASS} > .${ROOT_CLASS$2},
+body.${BODY_CLASS$9} .${FAVORITES_LAYOUT_CLASS} > .${PIN_CLASS} {
+  grid-column: 2;
+  width: auto;
+}
 /* Holds only the page's heading, which is for screen readers: the menu
    already shows where you are. */
-body.${BODY_CLASS$8} .${ROOT_CLASS$2} {
+body.${BODY_CLASS$9} .${ROOT_CLASS$2} {
   position: relative;
   height: 0;
 }
 /* The space under the header is the row's own padding, so that the row has
    the same space above it as below it, held or not. */
-body.${BODY_CLASS$8} div#header {
+body.${BODY_CLASS$9} div#header {
   margin-bottom: 0 !important;
 }
 /* The row of search, filters and buttons (or of the selection) stays at the top. */
-body.${BODY_CLASS$8} .${PIN_CLASS} {
+body.${BODY_CLASS$9} .${PIN_CLASS} {
   gap: 0.35rem 0.5rem;
   padding: ${String(PIN_PADDING_PX)}px 0;
   position: sticky;
@@ -12239,17 +12455,17 @@ body.${BODY_CLASS$8} .${PIN_CLASS} {
   z-index: ${String(HEADER_Z_INDEX)};
   background: var(--rdw-bg);
 }
-body.${BODY_CLASS$8} .${FILTERS_CLASS} {
+body.${BODY_CLASS$9} .${FILTERS_CLASS} {
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
   flex: 1 1 auto;
   min-width: 0;
 }
-body.${BODY_CLASS$8} .${FILTERS_CLASS}[hidden] {
+body.${BODY_CLASS$9} .${FILTERS_CLASS}[hidden] {
   display: none;
 }
-body.${BODY_CLASS$8} .${TITLE_CLASS$2} {
+body.${BODY_CLASS$9} .${TITLE_CLASS$2} {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -12260,14 +12476,20 @@ body.${BODY_CLASS$8} .${TITLE_CLASS$2} {
   white-space: nowrap;
   border: 0;
 }
-body.${BODY_CLASS$8} .${ROOT_CLASS$2} .rdw-btn,
-body.${BODY_CLASS$8} .${PIN_CLASS} .rdw-btn {
+body.${BODY_CLASS$9} .${ROOT_CLASS$2} .rdw-btn,
+body.${BODY_CLASS$9} .${PIN_CLASS} .rdw-btn {
   font-weight: 500;
 }
-body.${BODY_CLASS$8} .${PIN_CLASS} .${BAR_CLASS$1} {
+/* The strip turned into the selection: filled, so that it is seen without
+   reading it that a click on a thumbnail now selects (the designer, 17.11.2026). */
+body.${BODY_CLASS$9} .${PIN_CLASS} .${BAR_CLASS$1} {
   flex: 1 1 auto;
+  padding: 4px 8px;
+  border-radius: var(--rdw-radius-m);
+  background: var(--rdw-accent-soft);
+  color: var(--rdw-text);
 }
-body.${BODY_CLASS$8} .${SUMMARY_CLASS} {
+body.${BODY_CLASS$9} .${SUMMARY_CLASS} {
   flex: 1 1 8rem;
   min-width: 0;
   overflow: hidden;
@@ -12333,7 +12555,7 @@ body.${BODY_CLASS$8} .${SUMMARY_CLASS} {
   gap: 0.35rem 0.5rem;
   margin-top: 0.25rem;
 }
-body.${BODY_CLASS$8} .${BAR_CLASS$1} {
+body.${BODY_CLASS$9} .${BAR_CLASS$1} {
   display: flex;
   flex: 0 1 auto;
   flex-wrap: wrap;
@@ -12341,35 +12563,35 @@ body.${BODY_CLASS$8} .${BAR_CLASS$1} {
   gap: 0.35rem 0.5rem;
   box-sizing: border-box;
 }
-body.${BODY_CLASS$8} .${STATUS_CLASS$1} {
+body.${BODY_CLASS$9} .${STATUS_CLASS$1} {
   flex: 0 1 auto;
   min-width: 0;
   font: inherit;
   font-size: 0.875rem;
   line-height: 1.3;
 }
-body.${BODY_CLASS$8} .${CONFIRM_CLASS} {
+body.${BODY_CLASS$9} .${CONFIRM_CLASS} {
   display: grid;
   gap: 0.75rem;
 }
-body.${BODY_CLASS$8} .${CONFIRM_ROW_CLASS} {
+body.${BODY_CLASS$9} .${CONFIRM_ROW_CLASS} {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem 0.5rem;
 }
-body.${BODY_CLASS$8} .${PROGRESS_WRAP_CLASS} {
+body.${BODY_CLASS$9} .${PROGRESS_WRAP_CLASS} {
   flex: 1 1 12rem;
   min-width: 8rem;
   max-width: 24rem;
 }
-body.${BODY_CLASS$8} span.thumb {
+body.${BODY_CLASS$9} span.thumb {
   position: relative;
 }
-body.${BODY_CLASS$8} span.thumb.${CLASS_THUMB_SELECTED} {
+body.${BODY_CLASS$9} span.thumb.${CLASS_THUMB_SELECTED} {
   outline: ${SELECT_OUTLINE_WIDTH} solid var(--rdw-accent, ${ACCENT_FALLBACK});
   outline-offset: ${SELECT_OUTLINE_OFFSET};
 }
-body.${BODY_CLASS$8} span.thumb > .${CLASS_THUMB_CHECK} {
+body.${BODY_CLASS$9} span.thumb > .${CLASS_THUMB_CHECK} {
   position: absolute;
   top: ${CHECK_INSET};
   left: ${CHECK_INSET};
@@ -12387,7 +12609,7 @@ body.${BODY_CLASS$8} span.thumb > .${CLASS_THUMB_CHECK} {
   line-height: 1;
   pointer-events: none;
 }
-body.${BODY_CLASS$8} span.thumb.${CLASS_THUMB_SELECTED} > .${CLASS_THUMB_CHECK} {
+body.${BODY_CLASS$9} span.thumb.${CLASS_THUMB_SELECTED} > .${CLASS_THUMB_CHECK} {
   display: inline-flex;
 }
 `.trim();
@@ -12741,6 +12963,7 @@ function FavoritesBulkBar(props) {
 		setSelected(/* @__PURE__ */ new Set());
 		setPhase({ kind: "idle" });
 	};
+	if (props.cancelRef !== void 0) props.cancelRef.current = resetToIdle;
 	const enterSelecting = () => {
 		setSelected(/* @__PURE__ */ new Set());
 		setPhase({ kind: "selecting" });
@@ -12982,6 +13205,7 @@ function FavoritesPanel(props) {
 	const [headActions, setHeadActions] = d(null);
 	const [busy, setBusy] = d(false);
 	const [summary, setSummary] = d("");
+	const cancelRef = T(null);
 	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("h1", {
 		className: TITLE_CLASS$2,
 		children: TITLE_TEXT
@@ -12990,13 +13214,19 @@ function FavoritesPanel(props) {
 		hidden: busy,
 		children: /* @__PURE__ */ a(FavoritesBrowser, {
 			actionsRef: setHeadActions,
-			onSummary: setSummary
+			onSummary: setSummary,
+			sideHost: props.side,
+			locked: busy,
+			onUnlock: () => {
+				cancelRef.current?.();
+			}
 		})
 	}), /* @__PURE__ */ a(FavoritesBulkBar, {
 		onSelectionModeChange: props.onSelectionModeChange,
 		headSlot: headActions,
 		summary,
-		onBusyChange: setBusy
+		onBusyChange: setBusy,
+		cancelRef
 	})] }), props.pin)] });
 }
 function mountFavoritesBulk(_ctx) {
@@ -13010,6 +13240,17 @@ function mountFavoritesBulk(_ctx) {
 	pin.className = PIN_CLASS;
 	host.parent.insertBefore(root, host.before);
 	host.parent.insertBefore(pin, host.before);
+	let side = null;
+	if (host.parent instanceof HTMLElement && host.parent !== document.body) {
+		const slot = document.createElement("div");
+		slot.className = FAVORITES_SIDE_SLOT_CLASS;
+		side = document.createElement("div");
+		side.id = FAVORITES_SIDE_ID;
+		side.className = FAVORITES_SIDE_CLASS;
+		slot.append(side);
+		host.parent.insertBefore(slot, root);
+		host.parent.classList.add(FAVORITES_LAYOUT_CLASS);
+	}
 	const siteGrid = document.querySelector(SITE_SELECTORS.imageList);
 	if (siteGrid !== null) bindInPlaceRemoval(siteGrid);
 	const onSelectionModeChange = (active) => {
@@ -13017,12 +13258,13 @@ function mountFavoritesBulk(_ctx) {
 	};
 	Q$1(/* @__PURE__ */ a(FavoritesPanel, {
 		pin,
+		side,
 		onSelectionModeChange
 	}), root);
 }
 var favoritesBulkFeature = {
 	id: FEATURE_ID$15,
-	label: FEATURE_LABEL$14,
+	label: FEATURE_LABEL$15,
 	pages: [...FEATURE_PAGES$10],
 	defaultEnabled: true,
 	css: FEATURE_CSS$13,
@@ -13906,7 +14148,7 @@ function mountFeedMerge(options) {
 	return true;
 }
 var FEATURE_ID$14 = "feed";
-var FEATURE_LABEL$13 = "Feed in site menu";
+var FEATURE_LABEL$14 = "Feed in site menu";
 var FEATURE_PAGES$9 = [
 	"list",
 	"post",
@@ -13942,12 +14184,12 @@ var NEW_PLAQUE_LEFT_PX = 6;
 var NEW_PLAQUE_TOP_PX = 6;
 var EVENT_PAGESHOW$1 = "pageshow";
 var EVENT_CLICK$2 = "click";
-var BODY_CLASS$7 = featureBodyClass(FEATURE_ID$14);
+var BODY_CLASS$8 = featureBodyClass(FEATURE_ID$14);
 var FEATURE_CSS$12 = `
-body.${BODY_CLASS$7} span.thumb.new.${THUMB_CLASS} {
+body.${BODY_CLASS$8} span.thumb.new.${THUMB_CLASS} {
   position: relative;
 }
-body.${BODY_CLASS$7} span.thumb.new.${THUMB_CLASS}::after {
+body.${BODY_CLASS$8} span.thumb.new.${THUMB_CLASS}::after {
   content: "NEW";
   position: absolute;
   z-index: 4;
@@ -13962,7 +14204,7 @@ body.${BODY_CLASS$7} span.thumb.new.${THUMB_CLASS}::after {
   pointer-events: none;
 }
 @supports (anchor-name: --a) {
-  body.${BODY_CLASS$7} span.thumb.new.${THUMB_CLASS}::after {
+  body.${BODY_CLASS$8} span.thumb.new.${THUMB_CLASS}::after {
     position-anchor: ${THUMB_ANCHOR_NAME};
     left: calc(anchor(left) + ${String(NEW_PLAQUE_LEFT_PX)}px);
     top: calc(anchor(top) + ${String(NEW_PLAQUE_TOP_PX)}px);
@@ -14108,7 +14350,7 @@ function mountFeed(ctx) {
 }
 var feedFeature = {
 	id: FEATURE_ID$14,
-	label: FEATURE_LABEL$13,
+	label: FEATURE_LABEL$14,
 	pages: [...FEATURE_PAGES$9],
 	defaultEnabled: true,
 	css: `${FEATURE_CSS$12}\n${FEED_MERGE_CSS}`,
@@ -14124,14 +14366,14 @@ var feedFeature = {
 * it. With several feed groups only the first is counted.
 */
 var FEATURE_ID$13 = "feed-counter";
-var FEATURE_LABEL$12 = "New posts counter beside Feed";
+var FEATURE_LABEL$13 = "New posts counter beside Feed";
 var FEED_COUNT_CLASS = "rdw-feed-count";
 var FEED_COUNT_CACHE_KEY = "ruledesk-web.feed-count";
-var BODY_CLASS$6 = featureBodyClass(FEATURE_ID$13);
+var BODY_CLASS$7 = featureBodyClass(FEATURE_ID$13);
 /** Every post of the page is new: there are more behind it. */
 var MORE_MARK = "+";
 var FEATURE_CSS$11 = `
-body.${BODY_CLASS$6} .${FEED_COUNT_CLASS} {
+body.${BODY_CLASS$7} .${FEED_COUNT_CLASS} {
   display: inline-block;
   min-width: 16px;
   margin-left: 6px;
@@ -14145,7 +14387,7 @@ body.${BODY_CLASS$6} .${FEED_COUNT_CLASS} {
   text-align: center;
   vertical-align: middle;
 }
-body:not(.${BODY_CLASS$6}) .${FEED_COUNT_CLASS} {
+body:not(.${BODY_CLASS$7}) .${FEED_COUNT_CLASS} {
   display: none;
 }
 `.trim();
@@ -14243,7 +14485,7 @@ function mountFeedCounter(_ctx) {
 }
 var feedCounterFeature = {
 	id: FEATURE_ID$13,
-	label: FEATURE_LABEL$12,
+	label: FEATURE_LABEL$13,
 	pages: [
 		"list",
 		"post",
@@ -14586,7 +14828,7 @@ function readCommentCount() {
 * post the user has opened.
 */
 var FEATURE_ID$12 = "gif-post";
-var FEATURE_LABEL$11 = "Play GIFs on the post page";
+var FEATURE_LABEL$12 = "Play GIFs on the post page";
 var GIF_PATH = /\.gif$/i;
 var GIF_PLAYING_ATTRIBUTE = "data-rdw-gif";
 function pathOf(url) {
@@ -14618,7 +14860,7 @@ function mountGifPost(_ctx) {
 }
 var gifPostFeature = {
 	id: FEATURE_ID$12,
-	label: FEATURE_LABEL$11,
+	label: FEATURE_LABEL$12,
 	pages: ["post"],
 	defaultEnabled: true,
 	settingsCaption: "The site shows a still copy of a GIF until its original is opened. With this on, the original is loaded at once.",
@@ -14654,7 +14896,7 @@ function gapCss() {
 		`}`
 	].join("\n");
 }
-var gridDensityFeature = exports("c1",{
+var gridDensityFeature = exports("c2",{
 	id: FEATURE_ID$11,
 	label: "Grid size",
 	pages: ["list", "favorites"],
@@ -14756,8 +14998,8 @@ body.${featureBodyClass(SEEN_DIM_FEATURE_ID)} .${SEEN_CLASS}:hover img.preview {
 * so the one thing it asks the site for is that file, and only on the click.
 */
 var FEATURE_ID$10 = "image-zoom";
-var FEATURE_LABEL$10 = "Zoom the picture on click";
-var BODY_CLASS$5 = featureBodyClass(FEATURE_ID$10);
+var FEATURE_LABEL$11 = "Zoom the picture on click";
+var BODY_CLASS$6 = featureBodyClass(FEATURE_ID$10);
 var VIEWER_ID = "rdw-image-viewer";
 var STAGE_CLASS = "rdw-image-viewer-stage";
 var IMAGE_CLASS = "rdw-image-viewer-image";
@@ -14782,7 +15024,7 @@ var TEXT_FIT = "Fit";
 var TEXT_ACTUAL = "1:1";
 var TEXT_CLOSE = "✕";
 var FEATURE_CSS$10 = `
-body.${BODY_CLASS$5} img#${IMAGE_ID} {
+body.${BODY_CLASS$6} img#${IMAGE_ID} {
   cursor: zoom-in;
 }
 #${VIEWER_ID} {
@@ -15048,7 +15290,7 @@ function openImageViewer(url, opener) {
 	root.focus();
 }
 function onImageClick(event) {
-	if (!document.body.classList.contains(BODY_CLASS$5)) return;
+	if (!document.body.classList.contains(BODY_CLASS$6)) return;
 	const target = event.target;
 	if (!(target instanceof HTMLImageElement) || target.id !== "image") return;
 	if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
@@ -15065,7 +15307,7 @@ function mountImageZoom(_ctx) {
 }
 var imageZoomFeature = {
 	id: FEATURE_ID$10,
-	label: FEATURE_LABEL$10,
+	label: FEATURE_LABEL$11,
 	pages: ["post"],
 	defaultEnabled: true,
 	cssOnly: true,
@@ -15074,7 +15316,7 @@ var imageZoomFeature = {
 	mount: mountImageZoom
 };
 var FEATURE_ID$9 = "infinite-scroll";
-var FEATURE_LABEL$9 = "Infinite scroll";
+var FEATURE_LABEL$10 = "Infinite scroll";
 var FEATURE_PAGES$8 = ["list"];
 var BODY_FEATURE_CLASS$2 = featureBodyClass(FEATURE_ID$9);
 /** Prefetch when remaining distance to list end ≤ this many viewport heights. */
@@ -15395,7 +15637,7 @@ function mountInfiniteScroll(_ctx) {
 }
 var infiniteScrollFeature = {
 	id: FEATURE_ID$9,
-	label: FEATURE_LABEL$9,
+	label: FEATURE_LABEL$10,
 	pages: [...FEATURE_PAGES$8],
 	defaultEnabled: true,
 	css: FEATURE_CSS$9,
@@ -15507,7 +15749,7 @@ ${appearRule(MOTION_BODY)}
 * The same for the script's own pages. They live in a shadow root, where a
 * class on <body> is reached only through `:host-context`.
 */
-var MOTION_PAGE_CSS = exports("am",`
+var MOTION_PAGE_CSS = exports("an",`
 @media (prefers-reduced-motion: no-preference) {
 ${APPEAR_KEYFRAMES}
 ${transitionRule(`:host-context(${MOTION_BODY})`)}
@@ -15539,7 +15781,7 @@ var motionFeature = {
 	mount: () => void 0
 };
 var FEATURE_ID$8 = "menu-cleanup";
-var FEATURE_LABEL$8 = "Clean header menu";
+var FEATURE_LABEL$9 = "Clean header menu";
 var CONTENT_ID$1 = "content";
 var HIDDEN_CLASS = "rdw-menu-hidden";
 var BODY_FEATURE_CLASS$1 = featureBodyClass(FEATURE_ID$8);
@@ -15595,7 +15837,7 @@ function mountMenuCleanup(_ctx) {
 }
 var menuCleanupFeature = {
 	id: FEATURE_ID$8,
-	label: FEATURE_LABEL$8,
+	label: FEATURE_LABEL$9,
 	pages: [...FEATURE_PAGES$7],
 	defaultEnabled: true,
 	cssOnly: true,
@@ -15603,7 +15845,7 @@ var menuCleanupFeature = {
 	mount: mountMenuCleanup
 };
 var FEATURE_ID$7 = "playlist-bar";
-var FEATURE_LABEL$7 = "Collection header";
+var FEATURE_LABEL$8 = "Collection header";
 var FEATURE_PAGES$6 = ["list"];
 var ROOT_ID$1 = "rdw-playlist-bar";
 var ROOT_CLASS$1 = "rdw-playlist-bar";
@@ -15641,9 +15883,9 @@ var BAR_BUTTON_SIZE = "s";
 var NAME_FONT_PX = 18;
 var ACTIONS_GAP_PX = 8;
 var WARN_MISSING_HOST = "playlist-bar: image-list not found; playlist bar not mounted";
-var BODY_CLASS$4 = featureBodyClass(FEATURE_ID$7);
+var BODY_CLASS$5 = featureBodyClass(FEATURE_ID$7);
 var FEATURE_CSS$7 = `
-body.${BODY_CLASS$4} .${ROOT_CLASS$1} {
+body.${BODY_CLASS$5} .${ROOT_CLASS$1} {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
@@ -15652,7 +15894,7 @@ body.${BODY_CLASS$4} .${ROOT_CLASS$1} {
   color: var(--rdw-text);
   box-sizing: border-box;
 }
-body.${BODY_CLASS$4} .${TITLE_CLASS$1} {
+body.${BODY_CLASS$5} .${TITLE_CLASS$1} {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
@@ -15661,14 +15903,14 @@ body.${BODY_CLASS$4} .${TITLE_CLASS$1} {
   font: inherit;
   line-height: 1.3;
 }
-body.${BODY_CLASS$4} .${NAME_CLASS} {
+body.${BODY_CLASS$5} .${NAME_CLASS} {
   font-size: ${String(NAME_FONT_PX)}px;
   font-weight: 700;
 }
-body.${BODY_CLASS$4} .${COUNT_CLASS} {
+body.${BODY_CLASS$5} .${COUNT_CLASS} {
   opacity: 0.85;
 }
-body.${BODY_CLASS$4} .${PARTS_CLASS} {
+body.${BODY_CLASS$5} .${PARTS_CLASS} {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -15677,25 +15919,25 @@ body.${BODY_CLASS$4} .${PARTS_CLASS} {
   font: inherit;
   line-height: 1.3;
 }
-body.${BODY_CLASS$4} .${PART_LABEL_CLASS} {
+body.${BODY_CLASS$5} .${PART_LABEL_CLASS} {
   flex: 0 0 auto;
 }
-body.${BODY_CLASS$4} a.${PART_LINK_CLASS} {
+body.${BODY_CLASS$5} a.${PART_LINK_CLASS} {
   color: inherit;
   text-decoration: underline;
 }
-body.${BODY_CLASS$4} a.${PART_LINK_CLASS}:focus-visible {
+body.${BODY_CLASS$5} a.${PART_LINK_CLASS}:focus-visible {
   outline: 2px solid var(--rdw-accent);
   outline-offset: 2px;
 }
-body.${BODY_CLASS$4} .${CAPTION_CLASS} {
+body.${BODY_CLASS$5} .${CAPTION_CLASS} {
   margin: 0;
   font: inherit;
   font-size: 0.875rem;
   line-height: 1.35;
   opacity: 0.8;
 }
-body.${BODY_CLASS$4} .${ACTIONS_CLASS} {
+body.${BODY_CLASS$5} .${ACTIONS_CLASS} {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -16057,7 +16299,7 @@ function mountPlaylistBar(ctx) {
 }
 var playlistBarFeature = {
 	id: FEATURE_ID$7,
-	label: FEATURE_LABEL$7,
+	label: FEATURE_LABEL$8,
 	pages: [...FEATURE_PAGES$6],
 	defaultEnabled: true,
 	css: FEATURE_CSS$7,
@@ -16324,7 +16566,7 @@ function scheduleAfterFirstPaint(callback) {
 * wrapper size via explicit width/height (overrides Fluid's intrinsic px).
 */
 var FEATURE_ID$6 = VIDEO_PLAYER_FEATURE_ID;
-var FEATURE_LABEL$6 = "Video player tweaks";
+var FEATURE_LABEL$7 = "Video player tweaks";
 var FEATURE_PAGES$5 = ["post"];
 var VIDEO_ELEMENT_ID = "gelcomVideoPlayer";
 var FLUID_WRAPPER_ID = "fluid_video_wrapper_gelcomVideoPlayer";
@@ -16332,8 +16574,8 @@ var FLUID_WRAPPER_CLASS = "fluid_video_wrapper";
 var VOLUME_MIN = 0;
 var VOLUME_MAX = 1;
 var CHROME_GAP_PX = 12;
-var BODY_CLASS$3 = featureBodyClass(FEATURE_ID$6);
-var BODY_SELECTOR$2 = `body.${BODY_CLASS$3}`;
+var BODY_CLASS$4 = featureBodyClass(FEATURE_ID$6);
+var BODY_SELECTOR$2 = `body.${BODY_CLASS$4}`;
 var WRAPPER_SELECTOR = `#${FLUID_WRAPPER_ID}.${FLUID_WRAPPER_CLASS}`;
 var SIZE_LABEL_FIT_HEIGHT = "Fit height";
 var SIZE_LABEL_FIT_WIDTH = "Fit width";
@@ -16421,7 +16663,7 @@ function clearWrapperSize(wrapper) {
 	wrapper.style.removeProperty("height");
 }
 function applyWrapperSize(wrapper, video) {
-	if (!document.body.classList.contains(BODY_CLASS$3)) {
+	if (!document.body.classList.contains(BODY_CLASS$4)) {
 		clearWrapperSize(wrapper);
 		return;
 	}
@@ -16498,7 +16740,7 @@ function bindPlayer(ctx, video) {
 */
 function bindClickToToggle(video) {
 	video.addEventListener("click", (event) => {
-		if (!document.body.classList.contains(BODY_CLASS$3) || event.button !== 0) return;
+		if (!document.body.classList.contains(BODY_CLASS$4) || event.button !== 0) return;
 		event.preventDefault();
 		event.stopImmediatePropagation();
 		if (video.paused) video.play().catch(() => void 0);
@@ -16515,7 +16757,7 @@ function mountVideoPlayer(ctx) {
 }
 var videoPlayerFeature = {
 	id: FEATURE_ID$6,
-	label: FEATURE_LABEL$6,
+	label: FEATURE_LABEL$7,
 	pages: [...FEATURE_PAGES$5],
 	defaultEnabled: true,
 	cssOnly: true,
@@ -17049,7 +17291,7 @@ function StatRowView(props) {
 	})] });
 }
 var FEATURE_ID$5 = "post-actions";
-var FEATURE_LABEL$5 = "Post side panel";
+var FEATURE_LABEL$6 = "Post side panel";
 var FEATURE_PAGES$4 = ["post"];
 /** Body class while the panel host is in the document — CSS hide handoff for G. */
 var POST_PANEL_MOUNTED_CLASS = "rdw-post-panel-mounted";
@@ -17299,7 +17541,7 @@ function mountPostActions(ctx) {
 	host.id = POST_ACTIONS_ID;
 	host.className = CLASS_PANEL;
 	host.setAttribute("role", "complementary");
-	host.setAttribute("aria-label", FEATURE_LABEL$5);
+	host.setAttribute("aria-label", FEATURE_LABEL$6);
 	const postId = readPostIdFromSearch(ctx.search);
 	panelHost = host;
 	document.body.classList.add(POST_PANEL_MOUNTED_CLASS);
@@ -17309,7 +17551,7 @@ function mountPostActions(ctx) {
 }
 var postActionsFeature = {
 	id: FEATURE_ID$5,
-	label: FEATURE_LABEL$5,
+	label: FEATURE_LABEL$6,
 	pages: [...FEATURE_PAGES$4],
 	defaultEnabled: true,
 	css: FEATURE_CSS$5,
@@ -17804,7 +18046,7 @@ function mountSiteSearchTools(input) {
 	Q$1(/* @__PURE__ */ a(SiteSearchTools, { input }), tools);
 }
 var FEATURE_ID$4 = "search-tools";
-var FEATURE_LABEL$4 = "Search tools";
+var FEATURE_LABEL$5 = "Search tools";
 var FEATURE_PAGES$3 = ["list", "post"];
 /**
 * Followed artists for the Feed chip (read-only).
@@ -17850,7 +18092,7 @@ var EVENT_CHANGE = "change";
 var EVENT_CLICK = "click";
 var EVENT_AWESOMPLETE_SELECT = "awesomplete-selectcomplete";
 var WARN_NO_FORM = "search-tools: search form not found; not mounted";
-var BODY_CLASS$2 = featureBodyClass(FEATURE_ID$4);
+var BODY_CLASS$3 = featureBodyClass(FEATURE_ID$4);
 var FILTER_AI_WAIT_TIMEOUT_MS = 4e3;
 var FILTER_AI_OBSERVER_OPTIONS = {
 	childList: true,
@@ -17922,65 +18164,65 @@ var SEARCH_ICON_MASK = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org
 /** The width the skin gives the sidebar (site-skin.ts); the panel is drawn for it. */
 var SIDEBAR_WIDTH_PX = 228;
 var FEATURE_CSS$4 = [
-	`body.${BODY_CLASS$2} .${ROOT_CLASS} {`,
+	`body.${BODY_CLASS$3} .${ROOT_CLASS} {`,
 	"  margin-top: 8px;",
 	"  max-width: 100%;",
 	"  box-sizing: border-box;",
 	"}",
-	`body.${BODY_CLASS$2} div.sidebar {`,
+	`body.${BODY_CLASS$3} div.sidebar {`,
 	`  width: ${String(SIDEBAR_WIDTH_PX)}px;`,
 	`  min-width: ${String(SIDEBAR_WIDTH_PX)}px;`,
 	`  max-width: ${String(SIDEBAR_WIDTH_PX)}px;`,
 	"}",
-	`body.${BODY_CLASS$2} .${ROOT_CLASS} {`,
+	`body.${BODY_CLASS$3} .${ROOT_CLASS} {`,
 	"  font-family: var(--rdw-font);",
 	"}",
-	`body.${BODY_CLASS$2} .${ROOT_CLASS} * {`,
+	`body.${BODY_CLASS$3} .${ROOT_CLASS} * {`,
 	"  font-family: var(--rdw-font);",
 	"}",
-	`body.${BODY_CLASS$2} .${CARD_CLASS} {`,
+	`body.${BODY_CLASS$3} .${CARD_CLASS} {`,
 	"  padding: 10px;",
 	"  display: grid;",
 	"  gap: 10px;",
 	"}",
-	`body.${BODY_CLASS$2} .${CHIPS_CLASS} {`,
+	`body.${BODY_CLASS$3} .${CHIPS_CLASS} {`,
 	"  display: flex;",
 	"  flex-wrap: wrap;",
 	"  gap: 5px;",
 	"}",
-	`body.${BODY_CLASS$2} .${CHIP_CLASS} {`,
+	`body.${BODY_CLASS$3} .${CHIP_CLASS} {`,
 	"  cursor: default;",
 	"}",
-	`body.${BODY_CLASS$2} .${CHIP_CLASS}[${CHIP_ATTR_TOGGLE}="1"] {`,
+	`body.${BODY_CLASS$3} .${CHIP_CLASS}[${CHIP_ATTR_TOGGLE}="1"] {`,
 	"  cursor: pointer;",
 	"}",
-	`body.${BODY_CLASS$2} .${FIELD_CLASS} {`,
+	`body.${BODY_CLASS$3} .${FIELD_CLASS} {`,
 	"  display: grid;",
 	"  gap: 0;",
 	"  min-width: 0;",
 	"}",
-	`body.${BODY_CLASS$2} .${ROW_SORT_CLASS} {`,
+	`body.${BODY_CLASS$3} .${ROW_SORT_CLASS} {`,
 	"  display: grid;",
 	"  grid-template-columns: 1fr 72px;",
 	"  gap: 8px;",
 	"  align-items: start;",
 	"}",
-	`body.${BODY_CLASS$2} .${FOOT_CLASS$1} {`,
+	`body.${BODY_CLASS$3} .${FOOT_CLASS$1} {`,
 	"  display: flex;",
 	"  flex-wrap: wrap;",
 	"  gap: 6px;",
 	"  border-top: 1px solid var(--rdw-border);",
 	"  padding-top: 10px;",
 	"}",
-	`body.${BODY_CLASS$2} .${FOOT_CLASS$1} > button {`,
+	`body.${BODY_CLASS$3} .${FOOT_CLASS$1} > button {`,
 	"  flex: 1 1 auto;",
 	"  white-space: nowrap;",
 	"}",
-	`body.${BODY_CLASS$2} .${SITE_SEARCH_BOX_CLASS} {`,
+	`body.${BODY_CLASS$3} .${SITE_SEARCH_BOX_CLASS} {`,
 	"  position: relative;",
 	"  display: block;",
 	"}",
-	`body.${BODY_CLASS$2} .${SITE_SEARCH_BOX_CLASS}::before {`,
+	`body.${BODY_CLASS$3} .${SITE_SEARCH_BOX_CLASS}::before {`,
 	"  content: \"\";",
 	"  position: absolute;",
 	"  left: 9px;",
@@ -17994,12 +18236,12 @@ var FEATURE_CSS$4 = [
 	`  mask: ${SEARCH_ICON_MASK};`,
 	"  pointer-events: none;",
 	"}",
-	`body.${BODY_CLASS$2} .${SITE_SEARCH_BOX_CLASS} > input[name="tags"] {`,
+	`body.${BODY_CLASS$3} .${SITE_SEARCH_BOX_CLASS} > input[name="tags"] {`,
 	"  padding-left: 30px !important;",
 	"  padding-right: 54px !important;",
 	"  box-sizing: border-box;",
 	"}",
-	`body.${BODY_CLASS$2} .${SITE_SEARCH_TOOLS_CLASS} {`,
+	`body.${BODY_CLASS$3} .${SITE_SEARCH_TOOLS_CLASS} {`,
 	"  position: absolute;",
 	"  right: 4px;",
 	"  top: 50%;",
@@ -18008,7 +18250,7 @@ var FEATURE_CSS$4 = [
 	"  display: flex;",
 	"  gap: 2px;",
 	"}",
-	`body.${BODY_CLASS$2} button.${SITE_SEARCH_TOOL_CLASS} {`,
+	`body.${BODY_CLASS$3} button.${SITE_SEARCH_TOOL_CLASS} {`,
 	"  display: inline-grid;",
 	"  place-items: center;",
 	"  width: 22px;",
@@ -18022,10 +18264,10 @@ var FEATURE_CSS$4 = [
 	"  color: var(--rdw-muted);",
 	"  cursor: pointer;",
 	"}",
-	`body.${BODY_CLASS$2} button.${SITE_SEARCH_TOOL_CLASS}:hover {`,
+	`body.${BODY_CLASS$3} button.${SITE_SEARCH_TOOL_CLASS}:hover {`,
 	"  color: var(--rdw-text);",
 	"}",
-	`body.${BODY_CLASS$2} .${FOOT_CLASS$1} > .${SELECT_NOTE_CLASS} {`,
+	`body.${BODY_CLASS$3} .${FOOT_CLASS$1} > .${SELECT_NOTE_CLASS} {`,
 	"  flex: 1 1 100%;",
 	"  font: 12px/1.4 var(--rdw-font);",
 	"  color: var(--rdw-muted);",
@@ -18694,14 +18936,14 @@ function mountSearchTools(_ctx) {
 }
 var searchToolsFeature = {
 	id: FEATURE_ID$4,
-	label: FEATURE_LABEL$4,
+	label: FEATURE_LABEL$5,
 	pages: [...FEATURE_PAGES$3],
 	defaultEnabled: true,
 	css: FEATURE_CSS$4,
 	mount: mountSearchTools
 };
 var FEATURE_ID$3 = "tag-groups";
-var FEATURE_LABEL$3 = "Collapse tags";
+var FEATURE_LABEL$4 = "Collapse tags";
 var TAG_SIDEBAR_SELECTOR$1 = "ul#tag-sidebar";
 var TOGGLE_CLASS = "rdw-tag-group-toggle";
 var COLLAPSED_CLASS = "rdw-tag-group-collapsed";
@@ -18819,7 +19061,7 @@ function mountTagGroups(ctx) {
 }
 var tagGroupsFeature = {
 	id: FEATURE_ID$3,
-	label: FEATURE_LABEL$3,
+	label: FEATURE_LABEL$4,
 	pages: [...FEATURE_PAGES$2],
 	defaultEnabled: true,
 	css: FEATURE_CSS$3,
@@ -18836,8 +19078,8 @@ var tagGroupsFeature = {
 * the middle button, opens the wiki as before.
 */
 var FEATURE_ID$2 = "tag-wiki";
-var FEATURE_LABEL$2 = "Tag description on the ? in the sidebar";
-var BODY_CLASS$1 = featureBodyClass(FEATURE_ID$2);
+var FEATURE_LABEL$3 = "Tag description on the ? in the sidebar";
+var BODY_CLASS$2 = featureBodyClass(FEATURE_ID$2);
 var SIDEBAR_SELECTOR = "ul#tag-sidebar";
 var HELP_LINK_TEXT = "?";
 var WIKI_HREF_MARK = "page=wiki";
@@ -19079,7 +19321,7 @@ function showFor(link, tag) {
 	});
 }
 function onSidebarClick(event) {
-	if (!document.body.classList.contains(BODY_CLASS$1)) return;
+	if (!document.body.classList.contains(BODY_CLASS$2)) return;
 	if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
 	const target = event.target;
 	const link = target instanceof Element ? target.closest("a") : null;
@@ -19102,7 +19344,7 @@ function mountTagWiki(_ctx) {
 }
 var tagWikiFeature = {
 	id: FEATURE_ID$2,
-	label: FEATURE_LABEL$2,
+	label: FEATURE_LABEL$3,
 	pages: ["list", "post"],
 	defaultEnabled: true,
 	cssOnly: true,
@@ -19122,24 +19364,24 @@ var tagWikiFeature = {
 * before.
 */
 var FEATURE_ID$1 = "thumb-tooltip";
-var FEATURE_LABEL$1 = "Hide tag tooltip on thumbnails";
+var FEATURE_LABEL$2 = "Hide tag tooltip on thumbnails";
 /** "other" is for the Comments page; elsewhere the rules match nothing. */
 var FEATURE_PAGES$1 = [
 	"list",
 	"favorites",
 	"other"
 ];
-var BODY_CLASS = featureBodyClass(FEATURE_ID$1);
+var BODY_CLASS$1 = featureBodyClass(FEATURE_ID$1);
 /** Added when the site lays the thumb link out inline (see mount). */
-var THUMB_TOOLTIP_INLINE_CLASS = `${BODY_CLASS}-inline`;
+var THUMB_TOOLTIP_INLINE_CLASS = `${BODY_CLASS$1}-inline`;
 var DISPLAY_INLINE = "inline";
 var THUMB_LINK_SELECTOR = `:is(${SITE_SELECTORS.thumb}, ${SITE_SELECTORS.commentThumb}) > a:not([onclick])`;
 var FEATURE_CSS$1 = `
-body.${BODY_CLASS} ${SITE_SELECTORS.thumb} > a > img,
-body.${BODY_CLASS} ${SITE_SELECTORS.commentThumb} > a > img {
+body.${BODY_CLASS$1} ${SITE_SELECTORS.thumb} > a > img,
+body.${BODY_CLASS$1} ${SITE_SELECTORS.commentThumb} > a > img {
   pointer-events: none;
 }
-body.${BODY_CLASS}.${THUMB_TOOLTIP_INLINE_CLASS} ${THUMB_LINK_SELECTOR} {
+body.${BODY_CLASS$1}.${THUMB_TOOLTIP_INLINE_CLASS} ${THUMB_LINK_SELECTOR} {
   display: inline-block;
 }
 `.trim();
@@ -19155,12 +19397,60 @@ function mountThumbTooltip(_ctx) {
 }
 var thumbTooltipFeature = {
 	id: FEATURE_ID$1,
-	label: FEATURE_LABEL$1,
+	label: FEATURE_LABEL$2,
 	pages: [...FEATURE_PAGES$1],
 	defaultEnabled: true,
 	css: FEATURE_CSS$1,
 	cssOnly: true,
 	mount: mountThumbTooltip
+};
+/**
+* How a video is told from a picture in a grid: a play sign in a small plate
+* on the thumbnail, the same plate "GIF" has, in place of the frame around
+* it. A frame is told by its colour alone and reads as a focus ring or as a
+* selection (the designer, 17.11.2026). Kaze asked for it as a choice: with
+* the switch off the frame is back.
+*
+* Styles only, and in the script's own themes only: in Site default and Site
+* dark the thumbnails keep the site's own frame whatever the switch says.
+* Which thumbs are videos is marked by site/video-thumbs.ts.
+*/
+var VIDEO_MARK_FEATURE_ID = "video-mark";
+var FEATURE_LABEL$1 = "Play icon on video thumbnails";
+var FEATURE_CAPTION = "Off: a frame around the thumbnail instead. In the site's own themes the site's frame stays.";
+var BODY_CLASS = featureBodyClass(VIDEO_MARK_FEATURE_ID);
+var SCOPE = `html.${RDW_SKIN_CLASS} body.${BODY_CLASS}`;
+var videoMarkFeature = {
+	id: VIDEO_MARK_FEATURE_ID,
+	label: FEATURE_LABEL$1,
+	pages: [
+		"list",
+		"favorites",
+		"other"
+	],
+	defaultEnabled: true,
+	cssOnly: true,
+	settingsCaption: FEATURE_CAPTION,
+	css: `
+${SCOPE} .${VIDEO_THUMB_CLASS} > a > img,
+${SCOPE} .webm-thumb {
+  border: 0;
+}
+${SCOPE} .${VIDEO_THUMB_CLASS}::after {
+  content: "\\25B6\\FE0E";${THUMB_LABEL_RULES}
+}
+@supports (anchor-name: --a) {
+  ${SCOPE} .${VIDEO_THUMB_CLASS}::after {
+    position-anchor: ${THUMB_ANCHOR_NAME};
+    left: calc(anchor(left) + ${String(6)}px);
+    bottom: calc(anchor(bottom) + ${String(6)}px);
+  }
+  html.${FAVORITES_PAGE_CLASS}.${RDW_SKIN_CLASS} body.${BODY_CLASS} .${VIDEO_THUMB_CLASS}::after {
+    position-anchor: ${FAVORITE_IMAGE_ANCHOR_NAME};
+  }
+}
+`.trim(),
+	mount: () => void 0
 };
 /**
 * The site's Comments page: a list of posts, each with its preview, its whole
@@ -19456,7 +19746,7 @@ function mountVideoPreview(ctx) {
 		startBindings();
 	});
 }
-var FEATURES = exports("b9",[
+var FEATURES = exports("ba",[
 	feedFeature,
 	menuCleanupFeature,
 	tagGroupsFeature,
@@ -19487,7 +19777,8 @@ var FEATURES = exports("b9",[
 	sidebarRightFeature,
 	motionFeature,
 	feedCounterFeature,
-	tagWikiFeature
+	tagWikiFeature,
+	videoMarkFeature
 ]);
 var mountedIds = /* @__PURE__ */ new Set();
 var activePageKind = null;
@@ -19646,21 +19937,10 @@ async function runFeaturesYielding(pageKind, search, features = FEATURES) {
 		await yieldToMain();
 	}
 }
-/**
-* Marks the previews of video posts where the site does not do it itself.
-*
-* On a search page the site puts `webm-thumb` on the preview image of a video.
-* On the favorites page the image has no class at all, and on the comments
-* page it is a plain `img.preview`; the only sign is its `title`, the tag
-* list. On the favorites page the site cuts the first and the last character
-* off that list, so `video` as the last tag arrives as `vide`.
-*
-* The mark is a class on the element around the link (`span.thumb`,
-* `div.col1.thumb`), outside the link itself.
-*/
-var VIDEO_THUMB_CLASS = "rdw-video-thumb";
 /** The preview image of a thumb, whatever classes the page gave it. */
 var THUMB_IMAGE_SELECTOR = ":scope > a > img";
+/** The class the site itself puts on the preview image of a video on a search page. */
+var SITE_VIDEO_IMAGE_CLASS = "webm-thumb";
 var VIDEO_TAG = "video";
 /** `video` as the last tag of a title, after the site cut its last character. */
 var VIDEO_TAG_CUT = "vide";
@@ -19679,18 +19959,26 @@ function markVideoThumbs(root, thumbSelector) {
 	let marked = 0;
 	for (const thumb of root.querySelectorAll(thumbSelector)) {
 		const img = thumb.querySelector(THUMB_IMAGE_SELECTOR);
-		if (!(img instanceof HTMLImageElement) || !titleSaysVideo(img.title)) continue;
-		thumb.classList.add(VIDEO_THUMB_CLASS);
+		if (!(img instanceof HTMLImageElement) || !(img.classList.contains(SITE_VIDEO_IMAGE_CLASS) || titleSaysVideo(img.title))) continue;
+		thumb.classList.add(THUMB_CLASS, VIDEO_THUMB_CLASS);
 		marked += 1;
 	}
 	return marked;
 }
+/**
+* Marks the video thumbs on the page and those added to it later. On a
+* search page the site's own class on the image says which are videos; on
+* the favorites page only the tag list does.
+*/
+function mountVideoMarks(thumbSelector = SITE_SELECTORS.thumb) {
+	markVideoThumbs(document, thumbSelector);
+	onThumbsAdded((root) => {
+		markVideoThumbs(root, thumbSelector);
+	});
+}
 /** Favorites page: marks the thumbs on the page and those added to it later. */
 function mountFavoriteVideoMarks() {
-	markVideoThumbs(document, SITE_SELECTORS.thumb);
-	onThumbsAdded((root) => {
-		markVideoThumbs(root, SITE_SELECTORS.thumb);
-	});
+	mountVideoMarks(SITE_SELECTORS.thumb);
 }
 /**
 * Animated GIFs get a small "GIF" label on the preview: the site marks them
@@ -19709,19 +19997,7 @@ var GIF_INSET_PX = 6;
 var GIF_THUMB_CSS = `
 ${BASE_GRID_CSS.trim()}
 .${GIF_THUMB_CLASS}::after {
-  content: "${GIF_LABEL}";
-  position: absolute;
-  left: ${String(GIF_INSET_PX)}px;
-  bottom: ${String(GIF_INSET_PX)}px;
-  z-index: 2;
-  padding: 1px 5px;
-  border: 1px solid var(--rdw-border);
-  border-radius: 4px;
-  background: var(--rdw-surface);
-  color: var(--rdw-text);
-  font: 700 10px/1.4 var(--rdw-font);
-  letter-spacing: 0.04em;
-  pointer-events: none;
+  content: "${GIF_LABEL}";${THUMB_LABEL_RULES}
 }
 @supports (anchor-name: --a) {
   .${GIF_THUMB_CLASS}::after {
@@ -20482,6 +20758,8 @@ ${ROOT} #${FAV_BULK_ROOT_ID} .${FAV_BULK_STATUS_CLASS} {
   color: ${v.muted};
 }
 
+/* The frame of a video. With "Play icon on video thumbnails" on, the feature
+   takes it off and puts a label on the thumb instead (features/video-mark.ts). */
 ${ROOT} .${VIDEO_THUMB_CLASS} > a > img,
 ${ROOT} .webm-thumb {
   border: 1px solid ${v.accent};
@@ -22899,7 +23177,7 @@ var ACCOUNT_ITEM_CLASS = "rdw-nav-account";
 var ICON_ITEM_CLASS = "rdw-nav-icon";
 var SUBNAV_ACTION_CLASS = "rdw-subnav-action";
 /** On the RuleDesk item while something there wants attention (a backup is due). */
-var NAV_DUE_CLASS = exports("_","rdw-nav-due");
+var NAV_DUE_CLASS = exports("$","rdw-nav-due");
 var SUBNAV_ICON_CLASS_PREFIX = "rdw-subnav-";
 var STYLE_ID = "rdw-header-layout";
 var MORE_LABEL = "More";
@@ -23448,12 +23726,12 @@ startEarlyLayout();
 whenDomReady(() => {
 	applyLayoutBeforePaint();
 	scheduleAfterFirstPaint(() => {
-		module.import('./app-8Y0fzekq-DYbum3DA.js').then(({ startApp }) => {
+		module.import('./app-2byzsGgd-BkVaE1Gf.js').then(({ startApp }) => {
 			startApp();
 		});
 	});
 });})}}));
-System.register("./app-8Y0fzekq-DYbum3DA.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var yieldToMain,detectPageKind,mountGifMarks,mountCards,syncFavoritesPage,mountFavoriteVideoMarks,mountCommentsPage,runFeaturesYielding,getAppearance,applyAppearanceTheme,ensureDocumentStyles,SITE_SELECTORS,FOLLOW_KIND_ARTIST,FOLLOW_KIND_CHARACTER,FOLLOW_KIND_COPYRIGHT,loadFavSet,skinIsOn,log,load,setFeatureState,SITE_ORIGIN,SEARCH_PARAM_TAGS,normalizeArtistTag,CSS_CLASS,getSyncState,getFeatureState,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,HEADER_SELECTOR$1,RDW_OWN_PAGE_CLASS,MENU_ITEM_ID,getFeatureEnabled,applyHeaderLayout,parseRdwHash,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,runFavoritesSync,UI_TEXT,createDynamicCollection,Q$1,RDW_PAGE_ROOT_ID,markFavoritesCurrent,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,resolveFavoritesUserId,RDW_HASH_STATS,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,NAV_DUE_CLASS,rdwPageHash,createFavoritesSyncTabId,APPEARANCE_BACKGROUND_KEY,readArtistsMirror,listArtistTags,writeArtistsMirror,reloadFromStorage,save,CURRENT_PAGE_CLASS,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,a,applyTokenProperties,resolveAppearancePalette,isCollectionDetailPage,RDW_ROUTE_STATS,menuRouteForPage,getSiteSkinCss,KIT_CONTROL_HEIGHT_VAR,KIT_CONTROL_FONT_VAR,MOTION_PAGE_CSS,$$1,PANEL_UI_CLASS,TOKEN_VAR,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,SITE_LIGHT_C_BG,SITE_LIGHT_C_BG_ALT,SITE_DARK_C_BG,SITE_DARK_C_BORDER,APPEARANCE_BACKGROUND_TOO_LARGE;return{setters:[function(module){yieldToMain=module.y;detectPageKind=module.d;mountGifMarks=module.m;mountCards=module.a;syncFavoritesPage=module.s;mountFavoriteVideoMarks=module.b;mountCommentsPage=module.c;runFeaturesYielding=module.r;getAppearance=module.g;applyAppearanceTheme=module.e;ensureDocumentStyles=module.f;SITE_SELECTORS=module.S;FOLLOW_KIND_ARTIST=module.F;FOLLOW_KIND_CHARACTER=module.h;FOLLOW_KIND_COPYRIGHT=module.i;loadFavSet=module.l;skinIsOn=module.j;log=module.k;load=module.n;setFeatureState=module.o;SITE_ORIGIN=module.p;SEARCH_PARAM_TAGS=module.q;normalizeArtistTag=module.t;CSS_CLASS=module.C;getSyncState=module.u;getFeatureState=module.v;ensureStyleElement=module.w;RDW_OWN_PAGE_STYLE_ID=module.R;buildOwnPageCss=module.x;HEADER_SELECTOR$1=module.H;RDW_OWN_PAGE_CLASS=module.z;MENU_ITEM_ID=module.M;getFeatureEnabled=module.A;applyHeaderLayout=module.B;parseRdwHash=module.D;readFavoritesSyncMode=module.E;FAVORITES_SYNC_MODE_FULL=module.G;runFavoritesSync=module.I;UI_TEXT=module.U;createDynamicCollection=module.J;Q$1=module.Q;RDW_PAGE_ROOT_ID=module.K;markFavoritesCurrent=module.L;NAVBAR_SELECTOR=module.N;FEED_MENU_ITEM_ID=module.O;RDW_HASH_COLLECTIONS=module.P;MENU_LABEL=module.T;RDW_HASH_FOLLOWING=module.V;resolveFavoritesUserId=module.W;RDW_HASH_STATS=module.X;MY_FAVORITES_CONTAINER_ID=module.Y;RDW_HASH_SETTINGS=module.Z;NAV_DUE_CLASS=module._;rdwPageHash=module.$;createFavoritesSyncTabId=module.a0;APPEARANCE_BACKGROUND_KEY=module.a1;readArtistsMirror=module.a2;listArtistTags=module.a3;writeArtistsMirror=module.a4;reloadFromStorage=module.a5;save=module.a6;CURRENT_PAGE_CLASS=module.a7;setSyncState=module.a8;SEARCH_PARAM_PAGE=module.a9;FAVORITES_PAGE=module.aa;FAVORITES_SECTION_VIEW=module.ab;SEARCH_PATH=module.ac;a=module.ad;applyTokenProperties=module.ae;resolveAppearancePalette=module.af;isCollectionDetailPage=module.ag;RDW_ROUTE_STATS=module.ah;menuRouteForPage=module.ai;getSiteSkinCss=module.aj;KIT_CONTROL_HEIGHT_VAR=module.ak;KIT_CONTROL_FONT_VAR=module.al;MOTION_PAGE_CSS=module.am;$$1=module.an;PANEL_UI_CLASS=module.ao;TOKEN_VAR=module.ap;RDW_THEME_ATTR=module.aq;APPEARANCE_THEME_SITE=module.ar;APPEARANCE_THEME_SITE_DARK=module.as;SITE_LIGHT_C_BG=module.at;SITE_LIGHT_C_BG_ALT=module.au;SITE_DARK_C_BG=module.av;SITE_DARK_C_BORDER=module.aw;APPEARANCE_BACKGROUND_TOO_LARGE=module.ax;}],execute:(function(){exports({_:writeViewMode,a:installSiteMenu,c:rememberBackup,g:readViewMode,h:isViewMode,i:navigateToRdwRoute,n:loadBackground,o:markBackupDue,r:saveBackground,s:currentBackupStatus,startApp:startApp,t:clearBackground});/** Matches host.tsx page title class (owned there; styled here for site polish). */
+System.register("./app-2byzsGgd-BkVaE1Gf.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var yieldToMain,detectPageKind,mountGifMarks,mountVideoMarks,mountCards,syncFavoritesPage,mountFavoriteVideoMarks,mountCommentsPage,runFeaturesYielding,getAppearance,applyAppearanceTheme,ensureDocumentStyles,SITE_SELECTORS,FOLLOW_KIND_ARTIST,FOLLOW_KIND_CHARACTER,FOLLOW_KIND_COPYRIGHT,loadFavSet,skinIsOn,log,load,setFeatureState,SITE_ORIGIN,SEARCH_PARAM_TAGS,normalizeArtistTag,CSS_CLASS,getSyncState,getFeatureState,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,HEADER_SELECTOR$1,RDW_OWN_PAGE_CLASS,MENU_ITEM_ID,getFeatureEnabled,applyHeaderLayout,parseRdwHash,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,runFavoritesSync,UI_TEXT,createDynamicCollection,Q$1,RDW_PAGE_ROOT_ID,markFavoritesCurrent,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,resolveFavoritesUserId,RDW_HASH_STATS,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,NAV_DUE_CLASS,rdwPageHash,createFavoritesSyncTabId,APPEARANCE_BACKGROUND_KEY,readArtistsMirror,listArtistTags,writeArtistsMirror,reloadFromStorage,save,CURRENT_PAGE_CLASS,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,a,applyTokenProperties,resolveAppearancePalette,isCollectionDetailPage,RDW_ROUTE_STATS,menuRouteForPage,getSiteSkinCss,KIT_CONTROL_HEIGHT_VAR,KIT_CONTROL_FONT_VAR,MOTION_PAGE_CSS,$$1,PANEL_UI_CLASS,TOKEN_VAR,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,SITE_LIGHT_C_BG,SITE_LIGHT_C_BG_ALT,SITE_DARK_C_BG,SITE_DARK_C_BORDER,APPEARANCE_BACKGROUND_TOO_LARGE;return{setters:[function(module){yieldToMain=module.y;detectPageKind=module.d;mountGifMarks=module.m;mountVideoMarks=module.a;mountCards=module.b;syncFavoritesPage=module.s;mountFavoriteVideoMarks=module.c;mountCommentsPage=module.e;runFeaturesYielding=module.r;getAppearance=module.g;applyAppearanceTheme=module.f;ensureDocumentStyles=module.h;SITE_SELECTORS=module.S;FOLLOW_KIND_ARTIST=module.F;FOLLOW_KIND_CHARACTER=module.i;FOLLOW_KIND_COPYRIGHT=module.j;loadFavSet=module.l;skinIsOn=module.k;log=module.n;load=module.o;setFeatureState=module.p;SITE_ORIGIN=module.q;SEARCH_PARAM_TAGS=module.t;normalizeArtistTag=module.u;CSS_CLASS=module.C;getSyncState=module.v;getFeatureState=module.w;ensureStyleElement=module.x;RDW_OWN_PAGE_STYLE_ID=module.R;buildOwnPageCss=module.z;HEADER_SELECTOR$1=module.H;RDW_OWN_PAGE_CLASS=module.A;MENU_ITEM_ID=module.M;getFeatureEnabled=module.B;applyHeaderLayout=module.D;parseRdwHash=module.E;readFavoritesSyncMode=module.G;FAVORITES_SYNC_MODE_FULL=module.I;runFavoritesSync=module.J;UI_TEXT=module.U;createDynamicCollection=module.K;Q$1=module.Q;RDW_PAGE_ROOT_ID=module.L;markFavoritesCurrent=module.N;NAVBAR_SELECTOR=module.O;FEED_MENU_ITEM_ID=module.P;RDW_HASH_COLLECTIONS=module.T;MENU_LABEL=module.V;RDW_HASH_FOLLOWING=module.W;resolveFavoritesUserId=module.X;RDW_HASH_STATS=module.Y;MY_FAVORITES_CONTAINER_ID=module.Z;RDW_HASH_SETTINGS=module._;NAV_DUE_CLASS=module.$;rdwPageHash=module.a0;createFavoritesSyncTabId=module.a1;APPEARANCE_BACKGROUND_KEY=module.a2;readArtistsMirror=module.a3;listArtistTags=module.a4;writeArtistsMirror=module.a5;reloadFromStorage=module.a6;save=module.a7;CURRENT_PAGE_CLASS=module.a8;setSyncState=module.a9;SEARCH_PARAM_PAGE=module.aa;FAVORITES_PAGE=module.ab;FAVORITES_SECTION_VIEW=module.ac;SEARCH_PATH=module.ad;a=module.ae;applyTokenProperties=module.af;resolveAppearancePalette=module.ag;isCollectionDetailPage=module.ah;RDW_ROUTE_STATS=module.ai;menuRouteForPage=module.aj;getSiteSkinCss=module.ak;KIT_CONTROL_HEIGHT_VAR=module.al;KIT_CONTROL_FONT_VAR=module.am;MOTION_PAGE_CSS=module.an;$$1=module.ao;PANEL_UI_CLASS=module.ap;TOKEN_VAR=module.aq;RDW_THEME_ATTR=module.ar;APPEARANCE_THEME_SITE=module.as;APPEARANCE_THEME_SITE_DARK=module.at;SITE_LIGHT_C_BG=module.au;SITE_LIGHT_C_BG_ALT=module.av;SITE_DARK_C_BG=module.aw;SITE_DARK_C_BORDER=module.ax;APPEARANCE_BACKGROUND_TOO_LARGE=module.ay;}],execute:(function(){exports({_:writeViewMode,a:installSiteMenu,c:rememberBackup,g:readViewMode,h:isViewMode,i:navigateToRdwRoute,n:loadBackground,o:markBackupDue,r:saveBackground,s:currentBackupStatus,startApp:startApp,t:clearBackground});/** Matches host.tsx page title class (owned there; styled here for site polish). */
 var PAGE_TITLE_CLASS$1 = "rdw-page-title";
 /** Matches kit SectionLabel class. */
 var SECTION_LABEL_CLASS = "rdw-section-label";
@@ -23807,35 +24085,35 @@ var followingFactory = null;
 var statsFactory = null;
 function getSettingsFactory() {
 	if (settingsFactory === null) settingsFactory = async () => {
-		const mod = await module.import('./settings-page-DdeLXn46-DODnSTpE.js');
+		const mod = await module.import('./settings-page-CyNgQdtd-BITyu0GC.js');
 		return /* @__PURE__ */ a(mod.SettingsPage, {});
 	};
 	return settingsFactory;
 }
 function getCollectionsFactory() {
 	if (collectionsFactory === null) collectionsFactory = async () => {
-		const mod = await module.import('./collections-page-CXCflRXE-3tjRIfM5.js');
+		const mod = await module.import('./collections-page-zMX5SFGK-BYMoTuQn.js');
 		return /* @__PURE__ */ a(mod.CollectionsPage, {});
 	};
 	return collectionsFactory;
 }
 function getFollowingFactory() {
 	if (followingFactory === null) followingFactory = async () => {
-		const mod = await module.import('./following-page-Wmq_1kPG-BFutkwOX.js');
+		const mod = await module.import('./following-page-CLEGoCl--BdO3EPkz.js');
 		return /* @__PURE__ */ a(mod.FollowingPage, {});
 	};
 	return followingFactory;
 }
 function getStatsFactory() {
 	if (statsFactory === null) statsFactory = async () => {
-		const mod = await module.import('./stats-section-CKVvY56h-B97av0Tq.js');
+		const mod = await module.import('./stats-section-CwUYDmKg-Bxhhyvm9.js');
 		return /* @__PURE__ */ a(mod.StatsPage, {});
 	};
 	return statsFactory;
 }
 function collectionDetailFactory(collectionId) {
 	return async () => {
-		const mod = await module.import('./collection-detail-page-C5_brywz-B9cfoxKw.js');
+		const mod = await module.import('./collection-detail-page-CB4ptfwh-CcTXiZve.js');
 		return /* @__PURE__ */ a(mod.CollectionDetailPage, { collectionId }, collectionId);
 	};
 }
@@ -25355,6 +25633,7 @@ async function startApp() {
 	const search = window.location.search;
 	if (pageKind === "list") {
 		mountGifMarks(SITE_SELECTORS.thumb);
+		mountVideoMarks(SITE_SELECTORS.thumb);
 		mountCards();
 		await yieldToMain();
 		mountArtistSidebar();
@@ -25381,7 +25660,7 @@ async function startApp() {
 	maybeResumeFavoritesSync();
 	recordStatsPoint();
 }})}}));
-System.register("./settings-page-DdeLXn46-DODnSTpE.js", ['./___monkey.entry.js','./app-8Y0fzekq-DYbum3DA.js'],(function(exports){'use strict';var d,T,A,a,PANEL_UI_CLASS,Switch,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,STATS_MENU_SETTING_LABEL,STATS_MENU_SWITCH_ID,setFeatureEnabled,STICKY_HEADER_SETTING_LABEL,STICKY_HEADER_SWITCH_ID,applyStickyHeader,NumberField,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,setGridFavButtonsVisible,STICKY_TOP,IconChevronRight,IconChevronDown,Card,P$1,getAppearance,applyAppearanceTheme,getSiteSkinCss,APPEARANCE_THEME_CUSTOM,KIT_FOCUS_CSS,SectionLabel,Select,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,$$1,Segmented,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,TextField,Button,clampBackgroundDim,FEATURES,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,clearFeatureState,applyCssOnlyFeatureEnabled,isFeatureEnabled,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,applyCssOnlyFeatureChoice,getFeatureChoice,createAutocompleteQuerier,b,readSiteBlacklist,AutocompleteField,Chip,ProgressBar,hasApiCredentials,SETTINGS_SECTION_FAVORITES,createDefaultCustomTheme,AppearanceThemeSchema,prepareBackgroundImageFile,setFeatureState,writeSiteBlacklist,runFavoritesSync,FAVORITES_SYNC_MODE_FULL,log,getApiCredentials,readFavoriteIndex,loadFavSet,collectPostDetails,putFavoriteDetails,FAVORITES_SYNC_PAGE_PAUSE_MS,clearApiCredentials,parseApiCredentials,setApiCredentials,DEFAULT_FILE_MASK,FILE_MASK_TOKENS,toggleMaskToken,maskHasToken,load,createDefaultStorage,clearStorageCache,clearFavsCache,getSyncState,buildFileName,writeFileMask,readFileMask,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,isSiteUrl,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,setAppearance,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,gridDensityFeature,FAVORITES_SYNC_MODE_INCREMENTAL,STATS_MENU_SETTING_ID,STICKY_HEADER_SETTING_ID,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureEnabled,takeSettingsSection,getFeatureChoiceValue,getFeatureState,getScreenPixelSize,installSiteMenu,loadBackground,currentBackupStatus,markBackupDue,clearBackground,saveBackground,rememberBackup;return{setters:[function(module){d=module.ay;T=module.az;A=module.aA;a=module.ad;PANEL_UI_CLASS=module.ao;Switch=module.aB;UI_TEXT=module.U;TWEAKS_SWITCH_ID=module.aC;setTweaksEnabled=module.aD;STATS_MENU_SETTING_LABEL=module.aE;STATS_MENU_SWITCH_ID=module.aF;setFeatureEnabled=module.aG;STICKY_HEADER_SETTING_LABEL=module.aH;STICKY_HEADER_SWITCH_ID=module.aI;applyStickyHeader=module.aJ;NumberField=module.aK;UPDATES_GROUP_SIZE_ID=module.aL;setUpdatesGroupSize=module.aM;getUpdatesGroupSize=module.aN;PLAYLIST_CHUNK_SIZE_ID=module.aO;setPlaylistChunkSize=module.aP;getPlaylistChunkSize=module.aQ;GRID_FAV_CHECKBOX_ID=module.aR;setGridFavButtonsEnabled=module.aS;setGridFavButtonsVisible=module.aT;STICKY_TOP=module.aU;IconChevronRight=module.aV;IconChevronDown=module.aW;Card=module.aX;P$1=module.aY;getAppearance=module.g;applyAppearanceTheme=module.e;getSiteSkinCss=module.aj;APPEARANCE_THEME_CUSTOM=module.aZ;KIT_FOCUS_CSS=module.a_;SectionLabel=module.a$;Select=module.b0;APPEARANCE_THEME_SITE=module.ar;APPEARANCE_THEME_SITE_DARK=module.as;APPEARANCE_THEME_LIGHT=module.b1;APPEARANCE_THEME_DARK=module.b2;$$1=module.an;Segmented=module.b3;APPEARANCE_CUSTOM_BASE_LIGHT=module.b4;APPEARANCE_CUSTOM_BASE_DARK=module.b5;TextField=module.b6;Button=module.b7;clampBackgroundDim=module.b8;FEATURES=module.b9;featurePanelLabel=module.ba;FEATURE_CHECKBOX_ID_PREFIX=module.bb;clearFeatureState=module.bc;applyCssOnlyFeatureEnabled=module.bd;isFeatureEnabled=module.be;FEATURE_CHOICE_ID_PREFIX=module.bf;setFeatureChoiceValue=module.bg;applyCssOnlyFeatureChoice=module.bh;getFeatureChoice=module.bi;createAutocompleteQuerier=module.bj;b=module.bk;readSiteBlacklist=module.bl;AutocompleteField=module.bm;Chip=module.bn;ProgressBar=module.bo;hasApiCredentials=module.bp;SETTINGS_SECTION_FAVORITES=module.bq;createDefaultCustomTheme=module.br;AppearanceThemeSchema=module.bs;prepareBackgroundImageFile=module.bt;setFeatureState=module.o;writeSiteBlacklist=module.bu;runFavoritesSync=module.I;FAVORITES_SYNC_MODE_FULL=module.G;log=module.k;getApiCredentials=module.bv;readFavoriteIndex=module.bw;loadFavSet=module.l;collectPostDetails=module.bx;putFavoriteDetails=module.by;FAVORITES_SYNC_PAGE_PAUSE_MS=module.bz;clearApiCredentials=module.bA;parseApiCredentials=module.bB;setApiCredentials=module.bC;DEFAULT_FILE_MASK=module.bD;FILE_MASK_TOKENS=module.bE;toggleMaskToken=module.bF;maskHasToken=module.bG;load=module.n;createDefaultStorage=module.bH;clearStorageCache=module.bI;clearFavsCache=module.bJ;getSyncState=module.u;buildFileName=module.bK;writeFileMask=module.bL;readFileMask=module.bM;object=module.bN;StorageSchema=module.bO;optional=module.bP;string=module.bQ;FavsSchema=module.bR;literal=module.bS;IMPORT_SCHEMA_ERROR_PREFIX=module.bT;isSiteUrl=module.bU;stripLegacyPanelWindowSize=module.bV;save=module.a6;migrateMarksFavToFavs=module.bW;FAVS_STORAGE_KEY=module.bX;createDefaultFavs=module.bY;parseFavsStrict=module.bZ;setAppearance=module.b_;STORAGE_BACKUP_KEY=module.b$;extractFavIdsFromMarks=module.c0;gridDensityFeature=module.c1;FAVORITES_SYNC_MODE_INCREMENTAL=module.c2;STATS_MENU_SETTING_ID=module.c3;STICKY_HEADER_SETTING_ID=module.c4;getTweaksEnabled=module.c5;getGridFavButtonsEnabled=module.c6;getFeatureEnabled=module.A;takeSettingsSection=module.c7;getFeatureChoiceValue=module.c8;getFeatureState=module.v;getScreenPixelSize=module.c9;},function(module){installSiteMenu=module.a;loadBackground=module.n;currentBackupStatus=module.s;markBackupDue=module.o;clearBackground=module.t;saveBackground=module.r;rememberBackup=module.c;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
+System.register("./settings-page-CyNgQdtd-BITyu0GC.js", ['./___monkey.entry.js','./app-2byzsGgd-BkVaE1Gf.js'],(function(exports){'use strict';var d,T,A,a,PANEL_UI_CLASS,Switch,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,STATS_MENU_SETTING_LABEL,STATS_MENU_SWITCH_ID,setFeatureEnabled,STICKY_HEADER_SETTING_LABEL,STICKY_HEADER_SWITCH_ID,applyStickyHeader,NumberField,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,setGridFavButtonsVisible,STICKY_TOP,IconChevronRight,IconChevronDown,Card,P$1,getAppearance,applyAppearanceTheme,getSiteSkinCss,APPEARANCE_THEME_CUSTOM,KIT_FOCUS_CSS,SectionLabel,Select,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,$$1,Segmented,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,TextField,Button,clampBackgroundDim,FEATURES,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,clearFeatureState,applyCssOnlyFeatureEnabled,isFeatureEnabled,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,applyCssOnlyFeatureChoice,getFeatureChoice,createAutocompleteQuerier,b,readSiteBlacklist,AutocompleteField,Chip,ProgressBar,hasApiCredentials,SETTINGS_SECTION_FAVORITES,createDefaultCustomTheme,AppearanceThemeSchema,prepareBackgroundImageFile,setFeatureState,writeSiteBlacklist,runFavoritesSync,FAVORITES_SYNC_MODE_FULL,log,getApiCredentials,readFavoriteIndex,loadFavSet,collectPostDetails,putFavoriteDetails,FAVORITES_SYNC_PAGE_PAUSE_MS,clearApiCredentials,parseApiCredentials,setApiCredentials,DEFAULT_FILE_MASK,FILE_MASK_TOKENS,toggleMaskToken,maskHasToken,load,createDefaultStorage,clearStorageCache,clearFavsCache,getSyncState,buildFileName,writeFileMask,readFileMask,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,isSiteUrl,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,setAppearance,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,gridDensityFeature,FAVORITES_SYNC_MODE_INCREMENTAL,STATS_MENU_SETTING_ID,STICKY_HEADER_SETTING_ID,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureEnabled,takeSettingsSection,getFeatureChoiceValue,getFeatureState,getScreenPixelSize,installSiteMenu,loadBackground,currentBackupStatus,markBackupDue,clearBackground,saveBackground,rememberBackup;return{setters:[function(module){d=module.az;T=module.aA;A=module.aB;a=module.ae;PANEL_UI_CLASS=module.ap;Switch=module.aC;UI_TEXT=module.U;TWEAKS_SWITCH_ID=module.aD;setTweaksEnabled=module.aE;STATS_MENU_SETTING_LABEL=module.aF;STATS_MENU_SWITCH_ID=module.aG;setFeatureEnabled=module.aH;STICKY_HEADER_SETTING_LABEL=module.aI;STICKY_HEADER_SWITCH_ID=module.aJ;applyStickyHeader=module.aK;NumberField=module.aL;UPDATES_GROUP_SIZE_ID=module.aM;setUpdatesGroupSize=module.aN;getUpdatesGroupSize=module.aO;PLAYLIST_CHUNK_SIZE_ID=module.aP;setPlaylistChunkSize=module.aQ;getPlaylistChunkSize=module.aR;GRID_FAV_CHECKBOX_ID=module.aS;setGridFavButtonsEnabled=module.aT;setGridFavButtonsVisible=module.aU;STICKY_TOP=module.aV;IconChevronRight=module.aW;IconChevronDown=module.aX;Card=module.aY;P$1=module.aZ;getAppearance=module.g;applyAppearanceTheme=module.f;getSiteSkinCss=module.ak;APPEARANCE_THEME_CUSTOM=module.a_;KIT_FOCUS_CSS=module.a$;SectionLabel=module.b0;Select=module.b1;APPEARANCE_THEME_SITE=module.as;APPEARANCE_THEME_SITE_DARK=module.at;APPEARANCE_THEME_LIGHT=module.b2;APPEARANCE_THEME_DARK=module.b3;$$1=module.ao;Segmented=module.b4;APPEARANCE_CUSTOM_BASE_LIGHT=module.b5;APPEARANCE_CUSTOM_BASE_DARK=module.b6;TextField=module.b7;Button=module.b8;clampBackgroundDim=module.b9;FEATURES=module.ba;featurePanelLabel=module.bb;FEATURE_CHECKBOX_ID_PREFIX=module.bc;clearFeatureState=module.bd;applyCssOnlyFeatureEnabled=module.be;isFeatureEnabled=module.bf;FEATURE_CHOICE_ID_PREFIX=module.bg;setFeatureChoiceValue=module.bh;applyCssOnlyFeatureChoice=module.bi;getFeatureChoice=module.bj;createAutocompleteQuerier=module.bk;b=module.bl;readSiteBlacklist=module.bm;AutocompleteField=module.bn;Chip=module.bo;ProgressBar=module.bp;hasApiCredentials=module.bq;SETTINGS_SECTION_FAVORITES=module.br;createDefaultCustomTheme=module.bs;AppearanceThemeSchema=module.bt;prepareBackgroundImageFile=module.bu;setFeatureState=module.p;writeSiteBlacklist=module.bv;runFavoritesSync=module.J;FAVORITES_SYNC_MODE_FULL=module.I;log=module.n;getApiCredentials=module.bw;readFavoriteIndex=module.bx;loadFavSet=module.l;collectPostDetails=module.by;putFavoriteDetails=module.bz;FAVORITES_SYNC_PAGE_PAUSE_MS=module.bA;clearApiCredentials=module.bB;parseApiCredentials=module.bC;setApiCredentials=module.bD;DEFAULT_FILE_MASK=module.bE;FILE_MASK_TOKENS=module.bF;toggleMaskToken=module.bG;maskHasToken=module.bH;load=module.o;createDefaultStorage=module.bI;clearStorageCache=module.bJ;clearFavsCache=module.bK;getSyncState=module.v;buildFileName=module.bL;writeFileMask=module.bM;readFileMask=module.bN;object=module.bO;StorageSchema=module.bP;optional=module.bQ;string=module.bR;FavsSchema=module.bS;literal=module.bT;IMPORT_SCHEMA_ERROR_PREFIX=module.bU;isSiteUrl=module.bV;stripLegacyPanelWindowSize=module.bW;save=module.a7;migrateMarksFavToFavs=module.bX;FAVS_STORAGE_KEY=module.bY;createDefaultFavs=module.bZ;parseFavsStrict=module.b_;setAppearance=module.b$;STORAGE_BACKUP_KEY=module.c0;extractFavIdsFromMarks=module.c1;gridDensityFeature=module.c2;FAVORITES_SYNC_MODE_INCREMENTAL=module.c3;STATS_MENU_SETTING_ID=module.c4;STICKY_HEADER_SETTING_ID=module.c5;getTweaksEnabled=module.c6;getGridFavButtonsEnabled=module.c7;getFeatureEnabled=module.B;takeSettingsSection=module.c8;getFeatureChoiceValue=module.c9;getFeatureState=module.w;getScreenPixelSize=module.ca;},function(module){installSiteMenu=module.a;loadBackground=module.n;currentBackupStatus=module.s;markBackupDue=module.o;clearBackground=module.t;saveBackground=module.r;rememberBackup=module.c;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
 var THEME_OPTIONS = [
 	{
 		value: APPEARANCE_THEME_SITE,
@@ -27346,7 +27625,7 @@ function SettingsPage() {
 		]
 	});
 }})}}));
-System.register("./collections-page-CXCflRXE-3tjRIfM5.js", ['./___monkey.entry.js','./filter-terms-Dqag3iAV-Bgq_MKCQ.js','./app-8Y0fzekq-DYbum3DA.js'],(function(exports){'use strict';var d,T,A,b,reloadFromStorage,load,a,Segmented,SearchField,Select,setFeatureState,$$1,Button,UI_TEXT,IconPlus,EmptyState,Dialog,resolveCollectionKind,STICKY_TOP,isUnfilteredQuery,dynamicHasNew,deleteCollection,TextField,QueryField,createDynamicCollection,createPlaylist,buildSearchUrl,fetchNextPage,setDynamicCover,readFirstThumbUrls,readResultCount,setDynamicPostCount,setDynamicNewest,COLLECTION_KIND_POSTS,collectionDetailHash,readCoverMirror,COLLECTION_KIND_SEARCH,extractPostIdFromThumb,IconCheck,readCountMirror,dynamicCollectionMarkHash,serialize,getFeatureState,matchesAnyTerm,filterTerms,COLLECTION_TERM_SEPARATOR,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,PAGE_CENTRE_PADDING,COLLECTIONS_VIEW_STATE_ID,readViewMode;return{setters:[function(module){d=module.ay;T=module.az;A=module.aA;b=module.bk;reloadFromStorage=module.a5;load=module.n;a=module.ad;Segmented=module.b3;SearchField=module.ca;Select=module.b0;setFeatureState=module.o;$$1=module.an;Button=module.b7;UI_TEXT=module.U;IconPlus=module.cb;EmptyState=module.cc;Dialog=module.cd;resolveCollectionKind=module.ce;STICKY_TOP=module.aU;isUnfilteredQuery=module.cf;dynamicHasNew=module.cg;deleteCollection=module.ch;TextField=module.b6;QueryField=module.ci;createDynamicCollection=module.J;createPlaylist=module.cj;buildSearchUrl=module.ck;fetchNextPage=module.cl;setDynamicCover=module.cm;readFirstThumbUrls=module.cn;readResultCount=module.co;setDynamicPostCount=module.cp;setDynamicNewest=module.cq;COLLECTION_KIND_POSTS=module.cr;collectionDetailHash=module.cs;readCoverMirror=module.ct;COLLECTION_KIND_SEARCH=module.cu;extractPostIdFromThumb=module.cv;IconCheck=module.cw;readCountMirror=module.cx;dynamicCollectionMarkHash=module.cy;serialize=module.cz;getFeatureState=module.v;},function(module){matchesAnyTerm=module.m;filterTerms=module.f;COLLECTION_TERM_SEPARATOR=module.C;},function(module){VIEW_OPTIONS=module.m;VIEW_LABEL=module.f;isViewMode=module.h;writeViewMode=module._;PAGE_CENTRE_PADDING=module.d;COLLECTIONS_VIEW_STATE_ID=module.l;readViewMode=module.g;}],execute:(function(){exports("CollectionsPage",CollectionsPage);/**
+System.register("./collections-page-zMX5SFGK-BYMoTuQn.js", ['./___monkey.entry.js','./filter-terms-Dqag3iAV-Bgq_MKCQ.js','./app-2byzsGgd-BkVaE1Gf.js'],(function(exports){'use strict';var d,T,A,b,reloadFromStorage,load,a,Segmented,SearchField,Select,setFeatureState,$$1,Button,UI_TEXT,IconPlus,EmptyState,Dialog,resolveCollectionKind,STICKY_TOP,isUnfilteredQuery,dynamicHasNew,deleteCollection,TextField,QueryField,createDynamicCollection,createPlaylist,buildSearchUrl,fetchNextPage,setDynamicCover,readFirstThumbUrls,readResultCount,setDynamicPostCount,setDynamicNewest,COLLECTION_KIND_POSTS,collectionDetailHash,readCoverMirror,COLLECTION_KIND_SEARCH,extractPostIdFromThumb,IconCheck,readCountMirror,dynamicCollectionMarkHash,serialize,getFeatureState,matchesAnyTerm,filterTerms,COLLECTION_TERM_SEPARATOR,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,PAGE_CENTRE_PADDING,COLLECTIONS_VIEW_STATE_ID,readViewMode;return{setters:[function(module){d=module.az;T=module.aA;A=module.aB;b=module.bl;reloadFromStorage=module.a6;load=module.o;a=module.ae;Segmented=module.b4;SearchField=module.cb;Select=module.b1;setFeatureState=module.p;$$1=module.ao;Button=module.b8;UI_TEXT=module.U;IconPlus=module.cc;EmptyState=module.cd;Dialog=module.ce;resolveCollectionKind=module.cf;STICKY_TOP=module.aV;isUnfilteredQuery=module.cg;dynamicHasNew=module.ch;deleteCollection=module.ci;TextField=module.b7;QueryField=module.cj;createDynamicCollection=module.K;createPlaylist=module.ck;buildSearchUrl=module.cl;fetchNextPage=module.cm;setDynamicCover=module.cn;readFirstThumbUrls=module.co;readResultCount=module.cp;setDynamicPostCount=module.cq;setDynamicNewest=module.cr;COLLECTION_KIND_POSTS=module.cs;collectionDetailHash=module.ct;readCoverMirror=module.cu;COLLECTION_KIND_SEARCH=module.cv;extractPostIdFromThumb=module.cw;IconCheck=module.cx;readCountMirror=module.cy;dynamicCollectionMarkHash=module.cz;serialize=module.cA;getFeatureState=module.w;},function(module){matchesAnyTerm=module.m;filterTerms=module.f;COLLECTION_TERM_SEPARATOR=module.C;},function(module){VIEW_OPTIONS=module.m;VIEW_LABEL=module.f;isViewMode=module.h;writeViewMode=module._;PAGE_CENTRE_PADDING=module.d;COLLECTIONS_VIEW_STATE_ID=module.l;readViewMode=module.g;}],execute:(function(){exports("CollectionsPage",CollectionsPage);/**
 * "Check for new" on the Collections page: reads the first results page of
 * every saved search. From it the card gets its cover and post count (as on a
 * visit to the search), and the newest post is remembered, so a card can say
@@ -28336,7 +28615,7 @@ function CollectionsPage() {
 		]
 	});
 }})}}));
-System.register("./following-page-Wmq_1kPG-BFutkwOX.js", ['./___monkey.entry.js','./filter-terms-Dqag3iAV-Bgq_MKCQ.js','./app-8Y0fzekq-DYbum3DA.js'],(function(exports){'use strict';var d,T,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST,A,reloadFromStorage,getSeenPostId,listFollowGroups,followKindOf,FOLLOW_KIND_ARTIST,a,EmptyState,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,$$1,Button,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,Segmented,SearchField,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,Select,FOLLOW_KIND_CHARACTER,FOLLOW_KIND_COPYRIGHT,UI_TEXT,ProgressBar,Dialog,TextField,removeArtist,load,completeLastQueryToken,readLastQueryToken,STICKY_TOP,IconPlus,buildSearchUrl,TAG_TYPE_INCLUDE,IconCheck,IconButton,IconX,setFollowGroup,removeArtists,rememberArtistSnapshot,fetchArtistSnapshot,log,addArtists,AutocompleteField,filterTerms,matchesAnyTerm,ARTIST_TERM_SEPARATOR,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,PAGE_CENTRE_PADDING,FOLLOWING_VIEW_STATE_ID,readViewMode;return{setters:[function(module){d=module.ay;T=module.az;createAutocompleteQuerier=module.bj;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.cA;A=module.aA;reloadFromStorage=module.a5;getSeenPostId=module.cB;listFollowGroups=module.cC;followKindOf=module.cD;FOLLOW_KIND_ARTIST=module.F;a=module.ad;EmptyState=module.cc;ARTISTS_EMPTY_HINT=module.cE;ARTISTS_EMPTY_TITLE=module.cF;$$1=module.an;Button=module.b7;SEARCH_PATH=module.ac;SEARCH_PARAM_PAGE=module.a9;SEARCH_PAGE=module.cG;SEARCH_SECTION=module.cH;Segmented=module.b3;SearchField=module.ca;ARTIST_FILTER_LABEL=module.cI;ARTIST_FILTER_ID=module.cJ;Select=module.b0;FOLLOW_KIND_CHARACTER=module.h;FOLLOW_KIND_COPYRIGHT=module.i;UI_TEXT=module.U;ProgressBar=module.bo;Dialog=module.cd;TextField=module.b6;removeArtist=module.cK;load=module.n;completeLastQueryToken=module.cL;readLastQueryToken=module.cM;STICKY_TOP=module.aU;IconPlus=module.cb;buildSearchUrl=module.ck;TAG_TYPE_INCLUDE=module.cN;IconCheck=module.cw;IconButton=module.cO;IconX=module.cP;setFollowGroup=module.cQ;removeArtists=module.cR;rememberArtistSnapshot=module.cS;fetchArtistSnapshot=module.cT;log=module.k;addArtists=module.cU;AutocompleteField=module.bm;},function(module){filterTerms=module.f;matchesAnyTerm=module.m;ARTIST_TERM_SEPARATOR=module.A;},function(module){VIEW_OPTIONS=module.m;VIEW_LABEL=module.f;isViewMode=module.h;writeViewMode=module._;PAGE_CENTRE_PADDING=module.d;FOLLOWING_VIEW_STATE_ID=module.u;readViewMode=module.g;}],execute:(function(){exports("FollowingPage",FollowingPage);var EVENT_PAGESHOW = "pageshow";
+System.register("./following-page-CLEGoCl--BdO3EPkz.js", ['./___monkey.entry.js','./filter-terms-Dqag3iAV-Bgq_MKCQ.js','./app-2byzsGgd-BkVaE1Gf.js'],(function(exports){'use strict';var d,T,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST,A,reloadFromStorage,getSeenPostId,listFollowGroups,followKindOf,FOLLOW_KIND_ARTIST,a,EmptyState,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,$$1,Button,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,Segmented,SearchField,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,Select,FOLLOW_KIND_CHARACTER,FOLLOW_KIND_COPYRIGHT,UI_TEXT,ProgressBar,Dialog,TextField,removeArtist,load,completeLastQueryToken,readLastQueryToken,STICKY_TOP,IconPlus,buildSearchUrl,TAG_TYPE_INCLUDE,IconCheck,IconButton,IconX,setFollowGroup,removeArtists,rememberArtistSnapshot,fetchArtistSnapshot,log,addArtists,AutocompleteField,filterTerms,matchesAnyTerm,ARTIST_TERM_SEPARATOR,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,PAGE_CENTRE_PADDING,FOLLOWING_VIEW_STATE_ID,readViewMode;return{setters:[function(module){d=module.az;T=module.aA;createAutocompleteQuerier=module.bk;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.cB;A=module.aB;reloadFromStorage=module.a6;getSeenPostId=module.cC;listFollowGroups=module.cD;followKindOf=module.cE;FOLLOW_KIND_ARTIST=module.F;a=module.ae;EmptyState=module.cd;ARTISTS_EMPTY_HINT=module.cF;ARTISTS_EMPTY_TITLE=module.cG;$$1=module.ao;Button=module.b8;SEARCH_PATH=module.ad;SEARCH_PARAM_PAGE=module.aa;SEARCH_PAGE=module.cH;SEARCH_SECTION=module.cI;Segmented=module.b4;SearchField=module.cb;ARTIST_FILTER_LABEL=module.cJ;ARTIST_FILTER_ID=module.cK;Select=module.b1;FOLLOW_KIND_CHARACTER=module.i;FOLLOW_KIND_COPYRIGHT=module.j;UI_TEXT=module.U;ProgressBar=module.bp;Dialog=module.ce;TextField=module.b7;removeArtist=module.cL;load=module.o;completeLastQueryToken=module.cM;readLastQueryToken=module.cN;STICKY_TOP=module.aV;IconPlus=module.cc;buildSearchUrl=module.cl;TAG_TYPE_INCLUDE=module.cO;IconCheck=module.cx;IconButton=module.cP;IconX=module.cQ;setFollowGroup=module.cR;removeArtists=module.cS;rememberArtistSnapshot=module.cT;fetchArtistSnapshot=module.cU;log=module.n;addArtists=module.cV;AutocompleteField=module.bn;},function(module){filterTerms=module.f;matchesAnyTerm=module.m;ARTIST_TERM_SEPARATOR=module.A;},function(module){VIEW_OPTIONS=module.m;VIEW_LABEL=module.f;isViewMode=module.h;writeViewMode=module._;PAGE_CENTRE_PADDING=module.d;FOLLOWING_VIEW_STATE_ID=module.u;readViewMode=module.g;}],execute:(function(){exports("FollowingPage",FollowingPage);var EVENT_PAGESHOW = "pageshow";
 var PAGE_CLASS = "rdw-following-page";
 var STICKY_CLASS = "rdw-following-sticky";
 var TOOLBAR_CLASS = "rdw-following-toolbar";
@@ -29426,7 +29705,7 @@ function matchesAnyTerm(texts, terms) {
 	const lowered = texts.map((text) => text.toLowerCase());
 	return terms.some((term) => lowered.some((text) => text.includes(term)));
 }})}}));
-System.register("./stats-section-CKVvY56h-B97av0Tq.js", ['./___monkey.entry.js'],(function(exports){'use strict';var a,PANEL_UI_CLASS,Card,loadFavSet,load,resolveCollectionKind,d,A,Button,$$1,readFavoriteIndex,topFavoriteTags,getFeatureState,object,number,optional,string,setFeatureState,int,FETCH_CREDENTIALS,SEARCH_PATH,SEARCH_PARAM_PAGE;return{setters:[function(module){a=module.ad;PANEL_UI_CLASS=module.ao;Card=module.aX;loadFavSet=module.l;load=module.n;resolveCollectionKind=module.ce;d=module.ay;A=module.aA;Button=module.b7;$$1=module.an;readFavoriteIndex=module.bw;topFavoriteTags=module.cV;getFeatureState=module.v;object=module.bN;number=module.cW;optional=module.bP;string=module.bQ;setFeatureState=module.o;int=module.cX;FETCH_CREDENTIALS=module.cY;SEARCH_PATH=module.ac;SEARCH_PARAM_PAGE=module.a9;}],execute:(function(){exports("StatsPage",StatsPage);/**
+System.register("./stats-section-CwUYDmKg-Bxhhyvm9.js", ['./___monkey.entry.js'],(function(exports){'use strict';var a,PANEL_UI_CLASS,Card,loadFavSet,load,resolveCollectionKind,d,A,Button,$$1,readFavoriteIndex,topFavoriteTags,getFeatureState,object,number,optional,string,setFeatureState,int,FETCH_CREDENTIALS,SEARCH_PATH,SEARCH_PARAM_PAGE;return{setters:[function(module){a=module.ae;PANEL_UI_CLASS=module.ap;Card=module.aY;loadFavSet=module.l;load=module.o;resolveCollectionKind=module.cf;d=module.az;A=module.aB;Button=module.b8;$$1=module.ao;readFavoriteIndex=module.bx;topFavoriteTags=module.cW;getFeatureState=module.w;object=module.bO;number=module.cX;optional=module.bQ;string=module.bR;setFeatureState=module.p;int=module.cY;FETCH_CREDENTIALS=module.cZ;SEARCH_PATH=module.ad;SEARCH_PARAM_PAGE=module.aa;}],execute:(function(){exports("StatsPage",StatsPage);/**
 * The numbers of the user's own profile page on the site, for Statistics.
 *
 * Read only when the user presses "Refresh profile": two requests with a
@@ -30143,7 +30422,7 @@ function StatsPage() {
 		children: /* @__PURE__ */ a(StatsSection, {})
 	});
 }})}}));
-System.register("./collection-detail-page-C5_brywz-B9cfoxKw.js", ['./___monkey.entry.js','./app-8Y0fzekq-DYbum3DA.js'],(function(exports){'use strict';var d,T,w$1,b,downloadsAvailable,a,$$1,Button,UI_TEXT,shuffleCollection,resetCollectionOrder,EmptyState,Dialog,TextField,Toast,getCollectionOrder,listPlaylists,RDW_HASH_COLLECTIONS,removePostsFromCollection,isDownloadBusy,startDownload,movePostInCollection,renameCollection,deleteCollection,RDW_ROUTE_COLLECTIONS,restorePosts,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION_VIEW,SEARCH_PATH,collectionQueueHash,navigateToRdwRoute;return{setters:[function(module){d=module.ay;T=module.az;w$1=module.cZ;b=module.bk;downloadsAvailable=module.c_;a=module.ad;$$1=module.an;Button=module.b7;UI_TEXT=module.U;shuffleCollection=module.c$;resetCollectionOrder=module.d0;EmptyState=module.cc;Dialog=module.cd;TextField=module.b6;Toast=module.d1;getCollectionOrder=module.d2;listPlaylists=module.d3;RDW_HASH_COLLECTIONS=module.P;removePostsFromCollection=module.d4;isDownloadBusy=module.d5;startDownload=module.d6;movePostInCollection=module.d7;renameCollection=module.d8;deleteCollection=module.ch;RDW_ROUTE_COLLECTIONS=module.d9;restorePosts=module.da;SEARCH_PARAM_PAGE=module.a9;SEARCH_PAGE=module.cG;SEARCH_SECTION_VIEW=module.db;SEARCH_PATH=module.ac;collectionQueueHash=module.dc;},function(module){navigateToRdwRoute=module.i;}],execute:(function(){exports("CollectionDetailPage",CollectionDetailPage);var CELL_SIZE_PX = 200;
+System.register("./collection-detail-page-CB4ptfwh-CcTXiZve.js", ['./___monkey.entry.js','./app-2byzsGgd-BkVaE1Gf.js'],(function(exports){'use strict';var d,T,w$1,b,downloadsAvailable,a,$$1,Button,UI_TEXT,shuffleCollection,resetCollectionOrder,EmptyState,Dialog,TextField,Toast,getCollectionOrder,listPlaylists,RDW_HASH_COLLECTIONS,removePostsFromCollection,isDownloadBusy,startDownload,movePostInCollection,renameCollection,deleteCollection,RDW_ROUTE_COLLECTIONS,restorePosts,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION_VIEW,SEARCH_PATH,collectionQueueHash,navigateToRdwRoute;return{setters:[function(module){d=module.az;T=module.aA;w$1=module.c_;b=module.bl;downloadsAvailable=module.c$;a=module.ae;$$1=module.ao;Button=module.b8;UI_TEXT=module.U;shuffleCollection=module.d0;resetCollectionOrder=module.d1;EmptyState=module.cd;Dialog=module.ce;TextField=module.b7;Toast=module.d2;getCollectionOrder=module.d3;listPlaylists=module.d4;RDW_HASH_COLLECTIONS=module.T;removePostsFromCollection=module.d5;isDownloadBusy=module.d6;startDownload=module.d7;movePostInCollection=module.d8;renameCollection=module.d9;deleteCollection=module.ci;RDW_ROUTE_COLLECTIONS=module.da;restorePosts=module.db;SEARCH_PARAM_PAGE=module.aa;SEARCH_PAGE=module.cH;SEARCH_SECTION_VIEW=module.dc;SEARCH_PATH=module.ad;collectionQueueHash=module.dd;},function(module){navigateToRdwRoute=module.i;}],execute:(function(){exports("CollectionDetailPage",CollectionDetailPage);var CELL_SIZE_PX = 200;
 var GRID_GAP_PX = 4;
 var SECTION_GAP_PX = 12;
 var ACTIONS_GAP_PX = 8;

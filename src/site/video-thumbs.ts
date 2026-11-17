@@ -4,6 +4,9 @@ import {
   FAVORITES_PAGE_CLASS,
   THUMB_ANCHOR_NAME,
   THUMB_CLASS,
+  THUMB_LABEL_INSET_PX,
+  THUMB_LABEL_RULES,
+  VIDEO_THUMB_CLASS,
 } from "../features/types";
 import { SITE_SELECTORS } from "./selectors";
 import { BASE_GRID_CSS } from "./thumb";
@@ -21,10 +24,12 @@ import { BASE_GRID_CSS } from "./thumb";
  * `div.col1.thumb`), outside the link itself.
  */
 
-export const VIDEO_THUMB_CLASS = "rdw-video-thumb";
+export { VIDEO_THUMB_CLASS };
 /** The preview image of a thumb, whatever classes the page gave it. */
 export const THUMB_IMAGE_SELECTOR = ":scope > a > img";
 
+/** The class the site itself puts on the preview image of a video on a search page. */
+const SITE_VIDEO_IMAGE_CLASS = "webm-thumb";
 const VIDEO_TAG = "video";
 /** `video` as the last tag of a title, after the site cut its last character. */
 const VIDEO_TAG_CUT = "vide";
@@ -47,21 +52,34 @@ export function markVideoThumbs(root: ParentNode, thumbSelector: string): number
   let marked = 0;
   for (const thumb of root.querySelectorAll(thumbSelector)) {
     const img = thumb.querySelector(THUMB_IMAGE_SELECTOR);
-    if (!(img instanceof HTMLImageElement) || !titleSaysVideo(img.title)) {
+    if (
+      !(img instanceof HTMLImageElement) ||
+      !(img.classList.contains(SITE_VIDEO_IMAGE_CLASS) || titleSaysVideo(img.title))
+    ) {
       continue;
     }
-    thumb.classList.add(VIDEO_THUMB_CLASS);
+    // THUMB_CLASS is what the label of a video is placed by (see below).
+    thumb.classList.add(THUMB_CLASS, VIDEO_THUMB_CLASS);
     marked += 1;
   }
   return marked;
 }
 
+/**
+ * Marks the video thumbs on the page and those added to it later. On a
+ * search page the site's own class on the image says which are videos; on
+ * the favorites page only the tag list does.
+ */
+export function mountVideoMarks(thumbSelector: string = SITE_SELECTORS.thumb): void {
+  markVideoThumbs(document, thumbSelector);
+  onThumbsAdded((root) => {
+    markVideoThumbs(root, thumbSelector);
+  });
+}
+
 /** Favorites page: marks the thumbs on the page and those added to it later. */
 export function mountFavoriteVideoMarks(): void {
-  markVideoThumbs(document, SITE_SELECTORS.thumb);
-  onThumbsAdded((root) => {
-    markVideoThumbs(root, SITE_SELECTORS.thumb);
-  });
+  mountVideoMarks(SITE_SELECTORS.thumb);
 }
 
 /**
@@ -78,24 +96,12 @@ const GIF_TAG_CUT_START = "nimated_gif";
 const GIF_TAG_CUT_END = "animated_gi";
 const GIF_STYLE_ID = "rdw-gif-thumb-style";
 const GIF_LABEL = "GIF";
-const GIF_INSET_PX = 6;
+const GIF_INSET_PX = THUMB_LABEL_INSET_PX;
 
 export const GIF_THUMB_CSS = `
 ${BASE_GRID_CSS.trim()}
 .${GIF_THUMB_CLASS}::after {
-  content: "${GIF_LABEL}";
-  position: absolute;
-  left: ${String(GIF_INSET_PX)}px;
-  bottom: ${String(GIF_INSET_PX)}px;
-  z-index: 2;
-  padding: 1px 5px;
-  border: 1px solid var(--rdw-border);
-  border-radius: 4px;
-  background: var(--rdw-surface);
-  color: var(--rdw-text);
-  font: 700 10px/1.4 var(--rdw-font);
-  letter-spacing: 0.04em;
-  pointer-events: none;
+  content: "${GIF_LABEL}";${THUMB_LABEL_RULES}
 }
 @supports (anchor-name: --a) {
   .${GIF_THUMB_CLASS}::after {

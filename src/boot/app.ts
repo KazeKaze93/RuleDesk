@@ -8,7 +8,7 @@ import { mountUploadPage } from "../site/upload-page";
 import { recordStatsPoint } from "../storage/history";
 import { syncFavoritesPage } from "../site/favorites-page";
 import { mountFavoritesPager } from "../site/favorites-pager";
-import { mountFavoriteVideoMarks, mountGifMarks } from "../site/video-thumbs";
+import { mountFavoriteVideoMarks, mountGifMarks, mountVideoMarks } from "../site/video-thumbs";
 import { SITE_SELECTORS } from "../site/selectors";
 import { maybeResumeFavoritesSync } from "../site/favorites-sync-runner";
 import { detectPageKind } from "../site/pages";
@@ -46,6 +46,7 @@ export async function startApp(): Promise<void> {
 
   if (pageKind === "list") {
     mountGifMarks(SITE_SELECTORS.thumb);
+    mountVideoMarks(SITE_SELECTORS.thumb);
     mountCards();
     await yieldToMain();
     mountArtistSidebar();

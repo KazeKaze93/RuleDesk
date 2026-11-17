@@ -19,6 +19,7 @@ import { tagGroupsFeature } from "./tag-groups";
 import { tagWikiFeature } from "./tag-wiki";
 import { thumbTooltipFeature } from "./thumb-tooltip";
 import type { Feature } from "./types";
+import { videoMarkFeature } from "./video-mark";
 import { videoPlayerFeature } from "./video-player";
 import { videoPreviewFeature } from "./video-preview";
 
@@ -46,4 +47,5 @@ export const FEATURES: Feature[] = [
   motionFeature,
   feedCounterFeature,
   tagWikiFeature,
+  videoMarkFeature,
 ];

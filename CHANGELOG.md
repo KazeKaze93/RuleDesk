@@ -2,6 +2,22 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.43.0
+
+Favorites, a column of filters instead of the row:
+
+- The filters stand in a column at the left, as on Posts: the search with its suggestions, the terms of the search as chips, Type, Sort. The column stays in place while the page scrolls
+- The terms of the search are chips under the field: a click on a chip excludes the tag, a second click includes it again, the cross takes it out. A group `( a ~ b )` is one chip
+- Shuffle is the third option of Sort, beside Newest and Oldest, and no longer a button of its own: the switch always says what the order is. A click on Shuffle while it is chosen shuffles again
+- Over the grid there is a short strip that stays at the top: the number of posts, Pages / Scroll, "Random post", "Select" and the "⋯" menu
+- "Select" turns that strip into the selection bar, filled so that it is seen at once; the column is shown but cannot be changed until the selection is finished or cancelled
+- The grid of the site is not wrapped or moved: the column is put beside it
+
+Video thumbnails:
+
+- A video is marked with a play sign in a small plate at the corner of the thumbnail, the same plate "GIF" has, in place of the frame around it. On Posts, in the Feed and on Favorites, in the Light, Dark and Custom themes
+- RuleDesk → Page → "Play icon on video thumbnails": switched off, the frame is back. In Site default and Site dark the site's own frame stays either way
+
 ## 0.42.0
 
 Favorites search by rating, score and size:
