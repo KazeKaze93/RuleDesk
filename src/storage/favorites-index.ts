@@ -33,38 +33,7 @@ export const FavoriteIndexEntrySchema = z.object({
    * Absent on entries written before 0.40.11 (see features/favorites-tags.ts).
    */
   cut: z.optional(z.boolean()),
-  /**
-   * From the site API, when the user has a key and asked for them ("Read
-   * ratings and sizes"): the favorites page gives none of these.
-   */
-  rating: z.optional(z.string()),
-  score: z.optional(z.number()),
-  width: z.optional(z.number()),
-  height: z.optional(z.number()),
 });
-
-/** What the API adds to an entry. */
-export type FavoriteDetails = {
-  readonly id: number;
-  readonly rating?: string | undefined;
-  readonly score?: number | undefined;
-  readonly width?: number | undefined;
-  readonly height?: number | undefined;
-};
-
-/** The entry with the details laid over it; a detail that is absent changes nothing. */
-export function withFavoriteDetails(
-  entry: FavoriteIndexEntry,
-  details: FavoriteDetails,
-): FavoriteIndexEntry {
-  return {
-    ...entry,
-    ...(details.rating === undefined ? {} : { rating: details.rating }),
-    ...(details.score === undefined ? {} : { score: details.score }),
-    ...(details.width === undefined ? {} : { width: details.width }),
-    ...(details.height === undefined ? {} : { height: details.height }),
-  };
-}
 
 export type FavoriteIndexEntry = z.infer<typeof FavoriteIndexEntrySchema>;
 
@@ -117,50 +86,7 @@ export async function putFavoriteIndexEntries(
     const tx = db.transaction(STORE_NAME, "readwrite");
     const store = tx.objectStore(STORE_NAME);
     for (const entry of entries) {
-      // A sync writes an entry again without the details the API gave it:
-      // they are carried over from what is stored.
-      const request = store.get(entry.id);
-      request.onsuccess = () => {
-        const old = FavoriteIndexEntrySchema.safeParse(request.result);
-        store.put(old.success ? withFavoriteDetails(entry, { ...old.data, ...definedDetails(entry) }) : entry);
-      };
-      request.onerror = () => {
-        store.put(entry);
-      };
-    }
-    await whenDone(tx);
-  } finally {
-    db.close();
-  }
-}
-
-function definedDetails(entry: FavoriteIndexEntry): FavoriteDetails {
-  return {
-    id: entry.id,
-    ...(entry.rating === undefined ? {} : { rating: entry.rating }),
-    ...(entry.score === undefined ? {} : { score: entry.score }),
-    ...(entry.width === undefined ? {} : { width: entry.width }),
-    ...(entry.height === undefined ? {} : { height: entry.height }),
-  };
-}
-
-/** Lays details over the entries that are stored; a post without an entry is left out. */
-export async function putFavoriteDetails(details: readonly FavoriteDetails[]): Promise<void> {
-  if (details.length === 0 || !favoritesIndexAvailable()) {
-    return;
-  }
-  const db = await openDb();
-  try {
-    const tx = db.transaction(STORE_NAME, "readwrite");
-    const store = tx.objectStore(STORE_NAME);
-    for (const item of details) {
-      const request = store.get(item.id);
-      request.onsuccess = () => {
-        const old = FavoriteIndexEntrySchema.safeParse(request.result);
-        if (old.success) {
-          store.put(withFavoriteDetails(old.data, item));
-        }
-      };
+      store.put(entry);
     }
     await whenDone(tx);
   } finally {

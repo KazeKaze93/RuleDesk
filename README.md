@@ -44,7 +44,7 @@ Under the site's search field: the tags of the query as chips (click to exclude,
 
 ### Search inside your favorites
 
-The site cannot search favorites. After one **Sync favorites**, the Favorites page gets a column of filters beside the grid, as on Posts: search by tags (`tag`, `-tag`, `ta*g`, `( a ~ b )`) with suggestions from your own favorites as you type, by rating, score and size when you have an API key, Images / Videos, endless scroll, Shuffle, Random post, and Select to remove several or add them to a collection.
+The site cannot search favorites. After one **Sync favorites**, the Favorites page gets a column of filters beside the grid, as on Posts: search by tags (`tag`, `-tag`, `ta*g`, `( a ~ b )`) with suggestions from your own favorites as you type, Images / Videos, endless scroll, Shuffle, Random post, and Select to remove several or add them to a collection.
 
 ### The post page
 
@@ -56,7 +56,7 @@ A favorite star and "+" on thumbnails, three sizes, infinite scroll, dimming of 
 
 ### Download manager
 
-Saves the original files of a custom collection, a whole search, picked posts or all your favorites into a folder in your browser's downloads, with a name you choose (`rule34-<id>` by default). A corner panel shows progress, Pause, Resume, Cancel. It needs your own API key from the site's account options page; a single post's Download button does not. The same key lets the favorites search use `rating:`, `score:`, `width:` and `height:`.
+Saves the original files of a custom collection, a whole search, picked posts or all your favorites into a folder in your browser's downloads, with a name you choose (`rule34-<id>` by default). A corner panel shows progress, Pause, Resume, Cancel. It needs your own API key from the site's account options page; a single post's Download button does not.
 
 ### Statistics
 

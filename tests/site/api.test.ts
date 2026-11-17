@@ -6,7 +6,6 @@ import {
   API_LIMIT_RETRIES,
   API_MIN_INTERVAL_MS,
   API_REQUEST_INTERVAL_MS,
-  collectPostDetails,
   collectPostFiles,
   resetApiPace,
   parseApiPosts,
@@ -63,15 +62,15 @@ describe("site API for downloads", () => {
     expect(parseApiPosts("  \n")).toEqual([]);
   });
 
-  it("asks post by post when a group of ids gets an empty answer", async () => {
-    const seen = stubApi(["", JSON.stringify([post(7)]), "", JSON.stringify([post(9)])]);
+  it("asks for posts named by id one at a time: the API has no list of ids", async () => {
+    const seen = stubApi([JSON.stringify([post(7)]), "", JSON.stringify([post(9)])]);
     const files = await settle(
       collectPostFiles(
         { kind: "ids", ids: [7, 8, 9] },
         { credentials: CREDENTIALS, onProgress: () => {}, isCancelled: () => false },
       ),
     );
-    expect(seen).toEqual(["( id:9 ~ id:8 ~ id:7 )", "id=7", "id=8", "id=9"]);
+    expect(seen).toEqual(["id=7", "id=8", "id=9"]);
     // Post 8 is gone from the site: it is left out.
     expect(files.map((file) => file.postId)).toEqual([7, 9]);
   });
@@ -97,29 +96,17 @@ describe("site API for downloads", () => {
           : new Response(JSON.stringify([post(5)]), { status: 200 }),
       );
     });
-    let posts: number[] = [];
-    const run = collectPostDetails([5], {
-      credentials: CREDENTIALS,
-      isCancelled: () => false,
-      onBatch: (batch) => {
-        posts = batch.map((item) => item.postId);
-      },
-    });
+    const run = collectPostFiles({ kind: "ids", ids: [5] }, { credentials: CREDENTIALS, onProgress: () => {}, isCancelled: () => false });
     await vi.advanceTimersByTimeAsync((API_LIMIT_PAUSE_MS + API_MIN_INTERVAL_MS) * 3);
-    await run;
+    expect((await run).map((file) => file.postId)).toEqual([5]);
     expect(calls).toBe(3);
-    expect(posts).toEqual([5]);
 
     calls = 0;
     vi.stubGlobal("fetch", () => {
       calls += 1;
       return Promise.resolve(new Response("", { status: 429 }));
     });
-    const stuck = collectPostDetails([5], {
-      credentials: CREDENTIALS,
-      isCancelled: () => false,
-      onBatch: () => {},
-    });
+    const stuck = collectPostFiles({ kind: "ids", ids: [5] }, { credentials: CREDENTIALS, onProgress: () => {}, isCancelled: () => false });
     const failed = expect(stuck).rejects.toThrow("API HTTP 429");
     await vi.advanceTimersByTimeAsync((API_LIMIT_PAUSE_MS + API_MIN_INTERVAL_MS) * 5);
     await failed;
@@ -132,9 +119,11 @@ describe("site API for downloads", () => {
       starts.push(Date.now());
       return Promise.resolve(new Response("[]", { status: 200 }));
     });
-    const options = { credentials: CREDENTIALS, isCancelled: () => false, onBatch: () => {} };
-    // Two runs at once, as a download and the reading of ratings would be.
-    const both = Promise.all([collectPostDetails([1], options), collectPostDetails([2], options)]);
+    // Two runs at once, as two downloads would be.
+    const both = Promise.all([
+      collectPostFiles({ kind: "ids", ids: [1] }, { credentials: CREDENTIALS, onProgress: () => {}, isCancelled: () => false }),
+      collectPostFiles({ kind: "ids", ids: [2] }, { credentials: CREDENTIALS, onProgress: () => {}, isCancelled: () => false }),
+    ]);
     await vi.advanceTimersByTimeAsync(API_MIN_INTERVAL_MS * 4);
     await both;
     expect(starts).toHaveLength(2);
@@ -150,11 +139,7 @@ describe("site API for downloads", () => {
     // Another tab has just made a request.
     const before = Date.now();
     window.localStorage.setItem(API_LAST_REQUEST_KEY, String(before));
-    const run = collectPostDetails([1], {
-      credentials: CREDENTIALS,
-      isCancelled: () => false,
-      onBatch: () => {},
-    });
+    const run = collectPostFiles({ kind: "ids", ids: [1] }, { credentials: CREDENTIALS, onProgress: () => {}, isCancelled: () => false });
     await vi.advanceTimersByTimeAsync(API_MIN_INTERVAL_MS * 2);
     await run;
     expect((starts[0] ?? 0) - before).toBeGreaterThanOrEqual(API_MIN_INTERVAL_MS);
@@ -201,9 +186,8 @@ describe("site API for downloads", () => {
     expect(progress).toEqual([2, 3]);
   });
 
-  it("asks for explicit posts in groups of ids and keeps the given order", async () => {
-    const ids = Array.from({ length: 150 }, (_, index) => index + 1);
-    const tags = stubApi([JSON.stringify(ids.map(post))]);
+  it("keeps the given order of explicit posts and leaves out a post the API does not have", async () => {
+    const seen = stubApi([JSON.stringify([post(3)]), JSON.stringify([post(150)]), JSON.stringify([post(1)]), ""]);
 
     const files = await settle(
       collectPostFiles(
@@ -212,9 +196,8 @@ describe("site API for downloads", () => {
       ),
     );
 
-    expect(tags).toHaveLength(1);
-    expect(tags[0]).toContain("id:150");
-    // 9999 is not in any answer: a deleted post is simply left out.
+    expect(seen).toEqual(["id=3", "id=150", "id=1", "id=9999"]);
+    // 9999 got an empty answer: a deleted post is simply left out.
     expect(files.map((file) => file.postId)).toEqual([3, 150, 1]);
   });
 

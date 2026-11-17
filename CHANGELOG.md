@@ -2,6 +2,12 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.43.1
+
+- The favorites search by rating, score and size, added in 0.42.0, is taken out, with "Read ratings and sizes" in settings. It never returned anything: the site API does not answer a list of posts, only one post a request, which for a large list of favorites is hours of requests. `rating:`, `score:`, `width:` and `height:` are again listed as working only in the search on Posts
+- Downloads of a custom collection, of picked posts and of all favorites no longer spend one request in every hundred on a question the API answers with nothing
+- The pace of API requests and the waiting out of "too many requests" from 0.42.0 stay
+
 ## 0.43.0
 
 Favorites, a column of filters instead of the row:

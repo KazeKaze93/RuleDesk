@@ -158,7 +158,6 @@ Two kinds, one page:
 The site's Favorites page, with a column of filters at the left and a short strip over the grid; both stay in place while scrolling ("Bulk remove favorites" in settings). The grid itself is the site's and is not wrapped or moved. In the column:
 
 - a search over the user's own favorites: `tag`, `-tag`, `ta*g`, `( a ~ b )`; the "?" lists the syntax
-- with an API key: `rating:safe`, `-rating:explicit`, `score:>=50`, `width:>=1920`, `height:<1000`. The rating, score and size are read from the site API by "Read ratings and sizes" in settings, and after a "Full resync"; a favorite not read yet is left out of such a search, and the page says how many are
 - suggestions under the field as a word is typed: tags the favorites have, with their counts, those that begin with the word first. Up, Down, Enter or Tab, Esc. While the list is open the page keeps the last result; the search is applied on a pick, on Enter, after a space, and when the field is left
 - when nothing matches, a line that says so in place of the grid, with the nearest tag offered for a word that is no tag
 - the terms of the search as chips: a click excludes a tag or includes it again, the cross takes it out; a group `( a ~ b )` is one chip
@@ -173,7 +172,7 @@ In the strip over the grid:
 
 Select turns the strip into a selection bar: pick posts, then remove them from favorites or add them to a collection. While posts are being selected the column is shown but locked.
 
-The site has no search inside favorites. The script can offer one only because it keeps a local list: **Sync favorites** (settings → Favorites) walks the user's favorites pages once and stores ids and tags; "Full resync" rebuilds the list. Search, the type switch, Scroll and Shuffle appear after a full resync. The local list holds tags and ids, and, when read from the API, the rating, score and size. The site's other metatags (`user:`, `md5:`, `parent:`) do not work here; they do on Posts.
+The site has no search inside favorites. The script can offer one only because it keeps a local list: **Sync favorites** (settings → Favorites) walks the user's favorites pages once and stores ids and tags; "Full resync" rebuilds the list. Search, the type switch, Scroll and Shuffle appear after a full resync. The local list holds tags and ids only, so the site's other metatags (`rating:`, `score:`, `user:`) do not work here; they do on Posts.
 
 ## Download manager
 
@@ -251,7 +250,7 @@ These are decisions, not gaps. A design that needs one of them cannot be built.
 |---|---|
 | No request without a user's action | The site rate-limits fast. Two requests are tied to opening a page and not to a button, each at most once in 15 minutes: the Feed counter (any page, with its own switch) and the profile numbers (the Statistics page only) |
 | No background refresh of covers, counts, "new" marks | Same reason. They update from pages the user opens, or by Refresh / Check for new |
-| No site API without the user's own key | The API needs a key, and the script has no server to hold one. With a key it is used for two things the user starts: downloads, and reading the rating, score and size of favorites. The key allows 60 requests a minute; the script keeps under that |
+| No site API, except for downloads with the user's own key | The API needs a key, and the script has no server to hold one. The key allows 60 requests a minute, and the script keeps under that. The API gives posts named by id one a request, which is why a download of picked posts starts slowly and why the favorites search has no rating or score |
 | No account data | The login cookies are never read. The account settings form is never submitted |
 | Nothing is changed inside a thumbnail's link | The site's own scripts depend on it |
 | Only what the site puts on a page can be shown there | There are no avatars, no post dates in the grid, no total in the pager of a multi-tag search, no "I came" counter. The script does not invent them |

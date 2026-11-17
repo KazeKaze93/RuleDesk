@@ -2,7 +2,6 @@ import type { JSX } from "preact";
 import { useEffect, useState } from "preact/hooks";
 
 import { log } from "../log";
-import { collectPostDetails, type PostFile } from "../site/api";
 import {
   FAVORITES_SYNC_MODE_FULL,
   FAVORITES_SYNC_MODE_INCREMENTAL,
@@ -13,13 +12,6 @@ import {
   type FavoritesSyncProgress,
   type FavoritesSyncResult,
 } from "../site/favorites-sync";
-import { getApiCredentials, hasApiCredentials } from "../storage/api-credentials";
-import {
-  putFavoriteDetails,
-  readFavoriteIndex,
-  type FavoriteDetails,
-  type FavoriteIndexEntry,
-} from "../storage/favorites-index";
 import { getSyncState, loadFavSet } from "../storage/favs";
 import type { FavsSyncState } from "../storage/schema";
 import { Button, ProgressBar, SectionLabel } from "../ui/kit";
@@ -52,16 +44,6 @@ const TEXT_DONE = (total: number, pages: number): string =>
 const TEXT_ABORTED = (page: number, pages: number, total: number): string =>
   `Stopped at page ${String(page)} of ${String(pages)} · ${String(total)} ids`;
 const TEXT_STARTING = "Starting sync…";
-const TEXT_DETAILS = "Read ratings and sizes";
-const TEXT_DETAILS_TITLE =
-  "Asks the site API for the rating, score and size of your favorites, a hundred posts a request";
-const TEXT_DETAILS_HINT =
-  "With an API key, Full resync then reads the rating, score and size of every favorite, for rating:, score:, width: and height: in the favorites search. \u201cRead ratings and sizes\u201d does only that.";
-const TEXT_DETAILS_PROGRESS = (asked: number, total: number): string =>
-  `Ratings and sizes: ${String(asked)} of ${String(total)}`;
-const TEXT_DETAILS_DONE = (read: number, total: number): string =>
-  `Ratings and sizes read for ${String(read)} of ${String(total)} favorites`;
-const TEXT_DETAILS_NONE = "No favorites in the index yet: run Full resync first.";
 
 const PAUSE_SECONDS = FAVORITES_SYNC_PAGE_PAUSE_MS / 1000;
 
@@ -243,15 +225,6 @@ async function startSync(
     });
     if (activeSync?.controller === controller) {
       setUi(applyResult(result));
-      // A full walk has just written every entry anew; with a key the
-      // ratings and sizes are read straight after it.
-      if (
-        result.status === "completed" &&
-        mode === FAVORITES_SYNC_MODE_FULL &&
-        hasApiCredentials()
-      ) {
-        await startDetails(setUi);
-      }
     }
   } catch (error) {
     log.error("favorites sync section: unexpected failure", error);
@@ -262,77 +235,6 @@ async function startSync(
         error: error instanceof Error ? error.message : "unexpected error",
       });
     }
-  }
-}
-
-/** The posts the details are asked for: the indexed favorites, the newest post first. */
-export function detailIds(
-  entries: readonly FavoriteIndexEntry[],
-  favorites: ReadonlySet<number>,
-): number[] {
-  return entries
-    .map((entry) => entry.id)
-    .filter((id) => favorites.has(id))
-    .sort((a, b) => b - a);
-}
-
-function detailsOf(post: PostFile): FavoriteDetails {
-  return {
-    id: post.postId,
-    rating: post.rating,
-    score: post.score,
-    width: post.width,
-    height: post.height,
-  };
-}
-
-/**
- * Reads the rating, score and size of the indexed favorites from the API and
- * lays them over the index. Shares the sync's Stop button and its "one at a
- * time" rule. Does nothing without a key.
- */
-async function startDetails(setUi: (next: SyncUi) => void): Promise<void> {
-  const credentials = getApiCredentials();
-  if (activeSync !== null || credentials === null) {
-    return;
-  }
-  const controller = new AbortController();
-  activeSync = { controller, listeners: new Set() };
-  const busyUi = (status: string, progress: number | null): SyncUi => ({
-    status,
-    progress,
-    waiting: progress === null,
-    error: "",
-    unfinished: isUnfinished(getSyncState()),
-    busy: true,
-  });
-  setUi(busyUi(TEXT_DETAILS, null));
-  try {
-    const ids = detailIds(await readFavoriteIndex(), loadFavSet());
-    if (ids.length === 0) {
-      activeSync = null;
-      setUi({ ...idleUi(), status: TEXT_DETAILS_NONE });
-      return;
-    }
-    let read = 0;
-    await collectPostDetails(ids, {
-      credentials,
-      isCancelled: () => controller.signal.aborted,
-      onBatch: async (posts, asked) => {
-        await putFavoriteDetails(posts.map(detailsOf));
-        read += posts.length;
-        setUi(busyUi(TEXT_DETAILS_PROGRESS(asked, ids.length), asked / ids.length));
-      },
-    });
-    activeSync = null;
-    setUi({ ...idleUi(), status: TEXT_DETAILS_DONE(read, ids.length) });
-  } catch (error) {
-    log.error("favorites sync section: details failed", error);
-    activeSync = null;
-    setUi({
-      ...idleUi(),
-      error: error instanceof Error ? error.message : "unexpected error",
-    });
   }
 }
 
@@ -407,18 +309,6 @@ export function FavoritesSyncSection(
               {TEXT_RESUME}
             </Button>
           )}
-          {hasApiCredentials() ? (
-            <Button
-              variant="secondary"
-              title={TEXT_DETAILS_TITLE}
-              disabled={ui.busy}
-              onClick={() => {
-                void startDetails(setUi);
-              }}
-            >
-              {TEXT_DETAILS}
-            </Button>
-          ) : null}
           <Button
             variant="secondary"
             disabled={!ui.busy}
@@ -432,7 +322,6 @@ export function FavoritesSyncSection(
         {ui.error.length > 0 ? <p className="rdw-error">{ui.error}</p> : null}
         <p className={WARNING_CLASS}>{TEXT_WARNING}</p>
         <p className={NOTE_CLASS}>{TEXT_NOTE}</p>
-        <p className={NOTE_CLASS}>{TEXT_DETAILS_HINT}</p>
         <p className="rdw-hint">
           {`Pause between pages: ${String(PAUSE_SECONDS)} s`}
         </p>

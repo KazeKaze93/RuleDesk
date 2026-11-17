@@ -1,35 +1,23 @@
 import * as z from "zod/mini";
 
 import { FETCH_METHOD_GET } from "../config/constants";
-import { buildPlaylistQueries } from "../search/query";
 import type { ApiCredentials } from "../storage/api-credentials";
 import { isSiteUrl } from "./urls";
 
 /**
- * The site API. It works with the user's own key from settings and is never
- * called without one. It is used for two things, both started by the user:
+ * The site API, used for one thing only: finding the original files of posts
+ * for the download manager. It works with the user's own key from settings
+ * and is never called without one.
  *
- * - the download manager: finding the original files of posts. One request
- *   returns up to 1000 posts with the addresses of their files, so no post
- *   page has to be read;
- * - the favorites search (Kaze, 17.11.2026): the rating, score and size of
- *   the favorites, which the favorites page does not give. Asked for by
- *   "Read ratings and sizes" and after a "Full resync", a hundred posts a
- *   request.
+ * A search is answered a thousand posts a request. A list of posts is not:
+ * the API has no "or" for ids (docs/site.md has what was tried), so posts
+ * named by id cost one request each.
  */
 
 const API_URL = "https://api.rule34.xxx/index.php";
 const POSTS_PER_REQUEST = 1000;
-/** Post ids per `( id:1 ~ id:2 … )` request; well under the site's group limit. */
-const IDS_PER_REQUEST = 100;
 /** Pause between two API requests of one collection run. */
 export const API_REQUEST_INTERVAL_MS = 1000;
-/**
- * Pause between two requests for the details of favorites. The API allows a
- * key 60 requests in 60 seconds (its own page says so; Kaze, 17.11.2026);
- * this run is long, so it keeps clear of that: 50 a minute.
- */
-export const API_DETAILS_INTERVAL_MS = 1200;
 const FETCH_NO_CREDENTIALS = "omit";
 const ERROR_TEXT_LIMIT = 120;
 const SORT_TOKEN_PREFIX = "sort:";
@@ -107,8 +95,7 @@ function buildApiUrl(query: ApiQuery, credentials: ApiCredentials): string {
  * - requests of one tab go one after another, never two at once;
  * - a request starts no sooner than {@link API_MIN_INTERVAL_MS} after the
  *   one before it, counted across the tabs of the browser through a time
- *   kept in localStorage (a download in one tab and "Read ratings and sizes"
- *   in another share the key);
+ *   kept in localStorage (downloads in two tabs share the key);
  * - an answer of "too many requests" is waited out and asked again a few
  *   times before the run fails.
  */
@@ -291,91 +278,29 @@ async function collectQuery(tags: string, options: CollectOptions): Promise<Post
 }
 
 /**
- * The given posts, in the order of `ids`. They are asked for in groups, as
- * one `( id:1 ~ id:2 … )` search per group. When a group's answer is empty
- * the group is asked again post by post through the `id` parameter, which is
- * slower but does not depend on the search accepting such a group.
+ * The given posts, in the order of `ids`, one request a post through the `id`
+ * parameter. (They used to be asked for a hundred at a time as one
+ * `( id:1 ~ id:2 … )` search first; the API answers such a search with
+ * nothing, so that was one wasted request in every hundred.) A post the API
+ * does not return, a deleted one, is left out.
  */
 async function collectIds(
   ids: readonly number[],
   options: CollectOptions,
 ): Promise<PostFile[]> {
-  const byId = new Map<number, string>();
-  let requests = 0;
-  const ask = async (query: ApiQuery): Promise<PostFile[]> => {
-    if (requests > 0) {
-      await sleep(API_REQUEST_INTERVAL_MS);
-    }
-    requests += 1;
-    return parseApiPosts(await requestText(query, options.credentials));
-  };
-
-  for (let start = 0; start < ids.length; start += IDS_PER_REQUEST) {
-    if (options.isCancelled()) {
-      break;
-    }
-    const group = ids.slice(start, start + IDS_PER_REQUEST);
-    const tags = buildPlaylistQueries([...group], 0)[0] ?? "";
-    const found = await ask({ tags });
-    if (found.length > 0) {
-      for (const file of found) {
-        byId.set(file.postId, file.url);
-      }
-    } else {
-      for (const id of group) {
-        if (options.isCancelled()) {
-          break;
-        }
-        for (const file of await ask({ id })) {
-          byId.set(file.postId, file.url);
-        }
-        options.onProgress(byId.size);
-      }
-    }
-    options.onProgress(byId.size);
-  }
-
   const files: PostFile[] = [];
   for (const id of ids) {
-    const url = byId.get(id);
-    if (url !== undefined) {
-      files.push({ postId: id, url });
-    }
-  }
-  return files;
-}
-
-export type DetailsOptions = {
-  readonly credentials: ApiCredentials;
-  /** Called with the posts of each answer and how many ids were asked for so far. */
-  readonly onBatch: (posts: readonly PostFile[], asked: number) => Promise<void> | void;
-  readonly isCancelled: () => boolean;
-};
-
-/**
- * What the API knows of the given posts (rating, score, size), a hundred ids
- * a request with a pause between requests. A post the API does not return
- * (deleted) is simply not in any batch. Returns how many ids were asked for.
- */
-export async function collectPostDetails(
-  ids: readonly number[],
-  options: DetailsOptions,
-): Promise<number> {
-  let asked = 0;
-  for (let start = 0; start < ids.length; start += IDS_PER_REQUEST) {
     if (options.isCancelled()) {
       break;
     }
-    if (start > 0) {
-      await sleep(API_DETAILS_INTERVAL_MS);
+    const found = parseApiPosts(await requestText({ id }, options.credentials));
+    const file = found.find((item) => item.postId === id) ?? found[0];
+    if (file !== undefined) {
+      files.push(file);
     }
-    const group = ids.slice(start, start + IDS_PER_REQUEST);
-    const tags = buildPlaylistQueries([...group], 0)[0] ?? "";
-    const posts = parseApiPosts(await requestText({ tags }, options.credentials));
-    asked += group.length;
-    await options.onBatch(posts, asked);
+    options.onProgress(files.length);
   }
-  return asked;
+  return files;
 }
 
 /** Finds the original files of everything a source names. */
