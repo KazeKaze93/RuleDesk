@@ -114,6 +114,14 @@ export const PAGE_CONTENT_CSS = `
   border-top-left-radius: 0;
   border-top-right-radius: 0;
 }
+/* The switches of the features are a group of their own inside the list:
+   the line is also drawn where that group begins and where it ends. */
+.${PANEL_UI_CLASS.settingsRow} + .${PANEL_UI_CLASS.settingsGroup},
+.${PANEL_UI_CLASS.settingsGroup} + .${PANEL_UI_CLASS.settingsRow} {
+  border-top: 1px solid var(--rdw-border);
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
 /* The options of a setting are part of it: no line between the two. */
 .${PANEL_UI_CLASS.settingsRow} + .${PANEL_UI_CLASS.settingsRow}.${PANEL_UI_CLASS.settingsRowSub} {
   border-top: 0;

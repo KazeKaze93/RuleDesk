@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.40.9
+
+- RuleDesk settings: the line is also there under the first setting of Page, "Enable page tweaks", and over the settings after the list of features
+
 ## 0.40.8
 
 RuleDesk settings:
