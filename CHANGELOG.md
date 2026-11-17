@@ -2,6 +2,13 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.40.1
+
+- Upload, tidied: the file zone takes the whole left column and the fields on the right stand close together, without the gaps between them
+- Upload: "Remove file" in the zone takes the chosen file out again
+- Upload: the line about tags shows only while there are fewer than five, and comes back when there are too few again
+- Fixed: a text field turned pale when its value was picked from the browser's list of earlier entries, as in the forum search. Fields keep the colours of the theme
+
 ## 0.40.0
 
 The Upload page, redrawn:

@@ -130,6 +130,7 @@ const UPLOAD_HAS_FILE_CLASS = "rdw-upload-has-file";
 const UPLOAD_FILE_NAME_CLASS = "rdw-upload-file-name";
 const UPLOAD_PREVIEW_CLASS = "rdw-upload-preview";
 const UPLOAD_HINT_CLASS = "rdw-upload-hint";
+const UPLOAD_REMOVE_CLASS = "rdw-upload-remove";
 const UPLOAD_TAG_COUNT_CLASS = "rdw-upload-tag-count";
 const UPLOAD_TAG_COUNT_SHORT_CLASS = "rdw-upload-tag-count--short";
 const UPLOAD_GUIDE_TOGGLE_CLASS = "rdw-upload-guide-toggle";
@@ -587,6 +588,21 @@ ${ROOT} select${WHERE_NOT_OUR_CONTROL}:focus {
   outline: 2px solid ${v.accent};
   outline-offset: 1px;
   border-color: ${v.accent};
+}
+
+/*
+ * A value the browser fills in itself (picked from its list of earlier
+ * entries) gets the browser's own pale background, which cannot be set with
+ * a background. An inset shadow as large as the field covers it, and the
+ * text colour is set the way autofill reads it.
+ */
+${ROOT} input${WHERE_NOT_OUR_CONTROL}:-webkit-autofill,
+${ROOT} input${WHERE_NOT_OUR_CONTROL}:-webkit-autofill:hover,
+${ROOT} input${WHERE_NOT_OUR_CONTROL}:-webkit-autofill:focus,
+${ROOT} textarea${WHERE_NOT_OUR_CONTROL}:-webkit-autofill {
+  -webkit-text-fill-color: ${v.text};
+  caret-color: ${v.text};
+  box-shadow: 0 0 0 1000px ${v.surface} inset;
 }
 
 /* —— awesomplete —— */
@@ -1243,7 +1259,7 @@ ${ROOT} input[type="file"]${WHERE_NOT_OUR_CONTROL}::file-selector-button:hover {
  * fields (the video upload) is left as it is.
  */
 ${UPLOAD} > form {
-  max-width: 1100px;
+  max-width: 1200px;
 }
 
 ${UPLOAD} > form > h2 {
@@ -1269,10 +1285,12 @@ ${UPLOAD} > form > table > tbody {
     "guide guide"
     "file tags"
     "file rating"
-    "source title"
-    "source mytags"
+    "file source"
+    "file title"
+    "file mytags"
     "submit submit";
-  gap: 14px 20px;
+  gap: 12px 20px;
+  align-items: start;
   padding: 16px;
   background: ${v.surface};
   border: 1px solid ${v.border};
@@ -1299,8 +1317,14 @@ ${UPLOAD} > form > table > tbody > tr:has(h3) {
   grid-area: guide;
 }
 
+/* The zone is as tall as the fields beside it. */
 ${UPLOAD} > form > table > tbody > tr:has(#fileUpload) {
   grid-area: file;
+  align-self: stretch;
+}
+
+${UPLOAD} > form > table > tbody > tr:has(#fileUpload) > td {
+  height: 100%;
 }
 
 ${UPLOAD} > form > table > tbody > tr:has(#txtSource) {
@@ -1351,14 +1375,20 @@ ${UPLOAD} #tags {
   resize: vertical;
 }
 
+/* Shown only while there are fewer tags than the site asks for. */
 ${UPLOAD} .${UPLOAD_TAG_COUNT_CLASS} {
-  margin: 4px 0;
-  color: ${v.text};
+  margin: 4px 0 0;
+  color: ${v.danger};
   font-weight: 600;
 }
 
-${UPLOAD} .${UPLOAD_TAG_COUNT_CLASS}.${UPLOAD_TAG_COUNT_SHORT_CLASS} {
-  color: ${v.danger};
+${UPLOAD} .${UPLOAD_TAG_COUNT_CLASS}[hidden] {
+  display: none;
+}
+
+/* The line breaks the site spaces the tags cell with leave holes in a card. */
+${UPLOAD} tr:has(#tags) > td > br:not(label + br) {
+  display: none;
 }
 
 /* The guidelines: quiet text that can be folded away. */
@@ -1496,6 +1526,33 @@ ${UPLOAD} img.${UPLOAD_PREVIEW_CLASS}[hidden] {
   display: none;
 }
 
+/* Once a file is chosen the hint is of no use; the button that takes it out is. */
+${UPLOAD} td.${UPLOAD_HAS_FILE_CLASS} > .${UPLOAD_HINT_CLASS} {
+  display: none;
+}
+
+${UPLOAD} button.${UPLOAD_REMOVE_CLASS} {
+  position: relative;
+  z-index: 2;
+  min-height: 28px;
+  padding: 0 12px;
+  border: 1px solid ${v.border};
+  border-radius: ${v.radiusM};
+  background: ${v.surface};
+  color: ${v.text};
+  font: 600 12px ${v.font};
+  cursor: pointer;
+}
+
+${UPLOAD} button.${UPLOAD_REMOVE_CLASS}:hover {
+  border-color: ${v.danger};
+  color: ${v.danger};
+}
+
+${UPLOAD} button.${UPLOAD_REMOVE_CLASS}[hidden] {
+  display: none;
+}
+
 /* Rating: the two radio buttons drawn as one switch of options. */
 ${UPLOAD} input[name="rating"] {
   position: absolute;
@@ -1542,11 +1599,15 @@ ${UPLOAD} tr:has(input[type="submit"]) > td > b:first-of-type {
   font-weight: normal;
 }
 
+${UPLOAD} tr:has(input[type="submit"]) br {
+  display: none;
+}
+
 ${UPLOAD} tr:has(input[type="submit"]) input[type="submit"] {
   display: block;
   min-width: 160px;
   height: 36px;
-  margin: 10px 0 2px;
+  margin: 10px 0 12px;
   padding: 0 20px;
   border: 1px solid ${v.accent};
   border-radius: ${v.radiusM};

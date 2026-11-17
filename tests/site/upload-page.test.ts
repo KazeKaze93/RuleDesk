@@ -11,6 +11,7 @@ import {
   UPLOAD_GUIDE_TOGGLE_CLASS,
   UPLOAD_HAS_FILE_CLASS,
   UPLOAD_HINT_CLASS,
+  UPLOAD_REMOVE_CLASS,
   UPLOAD_TAG_COUNT_CLASS,
   UPLOAD_TAG_COUNT_SHORT_CLASS,
   countTags,
@@ -58,8 +59,8 @@ describe("upload: counting and sizes", () => {
   it("says how many are missing until there are enough", () => {
     expect(tagCountText(0)).toBe(`0 tags · ${String(MIN_TAGS)} more to reach ${String(MIN_TAGS)}`);
     expect(tagCountText(1)).toBe("1 tag · 4 more to reach 5");
-    expect(tagCountText(5)).toBe("5 tags");
-    expect(tagCountText(12)).toBe("12 tags");
+    expect(tagCountText(5)).toBe("");
+    expect(tagCountText(12)).toBe("");
   });
 
   it("writes a file size a person reads at a glance", () => {
@@ -99,6 +100,32 @@ describe("the upload page", () => {
     );
   });
 
+  it("has a button that takes the chosen file out again", () => {
+    mountUploadPage();
+    const input = document.getElementById("fileUpload");
+    const zone = input?.closest("td");
+    const remove = zone?.querySelector(`.${UPLOAD_REMOVE_CLASS}`);
+    expect(remove?.hasAttribute("hidden")).toBe(true);
+    if (!(input instanceof HTMLInputElement) || !(remove instanceof HTMLButtonElement)) {
+      throw new Error("no file field");
+    }
+    const file = new File(["x".repeat(2048)], "picture.png", { type: "image/png" });
+    Object.defineProperty(input, "files", { configurable: true, get: () => [file] });
+    URL.createObjectURL = (): string => "blob:preview";
+    URL.revokeObjectURL = (): void => undefined;
+    input.dispatchEvent(new Event("change"));
+    expect(zone?.classList.contains(UPLOAD_HAS_FILE_CLASS)).toBe(true);
+    expect(zone?.textContent).toContain("picture.png · 2.0 KB");
+    expect(remove.hidden).toBe(false);
+    // A button of its own: it does not send the form.
+    expect(remove.type).toBe("button");
+
+    Object.defineProperty(input, "files", { configurable: true, get: () => [] });
+    remove.click();
+    expect(zone?.classList.contains(UPLOAD_HAS_FILE_CLASS)).toBe(false);
+    expect(remove.hidden).toBe(true);
+  });
+
   it("counts the tags as they are typed", () => {
     mountUploadPage();
     const tags = document.getElementById("tags");
@@ -109,8 +136,15 @@ describe("the upload page", () => {
       tags.value = "a b c d e";
       tags.dispatchEvent(new Event("input"));
     }
-    expect(line?.textContent).toBe("5 tags");
+    // Enough tags: the reminder goes away, and comes back when there are too few again.
+    expect(line?.hasAttribute("hidden")).toBe(true);
     expect(line?.classList.contains(UPLOAD_TAG_COUNT_SHORT_CLASS)).toBe(false);
+    if (tags instanceof HTMLTextAreaElement) {
+      tags.value = "a b";
+      tags.dispatchEvent(new Event("input"));
+    }
+    expect(line?.hasAttribute("hidden")).toBe(false);
+    expect(line?.textContent).toBe("2 tags · 3 more to reach 5");
     // The line stands right after the field's box, not inside it.
     expect(line?.previousElementSibling?.classList.contains("awesomplete")).toBe(true);
   });

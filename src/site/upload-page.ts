@@ -7,7 +7,8 @@ import { getFeatureState, setFeatureState } from "../storage/store";
  * - The file field becomes a zone that says which file is chosen and shows a
  *   picture of it. The site's own field lies over the whole zone, so a click
  *   anywhere opens the file dialog and a file can be dropped on it.
- * - Under the tags a line counts them: the site asks for at least five.
+ * - Under the tags a line says how many are missing, while there are fewer
+ *   than the five the site asks for.
  * - The long guidelines can be folded; the choice is remembered.
  *
  * The page is recognised by its markup. The layout is in the skin.
@@ -22,6 +23,7 @@ export const UPLOAD_HAS_FILE_CLASS = "rdw-upload-has-file";
 export const UPLOAD_FILE_NAME_CLASS = "rdw-upload-file-name";
 export const UPLOAD_PREVIEW_CLASS = "rdw-upload-preview";
 export const UPLOAD_HINT_CLASS = "rdw-upload-hint";
+export const UPLOAD_REMOVE_CLASS = "rdw-upload-remove";
 export const UPLOAD_TAG_COUNT_CLASS = "rdw-upload-tag-count";
 export const UPLOAD_TAG_COUNT_SHORT_CLASS = "rdw-upload-tag-count--short";
 export const UPLOAD_GUIDE_TOGGLE_CLASS = "rdw-upload-guide-toggle";
@@ -31,6 +33,7 @@ export const UPLOAD_GUIDE_STATE_ID = "upload-guide-folded";
 /** The site's own rule: "at least 5 tags". */
 export const MIN_TAGS = 5;
 const HINT_TEXT = "Drop a file here or click to choose one";
+const REMOVE_LABEL = "Remove file";
 const SHOW_GUIDE_LABEL = "Show the upload guidelines";
 const HIDE_GUIDE_LABEL = "Hide the guidelines";
 const BYTES_PER_KB = 1024;
@@ -60,12 +63,16 @@ export function countTags(text: string): number {
   ).size;
 }
 
-/** "3 tags · 2 more to reach 5", "5 tags", "1 tag · 4 more to reach 5". */
+/**
+ * "3 tags · 2 more to reach 5", "1 tag · 4 more to reach 5"; nothing once
+ * there are enough: the line is a reminder, not a counter.
+ */
 export function tagCountText(count: number): string {
+  if (count >= MIN_TAGS) {
+    return "";
+  }
   const word = `${String(count)} ${count === 1 ? "tag" : "tags"}`;
-  return count >= MIN_TAGS
-    ? word
-    : `${word} · ${String(MIN_TAGS - count)} more to reach ${String(MIN_TAGS)}`;
+  return `${word} · ${String(MIN_TAGS - count)} more to reach ${String(MIN_TAGS)}`;
 }
 
 function mountFileZone(input: HTMLInputElement): void {
@@ -83,7 +90,17 @@ function mountFileZone(input: HTMLInputElement): void {
   preview.className = UPLOAD_PREVIEW_CLASS;
   preview.alt = "";
   preview.hidden = true;
-  zone.append(preview, hint, name);
+  const remove = document.createElement("button");
+  remove.type = "button";
+  remove.className = UPLOAD_REMOVE_CLASS;
+  remove.textContent = REMOVE_LABEL;
+  remove.hidden = true;
+  remove.addEventListener("click", () => {
+    // The site's field is emptied the way a user would empty it, and told so.
+    input.value = "";
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  zone.append(preview, hint, name, remove);
 
   let previewUrl: string | null = null;
   const show = (): void => {
@@ -93,6 +110,7 @@ function mountFileZone(input: HTMLInputElement): void {
       previewUrl = null;
     }
     zone.classList.toggle(UPLOAD_HAS_FILE_CLASS, file !== undefined);
+    remove.hidden = file === undefined;
     name.textContent = file === undefined ? "" : `${file.name} · ${formatFileSize(file.size)}`;
     if (file !== undefined && file.type.startsWith(IMAGE_TYPE_PREFIX)) {
       previewUrl = URL.createObjectURL(file);
@@ -130,6 +148,7 @@ function mountTagCount(tags: HTMLTextAreaElement): void {
   const sync = (): void => {
     const count = countTags(tags.value);
     line.textContent = tagCountText(count);
+    line.hidden = count >= MIN_TAGS;
     line.classList.toggle(UPLOAD_TAG_COUNT_SHORT_CLASS, count < MIN_TAGS);
   };
   // The site's suggestions and "My Tags" write into the field without typing.

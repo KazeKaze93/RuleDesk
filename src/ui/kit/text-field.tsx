@@ -48,6 +48,14 @@ input.rdw-field__input.rdw-kit-focusable:focus {
   background: var(--rdw-surface);
   color: var(--rdw-text);
 }
+/* A value filled in by the browser keeps the theme's colours too. */
+.rdw-field__input:-webkit-autofill,
+.rdw-field__input:-webkit-autofill:hover,
+.rdw-field__input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--rdw-text);
+  caret-color: var(--rdw-text);
+  box-shadow: 0 0 0 1000px var(--rdw-surface) inset;
+}
 .rdw-field__input::placeholder {
   color: var(--rdw-muted);
 }
