@@ -1,3 +1,4 @@
+import { SETTINGS_SECTION_FAVORITES, requestSettingsSection } from "../pages/settings-focus";
 import { STICKY_TOP } from "../boot/sticky-header";
 import { render } from "preact";
 import type { JSX } from "preact";
@@ -514,7 +515,9 @@ function downloadNote(count: number): string {
   return `${count.toLocaleString(LOCALE)} ${files}: every favorite in the local list, not only this page.`;
 }
 
+/** Opens the settings page at its Favorites block, where the sync buttons are. */
 function openSyncSettings(): void {
+  requestSettingsSection(SETTINGS_SECTION_FAVORITES);
   window.location.hash = RDW_HASH_SETTINGS;
 }
 

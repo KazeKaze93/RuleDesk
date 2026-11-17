@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.40.12
+
+- Favorites → "⋯" → "Sync favorites…" opens the settings at the Favorites block, where the sync buttons are, and unfolds it. It used to open the settings at their top
+
 ## 0.40.11
 
 Favorites search, the tags the site cuts:

@@ -1,6 +1,7 @@
+import { SETTINGS_SECTION_FAVORITES, takeSettingsSection } from "./settings-focus";
 import type { ComponentChildren, JSX } from "preact";
 import { Fragment, render as preactRender } from "preact";
-import { useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 
 import { UI_TEXT } from "../config/constants";
 import { FEATURES } from "../features/registry";
@@ -53,6 +54,7 @@ import {
   STICKY_HEADER_SETTING_LABEL,
   STICKY_HEADER_SWITCH_ID,
   applyStickyHeader,
+  STICKY_TOP,
 } from "../boot/sticky-header";
 import { installSiteMenu } from "./menu";
 
@@ -76,6 +78,7 @@ const SECTION_HEADER_CLASS = "rdw-settings-section-header";
 const SECTION_BODY_CLASS = "rdw-settings-section-body";
 const SECTION_ID_ATTR = "data-settings-section";
 const CHEVRON_PX = 14;
+const SECTION_SCROLL_GAP_PX = 12;
 
 /** Saved under featureState: which settings blocks are collapsed. */
 const SECTIONS_STATE_ID = "settings-sections";
@@ -83,7 +86,7 @@ const SECTIONS_STATE_ID = "settings-sections";
 const SECTION_APPEARANCE = "appearance";
 const SECTION_PAGE = "page";
 const SECTION_BLACKLIST = "blacklist";
-const SECTION_FAVORITES = "favorites";
+const SECTION_FAVORITES = SETTINGS_SECTION_FAVORITES;
 const SECTION_DOWNLOADS = "downloads";
 const SECTION_DATA = "data";
 
@@ -123,6 +126,10 @@ export const SETTINGS_SECTION_CSS = `
 }
 .${SECTION_BODY_CLASS}[hidden] {
   display: none;
+}
+/* A block the page is opened at stops under the header held at the top. */
+.${SECTION_CLASS} {
+  scroll-margin-top: calc(${STICKY_TOP} + ${String(SECTION_SCROLL_GAP_PX)}px);
 }
 `.trim();
 
@@ -280,8 +287,24 @@ export function SettingsPage(): JSX.Element {
     onToggle: toggleSection,
   });
 
+  // Opened at a block (see settings-focus.ts): the block is unfolded for this
+  // visit, without changing what is remembered, and scrolled to.
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [focused] = useState(() => takeSettingsSection());
+  useEffect(() => {
+    if (focused === null || !(focused in SECTION_TITLES)) {
+      return;
+    }
+    setCollapsed((current) => current.filter((entry) => entry !== focused));
+    const header = rootRef.current?.querySelector(`[${SECTION_ID_ATTR}="${focused}"]`);
+    const card = header?.closest(`.${SECTION_CLASS}`);
+    if (card instanceof HTMLElement && typeof card.scrollIntoView === "function") {
+      card.scrollIntoView({ block: "start" });
+    }
+  }, [focused]);
+
   return (
-    <div className={PANEL_UI_CLASS.scrollRegion}>
+    <div className={PANEL_UI_CLASS.scrollRegion} ref={rootRef}>
       <style>{SETTINGS_SECTION_CSS}</style>
       <SettingsSection {...section(SECTION_APPEARANCE)}>
         <AppearanceSection includeHeading={false} />
