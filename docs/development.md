@@ -36,6 +36,10 @@ The live site cannot be opened from an automated session, and its markup is know
 3. Put the content of `dist/ruledesk-web.user.js` inside a `script` tag, escaping any closing `script` tag in it. Loading it by `src` does not work: the main chunk fails to load.
 4. Serve the page over HTTP (`python -m http.server`), not `file://`, and open it with `?page=post&s=list#rdw/collections`.
 
+To check a theme without the skin, add the site's font rule to the page (`body, div, input, button { font-family: verdana }`): the site's stylesheet has one, and it is what makes those themes differ.
+
+The screenshots in `docs/img` are taken from such pages with the Dark theme, at a 1024 px wide window.
+
 Features mount after the first paint. The local page checks the script's own pages and logic; it has none of the site's markup or styles, so anything that depends on them still needs the live site.
 
 ## Script manager
@@ -44,7 +48,7 @@ Tampermonkey: Dashboard → Settings → Security → Content Script API → **U
 
 ## Speed
 
-Measured on a mock list page with 12,000 favorites: first paint about 104 ms without the script and 132 ms (median) with version 0.15.1. The rules that keep it there: before the theme CSS is inserted the script does one settings read and a cheap parse; feature modules load after the first paint; the code of the script's own pages does not run until one is opened. The build has grown since that measurement (about 670 KB at 0.22); repeat the measurement before blaming or clearing size.
+Measured on a mock list page with 12,000 favorites: first paint about 104 ms without the script and 132 ms (median) with version 0.15.1. The rules that keep it there: before the theme CSS is inserted the script does one settings read and a cheap parse; feature modules load after the first paint; the code of the script's own pages does not run until one is opened. The build has grown since that measurement (about 670 KB at 0.22, about 980 KB at 0.40); repeat the measurement before blaming or clearing size.
 
 ## Design files
 

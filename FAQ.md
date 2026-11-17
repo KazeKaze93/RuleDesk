@@ -46,6 +46,25 @@ If a preview fails to load, the script tries that post again half a minute later
 **On Favorites and Comments some videos have no outline.**
 On those pages the site does not mark videos, so the script goes by the `video` tag of the post. A video without that tag gets no outline and no preview there.
 
+## Favorites
+
+**There is no search on my Favorites page.**
+The search needs a local list of your favorites with their tags. RuleDesk → Favorites → "Full resync" builds it: it walks your favorites pages once, 1.5 seconds per page.
+
+**`rating:safe` does nothing in the favorites search.**
+The local list holds tags and post ids only. Other metatags work in the search on Posts; the "?" in the field lists what works here.
+
+**A favorite I added on another device is missing.**
+The local list changes when you add or remove a favorite in this browser, or when you run "Sync favorites".
+
+## Post page
+
+**A GIF does not move.**
+"Play GIFs on the post page" in RuleDesk → Page puts the moving file in place of the still picture the site shows. A large GIF takes a while to load.
+
+**A click on the picture opens a viewer and I do not want it.**
+Switch off "Zoom the picture on click" in RuleDesk → Page.
+
 ## Downloads
 
 **There are no download buttons.**
@@ -56,6 +75,9 @@ Tampermonkey asks once for access to browser downloads. Without it files cannot 
 
 **Where do the files go, and can I choose another place?**
 Into your browser's download folder, each job into a folder named after the collection or the search. A userscript cannot save anywhere else; to change the place, change the download folder in the browser's settings.
+
+**How do I change the names of the files?**
+RuleDesk → Downloads → File name. Pick one of the ready names, or "Custom…" and switch the parts on and off: id, md5, rating, score, width, height, owner, date.
 
 **The browser's download icon blinks for every file.**
 That is the browser reporting each saved file. The script cannot switch it off.
@@ -77,7 +99,13 @@ The script keeps the blacklist in the site's cookie in this browser. The list in
 RuleDesk → Data → Export saves one file with collections, followed artists, favorites, marks and settings; Import reads it on the other side. The API key is not in the file and has to be pasted again.
 
 **The page looks like the plain site.**
-With the "Site" theme the script does not restyle the site's own pages. Pick another theme in RuleDesk → Appearance.
+With Site default or Site dark the script does not restyle the site's own pages. Pick Light, Dark or Custom in RuleDesk → Appearance.
+
+**In Site default or Site dark some things look out of place.**
+Those two themes keep the site's own look: its white fields, plain buttons and tables stay as the site draws them, and the script's additions stand beside them. That is by design. The script's own themes are Light, Dark and Custom.
+
+**I switched a feature and the page reloaded.**
+A feature that only changes styles applies at once; one that adds controls needs the page loaded again.
 
 **Does the script send my data anywhere?**
 No. Everything is kept in the script manager's storage on your computer. Requests go only to the site itself, and only when you do something that needs one.

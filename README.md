@@ -1,69 +1,74 @@
 # RuleDesk
 
-A userscript for `rule34.xxx` that adds a feed of followed artists, collections, a reworked search panel and post page, themes, and a set of optional page tweaks. It runs in the browser on the site's own pages. It keeps all its data on your computer. The site API is used for one thing only, the download manager, and only with your own key.
+A userscript for `rule34.xxx`. It adds a feed of the artists you follow, collections, search inside your favorites, a reworked search panel and post page, a download manager, statistics and themes, and it tidies the site's own pages. It runs in your browser on the site's pages, keeps all its data on your computer and has no server.
+
+![The Favorites page with the script's top row](docs/img/favorites.jpg)
+
+*Screenshots here are taken on a local test page with grey boxes in place of pictures.*
 
 - [What it adds](#what-it-adds)
 - [Install](#install)
 - [Settings](#settings)
+- [Themes](#themes)
 - [Your data](#your-data)
-- [Limits](#limits)
+- [What the script does not do](#what-the-script-does-not-do)
+- [Every feature in detail](docs/features.md)
 - [FAQ](FAQ.md)
 - [Changelog](CHANGELOG.md)
 - [Developer documentation](docs/)
 
 ## What it adds
 
-New items appear in the site's header menu: **Feed**, **Collections**, **Following**, **Favorites**, **Statistics** and **RuleDesk** (settings). The menu is laid out in three zones: the sections used most on the left, the site's other sections under **More**, and Statistics, My Account and RuleDesk as icons on the right. The site's title stands in the same row, and the current section is underlined.
+A short tour. Each item is described in full, with what it asks the site for and how to switch it off, in [docs/features.md](docs/features.md).
 
-### Feed
+### A menu that fits in one row
 
-Posts of the artists you follow, newest first. New posts carry a NEW mark; "Mark all seen" clears them. When you follow more artists than one site search can hold, the feed is assembled from several searches automatically.
+The site's long menu becomes three zones: **Posts, Feed, Collections, Following, Favorites** on the left, the site's other sections under **More**, and **Statistics**, **My Account** and **RuleDesk** (settings) as icons on the right. The header and the sidebar stay in place while you scroll. A number beside Feed says how many new posts are waiting.
 
-### Following
+### Feed and Following
 
-Every followed artist as a card with a cover, post count and a "new" mark.
-
-- Follow an artist with the Follow button next to the name in the tag list, or press "Add artists" and type one or several tags
-- Filter by name, show only artists with new posts, sort by name, post count or follow date
-- Select several cards to unfollow them at once
-- Refresh re-reads each artist's first page for a fresh cover and count
+**Follow** an artist, a character or a copyright with the button next to its tag. **Feed** is one grid with the posts of everyone you follow, newest first, with NEW marks and "Mark all seen". **Following** lists them as cards with a cover, a post count and a "new" mark; filter, sort, group, unfollow several at once.
 
 ### Collections
 
-- **Custom collection**: posts you pick by hand with the "+" button on a thumbnail or on the post page
-- **Dynamic collection**: a saved search. Type tags in the search panel and press "Save as collection"
+![The Collections page](docs/img/collections-empty.jpg)
 
-Both kinds show a cover and a post count. A collection can be shuffled, renamed and deleted; Select on the Collections page deletes several at once. A saved search can be checked for new posts with "Check for new" on the Collections page. Several posts can be added at once: "Select posts" under the search panel on Posts, or "Select" on Favorites, then "Add to collection". In a custom collection posts are reordered by dragging. A post opened from a custom collection gets previous / next arrows that walk the collection.
+- **Custom**: posts you pick, with the "+" on a thumbnail or a post, or several at once with "Select posts". Reordered by dragging. A post opened from one gets previous / next arrows through the collection
+- **Dynamic**: a saved search. "Save as collection" in the search panel; "Check for new" tells which of them got new posts
 
-### Search panel
+### A search panel instead of typing syntax
 
-Under the site's search field: tags as chips (click to exclude, cross to remove), media type, sort order, minimum score, AI posts on or off, Reset, and "Save as collection".
+![The search panel](docs/img/search-panel.jpg)
 
-### Post page
+Under the site's search field: the tags of the query as chips (click to exclude, cross to remove), Images / Videos, sort order, minimum score, AI posts on or off, Reset, "Save as collection", "Select posts".
 
-Favorite, Collections, Vote, "I came" and Original as buttons; post details and comments in tabs; the site's own actions (Edit, Report, Add note) in one list. Video keeps its volume and speed and can fit the height, the width, or stay at original size.
+### Search inside your favorites
 
-### Grid
+The site cannot search favorites. After one **Sync favorites**, the Favorites page gets a row that stays at the top: search by tags (`tag`, `-tag`, `ta*g`, `( a ~ b )`), Images / Videos, endless scroll, Shuffle, Random post, and Select to remove several or add them to a collection.
 
-Favorite star and "+" on thumbnails, three grid sizes, infinite scroll, dimming of posts you already opened, hiding of blacklisted posts, optional video preview on hover, a "GIF" label on animated GIFs, no tag tooltip over thumbnails. On the site's Comments page long tag lists are folded. Collections and Following can be shown as tiles or as a list.
+### The post page
 
-### Favorites
+Favorite, Collections, Vote, "I came", Original and Download as buttons; details and comments in two tabs; the site's own actions in one list. A click on a picture opens a zoom viewer. GIFs play on the page. The video player keeps volume and speed, toggles on a click and can fit the height or the width.
 
-The local favorite list is kept in sync with the site by "Sync favorites" in settings. The Favorites page gets one row at the top (the count, "Random post", "Select" for bulk removal, a "⋯" menu with "Download all…" and "Sync favorites…") and the "+" button for collections. Once "Full resync" has built a local index, that row, which stays at the top while you scroll, also has search by tags (`tag`, `-tag`, `ta*g`, `( a ~ b )`, `sort:id:asc`; the "?" in the field lists them), an Images / Videos switch, endless scrolling and Shuffle. The search runs over the local list, which holds the tags and the id of a favorite: the site's other metatags, such as `rating:` or `score:`, work only in the search on Posts.
+### The grid
+
+A favorite star and "+" on thumbnails, three sizes, infinite scroll, dimming of posts you opened, hiding of blacklisted posts, optional video preview on hover, a "GIF" label, folding tag groups in the sidebar, the wiki text of a tag on its "?".
 
 ### Download manager
 
-Saves the original files of a custom collection (all or selected posts), of a whole search, of posts picked on a results page, or of all your favorites. Files go to a folder named after the collection or the search, inside your browser's download folder, as `rule34-<post id>.<ext>`; RuleDesk → Downloads → "File name" changes that name. A post page has its own download button, which needs no key. A panel in the corner shows progress and has Pause, Resume and Cancel; the job survives a page change.
-
-The manager needs your own API key: generate it on the site's account options page and paste the whole line it shows into RuleDesk → Downloads. Without a key there are no download buttons.
+Saves the original files of a custom collection, a whole search, picked posts or all your favorites into a folder in your browser's downloads, with a name you choose (`rule34-<id>` by default). A corner panel shows progress, Pause, Resume, Cancel. It needs your own API key from the site's account options page; a single post's Download button does not.
 
 ### Statistics
 
-Counts of what the script stores (followed artists, collections, favorites, seen posts) and the top followed artists by post count. The menu item can be hidden in settings.
+![The Statistics page](docs/img/statistics.jpg)
 
-### Themes
+Counts of what you keep, how they change day by day, the top tags of your favorites, and your site profile numbers on request.
 
-Light, Dark, the site's own two themes, and Custom (light or dark base with your background image).
+### The site's other pages
+
+Forum: marks for new and updated topics, "New for me", "Mark all as read". Artists and Tags: Follow and "Save as collection" in each row. Upload: a drop zone with a preview, a tag count against the site's minimum, repeated tags dropped.
+
+![The Upload form](docs/img/upload.jpg)
 
 ## Install
 
@@ -72,38 +77,52 @@ Light, Dark, the site's own two themes, and Custom (light or dark base with your
    https://raw.githubusercontent.com/KazeKaze93/RuleDesk/main/dist/ruledesk-web.user.js
 3. In Tampermonkey open Dashboard → Settings → Security → Content Script API and choose **UserScripts API Dynamic**. Without it the site's original look flashes on every page load and pages open slower.
 
-Updates arrive through the script manager from the same link.
+Updates arrive through the script manager from the same link. After an update reload the site's page: an open page keeps running the old version.
 
 ## Settings
 
-Header menu → **RuleDesk**. Every block folds with a click on its title.
+![The settings page](docs/img/settings.jpg)
+
+Header menu → the gear (**RuleDesk**). Every block folds with a click on its title.
 
 | Block | What is there |
 |---|---|
-| Appearance | Theme and grid size |
-| Page | A switch for each page tweak, and one switch that turns all tweaks off |
+| Appearance | Theme and grid size; for the Custom theme a background picture |
+| Page | A switch for each page feature, and one switch, "Enable page tweaks", that turns all of them off |
 | Blacklist | The site's tag blacklist for this browser |
-| Favorites | Favorite buttons in the grid, favorites sync |
-| Downloads | Your API key for the download manager |
-| Data | Export and import of everything the script stores |
+| Favorites | Favorite buttons in the grid; Sync favorites and Full resync |
+| Downloads | Your API key and the file name of saved files |
+| Data | Export and import of everything the script stores; when the last backup was made |
 
 To get the untouched site back: Appearance → Site theme → **Site default**, and Page → turn off **Enable page tweaks**.
 
+## Themes
+
+| Theme | What it is |
+|---|---|
+| **Light**, **Dark** | The script's own themes. The whole site is restyled. This is where the script looks the way it was designed |
+| **Custom** | Light or Dark with your background picture |
+| **Site default**, **Site dark** | The site's own look. The script restyles nothing of the site there; its additions are drawn in the site's colours and can look out of place beside the site's plain controls. Light, Dark or Custom is recommended |
+
 ## Your data
 
-- Collections, followed artists and settings live in the script manager's storage, in this browser only. Nothing is sent anywhere
-- **Data → Export** saves one JSON file; **Import** restores it (Merge adds to what you have, Replace overwrites)
-- The blacklist and the site theme are the site's own cookies and are not part of the export. Neither is the API key
-- The one request made without an action of yours is the counter beside Feed: the first page of the feed, at most once in 15 minutes, and it can be switched off in RuleDesk → Page
-- Otherwise the script reads the pages you open and makes a request only for an action of yours (a click on the "?" of a tag reads its wiki entry, two requests): favorite a post, sync favorites, start a download, type in a tag field, scroll for the next page, open a feed that spans several searches, press Refresh on Following. Requests go one at a time with a pause
+- Collections, followed tags, marks and settings live in the script manager's storage, in this browser only. Nothing is sent anywhere
+- **Data → Export** saves one JSON file; **Import** restores it (Merge adds to what you have, Replace overwrites). This is the only way to move to another browser
+- The blacklist and the site theme are the site's own cookies and are not in the export. Neither is the API key
+- The one request made without an action of yours is the counter beside Feed: the first page of the feed, at most once in 15 minutes. It has its own switch in RuleDesk → Page
+- Otherwise the script reads the pages you open and makes a request only when you do something that needs one: favorite a post, sync favorites, start a download, type in a tag field, scroll for the next page, open a feed that spans several searches, press Refresh, Check for new or Refresh profile, click the "?" of a tag. Requests go one at a time with a pause
 
-## Limits
+## What the script does not do
 
-These come from the site and cannot be fixed in the script.
+These come from the site, or from what a userscript is, and are not bugs.
 
-- The post count of a dynamic collection with several tags is a lower bound, shown with "+". The exact number is known only for a single tag
-- "No new posts since" on an artist card is the day the script first saw the artist's newest post, not the date of the post
-- The site answers "too many requests" when asked too often. Refresh and favorites sync stop at the first such answer; wait and start again
-- A cover or a count for an artist or a collection appears after its page was opened once, or after Refresh
+- **No background updates.** Covers, counts and "new" marks change when you open a page or press Refresh / Check for new. The site refuses frequent requests
+- **No sync between browsers or devices.** There is no server; use Export and Import
+- **It cannot show what the site does not give.** No post dates in the grid, no avatars, no exact count for a search of several tags (shown as "12,516+")
+- **It does not touch your account.** Login cookies are not read, account settings are not changed
+- **Files can only be saved into the browser's download folder**
+- **"Too many requests".** Refresh, Check for new and favorites sync stop at the first such answer from the site; wait a minute and start again
+- **A cover or a count** for a followed tag or a collection appears after its page was opened once, or after Refresh
+- **When the site changes its pages**, a feature on the changed page can stop working until the script is updated. The site itself keeps working
 
-The full list is in [docs/site.md](docs/site.md).
+The full list is in [docs/features.md](docs/features.md#what-the-script-will-not-do); the technical one, with numbers, in [docs/site.md](docs/site.md#limits-that-come-from-the-site).
