@@ -12,6 +12,8 @@ import {
   FAVORITES_BROWSING_BODY_CLASS,
   FAVORITES_LAYOUT_CLASS,
   FAVORITES_SIDE_CLASS,
+  FAVORITES_SIDE_BAR_CLASS,
+  FAVORITES_SIDE_CARD_CLASS,
   FAVORITES_SIDE_ID,
   FAVORITES_SIDE_SLOT_CLASS,
   FavoritesBrowser,
@@ -164,10 +166,18 @@ body.${BODY_CLASS} .${FAVORITES_LAYOUT_CLASS} > .${PIN_CLASS} {
   grid-column: 2;
   width: auto;
 }
-/* A rule under the strip sets it off from the grid, as the header is set off. */
-body.${BODY_CLASS} .${FAVORITES_LAYOUT_CLASS} > .${PIN_CLASS} {
-  border-bottom: 1px solid var(--rdw-border);
-  margin-bottom: ${String(PIN_PADDING_PX)}px;
+/* The selection bar in the column, over the card of filters. */
+body.${BODY_CLASS} .${FAVORITES_SIDE_BAR_CLASS} .${BAR_CLASS} {
+  margin-bottom: 8px;
+  padding: 10px;
+  border: 1px solid var(--rdw-accent);
+  border-radius: var(--rdw-radius-l);
+  background: var(--rdw-accent-soft);
+  color: var(--rdw-text);
+}
+body.${BODY_CLASS} .${FAVORITES_SIDE_BAR_CLASS} .${BAR_CLASS} > .rdw-btn {
+  flex: 1 1 auto;
+  white-space: nowrap;
 }
 /* Holds only the page's heading, which is for screen readers: the menu
    already shows where you are. */
@@ -687,8 +697,6 @@ type FavoritesBulkBarProps = {
   readonly summary: string;
   /** True while the bar has the pinned row to itself: selecting, removing, a message. */
   readonly onBusyChange: (busy: boolean) => void;
-  /** Given the bar's own "leave the selection", for a Cancel drawn elsewhere. */
-  readonly cancelRef?: { current: (() => void) | null };
 };
 
 function FavoritesBulkBar(props: FavoritesBulkBarProps): JSX.Element | null {
@@ -795,10 +803,6 @@ function FavoritesBulkBar(props: FavoritesBulkBarProps): JSX.Element | null {
     setSelected(new Set());
     setPhase({ kind: "idle" });
   };
-
-  if (props.cancelRef !== undefined) {
-    props.cancelRef.current = resetToIdle;
-  }
 
   const enterSelecting = (): void => {
     setSelected(new Set());
@@ -1047,8 +1051,6 @@ function FavoritesPanel(props: FavoritesPanelProps): JSX.Element {
   const [headActions, setHeadActions] = useState<HTMLElement | null>(null);
   const [busy, setBusy] = useState(false);
   const [summary, setSummary] = useState("");
-  // The bar's own way out of selecting, for the Cancel of the locked column.
-  const cancelRef = useRef<(() => void) | null>(null);
 
   return (
     <>
@@ -1056,15 +1058,13 @@ function FavoritesPanel(props: FavoritesPanelProps): JSX.Element {
       {createPortal(
         <>
           {/* Hidden, not removed, while posts are being selected: what was typed stays. */}
-          <div className={FILTERS_CLASS} hidden={busy}>
+          {/* In the column the filters stay in view, locked, under the bar. */}
+          <div className={FILTERS_CLASS} hidden={busy && props.side === null}>
             <FavoritesBrowser
               actionsRef={setHeadActions}
               onSummary={setSummary}
               sideHost={props.side}
               locked={busy}
-              onUnlock={() => {
-                cancelRef.current?.();
-              }}
             />
           </div>
           <FavoritesBulkBar
@@ -1072,7 +1072,6 @@ function FavoritesPanel(props: FavoritesPanelProps): JSX.Element {
             headSlot={headActions}
             summary={summary}
             onBusyChange={setBusy}
-            cancelRef={cancelRef}
           />
         </>,
         props.pin,
@@ -1100,20 +1099,6 @@ function mountFavoritesBulk(_ctx: FeatureContext): void {
   // child of that block. Nothing of the site's is wrapped or moved. Where the
   // block is the page itself there is no such layout, and the filters are
   // drawn in the row.
-  let side: HTMLElement | null = null;
-  if (host.parent instanceof HTMLElement && host.parent !== document.body) {
-    // The slot is the child of the block and has the column's place; the
-    // column itself is held inside it while the page scrolls.
-    const slot = document.createElement("div");
-    slot.className = FAVORITES_SIDE_SLOT_CLASS;
-    side = document.createElement("div");
-    side.id = FAVORITES_SIDE_ID;
-    side.className = FAVORITES_SIDE_CLASS;
-    slot.append(side);
-    host.parent.insertBefore(slot, root);
-    host.parent.classList.add(FAVORITES_LAYOUT_CLASS);
-  }
-
   const siteGrid = document.querySelector(SITE_SELECTORS.imageList);
   if (siteGrid !== null) {
     bindInPlaceRemoval(siteGrid);
@@ -1122,6 +1107,35 @@ function mountFavoritesBulk(_ctx: FeatureContext): void {
   const onSelectionModeChange = (active: boolean): void => {
     document.body.classList.toggle(BODY_SELECTING_CLASS, active);
   };
+
+  let side: HTMLElement | null = null;
+  if (host.parent instanceof HTMLElement && host.parent !== document.body) {
+    // The slot is the child of the block and has the column's place; the
+    // column itself is held inside it while the page scrolls.
+    const slot = document.createElement("div");
+    slot.className = FAVORITES_SIDE_SLOT_CLASS;
+    const column = document.createElement("div");
+    column.id = FAVORITES_SIDE_ID;
+    column.className = FAVORITES_SIDE_CLASS;
+    // In the column: the selection bar while posts are being selected, and
+    // under it the card of filters, which holds the count and the buttons too.
+    // There is no strip over the grid then, and no pinned row.
+    const barHost = document.createElement("div");
+    barHost.className = FAVORITES_SIDE_BAR_CLASS;
+    side = document.createElement("div");
+    side.className = FAVORITES_SIDE_CARD_CLASS;
+    column.append(barHost, side);
+    slot.append(column);
+    host.parent.insertBefore(slot, root);
+    host.parent.classList.add(FAVORITES_LAYOUT_CLASS);
+    pin.remove();
+    render(
+      <FavoritesPanel pin={barHost} side={side} onSelectionModeChange={onSelectionModeChange} />,
+      root,
+    );
+    return;
+  }
+
 
   render(
     <FavoritesPanel pin={pin} side={side} onSelectionModeChange={onSelectionModeChange} />,

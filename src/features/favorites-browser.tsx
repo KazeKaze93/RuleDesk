@@ -170,6 +170,12 @@ const SCROLL_END_SLACK_PX = 2;
 export const SIDE_MORE_CLASS = "rdw-fav-side--more";
 export const SIDE_LOCKED_CLASS = "rdw-fav-side--locked";
 const SIDE_BODY_CLASS = "rdw-fav-side__body";
+const SIDE_HEAD_CLASS = "rdw-fav-side__head";
+const SIDE_ACTIONS_CLASS = "rdw-fav-side__actions";
+/** In the column, over the card: the selection bar is drawn into it. */
+export const FAVORITES_SIDE_BAR_CLASS = "rdw-fav-side__bar";
+/** In the column: the card of filters is drawn into it. */
+export const FAVORITES_SIDE_CARD_CLASS = "rdw-fav-side__card";
 const SIDE_GROUP_CLASS = "rdw-fav-side__group";
 const SIDE_LOCK_CLASS = "rdw-fav-side__lock";
 const SIDE_HINT_CLASS = "rdw-fav-side__hint";
@@ -237,6 +243,7 @@ body:not(.${FAVORITES_BROWSING_BODY_CLASS}) .${MORE_CLASS} {
   column-gap: 16px;
   row-gap: 0;
   align-items: start;
+  padding-top: ${String(SIDE_GAP_PX)}px;
 }
 .${FAVORITES_LAYOUT_CLASS} > * {
   grid-column: 2;
@@ -250,9 +257,6 @@ body:not(.${FAVORITES_BROWSING_BODY_CLASS}) .${MORE_CLASS} {
   grid-row: 1 / span ${String(SIDE_ROW_SPAN)};
   align-self: stretch;
   contain: size;
-  /* The card starts level with the strip beside it. */
-  padding-top: ${String(SIDE_GAP_PX)}px;
-  box-sizing: border-box;
 }
 /* Held beside the grid; taller than the window, it scrolls inside itself. */
 .${FAVORITES_SIDE_CLASS} {
@@ -292,6 +296,32 @@ body:not(.${FAVORITES_BROWSING_BODY_CLASS}) .${MORE_CLASS} {
   border: 1px solid var(--rdw-border);
   border-radius: var(--rdw-radius-l);
   box-shadow: var(--rdw-shadow-1);
+}
+.${SIDE_HEAD_CLASS} {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+/* The buttons at the foot of the card, as "Reset" and "Select posts" are on Posts. */
+.${SIDE_BODY_CLASS} .${SIDE_ACTIONS_CLASS} {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 12px;
+  border-top: 1px solid var(--rdw-border);
+}
+.${SIDE_BODY_CLASS} .${SIDE_ACTIONS_CLASS}:empty {
+  display: none;
+}
+.${SIDE_BODY_CLASS} .${SIDE_ACTIONS_CLASS} > .rdw-btn {
+  flex: 1 1 auto;
+  white-space: nowrap;
+  font-weight: 500;
+}
+/* The first button has a row to itself; the second and the menu share the next. */
+.${SIDE_BODY_CLASS} .${SIDE_ACTIONS_CLASS} > button.rdw-btn:first-of-type {
+  flex: 1 1 100%;
 }
 .${SIDE_GROUP_CLASS} {
   display: flex;
@@ -837,32 +867,36 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
     [tagCounts],
   );
 
-  // The fade at the bottom of the column says there is more to scroll to.
+  // The column: the card is drawn into `sideHost`, a child of it; the column
+  // itself is what scrolls and what is locked.
   const { sideHost } = props;
+  const stacked = sideHost !== null && sideHost !== undefined;
+  const column = stacked ? (sideHost.closest(`.${FAVORITES_SIDE_CLASS}`) ?? sideHost) : null;
+  // The fade at the bottom of the column says there is more to scroll to.
   useEffect(() => {
-    if (sideHost === null || sideHost === undefined) {
+    if (column === null) {
       return undefined;
     }
     const sync = (): void => {
-      const hidden = sideHost.scrollHeight - sideHost.scrollTop - sideHost.clientHeight;
-      sideHost.classList.toggle(SIDE_MORE_CLASS, hidden > SCROLL_END_SLACK_PX);
+      const hidden = column.scrollHeight - column.scrollTop - column.clientHeight;
+      column.classList.toggle(SIDE_MORE_CLASS, hidden > SCROLL_END_SLACK_PX);
     };
     sync();
-    sideHost.addEventListener("scroll", sync, { passive: true });
+    column.addEventListener("scroll", sync, { passive: true });
     window.addEventListener("resize", sync, { passive: true });
     const observer = typeof ResizeObserver === "function" ? new ResizeObserver(sync) : null;
-    observer?.observe(sideHost);
+    observer?.observe(column);
     return () => {
-      sideHost.removeEventListener("scroll", sync);
+      column.removeEventListener("scroll", sync);
       window.removeEventListener("resize", sync);
       observer?.disconnect();
     };
-  }, [sideHost]);
+  }, [column]);
 
   const locked = props.locked === true;
   useEffect(() => {
-    sideHost?.classList.toggle(SIDE_LOCKED_CLASS, locked);
-  }, [sideHost, locked]);
+    column?.classList.toggle(SIDE_LOCKED_CLASS, locked);
+  }, [column, locked]);
 
   useEffect(() => {
     onRemoveFailed = (): void => {
@@ -945,9 +979,23 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
   };
   const sortValue = shuffleSeed !== null ? ORDER_SHUFFLE : order;
 
+  const viewSwitch = (
+    <Segmented
+      label={VIEW_LABEL}
+      options={VIEW_OPTIONS}
+      value={view}
+      onChange={(value) => {
+        if (isFavoritesView(value)) {
+          setFeatureState(VIEW_STATE_ID, value);
+          setView(value);
+        }
+      }}
+    />
+  );
+
   const filters = (
     <>
-      {locked ? (
+      {locked && props.onUnlock !== undefined ? (
         <div className={SIDE_LOCK_CLASS} role="status">
           <span>{LOCKED_NOTICE}</span>
           <Button variant="ghost" size="s" onClick={() => props.onUnlock?.()}>
@@ -956,7 +1004,14 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
         </div>
       ) : null}
       <div className={SIDE_BODY_CLASS} {...(locked ? { inert: true } : {})}>
-        <SectionLabel>{SIDE_TITLE}</SectionLabel>
+        <div className={SIDE_HEAD_CLASS}>
+          <SectionLabel>{SIDE_TITLE}</SectionLabel>
+          {stacked && count.length > 0 ? (
+            <span className={COUNT_CLASS} role="status">
+              {count}
+            </span>
+          ) : null}
+        </div>
         <SearchField
           id={SEARCH_FIELD_ID}
           className={SEARCH_BOX_CLASS}
@@ -1037,14 +1092,36 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
           />
           {shuffleSeed !== null ? <p className={SIDE_HINT_CLASS}>{RESHUFFLE_HINT}</p> : null}
         </div>
+        {stacked ? (
+          <>
+            <div className={SIDE_GROUP_CLASS}>
+              <SectionLabel>{VIEW_LABEL}</SectionLabel>
+              {viewSwitch}
+            </div>
+            {/* Random post, Select and the menu: the bulk bar draws them here. */}
+            <div className={`${ACTIONS_CLASS} ${SIDE_ACTIONS_CLASS}`} ref={actionsSlotRef} />
+          </>
+        ) : null}
       </div>
     </>
   );
 
+  // Beside the grid everything is in the column, the count and the buttons
+  // too (Kaze, 17.11.2026: a strip over the grid for five small things was a
+  // row of the screen lost). Where there is no column, the filters stand in
+  // place and the rest in a strip after them.
+  if (stacked) {
+    return (
+      <>
+        <style>{FAVORITES_BROWSER_CSS}</style>
+        {createPortal(filters, sideHost)}
+      </>
+    );
+  }
   return (
     <>
       <style>{FAVORITES_BROWSER_CSS}</style>
-      {sideHost === null || sideHost === undefined ? filters : createPortal(filters, sideHost)}
+      {filters}
       <div className={CONTROLS_CLASS} ref={rowRef}>
         {count.length > 0 ? (
           <span className={COUNT_CLASS} role="status">
@@ -1054,17 +1131,7 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
         <span className={GROUP_LABEL_CLASS} aria-hidden="true">
           {VIEW_LABEL}
         </span>
-        <Segmented
-          label={VIEW_LABEL}
-          options={VIEW_OPTIONS}
-          value={view}
-          onChange={(value) => {
-            if (isFavoritesView(value)) {
-              setFeatureState(VIEW_STATE_ID, value);
-              setView(value);
-            }
-          }}
-        />
+        {viewSwitch}
         <div className={ACTIONS_CLASS} ref={actionsSlotRef} />
       </div>
     </>

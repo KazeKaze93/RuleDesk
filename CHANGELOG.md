@@ -2,6 +2,11 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.43.3
+
+- Favorites: the strip over the grid is gone. The number of posts, Pages / Scroll, "Random post", "Select" and the "⋯" menu stand in the column with the filters, and the grid starts right under the header
+- "Select" shows the selection bar at the top of the column, over the filters, which stay in view but locked until the selection is finished or cancelled
+
 ## 0.43.2
 
 - Favorites: the column of filters is a card with a "Search" heading, as the search panel of Posts is, instead of controls lying on the page; a rule under the strip sets it off from the grid

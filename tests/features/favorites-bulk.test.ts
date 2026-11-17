@@ -473,59 +473,52 @@ describe("favoritesBulkFeature", () => {
     expect(url).toContain("id=55");
   });
 
-  it("puts the filters in a column beside the grid and the count and buttons in the strip over it", () => {
+  it("puts everything in a column beside the grid: filters, the count, the buttons", () => {
     buildFavoritesBlock([11, 22]);
     addFav(11);
     addFav(22);
     mountFeature();
 
     const root = document.getElementById(ROOT_ID);
-    const pin = document.getElementById(PIN_ID);
     const side = document.getElementById("rdw-favorites-side");
-    // The column: search, Type, Sort with Shuffle in it. It is a child of the
-    // block the grid is in, which is laid out by a class; the grid is not wrapped.
-    expect(side?.querySelector('input[aria-label="Search favorites"]')).not.toBeNull();
-    const sideText = side?.textContent ?? "";
-    expect(sideText).toContain("Images");
-    expect(sideText).toContain("Newest");
-    expect(sideText).toContain("Shuffle");
+    // The column is a child of the block the grid is in, which is laid out by
+    // a class; the grid is not wrapped.
     const grid = document.querySelector("div.image-list");
     const slot = side?.parentElement;
     expect(slot?.classList.contains("rdw-fav-side-slot")).toBe(true);
     expect(slot?.parentElement).toBe(grid?.parentElement);
     expect(slot?.parentElement?.classList.contains("rdw-fav-layout")).toBe(true);
-    // The strip: the count first, then how the list is paged, the buttons at the right end.
-    expect(pin?.querySelector('input[aria-label="Search favorites"]')).toBeNull();
-    const row = pin?.querySelector(".rdw-fav-controls");
-    const labels = [...(row?.children ?? [])].map((child) => child.textContent?.trim() ?? "");
-    expect(labels[0]).toBe("2 posts");
-    expect(labels.join(" ")).toContain("Pages");
-    expect(labels[labels.length - 1]).toContain("Random post");
-    expect(labels[labels.length - 1]).toContain("Select");
+    // In it: the search, Type, Sort with Shuffle, how the list is paged, the
+    // count and the buttons. There is no strip over the grid and no pinned row.
+    expect(side?.querySelector('input[aria-label="Search favorites"]')).not.toBeNull();
+    const text = side?.textContent ?? "";
+    for (const word of ["2 posts", "Images", "Newest", "Shuffle", "Pages", "Random post", "Select"]) {
+      expect(text).toContain(word);
+    }
+    expect(document.getElementById(PIN_ID)).toBeNull();
+    expect(document.querySelector(".rdw-fav-controls")).toBeNull();
     // The heading is still there for screen readers, and is all the first element holds.
     expect(root?.querySelector("h1")?.textContent).toBe("Favorites");
     expect(root?.textContent).toBe("Favorites");
-    expect(favoritesBulkFeature.css).toMatch(/\.rdw-favorites-title \{[^}]*clip: rect\(0, 0, 0, 0\)/);
-    expect(favoritesBulkFeature.css).toMatch(/\.rdw-favorites-pin \{[^}]*position: sticky/);
-    expect(favoritesBulkFeature.css).not.toMatch(/\.rdw-favorites-bulk \{[^}]*position: sticky/);
   });
 
-  it("locks the column while posts are being selected, and its Cancel ends the selection", () => {
+  it("shows the selection over the filters and locks them until it is finished", () => {
     buildFavoritesBlock([11, 22]);
     mountFeature();
     const side = document.getElementById("rdw-favorites-side");
     expect(side?.classList.contains("rdw-fav-side--locked")).toBe(false);
     clickButtonWithText("Select");
     expect(side?.classList.contains("rdw-fav-side--locked")).toBe(true);
-    expect(side?.textContent).toContain("Finish selecting to change filters.");
-    const cancel = [...(side?.querySelectorAll("button") ?? [])].find(
-      (button) => button.textContent?.trim() === "Cancel",
-    );
-    act(() => {
-      cancel?.click();
-    });
+    // The bar is the first thing in the column; the filters stay under it.
+    const bar = side?.querySelector(".rdw-fav-side__bar");
+    expect(bar?.textContent).toContain("0 selected");
+    expect(side?.firstElementChild).toBe(bar);
+    expect(side?.querySelector('input[aria-label="Search favorites"]')).not.toBeNull();
+    expect(side?.textContent).not.toContain("Random post");
+
+    clickButtonWithText("Cancel");
     expect(side?.classList.contains("rdw-fav-side--locked")).toBe(false);
-    expect(document.getElementById(PIN_ID)?.textContent).toContain("Random post");
+    expect(side?.textContent).toContain("Random post");
   });
 
   it("draws the filters in the row where the grid has no block of its own", () => {

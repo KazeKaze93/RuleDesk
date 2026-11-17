@@ -155,7 +155,7 @@ Two kinds, one page:
 
 ![The top row of the Favorites page](img/favorites.jpg)
 
-The site's Favorites page, with a column of filters at the left and a short strip over the grid; both stay in place while scrolling ("Bulk remove favorites" in settings). The grid itself is the site's and is not wrapped or moved. In the column:
+The site's Favorites page, with a column at the left that holds everything the script adds to it and stays in place while scrolling ("Bulk remove favorites" in settings). The grid itself is the site's and is not wrapped or moved. In the column:
 
 - a search over the user's own favorites: `tag`, `-tag`, `ta*g`, `( a ~ b )`; the "?" lists the syntax
 - suggestions under the field as a word is typed: tags the favorites have, with their counts, those that begin with the word first. Up, Down, Enter or Tab, Esc. While the list is open the page keeps the last result; the search is applied on a pick, on Enter, after a space, and when the field is left
@@ -164,13 +164,11 @@ The site's Favorites page, with a column of filters at the left and a short stri
 - Type: All / Images / Videos
 - Sort: Newest (the site's order: the post made a favorite last comes first), Oldest (the same list turned over) or Shuffle; a click on Shuffle while it is chosen shuffles again
 
-In the strip over the grid:
-
-- the count of posts
+- the count of posts, in the heading of the column
 - View: Pages (the site's paging) or Scroll (endless)
 - **Random post**, **Select**, and a "⋯" menu with "Download all…" and "Sync favorites…"
 
-Select turns the strip into a selection bar: pick posts, then remove them from favorites or add them to a collection. While posts are being selected the column is shown but locked.
+Select puts a selection bar at the top of the column: pick posts, then remove them from favorites or add them to a collection. While posts are being selected the filters under the bar are shown but locked.
 
 The site has no search inside favorites. The script can offer one only because it keeps a local list: **Sync favorites** (settings → Favorites) walks the user's favorites pages once and stores ids and tags; "Full resync" rebuilds the list. Search, the type switch, Scroll and Shuffle appear after a full resync. The local list holds tags and ids only, so the site's other metatags (`rating:`, `score:`, `user:`) do not work here; they do on Posts.
 
