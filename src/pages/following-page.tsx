@@ -194,6 +194,8 @@ import {
   writeViewMode,
   type ViewMode,
 } from "./view-mode";
+import { AI_SCOPE_FOLLOWING, alignSiteAiFilter } from "../features/ai-scope";
+import { AiPostsSelect } from "../ui/ai-posts-select";
 
 export const FOLLOWING_PAGE_CSS = `
 .${PAGE_CLASS} {
@@ -890,6 +892,7 @@ export function FollowingPage(): JSX.Element {
         }
       }
       try {
+        alignSiteAiFilter(AI_SCOPE_FOLLOWING);
         rememberArtistSnapshot(artist.tag, await fetchArtistSnapshot(artist.tag));
       } catch (error) {
         const reason = error instanceof Error ? error.message : String(error);
@@ -1033,6 +1036,8 @@ export function FollowingPage(): JSX.Element {
                 onChange={setGroupFilter}
               />
             ) : null}
+            {/* What a card opens, and what Refresh reads, with AI posts shown or hidden. */}
+            <AiPostsSelect scope={AI_SCOPE_FOLLOWING} />
             <Segmented
               label={VIEW_LABEL}
               options={VIEW_OPTIONS}

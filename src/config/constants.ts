@@ -205,3 +205,10 @@ export const CSS_CLASS = {
   updatesBar: "rdw-updates-bar",
   updatesBarActions: "rdw-updates-bar-actions",
 } as const;
+
+/** The site's own switch for AI posts: `1` leaves them out of every list the server gives. */
+export const SITE_AI_FILTER_COOKIE_NAME = "filter_ai";
+export const SITE_AI_FILTER_COOKIE_HIDE = "1";
+export const SITE_AI_FILTER_COOKIE_SHOW = "0";
+export const SITE_AI_FILTER_COOKIE_PATH = "/";
+export const SITE_AI_FILTER_COOKIE_MAX_AGE_DAYS = 365;

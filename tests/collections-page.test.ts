@@ -198,6 +198,7 @@ describe("createCollectionsPage", () => {
       "Custom",
       "Dynamic",
       "As created",
+      "AI posts: shown",
       "Tiles",
       "List",
       "New",

@@ -47,6 +47,22 @@ import {
   mountSiteSearchTools,
 } from "./site-search-tools";
 import { featureBodyClass, type Feature, type FeatureContext } from "./types";
+import {
+  AI_EVERYWHERE_NOTE,
+  AI_LABEL,
+  AI_MODE_HIDE,
+  AI_MODE_OPTIONS,
+  AI_SCOPE_COLLECTIONS,
+  AI_SCOPE_FEED,
+  AI_SCOPE_FOLLOWING,
+  AI_SCOPE_POSTS,
+  aiHiddenEverywhere,
+  aiModeIn,
+  alignSiteAiFilter,
+  currentListScope,
+  setAiHiddenIn,
+  type AiScope,
+} from "./ai-scope";
 
 const FEATURE_ID = "search-tools";
 const FEATURE_LABEL = "Search tools";
@@ -147,12 +163,16 @@ const MEDIA_OPTIONS = [
   { value: "videos", label: "Videos" },
 ] as const;
 
-const AI_POSTS_OPTIONS = [
-  { value: "show", label: "Show" },
-  { value: "hide", label: "Hide" },
-] as const;
+const AI_POSTS_OPTIONS = AI_MODE_OPTIONS;
 
-const AI_POSTS_SECTION_LABEL = "AI posts";
+const AI_POSTS_SECTION_LABEL = AI_LABEL;
+/** After "AI posts" in the label, where the choice is not that of Posts: "AI posts · Feed". */
+const AI_SCOPE_NAMES: Partial<Record<AiScope, string>> = {
+  [AI_SCOPE_FEED]: "Feed",
+  [AI_SCOPE_FOLLOWING]: "Following",
+  [AI_SCOPE_COLLECTIONS]: "Collections",
+};
+const AI_NOTE_CLASS = "rdw-search-tools-ai-note";
 
 const SORT_OPTIONS: ReadonlyArray<{
   value: SortMode;
@@ -225,6 +245,12 @@ const FEATURE_CSS = [
   "  display: grid;",
   "  gap: 0;",
   "  min-width: 0;",
+  "}",
+  `body.${BODY_CLASS} .${AI_NOTE_CLASS} {`,
+  "  margin: 4px 0 0;",
+  "  color: var(--rdw-muted);",
+  "  font-size: 11.5px;",
+  "  line-height: 1.35;",
   "}",
   `body.${BODY_CLASS} .${ROW_SORT_CLASS} {`,
   "  display: grid;",
@@ -633,8 +659,17 @@ function waitForFilterAiCheckbox(
   };
 }
 
-function readAiPostsMode(checkbox: HTMLInputElement): AiPostsMode {
-  return checkbox.checked ? "hide" : "show";
+/** The part of the site this list belongs to: each has its own choice for AI posts. */
+function pageAiScope(): AiScope {
+  return currentListScope() ?? AI_SCOPE_POSTS;
+}
+
+/**
+ * The choice of this part of the site, not the state of the site's checkbox:
+ * the checkbox is one for the whole site, and the script moves it.
+ */
+function readAiPostsMode(_checkbox: HTMLInputElement): AiPostsMode {
+  return aiModeIn(pageAiScope());
 }
 
 function tryParseParenGroup(
@@ -1080,15 +1115,23 @@ function SearchToolsPanel(props: SearchToolsPanelProps): JSX.Element {
       setAiPosts(null);
       return;
     }
-    const wantChecked = mode === "hide";
-    if (checkbox.checked === wantChecked) {
-      setAiPosts(mode);
+    if (aiHiddenEverywhere() || mode === aiModeIn(pageAiScope())) {
       return;
     }
-    // Site script owns filter_ai cookie / feed filtering — only click.
-    checkbox.click();
-    setAiPosts(readAiPostsMode(checkbox));
+    // The choice is kept for this part of the site, the site's switch is put
+    // to it, and the list is asked for again: the server does the filtering.
+    const scope = pageAiScope();
+    setAiHiddenIn(scope, mode === AI_MODE_HIDE);
+    alignSiteAiFilter(scope);
+    setAiPosts(mode);
+    window.location.reload();
   };
+
+  const aiScopeName = AI_SCOPE_NAMES[pageAiScope()];
+  const aiLabel =
+    aiScopeName === undefined
+      ? AI_POSTS_SECTION_LABEL
+      : `${AI_POSTS_SECTION_LABEL} \u00b7 ${aiScopeName}`;
 
   const onReset = (): void => {
     clearNavTimer();
@@ -1240,9 +1283,9 @@ function SearchToolsPanel(props: SearchToolsPanelProps): JSX.Element {
 
         {aiPosts !== null ? (
           <div className={FIELD_CLASS}>
-            <SectionLabel>{AI_POSTS_SECTION_LABEL}</SectionLabel>
+            <SectionLabel>{aiLabel}</SectionLabel>
             <Segmented
-              label={AI_POSTS_SECTION_LABEL}
+              label={aiLabel}
               options={AI_POSTS_OPTIONS.map((entry) => ({
                 value: entry.value,
                 label: entry.label,
@@ -1250,6 +1293,7 @@ function SearchToolsPanel(props: SearchToolsPanelProps): JSX.Element {
               value={aiPosts}
               onChange={onAiPostsChange}
             />
+            {aiHiddenEverywhere() ? <p className={AI_NOTE_CLASS}>{AI_EVERYWHERE_NOTE}</p> : null}
           </div>
         ) : null}
 

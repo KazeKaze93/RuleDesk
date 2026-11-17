@@ -16,6 +16,7 @@ import { loadBackground } from "../storage/background-store";
 import { getAppearance } from "../storage/store";
 import { mountArtistSidebar } from "../ui/artists-sidebar";
 import { mountCards } from "../ui/cards";
+import { bootAiFilter } from "./ai-filter";
 
 /**
  * Re-apply appearance with full store validation + async IDB background.
@@ -40,6 +41,12 @@ async function syncAppearanceAfterPaint(): Promise<void> {
 export async function startApp(): Promise<void> {
   await syncAppearanceAfterPaint();
   await yieldToMain();
+
+  // A list given with the site's AI switch the wrong way for this part of the
+  // site is loaded again; nothing else is started on the page being left.
+  if (bootAiFilter()) {
+    return;
+  }
 
   const pageKind = detectPageKind(window.location.search);
   const search = window.location.search;

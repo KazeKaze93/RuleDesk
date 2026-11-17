@@ -5,6 +5,7 @@ import { isBlacklisted, readSiteBlacklist } from "../site/blacklist";
 import { fetchNextPage } from "../site/next-page";
 import { SITE_SELECTORS, extractPostIdFromThumb } from "../site/selectors";
 import { notifyThumbsAdded } from "./runtime";
+import { AI_SCOPE_FEED, alignSiteAiFilter } from "./ai-scope";
 
 /**
  * Feed for more followed artists than one site search can hold.
@@ -278,6 +279,8 @@ export function mountFeedMerge(options: FeedMergeOptions): boolean {
     }
     lastRequestAt = Date.now();
     status.textContent = `${TEXT_LOADING_PREFIX}${String(index + 1)}${TEXT_LOADING_JOIN}${String(sources.length)}…`;
+    // Another tab may have moved the site's AI switch since this page was opened.
+    alignSiteAiFilter(AI_SCOPE_FEED);
     const page = await fetchNextPage(source.nextUrl);
     const blacklist = readSiteBlacklist();
     const fresh: Element[] = [];

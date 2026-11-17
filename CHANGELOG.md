@@ -2,6 +2,19 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.46.0
+
+AI posts are shown or hidden by the part of the site, not for the whole site at once:
+
+- Posts, Feed, Following, Collections and Favorites each keep their own choice. Hiding AI posts on Posts no longer empties the page of a followed artist whose every post is AI
+- The "AI posts" switch in the sidebar of a list belongs to the part the list is of, and says so: "AI posts · Feed", "AI posts · Following" (one followed tag, as a card of Following opens it), "AI posts · Collections" (a saved search). Any other search is Posts
+- Following and Collections have the choice in their toolbar: it is what a card opens with, and what "Refresh" and "Check for new" read from the site
+- Favorites has "AI posts: Show / Hide" in the card of filters. The site does not filter favorites, so the script leaves the posts tagged `ai_generated` out itself; the count, Select and "Download results…" follow it. It needs a synced index
+- "Hide AI posts everywhere" in RuleDesk → Settings → Page overrides all of them; the controls then show "Hide" and cannot be changed. Turned off, every part goes back to its own choice
+- What the site's switch was set to before this version is kept as the choice of Posts
+
+How it works: the site keeps its switch in the cookie `filter_ai` and filters on the server. The script now writes that cookie, the third it touches after `tag_blacklist` and `theme`: when a link to a list is pressed, when Following or Collections is opened, and before its own requests for a list. A list reached some other way with the switch the wrong way round (an address typed by hand, another tab that moved the switch) is loaded once more.
+
 ## 0.45.3
 
 - Favorites: with a search, a Type or a Collection set, the download is of what the list shows, not of every favorite. The button reads "Download results…", and the dialog names what narrows the list and the number of files, over all pages of the result and in the order shown. With nothing set it is "Download all…" as before

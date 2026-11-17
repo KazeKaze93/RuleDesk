@@ -5,6 +5,7 @@ import { SITE_SELECTORS } from "../site/selectors";
 import { FEED_MERGE_BODY_CLASS } from "./feed-merge";
 import { notifyThumbsAdded } from "./runtime";
 import { featureBodyClass, type Feature, type FeatureContext } from "./types";
+import { AI_SCOPE_POSTS, alignSiteAiFilter, currentListScope } from "./ai-scope";
 
 const FEATURE_ID = "infinite-scroll";
 const FEATURE_LABEL = "Infinite scroll";
@@ -304,6 +305,8 @@ function mountInfiniteScroll(_ctx: FeatureContext): void {
   };
 
   const appendBatch = async (requestUrl: string): Promise<BatchResult> => {
+    // Another tab may have moved the site's AI switch since this page was opened.
+    alignSiteAiFilter(currentListScope() ?? AI_SCOPE_POSTS);
     const result = await fetchNextPage(requestUrl);
     let added = 0;
     pageNumber += 1;

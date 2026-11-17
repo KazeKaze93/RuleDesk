@@ -17,6 +17,12 @@ import {
 } from "../../src/storage/artists-mirror";
 import { clearStorageCache, save } from "../../src/storage/store";
 import { createDefaultStorage } from "../../src/storage/schema";
+import {
+  AI_SCOPE_POSTS,
+  aiChoiceIn,
+  setAiHiddenEverywhere,
+  setAiHiddenIn,
+} from "../../src/features/ai-scope";
 
 const ROOT_ID = "rdw-search-tools";
 const CHIP_CLASS = "rdw-search-tools-chip";
@@ -703,78 +709,74 @@ describe("searchToolsFeature", () => {
     expect(aiPostsRadio("Hide").getAttribute("aria-checked")).toBe("false");
   });
 
-  it("selects Hide when the native AI filter checkbox is checked", () => {
-    mountFilterAiCheckbox(true);
+  function clearAiCookie(): void {
+    document.cookie = "filter_ai=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
+  }
+
+  function stubReload(): ReturnType<typeof vi.fn> {
+    const reload = vi.fn();
+    vi.stubGlobal("location", { ...window.location, href: window.location.href, reload });
+    return reload;
+  }
+
+  it("shows the choice kept for this part of the site, not the state of the site's checkbox", () => {
+    clearAiCookie();
+    setAiHiddenIn(AI_SCOPE_POSTS, true);
+    mountFilterAiCheckbox(false);
     buildSearchForm("cat");
     mountFeature();
     expect(aiPostsRadio("Hide").getAttribute("aria-checked")).toBe("true");
     expect(aiPostsRadio("Show").getAttribute("aria-checked")).toBe("false");
   });
 
-  it("clicks the native checkbox when toggling AI posts Show/Hide", () => {
+  it("keeps the choice, sets the site's cookie and asks for the list again", () => {
+    clearAiCookie();
     const checkbox = mountFilterAiCheckbox(false);
     const clickSpy = vi.spyOn(checkbox, "click");
     buildSearchForm("cat");
     mountFeature();
+    const reload = stubReload();
 
     click(aiPostsRadio("Hide"));
-    expect(clickSpy).toHaveBeenCalledTimes(1);
-    expect(checkbox.checked).toBe(true);
-    expect(aiPostsRadio("Hide").getAttribute("aria-checked")).toBe("true");
-
-    clickSpy.mockClear();
-    click(aiPostsRadio("Show"));
-    expect(clickSpy).toHaveBeenCalledTimes(1);
-    expect(checkbox.checked).toBe(false);
-    expect(aiPostsRadio("Show").getAttribute("aria-checked")).toBe("true");
-  });
-
-  it("does not click the native checkbox when the AI option already matches", () => {
-    const checkbox = mountFilterAiCheckbox(false);
-    const clickSpy = vi.spyOn(checkbox, "click");
-    buildSearchForm("cat");
-    mountFeature();
-
-    click(aiPostsRadio("Show"));
+    expect(aiChoiceIn(AI_SCOPE_POSTS)).toBe(true);
+    expect(document.cookie).toContain("filter_ai=1");
+    expect(reload).toHaveBeenCalledTimes(1);
+    // The site's checkbox would write the cookie for the whole site and reload by itself.
     expect(clickSpy).not.toHaveBeenCalled();
-    expect(checkbox.checked).toBe(false);
+
+    click(aiPostsRadio("Show"));
+    expect(aiChoiceIn(AI_SCOPE_POSTS)).toBe(false);
+    expect(document.cookie).toContain("filter_ai=0");
+    expect(reload).toHaveBeenCalledTimes(2);
+    clearAiCookie();
   });
 
-  it("syncs AI posts Segmented when the native checkbox changes", () => {
-    const checkbox = mountFilterAiCheckbox(false);
+  it("does nothing when the AI option already matches", () => {
+    clearAiCookie();
+    mountFilterAiCheckbox(false);
     buildSearchForm("cat");
     mountFeature();
-    expect(aiPostsRadio("Show").getAttribute("aria-checked")).toBe("true");
+    const reload = stubReload();
 
-    act(() => {
-      checkbox.checked = true;
-      checkbox.dispatchEvent(new Event("change", { bubbles: true }));
-    });
-    expect(aiPostsRadio("Hide").getAttribute("aria-checked")).toBe("true");
-  });
-
-  it("never reads or writes a filter_ai cookie when toggling AI posts", () => {
-    const checkbox = mountFilterAiCheckbox(false);
-    buildSearchForm("cat");
-    mountFeature();
-
-    const cookieBefore = document.cookie;
-    expect(cookieBefore).not.toContain("filter_ai");
-
-    const descriptor = Object.getOwnPropertyDescriptor(Document.prototype, "cookie");
-    const setSpy =
-      descriptor?.set !== undefined
-        ? vi.spyOn(document, "cookie", "set")
-        : null;
-
-    click(aiPostsRadio("Hide"));
-    expect(checkbox.checked).toBe(true);
+    click(aiPostsRadio("Show"));
+    expect(reload).not.toHaveBeenCalled();
     expect(document.cookie).not.toContain("filter_ai");
-    if (setSpy !== null) {
-      for (const call of setSpy.mock.calls) {
-        expect(String(call[0] ?? "")).not.toContain("filter_ai");
-      }
-    }
+  });
+
+  it("cannot be changed while the settings hide AI posts everywhere, and says so", () => {
+    clearAiCookie();
+    setAiHiddenEverywhere(true);
+    mountFilterAiCheckbox(false);
+    buildSearchForm("cat");
+    mountFeature();
+    const reload = stubReload();
+
+    expect(aiPostsRadio("Hide").getAttribute("aria-checked")).toBe("true");
+    click(aiPostsRadio("Show"));
+    expect(reload).not.toHaveBeenCalled();
+    expect(aiPostsRadio("Hide").getAttribute("aria-checked")).toBe("true");
+    expect(document.getElementById(ROOT_ID)?.textContent).toContain("Hidden everywhere");
+    setAiHiddenEverywhere(false);
   });
 
   it("exposes filter AI and tags-heading selectors for site-skin HANDOFF", () => {

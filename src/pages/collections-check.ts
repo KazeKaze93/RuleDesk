@@ -5,6 +5,7 @@ import { readFirstThumbUrls, readResultCount } from "../site/result-page";
 import { extractPostIdFromThumb } from "../site/selectors";
 import type { Collection } from "../storage/schema";
 import { setDynamicCover, setDynamicNewest, setDynamicPostCount } from "../storage/store";
+import { AI_SCOPE_COLLECTIONS, alignSiteAiFilter } from "../features/ai-scope";
 
 /**
  * "Check for new" on the Collections page: reads the first results page of
@@ -87,6 +88,7 @@ export async function runCollectionsCheck(
     }
     try {
       const url = buildSearchUrl(collection.tags);
+      alignSiteAiFilter(AI_SCOPE_COLLECTIONS);
       const page = await fetchNextPage(url).catch(async () => {
         await pause(CHECK_RETRY_MS);
         return fetchNextPage(url);

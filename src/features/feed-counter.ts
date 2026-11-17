@@ -4,6 +4,7 @@ import { extractPostIdFromThumb } from "../site/selectors";
 import { getSeenPostId, listArtistTags } from "../storage/store";
 import { log } from "../log";
 import { featureBodyClass, type Feature, type FeatureContext } from "./types";
+import { AI_SCOPE_FEED, withSiteAiFilter } from "./ai-scope";
 
 /**
  * A number beside "Feed" in the menu: how many posts of the first page of the
@@ -177,7 +178,8 @@ function mountFeedCounter(_ctx: FeatureContext): void {
     show(link, cached);
     return;
   }
-  fetchNextPage(href)
+  // The feed has its own choice for AI posts, whatever page the counter is read from.
+  withSiteAiFilter(AI_SCOPE_FEED, () => fetchNextPage(href))
     .then((page) => {
       const value = countNewThumbs(page.thumbs, seen);
       writeCache({ ...value, at: Date.now(), seen, href });

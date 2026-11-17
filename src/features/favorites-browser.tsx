@@ -58,6 +58,18 @@ import {
   toggleQueryTag,
 } from "./favorites-scope";
 import { notifyThumbsAdded } from "./runtime";
+import {
+  AI_EVERYWHERE_NOTE,
+  AI_LABEL,
+  AI_MODE_HIDE,
+  AI_MODE_OPTIONS,
+  AI_MODE_SHOW,
+  AI_SCOPE_FAVORITES,
+  AI_TAG,
+  aiHiddenEverywhere,
+  aiHiddenIn,
+  setAiHiddenIn,
+} from "./ai-scope";
 
 /**
  * Search, the Images / Videos switch and endless scrolling on the Favorites
@@ -150,6 +162,9 @@ const UNSUPPORTED_TAIL = " Favorites search uses tags only.";
 const META_SEPARATOR = ":";
 const RESET_LABEL = "Reset search";
 const COLLECTION_LABEL = "Collection";
+/** Added to the typed query while AI posts are hidden here. */
+const NO_AI_TERM = `-${AI_TAG}`;
+const NO_AI_SUMMARY = "no AI posts";
 const EMPTY_COLLECTION = "No favorites here";
 const EMPTY_COLLECTION_NOTE = "Nothing of what you favorited passes the collection filter.";
 const FOLLOWED_TITLE = "Following";
@@ -979,6 +994,10 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
   const [order, setOrder] = useState<FavoritesOrder>(ORDER_NEWEST);
   // Narrows the list to one collection, or to what is in none.
   const [collection, setCollection] = useState(COLLECTION_ANY);
+  // The site does not filter Favorites; the script leaves the posts tagged as
+  // AI out itself. The choice is remembered, as it is for the other parts.
+  const [aiHidden, setAiHidden] = useState(() => aiHiddenIn(AI_SCOPE_FAVORITES));
+  const aiEverywhere = aiHiddenEverywhere();
   const [followedAll, setFollowedAll] = useState(false);
   // The column: the card is drawn into `sideHost`, a child of it; the column
   // itself is what scrolls and what is locked.
@@ -993,6 +1012,7 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
     shuffleSeed !== null ||
     order !== ORDER_NEWEST ||
     collection !== COLLECTION_ANY ||
+    aiHidden ||
     !isEmptyFavoritesQuery(query);
 
   const { onSummary } = props;
@@ -1001,8 +1021,11 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
       collection === COLLECTION_ANY
         ? undefined
         : collectionChoices(loadStore().collections).find((option) => option.value === collection);
-    onSummary?.(favoritesFilterSummary(applied, media, picked?.label ?? ""));
-  }, [onSummary, applied, media, collection]);
+    const parts = [picked?.label ?? "", aiHidden ? NO_AI_SUMMARY : ""].filter(
+      (part) => part.length > 0,
+    );
+    onSummary?.(favoritesFilterSummary(applied, media, parts.join(" \u00b7 ")));
+  }, [onSummary, applied, media, collection, aiHidden]);
 
   const loadIndex = (): void => {
     if (loadingRef.current) {
@@ -1116,7 +1139,10 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
       const typed = parseFavoritesQuery(applied);
       // Read each time: a post added to a collection a moment ago counts.
       const scope = collectionScope(loadStore().collections, collection);
-      const byQuery = filterFavoriteIndex(index, favorites, typed, media);
+      const asked = aiHidden
+        ? { ...typed, exclude: [...typed.exclude, ...parseFavoritesQuery(NO_AI_TERM).exclude] }
+        : typed;
+      const byQuery = filterFavoriteIndex(index, favorites, asked, media);
       const inSiteOrder = scope === null ? byQuery : byQuery.filter((entry) => scope(entry.id));
       // An order typed into the query (sort:id:asc still works) goes before the switch.
       const matched =
@@ -1150,7 +1176,7 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
     return () => {
       window.clearTimeout(timer);
     };
-  }, [active, index, applied, media, shuffleSeed, order, tagCounts, collection]);
+  }, [active, index, applied, media, shuffleSeed, order, tagCounts, collection, aiHidden]);
 
   const warning = unsupportedNotice(query.unsupported);
   const notices = [
@@ -1309,6 +1335,23 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
             {viewSwitch}
           </div>
         ) : null}
+        <div className={SIDE_GROUP_CLASS}>
+          <SectionLabel>{AI_LABEL}</SectionLabel>
+          <Segmented
+            label={AI_LABEL}
+            options={AI_MODE_OPTIONS}
+            value={aiHidden ? AI_MODE_HIDE : AI_MODE_SHOW}
+            onChange={(value) => {
+              if (aiEverywhere) {
+                return;
+              }
+              const hide = value === AI_MODE_HIDE;
+              setAiHiddenIn(AI_SCOPE_FAVORITES, hide);
+              setAiHidden(hide);
+            }}
+          />
+          {aiEverywhere ? <p className={SIDE_HINT_CLASS}>{AI_EVERYWHERE_NOTE}</p> : null}
+        </div>
         <div className={SIDE_GROUP_CLASS}>
           <SectionLabel>{COLLECTION_LABEL}</SectionLabel>
           <Select

@@ -19,7 +19,7 @@ The script works on the site's own HTML. This file holds what is known about it.
 | `api.ts` | A download job: the list of files (`fetch` to `api.rule34.xxx`, which allows any origin; up to 1000 posts per request for a search, one post per request for posts named by id) | 1.1 s, shared |
 | `download.ts` | A download job: the files, one at a time (`GM_download` from the CDN) | 0.4 s; one retry after 5 s |
 
-- **Cookies:** only `tag_blacklist` and `theme` are read or written. `user_id` and `pass_hash` are never read. One exception outside cookies, allowed by Kaze: "Refresh profile" takes the address of the "My Profile" link from the My Account page, which holds the user's id, uses it for one request and stores nothing of it. The account settings form is never submitted.
+- **Cookies:** only `tag_blacklist`, `theme` and `filter_ai` are read or written (`filter_ai` allowed by Kaze on 17.11.2026, for AI posts shown or hidden by the part of the site; written with `path=/` like the other two — the attributes the site itself gives it have not been read). `user_id` and `pass_hash` are never read. One exception outside cookies, allowed by Kaze: "Refresh profile" takes the address of the "My Profile" link from the My Account page, which holds the user's id, uses it for one request and stores nothing of it. The account settings form is never submitted.
 - **Outside addresses are checked.** A file address from an API answer and a picture address from an imported file are used only when they are `https` on the site's domain (`src/site/urls.ts`).
 - **The grid link is left alone.** Nothing inside `a#p{ID}` is changed; thumbnail size is set only by `grid-density`.
 
@@ -33,7 +33,7 @@ The script works on the site's own HTML. This file holds what is known about it.
 - Pager: `div.pagination > [b (current) | a[href*="pid=N"] | a[alt="next"] | a[alt="last page"]]`, then `form#manualpage.manual-page-chooser`. Page step is 42 posts. A one-page result has no links
 - Search form: `div.tag-search > form[action="index.php?page=search"][method=post] > div.awesomplete > input[name="tags"]`
 - Tag sidebar: `ul#tag-sidebar`, headings `li > h6`, rows `li.tag-type-{artist|character|copyright|general|metadata}` with the post count in `span.tag-count`. On a post page a row has no `+` and `-` links
-- AI filter: `li > label "Filter AI posts" > span.switch > input.toggleSwitch#chkFilterAI + span.slider`, no form
+- AI filter: `li > label "Filter AI posts" > span.switch > input.toggleSwitch#chkFilterAI + span.slider`, no form. A click on it reloads the page; the choice is the cookie `filter_ai` (`0` shown, `1` hidden), readable from the page, and the server leaves AI posts out of the list itself (from Kaze, 17.11.2026: an artist whose every post is AI gives the empty "Nobody here but us chickens!" page with the filter on)
 
 ### Post page (`page=post&s=view`)
 

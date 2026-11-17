@@ -64,7 +64,7 @@ The site has one text field for a search, and everything is typed as text: tags,
 | Media: All / Images / Videos | Adds or removes `video` and `-video` |
 | Sort: Newest, Oldest, Top score, Recently updated, Random | `sort:id:asc`, `sort:score:desc`, `sort:updated:desc`, `sort:random` |
 | Min score | `score:>=N` |
-| AI posts: Show / Hide | Sets the site's own "Filter AI posts" switch |
+| AI posts: Show / Hide | The choice of the part of the site this list is of (Posts, Feed, Following, Collections): kept by the script, applied through the site's own "Filter AI posts" cookie, and the list is loaded again |
 | Reset | Clears the query |
 | Save as collection | Saves the query as a dynamic collection |
 | Select posts | Turns on picking posts in the grid, then "Add to collection (N)" and, with an API key, "Download selected (N)" |
@@ -114,6 +114,22 @@ When a saved search is opened from the Collections page, a bar above the grid na
 | Play GIFs on the post page | The site shows a still JPEG sample of a GIF and the moving file only behind "Original image". The script puts the GIF in place of the still |
 | Video player tweaks | The player remembers volume and speed between posts; a click on the video plays and pauses; "Video size" fits the height, fits the width or keeps the original size |
 | Retry a failed post image on other servers | If the picture fails to load, the same path is tried on the site's other image servers |
+
+## AI posts, by the part of the site
+
+The site has one switch for AI posts, for every list at once. The script keeps a choice for each part and moves the site's switch to it:
+
+| Part | What belongs to it | Where the choice is |
+|---|---|---|
+| Posts | any search that is none of the below | "AI posts" in the sidebar |
+| Feed | the search of everyone followed | "AI posts · Feed" in the sidebar |
+| Following | the Following page, and the list of one followed tag | the toolbar of Following; "AI posts · Following" in the sidebar |
+| Collections | the Collections page, and a saved search | the toolbar of Collections; "AI posts · Collections" in the sidebar |
+| Favorites | the favorites page | "AI posts" in the card of filters |
+
+On the lists the server leaves AI posts out, so pages stay full. Favorites is not filtered by the site: the script leaves out the posts tagged `ai_generated`, which needs a synced index. A collection of posts shows what was put into it, whatever the choice.
+
+"Hide AI posts everywhere" in the settings overrides every part.
 
 ## Feed
 

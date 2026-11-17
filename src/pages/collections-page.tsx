@@ -171,6 +171,8 @@ import {
   writeViewMode,
   type ViewMode,
 } from "./view-mode";
+import { AI_SCOPE_COLLECTIONS } from "../features/ai-scope";
+import { AiPostsSelect } from "../ui/ai-posts-select";
 
 export const COLLECTIONS_PAGE_CSS = `
 .${PAGE_CLASS} {
@@ -983,6 +985,8 @@ export function CollectionsPage(): JSX.Element {
               }
             }}
           />
+          {/* What a saved search opens, and what "Check for new" reads, with AI posts shown or hidden. */}
+          <AiPostsSelect scope={AI_SCOPE_COLLECTIONS} />
           <Segmented
             label={VIEW_LABEL}
             options={VIEW_OPTIONS}

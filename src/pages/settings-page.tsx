@@ -57,6 +57,15 @@ import {
   STICKY_TOP,
 } from "../boot/sticky-header";
 import { installSiteMenu } from "./menu";
+import { aiHiddenEverywhere, setAiHiddenEverywhere } from "../features/ai-scope";
+
+const AI_EVERYWHERE_SWITCH_ID = "rdw-ai-everywhere";
+/**
+ * Off, every part of the site keeps its own choice: the "AI posts" control of
+ * Posts, Feed, Following, Collections and Favorites.
+ */
+const AI_EVERYWHERE_LABEL =
+  "Hide AI posts everywhere (off: Posts, Feed, Following, Collections and Favorites each keep their own choice)";
 
 /** Grid density is owned by Appearance; omit from Page module list. */
 const PAGE_FEATURE_SKIP = new Set(["grid-density"]);
@@ -267,6 +276,7 @@ export function SettingsPage(): JSX.Element {
     getFeatureEnabled(STATS_MENU_SETTING_ID, true),
   );
 
+  const [aiEverywhere, setAiEverywhere] = useState(() => aiHiddenEverywhere());
   const [stickyHeader, setStickyHeader] = useState(() =>
     getFeatureEnabled(STICKY_HEADER_SETTING_ID, STICKY_HEADER_DEFAULT),
   );
@@ -348,6 +358,18 @@ export function SettingsPage(): JSX.Element {
                 setFeatureEnabled(STICKY_HEADER_SETTING_ID, checked);
                 setStickyHeader(checked);
                 applyStickyHeader(checked);
+              }}
+            />
+          </div>
+          <div className={PANEL_UI_CLASS.settingsRow}>
+            <Switch
+              id={AI_EVERYWHERE_SWITCH_ID}
+              label={AI_EVERYWHERE_LABEL}
+              checked={aiEverywhere}
+              onChange={(checked) => {
+                // The site's switch is put right on the way to the next list.
+                setAiHiddenEverywhere(checked);
+                setAiEverywhere(checked);
               }}
             />
           </div>
