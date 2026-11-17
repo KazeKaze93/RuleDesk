@@ -217,7 +217,7 @@ function FeatureModules(): JSX.Element {
               </div>
               {choice !== undefined ? (
                 <div
-                  className={PANEL_UI_CLASS.settingsRow}
+                  className={`${PANEL_UI_CLASS.settingsRow} ${PANEL_UI_CLASS.settingsRowSub}`}
                   id={`${FEATURE_CHOICE_ID_PREFIX}${feature.id}`}
                 >
                   <Select

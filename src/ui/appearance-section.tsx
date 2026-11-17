@@ -69,7 +69,10 @@ const BASE_OPTIONS: readonly SegmentedOption[] = [
 
 const SECTION_TITLE = "Appearance";
 const THEME_ROW_LABEL = "Site theme";
-const THEME_ROW_HINT = "Light, dark or your own";
+const THEME_ROW_HINT =
+  "Light, Dark and Custom are drawn by RuleDesk. Site default and Site dark keep the site's own look.";
+const SITE_THEME_NOTE =
+  "In the site's own themes RuleDesk does not restyle the site: its fields, tables and buttons stay as the site draws them, and what RuleDesk adds can look out of place beside them. Light, Dark or Custom is recommended.";
 const BASE_ROW_LABEL = "Base";
 const BG_IMAGE_LABEL = "Background image";
 const BG_IMAGE_HINT = "From a link or a file";
@@ -105,8 +108,20 @@ ${KIT_FOCUS_CSS}
 .rdw-appearance__row--top {
   align-items: flex-start;
 }
-.rdw-appearance__row:nth-child(even) {
-  background: var(--rdw-surface-2);
+.rdw-appearance__row + .rdw-appearance__row {
+  border-top: 1px solid var(--rdw-border);
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+.rdw-appearance__note {
+  margin: 0 8px 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--rdw-border);
+  border-left: 3px solid var(--rdw-accent);
+  border-radius: var(--rdw-radius-m);
+  color: var(--rdw-text);
+  font-size: 12px;
+  line-height: 1.45;
 }
 .rdw-appearance__row-text {
   display: grid;
@@ -118,7 +133,7 @@ ${KIT_FOCUS_CSS}
   font-size: 11px;
 }
 .rdw-appearance__select {
-  width: 110px;
+  width: 130px;
   flex: none;
 }
 .rdw-appearance__base {
@@ -270,6 +285,8 @@ export function AppearanceSection(
 
   const custom = ensureCustom(appearance);
   const isCustom = appearance.theme === APPEARANCE_THEME_CUSTOM;
+  const isSiteTheme =
+    appearance.theme === APPEARANCE_THEME_SITE || appearance.theme === APPEARANCE_THEME_SITE_DARK;
   const hasBackground =
     (storedBackgroundUrl?.length ?? 0) > 0 ||
     (custom.backgroundImage?.length ?? 0) > 0 ||
@@ -463,6 +480,12 @@ export function AppearanceSection(
             onChange={onThemeChange}
           />
         </div>
+
+        {isSiteTheme ? (
+          <p className="rdw-appearance__note" role="note">
+            {SITE_THEME_NOTE}
+          </p>
+        ) : null}
 
         {isCustom ? (
           <>

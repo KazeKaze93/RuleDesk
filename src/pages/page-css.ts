@@ -108,6 +108,17 @@ export const PAGE_CONTENT_CSS = `
   font-size: 12.5px;
   color: var(--rdw-text);
 }
+/* A line between settings, so that a switch reads with its own name. */
+.${PANEL_UI_CLASS.settingsRow} + .${PANEL_UI_CLASS.settingsRow} {
+  border-top: 1px solid var(--rdw-border);
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+/* The options of a setting are part of it: no line between the two. */
+.${PANEL_UI_CLASS.settingsRow} + .${PANEL_UI_CLASS.settingsRow}.${PANEL_UI_CLASS.settingsRowSub} {
+  border-top: 0;
+  padding-top: 0;
+}
 .${PANEL_UI_CLASS.settingsCaption} {
   flex: 1 0 100%;
   margin: 0;

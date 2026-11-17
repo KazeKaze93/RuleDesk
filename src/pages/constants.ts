@@ -92,6 +92,8 @@ export const PANEL_UI_CLASS = {
   scrollRegion: "rdw-scroll-region",
   settingsGroup: "rdw-settings-group",
   settingsRow: "rdw-settings-row",
+  /** A row that belongs to the setting above it (its list of options). */
+  settingsRowSub: "rdw-settings-row--sub",
   settingsCaption: "rdw-settings-caption",
   pageCard: "rdw-page-card",
 } as const;

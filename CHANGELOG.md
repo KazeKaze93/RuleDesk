@@ -2,6 +2,13 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.40.8
+
+RuleDesk settings:
+
+- A line between settings, so that each switch and list reads with its own name
+- Site theme says what the themes are; with Site default or Site dark chosen, a note says that the site is not restyled there and that Light, Dark or Custom is recommended
+
 ## 0.40.7
 
 Site dark:
