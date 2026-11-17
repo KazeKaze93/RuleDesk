@@ -109,6 +109,8 @@ A dialog or a popover opened from a block must not be clipped or layered by it: 
 
 ## Themes and tokens
 
+Marking posts in a grid (`downloads/grid-select.ts` on Posts, the bulk bar on Favorites) goes through `bindPressSelect` in `src/features/press-select.ts`: the post is marked on `mousedown`, the drag of the picture is cancelled, and the click that follows is only kept from opening the post; a click made without a press (the keyboard) marks too.
+
 What opens over the page (`Dialog`, the list of `Select`, an anchored `Popover`, the suggestions of `SearchField`) is drawn in `<body>` on the site's pages, never inside the block it was opened from: the pinned blocks are layers of their own and clip. The own pages, which live in a shadow root, wrap themselves in `OverlayInPlace` (`src/ui/kit/overlay.ts`) and keep these things inside.
 
 `src/ui/tokens.ts` defines `TokenPalette`: background, surface, second surface, border, text, muted text, accent and its soft form, danger and its soft form, a warning's text and its plate, the four tag-type colours, three radii, two shadows, the font, and four values for a switch of options. They are written as CSS custom properties `--rdw-*` on `:root` and on the host of the own pages. **No component hard-codes a colour.**

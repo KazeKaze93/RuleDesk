@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.45.2
+
+- Selecting posts on Posts and on Favorites: a post is marked the moment the mouse button goes down. It used to be marked on a full click, and a pointer that moved a little while the button was down started dragging the picture instead, so posts clicked quickly, in passing, were left unmarked
+
 ## 0.45.1
 
 - Selecting posts on Posts and on Favorites: a thumbnail no longer lifts under the pointer while posts are being selected. With "Motion" on, the lifted picture stood out of the frame of a selected post

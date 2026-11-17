@@ -1,4 +1,5 @@
 import { SITE_SELECTORS, extractPostIdFromThumb } from "../../site/selectors";
+import { bindPressSelect } from "../press-select";
 
 /**
  * Picking posts on a results page, to add them to a collection or to download
@@ -8,7 +9,6 @@ import { SITE_SELECTORS, extractPostIdFromThumb } from "../../site/selectors";
 
 export const GRID_SELECT_BODY_CLASS = "rdw-dl-select";
 export const GRID_SELECTED_CLASS = "rdw-dl-selected";
-const EVENT_CLICK = "click";
 
 export const GRID_SELECT_CSS = `
 body.${GRID_SELECT_BODY_CLASS} ${SITE_SELECTORS.thumb} {
@@ -79,20 +79,19 @@ export function readSelectedPostIds(): number[] {
   return ids;
 }
 
-function onGridClick(event: MouseEvent): void {
-  const target = event.target;
-  if (!(target instanceof Element)) {
-    return;
-  }
+/** What a press does: marks the post under it; a press on a button of the thumb is the button's. */
+function pressOnGrid(target: Element): (() => void) | null {
   const thumb = target.closest(SITE_SELECTORS.thumb);
   if (thumb === null || target.closest("button") !== null) {
-    return;
+    return null;
   }
-  event.preventDefault();
-  event.stopPropagation();
-  thumb.classList.toggle(GRID_SELECTED_CLASS);
-  onCountChange?.(readSelectedPostIds().length);
+  return () => {
+    thumb.classList.toggle(GRID_SELECTED_CLASS);
+    onCountChange?.(readSelectedPostIds().length);
+  };
 }
+
+let unbindPress: (() => void) | null = null;
 
 /** The marked posts with the address of their preview, in page order. */
 export function readSelectedPosts(
@@ -123,12 +122,13 @@ export function startGridSelect(onChange: (count: number) => void): void {
   ensureStyle();
   onCountChange = onChange;
   document.body.classList.add(GRID_SELECT_BODY_CLASS);
-  document.addEventListener(EVENT_CLICK, onGridClick, true);
+  unbindPress = bindPressSelect(pressOnGrid);
 }
 
 /** Turns picking off and clears the marks. */
 export function stopGridSelect(): void {
-  document.removeEventListener(EVENT_CLICK, onGridClick, true);
+  unbindPress?.();
+  unbindPress = null;
   document.body.classList.remove(GRID_SELECT_BODY_CLASS);
   for (const thumb of document.querySelectorAll(`.${GRID_SELECTED_CLASS}`)) {
     thumb.classList.remove(GRID_SELECTED_CLASS);

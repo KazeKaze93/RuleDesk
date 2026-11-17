@@ -54,6 +54,7 @@ import {
   ProgressBar,
 } from "../ui/kit";
 import { featureBodyClass, type Feature, type FeatureContext } from "./types";
+import { bindPressSelect } from "./press-select";
 
 const FEATURE_ID = "favorites-bulk";
 const FEATURE_LABEL = "Bulk remove favorites";
@@ -779,50 +780,35 @@ function FavoritesBulkBar(props: FavoritesBulkBarProps): JSX.Element | null {
       return;
     }
 
-    const onClickCapture = (event: MouseEvent): void => {
-      const target = event.target;
-      if (!(target instanceof Element)) {
-        return;
-      }
+    // A press on a thumb marks it; navigation and Remove are blocked meanwhile.
+    return bindPressSelect((target) => {
       if (target.closest(".rdw-dialog-backdrop") !== null) {
-        return;
+        return null;
       }
       const thumb = target.closest(SITE_SELECTORS.thumb);
-      if (!(thumb instanceof HTMLElement)) {
-        return;
-      }
-      if (!document.body.contains(thumb)) {
-        return;
+      if (!(thumb instanceof HTMLElement) || !document.body.contains(thumb)) {
+        return null;
       }
       const postId = resolveFavoriteThumbPostId(thumb);
       if (postId === null) {
-        return;
+        return null;
       }
-
-      // Block navigation / Remove while selecting; toggle is the only action.
-      event.preventDefault();
-      event.stopPropagation();
-
       if (phase.kind === "confirm") {
-        return;
+        return () => undefined;
       }
-
-      setNote("");
-      setSelected((prev) => {
-        const next = new Set(prev);
-        if (next.has(postId)) {
-          next.delete(postId);
-        } else {
-          next.add(postId);
-        }
-        return next;
-      });
-    };
-
-    document.addEventListener("click", onClickCapture, true);
-    return () => {
-      document.removeEventListener("click", onClickCapture, true);
-    };
+      return () => {
+        setNote("");
+        setSelected((prev) => {
+          const next = new Set(prev);
+          if (next.has(postId)) {
+            next.delete(postId);
+          } else {
+            next.add(postId);
+          }
+          return next;
+        });
+      };
+    });
   }, [phase.kind]);
 
   const resetToIdle = (): void => {
