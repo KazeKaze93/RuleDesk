@@ -495,6 +495,9 @@ describe("favoritesBulkFeature", () => {
     for (const word of ["2 posts", "Images", "Newest", "Shuffle", "Pages", "Random post", "Select"]) {
       expect(text).toContain(word);
     }
+    // Nothing is tucked away in a menu there: the sync is a button of its own.
+    expect(text).toContain("Sync favorites…");
+    expect(side?.querySelector('button[aria-label="More actions"]')).toBeNull();
     expect(document.getElementById(PIN_ID)).toBeNull();
     expect(document.querySelector(".rdw-fav-controls")).toBeNull();
     // The heading is still there for screen readers, and is all the first element holds.

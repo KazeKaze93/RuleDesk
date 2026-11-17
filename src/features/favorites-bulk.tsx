@@ -12,6 +12,7 @@ import {
   FAVORITES_BROWSING_BODY_CLASS,
   FAVORITES_LAYOUT_CLASS,
   FAVORITES_SIDE_CLASS,
+  FAVORITES_SIDE_ACTIONS_CLASS,
   FAVORITES_SIDE_BAR_CLASS,
   FAVORITES_SIDE_CARD_CLASS,
   FAVORITES_SIDE_ID,
@@ -554,6 +555,8 @@ function openSyncSettings(): void {
 
 type IdleActionsProps = {
   readonly onSelect: () => void;
+  /** In the column every action is a button of its own; in the row the rare ones are in a menu. */
+  readonly stacked: boolean;
 };
 
 /** The buttons at the right end of the row: a random post, selecting, and the menu of rare actions. */
@@ -580,18 +583,40 @@ function IdleActions(props: IdleActionsProps): JSX.Element {
       <Button variant="secondary" size="s" onClick={props.onSelect}>
         {TEXT_SELECT}
       </Button>
-      <IconButton
-        label={TEXT_MORE_ACTIONS}
-        menuOpen={menuOpen}
-        buttonRef={menuButtonRef}
-        onClick={() => {
-          setMenuOpen(!menuOpen);
-        }}
-      >
-        <IconDots size={16} />
-      </IconButton>
+      {props.stacked ? (
+        <>
+          {downloadsAvailable() ? (
+            <Button
+              variant="secondary"
+              size="s"
+              disabled={count === 0}
+              onClick={() => {
+                setDownloadOpen(true);
+              }}
+            >
+              <IconDownload size={14} />
+              {TEXT_DOWNLOAD_ALL}
+            </Button>
+          ) : null}
+          <Button variant="secondary" size="s" onClick={openSyncSettings}>
+            <IconRefresh size={14} />
+            {TEXT_SYNC}
+          </Button>
+        </>
+      ) : (
+        <IconButton
+          label={TEXT_MORE_ACTIONS}
+          menuOpen={menuOpen}
+          buttonRef={menuButtonRef}
+          onClick={() => {
+            setMenuOpen(!menuOpen);
+          }}
+        >
+          <IconDots size={16} />
+        </IconButton>
+      )}
       <Popover
-        open={menuOpen}
+        open={menuOpen && !props.stacked}
         onClose={closeMenu}
         anchorRef={menuButtonRef}
         widthPx={MENU_WIDTH_PX}
@@ -914,7 +939,13 @@ function FavoritesBulkBar(props: FavoritesBulkBarProps): JSX.Element | null {
   if (phase.kind === "idle") {
     return props.headSlot === null
       ? null
-      : createPortal(<IdleActions onSelect={enterSelecting} />, props.headSlot);
+      : createPortal(
+          <IdleActions
+            onSelect={enterSelecting}
+            stacked={props.headSlot.classList.contains(FAVORITES_SIDE_ACTIONS_CLASS)}
+          />,
+          props.headSlot,
+        );
   }
 
   if (phase.kind === "removing") {

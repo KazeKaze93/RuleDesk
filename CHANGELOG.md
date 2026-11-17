@@ -2,6 +2,11 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.43.4
+
+- Favorites: "Download all…" and "Sync favorites…" are buttons in the column, under "Random post" and "Select"; the "⋯" menu is gone. Each button has a row of its own
+- Favorites: the grid no longer starts right under the header; it has the same space above it as the column
+
 ## 0.43.3
 
 - Favorites: the strip over the grid is gone. The number of posts, Pages / Scroll, "Random post", "Select" and the "⋯" menu stand in the column with the filters, and the grid starts right under the header

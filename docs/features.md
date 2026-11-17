@@ -166,7 +166,7 @@ The site's Favorites page, with a column at the left that holds everything the s
 
 - the count of posts, in the heading of the column
 - View: Pages (the site's paging) or Scroll (endless)
-- **Random post**, **Select**, and a "⋯" menu with "Download all…" and "Sync favorites…"
+- at the foot of the column, each a button of its own: **Random post**, **Select**, **Download all…** (with an API key) and **Sync favorites…**, which opens the settings at the Favorites block
 
 Select puts a selection bar at the top of the column: pick posts, then remove them from favorites or add them to a collection. While posts are being selected the filters under the bar are shown but locked.
 

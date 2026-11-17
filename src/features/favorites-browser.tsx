@@ -171,7 +171,9 @@ export const SIDE_MORE_CLASS = "rdw-fav-side--more";
 export const SIDE_LOCKED_CLASS = "rdw-fav-side--locked";
 const SIDE_BODY_CLASS = "rdw-fav-side__body";
 const SIDE_HEAD_CLASS = "rdw-fav-side__head";
-const SIDE_ACTIONS_CLASS = "rdw-fav-side__actions";
+/** The foot of the card: the bulk bar draws the buttons of the page into it. */
+export const FAVORITES_SIDE_ACTIONS_CLASS = "rdw-fav-side__actions";
+const SIDE_ACTIONS_CLASS = FAVORITES_SIDE_ACTIONS_CLASS;
 /** In the column, over the card: the selection bar is drawn into it. */
 export const FAVORITES_SIDE_BAR_CLASS = "rdw-fav-side__bar";
 /** In the column: the card of filters is drawn into it. */
@@ -243,7 +245,9 @@ body:not(.${FAVORITES_BROWSING_BODY_CLASS}) .${MORE_CLASS} {
   column-gap: 16px;
   row-gap: 0;
   align-items: start;
-  padding-top: ${String(SIDE_GAP_PX)}px;
+  /* The grid and the card start the same way off the header. The site and the
+     skin set the padding of this block themselves: this has to win. */
+  padding-top: ${String(SIDE_GAP_PX)}px !important;
 }
 .${FAVORITES_LAYOUT_CLASS} > * {
   grid-column: 2;
@@ -314,14 +318,11 @@ body:not(.${FAVORITES_BROWSING_BODY_CLASS}) .${MORE_CLASS} {
 .${SIDE_BODY_CLASS} .${SIDE_ACTIONS_CLASS}:empty {
   display: none;
 }
+/* Each on a row of its own: the column has the room, and nothing is tucked away in a menu. */
 .${SIDE_BODY_CLASS} .${SIDE_ACTIONS_CLASS} > .rdw-btn {
-  flex: 1 1 auto;
+  flex: 1 1 100%;
   white-space: nowrap;
   font-weight: 500;
-}
-/* The first button has a row to itself; the second and the menu share the next. */
-.${SIDE_BODY_CLASS} .${SIDE_ACTIONS_CLASS} > button.rdw-btn:first-of-type {
-  flex: 1 1 100%;
 }
 .${SIDE_GROUP_CLASS} {
   display: flex;
