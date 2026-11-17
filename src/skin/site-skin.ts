@@ -119,6 +119,18 @@ const FAV_BULK_CHECK_INSET = "0.25rem";
 const FAV_BULK_CHECK_Z_INDEX = 2;
 const FAV_BULK_CHECK_FONT_SIZE = "0.75rem";
 
+/** The forum: the list of topics, and one topic. Classes the script adds are in list-pages.ts. */
+const FORUM_LIST = `${ROOT} div#forum:not(.response-list)`;
+const FORUM_TOPIC = `${ROOT} div#forum.response-list`;
+const FORUM_MARKED_ROW_CLASS = "rdw-forum-row-marked";
+const FORUM_ONLY_NEW_CLASS = "rdw-forum-only-new";
+const FORUM_TOOLBAR_CLASS = "rdw-forum-toolbar";
+const FORUM_PIN_CLASS = "rdw-forum-pin";
+const FORUM_NO_VALUE_CLASS = "rdw-forum-no-value";
+const FORUM_UNIT_ATTRIBUTE = "data-rdw-unit";
+const FORUM_PIN_MASK =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 17v5'/%3E%3Cpath d='M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z'/%3E%3C/svg%3E\") center / contain no-repeat";
+
 const v = {
   bg: `var(${TOKEN_VAR.bg})`,
   surface: `var(${TOKEN_VAR.surface})`,
@@ -1198,38 +1210,323 @@ ${ROOT} input[type="file"]${WHERE_NOT_OUR_CONTROL}::file-selector-button:hover {
   border-color: ${v.accent};
 }
 
-/* Forum tables */
-${ROOT} div#forum > table {
+/*
+ * —— forum ——
+ * The list of topics (div#forum without .response-list): every row of the
+ * site's table is laid out as a card by a grid, cell by cell. The table and
+ * its cells stay where they are; only how they are drawn changes.
+ *   td 1 title · td 2 created by · td 3 updated · td 4 updated by · td 5 replies
+ */
+${FORUM_LIST} > table.highlightable {
+  display: block;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+
+/* Kept for screen readers: the cards say what each number is by themselves. */
+${FORUM_LIST} > table.highlightable > thead {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+${FORUM_LIST} > table.highlightable > tbody {
+  display: grid;
+  gap: 6px;
+}
+
+${FORUM_LIST} > table.highlightable > tbody > tr {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 110px 190px;
+  grid-template-areas:
+    "title replies updated"
+    "by replies updatedby";
+  column-gap: 16px;
+  row-gap: 2px;
+  align-items: center;
+  padding: 10px 14px;
   background: ${v.surface};
   border: 1px solid ${v.border};
   border-radius: ${v.radiusL};
-  border-collapse: separate;
-  border-spacing: 0;
-  overflow: hidden;
-  box-shadow: ${v.shadow1};
+  cursor: pointer;
 }
 
-${ROOT} div#forum > table th,
-${ROOT} div#forum > table td {
-  border-color: ${v.border};
+${FORUM_LIST} > table.highlightable > tbody > tr:hover {
+  background: ${v.surface};
+  border-color: ${v.accent};
+}
+
+${FORUM_LIST} > table.highlightable > tbody > tr > td {
+  display: block;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  color: ${v.muted};
+  font-size: 12px;
+  text-align: right;
+}
+
+${FORUM_LIST} > table.highlightable > tbody > tr > td:nth-child(1) {
+  grid-area: title;
   color: ${v.text};
+  font-size: 14px;
+  text-align: left;
+  overflow-wrap: anywhere;
 }
 
-${ROOT} div#forum > table th:first-child,
-${ROOT} div#forum > table td:first-child {
+${FORUM_LIST} > table.highlightable > tbody > tr > td:nth-child(2) {
+  grid-area: by;
   text-align: left;
 }
 
-${ROOT} div#forum > table tr:nth-child(odd) {
-  background: ${v.surface2};
+${FORUM_LIST} > table.highlightable > tbody > tr > td:nth-child(2)::before {
+  content: "Started by ";
 }
 
-${ROOT} div#forum > table tr:nth-child(even) {
+${FORUM_LIST} > table.highlightable > tbody > tr > td:nth-child(3) {
+  grid-area: updated;
+}
+
+${FORUM_LIST} > table.highlightable > tbody > tr > td:nth-child(4) {
+  grid-area: updatedby;
+}
+
+${FORUM_LIST} > table.highlightable > tbody > tr > td:nth-child(4)::before {
+  content: "by ";
+}
+
+/* A topic nobody has answered has no "updated by". */
+${FORUM_LIST} > table.highlightable > tbody > tr > td.${FORUM_NO_VALUE_CLASS} {
+  visibility: hidden;
+}
+
+${FORUM_LIST} > table.highlightable > tbody > tr > td:nth-child(5) {
+  grid-area: replies;
+  font-size: 13px;
+}
+
+${FORUM_LIST} > table.highlightable > tbody > tr > td[${FORUM_UNIT_ATTRIBUTE}]::after {
+  content: " " attr(${FORUM_UNIT_ATTRIBUTE});
+}
+
+${FORUM_LIST} span.forum-topic a {
+  color: ${v.text};
+  font-weight: 600;
+}
+
+${FORUM_LIST} span.forum-topic a:hover {
+  color: ${v.accent};
+}
+
+${FORUM_LIST} span.locked-topic {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 7px;
+  border: 1px solid ${v.border};
+  border-radius: 999px;
+  color: ${v.muted};
+  font-size: 11px;
+  line-height: 16px;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+${FORUM_LIST} .${FORUM_PIN_CLASS} {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: 6px;
+  background: ${v.muted};
+  -webkit-mask: ${FORUM_PIN_MASK};
+  mask: ${FORUM_PIN_MASK};
+  vertical-align: -2px;
+}
+
+${FORUM_LIST} .${FORUM_TOOLBAR_CLASS} {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+}
+
+${FORUM_LIST}.${FORUM_ONLY_NEW_CLASS} > table.highlightable > tbody > tr:not(.${FORUM_MARKED_ROW_CLASS}) {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  ${FORUM_LIST} > table.highlightable > tbody > tr {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "title replies"
+      "by updated"
+      "by updatedby";
+  }
+}
+
+/*
+ * A topic (div#forum.response-list): every post is a card. The author and the
+ * date go into one line above the text instead of a column beside it.
+ */
+${FORUM_TOPIC} {
+  display: grid;
+  gap: 8px;
+  max-width: ${String(COMMENT_MAX_WIDTH_PX)}px;
+}
+
+${FORUM_TOPIC} > div.post {
+  display: block;
+  float: none;
+  max-width: none;
+  margin: 0;
+  padding: 12px 14px;
   background: ${v.surface};
+  border: 1px solid ${v.border};
+  border-radius: ${v.radiusL};
 }
 
-${ROOT} div#forum > table.highlightable > tbody > tr:hover {
-  background: ${v.accentSoft};
+${FORUM_TOPIC} > div.post > div.author {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  float: none;
+  width: auto;
+  margin: 0 0 6px;
+  padding: 0;
+}
+
+${FORUM_TOPIC} > div.post > div.author > h6.author {
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+${FORUM_TOPIC} > div.post > div.author > h6.author a {
+  color: ${v.text};
+}
+
+${FORUM_TOPIC} > div.post > div.author > span.date {
+  color: ${v.muted};
+  font-size: 12px;
+}
+
+/* The card is the post; the text block inside it has no frame of its own. */
+${FORUM_TOPIC} > div.post > div.content {
+  float: none;
+  width: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* The site puts two line breaks after a quote; the quote has its own margin. */
+${FORUM_TOPIC} > div.post > div.content > div.body div.quote + br,
+${FORUM_TOPIC} > div.post > div.content > div.body div.quote + br + br {
+  display: none;
+}
+
+${FORUM_TOPIC} > div.post > div.content > h6.response-title {
+  margin: 0 0 6px;
+  padding: 0;
+  color: ${v.text};
+  font-size: 14px;
+  font-weight: 700;
+}
+
+${FORUM_TOPIC} > div.post > div.content > h6.response-title:empty {
+  display: none;
+}
+
+${FORUM_TOPIC} > div.post > div.content > div.body {
+  color: ${v.text};
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+${FORUM_TOPIC} > div.post > div.content > div.body div.quote {
+  margin: 6px 0;
+  padding: 4px 10px;
+  border-left: 2px solid ${v.border};
+  border-radius: 0 ${v.radiusS} ${v.radiusS} 0;
+  background: ${v.surface2};
+  color: ${v.muted};
+  font-size: 13px;
+}
+
+/* The bar between "quote" and "link" is a bare character: the links are
+   spaced by their own padding instead. */
+${FORUM_TOPIC} > div.post > div.content > div.footer {
+  margin: 8px 0 0 -6px;
+  font-size: 0;
+}
+
+${FORUM_TOPIC} > div.post > div.content > div.footer a {
+  font-size: 12px;
+}
+
+${FORUM_TOPIC} > div.post > div.content > div.footer br {
+  display: none;
+}
+
+${FORUM_TOPIC} > div.content {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* The reply form, shown by the site's "Respond": a card as wide as the posts. */
+${FORUM_TOPIC} > div.content > div#reply {
+  padding: 12px 14px;
+  background: ${v.surface};
+  border: 1px solid ${v.border};
+  border-radius: ${v.radiusL};
+}
+
+${FORUM_TOPIC} > div.content > div#reply table {
+  width: 100%;
+  border: 0;
+  background: transparent;
+}
+
+${FORUM_TOPIC} > div.content > div#reply tr {
+  background: transparent;
+}
+
+${FORUM_TOPIC} > div.content > div#reply td {
+  padding: 0 0 8px;
+  border: 0;
+  color: ${v.muted};
+  font-size: 12px;
+}
+
+/* A row that holds only a hidden field takes no room. */
+${FORUM_TOPIC} > div.content > div#reply td:not(:has(input:not([type="hidden"]))):not(:has(textarea)) {
+  padding: 0;
+}
+
+${FORUM_TOPIC} > div.content > div#reply input[type="text"],
+${FORUM_TOPIC} > div.content > div#reply textarea {
+  box-sizing: border-box;
+  width: 100%;
+  margin-top: 4px;
+}
+
+${FORUM_TOPIC} > div.content > div#reply textarea {
+  min-height: 140px;
+  resize: vertical;
 }
 
 ${ROOT} .added-tags {

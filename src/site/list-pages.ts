@@ -44,6 +44,25 @@ const FORUM_READ_ALL_CLASS = "rdw-forum-read-all";
 const FORUM_BADGE_NEW = "new";
 const FORUM_BADGE_UPDATED = "updated";
 const FORUM_READ_ALL_LABEL = "Mark all as read";
+const FORUM_ALL_LABEL = "All";
+const FORUM_ONLY_NEW_LABEL = "New for me";
+/** Classes and the attribute the forum part of the skin (site-skin.ts) draws by. */
+export const FORUM_ONLY_NEW_CLASS = "rdw-forum-only-new";
+export const FORUM_TOOLBAR_CLASS = "rdw-forum-toolbar";
+export const FORUM_PIN_CLASS = "rdw-forum-pin";
+export const FORUM_STICKY_ROW_CLASS = "rdw-forum-row-sticky";
+export const FORUM_NO_VALUE_CLASS = "rdw-forum-no-value";
+export const FORUM_UNIT_ATTRIBUTE = "data-rdw-unit";
+const FORUM_FILTER_CLASS = "rdw-forum-filter";
+const STICKY_WORD = "sticky";
+const STICKY_LABEL = "Sticky";
+const LOCKED_LABEL = "Locked";
+const NO_VALUE_TEXT = "N/A";
+const UNIT_REPLY = "reply";
+const UNIT_REPLIES = "replies";
+/** Cells of a topics row, counted from 0: title, created by, updated, updated by, replies. */
+const UPDATED_BY_CELL = 3;
+const REPLIES_CELL = 4;
 /** How many topics are remembered; the oldest are forgotten first. */
 export const FORUM_MEMORY_MAX = 600;
 const TOPIC_ID_PARAM = "id";
@@ -90,6 +109,7 @@ tr.${FORUM_MARKED_ROW_CLASS} span.forum-topic a {
   font-weight: 700;
 }
 .${FORUM_READ_ALL_CLASS},
+.${FORUM_FILTER_CLASS},
 .${SAVE_TAG_CLASS} {
   min-height: 24px;
   padding: 0 8px;
@@ -100,8 +120,12 @@ tr.${FORUM_MARKED_ROW_CLASS} span.forum-topic a {
   font: 12px var(--rdw-font);
   cursor: pointer;
 }
+.${FORUM_FILTER_CLASS}[aria-pressed="true"] {
+  background: var(--rdw-accent-soft);
+  border-color: var(--rdw-accent);
+}
 .${FORUM_READ_ALL_CLASS} {
-  margin: 0 0 8px;
+  margin-left: auto;
 }
 .${SAVE_TAG_CLASS}:disabled {
   color: var(--rdw-muted);
@@ -188,18 +212,91 @@ function clearForumMark(row: Element): void {
   row.querySelector(`.${FORUM_BADGE_CLASS}`)?.remove();
 }
 
+/** True for a row the site calls sticky: its topic cell begins with the word. */
+export function isStickyRow(row: Element): boolean {
+  const first = row.querySelector("span.forum-topic")?.firstChild ?? null;
+  return first instanceof Text && first.data.trim().toLowerCase().startsWith(STICKY_WORD);
+}
+
+/** "reply" for one, "replies" otherwise, and for a cell that is not a number. */
+export function repliesUnit(text: string): string {
+  return Number(text.trim()) === 1 ? UNIT_REPLY : UNIT_REPLIES;
+}
+
+/**
+ * Dresses one row of the topics list for the card look of the skin: a pin
+ * instead of the word "Sticky:", "Locked" instead of "(locked)", the unit
+ * after the number of replies, and nothing where the site writes "N/A". The
+ * row and its cells stay the site's own.
+ */
+export function dressForumRow(row: Element): void {
+  const topic = row.querySelector("span.forum-topic");
+  const first = topic?.firstChild ?? null;
+  if (topic !== null && first instanceof Text && isStickyRow(row)) {
+    const pin = document.createElement("span");
+    pin.className = FORUM_PIN_CLASS;
+    pin.setAttribute("role", "img");
+    pin.setAttribute("aria-label", STICKY_LABEL);
+    pin.title = STICKY_LABEL;
+    first.replaceWith(pin);
+    row.classList.add(FORUM_STICKY_ROW_CLASS);
+  }
+  const locked = row.querySelector("span.locked-topic");
+  if (locked !== null) {
+    locked.textContent = LOCKED_LABEL;
+  }
+  const cells = row.querySelectorAll(":scope > td");
+  const updatedBy = cells[UPDATED_BY_CELL];
+  if (updatedBy !== undefined && (updatedBy.textContent ?? "").trim() === NO_VALUE_TEXT) {
+    updatedBy.classList.add(FORUM_NO_VALUE_CLASS);
+  }
+  const replies = cells[REPLIES_CELL];
+  if (replies !== undefined) {
+    replies.setAttribute(FORUM_UNIT_ATTRIBUTE, repliesUnit(replies.textContent ?? ""));
+  }
+}
+
+function toolbarButton(label: string, className: string): HTMLButtonElement {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = className;
+  button.textContent = label;
+  return button;
+}
+
 function mountForum(forum: Element): void {
+  const table = forum.querySelector("table.highlightable");
   const rows = [...forum.querySelectorAll(ROW_SELECTOR)];
   const topics: { row: Element; key: string; signature: string }[] = [];
   for (const row of rows) {
     const key = forumTopicKey(row);
     if (key !== null) {
+      // Before the row is dressed: the text compared between visits is the site's.
       topics.push({ row, key, signature: rowSignature(row) });
     }
   }
-  if (topics.length === 0) {
+  if (topics.length === 0 || table === null) {
     return;
   }
+  for (const row of rows) {
+    dressForumRow(row);
+  }
+  // The whole card opens the topic, not only its title.
+  table.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof Element) || target.closest("a, button") !== null) {
+      return;
+    }
+    const link = target.closest("tr")?.querySelector(FORUM_TOPIC_LINK_SELECTOR);
+    if (link instanceof HTMLAnchorElement) {
+      link.click();
+    }
+  });
+
+  const toolbar = document.createElement("div");
+  toolbar.className = FORUM_TOOLBAR_CLASS;
+  table.before(toolbar);
+
   const memory = readForumMemory();
   if (memory === null) {
     // The first visit: everything on the page counts as read, or every topic
@@ -240,19 +337,32 @@ function mountForum(forum: Element): void {
     return;
   }
 
-  const readAll = document.createElement("button");
-  readAll.type = "button";
-  readAll.className = FORUM_READ_ALL_CLASS;
-  readAll.textContent = FORUM_READ_ALL_LABEL;
+  // "All" and "New for me": the second leaves only the marked topics.
+  const showAll = toolbarButton(FORUM_ALL_LABEL, FORUM_FILTER_CLASS);
+  const showNew = toolbarButton(FORUM_ONLY_NEW_LABEL, FORUM_FILTER_CLASS);
+  const setOnlyNew = (on: boolean): void => {
+    forum.classList.toggle(FORUM_ONLY_NEW_CLASS, on);
+    showAll.setAttribute("aria-pressed", on ? "false" : "true");
+    showNew.setAttribute("aria-pressed", on ? "true" : "false");
+  };
+  showAll.addEventListener("click", () => {
+    setOnlyNew(false);
+  });
+  showNew.addEventListener("click", () => {
+    setOnlyNew(true);
+  });
+  setOnlyNew(false);
+
+  const readAll = toolbarButton(FORUM_READ_ALL_LABEL, FORUM_READ_ALL_CLASS);
   readAll.addEventListener("click", () => {
     remember(topics.map((topic) => [topic.key, topic.signature]));
     for (const topic of topics) {
       clearForumMark(topic.row);
     }
-    readAll.remove();
+    setOnlyNew(false);
+    toolbar.replaceChildren();
   });
-  const table = forum.querySelector("table.highlightable");
-  table?.before(readAll);
+  toolbar.append(showAll, showNew, readAll);
 }
 
 /** The tag a row's link searches for, or null when the row has no such link. */

@@ -2,6 +2,14 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.39.0
+
+The forum, redrawn:
+
+- The list of topics is cards instead of a table: the title, "Started by", the number of replies, and when and by whom it was last answered. A sticky topic has a pin instead of the word, a locked one a "Locked" label. A click anywhere on a card opens the topic
+- "All" and "New for me" above the list: the second leaves only the topics marked "new" or "updated". "Mark all as read" stands beside them
+- A topic: every post is a card with the author and the date in one line above the text, a quote set off by a line at its left, and "quote" and "link" as quiet buttons under it. The reply form is a card as wide as the posts
+
 ## 0.38.0
 
 - A click on the "?" of a tag in the sidebar shows what the site's wiki says about the tag, in a small panel beside it: the name, the tag type and the text, with a link to the entry. A click with Ctrl or the middle button opens the wiki as before. The site keeps the text two pages away, so one click is two requests; an answer is kept until the page is left. Switch: RuleDesk → Page → "Tag description on the ? in the sidebar"
