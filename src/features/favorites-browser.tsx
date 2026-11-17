@@ -159,6 +159,7 @@ const SORT_OPTIONS: readonly SegmentedOption[] = [
   { value: ORDER_OLDEST, label: "Oldest" },
   { value: ORDER_SHUFFLE, label: "Shuffle" },
 ];
+const SIDE_TITLE = "Search";
 const RESHUFFLE_HINT = "Click Shuffle again for another order.";
 const LOCKED_NOTICE = "Finish selecting to change filters.";
 const CHIPS_LABEL = "Search terms";
@@ -249,6 +250,9 @@ body:not(.${FAVORITES_BROWSING_BODY_CLASS}) .${MORE_CLASS} {
   grid-row: 1 / span ${String(SIDE_ROW_SPAN)};
   align-self: stretch;
   contain: size;
+  /* The card starts level with the strip beside it. */
+  padding-top: ${String(SIDE_GAP_PX)}px;
+  box-sizing: border-box;
 }
 /* Held beside the grid; taller than the window, it scrolls inside itself. */
 .${FAVORITES_SIDE_CLASS} {
@@ -277,12 +281,17 @@ body:not(.${FAVORITES_BROWSING_BODY_CLASS}) .${MORE_CLASS} {
   background: linear-gradient(to bottom, transparent, var(--rdw-bg));
   pointer-events: none;
 }
+/* A card, as the search panel of Posts is: the filters read as one block
+   and not as controls lying on the page. */
 .${SIDE_BODY_CLASS} {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  /* Room for the focus ring of the controls at the edges. */
-  padding: 3px;
+  gap: 12px;
+  padding: 12px;
+  background: var(--rdw-surface);
+  border: 1px solid var(--rdw-border);
+  border-radius: var(--rdw-radius-l);
+  box-shadow: var(--rdw-shadow-1);
 }
 .${SIDE_GROUP_CLASS} {
   display: flex;
@@ -317,8 +326,8 @@ body:not(.${FAVORITES_BROWSING_BODY_CLASS}) .${MORE_CLASS} {
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 8px;
-  margin: 3px 3px 8px;
-  padding: 6px 8px;
+  margin: 0 0 8px;
+  padding: 8px 10px;
   border: 1px solid var(--rdw-accent);
   border-radius: var(--rdw-radius-m);
   background: var(--rdw-accent-soft);
@@ -947,6 +956,7 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
         </div>
       ) : null}
       <div className={SIDE_BODY_CLASS} {...(locked ? { inert: true } : {})}>
+        <SectionLabel>{SIDE_TITLE}</SectionLabel>
         <SearchField
           id={SEARCH_FIELD_ID}
           className={SEARCH_BOX_CLASS}

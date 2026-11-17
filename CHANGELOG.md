@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.43.2
+
+- Favorites: the column of filters is a card with a "Search" heading, as the search panel of Posts is, instead of controls lying on the page; a rule under the strip sets it off from the grid
+
 ## 0.43.1
 
 - The favorites search by rating, score and size, added in 0.42.0, is taken out, with "Read ratings and sizes" in settings. It never returned anything: the site API does not answer a list of posts, only one post a request, which for a large list of favorites is hours of requests. `rating:`, `score:`, `width:` and `height:` are again listed as working only in the search on Posts

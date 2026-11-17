@@ -164,6 +164,11 @@ body.${BODY_CLASS} .${FAVORITES_LAYOUT_CLASS} > .${PIN_CLASS} {
   grid-column: 2;
   width: auto;
 }
+/* A rule under the strip sets it off from the grid, as the header is set off. */
+body.${BODY_CLASS} .${FAVORITES_LAYOUT_CLASS} > .${PIN_CLASS} {
+  border-bottom: 1px solid var(--rdw-border);
+  margin-bottom: ${String(PIN_PADDING_PX)}px;
+}
 /* Holds only the page's heading, which is for screen readers: the menu
    already shows where you are. */
 body.${BODY_CLASS} .${ROOT_CLASS} {
