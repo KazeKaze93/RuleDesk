@@ -166,7 +166,9 @@ The site's Favorites page, with a column at the left that holds everything the s
 
 - the count of posts, in the heading of the column
 - View: Pages (the site's paging) or Scroll (endless)
-- "Reset search", shown when there is a search or a type to reset; the order and the paging are left as they are
+- **Collection**: "Any", "Not in any collection", or one of your collections of posts; the list is narrowed to the favorites that pass. Saved searches are not listed: they hold a query, not posts
+- "Reset search", shown when there is a search, a type or a collection to reset; the order and the paging are left as they are
+- under the card, **Following**: the entries of your Following page found among the favorites, with the number of favorites each has; a click adds the tag to the search or takes it out. The dot is the kind (artist, character, copyright). Twelve are listed before "Show all"
 - at the foot of the card, each a button of its own: **Random post**, **Select**, and, quieter, **Download all…** (with an API key) and **Sync favorites…**, which opens the settings at the Favorites block
 - a condition that does not work here (`rating:`, `user:`…) is named in a warning plate under the field for as long as it stands there
 

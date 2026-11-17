@@ -25,6 +25,8 @@ const LIST_FLOATING_CLASS = "rdw-select__list--floating";
 const LIST_GAP_PX = 4;
 const LIST_MAX_HEIGHT_PX = 220;
 const LIST_EDGE_PX = 8;
+/** A list drawn over the page may be wider than its trigger, up to this. */
+const LIST_FLOATING_MAX_WIDTH_PX = 360;
 const EVENT_SCROLL = "scroll";
 const EVENT_RESIZE = "resize";
 
@@ -87,6 +89,7 @@ ${KIT_FOCUS_CSS}
   z-index: ${String(OVERLAY_Z_INDEX)};
   right: auto;
   box-sizing: border-box;
+  max-width: ${String(LIST_FLOATING_MAX_WIDTH_PX)}px;
   font: 12.5px/1.4 var(--rdw-font);
   text-align: left;
 }

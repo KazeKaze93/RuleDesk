@@ -11,7 +11,7 @@ import {
   readFavoriteIndex,
   type FavoriteIndexEntry,
 } from "../storage/favorites-index";
-import { getFeatureState, setFeatureState } from "../storage/store";
+import { getFeatureState, load as loadStore, setFeatureState } from "../storage/store";
 import { STICKY_TOP } from "../boot/sticky-header";
 import {
   Button,
@@ -19,6 +19,7 @@ import {
   SearchField,
   SectionLabel,
   Segmented,
+  Select,
   type SearchHelp,
   type SegmentedOption,
 } from "../ui/kit";
@@ -48,6 +49,14 @@ import {
   wordAtCaret,
   type Suggestions,
 } from "./favorites-suggest";
+import {
+  COLLECTION_ANY,
+  collectionChoices,
+  collectionScope,
+  followedInFavorites,
+  queryHasTag,
+  toggleQueryTag,
+} from "./favorites-scope";
 import { notifyThumbsAdded } from "./runtime";
 
 /**
@@ -140,6 +149,14 @@ const UNSUPPORTED_MANY = " don\u2019t work in Favorites.";
 const UNSUPPORTED_TAIL = " Favorites search uses tags only.";
 const META_SEPARATOR = ":";
 const RESET_LABEL = "Reset search";
+const COLLECTION_LABEL = "Collection";
+const EMPTY_COLLECTION = "No favorites here";
+const EMPTY_COLLECTION_NOTE = "Nothing of what you favorited passes the collection filter.";
+const FOLLOWED_TITLE = "Following";
+/** How many followed entries are listed before "Show all". */
+export const FOLLOWED_SHORT_LIMIT = 12;
+const FOLLOWED_SHOW_ALL = "Show all";
+const FOLLOWED_SHOW_LESS = "Show less";
 const EXCLUDE_SIGN = "-";
 const MEDIA_LABEL = "Type";
 const VIEW_LABEL = "View";
@@ -187,6 +204,13 @@ export const FAVORITES_SIDE_CARD_CLASS = "rdw-fav-side__card";
 const SIDE_GROUP_CLASS = "rdw-fav-side__group";
 const SIDE_LOCK_CLASS = "rdw-fav-side__lock";
 const SIDE_HINT_CLASS = "rdw-fav-side__hint";
+const FOLLOWED_CARD_CLASS = "rdw-fav-followed";
+const FOLLOWED_LIST_CLASS = "rdw-fav-followed__list";
+const FOLLOWED_ROW_CLASS = "rdw-fav-followed__row";
+const FOLLOWED_DOT_CLASS = "rdw-fav-followed__dot";
+const FOLLOWED_NAME_CLASS = "rdw-fav-followed__name";
+const FOLLOWED_COUNT_CLASS = "rdw-fav-followed__count";
+const FOLLOWED_KIND_ATTR = "data-kind";
 const CHIPS_CLASS = "rdw-fav-chips";
 const CHIP_BUTTON_CLASS = "rdw-fav-chip";
 
@@ -354,6 +378,81 @@ body:not(.${FAVORITES_BROWSING_BODY_CLASS}) .${MORE_CLASS} {
   flex-direction: column;
   gap: 4px;
   min-width: 0;
+}
+/* The collection filter fills the card, as the switches above it do. */
+.${SIDE_GROUP_CLASS} > .rdw-select {
+  display: flex;
+}
+.${SIDE_GROUP_CLASS} > .rdw-select .rdw-select__trigger > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* The followed among the favorites: a card of its own under the filters. */
+.${FOLLOWED_CARD_CLASS} {
+  margin-top: 12px;
+}
+.${FOLLOWED_LIST_CLASS} {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.${FOLLOWED_LIST_CLASS} > li {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.${FOLLOWED_ROW_CLASS} {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 26px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: var(--rdw-radius-s);
+  background: none;
+  color: var(--rdw-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.${FOLLOWED_ROW_CLASS}:hover {
+  background: var(--rdw-surface-2);
+}
+.${FOLLOWED_ROW_CLASS}[aria-pressed="true"] {
+  background: var(--rdw-accent-soft);
+  border-color: var(--rdw-accent);
+}
+.${FOLLOWED_DOT_CLASS} {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--rdw-tag-artist);
+}
+.${FOLLOWED_ROW_CLASS}[${FOLLOWED_KIND_ATTR}="character"] .${FOLLOWED_DOT_CLASS} {
+  background: var(--rdw-tag-character);
+}
+.${FOLLOWED_ROW_CLASS}[${FOLLOWED_KIND_ATTR}="copyright"] .${FOLLOWED_DOT_CLASS} {
+  background: var(--rdw-tag-copyright);
+}
+.${FOLLOWED_NAME_CLASS} {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.${FOLLOWED_COUNT_CLASS} {
+  flex: none;
+  color: var(--rdw-muted);
+  font-variant-numeric: tabular-nums;
 }
 .${SIDE_HINT_CLASS} {
   margin: 0;
@@ -856,7 +955,9 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
   // The order chosen with the Sort switch. Shuffle and it are one or the
   // other: choosing oldest first ends Shuffle, and Shuffle puts the switch back.
   const [order, setOrder] = useState<FavoritesOrder>(ORDER_NEWEST);
-  // The most frequent tags of what is shown, for the list under the filters.
+  // Narrows the list to one collection, or to what is in none.
+  const [collection, setCollection] = useState(COLLECTION_ANY);
+  const [followedAll, setFollowedAll] = useState(false);
   // The column: the card is drawn into `sideHost`, a child of it; the column
   // itself is what scrolls and what is locked.
   const { sideHost } = props;
@@ -869,6 +970,7 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
     media !== MEDIA_ALL ||
     shuffleSeed !== null ||
     order !== ORDER_NEWEST ||
+    collection !== COLLECTION_ANY ||
     !isEmptyFavoritesQuery(query);
 
   const { onSummary } = props;
@@ -898,9 +1000,25 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
     }
   }, [text, index]);
 
+  // The list of the followed needs the index from the start. It is read once
+  // the page has been drawn, and only when there is someone followed.
+  useEffect(() => {
+    if (!stacked || loadStore().artists.length === 0) {
+      return undefined;
+    }
+    const timer = window.setTimeout(loadIndex, 0);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [stacked]);
+
   const tagCounts = useMemo(
     () => (index === null ? [] : favoriteTagCounts(index, loadFavSet())),
     [index],
+  );
+  const followed = useMemo(
+    () => (tagCounts.length === 0 ? [] : followedInFavorites(loadStore().artists, tagCounts)),
+    [tagCounts],
   );
   const suggest = useMemo<SearchSuggest>(
     () => ({
@@ -970,7 +1088,10 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
         return;
       }
       const typed = parseFavoritesQuery(applied);
-      const inSiteOrder = filterFavoriteIndex(index, favorites, typed, media);
+      // Read each time: a post added to a collection a moment ago counts.
+      const scope = collectionScope(loadStore().collections, collection);
+      const byQuery = filterFavoriteIndex(index, favorites, typed, media);
+      const inSiteOrder = scope === null ? byQuery : byQuery.filter((entry) => scope(entry.id));
       // An order typed into the query (sort:id:asc still works) goes before the switch.
       const matched =
         typed.sort === null && order === ORDER_OLDEST ? [...inSiteOrder].reverse() : inSiteOrder;
@@ -986,6 +1107,13 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
             setApplied(next);
           }),
         );
+      } else if (results.length === 0 && scope !== null) {
+        showFavoriteEmpty(
+          buildEmptyNode(
+            { title: EMPTY_COLLECTION, note: EMPTY_COLLECTION_NOTE, offer: null },
+            () => undefined,
+          ),
+        );
       } else {
         showFavoriteResults(results);
       }
@@ -996,7 +1124,7 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
     return () => {
       window.clearTimeout(timer);
     };
-  }, [active, index, applied, media, shuffleSeed, order, tagCounts]);
+  }, [active, index, applied, media, shuffleSeed, order, tagCounts, collection]);
 
   const warning = unsupportedNotice(query.unsupported);
   const notices = [
@@ -1021,6 +1149,13 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
     setApplied(next);
   };
   const sortValue = shuffleSeed !== null ? ORDER_SHUFFLE : order;
+  // Read on every draw: collections are made and renamed while the page is open.
+  const collectionOptions = collectionChoices(loadStore().collections);
+  // A collection deleted meanwhile reads as "any", which is what the list shows then.
+  const collectionValue = collectionOptions.some((option) => option.value === collection)
+    ? collection
+    : COLLECTION_ANY;
+  const followedShown = followedAll ? followed : followed.slice(0, FOLLOWED_SHORT_LIMIT);
 
   const viewSwitch = (
     <Segmented
@@ -1148,7 +1283,15 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
             {viewSwitch}
           </div>
         ) : null}
-        {text.trim().length > 0 || media !== MEDIA_ALL ? (
+        <div className={SIDE_GROUP_CLASS}>
+          <SectionLabel>{COLLECTION_LABEL}</SectionLabel>
+          <Select
+            options={collectionOptions}
+            value={collectionValue}
+            onChange={setCollection}
+          />
+        </div>
+        {text.trim().length > 0 || media !== MEDIA_ALL || collection !== COLLECTION_ANY ? (
           // The search and the type are what narrows the list; the order and
           // the paging are a way of looking at it and are left as they are.
           <div>
@@ -1158,6 +1301,7 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
               onClick={() => {
                 setQuery("");
                 setMedia(MEDIA_ALL);
+                setCollection(COLLECTION_ANY);
               }}
             >
               {RESET_LABEL}
@@ -1169,6 +1313,48 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
           <div className={`${ACTIONS_CLASS} ${SIDE_ACTIONS_CLASS}`} ref={actionsSlotRef} />
         ) : null}
       </div>
+      {stacked && followed.length > 0 ? (
+        <div
+          className={`${SIDE_BODY_CLASS} ${FOLLOWED_CARD_CLASS}`}
+          {...(locked ? { inert: true } : {})}
+        >
+          <SectionLabel>{FOLLOWED_TITLE}</SectionLabel>
+          <ul className={FOLLOWED_LIST_CLASS}>
+            {followedShown.map((item) => (
+              <li key={item.tag}>
+                <button
+                  type="button"
+                  className={`${FOLLOWED_ROW_CLASS} rdw-kit-focusable`}
+                  aria-pressed={queryHasTag(text, item.tag)}
+                  {...{ [FOLLOWED_KIND_ATTR]: item.kind }}
+                  onClick={() => {
+                    setQuery(toggleQueryTag(text, item.tag));
+                  }}
+                >
+                  <span className={FOLLOWED_DOT_CLASS} aria-hidden="true" />
+                  <span className={FOLLOWED_NAME_CLASS}>{item.tag}</span>
+                  <span className={FOLLOWED_COUNT_CLASS}>{item.count.toLocaleString(LOCALE)}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          {followed.length > FOLLOWED_SHORT_LIMIT ? (
+            <div>
+              <Button
+                variant="ghost"
+                size="s"
+                onClick={() => {
+                  setFollowedAll(!followedAll);
+                }}
+              >
+                {followedAll
+                  ? FOLLOWED_SHOW_LESS
+                  : `${FOLLOWED_SHOW_ALL} (${followed.length.toLocaleString(LOCALE)})`}
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </>
   );
 

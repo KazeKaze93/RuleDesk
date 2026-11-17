@@ -2,6 +2,15 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.45.0
+
+Favorites, two ways to narrow the list by what you have already sorted out yourself:
+
+- "Collection" in the card of filters: "Not in any collection" shows the favorites you have not put anywhere yet, and each of your collections of posts shows the favorites that are in it. It works together with the search, Type and Sort; "Reset search" clears it too
+- "Following", a card under the filters: the artists, characters and copyrights from your Following page that are among your favorites, each with the number of favorites, the most favorited first. A click adds the tag to the search, a second click takes it out. A dot shows the kind, in the colours of the tag chips. Twelve are listed, "Show all" opens the rest. The card is there only when you follow someone and the favorites are synced
+
+Both use what is already stored in the browser: no requests to the site.
+
 ## 0.44.1
 
 - Favorites: the "Tags in results" card is taken out. A list of the most frequent tags named what nearly every post has and did not help to narrow a search. The column is the one card again, and the index of favorites is read when you start typing or pick a filter, not on opening the page
