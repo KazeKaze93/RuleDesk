@@ -130,6 +130,12 @@ ${ONE_ROW_HEADER} > #site-title {
   margin: 0;
   padding: 0 2px 0 18px;
   background-image: none;
+  /* As tall as the menu beside it. In the site's dark theme the title and the
+     menu have a background darker than the header's: a title only as tall as
+     its text left a strip of the header's colour over and under it. */
+  align-self: stretch;
+  display: flex;
+  align-items: center;
 }
 ${ONE_ROW_HEADER} > ul#navbar {
   flex: 1 1 0;

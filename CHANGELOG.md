@@ -2,6 +2,13 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.40.7
+
+Site dark:
+
+- No strip over the site's title in the header
+- The number beside Feed can be read: dark on the light pill
+
 ## 0.40.6
 
 - Site default and Site dark leave the site's own controls the way the site draws them: no magnifier, clear button or "?" in the site's search field, the forum's search and rows and the Upload form are not dressed. What the script adds of its own (the search panel, the menu, the marks of new topics, the tag count on Upload) is there in every theme

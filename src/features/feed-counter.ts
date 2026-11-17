@@ -33,7 +33,9 @@ body.${BODY_CLASS} .${FEED_COUNT_CLASS} {
   padding: 0 5px;
   border-radius: 999px;
   background: var(--rdw-accent);
-  color: var(--rdw-surface);
+  /* The site's dark theme colours everything in the menu with a rule stronger
+     than this one would be; the number was the link's green on a green pill. */
+  color: var(--rdw-surface) !important;
   font: 700 10.5px/16px var(--rdw-font);
   text-align: center;
   vertical-align: middle;
