@@ -23,6 +23,8 @@ export const STICKY_TOP = `var(${HEADER_HEIGHT_VAR}, 0px)`;
 
 const HEADER_SELECTOR = "div#header";
 const HEADER_Z_INDEX = 25;
+/** The class of the skin on <html>; the same as RDW_SKIN_CLASS (no imports here). */
+const SKIN_CLASS = "rdw-skin";
 /**
  * The sidebar of a search page and of a post page. It is taller than the
  * window (the tag list), so it scrolls inside itself once it is held.
@@ -49,6 +51,12 @@ html.${STICKY_HEADER_CLASS} ${HEADER_SELECTOR} {
   position: sticky;
   top: 0;
   z-index: ${String(HEADER_Z_INDEX)};
+}
+/* The site's header has no background of its own: held at the top it would
+   let the page show through. The skin gives its header one; without the skin
+   (Site default, Site dark) it gets the colour of the page. */
+html.${STICKY_HEADER_CLASS}:not(.${SKIN_CLASS}) ${HEADER_SELECTOR} {
+  background: var(--rdw-bg);
 }
 html.${STICKY_HEADER_CLASS} ${SIDEBAR_SELECTORS[0]},
 html.${STICKY_HEADER_CLASS} ${SIDEBAR_SELECTORS[1]} {

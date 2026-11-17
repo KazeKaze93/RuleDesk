@@ -44,7 +44,10 @@ export const LAYOUT_WIDE_CLASS = "rdw-layout-wide";
 const PAGE_HOST_CSS = `
 :host {
   all: initial;
-  font-family: var(--rdw-font);
+  /* The site's own stylesheet names a font for every div, and a rule of the
+     page beats :host unless :host says !important. Without it the script's
+     pages were set in the site's wider font in the themes without the skin. */
+  font-family: var(--rdw-font) !important;
   font-size: 13px;
   line-height: 1.35;
   color: var(--rdw-text);

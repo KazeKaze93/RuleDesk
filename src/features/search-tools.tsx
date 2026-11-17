@@ -180,11 +180,30 @@ for (const option of SORT_OPTIONS) {
 const SEARCH_ICON_MASK =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E\") center / contain no-repeat";
 
+/** The width the skin gives the sidebar (site-skin.ts); the panel is drawn for it. */
+const SIDEBAR_WIDTH_PX = 228;
+
 const FEATURE_CSS = [
   `body.${BODY_CLASS} .${ROOT_CLASS} {`,
   "  margin-top: 8px;",
   "  max-width: 100%;",
   "  box-sizing: border-box;",
+  "}",
+  // The panel needs the width the skin gives the sidebar, and the script's
+  // font. Without the skin (Site default, Site dark) the sidebar is the
+  // site's narrower one and the site's stylesheet sets its wider font on
+  // every div and button: the arrow of Sort was pushed out of its field and
+  // the two buttons at the bottom stood one over the other.
+  `body.${BODY_CLASS} div.sidebar {`,
+  `  width: ${String(SIDEBAR_WIDTH_PX)}px;`,
+  `  min-width: ${String(SIDEBAR_WIDTH_PX)}px;`,
+  `  max-width: ${String(SIDEBAR_WIDTH_PX)}px;`,
+  "}",
+  `body.${BODY_CLASS} .${ROOT_CLASS} {`,
+  "  font-family: var(--rdw-font);",
+  "}",
+  `body.${BODY_CLASS} .${ROOT_CLASS} * {`,
+  "  font-family: var(--rdw-font);",
   "}",
   `body.${BODY_CLASS} .${CARD_CLASS} {`,
   "  padding: 10px;",

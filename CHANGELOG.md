@@ -2,6 +2,14 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.40.5
+
+The themes Site default and Site dark:
+
+- The header held at the top has a background: the page no longer shows through it while scrolling
+- The script's own pages (Collections, Following, Statistics, RuleDesk) are set in the script's font, as in the other themes, and not in the site's wider one. The toolbar of Collections fits in one row again: "New" no longer drops to a second line
+- The search panel in the sidebar looks as it does in Dark: the sidebar has the same width, Sort has its arrow, "Reset" and "Select posts" stand side by side
+
 ## 0.40.4
 
 - Downloads → File name → Custom: a token is a switch. A click puts it into the name, a second click takes it out, so a name cannot hold the same token twice. The tokens that are in the name are lit
