@@ -9,7 +9,10 @@ import {
   isEmptyFavoritesQuery,
   parseFavoritesQuery,
 } from "../../src/features/favorites-search";
-import type { FavoriteIndexEntry } from "../../src/storage/favorites-index";
+import { detailsNotice } from "../../src/features/favorites-browser";
+import { parseDetailTest } from "../../src/features/favorites-search";
+import { detailIds } from "../../src/pages/favorites-sync-section";
+import { withFavoriteDetails, type FavoriteIndexEntry } from "../../src/storage/favorites-index";
 
 function entry(id: number, tags: string, pos: number): FavoriteIndexEntry {
   return { id, tags, thumb: "", run: 1, pos };
@@ -80,15 +83,16 @@ describe("favorites search: order", () => {
 
 describe("favorites search: what the index cannot answer", () => {
   it("sets the site's other metatags aside instead of searching them as tags", () => {
-    const query = parseFavoritesQuery("cat rating:safe score:>=10 -rating:explicit sort:score");
+    const query = parseFavoritesQuery("cat user:bob md5:abc -parent:5 sort:score rating:nope");
     expect(query.unsupported).toEqual([
-      "rating:safe",
-      "score:>=10",
-      "-rating:explicit",
+      "user:bob",
+      "md5:abc",
+      "-parent:5",
       "sort:score",
+      "rating:nope",
     ]);
     expect(query.include).toHaveLength(1);
-    expect(find("cat rating:safe")).toEqual([10, 40]);
+    expect(find("cat user:bob")).toEqual([10, 40]);
   });
 
   it("sets the fuzzy search aside too", () => {
@@ -102,7 +106,9 @@ describe("favorites search: what the index cannot answer", () => {
   });
 
   it("does not call a query of unsupported terms alone a search", () => {
-    expect(isEmptyFavoritesQuery(parseFavoritesQuery("rating:safe"))).toBe(true);
+    expect(isEmptyFavoritesQuery(parseFavoritesQuery("user:bob"))).toBe(true);
+    // A condition on the rating is a search.
+    expect(isEmptyFavoritesQuery(parseFavoritesQuery("rating:safe"))).toBe(false);
   });
 
   it("names the terms in the notice, and says nothing when there are none", () => {
@@ -152,5 +158,84 @@ describe("favorites search: the tag list the site cuts at both ends", () => {
   it("does not take a part of a tag for the tag", () => {
     expect(findCut("zootop")).toEqual([]);
     expect(findCut("hopps")).toEqual([]);
+  });
+});
+
+describe("favorites search: rating, score and size from the API", () => {
+  const detailed: readonly FavoriteIndexEntry[] = [
+    { ...entry(1, "cat solo", 1), cut: false, rating: "safe", score: 120, width: 1920, height: 1080 },
+    { ...entry(2, "cat dog", 2), cut: false, rating: "explicit", score: 40, width: 800, height: 1200 },
+    { ...entry(3, "dog bird", 3), cut: false, rating: "questionable", score: 5, width: 4000, height: 3000 },
+    // Never read from the API.
+    { ...entry(4, "cat bird", 4), cut: false },
+  ];
+  const ids = new Set([1, 2, 3, 4]);
+  const where = (text: string): number[] =>
+    filterFavoriteIndex(detailed, ids, parseFavoritesQuery(text), MEDIA_ALL)
+      .map((item) => item.id)
+      .sort((a, b) => a - b);
+
+  it("takes the rating by its word or the beginning of it", () => {
+    expect(where("rating:safe")).toEqual([1]);
+    expect(where("rating:e")).toEqual([2]);
+    expect(where("rating:quest")).toEqual([3]);
+  });
+
+  it("leaves out with a minus, and leaves a post without a rating out of both", () => {
+    expect(where("-rating:safe")).toEqual([2, 3]);
+    expect(where("cat -rating:explicit")).toEqual([1]);
+  });
+
+  it("compares the score and the size", () => {
+    expect(where("score:>=40")).toEqual([1, 2]);
+    expect(where("score:>40")).toEqual([1]);
+    expect(where("score:<40")).toEqual([3]);
+    expect(where("score:5")).toEqual([3]);
+    expect(where("width:>=1920")).toEqual([1, 3]);
+    expect(where("height:<=1080 cat")).toEqual([1]);
+    expect(where("-score:>=40")).toEqual([3]);
+  });
+
+  it("reads the conditions and sets aside what is not one", () => {
+    expect(parseDetailTest("score:>=50", false)).toEqual({
+      field: "score",
+      op: ">=",
+      value: 50,
+      negated: false,
+    });
+    expect(parseDetailTest("rating:safe", true)).toEqual({
+      field: "rating",
+      op: "=",
+      value: "s",
+      negated: true,
+    });
+    expect(parseDetailTest("score:high", false)).toBeNull();
+    expect(parseDetailTest("rating:", false)).toBeNull();
+    expect(parseDetailTest("user:bob", false)).toBeNull();
+    expect(parseFavoritesQuery("width:abc").unsupported).toEqual(["width:abc"]);
+  });
+
+  it("says how many favorites such a search cannot see", () => {
+    expect(detailsNotice(0)).toBe("");
+    expect(detailsNotice(1)).toContain("1 favorite has no rating");
+    expect(detailsNotice(1200)).toContain("1,200 favorites have no rating");
+  });
+});
+
+describe("favorites index: details from the API", () => {
+  it("lays the details over an entry and keeps what an answer lacks", () => {
+    const base = { ...entry(7, "cat", 1), rating: "safe", score: 3 };
+    expect(withFavoriteDetails(base, { id: 7, score: 9, width: 100 })).toEqual({
+      ...base,
+      score: 9,
+      width: 100,
+    });
+    expect(withFavoriteDetails(base, { id: 7 })).toEqual(base);
+  });
+
+  it("asks for the indexed favorites only, the newest post first", () => {
+    expect(detailIds([entry(5, "a", 1), entry(9, "b", 2), entry(7, "c", 3)], new Set([5, 9]))).toEqual([
+      9, 5,
+    ]);
   });
 });

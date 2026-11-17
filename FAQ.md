@@ -58,7 +58,10 @@ The list is built from the local index. A favorite added on another device is in
 The search needs a local list of your favorites with their tags. RuleDesk → Favorites → "Full resync" builds it: it walks your favorites pages once, 1.5 seconds per page.
 
 **`rating:safe` does nothing in the favorites search.**
-The local list holds tags and post ids only. Other metatags work in the search on Posts; the "?" in the field lists what works here.
+The favorites page of the site gives only tags, so the rating, the score and the size of a post have to be read from the site API, which needs your own key. Paste the key in RuleDesk → Downloads, then press "Read ratings and sizes" in RuleDesk → Favorites (about a minute per 5,000 favorites). After that `rating:`, `score:`, `width:` and `height:` work. Other metatags (`user:`, `md5:`) work only in the search on Posts.
+
+**The search by rating says some favorites are left out.**
+Those were added after the ratings were last read. Press "Read ratings and sizes" again, or run "Full resync", which reads them when it finishes.
 
 **A favorite I added on another device is missing.**
 The local list changes when you add or remove a favorite in this browser, or when you run "Sync favorites".

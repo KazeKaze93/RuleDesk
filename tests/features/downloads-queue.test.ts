@@ -20,6 +20,7 @@ import {
   getApiCredentials,
   setApiCredentials,
 } from "../../src/storage/api-credentials";
+import { resetApiPace } from "../../src/site/api";
 import { clearStorageCache } from "../../src/storage/store";
 
 const memory = new Map<string, unknown>();
@@ -72,6 +73,7 @@ function stubDownload(broken: number[] = []): string[] {
 describe("download manager", () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    resetApiPace();
     installGm();
     resetDownloadsState();
     window.sessionStorage.clear();

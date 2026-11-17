@@ -1,8 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  API_LAST_REQUEST_KEY,
+  API_LIMIT_PAUSE_MS,
+  API_LIMIT_RETRIES,
+  API_MIN_INTERVAL_MS,
   API_REQUEST_INTERVAL_MS,
+  collectPostDetails,
   collectPostFiles,
+  resetApiPace,
   parseApiPosts,
   queryForWalk,
 } from "../../src/site/api";
@@ -40,6 +46,7 @@ async function settle<T>(promise: Promise<T>): Promise<T> {
 describe("site API for downloads", () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    resetApiPace();
   });
 
   afterEach(() => {
@@ -70,12 +77,87 @@ describe("site API for downloads", () => {
   });
 
   it("reports a failed request by its status", async () => {
-    vi.stubGlobal("fetch", () => Promise.resolve(new Response("", { status: 429 })));
+    vi.stubGlobal("fetch", () => Promise.resolve(new Response("", { status: 500 })));
     const walk = collectPostFiles(
       { kind: "query", tags: "cat" },
       { credentials: CREDENTIALS, onProgress: () => {}, isCancelled: () => false },
     );
-    await expect(walk).rejects.toThrow("API HTTP 429");
+    const failed = expect(walk).rejects.toThrow("API HTTP 500");
+    await vi.advanceTimersByTimeAsync(API_MIN_INTERVAL_MS);
+    await failed;
+  });
+
+  it("waits out too many requests and asks again, then gives up", async () => {
+    let calls = 0;
+    vi.stubGlobal("fetch", () => {
+      calls += 1;
+      return Promise.resolve(
+        calls <= 2
+          ? new Response("", { status: 429 })
+          : new Response(JSON.stringify([post(5)]), { status: 200 }),
+      );
+    });
+    let posts: number[] = [];
+    const run = collectPostDetails([5], {
+      credentials: CREDENTIALS,
+      isCancelled: () => false,
+      onBatch: (batch) => {
+        posts = batch.map((item) => item.postId);
+      },
+    });
+    await vi.advanceTimersByTimeAsync((API_LIMIT_PAUSE_MS + API_MIN_INTERVAL_MS) * 3);
+    await run;
+    expect(calls).toBe(3);
+    expect(posts).toEqual([5]);
+
+    calls = 0;
+    vi.stubGlobal("fetch", () => {
+      calls += 1;
+      return Promise.resolve(new Response("", { status: 429 }));
+    });
+    const stuck = collectPostDetails([5], {
+      credentials: CREDENTIALS,
+      isCancelled: () => false,
+      onBatch: () => {},
+    });
+    const failed = expect(stuck).rejects.toThrow("API HTTP 429");
+    await vi.advanceTimersByTimeAsync((API_LIMIT_PAUSE_MS + API_MIN_INTERVAL_MS) * 5);
+    await failed;
+    expect(calls).toBe(API_LIMIT_RETRIES + 1);
+  });
+
+  it("starts no request sooner than the pace allows, whoever asks", async () => {
+    const starts: number[] = [];
+    vi.stubGlobal("fetch", () => {
+      starts.push(Date.now());
+      return Promise.resolve(new Response("[]", { status: 200 }));
+    });
+    const options = { credentials: CREDENTIALS, isCancelled: () => false, onBatch: () => {} };
+    // Two runs at once, as a download and the reading of ratings would be.
+    const both = Promise.all([collectPostDetails([1], options), collectPostDetails([2], options)]);
+    await vi.advanceTimersByTimeAsync(API_MIN_INTERVAL_MS * 4);
+    await both;
+    expect(starts).toHaveLength(2);
+    expect((starts[1] ?? 0) - (starts[0] ?? 0)).toBeGreaterThanOrEqual(API_MIN_INTERVAL_MS);
+  });
+
+  it("keeps the pace across tabs through the shared time", async () => {
+    const starts: number[] = [];
+    vi.stubGlobal("fetch", () => {
+      starts.push(Date.now());
+      return Promise.resolve(new Response("[]", { status: 200 }));
+    });
+    // Another tab has just made a request.
+    const before = Date.now();
+    window.localStorage.setItem(API_LAST_REQUEST_KEY, String(before));
+    const run = collectPostDetails([1], {
+      credentials: CREDENTIALS,
+      isCancelled: () => false,
+      onBatch: () => {},
+    });
+    await vi.advanceTimersByTimeAsync(API_MIN_INTERVAL_MS * 2);
+    await run;
+    expect((starts[0] ?? 0) - before).toBeGreaterThanOrEqual(API_MIN_INTERVAL_MS);
   });
 
   it("turns a refusal in words into an error with those words", () => {

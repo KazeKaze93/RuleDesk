@@ -4,7 +4,8 @@ The script works on the site's own HTML. This file holds what is known about it.
 
 ## Rules the script follows
 
-- **No site API, with one exception: the download manager.** It asks `api.rule34.xxx` for the file addresses of posts, with the user's own key typed into settings (`src/site/api.ts`). Nothing else may use the API, and the manager does not exist without a key.
+- **The site API only with the user's own key, for two things.** The download manager asks `api.rule34.xxx` for the file addresses of posts; the favorites search asks it for the rating, score and size of favorites ("Read ratings and sizes", and after "Full resync"; allowed by Kaze, 17.11.2026). Both are in `src/site/api.ts`, both start from a user's action, neither exists without a key typed into settings. Nothing else may use the API.
+- **The API limit is 60 requests in 60 seconds per key** (the account page says so; from Kaze, 17.11.2026). `requestText` in `api.ts` is the one place a request is made, and it keeps the pace for all of them: one at a time, no sooner than 1.1 s after the last one of any tab (a time in `localStorage`, `ruledesk-web.api-last`), and a 429 is waited out for 15 s and asked again up to three times.
 - **Requests only for a user action, one at a time, with a pause.** The site rate-limits quickly (HTTP 429). A new kind of request needs the maintainer's consent. All `fetch` and `GM_download` calls are in `src/site/`:
 
   | File | When it asks | Pause |
@@ -15,7 +16,8 @@ The script works on the site's own HTML. This file holds what is known about it.
   | `next-page.ts` | Infinite scroll; other artist groups of a merged feed | 1 s |
   | `artist-snapshot.ts` | "Refresh" on Following, after a confirmation | 1.5 s per artist |
   | `profile.ts` | Opening Statistics, when the stored numbers are older than 15 minutes (Kaze, 17.11.2026), and "Refresh profile" there: the My Account page, then the user's profile page | two requests, 1.5 s apart |
-| `api.ts` | A download job: the list of files (`fetch` to `api.rule34.xxx`, which allows any origin; up to 1000 posts per request) | 1 s |
+| `api.ts` | A download job: the list of files (`fetch` to `api.rule34.xxx`, which allows any origin; up to 1000 posts per request, 100 when asked by id) | 1.1 s, shared |
+  | `api.ts` | "Read ratings and sizes" and the end of "Full resync": rating, score, size of the favorites, 100 posts per request | 1.2 s |
 | `download.ts` | A download job: the files, one at a time (`GM_download` from the CDN) | 0.4 s; one retry after 5 s |
 
 - **Cookies:** only `tag_blacklist` and `theme` are read or written. `user_id` and `pass_hash` are never read. One exception outside cookies, allowed by Kaze: "Refresh profile" takes the address of the "My Profile" link from the My Account page, which holds the user's id, uses it for one request and stores nothing of it. The account settings form is never submitted.

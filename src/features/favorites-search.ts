@@ -21,10 +21,15 @@ import { END_CUT, END_WHOLE, restoreFavoriteTags, type FavoriteTags } from "./fa
  * do it, and one that shows whether it is on. `sort:random` is therefore not
  * taken here.
  *
- * The site's other metatags (`rating:`, `score:`, `user:`, sizes, the other
- * sorts) and the fuzzy `tag~` ask for what the index does not hold. They are
- * not searched as tags, which would find nothing: they are set aside in
- * `unsupported`, for the page to say so.
+ * `rating:safe`, `score:>=50`, `width:>=1920`, `height:<1000` are answered
+ * for the favorites whose rating, score and size were read from the site API
+ * (see storage/favorites-index.ts); a favorite without them matches none of
+ * these, with or without a minus.
+ *
+ * The site's other metatags (`user:`, `md5:`, the other sorts) and the fuzzy
+ * `tag~` ask for what the index does not hold. They are not searched as
+ * tags, which would find nothing: they are set aside in `unsupported`, for
+ * the page to say so.
  */
 
 export const MEDIA_ALL = "all";
@@ -52,11 +57,33 @@ export type TagPattern = {
   readonly noEnds: RegExp;
 };
 
+export const DETAIL_RATING = "rating";
+export const DETAIL_SCORE = "score";
+export const DETAIL_WIDTH = "width";
+export const DETAIL_HEIGHT = "height";
+export type DetailField =
+  | typeof DETAIL_RATING
+  | typeof DETAIL_SCORE
+  | typeof DETAIL_WIDTH
+  | typeof DETAIL_HEIGHT;
+export type DetailOp = "=" | ">" | ">=" | "<" | "<=";
+
+/** One condition on what the API told of a post. */
+export type DetailTest = {
+  readonly field: DetailField;
+  readonly op: DetailOp;
+  /** A number, or for the rating its first letter: s, q or e. */
+  readonly value: number | string;
+  readonly negated: boolean;
+};
+
 export type FavoritesQuery = {
   readonly include: readonly TagPattern[];
   readonly exclude: readonly TagPattern[];
   /** Groups of "or": a post needs at least one tag of every group. */
   readonly anyOf: readonly (readonly TagPattern[])[];
+  /** Conditions on rating, score and size; every one has to hold. */
+  readonly where: readonly DetailTest[];
   /** The order asked for, or null for the site's order. */
   readonly sort: FavoritesSort | null;
   /** Terms the index cannot answer, as they were typed. */
@@ -97,6 +124,79 @@ const META_NAMES: ReadonlySet<string> = new Set([
   "id",
 ]);
 const REGEXP_SPECIAL = /[.+?^${}()|[\]\\]/g;
+const NUMBER_FIELDS: ReadonlySet<string> = new Set([DETAIL_SCORE, DETAIL_WIDTH, DETAIL_HEIGHT]);
+const NUMBER_TEST = /^(>=|<=|>|<)?(-?\d+)$/;
+/** The ratings by their first letter, as the site's own search takes them. */
+const RATING_LETTERS: ReadonlySet<string> = new Set(["s", "q", "e"]);
+const RATING_WORDS: readonly string[] = ["safe", "questionable", "explicit"];
+
+function isDetailOp(value: string): value is DetailOp {
+  return value === "=" || value === ">" || value === ">=" || value === "<" || value === "<=";
+}
+
+/** `rating:safe`, `score:>=50`, `width:1920` as a condition; null when it is not one. */
+export function parseDetailTest(term: string, negated: boolean): DetailTest | null {
+  const at = term.indexOf(META_SEPARATOR);
+  if (at <= 0) {
+    return null;
+  }
+  const name = term.slice(0, at);
+  const rest = term.slice(at + META_SEPARATOR.length);
+  if (name === DETAIL_RATING) {
+    const word = RATING_WORDS.find((item) => rest.length > 0 && item.startsWith(rest));
+    return word === undefined
+      ? null
+      : { field: DETAIL_RATING, op: "=", value: word.charAt(0), negated };
+  }
+  if (!NUMBER_FIELDS.has(name)) {
+    return null;
+  }
+  const match = NUMBER_TEST.exec(rest);
+  const op = match?.[1] ?? "=";
+  if (match?.[2] === undefined || !isDetailOp(op)) {
+    return null;
+  }
+  const field =
+    name === DETAIL_SCORE ? DETAIL_SCORE : name === DETAIL_WIDTH ? DETAIL_WIDTH : DETAIL_HEIGHT;
+  return { field, op, value: Number(match[2]), negated };
+}
+
+function compare(left: number, op: DetailOp, right: number): boolean {
+  if (op === ">") {
+    return left > right;
+  }
+  if (op === ">=") {
+    return left >= right;
+  }
+  if (op === "<") {
+    return left < right;
+  }
+  if (op === "<=") {
+    return left <= right;
+  }
+  return left === right;
+}
+
+/** Whether the entry passes; an entry without that detail passes nothing. */
+function passesDetail(entry: FavoriteIndexEntry, test: DetailTest): boolean {
+  if (test.field === DETAIL_RATING) {
+    const letter = entry.rating?.charAt(0).toLowerCase();
+    if (letter === undefined || !RATING_LETTERS.has(letter)) {
+      return false;
+    }
+    return (letter === test.value) !== test.negated;
+  }
+  const have = entry[test.field];
+  if (have === undefined || typeof test.value !== "number") {
+    return false;
+  }
+  return compare(have, test.op, test.value) !== test.negated;
+}
+
+/** True when the entry has what the API tells of a post. */
+export function hasFavoriteDetails(entry: FavoriteIndexEntry): boolean {
+  return entry.rating !== undefined;
+}
 
 function wholeTag(term: string): RegExp {
   const body = term
@@ -134,6 +234,7 @@ export function parseFavoritesQuery(text: string): FavoritesQuery {
   const exclude: TagPattern[] = [];
   const anyOf: TagPattern[][] = [];
   const unsupported: string[] = [];
+  const where: DetailTest[] = [];
   let sort: FavoritesSort | null = null;
   // The tags of the group being read, or null outside a group.
   let group: TagPattern[] | null = null;
@@ -163,8 +264,11 @@ export function parseFavoritesQuery(text: string): FavoritesQuery {
       continue;
     }
     if (isMetatag(term)) {
+      const test = parseDetailTest(term, negated);
       const known = negated ? undefined : SORTS.get(term);
-      if (known === undefined) {
+      if (test !== null) {
+        where.push(test);
+      } else if (known === undefined) {
         unsupported.push(raw);
       } else {
         sort = known;
@@ -181,7 +285,7 @@ export function parseFavoritesQuery(text: string): FavoritesQuery {
   if (group !== null && group.length > 0) {
     anyOf.push(group);
   }
-  return { include, exclude, anyOf, sort, unsupported };
+  return { include, exclude, anyOf, where, sort, unsupported };
 }
 
 /** True when the query neither narrows the list nor orders it. */
@@ -190,6 +294,7 @@ export function isEmptyFavoritesQuery(query: FavoritesQuery): boolean {
     query.include.length === 0 &&
     query.exclude.length === 0 &&
     query.anyOf.length === 0 &&
+    query.where.length === 0 &&
     query.sort === null
   );
 }
@@ -217,7 +322,8 @@ function matchesQuery(entry: FavoriteTags, query: FavoritesQuery): boolean {
   return (
     query.include.every((pattern) => hasTag(entry, pattern)) &&
     !query.exclude.some((pattern) => hasTag(entry, pattern)) &&
-    query.anyOf.every((group) => group.some((pattern) => hasTag(entry, pattern)))
+    query.anyOf.every((group) => group.some((pattern) => hasTag(entry, pattern))) &&
+    query.where.every((test) => passesDetail(entry, test))
   );
 }
 

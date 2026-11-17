@@ -2,6 +2,19 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.42.0
+
+Favorites search by rating, score and size:
+
+- `rating:safe`, `-rating:explicit`, `score:>=50`, `width:>=1920`, `height:<1000` work in the favorites search. The favorites page does not give these, so they are read from the site API with your own key: RuleDesk → Favorites → "Read ratings and sizes", a hundred posts a request. "Full resync" does the same when it finishes. Without a key nothing changes
+- A search by rating, score or size says how many favorites it cannot see yet because they were not read
+- The "?" of the field lists the new conditions
+
+The site API:
+
+- The API allows a key 60 requests in 60 seconds. Every request of the script now keeps one pace, about 54 a minute, whatever asks: a download in one tab and the reading of ratings in another no longer add up past the limit
+- An answer of "too many requests" is waited out and asked again up to three times before a download or a reading stops with an error
+
 ## 0.41.2
 
 - Favorites: Sort has two options, Newest and Oldest, both by when the post became a favorite. Newest is the page as the site gives it; Oldest turns the list over. "Added" is gone: beside Newest it read as the same thing

@@ -24,6 +24,7 @@ import {
   MEDIA_IMAGES,
   MEDIA_VIDEOS,
   filterFavoriteIndex,
+  hasFavoriteDetails,
   isEmptyFavoritesQuery,
   isFavoritesMedia,
   parseFavoritesQuery,
@@ -106,9 +107,12 @@ const SYNTAX_ROWS: readonly (readonly [string, string])[] = [
   ["( cat ~ dog )", "posts with either tag; keep the spaces"],
   ["-sketch", "posts without the tag"],
   ["ca*t", "any tag that starts with ca and ends with t"],
+  ["rating:safe", "by rating; -rating:safe for the rest"],
+  ["score:>=50", "by score; also >, <, <= and a plain number"],
+  ["width:>=1920", "by size; height: works the same"],
 ];
 const SYNTAX_NOTE =
-  "Favorites search uses tags only. Metatags (rating:, score:, user:, width:, md5:, parent:) and fuzzy tag~ work in Posts search. The order is set with Sort; for a random one use Shuffle.";
+  "rating:, score:, width: and height: need an API key and \u201cRead ratings and sizes\u201d in RuleDesk \u2192 Favorites. Other metatags (user:, md5:, parent:) and fuzzy tag~ work in Posts search. The order is set with Sort; for a random one use Shuffle.";
 const SEARCH_HELP: SearchHelp = {
   label: SYNTAX_LABEL,
   rows: SYNTAX_ROWS,
@@ -576,6 +580,14 @@ function indexNotice(indexed: number, favorites: number): string {
   return `The index holds ${indexed.toLocaleString(LOCALE)} of ${favorites.toLocaleString(LOCALE)} favorites; Full resync in RuleDesk → Favorites adds the rest.`;
 }
 
+/** Says so when a search by rating, score or size cannot see every favorite; nothing otherwise. */
+export function detailsNotice(missing: number): string {
+  if (missing <= 0) {
+    return "";
+  }
+  return `${missing.toLocaleString(LOCALE)} ${missing === 1 ? "favorite has" : "favorites have"} no rating, score or size yet and ${missing === 1 ? "is" : "are"} left out: RuleDesk \u2192 Favorites \u2192 Read ratings and sizes (needs an API key).`;
+}
+
 /** Names the typed terms the index cannot answer; nothing when there are none. */
 export function unsupportedNotice(terms: readonly string[]): string {
   if (terms.length === 0) {
@@ -774,8 +786,16 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
       } else {
         showFavoriteResults(results);
       }
-      const indexed = index.filter((entry) => favorites.has(entry.id)).length;
-      setStatus(indexNotice(indexed, favorites.size));
+      const indexed = index.filter((entry) => favorites.has(entry.id));
+      const withoutDetails =
+        typed.where.length === 0
+          ? 0
+          : indexed.filter((entry) => !hasFavoriteDetails(entry)).length;
+      setStatus(
+        [indexNotice(indexed.length, favorites.size), detailsNotice(withoutDetails)]
+          .filter((line) => line.length > 0)
+          .join(" "),
+      );
       setFound(results.length);
     }, TYPING_PAUSE_MS);
     return () => {
