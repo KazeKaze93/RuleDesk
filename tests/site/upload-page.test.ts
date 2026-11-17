@@ -85,6 +85,7 @@ describe("upload: counting and sizes", () => {
 describe("the upload page", () => {
   beforeEach(() => {
     installGmMocks();
+    document.documentElement.classList.add("rdw-skin");
     document.body.innerHTML = FORM;
   });
 
@@ -138,6 +139,14 @@ describe("the upload page", () => {
     remove.click();
     expect(zone?.classList.contains(UPLOAD_HAS_FILE_CLASS)).toBe(false);
     expect(remove.hidden).toBe(true);
+  });
+
+  it("leaves the form the site's own without the skin, but still counts the tags", () => {
+    document.documentElement.classList.remove("rdw-skin");
+    mountUploadPage();
+    expect(document.querySelector(`.${UPLOAD_HINT_CLASS}`)).toBeNull();
+    expect(document.querySelector(`.${UPLOAD_REMOVE_CLASS}`)).toBeNull();
+    expect(document.querySelector(`.${UPLOAD_TAG_COUNT_CLASS}`)).not.toBeNull();
   });
 
   it("counts the tags as they are typed", () => {

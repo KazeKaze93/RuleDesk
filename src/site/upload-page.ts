@@ -1,3 +1,4 @@
+import { skinIsOn } from "../skin/skin-on";
 import { getFeatureState, setFeatureState } from "../storage/store";
 
 /**
@@ -237,9 +238,14 @@ export function mountUploadPage(): void {
   if (form === null || !(input instanceof HTMLInputElement) || !form.contains(input)) {
     return;
   }
-  mountFileZone(input);
+  // The file zone and the fold of the guidelines are drawn by the skin;
+  // without it the form stays the site's. Tags are counted and repeats
+  // dropped in every theme.
+  if (skinIsOn()) {
+    mountFileZone(input);
+    mountGuideToggle(form);
+  }
   if (tags instanceof HTMLTextAreaElement && form.contains(tags)) {
     mountTagCount(tags);
   }
-  mountGuideToggle(form);
 }

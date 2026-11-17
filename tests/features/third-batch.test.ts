@@ -240,6 +240,11 @@ describe("the site's search field", () => {
     if (!(input instanceof HTMLInputElement) || box === null) {
       throw new Error("no field");
     }
+    // Without the skin the field stays the site's own.
+    document.documentElement.classList.remove("rdw-skin");
+    mountSiteSearchTools(input);
+    expect(box.querySelector(".rdw-site-search-tools")).toBeNull();
+    document.documentElement.classList.add("rdw-skin");
     mountSiteSearchTools(input);
     mountSiteSearchTools(input);
     expect(input.parentElement).toBe(box);

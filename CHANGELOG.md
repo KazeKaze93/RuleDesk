@@ -2,6 +2,12 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.40.6
+
+- Site default and Site dark leave the site's own controls the way the site draws them: no magnifier, clear button or "?" in the site's search field, the forum's search and rows and the Upload form are not dressed. What the script adds of its own (the search panel, the menu, the marks of new topics, the tag count on Upload) is there in every theme
+- A number field (Min score) no longer shows the browser's white arrows
+- The focus ring of a text field lies on its border instead of standing off it
+
 ## 0.40.5
 
 The themes Site default and Site dark:

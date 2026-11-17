@@ -92,6 +92,7 @@ describe("a row of the topics list", () => {
 describe("the topics list", () => {
   beforeEach(() => {
     installGmMocks();
+    document.documentElement.classList.add("rdw-skin");
     document.head.replaceChildren();
     page(STICKY_LOCKED + PLAIN + ONE_REPLY);
   });

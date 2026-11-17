@@ -1,5 +1,6 @@
 import { COLLECTION_KIND_SEARCH, SEARCH_PARAM_TAGS } from "../config/constants";
 import { normalizeArtistTag } from "../search/query";
+import { skinIsOn } from "../skin/skin-on";
 import {
   FOLLOW_KIND_ARTIST,
   FOLLOW_KIND_CHARACTER,
@@ -307,7 +308,12 @@ export function dressForumSearch(forum: Element): void {
 }
 
 function mountForum(forum: Element): void {
-  dressForumSearch(forum);
+  // The search field and the rows are dressed for the skin's cards; without
+  // the skin they stay the site's. The marks of new topics are in every theme.
+  const dressed = skinIsOn();
+  if (dressed) {
+    dressForumSearch(forum);
+  }
   const table = forum.querySelector("table.highlightable");
   const rows = [...forum.querySelectorAll(ROW_SELECTOR)];
   const topics: { row: Element; key: string; signature: string }[] = [];
@@ -321,8 +327,10 @@ function mountForum(forum: Element): void {
   if (topics.length === 0 || table === null) {
     return;
   }
-  for (const row of rows) {
-    dressForumRow(row);
+  if (dressed) {
+    for (const row of rows) {
+      dressForumRow(row);
+    }
   }
   // The whole card opens the topic, not only its title.
   table.addEventListener("click", (event) => {

@@ -56,6 +56,11 @@ input.rdw-field__input.rdw-kit-focusable:focus {
   caret-color: var(--rdw-text);
   box-shadow: 0 0 0 1000px var(--rdw-surface) inset;
 }
+/* The ring of a field lies on its border and does not stand off it. */
+.rdw-field__input.rdw-kit-focusable:focus-visible {
+  outline-offset: -1px;
+  border-color: var(--rdw-accent);
+}
 .rdw-field__input::placeholder {
   color: var(--rdw-muted);
 }

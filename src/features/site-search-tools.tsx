@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "preact/hooks";
 
 import { IconHelp, IconX, Popover } from "../ui/kit";
 import { SearchHelpList, type SearchHelp } from "../ui/kit/search-field";
+import { skinIsOn } from "../skin/skin-on";
 
 /**
  * The site's own search field on Posts and Feed, dressed like the script's
@@ -118,6 +119,10 @@ function SiteSearchTools(props: { readonly input: HTMLInputElement }): JSX.Eleme
 
 /** Adds the buttons to the box of the site's search field. Safe to call again. */
 export function mountSiteSearchTools(input: HTMLInputElement): void {
+  // Without the skin the field is left the way the site draws it.
+  if (!skinIsOn()) {
+    return;
+  }
   const box = input.closest(SITE_SEARCH_BOX_SELECTOR);
   if (!(box instanceof HTMLElement) || box.querySelector(`.${SITE_SEARCH_TOOLS_CLASS}`) !== null) {
     return;

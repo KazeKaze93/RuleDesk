@@ -47,6 +47,22 @@ ${KIT_FOCUS_CSS}
   opacity: 0.55;
   cursor: not-allowed;
 }
+/* The browser's own arrows are white boxes on a dark field; the arrow keys
+   still change the number. */
+.rdw-num__input::-webkit-inner-spin-button,
+.rdw-num__input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.rdw-num__input {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+/* The ring of a field lies on its border and does not stand off it. */
+.rdw-num__input.rdw-kit-focusable:focus-visible {
+  outline-offset: -1px;
+  border-color: var(--rdw-accent);
+}
 `;
 
 export function NumberField(props: NumberFieldProps): JSX.Element {
