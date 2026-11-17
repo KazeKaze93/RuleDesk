@@ -157,6 +157,8 @@ Two kinds, one page:
 The site's Favorites page, with one row added at the top that stays in place while scrolling ("Bulk remove favorites" in settings):
 
 - a search over the user's own favorites: `tag`, `-tag`, `ta*g`, `( a ~ b )`, `sort:id:asc`; the "?" lists the syntax
+- suggestions under the field as a word is typed: tags the favorites have, with their counts, those that begin with the word first. Up, Down, Enter or Tab, Esc. While the list is open the page keeps the last result; the search is applied on a pick, on Enter, after a space, and when the field is left
+- when nothing matches, a line that says so in place of the grid, with the nearest tag offered for a word that is no tag
 - Type: All / Images / Videos
 - View: Pages (the site's paging) or Scroll (endless)
 - Shuffle
@@ -185,7 +187,7 @@ The script's own page, counted from its own data in this browser:
 - collections by type and by post count
 - **History**: one point is kept for each day the site is opened; the lines show how favorites, followed and collections change
 - top tags in favorites (after a favorites sync)
-- **Site profile**: account age, level, uploads, comments, edits. Filled only by the "Refresh profile" button, which reads the user's profile page (two requests)
+- **Site profile**: account age, level, uploads, comments, edits. Read from the user's profile page (two requests) when Statistics is opened, at most once in 15 minutes; "Refresh profile" reads it at once
 
 The Data block of settings reminds about a backup when the last export is old; the dot on the gear is the same reminder.
 
@@ -241,7 +243,7 @@ These are decisions, not gaps. A design that needs one of them cannot be built.
 
 | Limit | Why |
 |---|---|
-| No request without a user's action | The site rate-limits fast. The only exception is the Feed counter: one request when a page loads, at most once in 15 minutes, with its own switch |
+| No request without a user's action | The site rate-limits fast. Two requests are tied to opening a page and not to a button, each at most once in 15 minutes: the Feed counter (any page, with its own switch) and the profile numbers (the Statistics page only) |
 | No background refresh of covers, counts, "new" marks | Same reason. They update from pages the user opens, or by Refresh / Check for new |
 | No site API, except for downloads with the user's own key | The API needs a key, and the script has no server to hold one |
 | No account data | The login cookies are never read. The account settings form is never submitted |

@@ -77,7 +77,14 @@ const PROFILE_REFRESH_LABEL = "Refresh profile";
 const PROFILE_REFRESH_TITLE =
   "Reads your profile page on the site: two requests, a moment apart";
 const PROFILE_BUSY_LABEL = "Reading…";
-const PROFILE_EMPTY = "Press Refresh profile to read these numbers from your profile page.";
+const PROFILE_EMPTY = "These numbers are read from your profile page when this page is opened.";
+/** How long the numbers read from the profile are good for before the page reads them again. */
+export const PROFILE_AUTO_INTERVAL_MS = 15 * 60 * 1000;
+
+/** True when the page should read the profile by itself: never read, or read long enough ago. */
+export function profileIsStale(profile: ProfileStats | null, now: number): boolean {
+  return profile === null || now - profile.readAt >= PROFILE_AUTO_INTERVAL_MS;
+}
 const PROFILE_READ_PREFIX = "Read on ";
 const PROFILE_FAILED_PREFIX = "Could not read the profile: ";
 const DATE_LOCALE = "en-GB";
@@ -495,6 +502,15 @@ function ProfileBlock(): JSX.Element {
         setBusy(false);
       });
   };
+
+  // The numbers are read when the page is opened (Kaze, 17.11.2026), unless
+  // they were read a short while ago: opening the page twice in a row does
+  // not ask the site twice. The button reads them at once.
+  useEffect(() => {
+    if (profileIsStale(readStoredProfileStats(), Date.now())) {
+      refresh();
+    }
+  }, []);
 
   return (
     <>

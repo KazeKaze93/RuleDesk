@@ -1,4 +1,4 @@
-import type { JSX } from "preact";
+import type { InputHTMLAttributes, JSX, Ref } from "preact";
 import { useId } from "preact/hooks";
 
 import { KIT_CONTROL_FONT, KIT_CONTROL_HEIGHT, KIT_FOCUS_CSS } from "./shared";
@@ -14,6 +14,10 @@ export type TextFieldProps = {
   readonly "aria-label"?: string;
   /** "password" hides what is typed. Default "text". */
   readonly type?: "text" | "password";
+  /** The input itself, for a field built on this one (text fields only). */
+  readonly inputRef?: Ref<HTMLInputElement>;
+  /** More attributes and handlers for the input (text fields only). */
+  readonly inputAttrs?: InputHTMLAttributes;
 };
 
 export const TEXT_FIELD_CSS = `
@@ -108,6 +112,8 @@ export function TextField(props: TextFieldProps): JSX.Element {
             placeholder={props.placeholder}
             disabled={props.disabled}
             aria-label={props["aria-label"] ?? props.label}
+            {...props.inputAttrs}
+            {...(props.inputRef === undefined ? {} : { ref: props.inputRef })}
             onInput={(event) => {
               props.onChange(event.currentTarget.value);
             }}

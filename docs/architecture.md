@@ -135,7 +135,7 @@ Contrast is tested: `tests/features/favorites-panel.test.ts` and the skin tests 
 | `Switch` | On / off |
 | `Select` | A list of options |
 | `TextField`, `NumberField` | Text and number input |
-| `SearchField` | A text field with a magnifier, a clear button and an optional "?" that lists what can be typed |
+| `SearchField` | A text field with a magnifier, a clear button, an optional "?" that lists what can be typed, and optional suggestions from a source the page gives it |
 | `AutocompleteField` | A tag field with the site's suggestions |
 | `Chip` | A tag; can be removed or toggled |
 | `Card`, `SectionLabel`, `EmptyState` | Layout pieces |
@@ -199,6 +199,8 @@ The top of the Favorites page is two elements, both inserted before the grid by 
 The pinned row holds the filters (`FavoritesBrowser`: search, the switches, Shuffle, the count, and at its right end a slot the bulk bar fills with Random post, Select and the menu) or, while posts are being selected or removed, the selection bar; the filters are hidden then, not unmounted. The row is squeezed in steps by what fits (`fitControlsRow`, a `ResizeObserver` on the row), not by window width.
 
 The index is filled from the favorites pages, where the site cuts one character off each end of the tag list. `src/features/favorites-tags.ts` restores those ends from the whole spellings it knows (entries made at the star or on a post page, flagged `cut: false`, and the tags that stand inside a cut list) and marks what it could not restore; the search and the tag counts work on the restored lists. Nothing is written back to the index.
+
+`src/features/favorites-suggest.ts` makes the suggestions of the search field from the counted tags of the index: the word under the caret, the tags that begin with it and those that hold it, the completed query, and for an empty result the word that is no tag and the nearest tag to it. `SearchField` in the kit draws them when it is given a `suggest` source (ARIA combobox; the list is portaled to `<body>` and fixed under the field, because the pinned row clips its content) and tells the page through `onCommit` when what is typed is meant. `FavoritesBrowser` keeps two texts for that: what is in the field and what the list is narrowed to.
 
 `src/features/favorites-search.ts` parses the query into include, exclude, any-of groups and a sort; what the local index cannot answer (other metatags, fuzzy `tag~`) is reported back to the user instead of being ignored silently. While a search, the type switch, Scroll or Shuffle is on, the site's own grid and pager are hidden and the matching favorites are drawn in cells of the same markup the site uses, so everything that works on the site's cells works on these.
 

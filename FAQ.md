@@ -48,6 +48,12 @@ On those pages the site does not mark videos, so the script goes by the `video` 
 
 ## Favorites
 
+**I type a word in the favorites search and the page does not change.**
+While the list of suggestions is open, the page keeps the last result: the word is not finished yet. Pick a suggestion, press Enter or a space, or click elsewhere, and the search is applied.
+
+**The suggestions do not show a tag I know my favorite has.**
+The list is built from the local index. A favorite added on another device is in it after "Sync favorites"; a tag changed on the site after "Full resync".
+
 **There is no search on my Favorites page.**
 The search needs a local list of your favorites with their tags. RuleDesk → Favorites → "Full resync" builds it: it walks your favorites pages once, 1.5 seconds per page.
 
@@ -85,7 +91,7 @@ That is the browser reporting each saved file. The script cannot switch it off.
 ## Statistics
 
 **Where do the numbers come from?**
-From the script's own data in this browser: nothing is asked from the site. The exception is the "Site profile" block.
+From the script's own data in this browser. The exception is the "Site profile" block, which is read from your profile page on the site when Statistics is opened, at most once in 15 minutes.
 
 **What does "Refresh profile" do?**
 It reads your profile page on the site, two requests per press, and stores the numbers of its table. Your user id is not stored. You have to be logged in.

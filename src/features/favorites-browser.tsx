@@ -1,5 +1,5 @@
 import type { JSX } from "preact";
-import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 
 import { log } from "../log";
 import { removeFavorite } from "../site/favorites";
@@ -18,6 +18,7 @@ import {
   type SearchHelp,
   type SegmentedOption,
 } from "../ui/kit";
+import type { SearchSuggest, SearchSuggestList } from "../ui/kit/search-field";
 import {
   MEDIA_ALL,
   MEDIA_IMAGES,
@@ -27,8 +28,19 @@ import {
   isFavoritesMedia,
   parseFavoritesQuery,
   shuffleBySeed,
+  topFavoriteTags,
   type FavoritesMedia,
+  type TagCount,
 } from "./favorites-search";
+import {
+  GROUP_INSIDE,
+  closestTag,
+  completeWord,
+  suggestFor,
+  unknownWords,
+  wordAtCaret,
+  type Suggestions,
+} from "./favorites-suggest";
 import { notifyThumbsAdded } from "./runtime";
 
 /**
@@ -73,6 +85,14 @@ type FavoritesView = typeof VIEW_PAGES | typeof VIEW_SCROLL;
 /** How many tiles are added at a time. */
 export const RESULTS_CHUNK = 100;
 const TYPING_PAUSE_MS = 250;
+const EMPTY_CLASS = "rdw-fav-empty";
+const SUGGEST_LABEL = "Tags in your favorites";
+const EMPTY_NO_MATCH = "No favorites match this search";
+const EMPTY_NO_TAG_PREFIX = "No favorites tagged \u201c";
+const EMPTY_NO_TAG_SUFFIX = "\u201d";
+const EMPTY_NOTE_CLOSEST = "Tags match whole words. Closest tag in your favorites:";
+const EMPTY_NOTE_NONE = "Tags match whole words, and no tag in your favorites has this in it.";
+const EMPTY_SHOW_PREFIX = "Show ";
 const MORE_ROOT_MARGIN = "600px";
 
 const SEARCH_FIELD_ID = "rdw-fav-search";
@@ -176,6 +196,28 @@ body:not(.${FAVORITES_BROWSING_BODY_CLASS}) .${MORE_CLASS} {
 .${CONTROLS_CLASS}[${FIT_ATTRIBUTE}="3"] .${SEARCH_BOX_CLASS} {
   flex: 1 0 100%;
   max-width: none;
+}
+/* In place of the grid when nothing matches. */
+.${EMPTY_CLASS} {
+  flex: 1 1 100%;
+  box-sizing: border-box;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  margin: 12px 0;
+  padding: 28px 16px;
+  border: 1px dashed var(--rdw-border);
+  border-radius: var(--rdw-radius-l);
+  color: var(--rdw-muted);
+  font: 13px/1.5 var(--rdw-font);
+  text-align: center;
+}
+.${EMPTY_CLASS} strong {
+  color: var(--rdw-text);
+  font-weight: 700;
+}
+.${EMPTY_CLASS} button {
+  margin-top: 6px;
 }
 .${STATUS_CLASS} {
   flex: 0 0 100%;
@@ -385,6 +427,106 @@ export function showFavoriteResults(results: readonly FavoriteIndexEntry[]): voi
   appendChunk(target);
 }
 
+/** Shows `node` where the results would be: nothing matched. */
+export function showFavoriteEmpty(node: HTMLElement): void {
+  const target = ensureGrid();
+  if (target === null) {
+    return;
+  }
+  target.container.replaceChildren(node);
+  target.results = [];
+  target.shown = 0;
+  target.more.hidden = true;
+  document.body.classList.add(FAVORITES_BROWSING_BODY_CLASS);
+}
+
+/** Every tag of the favorites with its count, for the suggestions. */
+export function favoriteTagCounts(
+  index: readonly FavoriteIndexEntry[],
+  favorites: ReadonlySet<number>,
+): TagCount[] {
+  return topFavoriteTags(index, favorites, Number.MAX_SAFE_INTEGER);
+}
+
+/** The suggestions in the shape the field draws. */
+export function toSuggestList(found: Suggestions | null): SearchSuggestList | null {
+  if (found === null) {
+    return null;
+  }
+  return {
+    heading: found.heading,
+    items: found.items.map((item, at) => ({
+      key: `${item.group}:${item.insert}`,
+      label: item.label,
+      matchStart: item.matchStart,
+      matchLength: item.matchLength,
+      trailing: item.count === null ? item.caption : item.count.toLocaleString(LOCALE),
+      announce:
+        item.count === null
+          ? `${item.label}, ${item.caption ?? ""}`
+          : `${item.label}, ${postsLabel(item.count)}`,
+      // A rule before the first tag that only holds the typed part inside.
+      divider: at > 0 && item.group === GROUP_INSIDE && found.items[at - 1]?.group !== GROUP_INSIDE,
+    })),
+  };
+}
+
+export type EmptyResult = {
+  readonly title: string;
+  readonly note: string;
+  /** A tag to show instead of the word that is no tag, or null. */
+  readonly offer: { readonly word: string; readonly tag: string; readonly count: number } | null;
+};
+
+/** What to say when a search found nothing. */
+export function describeEmptyResult(text: string, tags: readonly TagCount[]): EmptyResult {
+  const word = unknownWords(text, tags)[0];
+  if (word === undefined) {
+    return { title: EMPTY_NO_MATCH, note: "", offer: null };
+  }
+  const closest = closestTag(tags, word);
+  return {
+    title: `${EMPTY_NO_TAG_PREFIX}${word}${EMPTY_NO_TAG_SUFFIX}`,
+    note: closest === null ? EMPTY_NOTE_NONE : EMPTY_NOTE_CLOSEST,
+    offer: closest === null ? null : { word, tag: closest.tag, count: closest.count },
+  };
+}
+
+/** The query with one word put in place of another, the rest as typed. */
+export function replaceWord(text: string, word: string, tag: string): string {
+  return text
+    .trim()
+    .split(/\s+/)
+    .map((part) => (part.toLowerCase() === word ? tag : part))
+    .join(" ");
+}
+
+function buildEmptyNode(result: EmptyResult, onOffer: (word: string, tag: string) => void): HTMLElement {
+  const node = document.createElement("div");
+  node.className = EMPTY_CLASS;
+  node.setAttribute("role", "status");
+  const title = document.createElement("strong");
+  title.textContent = result.title;
+  node.append(title);
+  if (result.note.length > 0) {
+    const note = document.createElement("span");
+    note.textContent = result.note;
+    node.append(note);
+  }
+  const { offer } = result;
+  if (offer !== null) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "rdw-btn rdw-kit-focusable rdw-btn--secondary rdw-btn--m";
+    button.textContent = `${EMPTY_SHOW_PREFIX}${offer.tag} (${offer.count.toLocaleString(LOCALE)})`;
+    button.addEventListener("click", () => {
+      onOffer(offer.word, offer.tag);
+    });
+    node.append(button);
+  }
+  return node;
+}
+
 /** Gives the page back to the site's grid and pager. */
 export function hideFavoriteResults(): void {
   document.body.classList.remove(FAVORITES_BROWSING_BODY_CLASS);
@@ -474,7 +616,10 @@ export type FavoritesBrowserProps = {
 };
 
 export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element {
+  // What is in the field, and what the list is narrowed to. They differ while
+  // a word is being typed and the suggestions for it are open.
   const [text, setText] = useState("");
+  const [applied, setApplied] = useState("");
   const [media, setMedia] = useState<FavoritesMedia>(MEDIA_ALL);
   const [view, setView] = useState<FavoritesView>(() => readView());
   const [index, setIndex] = useState<readonly FavoriteIndexEntry[] | null>(null);
@@ -488,7 +633,7 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
   // A number while the list is shown in a random order, null otherwise.
   const [shuffleSeed, setShuffleSeed] = useState<number | null>(null);
 
-  const query = parseFavoritesQuery(text);
+  const query = parseFavoritesQuery(applied);
   const active =
     view === VIEW_SCROLL ||
     media !== MEDIA_ALL ||
@@ -497,8 +642,47 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
 
   const { onSummary } = props;
   useEffect(() => {
-    onSummary?.(favoritesFilterSummary(text, media));
-  }, [onSummary, text, media]);
+    onSummary?.(favoritesFilterSummary(applied, media));
+  }, [onSummary, applied, media]);
+
+  const loadIndex = (): void => {
+    if (loadingRef.current) {
+      return;
+    }
+    loadingRef.current = true;
+    readFavoriteIndex()
+      .then((entries) => {
+        setIndex(entries);
+      })
+      .catch((error: unknown) => {
+        log.warn("favorites-browser: index read failed", error);
+        setIndex([]);
+      });
+  };
+
+  // The suggestions need the index as soon as something is typed.
+  useEffect(() => {
+    if (text.length > 0 && index === null) {
+      loadIndex();
+    }
+  }, [text, index]);
+
+  const tagCounts = useMemo(
+    () => (index === null ? [] : favoriteTagCounts(index, loadFavSet())),
+    [index],
+  );
+  const suggest = useMemo<SearchSuggest>(
+    () => ({
+      label: SUGGEST_LABEL,
+      list: (value, caret) => toSuggestList(suggestFor(tagCounts, wordAtCaret(value, caret))),
+      pick: (value, caret, at) => {
+        const word = wordAtCaret(value, caret);
+        const item = suggestFor(tagCounts, word)?.items[at];
+        return word === null || item === undefined ? null : completeWord(value, word, item.insert);
+      },
+    }),
+    [tagCounts],
+  );
 
   useLayoutEffect(() => {
     const row = rowRef.current;
@@ -539,17 +723,7 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
       return undefined;
     }
     if (index === null) {
-      if (!loadingRef.current) {
-        loadingRef.current = true;
-        readFavoriteIndex()
-          .then((entries) => {
-            setIndex(entries);
-          })
-          .catch((error: unknown) => {
-            log.warn("favorites-browser: index read failed", error);
-            setIndex([]);
-          });
-      }
+      loadIndex();
       return undefined;
     }
     const timer = window.setTimeout(() => {
@@ -560,11 +734,23 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
         setFound(null);
         return;
       }
-      const parsed = parseFavoritesQuery(text);
+      const parsed = parseFavoritesQuery(applied);
       const matched = filterFavoriteIndex(index, favorites, parsed, media);
       // Shuffle wins over an order typed into the query; the page says so.
       const results = shuffleSeed === null ? matched : shuffleBySeed(matched, shuffleSeed);
-      showFavoriteResults(results);
+      if (results.length === 0 && !isEmptyFavoritesQuery(parsed)) {
+        // Nothing matched: say why, and offer the nearest tag for a word that is none.
+        const empty = describeEmptyResult(applied, tagCounts);
+        showFavoriteEmpty(
+          buildEmptyNode(empty, (word, tag) => {
+            const next = replaceWord(applied, word, tag);
+            setText(next);
+            setApplied(next);
+          }),
+        );
+      } else {
+        showFavoriteResults(results);
+      }
       const indexed = index.filter((entry) => favorites.has(entry.id)).length;
       setStatus(indexNotice(indexed, favorites.size));
       setFound(results.length);
@@ -572,7 +758,7 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
     return () => {
       window.clearTimeout(timer);
     };
-  }, [active, index, text, media, shuffleSeed]);
+  }, [active, index, applied, media, shuffleSeed, tagCounts]);
 
   const notices = [
     unsupportedNotice(query.unsupported),
@@ -603,7 +789,11 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
         aria-label={SEARCH_ARIA_LABEL}
         clearLabel={CLEAR_LABEL}
         help={SEARCH_HELP}
+        suggest={suggest}
+        // The index is read when the field is entered, so that the first letter has its list.
+        onFocus={loadIndex}
         onChange={setText}
+        onCommit={setApplied}
       />
       <span className={GROUP_LABEL_CLASS} aria-hidden="true">
         {MEDIA_LABEL}

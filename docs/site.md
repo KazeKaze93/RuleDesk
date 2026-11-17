@@ -14,7 +14,7 @@ The script works on the site's own HTML. This file holds what is known about it.
   | `autocomplete.ts` | Typing in a tag field of the script | debounced, one at a time |
   | `next-page.ts` | Infinite scroll; other artist groups of a merged feed | 1 s |
   | `artist-snapshot.ts` | "Refresh" on Following, after a confirmation | 1.5 s per artist |
-  | `profile.ts` | "Refresh profile" on Statistics: the My Account page, then the user's profile page | two requests, 1.5 s apart |
+  | `profile.ts` | Opening Statistics, when the stored numbers are older than 15 minutes (Kaze, 17.11.2026), and "Refresh profile" there: the My Account page, then the user's profile page | two requests, 1.5 s apart |
 | `api.ts` | A download job: the list of files (`fetch` to `api.rule34.xxx`, which allows any origin; up to 1000 posts per request) | 1 s |
 | `download.ts` | A download job: the files, one at a time (`GM_download` from the CDN) | 0.4 s; one retry after 5 s |
 

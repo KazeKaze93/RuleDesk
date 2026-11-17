@@ -2,6 +2,20 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.41.0
+
+Favorites search, suggestions:
+
+- The search field suggests tags as you type, from the first letter: only tags your favorites have, each with the number of favorites that have it. Tags that begin with what you typed come first, then tags that hold it inside. No request is made: the list comes from the local index
+- Up and Down move through the list, Enter or Tab puts the tag in, Esc closes the list. An exact tag always stands first, so Enter on `cat` takes `cat`, not `catgirl`
+- While the list is open the page keeps showing the last result. The search is applied when a suggestion is picked, on Enter, after a space, and when the field is left
+- A word after `-` gets the same list under the heading "Exclude"; `sort:` offers `sort:id:desc` (newest first) and `sort:id:asc` (oldest first)
+- When nothing is found the page says why instead of staying blank. For a word that is no tag it offers the nearest one: "No favorites tagged “zootop”", "Show zootopia (5)"
+
+Statistics:
+
+- The numbers of "Site profile" are read when the page is opened, unless they were read in the last 15 minutes. "Refresh profile" still reads them at once
+
 ## 0.40.13
 
 - Favorites search: the site does not cut every tag list on the favorites page, some come whole. Such a list was taken for a cut one, and a search for its first or last tag missed the post (`zootopia` found 4 posts of 5). An end that is a tag in its own right is now left as it is

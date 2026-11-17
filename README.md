@@ -44,7 +44,7 @@ Under the site's search field: the tags of the query as chips (click to exclude,
 
 ### Search inside your favorites
 
-The site cannot search favorites. After one **Sync favorites**, the Favorites page gets a row that stays at the top: search by tags (`tag`, `-tag`, `ta*g`, `( a ~ b )`), Images / Videos, endless scroll, Shuffle, Random post, and Select to remove several or add them to a collection.
+The site cannot search favorites. After one **Sync favorites**, the Favorites page gets a row that stays at the top: search by tags (`tag`, `-tag`, `ta*g`, `( a ~ b )`) with suggestions from your own favorites as you type, Images / Videos, endless scroll, Shuffle, Random post, and Select to remove several or add them to a collection.
 
 ### The post page
 
@@ -110,7 +110,7 @@ To get the untouched site back: Appearance → Site theme → **Site default**, 
 - **Data → Export** saves one JSON file; **Import** restores it (Merge adds to what you have, Replace overwrites). This is the only way to move to another browser
 - The blacklist and the site theme are the site's own cookies and are not in the export. Neither is the API key
 - The one request made without an action of yours is the counter beside Feed: the first page of the feed, at most once in 15 minutes. It has its own switch in RuleDesk → Page
-- Otherwise the script reads the pages you open and makes a request only when you do something that needs one: favorite a post, sync favorites, start a download, type in a tag field, scroll for the next page, open a feed that spans several searches, press Refresh, Check for new or Refresh profile, click the "?" of a tag. Requests go one at a time with a pause
+- Otherwise the script reads the pages you open and makes a request only when you do something that needs one: favorite a post, sync favorites, start a download, type in a tag field, scroll for the next page, open a feed that spans several searches, press Refresh or Check for new, open Statistics (it reads your profile page, at most once in 15 minutes), click the "?" of a tag. Requests go one at a time with a pause
 
 ## What the script does not do
 
