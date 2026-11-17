@@ -54,6 +54,12 @@ export const FORUM_STICKY_ROW_CLASS = "rdw-forum-row-sticky";
 export const FORUM_NO_VALUE_CLASS = "rdw-forum-no-value";
 export const FORUM_UNIT_ATTRIBUTE = "data-rdw-unit";
 const FORUM_FILTER_CLASS = "rdw-forum-filter";
+/** The search of the forum: `div#search > form > [input[name=search], input[type=submit]]`. */
+const FORUM_SEARCH_INPUT_SELECTOR = 'div#search > form > input[name="search"]';
+export const FORUM_SEARCH_FORM_CLASS = "rdw-forum-search";
+export const FORUM_SEARCH_CLEAR_CLASS = "rdw-forum-search-clear";
+const FORUM_SEARCH_CLEAR_LABEL = "Clear search";
+const FORUM_SEARCH_PLACEHOLDER = "Search the forum";
 const STICKY_WORD = "sticky";
 const STICKY_LABEL = "Sticky";
 const LOCKED_LABEL = "Locked";
@@ -264,7 +270,44 @@ function toolbarButton(label: string, className: string): HTMLButtonElement {
   return button;
 }
 
+/**
+ * The forum's search field gets a magnifier (drawn by the skin) and a button
+ * that clears it. The button is put after the field, in the site's form; the
+ * field and the Search button stay where they are.
+ */
+export function dressForumSearch(forum: Element): void {
+  const input = forum.querySelector(FORUM_SEARCH_INPUT_SELECTOR);
+  const form = input?.parentElement ?? null;
+  if (!(input instanceof HTMLInputElement) || form === null) {
+    return;
+  }
+  if (form.querySelector(`.${FORUM_SEARCH_CLEAR_CLASS}`) !== null) {
+    return;
+  }
+  form.classList.add(FORUM_SEARCH_FORM_CLASS);
+  if (input.placeholder.length === 0) {
+    input.placeholder = FORUM_SEARCH_PLACEHOLDER;
+  }
+  const clear = document.createElement("button");
+  clear.type = "button";
+  clear.className = FORUM_SEARCH_CLEAR_CLASS;
+  clear.setAttribute("aria-label", FORUM_SEARCH_CLEAR_LABEL);
+  clear.title = FORUM_SEARCH_CLEAR_LABEL;
+  const sync = (): void => {
+    clear.hidden = input.value.length === 0;
+  };
+  clear.addEventListener("click", () => {
+    input.value = "";
+    sync();
+    input.focus();
+  });
+  input.addEventListener("input", sync);
+  input.after(clear);
+  sync();
+}
+
 function mountForum(forum: Element): void {
+  dressForumSearch(forum);
   const table = forum.querySelector("table.highlightable");
   const rows = [...forum.querySelectorAll(ROW_SELECTOR)];
   const topics: { row: Element; key: string; signature: string }[] = [];

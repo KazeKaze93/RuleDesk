@@ -119,6 +119,24 @@ const FAV_BULK_CHECK_INSET = "0.25rem";
 const FAV_BULK_CHECK_Z_INDEX = 2;
 const FAV_BULK_CHECK_FONT_SIZE = "0.75rem";
 
+/**
+ * The image upload form: found by the fields it holds, so that another form
+ * in the same box is not laid out by these rules. Classes the script adds
+ * are in upload-page.ts.
+ */
+const UPLOAD = `${ROOT} div#upload-form:has(#fileUpload):has(#tags)`;
+const UPLOAD_DRAG_CLASS = "rdw-upload-drag";
+const UPLOAD_HAS_FILE_CLASS = "rdw-upload-has-file";
+const UPLOAD_FILE_NAME_CLASS = "rdw-upload-file-name";
+const UPLOAD_PREVIEW_CLASS = "rdw-upload-preview";
+const UPLOAD_HINT_CLASS = "rdw-upload-hint";
+const UPLOAD_TAG_COUNT_CLASS = "rdw-upload-tag-count";
+const UPLOAD_TAG_COUNT_SHORT_CLASS = "rdw-upload-tag-count--short";
+const UPLOAD_GUIDE_TOGGLE_CLASS = "rdw-upload-guide-toggle";
+const UPLOAD_GUIDE_FOLDED_CLASS = "rdw-upload-guide-folded";
+const UPLOAD_ICON_MASK =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/%3E%3Cpolyline points='17 8 12 3 7 8'/%3E%3Cline x1='12' x2='12' y1='3' y2='15'/%3E%3C/svg%3E\") center / contain no-repeat";
+
 /** The forum: the list of topics, and one topic. Classes the script adds are in list-pages.ts. */
 const FORUM_LIST = `${ROOT} div#forum:not(.response-list)`;
 const FORUM_TOPIC = `${ROOT} div#forum.response-list`;
@@ -128,6 +146,12 @@ const FORUM_TOOLBAR_CLASS = "rdw-forum-toolbar";
 const FORUM_PIN_CLASS = "rdw-forum-pin";
 const FORUM_NO_VALUE_CLASS = "rdw-forum-no-value";
 const FORUM_UNIT_ATTRIBUTE = "data-rdw-unit";
+const FORUM_SEARCH_FORM_CLASS = "rdw-forum-search";
+const FORUM_SEARCH_CLEAR_CLASS = "rdw-forum-search-clear";
+const FORUM_SEARCH_MASK =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E\") center / contain no-repeat";
+const FORUM_CLEAR_MASK =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 6 6 18'/%3E%3Cpath d='m6 6 12 12'/%3E%3C/svg%3E\") center / 14px no-repeat";
 const FORUM_PIN_MASK =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 17v5'/%3E%3Cpath d='M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z'/%3E%3C/svg%3E\") center / contain no-repeat";
 
@@ -1211,6 +1235,343 @@ ${ROOT} input[type="file"]${WHERE_NOT_OUR_CONTROL}::file-selector-button:hover {
 }
 
 /*
+ * —— upload ——
+ * The image upload form: one card in two columns. The file and where it comes
+ * from on the left; tags, rating and title on the right; the guidelines above
+ * and the button below, across both. The site's table stays: its rows are
+ * placed by a grid, each found by the field it holds, so a form with other
+ * fields (the video upload) is left as it is.
+ */
+${UPLOAD} > form {
+  max-width: 1100px;
+}
+
+${UPLOAD} > form > h2 {
+  margin: 0 0 10px;
+  font-size: 18px;
+}
+
+${UPLOAD} > form > br {
+  display: none;
+}
+
+${UPLOAD} > form > table {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+}
+
+${UPLOAD} > form > table > tbody {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  grid-template-areas:
+    "guide guide"
+    "file tags"
+    "file rating"
+    "source title"
+    "source mytags"
+    "submit submit";
+  gap: 14px 20px;
+  padding: 16px;
+  background: ${v.surface};
+  border: 1px solid ${v.border};
+  border-radius: ${v.radiusL};
+}
+
+${UPLOAD} > form > table > tbody > tr {
+  display: block;
+  grid-column: 1 / -1;
+  min-width: 0;
+  background: transparent;
+}
+
+${UPLOAD} > form > table > tbody > tr > td {
+  display: block;
+  padding: 0;
+  border: 0;
+  color: ${v.muted};
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+${UPLOAD} > form > table > tbody > tr:has(h3) {
+  grid-area: guide;
+}
+
+${UPLOAD} > form > table > tbody > tr:has(#fileUpload) {
+  grid-area: file;
+}
+
+${UPLOAD} > form > table > tbody > tr:has(#txtSource) {
+  grid-area: source;
+}
+
+${UPLOAD} > form > table > tbody > tr:has(#txtTitle) {
+  grid-area: title;
+}
+
+${UPLOAD} > form > table > tbody > tr:has(#tags) {
+  grid-area: tags;
+}
+
+${UPLOAD} > form > table > tbody > tr:has(input[name="rating"]) {
+  grid-area: rating;
+}
+
+${UPLOAD} > form > table > tbody > tr:has(#my-tags) {
+  grid-area: mytags;
+}
+
+${UPLOAD} > form > table > tbody > tr:has(input[type="submit"]) {
+  grid-area: submit;
+  padding-top: 12px;
+  border-top: 1px solid ${v.border};
+}
+
+/* The site leaves an empty row in the form. */
+${UPLOAD} > form > table > tbody > tr:has(> td[style*="300px"]:not(:has(*))) {
+  display: none;
+}
+
+${UPLOAD} #txtSource,
+${UPLOAD} #txtTitle,
+${UPLOAD} #tags {
+  box-sizing: border-box;
+  width: 100%;
+  margin-top: 4px;
+}
+
+${UPLOAD} div.awesomplete {
+  display: block;
+}
+
+${UPLOAD} #tags {
+  min-height: 96px;
+  resize: vertical;
+}
+
+${UPLOAD} .${UPLOAD_TAG_COUNT_CLASS} {
+  margin: 4px 0;
+  color: ${v.text};
+  font-weight: 600;
+}
+
+${UPLOAD} .${UPLOAD_TAG_COUNT_CLASS}.${UPLOAD_TAG_COUNT_SHORT_CLASS} {
+  color: ${v.danger};
+}
+
+/* The guidelines: quiet text that can be folded away. */
+${UPLOAD} tr:has(h3) > td > div {
+  margin: 0 !important;
+}
+
+${UPLOAD} tr:has(h3) h3 {
+  margin: 0 0 4px;
+  color: ${v.text};
+  font-size: 14px;
+}
+
+${UPLOAD} tr:has(h3) h4 {
+  margin: 6px 0;
+  color: ${v.text};
+  font-size: 12px;
+}
+
+${UPLOAD} tr:has(h3) br {
+  display: none;
+}
+
+${UPLOAD} tr:has(h3) ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+${UPLOAD} td.${UPLOAD_GUIDE_FOLDED_CLASS} > div {
+  display: none;
+}
+
+${UPLOAD} button.${UPLOAD_GUIDE_TOGGLE_CLASS} {
+  float: right;
+  margin: 0 0 4px 12px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: ${v.accent};
+  font: 12px ${v.font};
+  cursor: pointer;
+}
+
+${UPLOAD} td.${UPLOAD_GUIDE_FOLDED_CLASS} > button.${UPLOAD_GUIDE_TOGGLE_CLASS} {
+  float: none;
+  margin: 0;
+}
+
+/*
+ * The file zone, once the script has dressed it (it adds the hint). The
+ * site's field lies over the whole zone and is not drawn: a click anywhere
+ * opens the file dialog, and a dropped file lands in the field itself.
+ */
+${UPLOAD} td:has(> .${UPLOAD_HINT_CLASS}) {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-sizing: border-box;
+  min-height: 240px;
+  height: 100%;
+  padding: 16px;
+  border: 1px dashed ${v.border};
+  border-radius: ${v.radiusL};
+  background: ${v.surface2};
+  text-align: center;
+}
+
+${UPLOAD} td:has(> .${UPLOAD_HINT_CLASS}):hover,
+${UPLOAD} td.${UPLOAD_DRAG_CLASS}:has(> .${UPLOAD_HINT_CLASS}) {
+  border-color: ${v.accent};
+}
+
+${UPLOAD} td:has(> .${UPLOAD_HINT_CLASS}) > br {
+  display: none;
+}
+
+/* "Image File:" is said by the zone itself; the label stays for screen readers. */
+${UPLOAD} td:has(> .${UPLOAD_HINT_CLASS}) > label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+${UPLOAD} td:has(> .${UPLOAD_HINT_CLASS}) > #fileUpload {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+${UPLOAD} td:has(> .${UPLOAD_HINT_CLASS})::before {
+  content: "";
+  width: 28px;
+  height: 28px;
+  background: ${v.muted};
+  -webkit-mask: ${UPLOAD_ICON_MASK};
+  mask: ${UPLOAD_ICON_MASK};
+}
+
+${UPLOAD} td.${UPLOAD_HAS_FILE_CLASS}:has(> .${UPLOAD_HINT_CLASS})::before {
+  display: none;
+}
+
+${UPLOAD} td:has(> .${UPLOAD_HINT_CLASS}):has(> #fileUpload:focus-visible) {
+  outline: 2px solid ${v.accent};
+  outline-offset: 2px;
+}
+
+${UPLOAD} .${UPLOAD_HINT_CLASS} {
+  font-size: 13px;
+}
+
+${UPLOAD} .${UPLOAD_FILE_NAME_CLASS} {
+  color: ${v.text};
+  font-size: 13px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+${UPLOAD} img.${UPLOAD_PREVIEW_CLASS} {
+  max-width: 100%;
+  max-height: 220px;
+  border-radius: ${v.radiusM};
+}
+
+${UPLOAD} img.${UPLOAD_PREVIEW_CLASS}[hidden] {
+  display: none;
+}
+
+/* Rating: the two radio buttons drawn as one switch of options. */
+${UPLOAD} input[name="rating"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+${UPLOAD} input[name="rating"] + label {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  margin-top: 4px;
+  padding: 0 14px;
+  border: 1px solid ${v.border};
+  background: var(${TOKEN_VAR.segTrack});
+  color: var(${TOKEN_VAR.segText});
+  font-size: 13px;
+  cursor: pointer;
+}
+
+${UPLOAD} input[name="rating"]:first-of-type + label {
+  border-radius: ${v.radiusM} 0 0 ${v.radiusM};
+}
+
+${UPLOAD} input[name="rating"]:last-of-type + label {
+  margin-left: -1px;
+  border-radius: 0 ${v.radiusM} ${v.radiusM} 0;
+}
+
+${UPLOAD} input[name="rating"]:checked + label {
+  background: var(${TOKEN_VAR.segOn});
+  color: var(${TOKEN_VAR.segOnText});
+  font-weight: 600;
+}
+
+${UPLOAD} input[name="rating"]:focus-visible + label {
+  outline: 2px solid ${v.accent};
+  outline-offset: 2px;
+}
+
+/* The note above the button is the site's bold paragraph: readable, not shouting. */
+${UPLOAD} tr:has(input[type="submit"]) > td > b:first-of-type {
+  font-weight: normal;
+}
+
+${UPLOAD} tr:has(input[type="submit"]) input[type="submit"] {
+  display: block;
+  min-width: 160px;
+  height: 36px;
+  margin: 10px 0 2px;
+  padding: 0 20px;
+  border: 1px solid ${v.accent};
+  border-radius: ${v.radiusM};
+  background: ${v.accent};
+  color: ${v.surface};
+  font: 600 14px ${v.font};
+  cursor: pointer;
+}
+
+@media (max-width: 860px) {
+  ${UPLOAD} > form > table > tbody {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "guide"
+      "file"
+      "source"
+      "tags"
+      "rating"
+      "title"
+      "mytags"
+      "submit";
+  }
+}
+
+/*
  * —— forum ——
  * The list of topics (div#forum without .response-list): every row of the
  * site's table is laid out as a card by a grid, cell by cell. The table and
@@ -1345,6 +1706,61 @@ ${FORUM_LIST} .${FORUM_PIN_CLASS} {
   -webkit-mask: ${FORUM_PIN_MASK};
   mask: ${FORUM_PIN_MASK};
   vertical-align: -2px;
+}
+
+/* The search: a magnifier in the field and a button that clears it. */
+${FORUM_LIST} form.${FORUM_SEARCH_FORM_CLASS} {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 560px;
+}
+
+${FORUM_LIST} form.${FORUM_SEARCH_FORM_CLASS}::before {
+  content: "";
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  z-index: 1;
+  width: 14px;
+  height: 14px;
+  transform: translateY(-50%);
+  background: ${v.muted};
+  -webkit-mask: ${FORUM_SEARCH_MASK};
+  mask: ${FORUM_SEARCH_MASK};
+  pointer-events: none;
+}
+
+${FORUM_LIST} form.${FORUM_SEARCH_FORM_CLASS} > input[name="search"] {
+  flex: 1 1 auto;
+  width: auto !important;
+  min-width: 0;
+  padding-left: 30px;
+  padding-right: 30px;
+}
+
+/* Pulled back over the right end of the field. */
+${FORUM_LIST} button.${FORUM_SEARCH_CLEAR_CLASS} {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin: 0 0 0 -34px;
+  padding: 0;
+  border: 0;
+  border-radius: ${v.radiusS};
+  background: ${v.muted};
+  -webkit-mask: ${FORUM_CLEAR_MASK};
+  mask: ${FORUM_CLEAR_MASK};
+  cursor: pointer;
+}
+
+${FORUM_LIST} button.${FORUM_SEARCH_CLEAR_CLASS}:hover {
+  background: ${v.text};
+}
+
+${FORUM_LIST} button.${FORUM_SEARCH_CLEAR_CLASS}[hidden] {
+  display: none;
 }
 
 ${FORUM_LIST} .${FORUM_TOOLBAR_CLASS} {

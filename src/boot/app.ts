@@ -4,6 +4,7 @@ import { getSiteSkinCss } from "../skin/site-skin";
 import { applyAppearanceTheme } from "../skin/theme";
 import { mountCommentsPage } from "../site/comments-page";
 import { mountListPages } from "../site/list-pages";
+import { mountUploadPage } from "../site/upload-page";
 import { recordStatsPoint } from "../storage/history";
 import { syncFavoritesPage } from "../site/favorites-page";
 import { mountFavoritesPager } from "../site/favorites-pager";
@@ -61,6 +62,7 @@ export async function startApp(): Promise<void> {
   } else {
     mountCommentsPage();
     mountListPages();
+    mountUploadPage();
     await yieldToMain();
   }
 

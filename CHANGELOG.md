@@ -2,6 +2,21 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.40.0
+
+The Upload page, redrawn:
+
+- One card in two columns: the file and its source on the left; tags, rating and title on the right; the guidelines above and the button below
+- The file field is a zone: drop a file on it or click anywhere in it. It shows the name and size of the chosen file and, for a picture, the picture itself
+- Under the tags a line counts them and says how many are missing to the five the site asks for
+- Rating is a switch of two options instead of two radio buttons
+- The guidelines can be folded with "Hide the guidelines"; the choice is remembered
+- The form itself is the site's: its fields, their names and the upload are untouched
+
+The forum:
+
+- The search field has a magnifier and a button that clears it
+
 ## 0.39.0
 
 The forum, redrawn:
