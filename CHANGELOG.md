@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.40.4
+
+- Downloads → File name → Custom: a token is a switch. A click puts it into the name, a second click takes it out, so a name cannot hold the same token twice. The tokens that are in the name are lit
+
 ## 0.40.3
 
 - Upload: the Upload button, with the note above it, stands in the right column under "My Tags" instead of under the picture

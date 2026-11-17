@@ -143,6 +143,26 @@ export function buildFileName(mask: string, info: FileNameInfo, now: number = Da
   return `${base.length > 0 ? base : fill(DEFAULT_FILE_MASK)}.${fileExtension(info.url)}`;
 }
 
+/** True when the mask holds `[token]`, in any case. */
+export function maskHasToken(mask: string, token: FileMaskToken): boolean {
+  return mask.toLowerCase().includes(`[${token}]`);
+}
+
+/**
+ * The mask with `[token]` switched: taken out everywhere when it is there,
+ * added at the end when it is not. A token is of use once in a name, so a
+ * mask never ends up with two of the same. The spaces left by a token that
+ * was taken out are closed up.
+ */
+export function toggleMaskToken(mask: string, token: FileMaskToken): string {
+  if (!maskHasToken(mask, token)) {
+    const text = mask.trim();
+    return text.length > 0 ? `${text} [${token}]` : `[${token}]`;
+  }
+  const pattern = new RegExp(`\\[${token}\\]`, "gi");
+  return mask.replace(pattern, "").replace(FOLDER_SPACES, " ").trim();
+}
+
 const MEDIA_EXTENSION = /\.(?:jpe?g|png|gif|webp|avif|bmp|mp4|webm|mov|m4v)$/i;
 
 /** True when the address ends like a picture or a video, not like a page. */

@@ -7,7 +7,13 @@ import { isGifUrl, playGifOnPage } from "../../src/features/gif-post";
 import { bindClickToToggle } from "../../src/features/video-player";
 import { MASK_PRESETS } from "../../src/pages/downloads-section";
 import { featureBodyClass } from "../../src/features/types";
-import { DEFAULT_FILE_MASK, buildFileName, isMediaFileUrl } from "../../src/site/download";
+import {
+  DEFAULT_FILE_MASK,
+  buildFileName,
+  isMediaFileUrl,
+  maskHasToken,
+  toggleMaskToken,
+} from "../../src/site/download";
 
 const NOW = Date.parse("2026-11-16T12:00:00Z");
 const FILE = "https://wimg.rule34.xxx/images/1234/0f3a9c7b2d1e.png?19374686";
@@ -51,6 +57,29 @@ describe("the file name mask", () => {
 
   it("takes token names in any case", () => {
     expect(buildFileName("[ID]-[Md5]", INFO, NOW)).toBe("19374686-0f3a9c7b2d1e.png");
+  });
+});
+
+describe("tokens of the file name mask as switches", () => {
+  it("adds a token that is not there, at the end", () => {
+    expect(toggleMaskToken("", "id")).toBe("[id]");
+    expect(toggleMaskToken("rule34-[id]", "date")).toBe("rule34-[id] [date]");
+  });
+
+  it("takes a token out when it is there, every copy of it, and closes the gap", () => {
+    expect(toggleMaskToken("[date] [id] [date] [owner] [id]", "date")).toBe("[id] [owner] [id]");
+    expect(toggleMaskToken("[id] [owner] [id]", "id")).toBe("[owner]");
+    expect(toggleMaskToken("[ID]", "id")).toBe("");
+  });
+
+  it("never leaves two of the same token by clicking", () => {
+    let mask = "";
+    for (const token of ["date", "id", "date", "date", "owner"] as const) {
+      mask = toggleMaskToken(mask, token);
+    }
+    expect(mask).toBe("[id] [date] [owner]");
+    expect(maskHasToken(mask, "date")).toBe(true);
+    expect(maskHasToken(mask, "md5")).toBe(false);
   });
 });
 

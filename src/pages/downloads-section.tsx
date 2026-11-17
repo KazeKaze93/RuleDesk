@@ -9,7 +9,13 @@ import {
   setApiCredentials,
 } from "../storage/api-credentials";
 import { Button, Select, TextField, type SelectOption } from "../ui/kit";
-import { DEFAULT_FILE_MASK, FILE_MASK_TOKENS, buildFileName } from "../site/download";
+import {
+  DEFAULT_FILE_MASK,
+  FILE_MASK_TOKENS,
+  buildFileName,
+  maskHasToken,
+  toggleMaskToken,
+} from "../site/download";
 import { readFileMask, writeFileMask } from "../storage/download-name";
 
 /**
@@ -95,6 +101,10 @@ export const DOWNLOADS_SECTION_CSS = `
 .${MASK_TOKEN_CLASS}:hover {
   border-color: var(--rdw-accent);
 }
+.${MASK_TOKEN_CLASS}[aria-pressed="true"] {
+  background: var(--rdw-accent-soft);
+  border-color: var(--rdw-accent);
+}
 `.trim();
 
 /** Ready masks to pick from; anything else is "Custom". */
@@ -109,7 +119,7 @@ export const MASK_PRESETS: readonly string[] = [
 ];
 const MASK_CUSTOM = "custom";
 const MASK_CUSTOM_LABEL = "Custom…";
-const MASK_TOKENS_LABEL = "Add to the name:";
+const MASK_TOKENS_LABEL = "In the name:";
 
 function sample(mask: string): string {
   return buildFileName(mask, MASK_SAMPLE);
@@ -174,9 +184,10 @@ function FileNameSetting(): JSX.Element {
                 key={token}
                 type="button"
                 className={`${MASK_TOKEN_CLASS} rdw-kit-focusable`}
+                aria-pressed={maskHasToken(mask, token)}
                 onClick={() => {
-                  const text = mask.trim();
-                  setMask(text.length > 0 ? `${text} [${token}]` : `[${token}]`);
+                  // A switch: a token is in the name once or not at all.
+                  setMask(toggleMaskToken(mask, token));
                   setSaved(false);
                 }}
               >
