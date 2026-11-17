@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.43.5
+
+- Favorites: the dialogs opened from the column ("Download all…", "Add to collection", the confirmation of a removal) are drawn over the page again. Since the buttons moved into the column the thumbnails lay over them
+
 ## 0.43.4
 
 - Favorites: "Download all…" and "Sync favorites…" are buttons in the column, under "Random post" and "Select"; the "⋯" menu is gone. Each button has a row of its own

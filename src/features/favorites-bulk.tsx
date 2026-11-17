@@ -1,7 +1,7 @@
 import { SETTINGS_SECTION_FAVORITES, requestSettingsSection } from "../pages/settings-focus";
 import { STICKY_TOP } from "../boot/sticky-header";
 import { render } from "preact";
-import type { JSX } from "preact";
+import type { ComponentChildren, JSX } from "preact";
 import { createPortal } from "preact/compat";
 import { useEffect, useRef, useState } from "preact/hooks";
 
@@ -553,6 +553,18 @@ function openSyncSettings(): void {
   window.location.hash = RDW_HASH_SETTINGS;
 }
 
+/**
+ * Draws its children in <body> instead of where the component stands. The
+ * dialogs of this page are opened from the column, and the column is held
+ * while the page scrolls: a held element is a layer of its own, so a dialog
+ * drawn inside it lies under the thumbnails that come after it, however high
+ * its own z-index. (The same trap as a mask on the sidebar of Posts: nothing
+ * that opens over the page may be drawn inside a block that clips or layers.)
+ */
+function InBody(props: { readonly children: ComponentChildren }): JSX.Element {
+  return createPortal(<>{props.children}</>, document.body);
+}
+
 type IdleActionsProps = {
   readonly onSelect: () => void;
   /** In the column every action is a button of its own; in the row the rare ones are in a menu. */
@@ -653,6 +665,7 @@ function IdleActions(props: IdleActionsProps): JSX.Element {
           {TEXT_SYNC}
         </button>
       </Popover>
+      <InBody>
       <Dialog
         open={downloadOpen}
         onClose={closeDownload}
@@ -695,6 +708,7 @@ function IdleActions(props: IdleActionsProps): JSX.Element {
           </Button>
         </div>
       </Dialog>
+      </InBody>
     </>
   );
 }
@@ -1019,6 +1033,7 @@ function FavoritesBulkBar(props: FavoritesBulkBarProps): JSX.Element | null {
           {TEXT_CANCEL}
         </Button>
       </div>
+      <InBody>
       <BulkCollectionDialog
         open={collectionPosts !== null}
         posts={collectionPosts ?? []}
@@ -1030,6 +1045,8 @@ function FavoritesBulkBar(props: FavoritesBulkBarProps): JSX.Element | null {
           setNote(bulkCollectionSummary(result));
         }}
       />
+      </InBody>
+      <InBody>
       <Dialog
         open={confirmOpen}
         onClose={closeConfirm}
@@ -1052,6 +1069,7 @@ function FavoritesBulkBar(props: FavoritesBulkBarProps): JSX.Element | null {
           </Button>
         </div>
       </Dialog>
+      </InBody>
     </>
   );
 }

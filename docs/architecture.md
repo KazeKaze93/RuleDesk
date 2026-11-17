@@ -105,7 +105,7 @@ Own pages render inside the shadow root, where the site's CSS does not reach. Co
 - The skin excludes every element whose class contains `rdw-` from its rules for site buttons and inputs, and kit components carry explicit rules for the states the site styles (a focused text input, an autofilled one)
 - The site's stylesheet names a font for every `div`, `input` and `button`. A rule of the page beats `:host`, so the host of the own pages sets its font with `!important`, and a block in the light DOM that must look the same in every theme (the search panel) sets the font on itself and its descendants
 
-A dialog or a popover opened from a block must not be clipped by it: no `mask-image` and no `overflow: hidden` on a container that things open from.
+A dialog or a popover opened from a block must not be clipped or layered by it: no `mask-image` and no `overflow: hidden` on a container that things open from, and nothing that opens over the page is drawn inside a sticky block. A sticky element is a stacking context of its own, so a dialog inside it lies under whatever is painted after the block, whatever its `z-index`. The dialogs of the Favorites column are drawn in `<body>` for that reason (`InBody` in `favorites-bulk.tsx`).
 
 ## Themes and tokens
 
