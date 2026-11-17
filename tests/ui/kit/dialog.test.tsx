@@ -70,7 +70,9 @@ describe("Dialog", () => {
     expect(panel?.getAttribute("aria-modal")).toBe("true");
     expect(document.querySelector(".rdw-dialog-backdrop")).not.toBeNull();
 
-    const style = [...host.querySelectorAll("style")].find((node) =>
+    // On a page of the site the dialog is drawn in <body>, not where it stands.
+    expect(host.querySelector('[role="dialog"]')).toBeNull();
+    const style = [...document.querySelectorAll("style")].find((node) =>
       (node.textContent ?? "").includes(".rdw-dialog"),
     );
     expect(style?.textContent).toContain(

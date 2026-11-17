@@ -14,6 +14,8 @@ export const TOKEN_VAR = {
   accentSoft: "--rdw-accent-soft",
   danger: "--rdw-danger",
   dangerSoft: "--rdw-danger-soft",
+  warn: "--rdw-warn",
+  warnSoft: "--rdw-warn-soft",
   tagArtist: "--rdw-tag-artist",
   tagCharacter: "--rdw-tag-character",
   tagCopyright: "--rdw-tag-copyright",
@@ -45,6 +47,9 @@ export type TokenPalette = {
   readonly accentSoft: string;
   readonly danger: string;
   readonly dangerSoft: string;
+  /** A warning that is not an error: its text, and the plate it stands on. */
+  readonly warn: string;
+  readonly warnSoft: string;
   readonly tagArtist: string;
   readonly tagCharacter: string;
   readonly tagCopyright: string;
@@ -74,6 +79,8 @@ export const LIGHT_PALETTE: TokenPalette = {
   accentSoft: "#e8f0fe",
   danger: "#c0392b",
   dangerSoft: "#fdecea",
+  warn: "#6b4e00",
+  warnSoft: "#fff4d6",
   tagArtist: "#b00020",
   tagCharacter: "#0a7a2f",
   tagCopyright: "#8e24aa",
@@ -102,6 +109,8 @@ export const DARK_PALETTE: TokenPalette = {
   accentSoft: "#1a2f5a",
   danger: "#e57373",
   dangerSoft: "#3d1f1f",
+  warn: "#f0d68a",
+  warnSoft: "#3a3016",
   tagArtist: "#ff6b81",
   tagCharacter: "#5dcea0",
   tagCopyright: "#ce93d8",
@@ -310,6 +319,8 @@ export function tokensToCssDeclarations(palette: TokenPalette): string {
     `${TOKEN_VAR.accentSoft}: ${escapeCssValue(palette.accentSoft)};`,
     `${TOKEN_VAR.danger}: ${escapeCssValue(palette.danger)};`,
     `${TOKEN_VAR.dangerSoft}: ${escapeCssValue(palette.dangerSoft)};`,
+    `${TOKEN_VAR.warn}: ${escapeCssValue(palette.warn)};`,
+    `${TOKEN_VAR.warnSoft}: ${escapeCssValue(palette.warnSoft)};`,
     `${TOKEN_VAR.tagArtist}: ${escapeCssValue(palette.tagArtist)};`,
     `${TOKEN_VAR.tagCharacter}: ${escapeCssValue(palette.tagCharacter)};`,
     `${TOKEN_VAR.tagCopyright}: ${escapeCssValue(palette.tagCopyright)};`,
@@ -350,6 +361,8 @@ export function applyTokenProperties(
   target.style.setProperty(TOKEN_VAR.accentSoft, palette.accentSoft);
   target.style.setProperty(TOKEN_VAR.danger, palette.danger);
   target.style.setProperty(TOKEN_VAR.dangerSoft, palette.dangerSoft);
+  target.style.setProperty(TOKEN_VAR.warn, palette.warn);
+  target.style.setProperty(TOKEN_VAR.warnSoft, palette.warnSoft);
   target.style.setProperty(TOKEN_VAR.tagArtist, palette.tagArtist);
   target.style.setProperty(TOKEN_VAR.tagCharacter, palette.tagCharacter);
   target.style.setProperty(TOKEN_VAR.tagCopyright, palette.tagCopyright);

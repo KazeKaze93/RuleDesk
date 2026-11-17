@@ -271,6 +271,12 @@ export const SEARCH_SUGGEST_CSS = `
   color: var(--rdw-text);
   font-weight: 700;
 }
+/* On the chosen line the rest of the tag is in the text colour too: muted on
+   the fill of that line passes the contrast limit only just (4.7:1 in Dark).
+   What was typed is still told by its weight. */
+.${SUGGEST_ROW_CLASS}.${SUGGEST_ROW_ACTIVE_CLASS} .${SUGGEST_LABEL_CLASS} {
+  color: var(--rdw-text);
+}
 .${SUGGEST_TRAILING_CLASS} {
   flex: none;
   color: var(--rdw-muted);

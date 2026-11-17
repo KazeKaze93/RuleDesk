@@ -106,8 +106,12 @@ describe("favorites search: what the index cannot answer", () => {
   });
 
   it("names the terms in the notice, and says nothing when there are none", () => {
-    expect(unsupportedNotice(["rating:safe", "night~"])).toBe(
-      "Not searched here: rating:safe, night~. See the ? in the search field.",
+    expect(unsupportedNotice(["rating:safe"])).toBe(
+      "rating: doesn\u2019t work in Favorites. Favorites search uses tags only.",
+    );
+    // A kind of condition is named once, whatever its values and its minus.
+    expect(unsupportedNotice(["rating:safe", "-rating:explicit", "user:bob", "night~"])).toBe(
+      "rating:, user:, night~ don\u2019t work in Favorites. Favorites search uses tags only.",
     );
     expect(unsupportedNotice([])).toBe("");
   });

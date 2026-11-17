@@ -1,7 +1,9 @@
 import type { JSX } from "preact";
-import { useEffect, useId, useRef, useState } from "preact/hooks";
+import { createPortal } from "preact/compat";
+import { useContext, useEffect, useId, useLayoutEffect, useRef, useState } from "preact/hooks";
 
 import { IconChevronDown } from "./icons";
+import { OVERLAY_Z_INDEX, OverlayInPlace } from "./overlay";
 import { KIT_CONTROL_FONT, KIT_CONTROL_HEIGHT, KIT_FOCUS_CSS } from "./shared";
 
 export type SelectOption = {
@@ -17,6 +19,14 @@ export type SelectProps = {
   readonly disabled?: boolean;
   readonly className?: string;
 };
+
+const LIST_CLASS = "rdw-select__list";
+const LIST_FLOATING_CLASS = "rdw-select__list--floating";
+const LIST_GAP_PX = 4;
+const LIST_MAX_HEIGHT_PX = 220;
+const LIST_EDGE_PX = 8;
+const EVENT_SCROLL = "scroll";
+const EVENT_RESIZE = "resize";
 
 export const SELECT_CSS = `
 ${KIT_FOCUS_CSS}
@@ -55,10 +65,10 @@ ${KIT_FOCUS_CSS}
   opacity: 0.55;
   cursor: not-allowed;
 }
-.rdw-select__list {
+.${LIST_CLASS} {
   position: absolute;
   z-index: 20;
-  top: calc(100% + 4px);
+  top: calc(100% + ${String(LIST_GAP_PX)}px);
   left: 0;
   right: 0;
   margin: 0;
@@ -68,8 +78,17 @@ ${KIT_FOCUS_CSS}
   border: 1px solid var(--rdw-border);
   border-radius: var(--rdw-radius-m);
   box-shadow: var(--rdw-shadow-2);
-  max-height: 220px;
+  max-height: ${String(LIST_MAX_HEIGHT_PX)}px;
   overflow: auto;
+}
+/* On a page of the site the list is drawn in <body> and placed by the trigger. */
+.${LIST_CLASS}.${LIST_FLOATING_CLASS} {
+  position: fixed;
+  z-index: ${String(OVERLAY_Z_INDEX)};
+  right: auto;
+  box-sizing: border-box;
+  font: 12.5px/1.4 var(--rdw-font);
+  text-align: left;
 }
 .rdw-select__option {
   min-height: ${KIT_CONTROL_HEIGHT};
@@ -90,7 +109,12 @@ ${KIT_FOCUS_CSS}
 export function Select(props: SelectProps): JSX.Element {
   const listId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
   const [open, setOpen] = useState(false);
+  // In a shadow root the list stays in it whatever the context says: its styles are there.
+  const inPlace = useContext(OverlayInPlace);
+  const floating = !inPlace && !(rootRef.current?.getRootNode() instanceof ShadowRoot);
   const selected =
     props.options.find((option) => option.value === props.value) ??
     props.options[0];
@@ -113,7 +137,9 @@ export function Select(props: SelectProps): JSX.Element {
         return;
       }
       // Shadow DOM retargets event.target to the host; composedPath keeps the real nodes.
-      if (!event.composedPath().includes(root)) {
+      const path = event.composedPath();
+      const list = listRef.current;
+      if (!path.includes(root) && (list === null || !path.includes(list))) {
         setOpen(false);
       }
     };
@@ -124,6 +150,69 @@ export function Select(props: SelectProps): JSX.Element {
       document.removeEventListener("mousedown", onPointerDown);
     };
   }, [open]);
+
+  // The list in <body> keeps under its trigger, or over it where there is no room below.
+  useLayoutEffect(() => {
+    if (!open || !floating) {
+      return undefined;
+    }
+    const place = (): void => {
+      const trigger = triggerRef.current;
+      const list = listRef.current;
+      if (trigger === null || list === null) {
+        return;
+      }
+      const rect = trigger.getBoundingClientRect();
+      const height = Math.min(list.scrollHeight, LIST_MAX_HEIGHT_PX);
+      const below = rect.bottom + LIST_GAP_PX;
+      const fitsBelow = below + height <= window.innerHeight - LIST_EDGE_PX;
+      const above = rect.top - LIST_GAP_PX - height;
+      list.style.top = `${String(fitsBelow || above < LIST_EDGE_PX ? below : above)}px`;
+      list.style.left = `${String(rect.left)}px`;
+      list.style.minWidth = `${String(rect.width)}px`;
+    };
+    place();
+    window.addEventListener(EVENT_SCROLL, place, true);
+    window.addEventListener(EVENT_RESIZE, place);
+    return () => {
+      window.removeEventListener(EVENT_SCROLL, place, true);
+      window.removeEventListener(EVENT_RESIZE, place);
+    };
+  }, [open, floating]);
+
+  const list = open ? (
+    <ul
+      className={floating ? `${LIST_CLASS} ${LIST_FLOATING_CLASS}` : LIST_CLASS}
+      role="listbox"
+      id={listId}
+      tabIndex={-1}
+      ref={listRef}
+    >
+      {props.options.map((option) => (
+        <li
+          key={option.value}
+          role="option"
+          className="rdw-select__option rdw-kit-focusable"
+          aria-selected={option.value === props.value}
+          tabIndex={0}
+          onClick={() => {
+            props.onChange(option.value);
+            setOpen(false);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              props.onChange(option.value);
+              setOpen(false);
+              triggerRef.current?.focus();
+            }
+          }}
+        >
+          {option.label}
+        </li>
+      ))}
+    </ul>
+  ) : null;
 
   return (
     <>
@@ -144,6 +233,7 @@ export function Select(props: SelectProps): JSX.Element {
             props.label !== undefined ? `${listId}-label` : undefined
           }
           disabled={props.disabled}
+          ref={triggerRef}
           onClick={() => {
             setOpen((prev) => !prev);
           }}
@@ -151,38 +241,9 @@ export function Select(props: SelectProps): JSX.Element {
           <span>{selected?.label ?? props.value}</span>
           <IconChevronDown size={14} />
         </button>
-        {open ? (
-          <ul
-            className="rdw-select__list"
-            role="listbox"
-            id={listId}
-            tabIndex={-1}
-          >
-            {props.options.map((option) => (
-              <li
-                key={option.value}
-                role="option"
-                className="rdw-select__option rdw-kit-focusable"
-                aria-selected={option.value === props.value}
-                tabIndex={0}
-                onClick={() => {
-                  props.onChange(option.value);
-                  setOpen(false);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    props.onChange(option.value);
-                    setOpen(false);
-                  }
-                }}
-              >
-                {option.label}
-              </li>
-            ))}
-          </ul>
-        ) : null}
+        {floating ? null : list}
       </div>
+      {floating && list !== null ? createPortal(list, document.body) : null}
     </>
   );
 }

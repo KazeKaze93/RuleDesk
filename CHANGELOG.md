@@ -2,6 +2,22 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.44.0
+
+Favorites, the rest of the column:
+
+- "Tags in results": a card under the filters with the thirty most frequent tags of what is shown, each with its count. A click on a tag, or on its "+", adds it to the search; "−" excludes it. With nothing typed it lists the tags of all your favorites
+- A condition that does not work here (`rating:`, `score:`, `user:` and the like) is said in a yellow plate under the field, for as long as it stands there: "rating: doesn’t work in Favorites. Favorites search uses tags only." It used to be a grey line
+- "Reset search" under the filters clears the search and the Type; the order and Pages / Scroll stay as they are. It is there only when there is something to reset
+- "Download all…" and "Sync favorites…" are quieter than "Random post" and "Select", which are used all the time
+- The "?" of the field: `cat*` is listed before `ca*t`, and the metatags that work only on Posts are named in one line
+- Suggestions: on the chosen line the whole tag is in the text colour; what was typed is still set off by its weight
+
+Fixed, on every page of the site:
+
+- A dialog opened from a block that stays in view while the page scrolls was drawn under the thumbnails: "Save as collection" and "Add to collection" on Posts, the download dialog, the playlist's dialogs. Every dialog is now drawn over the whole page, wherever it was opened from
+- The list of "Sort" in the sidebar of Posts was cut at the sidebar's edge when the sidebar was short; it is drawn over the page too
+
 ## 0.43.5
 
 - Favorites: the dialogs opened from the column ("Download all…", "Add to collection", the confirmation of a removal) are drawn over the page again. Since the buttons moved into the column the thumbnails lay over them

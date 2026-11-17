@@ -3,7 +3,7 @@ import type { ComponentChild, JSX } from "preact";
 
 import { resolveAppearancePalette } from "../skin/theme";
 import { getAppearance } from "../storage/store";
-import { KIT_CONTROL_FONT_VAR, KIT_CONTROL_HEIGHT_VAR } from "../ui/kit";
+import { OverlayInPlace, KIT_CONTROL_FONT_VAR, KIT_CONTROL_HEIGHT_VAR } from "../ui/kit";
 import { applyTokenProperties } from "../ui/tokens";
 import {
   isCollectionDetailPage,
@@ -307,9 +307,12 @@ export async function showRdwPage(
   shownRoute = route;
   syncRdwPageLayout();
   preactRender(
-    <PageShell title={titleForRoute(route)} titleHidden={titleHiddenForRoute(route)}>
-      {page}
-    </PageShell>,
+    // The page is in a shadow root: what opens over it is drawn inside it, with its styles.
+    <OverlayInPlace.Provider value={true}>
+      <PageShell title={titleForRoute(route)} titleHidden={titleHiddenForRoute(route)}>
+        {page}
+      </PageShell>
+    </OverlayInPlace.Provider>,
     mount,
   );
 }

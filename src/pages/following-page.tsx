@@ -43,6 +43,7 @@ import {
   AutocompleteField,
   Button,
   Dialog,
+  OverlayInPlace,
   EmptyState,
   IconButton,
   ProgressBar,
@@ -1296,6 +1297,12 @@ export function FollowingPage(): JSX.Element {
 
 export function createFollowingPage(): HTMLElement {
   const root = document.createElement("div");
-  preactRender(<FollowingPage />, root);
+  // A page stands on its own here, as in its shadow root: its dialogs are drawn in it.
+  preactRender(
+    <OverlayInPlace.Provider value={true}>
+      <FollowingPage />
+    </OverlayInPlace.Provider>,
+    root,
+  );
   return root;
 }

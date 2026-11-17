@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  RESULT_TAGS_LIMIT,
+  appendWord,
   describeEmptyResult,
+  resultTags,
   replaceWord,
   toSuggestList,
 } from "../../src/features/favorites-browser";
@@ -189,5 +192,49 @@ describe("favorites search: the query as chips", () => {
     }
     expect(removeChip(text, cat)).toBe("-dog ( bird ~ fox ) solo");
     expect(removeChip(text, group)).toBe("cat -dog solo");
+  });
+});
+
+describe("favorites: the tags of what is shown", () => {
+  const index = [
+    { id: 1, tags: "cat solo zootopia", thumb: "", run: 1, pos: 1, cut: false },
+    { id: 2, tags: "cat dog zootopia", thumb: "", run: 1, pos: 2, cut: false },
+    { id: 3, tags: "bird dog", thumb: "", run: 1, pos: 3, cut: false },
+  ];
+
+  it("lists the most frequent tags of the shown posts, most frequent first", () => {
+    expect(resultTags(index, new Set([1, 2, 3]), "")).toEqual([
+      { tag: "cat", count: 2 },
+      { tag: "dog", count: 2 },
+      { tag: "zootopia", count: 2 },
+      { tag: "bird", count: 1 },
+      { tag: "solo", count: 1 },
+    ]);
+  });
+
+  it("counts only the shown posts and leaves out what the query already names", () => {
+    expect(resultTags(index, new Set([1, 2]), "zootopia -dog")).toEqual([
+      { tag: "cat", count: 2 },
+      { tag: "solo", count: 1 },
+    ]);
+  });
+
+  it("lists no more than the limit", () => {
+    const many = [
+      {
+        id: 1,
+        tags: Array.from({ length: 80 }, (_, at) => `tag_${String(at)}`).join(" "),
+        thumb: "",
+        run: 1,
+        pos: 1,
+        cut: false,
+      },
+    ];
+    expect(resultTags(many, new Set([1]), "")).toHaveLength(RESULT_TAGS_LIMIT);
+  });
+
+  it("adds a word to the end of the query", () => {
+    expect(appendWord("", "cat")).toBe("cat");
+    expect(appendWord("dog ", "-cat")).toBe("dog -cat");
   });
 });

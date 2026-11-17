@@ -170,14 +170,16 @@ describe("kit components", () => {
     }
     fireClick(trigger);
     expect(trigger.getAttribute("aria-expanded")).toBe("true");
-    expect(host.querySelector('[role="listbox"]')).toBeTruthy();
+    // On a page of the site the list is drawn in <body>, not inside the block it was opened from.
+    expect(host.querySelector('[role="listbox"]')).toBeNull();
+    expect(document.body.querySelector(':scope > [role="listbox"]')).toBeTruthy();
     await flushEffects();
     act(() => {
       document.dispatchEvent(
         new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
       );
     });
-    expect(host.querySelector('[role="listbox"]')).toBeNull();
+    expect(document.querySelector('[role="listbox"]')).toBeNull();
   });
 
   it("Select option click inside shadow root fires onChange", async () => {

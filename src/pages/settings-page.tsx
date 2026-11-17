@@ -29,7 +29,7 @@ import {
 } from "../storage/store";
 import { AppearanceSection } from "../ui/appearance-section";
 import { setGridFavButtonsVisible } from "../ui/cards";
-import { Card, NumberField, Select, Switch } from "../ui/kit";
+import { Card, NumberField, OverlayInPlace, Select, Switch } from "../ui/kit";
 import { IconChevronDown, IconChevronRight } from "../ui/kit/icons";
 import { BlacklistSection } from "./blacklist-section";
 import {
@@ -415,6 +415,12 @@ export function SettingsPage(): JSX.Element {
 
 export function createSettingsPage(): HTMLElement {
   const root = document.createElement("div");
-  preactRender(<SettingsPage />, root);
+  // Stands on its own here, as in the shadow root of a page: what opens is drawn in it.
+  preactRender(
+    <OverlayInPlace.Provider value={true}>
+      <SettingsPage />
+    </OverlayInPlace.Provider>,
+    root,
+  );
   return root;
 }

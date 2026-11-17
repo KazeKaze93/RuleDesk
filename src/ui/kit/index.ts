@@ -24,6 +24,7 @@ export {
   type DialogFieldsProps,
   type DialogProps,
 } from "./dialog";
+export { OverlayInPlace } from "./overlay";
 export {
   EmptyState,
   EMPTY_STATE_CSS,

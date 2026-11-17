@@ -40,6 +40,7 @@ import {
   setFeatureChoiceValue,
 } from "../storage/store";
 import { Button } from "./kit/button";
+import { OverlayInPlace } from "./kit/overlay";
 import { SectionLabel } from "./kit/section-label";
 import { Select, type SelectOption } from "./kit/select";
 import { Segmented, type SegmentedOption } from "./kit/segmented";
@@ -634,6 +635,12 @@ export function AppearanceSection(
 export function createAppearanceSection(): HTMLElement {
   const host = document.createElement("div");
   host.className = "rdw-appearance-host";
-  render(<AppearanceSection />, host);
+  // Stands on its own here, as in the shadow root of a page: what opens is drawn in it.
+  render(
+    <OverlayInPlace.Provider value={true}>
+      <AppearanceSection />
+    </OverlayInPlace.Provider>,
+    host,
+  );
   return host;
 }

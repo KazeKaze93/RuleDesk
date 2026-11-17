@@ -27,6 +27,7 @@ import {
 import {
   Button,
   Dialog,
+  OverlayInPlace,
   EmptyState,
   Segmented,
   Select,
@@ -1124,6 +1125,12 @@ export function CollectionsPage(): JSX.Element {
 
 export function createCollectionsPage(): HTMLElement {
   const root = document.createElement("div");
-  preactRender(<CollectionsPage />, root);
+  // A page stands on its own here, as in its shadow root: its dialogs are drawn in it.
+  preactRender(
+    <OverlayInPlace.Provider value={true}>
+      <CollectionsPage />
+    </OverlayInPlace.Provider>,
+    root,
+  );
   return root;
 }

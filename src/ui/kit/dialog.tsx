@@ -1,7 +1,9 @@
 import type { ComponentChildren, JSX, RefObject } from "preact";
-import { useEffect, useId, useRef } from "preact/hooks";
+import { createPortal } from "preact/compat";
+import { useContext, useEffect, useId, useRef } from "preact/hooks";
 
 import { Button } from "./button";
+import { OverlayInPlace } from "./overlay";
 import { KIT_FOCUS_CSS } from "./shared";
 import { TextField } from "./text-field";
 
@@ -262,6 +264,7 @@ export function Dialog(props: DialogProps): JSX.Element | null {
   const restoreFocusRef = useRef<HTMLElement | null>(null);
   const titleId = useId();
   const hasTitle = props.title !== undefined && props.title.length > 0;
+  const inPlace = useContext(OverlayInPlace);
 
   useEffect(() => {
     if (!props.open) {
@@ -370,7 +373,7 @@ export function Dialog(props: DialogProps): JSX.Element | null {
     .filter((part) => part !== undefined && part.length > 0)
     .join(" ");
 
-  return (
+  const body = (
     <>
       <style>{DIALOG_CSS}</style>
       <div className="rdw-dialog-backdrop">
@@ -393,4 +396,5 @@ export function Dialog(props: DialogProps): JSX.Element | null {
       </div>
     </>
   );
+  return inPlace ? body : createPortal(body, document.body);
 }
