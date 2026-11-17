@@ -120,3 +120,37 @@ describe("favorites: the count in the row", () => {
     expect(postsLabel(0)).toBe("0 posts");
   });
 });
+
+describe("favorites search: the tag list the site cuts at both ends", () => {
+  /** As a favorites page gives them: the first letter and the last one are gone. */
+  const CUT: readonly FavoriteIndexEntry[] = [
+    entry(1, "i_generated judy_hopps zootopi", 1),
+    entry(2, "udy_hopps zootopia vide", 2),
+    entry(3, "ootopi", 3),
+    entry(4, "ox solo", 4),
+  ];
+  const ids = new Set(CUT.map((item) => item.id));
+  const findCut = (text: string): number[] =>
+    filterFavoriteIndex(CUT, ids, parseFavoritesQuery(text), MEDIA_ALL).map((item) => item.id);
+
+  it("finds a tag that stands last, first or alone in the list", () => {
+    expect(findCut("zootopia")).toEqual([1, 2, 3]);
+    expect(findCut("judy_hopps")).toEqual([1, 2]);
+    expect(findCut("ai_generated")).toEqual([1]);
+    expect(findCut("video")).toEqual([2]);
+  });
+
+  it("excludes by such a tag as well", () => {
+    expect(findCut("-zootopia")).toEqual([4]);
+  });
+
+  it("takes a star together with the cut", () => {
+    expect(findCut("zoo*")).toEqual([1, 2, 3]);
+    expect(findCut("*topia")).toEqual([1, 2, 3]);
+  });
+
+  it("does not take a part of a tag for the tag", () => {
+    expect(findCut("zootop")).toEqual([]);
+    expect(findCut("hopps")).toEqual([]);
+  });
+});

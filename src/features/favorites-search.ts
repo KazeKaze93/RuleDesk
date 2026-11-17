@@ -35,11 +35,29 @@ export const SORT_ID_ASC = "id-asc";
 export const SORT_ID_DESC = "id-desc";
 export type FavoritesSort = typeof SORT_ID_ASC | typeof SORT_ID_DESC;
 
+/**
+ * One term of a query, ready to be tried on the tags of a favorite.
+ *
+ * The index is filled from the favorites pages, where the site cuts the first
+ * and the last character off the tag list: the first tag of every favorite
+ * lacks its first letter and the last one its last (`zootopia` at the end of
+ * the list is kept as `zootopi`). The term is therefore also kept without its
+ * first character, without its last, and without both, to be tried on the
+ * tags at those two places. Without this a search for `zootopia` missed every
+ * favorite where that tag was the last one.
+ */
+export type TagPattern = {
+  readonly whole: RegExp;
+  readonly noFirst: RegExp;
+  readonly noLast: RegExp;
+  readonly noEnds: RegExp;
+};
+
 export type FavoritesQuery = {
-  readonly include: readonly RegExp[];
-  readonly exclude: readonly RegExp[];
+  readonly include: readonly TagPattern[];
+  readonly exclude: readonly TagPattern[];
   /** Groups of "or": a post needs at least one tag of every group. */
-  readonly anyOf: readonly (readonly RegExp[])[];
+  readonly anyOf: readonly (readonly TagPattern[])[];
   /** The order asked for, or null for the site's order. */
   readonly sort: FavoritesSort | null;
   /** Terms the index cannot answer, as they were typed. */
@@ -81,12 +99,25 @@ const META_NAMES: ReadonlySet<string> = new Set([
 ]);
 const REGEXP_SPECIAL = /[.+?^${}()|[\]\\]/g;
 
-function termPattern(term: string): RegExp {
+function wholeTag(term: string): RegExp {
   const body = term
     .split(WILDCARD)
     .map((part) => part.replace(REGEXP_SPECIAL, "\\$&"))
     .join(".*");
   return new RegExp(`^${body}$`);
+}
+
+/** A star at an end already stands for the cut character: nothing is taken off there. */
+function termPattern(term: string): TagPattern {
+  const first = term.startsWith(WILDCARD) ? term : term.slice(1);
+  const last = term.endsWith(WILDCARD) ? term : term.slice(0, -1);
+  const ends = term.endsWith(WILDCARD) ? first : first.slice(0, -1);
+  return {
+    whole: wholeTag(term),
+    noFirst: wholeTag(first),
+    noLast: wholeTag(last),
+    noEnds: wholeTag(ends),
+  };
 }
 
 export function isFavoritesMedia(value: string): value is FavoritesMedia {
@@ -100,13 +131,13 @@ function isMetatag(term: string): boolean {
 
 /** Parses what was typed. Case does not matter: the site's tags are lower case. */
 export function parseFavoritesQuery(text: string): FavoritesQuery {
-  const include: RegExp[] = [];
-  const exclude: RegExp[] = [];
-  const anyOf: RegExp[][] = [];
+  const include: TagPattern[] = [];
+  const exclude: TagPattern[] = [];
+  const anyOf: TagPattern[][] = [];
   const unsupported: string[] = [];
   let sort: FavoritesSort | null = null;
   // The tags of the group being read, or null outside a group.
-  let group: RegExp[] | null = null;
+  let group: TagPattern[] | null = null;
 
   for (const raw of text.toLowerCase().split(TERM_SEPARATOR)) {
     if (raw.length === 0) {
@@ -164,8 +195,21 @@ export function isEmptyFavoritesQuery(query: FavoritesQuery): boolean {
   );
 }
 
-function hasTag(tags: readonly string[], pattern: RegExp): boolean {
-  return tags.some((tag) => pattern.test(tag));
+function hasTag(tags: readonly string[], pattern: TagPattern): boolean {
+  const lastAt = tags.length - 1;
+  // The whole term is tried at the ends too: an entry may hold an uncut list.
+  return tags.some((tag, at) => {
+    if (pattern.whole.test(tag)) {
+      return true;
+    }
+    if (at === 0 && at === lastAt) {
+      return pattern.noEnds.test(tag) || pattern.noFirst.test(tag) || pattern.noLast.test(tag);
+    }
+    if (at === 0) {
+      return pattern.noFirst.test(tag);
+    }
+    return at === lastAt && pattern.noLast.test(tag);
+  });
 }
 
 function matchesQuery(tags: readonly string[], query: FavoritesQuery): boolean {
@@ -198,7 +242,7 @@ export function filterFavoriteIndex(
     (entry) =>
       favoriteIds.has(entry.id) &&
       matchesMedia(entry, media) &&
-      matchesQuery(entry.tags.split(TERM_SEPARATOR), query),
+      matchesQuery(entry.tags.trim().split(TERM_SEPARATOR), query),
   );
   if (query.sort === SORT_ID_ASC) {
     return matched.sort((a, b) => a.id - b.id);

@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.40.10
+
+- Favorites search finds a tag that stands first or last in a post's tag list. The site cuts one character off each end of that list on the favorites page, so `zootopia` at the end was kept as `zootopi`: a search for the full tag missed those posts and found them only by the cut spelling
+
 ## 0.40.9
 
 - RuleDesk settings: the line is also there under the first setting of Page, "Enable page tweaks", and over the settings after the list of features
