@@ -23,8 +23,6 @@ import {
   MEDIA_ALL,
   MEDIA_IMAGES,
   MEDIA_VIDEOS,
-  SORT_ID_ASC,
-  SORT_ID_DESC,
   filterFavoriteIndex,
   isEmptyFavoritesQuery,
   isFavoritesMedia,
@@ -32,7 +30,6 @@ import {
   shuffleBySeed,
   topFavoriteTags,
   type FavoritesMedia,
-  type FavoritesSort,
   type TagCount,
 } from "./favorites-search";
 import {
@@ -125,18 +122,22 @@ const UNSUPPORTED_SUFFIX = ". See the ? in the search field.";
 const MEDIA_LABEL = "Type";
 const VIEW_LABEL = "View";
 const SORT_LABEL = "Sort";
-/** The site's own order: the favorite added last comes first. */
-export const ORDER_ADDED = "added";
-export type FavoritesOrder = typeof ORDER_ADDED | FavoritesSort;
-/** "Added" is by when the post was made a favorite; the other two are by the post's own age. */
+/**
+ * The order of the list, by when a post was made a favorite. Newest first is
+ * the site's own order and the page as it comes; oldest first is the same
+ * list turned over. (A third option, by the age of the post itself, was
+ * taken out: beside "Newest" it read as the same thing. Kaze, 17.11.2026.)
+ */
+export const ORDER_NEWEST = "newest";
+export const ORDER_OLDEST = "oldest";
+export type FavoritesOrder = typeof ORDER_NEWEST | typeof ORDER_OLDEST;
 const SORT_OPTIONS: readonly SegmentedOption[] = [
-  { value: ORDER_ADDED, label: "Added" },
-  { value: SORT_ID_DESC, label: "Newest" },
-  { value: SORT_ID_ASC, label: "Oldest" },
+  { value: ORDER_NEWEST, label: "Newest" },
+  { value: ORDER_OLDEST, label: "Oldest" },
 ];
 
 export function isFavoritesOrder(value: string): value is FavoritesOrder {
-  return value === ORDER_ADDED || value === SORT_ID_DESC || value === SORT_ID_ASC;
+  return value === ORDER_NEWEST || value === ORDER_OLDEST;
 }
 const MORE_LABEL = "Show more";
 const LOCALE = "en-US";
@@ -648,15 +649,15 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
   // A number while the list is shown in a random order, null otherwise.
   const [shuffleSeed, setShuffleSeed] = useState<number | null>(null);
   // The order chosen with the Sort switch. Shuffle and it are one or the
-  // other: choosing an order ends Shuffle, and Shuffle puts the switch back.
-  const [order, setOrder] = useState<FavoritesOrder>(ORDER_ADDED);
+  // other: choosing oldest first ends Shuffle, and Shuffle puts the switch back.
+  const [order, setOrder] = useState<FavoritesOrder>(ORDER_NEWEST);
 
   const query = parseFavoritesQuery(applied);
   const active =
     view === VIEW_SCROLL ||
     media !== MEDIA_ALL ||
     shuffleSeed !== null ||
-    order !== ORDER_ADDED ||
+    order !== ORDER_NEWEST ||
     !isEmptyFavoritesQuery(query);
 
   const { onSummary } = props;
@@ -754,10 +755,10 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
         return;
       }
       const typed = parseFavoritesQuery(applied);
+      const inSiteOrder = filterFavoriteIndex(index, favorites, typed, media);
       // An order typed into the query (sort:id:asc still works) goes before the switch.
-      const parsed =
-        typed.sort === null && order !== ORDER_ADDED ? { ...typed, sort: order } : typed;
-      const matched = filterFavoriteIndex(index, favorites, parsed, media);
+      const matched =
+        typed.sort === null && order === ORDER_OLDEST ? [...inSiteOrder].reverse() : inSiteOrder;
       // Shuffle wins over an order typed into the query; the page says so.
       const results = shuffleSeed === null ? matched : shuffleBySeed(matched, shuffleSeed);
       if (results.length === 0 && !isEmptyFavoritesQuery(typed)) {
@@ -854,7 +855,7 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
         onChange={(value) => {
           if (isFavoritesOrder(value)) {
             setOrder(value);
-            if (value !== ORDER_ADDED) {
+            if (value !== ORDER_NEWEST) {
               setShuffleSeed(null);
             }
           }
@@ -867,7 +868,7 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
         pressed={shuffleSeed !== null}
         onClick={() => {
           setShuffleSeed(shuffleSeed === null ? Date.now() : null);
-          setOrder(ORDER_ADDED);
+          setOrder(ORDER_NEWEST);
         }}
       >
         <IconShuffle size={14} />

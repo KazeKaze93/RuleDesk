@@ -161,7 +161,7 @@ The site's Favorites page, with one row added at the top that stays in place whi
 - when nothing matches, a line that says so in place of the grid, with the nearest tag offered for a word that is no tag
 - Type: All / Images / Videos
 - View: Pages (the site's paging) or Scroll (endless)
-- Sort: Added (the site's order, by when the post became a favorite), Newest, Oldest (by the post itself)
+- Sort: Newest (the site's order: the post made a favorite last comes first) or Oldest (the same list turned over)
 - Shuffle; it and Sort are one or the other
 - the count, **Random post**, **Select**, and a "⋯" menu with "Download all…" and "Sync favorites…"
 

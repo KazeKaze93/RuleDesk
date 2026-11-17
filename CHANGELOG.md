@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.41.2
+
+- Favorites: Sort has two options, Newest and Oldest, both by when the post became a favorite. Newest is the page as the site gives it; Oldest turns the list over. "Added" is gone: beside Newest it read as the same thing
+
 ## 0.41.1
 
 - Favorites: the order is a switch in the row, Sort: Added (when the post became a favorite, the site's order), Newest and Oldest (by the post itself). It replaces typing `sort:id:asc` into the search, which is no longer suggested or listed under "?"; typed, it still works
