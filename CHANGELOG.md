@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.45.1
+
+- Selecting posts on Posts and on Favorites: a thumbnail no longer lifts under the pointer while posts are being selected. With "Motion" on, the lifted picture stood out of the frame of a selected post
+
 ## 0.45.0
 
 Favorites, two ways to narrow the list by what you have already sorted out yourself:

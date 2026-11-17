@@ -14,6 +14,11 @@ export const GRID_SELECT_CSS = `
 body.${GRID_SELECT_BODY_CLASS} ${SITE_SELECTORS.thumb} {
   cursor: pointer;
 }
+/* While posts are being marked a thumbnail does not lift under the pointer
+   ("Motion" in the settings): lifted, it stands out of the frame of a marked post. */
+body.${GRID_SELECT_BODY_CLASS} ${SITE_SELECTORS.thumb}:hover img {
+  transform: none !important;
+}
 body.${GRID_SELECT_BODY_CLASS} ${SITE_SELECTORS.thumb}.${GRID_SELECTED_CLASS} {
   outline: 3px solid var(--rdw-accent);
   outline-offset: -3px;

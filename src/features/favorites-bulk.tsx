@@ -149,6 +149,11 @@ const BODY_CLASS = featureBodyClass(FEATURE_ID);
 const BODY_SELECTING_CLASS = `${BODY_CLASS}-selecting`;
 
 const FEATURE_CSS = `
+/* While posts are being selected a thumbnail does not lift under the pointer:
+   lifted, it stands out of the frame of a selected post. */
+body.${BODY_SELECTING_CLASS} span.thumb:hover img {
+  transform: none !important;
+}
 body.${BODY_CLASS} .${ROOT_CLASS},
 body.${BODY_CLASS} .${PIN_CLASS} {
   display: flex;
