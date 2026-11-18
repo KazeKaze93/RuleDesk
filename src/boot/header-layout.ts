@@ -200,6 +200,14 @@ ${NAV} > li#${MORE_ITEM_ID} > button {
   cursor: pointer;
 }
 ${NAV} > li#${MORE_ITEM_ID} > button:hover,
+/* The keyboard's focus in the header is the ring every button and field of
+   the script has: the browser's own was a white rectangle here. */
+div#header a:focus-visible,
+div#header button:focus-visible {
+  outline: 2px solid var(--rdw-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
 ${NAV} > li#${MORE_ITEM_ID} > button[aria-expanded="true"] {
   color: var(--rdw-text);
 }

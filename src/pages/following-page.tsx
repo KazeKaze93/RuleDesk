@@ -1119,7 +1119,7 @@ export function FollowingPage(): JSX.Element {
                   {GROUP_BUTTON_LABEL}
                 </Button>
                 <Button
-                  variant="danger"
+                  variant="danger-quiet"
                   disabled={selectedVisible.length === 0}
                   onClick={() => {
                     setConfirmUnfollow(true);

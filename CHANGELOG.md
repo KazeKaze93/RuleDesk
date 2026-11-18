@@ -2,6 +2,15 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.49.0
+
+From the design audit, one way of doing a thing in place of several:
+
+- A dangerous action in a row of others (Delete on Collections and on a collection, Unfollow, "Remove selected" on Favorites, Delete of a saved search) is red words in a red frame. The filled red button is kept for the one that confirms it in the dialog: it used to be the loudest thing on the page
+- The keyboard's focus in the header is the same ring as on every button and field of the script, in place of the browser's white rectangle
+- A saved search opened from Collections has the head of a collection: "← Collections", the name, "Saved search"
+- Forum: "All" and "New for me" are one joined switch, the chosen one lighter and heavier, as the other switches are
+
 ## 0.48.1
 
 - Following, selecting: a card clicked and then unselected kept the blue frame of a selected one until something else was clicked. The frame is now for a selected card and for the card the keyboard is on

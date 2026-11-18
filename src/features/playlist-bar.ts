@@ -22,6 +22,7 @@ import {
 } from "../search/query";
 import {
   dynamicCollectionMarkHash,
+  RDW_HASH_COLLECTIONS,
   readDynamicCollectionMark,
 } from "../pages/constants";
 import { readFirstThumbUrls, readNewestPostId, readResultCount } from "../site/result-page";
@@ -51,6 +52,10 @@ const ROOT_ID = "rdw-playlist-bar";
 const ROOT_CLASS = "rdw-playlist-bar";
 const TITLE_CLASS = "rdw-playlist-bar-title";
 const NAME_CLASS = "rdw-playlist-bar-name";
+const BACK_CLASS = "rdw-playlist-bar-back";
+const KIND_CLASS = "rdw-playlist-bar-kind";
+const TEXT_BACK = "\u2190 Collections";
+const TEXT_KIND = "Saved search";
 const COUNT_CLASS = "rdw-playlist-bar-count";
 const PARTS_CLASS = "rdw-playlist-bar-parts";
 const PART_LABEL_CLASS = "rdw-playlist-bar-part-label";
@@ -81,6 +86,7 @@ const DIALOG_TONE_DANGER = "danger" as const;
 const DIALOG_ONLY_NAME = "name" as const;
 const DIALOG_ONLY_QUERY = "query" as const;
 const BAR_BUTTON_VARIANT = "secondary" as const;
+const BAR_DELETE_VARIANT = "danger-quiet" as const;
 const BAR_BUTTON_SIZE = "s" as const;
 /** Same heading size and button gap as the custom collection page. */
 const NAME_FONT_PX = 18;
@@ -115,6 +121,18 @@ body.${BODY_CLASS} .${TITLE_CLASS} {
   max-width: 100%;
   font: inherit;
   line-height: 1.3;
+}
+body.${BODY_CLASS} .${BACK_CLASS} {
+  color: var(--rdw-muted);
+  font-size: 12px;
+  text-decoration: none;
+}
+body.${BODY_CLASS} .${BACK_CLASS}:hover {
+  color: var(--rdw-text);
+}
+body.${BODY_CLASS} .${KIND_CLASS} {
+  color: var(--rdw-muted);
+  font-size: 12px;
 }
 body.${BODY_CLASS} .${NAME_CLASS} {
   font-size: ${String(NAME_FONT_PX)}px;
@@ -543,7 +561,9 @@ function DynamicCollectionBar(props: DynamicBarProps): JSX.Element {
     h(
       "div",
       { className: TITLE_CLASS },
+      h("a", { className: BACK_CLASS, href: RDW_HASH_COLLECTIONS }, TEXT_BACK),
       h("span", { className: NAME_CLASS }, name),
+      h("span", { className: KIND_CLASS }, TEXT_KIND),
     ),
     h(
       "div",
@@ -593,7 +613,7 @@ function DynamicCollectionBar(props: DynamicBarProps): JSX.Element {
       h(
         Button,
         {
-          variant: DIALOG_TONE_DANGER,
+          variant: BAR_DELETE_VARIANT,
           size: BAR_BUTTON_SIZE,
           onClick: () => {
             setDialog(DIALOG_DELETE);

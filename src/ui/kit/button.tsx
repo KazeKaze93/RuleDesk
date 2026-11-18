@@ -2,7 +2,11 @@ import type { ComponentChildren, JSX, MouseEventHandler, RefObject } from "preac
 
 import { KIT_CONTROL_FONT, KIT_CONTROL_HEIGHT, KIT_FOCUS_CSS } from "./shared";
 
-export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
+/**
+ * "danger-quiet" is the dangerous action in a row of others: red words and a
+ * red frame. The filled "danger" is for the button that confirms it in a dialog.
+ */
+export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "danger-quiet";
 export type ButtonSize = "s" | "m";
 
 export type ButtonProps = {
@@ -74,6 +78,14 @@ ${KIT_FOCUS_CSS}
   background: var(--rdw-danger);
   border-color: var(--rdw-danger);
   color: var(--rdw-surface);
+}
+.rdw-btn--danger-quiet {
+  background: var(--rdw-surface);
+  border-color: var(--rdw-danger);
+  color: var(--rdw-danger);
+}
+.rdw-btn--danger-quiet:hover:not(:disabled) {
+  background: var(--rdw-danger-soft);
 }
 .rdw-btn:disabled,
 .rdw-btn[aria-busy="true"] {

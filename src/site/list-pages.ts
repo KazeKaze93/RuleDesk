@@ -127,9 +127,23 @@ tr.${FORUM_MARKED_ROW_CLASS} span.forum-topic a {
   font: 12px var(--rdw-font);
   cursor: pointer;
 }
+/* "All" and "New for me" are one choice of two: joined, the chosen one lighter
+   and heavier, as the switches of the script are. */
+.${FORUM_FILTER_CLASS} {
+  background: var(--rdw-seg-track, transparent);
+  color: var(--rdw-seg-text, var(--rdw-muted));
+}
+.${FORUM_FILTER_CLASS}:first-of-type {
+  border-radius: var(--rdw-radius-m) 0 0 var(--rdw-radius-m);
+}
+.${FORUM_FILTER_CLASS} + .${FORUM_FILTER_CLASS} {
+  margin-left: -1px;
+  border-radius: 0 var(--rdw-radius-m) var(--rdw-radius-m) 0;
+}
 .${FORUM_FILTER_CLASS}[aria-pressed="true"] {
-  background: var(--rdw-accent-soft);
-  border-color: var(--rdw-accent);
+  background: var(--rdw-seg-on, var(--rdw-surface));
+  color: var(--rdw-seg-on-text, var(--rdw-text));
+  font-weight: 600;
 }
 .${FORUM_READ_ALL_CLASS} {
   margin-left: auto;

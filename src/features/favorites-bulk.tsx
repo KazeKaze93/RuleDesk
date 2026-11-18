@@ -1034,7 +1034,7 @@ function FavoritesBulkBar(props: FavoritesBulkBarProps): JSX.Element | null {
           {TEXT_ADD_TO_COLLECTION}
         </Button>
         <Button
-          variant="danger"
+          variant="danger-quiet"
           size="s"
           disabled={count === 0 || confirmOpen}
           onClick={beginConfirm}

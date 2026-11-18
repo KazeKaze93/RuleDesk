@@ -693,7 +693,7 @@ export function CollectionDetailPage(
                   {UI_TEXT.rename}
                 </Button>
                 <Button
-                  variant="danger"
+                  variant="danger-quiet"
                   size="s"
                   onClick={() => {
                     setDeleteOpen(true);

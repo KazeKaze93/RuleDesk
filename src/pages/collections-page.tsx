@@ -1112,7 +1112,7 @@ export function CollectionsPage(): JSX.Element {
               </Button>
               <Button
                 type="button"
-                variant="danger"
+                variant="danger-quiet"
                 disabled={selectedVisible.length === 0}
                 onClick={() => {
                   setConfirmOpen(true);
