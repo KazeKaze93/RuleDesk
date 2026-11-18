@@ -117,6 +117,7 @@ Wherever posts or cards can be selected, the bar is the same: how many are selec
 |---|---|
 | Zoom the picture on click | A click on the picture opens a viewer over the page: scroll to zoom, drag to move, Esc to close. Pictures and GIFs |
 | Play GIFs on the post page | The site shows a still JPEG sample of a GIF and the moving file only behind "Original image". The script puts the GIF in place of the still |
+| Load full-size image | Off unless turned on. The file behind "Original image" is loaded and shown in place of the scaled-down copy: sharper and as wide as the room allows, but an original is often several MB |
 | Video player tweaks | The player remembers volume and speed between posts; a click on the video plays and pauses; "Video size" fits the height, fits the width or keeps the original size |
 | Retry a failed post image on other servers | If the picture fails to load, the same path is tried on the site's other image servers |
 
@@ -149,7 +150,8 @@ The script's own page: everyone followed, as cards (tiles or a list).
 
 - A card shows a cover of four thumbnails, the name, the post count, a NEW mark when there are posts newer than the feed's seen mark, and the kind when it is not an artist (character, copyright)
 - **Follow** is pressed next to a tag in the sidebar, on the site's Artists and Tags pages, or through "Add artists" here, which takes one or several tags
-- Toolbar: All / New, a filter by name, sort (name, post count, date followed), a filter by type, Tiles / List, Select (unfollow several at once, put several into a group), Refresh
+- Toolbar: All / New, a filter by name, sort (name, post count, date followed), a filter by type, Tiles / List, Select (unfollow several at once, move several to a group), Refresh
+- **Groups** are tabs under the toolbar: "All", each group with its count, "No group", "New group". A card is in one group or in none. It is moved with "Move to group" (the button in its corner, or in the bar of a selection) or by dragging it onto a tab. A group is renamed or deleted from the button on its tab; deleting it puts its cards into "No group"
 - **Refresh** re-reads the first page of every followed tag for a fresh cover and count: one request per tag, 1.5 seconds apart, after a confirmation. It stops at the first error
 - A card that says "not opened yet" has never been seen by the script: open the tag's page once, or press Refresh
 
@@ -168,7 +170,8 @@ Two kinds, one page:
 | Post count | Exact | Exact for a single tag; a lower bound with "+" for several |
 
 - A card shows a cover, the name, the kind and the count. A dynamic one shows "saved search" until it has been opened once
-- Toolbar: All / Custom / Dynamic, a filter by name, sort, Tiles / List, Select (delete several), **Check for new**, New
+- Toolbar: All / Custom / Dynamic, a filter by name, sort, Tiles / List, Select (delete several, move several to a group), **Check for new**, New
+- **Groups**, as on Following and apart from its groups: tabs under the toolbar, "Move to group" on a card and in the bar of a selection, a card dragged onto a tab
 - **Check for new** asks the site for the first page of every dynamic collection, one at a time with a pause, and marks those that have posts newer than when they were last opened ("Dynamic · new"). It also refreshes covers and counts
 - A custom collection can be shuffled, renamed, deleted, and, with an API key, downloaded as files
 
@@ -189,7 +192,7 @@ The site's Favorites page, with a column at the left that holds everything the s
 - View: Pages (the site's paging) or Scroll (endless)
 - **Collection**: "Any", "Not in any collection", or one of your collections of posts; the list is narrowed to the favorites that pass. Saved searches are not listed: they hold a query, not posts
 - "Reset search", shown when there is a search, a type or a collection to reset; the order and the paging are left as they are
-- under the card, **Following**: the entries of your Following page found among the favorites, with the number of favorites each has; a click adds the tag to the search or takes it out. The dot is the kind (artist, character, copyright). Twelve are listed before "Show all"
+- under the card, **Followed tags**: the entries of your Following page found among the favorites, with the number of favorites each has; a click adds the tag to the search or takes it out. The dot is the kind (artist, character, copyright). Twelve are listed before "Show all"
 - at the foot of the card, each a button of its own: **Random post**, **Select**, and, quieter, **Download all…** (with an API key; with a search, a Type or a Collection set it is **Download results…** and takes only what the list shows, on all its pages) and **Sync favorites…**, which opens the settings at the Favorites block
 - a condition that does not work here (`rating:`, `user:`…) is named in a warning plate under the field for as long as it stands there
 

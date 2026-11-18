@@ -2,6 +2,16 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.57.0
+
+- Following and Collections: groups are tabs over the list. "All", each group with how many are in it, "No group" for the rest, and "New group". A card is in one group or in none, so it is under exactly one tab. The list of groups in the toolbar of Following is gone
+- A card is moved from one menu, "Move to group": the small button in the corner of a card, the same in the bar of a selection for several at once, and a card can be dragged onto a tab. The menu lists the groups, "No group" and "New group…". A name is typed only for a new group, so a slip of the keys no longer makes a second group; a name that is taken is refused
+- A group is renamed and deleted from the button on its tab, or with the right button of the mouse. Deleting a group deletes nothing else: what was in it goes to "No group", after a confirmation that says how many
+- A group stays when the last card leaves it, until it is deleted. It used to vanish
+- Collections have groups too, their own, apart from those of Following. The group of a collection is on its card, after the kind and the count
+- A card does not name its group under the tab of that group. The count in the toolbar is of what is shown: "11 of 22 artists", "3 of 11 collections"
+- The post page: a new setting in RuleDesk → Page, "Load full-size image", off unless turned on. With it the file behind "Original image" is loaded and shown in place of the scaled-down copy the site puts on the page: sharper, and as wide as the room between the columns, never wider than it is. The copy stays until the original has come whole. An original is often several megabytes, so the page takes longer. It is not used for a GIF, which has its own setting, or for a video
+
 ## 0.56.1
 
 - The bar of a selection: the hint of "Select all" and "Select page" names the key that does the same, Ctrl+A

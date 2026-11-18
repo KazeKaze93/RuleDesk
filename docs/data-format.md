@@ -62,6 +62,6 @@ A followed artist can carry more than the tag:
 }
 ```
 
-`exact: false` in `postCount` means "at least this many". A followed entry may also carry `kind` (`"character"` or `"copyright"`; absent for an artist) and `group` (the name of its group on the Following page). A dynamic collection carries `query`, and optionally `cover` and `postCount` of the same kind, `openedPostId` (the newest post when it was last opened) and `newestPostId` (the newest found by "Check for new"); a custom collection carries `kind: "posts"`, `postIds` and `thumbs`.
+`exact: false` in `postCount` means "at least this many". A followed entry may also carry `kind` (`"character"` or `"copyright"`; absent for an artist) and `group` (the name of its group on the Following page). A collection may carry `group` too, the name of its group on the Collections page. The names of the groups, kept so that an empty group is not lost, are in `settings.featureState` under `follow-groups` and `collection-groups`, each a list of names. A dynamic collection carries `query`, and optionally `cover` and `postCount` of the same kind, `openedPostId` (the newest post when it was last opened) and `newestPostId` (the newest found by "Check for new"); a custom collection carries `kind: "posts"`, `postIds` and `thumbs`.
 
 Seen marks are capped to the newest 20,000 or so post ids on write.

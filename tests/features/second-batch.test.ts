@@ -12,7 +12,11 @@ import {
   hasDefaultOrder,
   newestPostIdOf,
 } from "../../src/pages/collections-check";
-import { followCaption, matchesKindAndGroup } from "../../src/pages/following-page";
+import {
+  artistsCountLabel,
+  followCaption,
+  matchesKindAndGroup,
+} from "../../src/pages/following-page";
 import {
   FORUM_MEMORY_MAX,
   artistRowTag,
@@ -34,12 +38,20 @@ import {
 import {
   addArtists,
   clearStorageCache,
+  createCollectionGroup,
   createDynamicCollection,
+  createFollowGroup,
   createPlaylist,
+  deleteCollectionGroup,
+  deleteFollowGroup,
   dynamicHasNew,
   followKindOf,
+  listCollectionGroups,
   listFollowGroups,
   load,
+  renameCollectionGroup,
+  renameFollowGroup,
+  setCollectionGroup,
   setDynamicNewest,
   setFollowGroup,
 } from "../../src/storage/store";
@@ -231,8 +243,56 @@ describe("groups and kinds of followed tags, new posts of saved searches", () =>
     expect(listFollowGroups()).toEqual(["Favourites"]);
     expect(setFollowGroup(["alpha"], "Favourites")).toBe(0);
     expect(setFollowGroup(["alpha", "beta"], null)).toBe(2);
+    // Since 0.57.0 a group is a tab of the page and stays when it is emptied.
+    expect(listFollowGroups()).toEqual(["Favourites"]);
+    expect(load().artists.every((entry) => entry.group === undefined)).toBe(true);
+    expect(deleteFollowGroup("Favourites")).toBe(0);
+    expect(listFollowGroups()).toEqual([]);
+  });
+
+  it("makes, renames and deletes a group of followed tags", () => {
+    addArtists(["alpha", "beta"]);
+    expect(createFollowGroup(" Artists ")).toBe(true);
+    expect(createFollowGroup("Artists")).toBe(false);
+    expect(createFollowGroup("  ")).toBe(false);
+    expect(listFollowGroups()).toEqual(["Artists"]);
+    setFollowGroup(["alpha"], "Artists");
+    expect(renameFollowGroup("Artists", "Painters")).toBe(true);
+    expect(renameFollowGroup("Painters", "Painters")).toBe(false);
+    expect(listFollowGroups()).toEqual(["Painters"]);
+    expect(load().artists.find((entry) => entry.tag === "alpha")?.group).toBe("Painters");
+    expect(deleteFollowGroup("Painters")).toBe(1);
     expect(listFollowGroups()).toEqual([]);
     expect(load().artists.every((entry) => entry.group === undefined)).toBe(true);
+    expect(load().artists).toHaveLength(2);
+  });
+
+  it("keeps the groups of collections apart from those of followed tags", () => {
+    addArtists(["alpha"]);
+    const first = createPlaylist("One");
+    const second = createDynamicCollection("Two", "cat");
+    expect(setCollectionGroup([first.id, second.id], "Wallpapers")).toBe(2);
+    expect(listCollectionGroups()).toEqual(["Wallpapers"]);
+    expect(listFollowGroups()).toEqual([]);
+    expect(createCollectionGroup("Empty")).toBe(true);
+    expect(listCollectionGroups()).toEqual(["Empty", "Wallpapers"]);
+    expect(renameCollectionGroup("Wallpapers", "Empty")).toBe(false);
+    expect(renameCollectionGroup("Wallpapers", "Walls")).toBe(true);
+    expect(load().collections.map((item) => item.group)).toEqual(["Walls", "Walls"]);
+    expect(setCollectionGroup([first.id], null)).toBe(1);
+    expect(deleteCollectionGroup("Walls")).toBe(1);
+    expect(listCollectionGroups()).toEqual(["Empty"]);
+    expect(load().collections).toHaveLength(2);
+    expect(load().collections.every((item) => item.group === undefined)).toBe(true);
+  });
+
+  it("does not name the group on a card under the tab of that group, and counts what is shown", () => {
+    const character = { tag: "hero", kind: "character" as const, group: "Team" };
+    expect(followCaption(character, "Team")).toBe("character");
+    expect(followCaption(character, "Other")).toBe("character · Team");
+    expect(artistsCountLabel(22, 22)).toBe("22 artists");
+    expect(artistsCountLabel(11, 22)).toBe("11 of 22 artists");
+    expect(artistsCountLabel(1, 1)).toBe("1 artist");
   });
 
   it("treats an entry without a kind as an artist, and filters by kind and group", () => {

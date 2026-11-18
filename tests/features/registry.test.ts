@@ -25,6 +25,7 @@ describe("FEATURES registry", () => {
       "downloads",
       "image-zoom",
       "gif-post",
+      "full-image",
       "sidebar-right",
       "motion",
       "feed-counter",

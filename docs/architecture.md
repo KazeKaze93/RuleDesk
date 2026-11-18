@@ -131,7 +131,7 @@ Contrast is tested: `tests/features/favorites-panel.test.ts` and the skin tests 
 
 ## The component kit
 
-`src/ui/kit`. The script's own interface is built only from these.
+`src/ui/kit`. The script's own interface is built only from these. `src/ui/groups.tsx` is built from them and shared by Following and Collections: the tabs of the groups, the "Move to group" menu and the dialogs of a group. Its menus are drawn under their buttons on an own page, not in `<body>`: an own page hides the rest of the body.
 
 | Component | For |
 |---|---|

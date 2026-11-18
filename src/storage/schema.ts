@@ -68,6 +68,8 @@ export const CollectionSchema = z.object({
   openedPostId: z.optional(z.int()),
   /** A saved search: the newest post id found by the last "Check for new". */
   newestPostId: z.optional(z.int()),
+  /** The group the user put the collection into on the Collections page. */
+  group: z.optional(z.string()),
 });
 
 /**

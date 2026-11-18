@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RuleDesk Web
 // @namespace    https://github.com/kazekaze93/ruledesk-web
-// @version      0.56.1
+// @version      0.57.0
 // @description  Collections, playlists, favorites, artist updates, and page tweaks for rule34.xxx
 // @downloadURL  https://raw.githubusercontent.com/KazeKaze93/RuleDesk/main/dist/ruledesk-web.user.js
 // @updateURL    https://raw.githubusercontent.com/KazeKaze93/RuleDesk/main/dist/ruledesk-web.user.js
@@ -15,7 +15,7 @@
 !function(){function e(e,t){return(t||"")+" (SystemJS Error#"+e+" https://github.com/systemjs/systemjs/blob/main/docs/errors.md#"+e+")"}function t(e,t){if(-1!==e.indexOf("\\")&&(e=e.replace(j,"/")),"/"===e[0]&&"/"===e[1])return t.slice(0,t.indexOf(":")+1)+e;if("."===e[0]&&("/"===e[1]||"."===e[1]&&("/"===e[2]||2===e.length&&(e+="/"))||1===e.length&&(e+="/"))||"/"===e[0]){var n,r=t.slice(0,t.indexOf(":")+1);if(n="/"===t[r.length+1]?"file:"!==r?(n=t.slice(r.length+2)).slice(n.indexOf("/")+1):t.slice(8):t.slice(r.length+("/"===t[r.length])),"/"===e[0])return t.slice(0,t.length-n.length-1)+e;for(var i=n.slice(0,n.lastIndexOf("/")+1)+e,o=[],s=-1,u=0;u<i.length;u++)-1!==s?"/"===i[u]&&(o.push(i.slice(s,u+1)),s=-1):"."===i[u]?"."!==i[u+1]||"/"!==i[u+2]&&u+2!==i.length?"/"===i[u+1]||u+1===i.length?u+=1:s=u:(o.pop(),u+=2):s=u;return-1!==s&&o.push(i.slice(s)),t.slice(0,t.length-n.length)+o.join("")}}function n(e,n){return t(e,n)||(-1!==e.indexOf(":")?e:t("./"+e,n))}function r(e,n,r,i,o){for(var s in e){var a=t(s,r)||s,f=e[s];if("string"==typeof f){var l=c(i,t(f,r)||f,o);l?n[a]=l:u("W1",s,f,"bare specifier did not resolve")}}}function i(e,t,i){var o;for(o in e.imports&&r(e.imports,i.imports,t,i,null),e.scopes||{}){var s=n(o,t);r(e.scopes[o],i.scopes[s]||(i.scopes[s]={}),t,i,s)}for(o in e.depcache||{})i.depcache[n(o,t)]=e.depcache[o];for(o in e.integrity||{})i.integrity[n(o,t)]=e.integrity[o]}function o(e,t){if(t[e])return e;var n=e.length;do{var r=e.slice(0,n+1);if(r in t)return r}while(-1!==(n=e.lastIndexOf("/",n-1)))}function s(e,t){var n=o(e,t);if(n){var r=t[n];if(null===r)return;if(!(e.length>n.length&&"/"!==r[r.length-1]))return r+e.slice(n.length);u("W2",n,r,"should have a trailing '/'")}}function u(t,n,r,i){console.warn(e(t,"Package target "+i+", resolving target '"+r+"' for "+n))}function c(e,t,n){for(var r=e.scopes,i=n&&o(n,r);i;){var u=s(t,r[i]);if(u)return u;i=o(i.slice(0,i.lastIndexOf("/")),r)}return s(t,e.imports)||-1!==t.indexOf(":")&&t}function a(){this[M]={}}function f(e){return e.id}function l(e,t,n,r){if(e.onload(n,t.id,t.d&&t.d.map(f),!!r),n)throw n}function d(t,n,r,i){var o=t[M][n];if(o)return o;var s=[],u=Object.create(null);P&&Object.defineProperty(u,P,{value:"Module"});var c=Promise.resolve().then((function(){return t.instantiate(n,r,i)})).then((function(r){if(!r)throw Error(e(2,"Module "+n+" did not instantiate"));var i=r[1]((function(e,t){o.h=!0;var n=!1;if("string"==typeof e)e in u&&u[e]===t||(u[e]=t,n=!0);else{for(var r in e)t=e[r],r in u&&u[r]===t||(u[r]=t,n=!0);e&&e.__esModule&&(u.__esModule=e.__esModule)}if(n)for(var i=0;i<s.length;i++){var c=s[i];c&&c(u)}return t}),2===r[1].length?{import:function(e,r){return t.import(e,n,r)},meta:t.createContext(n)}:void 0);return o.e=i.execute||function(){},[r[0],i.setters||[],r[2]||[]]}),(function(e){throw o.e=null,o.er=e,l(t,o,e,!0),e})),a=c.then((function(e){return Promise.all(e[0].map((function(r,i){var o=e[1][i],s=e[2][i];return Promise.resolve(t.resolve(r,n)).then((function(e){var r=d(t,e,n,s);return Promise.resolve(r.I).then((function(){return o&&(r.i.push(o),!r.h&&r.I||o(r.n)),r}))}))}))).then((function(e){o.d=e}))}));return o=t[M][n]={id:n,i:s,n:u,m:i,I:c,L:a,h:!1,d:void 0,e:void 0,er:void 0,E:void 0,C:void 0,p:void 0}}function h(e,t,n,r){if(!r[t.id])return r[t.id]=!0,Promise.resolve(t.L).then((function(){return t.p&&null!==t.p.e||(t.p=n),Promise.all(t.d.map((function(t){return h(e,t,n,r)})))})).catch((function(n){if(t.er)throw n;throw t.e=null,l(e,t,n,!1),n}))}function p(e,t){return t.C=h(e,t,t,{}).then((function(){return v(e,t,{})})).then((function(){return t.n}))}function v(e,t,n){function r(){try{var n=o.call(L);if(n)return n=n.then((function(){t.C=t.n,t.E=null,l(e,t,null,!0)}),(function(n){throw t.er=n,t.E=null,l(e,t,n,!0),n})),t.E=n;t.C=t.n,t.L=t.I=void 0}catch(r){throw t.er=r,r}finally{l(e,t,t.er,!0)}}if(!n[t.id]){if(n[t.id]=!0,!t.e){if(t.er)throw t.er;return t.E?t.E:void 0}var i,o=t.e;return t.e=null,t.d.forEach((function(r){try{var o=v(e,r,n);o&&(i=i||[]).push(o)}catch(s){throw t.er=s,l(e,t,s,!1),s}})),i?Promise.all(i).then(r):r()}}function m(){[].forEach.call(document.querySelectorAll("script"),(function(t){if(!t.sp)if("systemjs-module"===t.type){if(t.sp=!0,!t.src)return;System.import("import:"===t.src.slice(0,7)?t.src.slice(7):n(t.src,g)).catch((function(e){if(e.message.indexOf("https://github.com/systemjs/systemjs/blob/main/docs/errors.md#3")>-1){var n=document.createEvent("Event");n.initEvent("error",!1,!1),t.dispatchEvent(n)}return Promise.reject(e)}))}else if("systemjs-importmap"===t.type){t.sp=!0;var r=t.src?(System.fetch||fetch)(t.src,{integrity:t.integrity,priority:t.fetchPriority,passThrough:!0}).then((function(e){if(!e.ok)throw Error("Invalid status code: "+e.status);return e.text()})).catch((function(n){return n.message=e("W4","Error fetching systemjs-import map "+t.src)+"\n"+n.message,console.warn(n),"function"==typeof t.onerror&&t.onerror(),"{}"})):t.innerHTML;W=W.then((function(){return r})).then((function(n){!function(t,n,r){var o={};try{o=JSON.parse(n)}catch(s){console.warn(Error(e("W5","systemjs-importmap contains invalid JSON")+"\n\n"+n+"\n"))}i(o,r,t)}(N,n,t.src||g)}))}}))}var g,y="undefined"!=typeof Symbol,b="undefined"!=typeof self,S="undefined"!=typeof document,w=b?self:global;if(S){var O=document.querySelector("base[href]");O&&(g=O.href)}if(!g&&"undefined"!=typeof location){var E=(g=location.href.split("#")[0].split("?")[0]).lastIndexOf("/");-1!==E&&(g=g.slice(0,E+1))}var x,j=/\\/g,P=y&&Symbol.toStringTag,M=y?Symbol():"@",I=a.prototype;I.import=function(e,t,n){var r=this;return t&&"object"==typeof t&&(n=t,t=void 0),Promise.resolve(r.prepareImport()).then((function(){return r.resolve(e,t,n)})).then((function(e){var t=d(r,e,void 0,n);return t.C||p(r,t)}))},I.createContext=function(e){var t=this;return{url:e,resolve:function(n,r){return Promise.resolve(t.resolve(n,r||e))}}},I.onload=function(){},I.register=function(e,t,n){x=[e,t,n]},I.getRegister=function(){var e=x;return x=void 0,e};var L=Object.freeze(Object.create(null));w.System=new a;var C,R,W=Promise.resolve(),N={imports:{},scopes:{},depcache:{},integrity:{}},T=S;if(I.prepareImport=function(e){return(T||e)&&(m(),T=!1),W},I.getImportMap=function(){return JSON.parse(JSON.stringify(N))},S&&(m(),window.addEventListener("DOMContentLoaded",m)),I.addImportMap=function(e,t){i(e,t||g,N)},S){window.addEventListener("error",(function(e){J=e.filename,_=e.error}));var A=location.origin}I.createScript=function(e){var t=document.createElement("script");t.async=!0,e.indexOf(A+"/")&&(t.crossOrigin="anonymous");var n=N.integrity[e];return n&&(t.integrity=n),t.src=e,t};var J,_,k={},U=I.register;I.register=function(e,t){if(S&&"loading"===document.readyState&&"string"!=typeof e){var n=document.querySelectorAll("script[src]"),r=n[n.length-1];if(r){C=e;var i=this;R=setTimeout((function(){k[r.src]=[e,t],i.import(r.src)}))}}else C=void 0;return U.call(this,e,t)},I.instantiate=function(t,n){var r=k[t];if(r)return delete k[t],r;var i=this;return Promise.resolve(I.createScript(t)).then((function(r){return new Promise((function(o,s){r.addEventListener("error",(function(){s(Error(e(3,"Error loading "+t+(n?" from "+n:""))))})),r.addEventListener("load",(function(){if(document.head.removeChild(r),J===t)s(_);else{var e=i.getRegister(t);e&&e[0]===C&&clearTimeout(R),o(e)}})),document.head.appendChild(r)}))}))},I.shouldFetch=function(){return!1},"undefined"!=typeof fetch&&(I.fetch=fetch);var $=I.instantiate,B=/^(text|application)\/(x-)?javascript(;|$)/;I.instantiate=function(t,n,r){var i=this;return this.shouldFetch(t,n,r)?this.fetch(t,{credentials:"same-origin",integrity:N.integrity[t],meta:r}).then((function(r){if(!r.ok)throw Error(e(7,r.status+" "+r.statusText+", loading "+t+(n?" from "+n:"")));var o=r.headers.get("content-type");if(!o||!B.test(o))throw Error(e(4,'Unknown Content-Type "'+o+'", loading '+t+(n?" from "+n:"")));return r.text().then((function(e){return e.indexOf("//# sourceURL=")<0&&(e+="\n//# sourceURL="+t),(0,eval)(e),i.getRegister(t)}))})):$.apply(this,arguments)},I.resolve=function(n,r){return c(N,t(n,r=r||g)||n,r)||function(t,n){throw Error(e(8,"Unable to resolve bare specifier '"+t+(n?"' from "+n:"'")))}(n,r)};var F=I.instantiate;I.instantiate=function(e,t,n){var r=N.depcache[e];if(r)for(var i=0;i<r.length;i++)d(this,this.resolve(r[i],e),e);return F.call(this,e,t,n)},b&&"function"==typeof importScripts&&(I.instantiate=function(e){var t=this;return Promise.resolve().then((function(){return importScripts(e),t.getRegister(e)}))}),function(e){function t(t){return!e.hasOwnProperty(t)||!isNaN(t)&&t<e.length||a&&e[t]&&"undefined"!=typeof window&&e[t].parent===window}var n,r,i,o=e.System.constructor.prototype,s=o.import;o.import=function(o,u,c){return function(){for(var o in n=r=void 0,e)t(o)||(n?r||(r=o):n=o,i=o)}(),s.call(this,o,u,c)};var u=[[],function(){return{}}],c=o.getRegister;o.getRegister=function(){var o=c.call(this);if(o)return o;var s,a=function(o){var s,u,c=0;for(var a in e)if(!t(a)){if(0===c&&a!==n||1===c&&a!==r)return a;s?(i=a,u=o&&u||a):s=a===i,c++}return u}(this.firstGlobalProp);if(!a)return u;try{s=e[a]}catch(f){return u}return[[],function(e){return{execute:function(){e(s),e({default:s,__useDefault:!0})}}}]};var a="undefined"!=typeof navigator&&-1!==navigator.userAgent.indexOf("Trident")}("undefined"!=typeof self?self:global),function(e){var t=e.System.constructor.prototype,r=/^[^#?]+\.(css|html|json|wasm)([?#].*)?$/,i=t.shouldFetch.bind(t);t.shouldFetch=function(e){return i(e)||r.test(e)};var o=/^application\/json(;|$)/,s=/^text\/css(;|$)/,u=/^application\/wasm(;|$)/,c=t.fetch;t.fetch=function(t,r){return c(t,r).then((function(i){if(r.passThrough)return i;if(!i.ok)return i;var c=i.headers.get("content-type");return o.test(c)?i.json().then((function(e){return new Response(new Blob(['System.register([],function(e){return{execute:function(){e("default",'+JSON.stringify(e)+")}}})"],{type:"application/javascript"}))})):s.test(c)?i.text().then((function(e){return e=e.replace(/url\(\s*(?:(["'])((?:\\.|[^\n\\"'])+)\1|((?:\\.|[^\s,"'()\\])+))\s*\)/g,(function(e,r,i,o){return["url(",r,n(i||o,t),r,")"].join("")})),new Response(new Blob(["System.register([],function(e){return{execute:function(){var s=new CSSStyleSheet();s.replaceSync("+JSON.stringify(e)+');e("default",s)}}})'],{type:"application/javascript"}))})):u.test(c)?(WebAssembly.compileStreaming?WebAssembly.compileStreaming(i):i.arrayBuffer().then(WebAssembly.compile)).then((function(n){e.System.wasmModules||(e.System.wasmModules=Object.create(null)),e.System.wasmModules[t]=n;var r=[],i=[];return WebAssembly.Module.imports&&WebAssembly.Module.imports(n).forEach((function(e){var t=JSON.stringify(e.module);-1===r.indexOf(t)&&(r.push(t),i.push("function(m){i["+t+"]=m}"))})),new Response(new Blob(["System.register(["+r.join(",")+"],function(e){var i={};return{setters:["+i.join(",")+"],execute:function(){return WebAssembly.instantiate(System.wasmModules["+JSON.stringify(t)+"],i).then(function(m){e(m.exports)})}}})"],{type:"application/javascript"}))})):i}))}}("undefined"!=typeof self?self:global);var q="undefined"!=typeof Symbol&&Symbol.toStringTag;I.get=function(e){var t=this[M][e];if(t&&null===t.e&&!t.E)return t.er?null:t.n},I.set=function(t,n){try{new URL(t)}catch(s){console.warn(Error(e("W3",'"'+t+'" is not a valid URL to set in the module registry')))}var r;q&&"Module"===n[q]?r=n:(r=Object.assign(Object.create(null),n),q&&Object.defineProperty(r,q,{value:"Module"}));var i=Promise.resolve(r),o=this[M][t]||(this[M][t]={id:t,i:[],h:!1,d:[],e:null,er:void 0,E:void 0});return!o.e&&!o.E&&(Object.assign(o,{n:r,I:void 0,L:void 0,C:i}),r)},I.has=function(e){return!!this[M][e]},I.delete=function(e){var t=this[M],n=t[e];if(!n||n.p&&null!==n.p.e||n.E)return!1;var r=n.i;return n.d&&n.d.forEach((function(e){var t=e.i.indexOf(n);-1!==t&&e.i.splice(t,1)})),delete t[e],function(){var n=t[e];if(!n||!r||null!==n.e||n.E)return!1;r.forEach((function(e){n.i.push(e),e(n.n)})),r=null}};var D="undefined"!=typeof Symbol&&Symbol.iterator;I.entries=function(){var e,t,n=this,r=Object.keys(n[M]),i=0,o={next:function(){for(;void 0!==(t=r[i++])&&void 0===(e=n.get(t)););return{done:void 0===t,value:void 0!==t&&[t,e]}}};return o[D]=function(){return this},o}}();
 !function(t){function e(t){t.registerRegistry=Object.create(null),t.namedRegisterAliases=Object.create(null)}var r=t.System;e(r);var i,s,n=r.constructor.prototype,l=r.constructor,a=function(){l.call(this),e(this)};a.prototype=n,r.constructor=a;var o=n.register;n.register=function(t,e,r,n){if("string"!=typeof t)return o.apply(this,arguments);var l=[e,r,n];return this.registerRegistry[t]=l,i||(i=l,s=t),Promise.resolve().then((function(){i=null,s=null})),o.apply(this,[e,r,n])};var u=n.resolve;n.resolve=function(t,e){try{return u.call(this,t,e)}catch(r){if(t in this.registerRegistry)return this.namedRegisterAliases[t]||t;throw r}};var c=n.instantiate;n.instantiate=function(t,e,r){var i=this.registerRegistry[t];return i?(this.registerRegistry[t]=null,i):c.call(this,t,e,r)};var g=n.getRegister;n.getRegister=function(t){var e=g.call(this,t);s&&t&&(this.namedRegisterAliases[s]=t);var r=i||e;return i=null,s=null,r}}("undefined"!=typeof self?self:global);
 ;(typeof System!='undefined')&&(System=new System.constructor());
-System.register("./___monkey.entry.js", [],(function(exports,module){'use strict';return{execute:(function(){exports({E:normalizeArtistTag,H:getSyncState,I:getFeatureState,J:ensureStyleElement,K:buildOwnPageCss,O:getFeatureEnabled,P:applyHeaderLayout,Q:readFavoritesSyncMode,U:runFavoritesSync,W:createDynamicCollection,X:Q$1,Z:markFavoritesCurrent,a:mountVideoMarks,a3:resolveFavoritesUserId,a8:rdwPageHash,a9:createFavoritesSyncTabId,aH:d,aI:T,aJ:A,aK:Switch,aM:setTweaksEnabled,aP:setFeatureEnabled,aS:applyStickyHeader,aT:setAiHiddenEverywhere,aU:NumberField,aW:setUpdatesGroupSize,aX:getUpdatesGroupSize,aZ:setPlaylistChunkSize,a_:getPlaylistChunkSize,ab:readArtistsMirror,ac:listArtistTags,ad:writeArtistsMirror,ae:reloadFromStorage,af:save,ah:setSyncState,am:a,ao:applyTokenProperties,ap:resolveAppearancePalette,ar:menuRouteForPage,as:getSiteSkinCss,aw:$$1,b:mountCards,b0:setGridFavButtonsEnabled,b1:setGridFavButtonsVisible,b3:IconChevronRight,b4:IconChevronDown,b5:Card,b6:P$1,b9:SectionLabel,bB:createDefaultCustomTheme,bD:prepareBackgroundImageFile,bE:writeSiteBlacklist,bG:clearApiCredentials,bH:parseApiCredentials,bI:setApiCredentials,bL:toggleMaskToken,bM:maskHasToken,bN:buildFileName,bO:writeFileMask,bP:readFileMask,bQ:createDefaultStorage,bR:clearStorageCache,bS:clearFavsCache,bT:setAppearance,bV:createDefaultFavs,bW:parseFavsStrict,bX:object,bZ:optional,b_:string,ba:Select,bd:Segmented,bg:TextField,bh:Button,bi:clampBackgroundDim,bk:featurePanelLabel,bm:clearFeatureState,bn:applyCssOnlyFeatureEnabled,bo:isFeatureEnabled,bq:setFeatureChoiceValue,br:applyCssOnlyFeatureChoice,bs:getFeatureChoice,bt:createAutocompleteQuerier,bu:b,bv:readSiteBlacklist,bw:AutocompleteField,bx:Chip,by:ProgressBar,bz:Dialog,c:mountFavoriteVideoMarks,c$:removeArtists,c0:literal,c2:isSiteUrl,c3:stripLegacyPanelWindowSize,c4:migrateMarksFavToFavs,c6:extractFavIdsFromMarks,cA:setDynamicNewest,cC:collectionDetailHash,cD:readCoverMirror,cF:extractPostIdFromThumb,cG:IconCheck,cH:readCountMirror,cI:dynamicCollectionMarkHash,cJ:serialize,cL:getSeenPostId,cM:listFollowGroups,cN:followKindOf,cU:removeArtist,cV:completeLastQueryToken,cW:readLastQueryToken,cY:IconButton,cZ:IconX,c_:setFollowGroup,cb:hasApiCredentials,cc:getTweaksEnabled,cd:getGridFavButtonsEnabled,ce:aiHiddenEverywhere,cf:takeSettingsSection,cg:getFeatureChoiceValue,ch:getScreenPixelSize,ci:useEscape,cj:SelectionBar,ck:SearchField,cl:AiPostsToggle,cm:IconPlus,cn:EmptyState,co:resolveCollectionKind,cp:isUnfilteredQuery,cq:dynamicHasNew,cr:deleteCollection,cs:QueryField,ct:createPlaylist,cu:buildSearchUrl,cv:fetchNextPage,cw:setDynamicCover,cx:readFirstThumbUrls,cy:readResultCount,cz:setDynamicPostCount,d:detectPageKind,d0:rememberArtistSnapshot,d1:fetchArtistSnapshot,d2:addArtists,d3:readFavoriteIndex,d4:topFavoriteTags,d5:number,d6:int,d8:w$1,d9:downloadsAvailable,da:shuffleCollection,db:resetCollectionOrder,dc:Toast,dd:getCollectionOrder,de:listPlaylists,df:isDownloadBusy,dg:startDownload,dh:removePostsFromCollection,di:movePostInCollection,dj:renameCollection,dl:restorePosts,dn:collectionQueueHash,e:mountCommentsPage,f:applyAppearanceTheme,g:getAppearance,h:adoptSiteAiChoice,i:alignSiteAiFilter,j:currentListScope,k:skinIsOn,l:ensureDocumentStyles,m:mountGifMarks,p:loadFavSet,r:runFeaturesYielding,s:syncFavoritesPage,t:load,u:setFeatureState,v:scopeOfListUrl,w:setAiHiddenIn,x:parseRdwHash,y:yieldToMain,z:isCollectionDetailPage});var STORAGE_KEY = "ruledesk-web.storage";
+System.register("./___monkey.entry.js", [],(function(exports,module){'use strict';return{execute:(function(){exports({E:normalizeArtistTag,H:getSyncState,I:getFeatureState,J:ensureStyleElement,K:buildOwnPageCss,O:getFeatureEnabled,P:applyHeaderLayout,Q:readFavoritesSyncMode,U:runFavoritesSync,W:createDynamicCollection,X:Q$1,Z:markFavoritesCurrent,a:mountVideoMarks,a3:resolveFavoritesUserId,a8:rdwPageHash,a9:createFavoritesSyncTabId,aH:d,aI:T,aJ:A,aK:Switch,aM:setTweaksEnabled,aP:setFeatureEnabled,aS:applyStickyHeader,aT:setAiHiddenEverywhere,aU:NumberField,aW:setUpdatesGroupSize,aX:getUpdatesGroupSize,aZ:setPlaylistChunkSize,a_:getPlaylistChunkSize,ab:readArtistsMirror,ac:listArtistTags,ad:writeArtistsMirror,ae:reloadFromStorage,af:save,ah:setSyncState,am:a,ao:applyTokenProperties,ap:resolveAppearancePalette,ar:menuRouteForPage,as:getSiteSkinCss,aw:$$1,b:mountCards,b0:setGridFavButtonsEnabled,b1:setGridFavButtonsVisible,b3:IconChevronRight,b4:IconChevronDown,b5:Card,b6:P$1,b9:SectionLabel,bB:createDefaultCustomTheme,bD:prepareBackgroundImageFile,bE:writeSiteBlacklist,bG:clearApiCredentials,bH:parseApiCredentials,bI:setApiCredentials,bL:toggleMaskToken,bM:maskHasToken,bN:buildFileName,bO:writeFileMask,bP:readFileMask,bQ:createDefaultStorage,bR:clearStorageCache,bS:clearFavsCache,bT:setAppearance,bV:createDefaultFavs,bW:parseFavsStrict,bX:object,bZ:optional,b_:string,ba:Select,bd:Segmented,bg:TextField,bh:Button,bi:clampBackgroundDim,bk:featurePanelLabel,bm:clearFeatureState,bn:applyCssOnlyFeatureEnabled,bo:isFeatureEnabled,bq:setFeatureChoiceValue,br:applyCssOnlyFeatureChoice,bs:getFeatureChoice,bt:createAutocompleteQuerier,bu:b,bv:readSiteBlacklist,bw:AutocompleteField,bx:Chip,by:ProgressBar,bz:Dialog,c:mountFavoriteVideoMarks,c$:setFollowGroup,c0:literal,c2:isSiteUrl,c3:stripLegacyPanelWindowSize,c4:migrateMarksFavToFavs,c6:extractFavIdsFromMarks,cA:fetchNextPage,cB:setDynamicCover,cC:readFirstThumbUrls,cD:readResultCount,cE:setDynamicPostCount,cF:setDynamicNewest,cH:collectionDetailHash,cI:readCoverMirror,cK:extractPostIdFromThumb,cL:IconCheck,cM:readCountMirror,cN:dynamicCollectionMarkHash,cO:serialize,cQ:getSeenPostId,cR:listFollowGroups,cS:followKindOf,cZ:deleteFollowGroup,c_:renameFollowGroup,cb:hasApiCredentials,cc:getTweaksEnabled,cd:getGridFavButtonsEnabled,ce:aiHiddenEverywhere,cf:takeSettingsSection,cg:getFeatureChoiceValue,ch:getScreenPixelSize,ci:listCollectionGroups,cj:useEscape,ck:SelectionBar,cl:SearchField,cm:AiPostsToggle,cn:IconPlus,co:EmptyState,cp:deleteCollectionGroup,cq:renameCollectionGroup,cr:setCollectionGroup,cs:createCollectionGroup,ct:resolveCollectionKind,cu:isUnfilteredQuery,cv:dynamicHasNew,cw:deleteCollection,cx:QueryField,cy:createPlaylist,cz:buildSearchUrl,d:detectPageKind,d0:createFollowGroup,d1:removeArtist,d2:completeLastQueryToken,d3:readLastQueryToken,d5:IconButton,d6:IconX,d7:removeArtists,d8:rememberArtistSnapshot,d9:fetchArtistSnapshot,da:addArtists,db:j,dc:Popover,dd:IconDots,de:readFavoriteIndex,df:topFavoriteTags,dg:number,dh:int,dj:w$1,dk:downloadsAvailable,dl:shuffleCollection,dm:resetCollectionOrder,dn:Toast,dp:getCollectionOrder,dq:listPlaylists,dr:isDownloadBusy,ds:startDownload,dt:removePostsFromCollection,du:movePostInCollection,dv:renameCollection,dx:restorePosts,dz:collectionQueueHash,e:mountCommentsPage,f:applyAppearanceTheme,g:getAppearance,h:adoptSiteAiChoice,i:alignSiteAiFilter,j:currentListScope,k:skinIsOn,l:ensureDocumentStyles,m:mountGifMarks,p:loadFavSet,r:runFeaturesYielding,s:syncFavoritesPage,t:load,u:setFeatureState,v:scopeOfListUrl,w:setAiHiddenIn,x:parseRdwHash,y:yieldToMain,z:isCollectionDetailPage});var STORAGE_KEY = "ruledesk-web.storage";
 var STORAGE_BACKUP_KEY = exports("c5","ruledesk-web.storage.backup");
 var FAVS_STORAGE_KEY = exports("bU","ruledesk-web.favs");
 var DEBUG_KEY = "ruledesk-web.debug";
@@ -33,9 +33,9 @@ var APPEARANCE_THEME_CUSTOM = exports("b7","custom");
 var DEFAULT_APPEARANCE_THEME = APPEARANCE_THEME_LIGHT;
 var SITE_ORIGIN = exports("C","https://rule34.xxx");
 var SEARCH_PATH = exports("al","/index.php");
-var SEARCH_PAGE = exports("cQ","post");
-var SEARCH_SECTION = exports("cR","list");
-var SEARCH_SECTION_VIEW = exports("dm","view");
+var SEARCH_PAGE = exports("cV","post");
+var SEARCH_SECTION = exports("cW","list");
+var SEARCH_SECTION_VIEW = exports("dy","view");
 var SEARCH_PARAM_PAGE = exports("ai","page");
 var SEARCH_PARAM_TAGS = exports("D","tags");
 var FAVORITES_PAGE = exports("aj","favorites");
@@ -48,13 +48,13 @@ var VOTE_PARAM_PAGE = "page";
 var VOTE_PARAM_TYPE = "type";
 var VOTE_PAGE = "post";
 var VOTE_SECTION = "vote";
-var FETCH_CREDENTIALS = exports("d7","same-origin");
-var TAG_TYPE_INCLUDE = exports("cX","include");
+var FETCH_CREDENTIALS = exports("di","same-origin");
+var TAG_TYPE_INCLUDE = exports("d4","include");
 var TAG_TYPE_EXCLUDE = "exclude";
 var UPDATES_ID_PREFIX = "id:>";
 var IMPORT_SCHEMA_ERROR_PREFIX = exports("c1","File is not a RuleDesk Web export");
-var COLLECTION_KIND_SEARCH = exports("cE","search");
-var COLLECTION_KIND_POSTS = exports("cB","posts");
+var COLLECTION_KIND_SEARCH = exports("cJ","search");
+var COLLECTION_KIND_POSTS = exports("cG","posts");
 var DOCUMENT_STYLE_ID = "ruledesk-web-document-style";
 var UPDATES_BAR_ID = "ruledesk-web-updates-bar";
 var SITE_THEME_COOKIE_NAME = "theme";
@@ -125,7 +125,7 @@ var CSS_CLASS = exports("G",{
 var SITE_AI_FILTER_COOKIE_NAME = "filter_ai";
 /** Hash routes and DOM ids for RuleDesk own pages (replaces floating panel). */
 var RDW_HASH_PREFIX = "#rdw/";
-var RDW_ROUTE_COLLECTIONS = exports("dk","collections");
+var RDW_ROUTE_COLLECTIONS = exports("dw","collections");
 var RDW_ROUTE_FOLLOWING = "following";
 var RDW_ROUTE_SETTINGS = "settings";
 var RDW_ROUTE_STATS = exports("aq","stats");
@@ -190,14 +190,14 @@ var PANEL_UI_CLASS = exports("ax",{
 	settingsCaption: "rdw-settings-caption",
 	pageCard: "rdw-page-card"
 });
-var ARTISTS_EMPTY_TITLE = exports("cP","No followed artists yet");
-var ARTISTS_EMPTY_HINT = exports("cO","Follow artists with the Follow button next to their name in the tag list.");
-var ARTIST_FILTER_LABEL = exports("cS","Filter artists (several: space or comma)");
+var ARTISTS_EMPTY_TITLE = exports("cU","No followed artists yet");
+var ARTISTS_EMPTY_HINT = exports("cT","Follow artists with the Follow button next to their name in the tag list.");
+var ARTIST_FILTER_LABEL = exports("cX","Filter artists (several: space or comma)");
 var FEATURE_CHECKBOX_ID_PREFIX = exports("bl","rdw-feature-");
 var FEATURE_CHOICE_ID_PREFIX = exports("bp","rdw-feature-choice-");
 var UPDATES_GROUP_SIZE_ID = exports("aV","rdw-updates-group-size");
 var PLAYLIST_CHUNK_SIZE_ID = exports("aY","rdw-playlist-chunk-size");
-var ARTIST_FILTER_ID = exports("cT","rdw-artist-filter");
+var ARTIST_FILTER_ID = exports("cY","rdw-artist-filter");
 var GRID_FAV_CHECKBOX_ID = exports("a$","rdw-grid-fav-buttons");
 var TWEAKS_SWITCH_ID = exports("aL","rdw-tweaks-enabled");
 var TAG_GROUPS_PANEL_LABEL = "Collapse tags";
@@ -2693,7 +2693,9 @@ var CollectionSchema = /* @__PURE__ */ object({
 	/** A saved search: the newest post id on its first page when you last opened it. */
 	openedPostId: /* @__PURE__ */ optional(int()),
 	/** A saved search: the newest post id found by the last "Check for new". */
-	newestPostId: /* @__PURE__ */ optional(int())
+	newestPostId: /* @__PURE__ */ optional(int()),
+	/** The group the user put the collection into on the Collections page. */
+	group: /* @__PURE__ */ optional(/* @__PURE__ */ string())
 });
 /**
 * A followed artist. Everything except `tag` is what the Following page shows
@@ -4069,16 +4071,44 @@ function listArtistTags() {
 function followKindOf(entry) {
 	return entry.kind ?? "artist";
 }
-/** The names of the groups in use, in alphabetical order. */
-function listFollowGroups() {
-	const names = /* @__PURE__ */ new Set();
-	for (const entry of load().artists) if (entry.group !== void 0 && entry.group.length > 0) names.add(entry.group);
+/**
+* Groups of the Following page and of the Collections page. A followed tag or
+* a collection is in one group or in none: its `group` is the name. A group
+* made with nothing in it yet, or left empty, has no entry to carry its name,
+* so the names are kept as well, per page, in the feature state.
+*/
+var FOLLOW_GROUPS_STATE_ID = "follow-groups";
+var COLLECTION_GROUPS_STATE_ID = "collection-groups";
+function keptGroupNames(data, stateId) {
+	const kept = data.settings?.featureState?.[stateId];
+	if (!Array.isArray(kept)) return [];
+	const names = [];
+	for (const name of kept) if (typeof name === "string" && name.length > 0) names.push(name);
+	return names;
+}
+function writeKeptGroupNames(data, stateId, names) {
+	const settings = currentSettings(data);
+	data.settings = {
+		...settings,
+		featureState: {
+			...settings.featureState ?? {},
+			[stateId]: [...new Set(names)]
+		}
+	};
+}
+function sortedGroupNames(used, kept) {
+	const names = new Set(kept);
+	for (const name of used) if (name !== void 0 && name.length > 0) names.add(name);
 	return [...names].sort((a, b) => a.localeCompare(b));
+}
+/** The names of the groups of the Following page, in alphabetical order. */
+function listFollowGroups() {
+	const data = load();
+	return sortedGroupNames(data.artists.map((entry) => entry.group), keptGroupNames(data, FOLLOW_GROUPS_STATE_ID));
 }
 /**
 * Puts the given followed tags into a group, or takes them out of theirs when
-* `group` is null or blank. A group exists while something is in it. Returns
-* how many entries changed.
+* `group` is null or blank. Returns how many entries changed.
 */
 function setFollowGroup(tags, group) {
 	const name = group === null ? "" : group.trim();
@@ -4094,7 +4124,107 @@ function setFollowGroup(tags, group) {
 			group: name
 		} : rest;
 	});
-	if (changed > 0) save(data);
+	if (name.length > 0) writeKeptGroupNames(data, FOLLOW_GROUPS_STATE_ID, [...keptGroupNames(data, FOLLOW_GROUPS_STATE_ID), name]);
+	if (changed > 0 || name.length > 0) save(data);
+	return changed;
+}
+/** Makes a group with nothing in it. False when the name is blank or taken. */
+function createFollowGroup(group) {
+	const name = group.trim();
+	if (name.length === 0 || listFollowGroups().includes(name)) return false;
+	const data = reloadFromStorage();
+	writeKeptGroupNames(data, FOLLOW_GROUPS_STATE_ID, [...keptGroupNames(data, FOLLOW_GROUPS_STATE_ID), name]);
+	save(data);
+	return true;
+}
+/** Gives a group another name. False when the new name is blank or taken. */
+function renameFollowGroup(from, to) {
+	const name = to.trim();
+	if (name.length === 0 || name === from || listFollowGroups().includes(name)) return false;
+	const data = reloadFromStorage();
+	data.artists = data.artists.map((entry) => entry.group === from ? {
+		...entry,
+		group: name
+	} : entry);
+	writeKeptGroupNames(data, FOLLOW_GROUPS_STATE_ID, [...keptGroupNames(data, FOLLOW_GROUPS_STATE_ID).filter((kept) => kept !== from), name]);
+	save(data);
+	return true;
+}
+/** Deletes a group; what was in it is in no group. Returns how many entries that was. */
+function deleteFollowGroup(group) {
+	const data = reloadFromStorage();
+	let changed = 0;
+	data.artists = data.artists.map((entry) => {
+		if (entry.group !== group) return entry;
+		changed += 1;
+		const { group: _dropped, ...rest } = entry;
+		return rest;
+	});
+	writeKeptGroupNames(data, FOLLOW_GROUPS_STATE_ID, keptGroupNames(data, FOLLOW_GROUPS_STATE_ID).filter((kept) => kept !== group));
+	save(data);
+	return changed;
+}
+/** The names of the groups of the Collections page, in alphabetical order. */
+function listCollectionGroups() {
+	const data = load();
+	return sortedGroupNames(data.collections.map((item) => item.group), keptGroupNames(data, COLLECTION_GROUPS_STATE_ID));
+}
+/**
+* Puts the given collections into a group, or takes them out of theirs when
+* `group` is null or blank. Returns how many collections changed.
+*/
+function setCollectionGroup(ids, group) {
+	const name = group === null ? "" : group.trim();
+	const wanted = new Set(ids);
+	const data = reloadFromStorage();
+	let changed = 0;
+	data.collections = data.collections.map((item) => {
+		if (!wanted.has(item.id) || (item.group ?? "") === name) return item;
+		changed += 1;
+		const { group: _dropped, ...rest } = item;
+		return name.length > 0 ? {
+			...rest,
+			group: name
+		} : rest;
+	});
+	if (name.length > 0) writeKeptGroupNames(data, COLLECTION_GROUPS_STATE_ID, [...keptGroupNames(data, COLLECTION_GROUPS_STATE_ID), name]);
+	if (changed > 0 || name.length > 0) save(data);
+	return changed;
+}
+/** Makes a group of collections with nothing in it. False when the name is blank or taken. */
+function createCollectionGroup(group) {
+	const name = group.trim();
+	if (name.length === 0 || listCollectionGroups().includes(name)) return false;
+	const data = reloadFromStorage();
+	writeKeptGroupNames(data, COLLECTION_GROUPS_STATE_ID, [...keptGroupNames(data, COLLECTION_GROUPS_STATE_ID), name]);
+	save(data);
+	return true;
+}
+/** Gives a group of collections another name. False when the new name is blank or taken. */
+function renameCollectionGroup(from, to) {
+	const name = to.trim();
+	if (name.length === 0 || name === from || listCollectionGroups().includes(name)) return false;
+	const data = reloadFromStorage();
+	data.collections = data.collections.map((item) => item.group === from ? {
+		...item,
+		group: name
+	} : item);
+	writeKeptGroupNames(data, COLLECTION_GROUPS_STATE_ID, [...keptGroupNames(data, COLLECTION_GROUPS_STATE_ID).filter((kept) => kept !== from), name]);
+	save(data);
+	return true;
+}
+/** Deletes a group of collections; what was in it is in no group. Returns how many that was. */
+function deleteCollectionGroup(group) {
+	const data = reloadFromStorage();
+	let changed = 0;
+	data.collections = data.collections.map((item) => {
+		if (item.group !== group) return item;
+		changed += 1;
+		const { group: _dropped, ...rest } = item;
+		return rest;
+	});
+	writeKeptGroupNames(data, COLLECTION_GROUPS_STATE_ID, keptGroupNames(data, COLLECTION_GROUPS_STATE_ID).filter((kept) => kept !== group));
+	save(data);
 	return changed;
 }
 /** Follows several artist tags in one write. Unknown shapes are counted, not thrown. */
@@ -8288,7 +8418,7 @@ function useEscape(active, onEscape) {
 	}, [active]);
 }
 var AUTOCOMPLETE_PATH = "/public/autocomplete.php";
-var AUTOCOMPLETE_TAG_TYPE_ARTIST = exports("cK","artist");
+var AUTOCOMPLETE_TAG_TYPE_ARTIST = exports("cP","artist");
 var HTTP_TOO_MANY_REQUESTS$1 = 429;
 var ABORT_ERROR_NAME = "AbortError";
 var AutocompleteResponseSchema = /* @__PURE__ */ array(/* @__PURE__ */ object({
@@ -8592,15 +8722,15 @@ function isBlacklisted(tags, score, rating, list) {
 	}
 	return false;
 }
-var FEATURE_ID$19 = "blacklist-hide";
-var FEATURE_LABEL$19 = "Hide blacklisted posts";
+var FEATURE_ID$20 = "blacklist-hide";
+var FEATURE_LABEL$20 = "Hide blacklisted posts";
 var FEATURE_PAGES$14 = ["list"];
-var BODY_FEATURE_CLASS$3 = featureBodyClass(FEATURE_ID$19);
+var BODY_FEATURE_CLASS$3 = featureBodyClass(FEATURE_ID$20);
 var CLASS_BLACKLISTED$1 = "rdw-blacklisted";
 var SCORE_TOKEN_PREFIX$3 = "score:";
 var RATING_TOKEN_PREFIX$2 = "rating:";
 var WHITESPACE_SPLIT = /\s+/;
-var FEATURE_CSS$16 = `
+var FEATURE_CSS$17 = `
 body.${BODY_FEATURE_CLASS$3} span.thumb.${CLASS_BLACKLISTED$1} {
   display: none !important;
 }
@@ -8650,12 +8780,12 @@ function mountBlacklistHide(ctx) {
 	ensureSubscriptions();
 }
 var blacklistHideFeature = {
-	id: FEATURE_ID$19,
-	label: FEATURE_LABEL$19,
+	id: FEATURE_ID$20,
+	label: FEATURE_LABEL$20,
 	pages: [...FEATURE_PAGES$14],
 	defaultEnabled: true,
 	cssOnly: true,
-	css: FEATURE_CSS$16,
+	css: FEATURE_CSS$17,
 	mount: mountBlacklistHide
 };
 /**
@@ -8666,8 +8796,8 @@ var blacklistHideFeature = {
 * addresses. A retry happens only after a real load error, at most once per
 * host, and only for an address on one of these hosts.
 */
-var FEATURE_ID$18 = "cdn-fallback";
-var FEATURE_LABEL$18 = "Retry a failed post image on other servers";
+var FEATURE_ID$19 = "cdn-fallback";
+var FEATURE_LABEL$19 = "Retry a failed post image on other servers";
 var FEATURE_PAGES$13 = ["post"];
 var POST_IMAGE_SELECTOR$1 = "img#image";
 var EVENT_ERROR = "error";
@@ -8716,8 +8846,8 @@ function mountCdnFallback(_ctx) {
 	});
 }
 var cdnFallbackFeature = {
-	id: FEATURE_ID$18,
-	label: FEATURE_LABEL$18,
+	id: FEATURE_ID$19,
+	label: FEATURE_LABEL$19,
 	pages: [...FEATURE_PAGES$13],
 	defaultEnabled: true,
 	css: "",
@@ -9581,8 +9711,8 @@ function restoreDownloads() {
 * while a job exists. It shows what is being saved and holds Pause, Resume
 * and Cancel.
 */
-var FEATURE_ID$17 = DOWNLOADS_FEATURE_ID;
-var FEATURE_LABEL$17 = "Download manager";
+var FEATURE_ID$18 = DOWNLOADS_FEATURE_ID;
+var FEATURE_LABEL$18 = "Download manager";
 var FEATURE_PAGES$12 = [
 	"list",
 	"post",
@@ -9604,7 +9734,7 @@ var LABEL_PAUSE = "Pause";
 var LABEL_RESUME = "Resume";
 var LABEL_CANCEL = "Cancel";
 var LABEL_CLOSE$1 = "Close";
-var FEATURE_CSS$15 = `
+var FEATURE_CSS$16 = `
 #${DOWNLOADS_PANEL_ID} {
   position: fixed;
   right: ${String(PANEL_INSET_PX)}px;
@@ -9717,11 +9847,11 @@ function mountDownloads(_ctx) {
 	restoreDownloads();
 }
 var downloadsFeature = {
-	id: FEATURE_ID$17,
-	label: FEATURE_LABEL$17,
+	id: FEATURE_ID$18,
+	label: FEATURE_LABEL$18,
 	pages: [...FEATURE_PAGES$12],
 	defaultEnabled: true,
-	css: `${FEATURE_CSS$15}
+	css: `${FEATURE_CSS$16}
 ${GRID_SELECT_CSS}`,
 	mount: mountDownloads
 };
@@ -12174,8 +12304,8 @@ async function handleFavToggleClick(button, postId) {
 	applyFavButtonState(button, "error", postId, UI_TEXT.cardFavErrorRequest);
 	log.warn("Favorite failed", postId, result);
 }
-var FEATURE_ID$16 = "playlist-menu";
-var FEATURE_LABEL$16 = "Add to collection button";
+var FEATURE_ID$17 = "playlist-menu";
+var FEATURE_LABEL$17 = "Add to collection button";
 var FEATURE_PAGES$11 = [
 	"list",
 	"post",
@@ -12204,9 +12334,9 @@ var FOCUS_OUTLINE_OFFSET = "2px";
 var EVENT_KEYDOWN$1 = "keydown";
 var EVENT_POINTERDOWN = "pointerdown";
 var KEY_ESCAPE = "Escape";
-var BODY_SELECTOR$3 = `body.${featureBodyClass(FEATURE_ID$16)}`;
-var FEATURE_CSS$14 = `
-${BODY_SELECTOR$3} .${CLASS_ADD} {
+var BODY_SELECTOR$4 = `body.${featureBodyClass(FEATURE_ID$17)}`;
+var FEATURE_CSS$15 = `
+${BODY_SELECTOR$4} .${CLASS_ADD} {
   position: absolute;
   top: ${String(BUTTON_BELOW_FAV_TOP_PX)}px;
   right: ${String(BUTTON_OFFSET_PX)}px;
@@ -12233,30 +12363,30 @@ ${BODY_SELECTOR$3} .${CLASS_ADD} {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
   opacity: 0;
 }
-${BODY_SELECTOR$3} ${FAVORITE_THUMB_SELECTOR} > .${CLASS_ADD} {
+${BODY_SELECTOR$4} ${FAVORITE_THUMB_SELECTOR} > .${CLASS_ADD} {
   position-anchor: ${FAVORITE_IMAGE_ANCHOR_NAME};
 }
-${BODY_SELECTOR$3}.${FAVORITES_SELECTING_BODY_CLASS} ${FAVORITE_THUMB_SELECTOR} > .${CLASS_ADD} {
+${BODY_SELECTOR$4}.${FAVORITES_SELECTING_BODY_CLASS} ${FAVORITE_THUMB_SELECTOR} > .${CLASS_ADD} {
   display: none;
 }
-${BODY_SELECTOR$3} .${THUMB_CLASS}:hover .${CLASS_ADD},
-${BODY_SELECTOR$3} .${CLASS_ADD}:focus-visible {
+${BODY_SELECTOR$4} .${THUMB_CLASS}:hover .${CLASS_ADD},
+${BODY_SELECTOR$4} .${CLASS_ADD}:focus-visible {
   opacity: 0.65;
 }
-${BODY_SELECTOR$3} .${THUMB_CLASS} .${CLASS_ADD}:hover,
-${BODY_SELECTOR$3} .${CLASS_ADD}:focus-visible {
+${BODY_SELECTOR$4} .${THUMB_CLASS} .${CLASS_ADD}:hover,
+${BODY_SELECTOR$4} .${CLASS_ADD}:focus-visible {
   opacity: 1;
 }
-${BODY_SELECTOR$3} .${CLASS_ADD}:focus-visible {
+${BODY_SELECTOR$4} .${CLASS_ADD}:focus-visible {
   outline: ${FOCUS_OUTLINE};
   outline-offset: ${FOCUS_OUTLINE_OFFSET};
 }
-${BODY_SELECTOR$3} .${CLASS_ADD}.${CLASS_ADD_IN} {
+${BODY_SELECTOR$4} .${CLASS_ADD}.${CLASS_ADD_IN} {
   background: #ffd75e;
   border-color: #c79a00;
   color: #5c4500;
 }
-${BODY_SELECTOR$3} .${CLASS_MENU} {
+${BODY_SELECTOR$4} .${CLASS_MENU} {
   box-sizing: border-box;
   width: ${String(MENU_WIDTH_PX$1)}px;
   max-width: calc(100vw - ${String(8)}px);
@@ -12267,7 +12397,7 @@ ${BODY_SELECTOR$3} .${CLASS_MENU} {
   color: var(--rdw-text);
   font: 12px/1.35 var(--rdw-font);
 }
-${BODY_SELECTOR$3} .${CLASS_MENU}.${CLASS_MENU_POPUP} {
+${BODY_SELECTOR$4} .${CLASS_MENU}.${CLASS_MENU_POPUP} {
   position: fixed;
   z-index: ${String(MENU_Z_INDEX$1)};
   box-shadow: var(--rdw-shadow-2);
@@ -12501,11 +12631,11 @@ function mountPlaylistMenu(ctx) {
 	ensureListSubscriptions$1();
 }
 var playlistMenuFeature = {
-	id: FEATURE_ID$16,
-	label: FEATURE_LABEL$16,
+	id: FEATURE_ID$17,
+	label: FEATURE_LABEL$17,
 	pages: [...FEATURE_PAGES$11],
 	defaultEnabled: true,
-	css: FEATURE_CSS$14,
+	css: FEATURE_CSS$15,
 	mount: mountPlaylistMenu
 };
 /**
@@ -13399,8 +13529,8 @@ async function runFavoritesSync(options) {
 		};
 	}
 }
-var FEATURE_ID$15 = "favorites-bulk";
-var FEATURE_LABEL$15 = "Bulk remove favorites";
+var FEATURE_ID$16 = "favorites-bulk";
+var FEATURE_LABEL$16 = "Bulk remove favorites";
 var FEATURE_PAGES$10 = ["favorites"];
 var ROOT_ID$2 = "rdw-favorites-bulk";
 var ROOT_CLASS$2 = "rdw-favorites-bulk";
@@ -13484,9 +13614,9 @@ var CHECK_SIZE = "1.25rem";
 var CHECK_INSET = "0.25rem";
 var CHECK_Z_INDEX = 2;
 var CHECK_FONT_SIZE = "0.75rem";
-var BODY_CLASS$9 = featureBodyClass(FEATURE_ID$15);
+var BODY_CLASS$9 = featureBodyClass(FEATURE_ID$16);
 var BODY_SELECTING_CLASS = `${BODY_CLASS$9}-selecting`;
-var FEATURE_CSS$13 = `
+var FEATURE_CSS$14 = `
 /* While posts are being selected a thumbnail does not lift under the pointer:
    lifted, it stands out of the frame of a selected post. */
 body.${BODY_SELECTING_CLASS} span.thumb:hover img {
@@ -14379,11 +14509,11 @@ function mountFavoritesBulk(_ctx) {
 	}), root);
 }
 var favoritesBulkFeature = {
-	id: FEATURE_ID$15,
-	label: FEATURE_LABEL$15,
+	id: FEATURE_ID$16,
+	label: FEATURE_LABEL$16,
 	pages: [...FEATURE_PAGES$10],
 	defaultEnabled: true,
-	css: FEATURE_CSS$13,
+	css: FEATURE_CSS$14,
 	mount: mountFavoritesBulk
 };
 /**
@@ -15269,8 +15399,8 @@ function mountFeedMerge(options) {
 	pump();
 	return true;
 }
-var FEATURE_ID$14 = "feed";
-var FEATURE_LABEL$14 = "Feed in site menu";
+var FEATURE_ID$15 = "feed";
+var FEATURE_LABEL$15 = "Feed in site menu";
 var FEATURE_PAGES$9 = [
 	"list",
 	"post",
@@ -15306,8 +15436,8 @@ var NEW_PLAQUE_LEFT_PX = 6;
 var NEW_PLAQUE_TOP_PX = 6;
 var EVENT_PAGESHOW$1 = "pageshow";
 var EVENT_CLICK$2 = "click";
-var BODY_CLASS$8 = featureBodyClass(FEATURE_ID$14);
-var FEATURE_CSS$12 = `
+var BODY_CLASS$8 = featureBodyClass(FEATURE_ID$15);
+var FEATURE_CSS$13 = `
 body.${BODY_CLASS$8} span.thumb.new.${THUMB_CLASS} {
   position: relative;
 }
@@ -15471,11 +15601,11 @@ function mountFeed(ctx) {
 	});
 }
 var feedFeature = {
-	id: FEATURE_ID$14,
-	label: FEATURE_LABEL$14,
+	id: FEATURE_ID$15,
+	label: FEATURE_LABEL$15,
 	pages: [...FEATURE_PAGES$9],
 	defaultEnabled: true,
-	css: `${FEATURE_CSS$12}\n${FEED_MERGE_CSS}`,
+	css: `${FEATURE_CSS$13}\n${FEED_MERGE_CSS}`,
 	mount: mountFeed
 };
 /**
@@ -15487,14 +15617,14 @@ var feedFeature = {
 * The answer is kept for a while, so going from page to page does not repeat
 * it. With several feed groups only the first is counted.
 */
-var FEATURE_ID$13 = "feed-counter";
-var FEATURE_LABEL$13 = "New posts counter beside Feed";
+var FEATURE_ID$14 = "feed-counter";
+var FEATURE_LABEL$14 = "New posts counter beside Feed";
 var FEED_COUNT_CLASS = "rdw-feed-count";
 var FEED_COUNT_CACHE_KEY = "ruledesk-web.feed-count";
-var BODY_CLASS$7 = featureBodyClass(FEATURE_ID$13);
+var BODY_CLASS$7 = featureBodyClass(FEATURE_ID$14);
 /** Every post of the page is new: there are more behind it. */
 var MORE_MARK = "+";
-var FEATURE_CSS$11 = `
+var FEATURE_CSS$12 = `
 body.${BODY_CLASS$7} .${FEED_COUNT_CLASS} {
   display: inline-block;
   min-width: 16px;
@@ -15606,8 +15736,8 @@ function mountFeedCounter(_ctx) {
 	});
 }
 var feedCounterFeature = {
-	id: FEATURE_ID$13,
-	label: FEATURE_LABEL$13,
+	id: FEATURE_ID$14,
+	label: FEATURE_LABEL$14,
 	pages: [
 		"list",
 		"post",
@@ -15616,7 +15746,7 @@ var feedCounterFeature = {
 	],
 	defaultEnabled: true,
 	settingsCaption: "Asks the site for the first page of the feed when a page loads, at most once in 15 minutes. Counts the first feed group only.",
-	css: FEATURE_CSS$11,
+	css: FEATURE_CSS$12,
 	mount: mountFeedCounter
 };
 /** Read-only helpers for native post-page markup used by the side panel. */
@@ -15949,11 +16079,11 @@ function readCommentCount() {
 * The one thing this asks the site for is the GIF itself, the file of the
 * post the user has opened.
 */
-var FEATURE_ID$12 = "gif-post";
-var FEATURE_LABEL$12 = "Play GIFs on the post page";
+var FEATURE_ID$13 = "gif-post";
+var FEATURE_LABEL$13 = "Play GIFs on the post page";
 var GIF_PATH = /\.gif$/i;
 var GIF_PLAYING_ATTRIBUTE = "data-rdw-gif";
-function pathOf(url) {
+function pathOf$1(url) {
 	try {
 		return new URL(url, window.location.href).pathname;
 	} catch {
@@ -15962,7 +16092,7 @@ function pathOf(url) {
 }
 /** True when the address ends in `.gif`, whatever follows the question mark. */
 function isGifUrl(url) {
-	return GIF_PATH.test(pathOf(url));
+	return GIF_PATH.test(pathOf$1(url));
 }
 /**
 * Points the picture of the page at the original GIF. Returns true when it
@@ -15978,16 +16108,113 @@ function playGifOnPage(root = document, originalHref) {
 	return true;
 }
 function mountGifPost(_ctx) {
-	if (document.body.classList.contains(featureBodyClass(FEATURE_ID$12))) playGifOnPage();
+	if (document.body.classList.contains(featureBodyClass(FEATURE_ID$13))) playGifOnPage();
 }
 var gifPostFeature = {
-	id: FEATURE_ID$12,
-	label: FEATURE_LABEL$12,
+	id: FEATURE_ID$13,
+	label: FEATURE_LABEL$13,
 	pages: ["post"],
 	defaultEnabled: true,
 	settingsCaption: "The site shows a still copy of a GIF until its original is opened. With this on, the original is loaded at once.",
 	css: "",
 	mount: mountGifPost
+};
+/**
+* The picture of a post in its full size (the designer's variant C,
+* 18.11.2026; a request Kaze agreed to the same day).
+*
+* The site puts a scaled-down copy on the page, some 850 px wide, and keeps
+* the file itself behind the "Original image" link. With this on, the file is
+* loaded and put in place of the copy: sharper, and as wide as the room
+* between the columns lets it be, never wider than it is. It is off unless
+* turned on: an original is often several megabytes.
+*
+* The copy stays on the page until the original has come whole, so nothing is
+* blank meanwhile and the page changes once. Beside the panel the block of the
+* picture gives way, not the panel: the row is kept from wrapping, or a wide
+* original would push the panel under itself. The one thing asked of the site
+* is the file of the post the user has opened, and it is asked once.
+*/
+var FEATURE_ID$12 = "full-image";
+var FEATURE_LABEL$12 = "Load full-size image";
+var FEATURE_CAPTION$1 = "Sharper and larger, but the page opens slower: originals are often several MB.";
+/** On the picture once it shows the original. */
+var FULL_IMAGE_ATTRIBUTE = "data-rdw-full";
+/** What an original has to be for this: a still picture. A GIF is the other feature's. */
+var STILL_PATH = /\.(?:jpe?g|png|webp|bmp)$/i;
+/** As in post-actions.ts: from this width the panel stands beside the picture. */
+var WIDE_MEDIA_QUERY$1 = "(min-width: 1100px)";
+var BODY_SELECTOR$3 = `body.${featureBodyClass(FEATURE_ID$12)}`;
+var FULL_SELECTOR = `img#${IMAGE_ID}[${FULL_IMAGE_ATTRIBUTE}]`;
+var FEATURE_CSS$11 = `
+${BODY_SELECTOR$3} ${FULL_SELECTOR} {
+  width: auto !important;
+  height: auto !important;
+  max-width: 100%;
+}
+@media ${WIDE_MEDIA_QUERY$1} {
+  ${BODY_SELECTOR$3} div#post-view > div#right-col {
+    flex-grow: 1;
+    min-width: 0;
+  }
+  ${BODY_SELECTOR$3} div.flexi:has(${FULL_SELECTOR}) {
+    flex-wrap: nowrap;
+  }
+  ${BODY_SELECTOR$3} div.flexi > :has(${FULL_SELECTOR}) {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+  ${BODY_SELECTOR$3} div.flexi:has(${FULL_SELECTOR}) > #${POST_ACTIONS_ID} {
+    flex-shrink: 0;
+  }
+}
+`.trim();
+function pathOf(url) {
+	try {
+		return new URL(url, window.location.href).pathname;
+	} catch {
+		return url;
+	}
+}
+/**
+* The address of the original when it is worth loading: a still picture, and
+* not the one the page already shows. Null otherwise.
+*/
+function fullImageUrl(image, originalHref) {
+	if (originalHref.length === 0 || isGifUrl(originalHref)) return null;
+	const path = pathOf(originalHref);
+	if (!STILL_PATH.test(path) || pathOf(image.currentSrc || image.src) === path) return null;
+	return originalHref;
+}
+/**
+* Loads the original beside the page and, once it has come, shows it in place
+* of the copy. Returns true when the loading was started.
+*/
+function loadFullImage(root = document, originalHref) {
+	const image = root.querySelector(`img#${IMAGE_ID}`);
+	if (!(image instanceof HTMLImageElement)) return false;
+	const url = fullImageUrl(image, findOriginalAnchor()?.href ?? "");
+	if (url === null) return false;
+	const loader = new Image();
+	loader.addEventListener("load", () => {
+		if (!image.isConnected) return;
+		image.setAttribute(FULL_IMAGE_ATTRIBUTE, "");
+		image.src = url;
+	});
+	loader.src = url;
+	return true;
+}
+function mountFullImage(_ctx) {
+	if (document.body.classList.contains(featureBodyClass(FEATURE_ID$12))) loadFullImage();
+}
+var fullImageFeature = {
+	id: FEATURE_ID$12,
+	label: FEATURE_LABEL$12,
+	pages: ["post"],
+	defaultEnabled: false,
+	settingsCaption: FEATURE_CAPTION$1,
+	css: FEATURE_CSS$11,
+	mount: mountFullImage
 };
 var FEATURE_ID$11 = "grid-density";
 var COMPACT_PX = 150;
@@ -21267,6 +21494,7 @@ var FEATURES = exports("bj",[
 	downloadsFeature,
 	imageZoomFeature,
 	gifPostFeature,
+	fullImageFeature,
 	sidebarRightFeature,
 	motionFeature,
 	feedCounterFeature,
@@ -25601,12 +25829,12 @@ startEarlyLayout();
 whenDomReady(() => {
 	applyLayoutBeforePaint();
 	scheduleAfterFirstPaint(() => {
-		module.import('./app-IRmI9Qth-CKE1niYO.js').then(({ startApp }) => {
+		module.import('./app-B906DLKQ-B7jq8PUu.js').then(({ startApp }) => {
 			startApp();
 		});
 	});
 });})}}));
-System.register("./app-IRmI9Qth-CKE1niYO.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var yieldToMain,detectPageKind,mountGifMarks,mountVideoMarks,mountCards,syncFavoritesPage,mountFavoriteVideoMarks,mountCommentsPage,runFeaturesYielding,getAppearance,applyAppearanceTheme,adoptSiteAiChoice,alignSiteAiFilter,currentListScope,skinIsOn,ensureDocumentStyles,SITE_SELECTORS,FOLLOW_KIND_ARTIST,FOLLOW_KIND_CHARACTER,FOLLOW_KIND_COPYRIGHT,loadFavSet,log,load,setFeatureState,scopeOfListUrl,setAiHiddenIn,parseRdwHash,AI_SCOPE_FOLLOWING,isCollectionDetailPage,AI_SCOPE_COLLECTIONS,SITE_ORIGIN,SEARCH_PARAM_TAGS,normalizeArtistTag,CSS_CLASS,getSyncState,getFeatureState,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,HEADER_SELECTOR$1,RDW_OWN_PAGE_CLASS,MENU_ITEM_ID,getFeatureEnabled,applyHeaderLayout,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,runFavoritesSync,UI_TEXT,createDynamicCollection,Q$1,RDW_PAGE_ROOT_ID,markFavoritesCurrent,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,resolveFavoritesUserId,RDW_HASH_STATS,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,NAV_DUE_CLASS,rdwPageHash,createFavoritesSyncTabId,APPEARANCE_BACKGROUND_KEY,readArtistsMirror,listArtistTags,writeArtistsMirror,reloadFromStorage,save,CURRENT_PAGE_CLASS,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,a,OverlayInPlace,applyTokenProperties,resolveAppearancePalette,RDW_ROUTE_STATS,menuRouteForPage,getSiteSkinCss,KIT_CONTROL_HEIGHT_VAR,KIT_CONTROL_FONT_VAR,MOTION_PAGE_CSS,$$1,PANEL_UI_CLASS,TOKEN_VAR,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,SITE_LIGHT_C_BG,SITE_LIGHT_C_BG_ALT,SITE_DARK_C_BG,SITE_DARK_C_BORDER,APPEARANCE_BACKGROUND_TOO_LARGE;return{setters:[function(module){yieldToMain=module.y;detectPageKind=module.d;mountGifMarks=module.m;mountVideoMarks=module.a;mountCards=module.b;syncFavoritesPage=module.s;mountFavoriteVideoMarks=module.c;mountCommentsPage=module.e;runFeaturesYielding=module.r;getAppearance=module.g;applyAppearanceTheme=module.f;adoptSiteAiChoice=module.h;alignSiteAiFilter=module.i;currentListScope=module.j;skinIsOn=module.k;ensureDocumentStyles=module.l;SITE_SELECTORS=module.S;FOLLOW_KIND_ARTIST=module.F;FOLLOW_KIND_CHARACTER=module.n;FOLLOW_KIND_COPYRIGHT=module.o;loadFavSet=module.p;log=module.q;load=module.t;setFeatureState=module.u;scopeOfListUrl=module.v;setAiHiddenIn=module.w;parseRdwHash=module.x;AI_SCOPE_FOLLOWING=module.A;isCollectionDetailPage=module.z;AI_SCOPE_COLLECTIONS=module.B;SITE_ORIGIN=module.C;SEARCH_PARAM_TAGS=module.D;normalizeArtistTag=module.E;CSS_CLASS=module.G;getSyncState=module.H;getFeatureState=module.I;ensureStyleElement=module.J;RDW_OWN_PAGE_STYLE_ID=module.R;buildOwnPageCss=module.K;HEADER_SELECTOR$1=module.L;RDW_OWN_PAGE_CLASS=module.M;MENU_ITEM_ID=module.N;getFeatureEnabled=module.O;applyHeaderLayout=module.P;readFavoritesSyncMode=module.Q;FAVORITES_SYNC_MODE_FULL=module.T;runFavoritesSync=module.U;UI_TEXT=module.V;createDynamicCollection=module.W;Q$1=module.X;RDW_PAGE_ROOT_ID=module.Y;markFavoritesCurrent=module.Z;NAVBAR_SELECTOR=module._;FEED_MENU_ITEM_ID=module.$;RDW_HASH_COLLECTIONS=module.a0;MENU_LABEL=module.a1;RDW_HASH_FOLLOWING=module.a2;resolveFavoritesUserId=module.a3;RDW_HASH_STATS=module.a4;MY_FAVORITES_CONTAINER_ID=module.a5;RDW_HASH_SETTINGS=module.a6;NAV_DUE_CLASS=module.a7;rdwPageHash=module.a8;createFavoritesSyncTabId=module.a9;APPEARANCE_BACKGROUND_KEY=module.aa;readArtistsMirror=module.ab;listArtistTags=module.ac;writeArtistsMirror=module.ad;reloadFromStorage=module.ae;save=module.af;CURRENT_PAGE_CLASS=module.ag;setSyncState=module.ah;SEARCH_PARAM_PAGE=module.ai;FAVORITES_PAGE=module.aj;FAVORITES_SECTION_VIEW=module.ak;SEARCH_PATH=module.al;a=module.am;OverlayInPlace=module.an;applyTokenProperties=module.ao;resolveAppearancePalette=module.ap;RDW_ROUTE_STATS=module.aq;menuRouteForPage=module.ar;getSiteSkinCss=module.as;KIT_CONTROL_HEIGHT_VAR=module.at;KIT_CONTROL_FONT_VAR=module.au;MOTION_PAGE_CSS=module.av;$$1=module.aw;PANEL_UI_CLASS=module.ax;TOKEN_VAR=module.ay;RDW_THEME_ATTR=module.az;APPEARANCE_THEME_SITE=module.aA;APPEARANCE_THEME_SITE_DARK=module.aB;SITE_LIGHT_C_BG=module.aC;SITE_LIGHT_C_BG_ALT=module.aD;SITE_DARK_C_BG=module.aE;SITE_DARK_C_BORDER=module.aF;APPEARANCE_BACKGROUND_TOO_LARGE=module.aG;}],execute:(function(){exports({_:writeViewMode,a:installSiteMenu,c:rememberBackup,g:readViewMode,h:isViewMode,i:navigateToRdwRoute,n:loadBackground,o:markBackupDue,r:saveBackground,s:currentBackupStatus,startApp:startApp,t:clearBackground});/** Matches host.tsx page title class (owned there; styled here for site polish). */
+System.register("./app-B906DLKQ-B7jq8PUu.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var yieldToMain,detectPageKind,mountGifMarks,mountVideoMarks,mountCards,syncFavoritesPage,mountFavoriteVideoMarks,mountCommentsPage,runFeaturesYielding,getAppearance,applyAppearanceTheme,adoptSiteAiChoice,alignSiteAiFilter,currentListScope,skinIsOn,ensureDocumentStyles,SITE_SELECTORS,FOLLOW_KIND_ARTIST,FOLLOW_KIND_CHARACTER,FOLLOW_KIND_COPYRIGHT,loadFavSet,log,load,setFeatureState,scopeOfListUrl,setAiHiddenIn,parseRdwHash,AI_SCOPE_FOLLOWING,isCollectionDetailPage,AI_SCOPE_COLLECTIONS,SITE_ORIGIN,SEARCH_PARAM_TAGS,normalizeArtistTag,CSS_CLASS,getSyncState,getFeatureState,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,HEADER_SELECTOR$1,RDW_OWN_PAGE_CLASS,MENU_ITEM_ID,getFeatureEnabled,applyHeaderLayout,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,runFavoritesSync,UI_TEXT,createDynamicCollection,Q$1,RDW_PAGE_ROOT_ID,markFavoritesCurrent,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,resolveFavoritesUserId,RDW_HASH_STATS,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,NAV_DUE_CLASS,rdwPageHash,createFavoritesSyncTabId,APPEARANCE_BACKGROUND_KEY,readArtistsMirror,listArtistTags,writeArtistsMirror,reloadFromStorage,save,CURRENT_PAGE_CLASS,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,a,OverlayInPlace,applyTokenProperties,resolveAppearancePalette,RDW_ROUTE_STATS,menuRouteForPage,getSiteSkinCss,KIT_CONTROL_HEIGHT_VAR,KIT_CONTROL_FONT_VAR,MOTION_PAGE_CSS,$$1,PANEL_UI_CLASS,TOKEN_VAR,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,SITE_LIGHT_C_BG,SITE_LIGHT_C_BG_ALT,SITE_DARK_C_BG,SITE_DARK_C_BORDER,APPEARANCE_BACKGROUND_TOO_LARGE;return{setters:[function(module){yieldToMain=module.y;detectPageKind=module.d;mountGifMarks=module.m;mountVideoMarks=module.a;mountCards=module.b;syncFavoritesPage=module.s;mountFavoriteVideoMarks=module.c;mountCommentsPage=module.e;runFeaturesYielding=module.r;getAppearance=module.g;applyAppearanceTheme=module.f;adoptSiteAiChoice=module.h;alignSiteAiFilter=module.i;currentListScope=module.j;skinIsOn=module.k;ensureDocumentStyles=module.l;SITE_SELECTORS=module.S;FOLLOW_KIND_ARTIST=module.F;FOLLOW_KIND_CHARACTER=module.n;FOLLOW_KIND_COPYRIGHT=module.o;loadFavSet=module.p;log=module.q;load=module.t;setFeatureState=module.u;scopeOfListUrl=module.v;setAiHiddenIn=module.w;parseRdwHash=module.x;AI_SCOPE_FOLLOWING=module.A;isCollectionDetailPage=module.z;AI_SCOPE_COLLECTIONS=module.B;SITE_ORIGIN=module.C;SEARCH_PARAM_TAGS=module.D;normalizeArtistTag=module.E;CSS_CLASS=module.G;getSyncState=module.H;getFeatureState=module.I;ensureStyleElement=module.J;RDW_OWN_PAGE_STYLE_ID=module.R;buildOwnPageCss=module.K;HEADER_SELECTOR$1=module.L;RDW_OWN_PAGE_CLASS=module.M;MENU_ITEM_ID=module.N;getFeatureEnabled=module.O;applyHeaderLayout=module.P;readFavoritesSyncMode=module.Q;FAVORITES_SYNC_MODE_FULL=module.T;runFavoritesSync=module.U;UI_TEXT=module.V;createDynamicCollection=module.W;Q$1=module.X;RDW_PAGE_ROOT_ID=module.Y;markFavoritesCurrent=module.Z;NAVBAR_SELECTOR=module._;FEED_MENU_ITEM_ID=module.$;RDW_HASH_COLLECTIONS=module.a0;MENU_LABEL=module.a1;RDW_HASH_FOLLOWING=module.a2;resolveFavoritesUserId=module.a3;RDW_HASH_STATS=module.a4;MY_FAVORITES_CONTAINER_ID=module.a5;RDW_HASH_SETTINGS=module.a6;NAV_DUE_CLASS=module.a7;rdwPageHash=module.a8;createFavoritesSyncTabId=module.a9;APPEARANCE_BACKGROUND_KEY=module.aa;readArtistsMirror=module.ab;listArtistTags=module.ac;writeArtistsMirror=module.ad;reloadFromStorage=module.ae;save=module.af;CURRENT_PAGE_CLASS=module.ag;setSyncState=module.ah;SEARCH_PARAM_PAGE=module.ai;FAVORITES_PAGE=module.aj;FAVORITES_SECTION_VIEW=module.ak;SEARCH_PATH=module.al;a=module.am;OverlayInPlace=module.an;applyTokenProperties=module.ao;resolveAppearancePalette=module.ap;RDW_ROUTE_STATS=module.aq;menuRouteForPage=module.ar;getSiteSkinCss=module.as;KIT_CONTROL_HEIGHT_VAR=module.at;KIT_CONTROL_FONT_VAR=module.au;MOTION_PAGE_CSS=module.av;$$1=module.aw;PANEL_UI_CLASS=module.ax;TOKEN_VAR=module.ay;RDW_THEME_ATTR=module.az;APPEARANCE_THEME_SITE=module.aA;APPEARANCE_THEME_SITE_DARK=module.aB;SITE_LIGHT_C_BG=module.aC;SITE_LIGHT_C_BG_ALT=module.aD;SITE_DARK_C_BG=module.aE;SITE_DARK_C_BORDER=module.aF;APPEARANCE_BACKGROUND_TOO_LARGE=module.aG;}],execute:(function(){exports({_:writeViewMode,a:installSiteMenu,c:rememberBackup,g:readViewMode,h:isViewMode,i:navigateToRdwRoute,n:loadBackground,o:markBackupDue,r:saveBackground,s:currentBackupStatus,startApp:startApp,t:clearBackground});/** Matches host.tsx page title class (owned there; styled here for site polish). */
 var PAGE_TITLE_CLASS$1 = "rdw-page-title";
 /** Matches kit SectionLabel class. */
 var SECTION_LABEL_CLASS = "rdw-section-label";
@@ -25968,35 +26196,35 @@ var followingFactory = null;
 var statsFactory = null;
 function getSettingsFactory() {
 	if (settingsFactory === null) settingsFactory = async () => {
-		const mod = await module.import('./settings-page-D8J4dwz7-C79NqTbj.js');
+		const mod = await module.import('./settings-page-B3LBIYuc-BlhrtHcw.js');
 		return /* @__PURE__ */ a(mod.SettingsPage, {});
 	};
 	return settingsFactory;
 }
 function getCollectionsFactory() {
 	if (collectionsFactory === null) collectionsFactory = async () => {
-		const mod = await module.import('./collections-page-DkUnO1RT-BBg-k2as.js');
+		const mod = await module.import('./collections-page-Ut7yOFNJ-B_tgUBPQ.js');
 		return /* @__PURE__ */ a(mod.CollectionsPage, {});
 	};
 	return collectionsFactory;
 }
 function getFollowingFactory() {
 	if (followingFactory === null) followingFactory = async () => {
-		const mod = await module.import('./following-page-DTFxpLTA-M0_LuwzA.js');
+		const mod = await module.import('./following-page-Bt-JalzL-Dp4137yZ.js');
 		return /* @__PURE__ */ a(mod.FollowingPage, {});
 	};
 	return followingFactory;
 }
 function getStatsFactory() {
 	if (statsFactory === null) statsFactory = async () => {
-		const mod = await module.import('./stats-section-LJbJ2v_Z-Pq7LHAbk.js');
+		const mod = await module.import('./stats-section-DwmCaw6j-DdZCLInC.js');
 		return /* @__PURE__ */ a(mod.StatsPage, {});
 	};
 	return statsFactory;
 }
 function collectionDetailFactory(collectionId) {
 	return async () => {
-		const mod = await module.import('./collection-detail-page-DeFoIY5T-rdk53Zyj.js');
+		const mod = await module.import('./collection-detail-page-DrO_ikPk-Bie_akBX.js');
 		return /* @__PURE__ */ a(mod.CollectionDetailPage, { collectionId }, collectionId);
 	};
 }
@@ -27772,7 +28000,7 @@ async function startApp() {
 	maybeResumeFavoritesSync();
 	recordStatsPoint();
 }})}}));
-System.register("./settings-page-D8J4dwz7-C79NqTbj.js", ['./___monkey.entry.js','./app-IRmI9Qth-CKE1niYO.js'],(function(exports){'use strict';var d,T,A,a,PANEL_UI_CLASS,Switch,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,STATS_MENU_SETTING_LABEL,STATS_MENU_SWITCH_ID,setFeatureEnabled,STICKY_HEADER_SETTING_LABEL,STICKY_HEADER_SWITCH_ID,applyStickyHeader,setAiHiddenEverywhere,NumberField,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,setGridFavButtonsVisible,STICKY_TOP,IconChevronRight,IconChevronDown,Card,P$1,getAppearance,applyAppearanceTheme,getSiteSkinCss,APPEARANCE_THEME_CUSTOM,KIT_FOCUS_CSS,SectionLabel,Select,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,$$1,Segmented,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,TextField,Button,clampBackgroundDim,FEATURES,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,clearFeatureState,applyCssOnlyFeatureEnabled,isFeatureEnabled,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,applyCssOnlyFeatureChoice,getFeatureChoice,createAutocompleteQuerier,b,readSiteBlacklist,AutocompleteField,Chip,ProgressBar,Dialog,SETTINGS_SECTION_FAVORITES,createDefaultCustomTheme,AppearanceThemeSchema,prepareBackgroundImageFile,setFeatureState,writeSiteBlacklist,runFavoritesSync,log,FAVORITES_SYNC_PAGE_PAUSE_MS,clearApiCredentials,parseApiCredentials,setApiCredentials,DEFAULT_FILE_MASK,FILE_MASK_TOKENS,toggleMaskToken,maskHasToken,getSyncState,buildFileName,writeFileMask,readFileMask,load,createDefaultStorage,clearStorageCache,clearFavsCache,setAppearance,loadFavSet,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,isSiteUrl,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,gridDensityFeature,FAVORITES_SYNC_MODE_INCREMENTAL,FAVORITES_SYNC_MODE_FULL,STATS_MENU_SETTING_ID,STICKY_HEADER_SETTING_ID,hasApiCredentials,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureEnabled,aiHiddenEverywhere,takeSettingsSection,getFeatureChoiceValue,getFeatureState,getScreenPixelSize,installSiteMenu,loadBackground,currentBackupStatus,markBackupDue,clearBackground,saveBackground,rememberBackup;return{setters:[function(module){d=module.aH;T=module.aI;A=module.aJ;a=module.am;PANEL_UI_CLASS=module.ax;Switch=module.aK;UI_TEXT=module.V;TWEAKS_SWITCH_ID=module.aL;setTweaksEnabled=module.aM;STATS_MENU_SETTING_LABEL=module.aN;STATS_MENU_SWITCH_ID=module.aO;setFeatureEnabled=module.aP;STICKY_HEADER_SETTING_LABEL=module.aQ;STICKY_HEADER_SWITCH_ID=module.aR;applyStickyHeader=module.aS;setAiHiddenEverywhere=module.aT;NumberField=module.aU;UPDATES_GROUP_SIZE_ID=module.aV;setUpdatesGroupSize=module.aW;getUpdatesGroupSize=module.aX;PLAYLIST_CHUNK_SIZE_ID=module.aY;setPlaylistChunkSize=module.aZ;getPlaylistChunkSize=module.a_;GRID_FAV_CHECKBOX_ID=module.a$;setGridFavButtonsEnabled=module.b0;setGridFavButtonsVisible=module.b1;STICKY_TOP=module.b2;IconChevronRight=module.b3;IconChevronDown=module.b4;Card=module.b5;P$1=module.b6;getAppearance=module.g;applyAppearanceTheme=module.f;getSiteSkinCss=module.as;APPEARANCE_THEME_CUSTOM=module.b7;KIT_FOCUS_CSS=module.b8;SectionLabel=module.b9;Select=module.ba;APPEARANCE_THEME_SITE=module.aA;APPEARANCE_THEME_SITE_DARK=module.aB;APPEARANCE_THEME_LIGHT=module.bb;APPEARANCE_THEME_DARK=module.bc;$$1=module.aw;Segmented=module.bd;APPEARANCE_CUSTOM_BASE_LIGHT=module.be;APPEARANCE_CUSTOM_BASE_DARK=module.bf;TextField=module.bg;Button=module.bh;clampBackgroundDim=module.bi;FEATURES=module.bj;featurePanelLabel=module.bk;FEATURE_CHECKBOX_ID_PREFIX=module.bl;clearFeatureState=module.bm;applyCssOnlyFeatureEnabled=module.bn;isFeatureEnabled=module.bo;FEATURE_CHOICE_ID_PREFIX=module.bp;setFeatureChoiceValue=module.bq;applyCssOnlyFeatureChoice=module.br;getFeatureChoice=module.bs;createAutocompleteQuerier=module.bt;b=module.bu;readSiteBlacklist=module.bv;AutocompleteField=module.bw;Chip=module.bx;ProgressBar=module.by;Dialog=module.bz;SETTINGS_SECTION_FAVORITES=module.bA;createDefaultCustomTheme=module.bB;AppearanceThemeSchema=module.bC;prepareBackgroundImageFile=module.bD;setFeatureState=module.u;writeSiteBlacklist=module.bE;runFavoritesSync=module.U;log=module.q;FAVORITES_SYNC_PAGE_PAUSE_MS=module.bF;clearApiCredentials=module.bG;parseApiCredentials=module.bH;setApiCredentials=module.bI;DEFAULT_FILE_MASK=module.bJ;FILE_MASK_TOKENS=module.bK;toggleMaskToken=module.bL;maskHasToken=module.bM;getSyncState=module.H;buildFileName=module.bN;writeFileMask=module.bO;readFileMask=module.bP;load=module.t;createDefaultStorage=module.bQ;clearStorageCache=module.bR;clearFavsCache=module.bS;setAppearance=module.bT;loadFavSet=module.p;FAVS_STORAGE_KEY=module.bU;createDefaultFavs=module.bV;parseFavsStrict=module.bW;object=module.bX;StorageSchema=module.bY;optional=module.bZ;string=module.b_;FavsSchema=module.b$;literal=module.c0;IMPORT_SCHEMA_ERROR_PREFIX=module.c1;isSiteUrl=module.c2;stripLegacyPanelWindowSize=module.c3;save=module.af;migrateMarksFavToFavs=module.c4;STORAGE_BACKUP_KEY=module.c5;extractFavIdsFromMarks=module.c6;gridDensityFeature=module.c7;FAVORITES_SYNC_MODE_INCREMENTAL=module.c8;FAVORITES_SYNC_MODE_FULL=module.T;STATS_MENU_SETTING_ID=module.c9;STICKY_HEADER_SETTING_ID=module.ca;hasApiCredentials=module.cb;getTweaksEnabled=module.cc;getGridFavButtonsEnabled=module.cd;getFeatureEnabled=module.O;aiHiddenEverywhere=module.ce;takeSettingsSection=module.cf;getFeatureChoiceValue=module.cg;getFeatureState=module.I;getScreenPixelSize=module.ch;},function(module){installSiteMenu=module.a;loadBackground=module.n;currentBackupStatus=module.s;markBackupDue=module.o;clearBackground=module.t;saveBackground=module.r;rememberBackup=module.c;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
+System.register("./settings-page-B3LBIYuc-BlhrtHcw.js", ['./___monkey.entry.js','./app-B906DLKQ-B7jq8PUu.js'],(function(exports){'use strict';var d,T,A,a,PANEL_UI_CLASS,Switch,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,STATS_MENU_SETTING_LABEL,STATS_MENU_SWITCH_ID,setFeatureEnabled,STICKY_HEADER_SETTING_LABEL,STICKY_HEADER_SWITCH_ID,applyStickyHeader,setAiHiddenEverywhere,NumberField,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,setGridFavButtonsVisible,STICKY_TOP,IconChevronRight,IconChevronDown,Card,P$1,getAppearance,applyAppearanceTheme,getSiteSkinCss,APPEARANCE_THEME_CUSTOM,KIT_FOCUS_CSS,SectionLabel,Select,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,$$1,Segmented,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,TextField,Button,clampBackgroundDim,FEATURES,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,clearFeatureState,applyCssOnlyFeatureEnabled,isFeatureEnabled,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,applyCssOnlyFeatureChoice,getFeatureChoice,createAutocompleteQuerier,b,readSiteBlacklist,AutocompleteField,Chip,ProgressBar,Dialog,SETTINGS_SECTION_FAVORITES,createDefaultCustomTheme,AppearanceThemeSchema,prepareBackgroundImageFile,setFeatureState,writeSiteBlacklist,runFavoritesSync,log,FAVORITES_SYNC_PAGE_PAUSE_MS,clearApiCredentials,parseApiCredentials,setApiCredentials,DEFAULT_FILE_MASK,FILE_MASK_TOKENS,toggleMaskToken,maskHasToken,getSyncState,buildFileName,writeFileMask,readFileMask,load,createDefaultStorage,clearStorageCache,clearFavsCache,setAppearance,loadFavSet,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,isSiteUrl,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,gridDensityFeature,FAVORITES_SYNC_MODE_INCREMENTAL,FAVORITES_SYNC_MODE_FULL,STATS_MENU_SETTING_ID,STICKY_HEADER_SETTING_ID,hasApiCredentials,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureEnabled,aiHiddenEverywhere,takeSettingsSection,getFeatureChoiceValue,getFeatureState,getScreenPixelSize,installSiteMenu,loadBackground,currentBackupStatus,markBackupDue,clearBackground,saveBackground,rememberBackup;return{setters:[function(module){d=module.aH;T=module.aI;A=module.aJ;a=module.am;PANEL_UI_CLASS=module.ax;Switch=module.aK;UI_TEXT=module.V;TWEAKS_SWITCH_ID=module.aL;setTweaksEnabled=module.aM;STATS_MENU_SETTING_LABEL=module.aN;STATS_MENU_SWITCH_ID=module.aO;setFeatureEnabled=module.aP;STICKY_HEADER_SETTING_LABEL=module.aQ;STICKY_HEADER_SWITCH_ID=module.aR;applyStickyHeader=module.aS;setAiHiddenEverywhere=module.aT;NumberField=module.aU;UPDATES_GROUP_SIZE_ID=module.aV;setUpdatesGroupSize=module.aW;getUpdatesGroupSize=module.aX;PLAYLIST_CHUNK_SIZE_ID=module.aY;setPlaylistChunkSize=module.aZ;getPlaylistChunkSize=module.a_;GRID_FAV_CHECKBOX_ID=module.a$;setGridFavButtonsEnabled=module.b0;setGridFavButtonsVisible=module.b1;STICKY_TOP=module.b2;IconChevronRight=module.b3;IconChevronDown=module.b4;Card=module.b5;P$1=module.b6;getAppearance=module.g;applyAppearanceTheme=module.f;getSiteSkinCss=module.as;APPEARANCE_THEME_CUSTOM=module.b7;KIT_FOCUS_CSS=module.b8;SectionLabel=module.b9;Select=module.ba;APPEARANCE_THEME_SITE=module.aA;APPEARANCE_THEME_SITE_DARK=module.aB;APPEARANCE_THEME_LIGHT=module.bb;APPEARANCE_THEME_DARK=module.bc;$$1=module.aw;Segmented=module.bd;APPEARANCE_CUSTOM_BASE_LIGHT=module.be;APPEARANCE_CUSTOM_BASE_DARK=module.bf;TextField=module.bg;Button=module.bh;clampBackgroundDim=module.bi;FEATURES=module.bj;featurePanelLabel=module.bk;FEATURE_CHECKBOX_ID_PREFIX=module.bl;clearFeatureState=module.bm;applyCssOnlyFeatureEnabled=module.bn;isFeatureEnabled=module.bo;FEATURE_CHOICE_ID_PREFIX=module.bp;setFeatureChoiceValue=module.bq;applyCssOnlyFeatureChoice=module.br;getFeatureChoice=module.bs;createAutocompleteQuerier=module.bt;b=module.bu;readSiteBlacklist=module.bv;AutocompleteField=module.bw;Chip=module.bx;ProgressBar=module.by;Dialog=module.bz;SETTINGS_SECTION_FAVORITES=module.bA;createDefaultCustomTheme=module.bB;AppearanceThemeSchema=module.bC;prepareBackgroundImageFile=module.bD;setFeatureState=module.u;writeSiteBlacklist=module.bE;runFavoritesSync=module.U;log=module.q;FAVORITES_SYNC_PAGE_PAUSE_MS=module.bF;clearApiCredentials=module.bG;parseApiCredentials=module.bH;setApiCredentials=module.bI;DEFAULT_FILE_MASK=module.bJ;FILE_MASK_TOKENS=module.bK;toggleMaskToken=module.bL;maskHasToken=module.bM;getSyncState=module.H;buildFileName=module.bN;writeFileMask=module.bO;readFileMask=module.bP;load=module.t;createDefaultStorage=module.bQ;clearStorageCache=module.bR;clearFavsCache=module.bS;setAppearance=module.bT;loadFavSet=module.p;FAVS_STORAGE_KEY=module.bU;createDefaultFavs=module.bV;parseFavsStrict=module.bW;object=module.bX;StorageSchema=module.bY;optional=module.bZ;string=module.b_;FavsSchema=module.b$;literal=module.c0;IMPORT_SCHEMA_ERROR_PREFIX=module.c1;isSiteUrl=module.c2;stripLegacyPanelWindowSize=module.c3;save=module.af;migrateMarksFavToFavs=module.c4;STORAGE_BACKUP_KEY=module.c5;extractFavIdsFromMarks=module.c6;gridDensityFeature=module.c7;FAVORITES_SYNC_MODE_INCREMENTAL=module.c8;FAVORITES_SYNC_MODE_FULL=module.T;STATS_MENU_SETTING_ID=module.c9;STICKY_HEADER_SETTING_ID=module.ca;hasApiCredentials=module.cb;getTweaksEnabled=module.cc;getGridFavButtonsEnabled=module.cd;getFeatureEnabled=module.O;aiHiddenEverywhere=module.ce;takeSettingsSection=module.cf;getFeatureChoiceValue=module.cg;getFeatureState=module.I;getScreenPixelSize=module.ch;},function(module){installSiteMenu=module.a;loadBackground=module.n;currentBackupStatus=module.s;markBackupDue=module.o;clearBackground=module.t;saveBackground=module.r;rememberBackup=module.c;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
 var THEME_OPTIONS = [
 	{
 		value: APPEARANCE_THEME_SITE,
@@ -29695,7 +29923,7 @@ function SettingsPage() {
 		]
 	});
 }})}}));
-System.register("./collections-page-DkUnO1RT-BBg-k2as.js", ['./___monkey.entry.js','./filter-terms-Dqag3iAV-Bgq_MKCQ.js','./app-IRmI9Qth-CKE1niYO.js'],(function(exports){'use strict';var d,T,A,b,reloadFromStorage,load,useEscape,a,SelectionBar,Button,UI_TEXT,Segmented,SearchField,Select,setFeatureState,AiPostsToggle,AI_SCOPE_COLLECTIONS,$$1,IconPlus,EmptyState,Dialog,resolveCollectionKind,STICKY_TOP,RDW_THEME_ATTR,APPEARANCE_THEME_CUSTOM,isUnfilteredQuery,dynamicHasNew,deleteCollection,TextField,QueryField,createDynamicCollection,createPlaylist,buildSearchUrl,alignSiteAiFilter,fetchNextPage,setDynamicCover,readFirstThumbUrls,readResultCount,setDynamicPostCount,setDynamicNewest,COLLECTION_KIND_POSTS,collectionDetailHash,readCoverMirror,COLLECTION_KIND_SEARCH,extractPostIdFromThumb,IconCheck,readCountMirror,dynamicCollectionMarkHash,serialize,getFeatureState,matchesAnyTerm,filterTerms,COLLECTION_TERM_SEPARATOR,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,PAGE_CENTRE_PADDING,COLLECTIONS_VIEW_STATE_ID,readViewMode;return{setters:[function(module){d=module.aH;T=module.aI;A=module.aJ;b=module.bu;reloadFromStorage=module.ae;load=module.t;useEscape=module.ci;a=module.am;SelectionBar=module.cj;Button=module.bh;UI_TEXT=module.V;Segmented=module.bd;SearchField=module.ck;Select=module.ba;setFeatureState=module.u;AiPostsToggle=module.cl;AI_SCOPE_COLLECTIONS=module.B;$$1=module.aw;IconPlus=module.cm;EmptyState=module.cn;Dialog=module.bz;resolveCollectionKind=module.co;STICKY_TOP=module.b2;RDW_THEME_ATTR=module.az;APPEARANCE_THEME_CUSTOM=module.b7;isUnfilteredQuery=module.cp;dynamicHasNew=module.cq;deleteCollection=module.cr;TextField=module.bg;QueryField=module.cs;createDynamicCollection=module.W;createPlaylist=module.ct;buildSearchUrl=module.cu;alignSiteAiFilter=module.i;fetchNextPage=module.cv;setDynamicCover=module.cw;readFirstThumbUrls=module.cx;readResultCount=module.cy;setDynamicPostCount=module.cz;setDynamicNewest=module.cA;COLLECTION_KIND_POSTS=module.cB;collectionDetailHash=module.cC;readCoverMirror=module.cD;COLLECTION_KIND_SEARCH=module.cE;extractPostIdFromThumb=module.cF;IconCheck=module.cG;readCountMirror=module.cH;dynamicCollectionMarkHash=module.cI;serialize=module.cJ;getFeatureState=module.I;},function(module){matchesAnyTerm=module.m;filterTerms=module.f;COLLECTION_TERM_SEPARATOR=module.C;},function(module){VIEW_OPTIONS=module.m;VIEW_LABEL=module.f;isViewMode=module.h;writeViewMode=module._;PAGE_CENTRE_PADDING=module.d;COLLECTIONS_VIEW_STATE_ID=module.l;readViewMode=module.g;}],execute:(function(){exports("CollectionsPage",CollectionsPage);/**
+System.register("./collections-page-Ut7yOFNJ-B_tgUBPQ.js", ['./___monkey.entry.js','./filter-terms-B9HCPDo4-CWIEF9Km.js','./app-B906DLKQ-B7jq8PUu.js'],(function(exports){'use strict';var d,T,A,b,reloadFromStorage,load,listCollectionGroups,useEscape,a,SelectionBar,Button,UI_TEXT,Segmented,SearchField,Select,setFeatureState,AiPostsToggle,AI_SCOPE_COLLECTIONS,$$1,IconPlus,EmptyState,Dialog,deleteCollectionGroup,renameCollectionGroup,setCollectionGroup,createCollectionGroup,resolveCollectionKind,STICKY_TOP,RDW_THEME_ATTR,APPEARANCE_THEME_CUSTOM,isUnfilteredQuery,dynamicHasNew,deleteCollection,TextField,QueryField,createDynamicCollection,createPlaylist,buildSearchUrl,alignSiteAiFilter,fetchNextPage,setDynamicCover,readFirstThumbUrls,readResultCount,setDynamicPostCount,setDynamicNewest,COLLECTION_KIND_POSTS,collectionDetailHash,readCoverMirror,COLLECTION_KIND_SEARCH,extractPostIdFromThumb,IconCheck,readCountMirror,dynamicCollectionMarkHash,serialize,getFeatureState,inGroupTab,MoveToGroupMenu,GroupTabs,countGroups,GroupDialogs,matchesAnyTerm,filterTerms,COLLECTION_TERM_SEPARATOR,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,PAGE_CENTRE_PADDING,COLLECTIONS_VIEW_STATE_ID,readViewMode;return{setters:[function(module){d=module.aH;T=module.aI;A=module.aJ;b=module.bu;reloadFromStorage=module.ae;load=module.t;listCollectionGroups=module.ci;useEscape=module.cj;a=module.am;SelectionBar=module.ck;Button=module.bh;UI_TEXT=module.V;Segmented=module.bd;SearchField=module.cl;Select=module.ba;setFeatureState=module.u;AiPostsToggle=module.cm;AI_SCOPE_COLLECTIONS=module.B;$$1=module.aw;IconPlus=module.cn;EmptyState=module.co;Dialog=module.bz;deleteCollectionGroup=module.cp;renameCollectionGroup=module.cq;setCollectionGroup=module.cr;createCollectionGroup=module.cs;resolveCollectionKind=module.ct;STICKY_TOP=module.b2;RDW_THEME_ATTR=module.az;APPEARANCE_THEME_CUSTOM=module.b7;isUnfilteredQuery=module.cu;dynamicHasNew=module.cv;deleteCollection=module.cw;TextField=module.bg;QueryField=module.cx;createDynamicCollection=module.W;createPlaylist=module.cy;buildSearchUrl=module.cz;alignSiteAiFilter=module.i;fetchNextPage=module.cA;setDynamicCover=module.cB;readFirstThumbUrls=module.cC;readResultCount=module.cD;setDynamicPostCount=module.cE;setDynamicNewest=module.cF;COLLECTION_KIND_POSTS=module.cG;collectionDetailHash=module.cH;readCoverMirror=module.cI;COLLECTION_KIND_SEARCH=module.cJ;extractPostIdFromThumb=module.cK;IconCheck=module.cL;readCountMirror=module.cM;dynamicCollectionMarkHash=module.cN;serialize=module.cO;getFeatureState=module.I;},function(module){inGroupTab=module.i;MoveToGroupMenu=module.M;GroupTabs=module.G;countGroups=module.c;GroupDialogs=module.a;matchesAnyTerm=module.m;filterTerms=module.f;COLLECTION_TERM_SEPARATOR=module.C;},function(module){VIEW_OPTIONS=module.m;VIEW_LABEL=module.f;isViewMode=module.h;writeViewMode=module._;PAGE_CENTRE_PADDING=module.d;COLLECTIONS_VIEW_STATE_ID=module.l;readViewMode=module.g;}],execute:(function(){exports("CollectionsPage",CollectionsPage);/**
 * "Check for new" on the Collections page: reads the first results page of
 * every saved search. From it the card gets its cover and post count (as on a
 * visit to the search), and the newest post is remembered, so a card can say
@@ -29786,6 +30014,12 @@ var TOOLBAR_CLASS = "rdw-collections-toolbar";
 var FILTER_FIELD_CLASS = "rdw-collections-filter";
 var GRID_CLASS = "rdw-collections-grid";
 var GRID_LIST_CLASS = "rdw-collections-grid--list";
+/** Around a card: the card is a link, and the button of its group cannot be inside one. */
+var CELL_CLASS = "rdw-collections-cell";
+var CELL_ACTIONS_CLASS = "rdw-collections-cell-actions";
+var MOVE_ONE_PREFIX = "Move to a group: ";
+/** What a card carries while it is dragged to a tab of a group. */
+var DRAG_DATA_TYPE = "text/plain";
 var LIST_COVER_PX = 44;
 var CARD_CLASS = "rdw-collection-card";
 var COVER_CLASS = "rdw-collection-cover";
@@ -29979,6 +30213,38 @@ var COLLECTIONS_PAGE_CSS = `
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(${String(170)}px, 1fr));
   gap: ${String(GRID_GAP_PX)}px;
+}
+.${CELL_CLASS} {
+  position: relative;
+  display: grid;
+  min-width: 0;
+}
+/* The button of a card's group: there under the pointer and for the keyboard,
+   and while its menu is open. Always there, it would cover every cover. */
+.${CELL_ACTIONS_CLASS} {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+}
+/* With its menu open the corner of a card is over the cards after it. */
+.${CELL_ACTIONS_CLASS}:has([aria-expanded="true"]) {
+  z-index: 4;
+}
+.${CELL_ACTIONS_CLASS} .rdw-icon-btn {
+  background: var(--rdw-surface);
+  border: 1px solid var(--rdw-border);
+}
+.${CELL_CLASS}:not(:hover):not(:focus-within) .${CELL_ACTIONS_CLASS}:not(:has([aria-expanded="true"])) {
+  opacity: 0;
+}
+.${GRID_LIST_CLASS} .${CELL_ACTIONS_CLASS} {
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+}
+.${GRID_LIST_CLASS} .${CARD_CLASS} {
+  padding-right: 44px;
 }
 .${CARD_CLASS} {
   display: flex;
@@ -30284,6 +30550,11 @@ function thumbUrl(collection, postId) {
 	if (value === void 0 || value.trim().length === 0) return null;
 	return value;
 }
+/** "Custom · 11 posts · Wallpapers": the caption of a card with its group. */
+function cardCaptionWithGroup(kind, meta, group) {
+	const caption = cardCaption(kind, meta);
+	return group.length > 0 ? `${caption}${CAPTION_SEPARATOR}${group}` : caption;
+}
 /**
 * What the confirmation says: how many, and which. Up to three names are
 * given, so that a wrong pick is seen before it is deleted.
@@ -30299,6 +30570,10 @@ function deleteMessage(names) {
 /** "1 collection", "12 collections": the count in the toolbar. */
 function collectionsCountLabel(count) {
 	return `${count.toLocaleString(COUNT_LOCALE)} ${count === SINGLE_SELECTION ? "collection" : "collections"}`;
+}
+/** "11 collections", or "3 of 11 collections" when the filters leave fewer. */
+function collectionsShownLabel(shown, total) {
+	return shown === total ? collectionsCountLabel(total) : `${shown.toLocaleString(COUNT_LOCALE)} of ${collectionsCountLabel(total)}`;
 }
 var HTTP_TOO_MANY = "HTTP 429";
 var REASON_TOO_MANY = "the site is asked too often (429). Wait a minute, then retry.";
@@ -30346,13 +30621,14 @@ function CardLink(props) {
 			}),
 			/* @__PURE__ */ a("span", {
 				className: CAPTION_CLASS,
-				children: cardCaption(props.badge, props.meta)
+				children: cardCaptionWithGroup(props.badge, props.meta, props.group)
 			})
 		]
 	});
 	return /* @__PURE__ */ a("a", {
 		className: CARD_CLASS,
 		href: props.href,
+		draggable: false,
 		"aria-label": label,
 		"data-collection-id": props.collection.id,
 		"data-collection-kind": props.kind,
@@ -30370,7 +30646,7 @@ function CardLink(props) {
 			}),
 			/* @__PURE__ */ a("span", {
 				className: CAPTION_CLASS,
-				children: cardCaption(props.badge, props.meta)
+				children: cardCaptionWithGroup(props.badge, props.meta, props.group)
 			})
 		]
 	});
@@ -30417,6 +30693,7 @@ function CustomCard(props) {
 		badge: BADGE_CUSTOM,
 		meta,
 		select: props.select,
+		group: props.group,
 		children: /* @__PURE__ */ a(Cover, {
 			collectionId: props.collection.id,
 			urls,
@@ -30455,6 +30732,7 @@ function DynamicCard(props) {
 		hasNew: dynamicHasNew(props.collection),
 		meta: dynamicMeta(props.collection),
 		select: props.select,
+		group: props.group,
 		children: /* @__PURE__ */ a(Cover, {
 			collectionId: props.collection.id,
 			urls: slots
@@ -30464,11 +30742,13 @@ function DynamicCard(props) {
 function CollectionCard(props) {
 	if (resolveCollectionKind(props.collection) === "posts") return /* @__PURE__ */ a(CustomCard, {
 		collection: props.collection,
-		select: props.select
+		select: props.select,
+		group: props.group
 	});
 	return /* @__PURE__ */ a(DynamicCard, {
 		collection: props.collection,
-		select: props.select
+		select: props.select,
+		group: props.group
 	});
 }
 function NewCollectionDialog(props) {
@@ -30559,6 +30839,9 @@ function CollectionsPage() {
 	const [selecting, setSelecting] = d(false);
 	const [selectedIds, setSelectedIds] = d([]);
 	const [confirmOpen, setConfirmOpen] = d(false);
+	const [groupTab, setGroupTab] = d("");
+	const [groupRequest, setGroupRequest] = d(null);
+	const [dragId, setDragId] = d(null);
 	const [checkStatus, setCheckStatus] = d("");
 	const [checkFailed, setCheckFailed] = d(false);
 	const [checking, setChecking] = d(false);
@@ -30602,7 +30885,12 @@ function CollectionsPage() {
 		};
 	}, []);
 	const collections = load().collections;
-	const visible = sortCollections(visibleCollections(collections, filter, nameQuery), sort);
+	const groups = listCollectionGroups();
+	const visible = sortCollections(visibleCollections(collections, filter, nameQuery), sort).filter((collection) => inGroupTab(collection.group, groupTab));
+	const moveToGroup = (ids, name) => {
+		setCollectionGroup(ids, name);
+		setRevision((value) => value + 1);
+	};
 	const emptyCopy = collections.length === 0 ? {
 		title: EMPTY_TITLE,
 		description: EMPTY_DESCRIPTION
@@ -30657,7 +30945,7 @@ function CollectionsPage() {
 			/* @__PURE__ */ a("style", { children: COLLECTIONS_PAGE_CSS }),
 			/* @__PURE__ */ a("header", {
 				className: HEADER_CLASS,
-				children: selecting ? /* @__PURE__ */ a(SelectionBar, {
+				children: [selecting ? /* @__PURE__ */ a(SelectionBar, {
 					count: selectedVisible.length,
 					onSelectAll: () => {
 						setSelectedIds(visible.map((collection) => collection.id));
@@ -30674,6 +30962,19 @@ function CollectionsPage() {
 							setConfirmOpen(true);
 						},
 						children: DELETE_SELECTED_LABEL
+					}),
+					children: /* @__PURE__ */ a(MoveToGroupMenu, {
+						groups,
+						disabled: selectedVisible.length === 0,
+						onMove: (name) => {
+							moveToGroup(selectedVisible.map((collection) => collection.id), name);
+						},
+						onNew: () => {
+							setGroupRequest({
+								kind: "new",
+								targets: selectedVisible.map((collection) => collection.id)
+							});
+						}
 					})
 				}) : /* @__PURE__ */ a("div", {
 					className: TOOLBAR_CLASS,
@@ -30719,7 +31020,7 @@ function CollectionsPage() {
 						}),
 						/* @__PURE__ */ a("span", {
 							className: SELECTED_COUNT_CLASS,
-							children: collectionsCountLabel(visible.length)
+							children: collectionsShownLabel(visible.length, collections.length)
 						}),
 						/* @__PURE__ */ a("span", {
 							className: TOOLBAR_SPACER_CLASS,
@@ -30762,7 +31063,37 @@ function CollectionsPage() {
 							}) : null
 						] })
 					]
-				})
+				}), collections.length > 0 ? /* @__PURE__ */ a(GroupTabs, {
+					total: collections.length,
+					groups: countGroups(groups, collections.map((collection) => collection.group)),
+					value: groupTab,
+					onChange: setGroupTab,
+					onNew: () => {
+						setGroupRequest({
+							kind: "new",
+							targets: []
+						});
+					},
+					onRename: (name) => {
+						setGroupRequest({
+							kind: "rename",
+							name
+						});
+					},
+					onDelete: (name) => {
+						setGroupRequest({
+							kind: "delete",
+							name,
+							count: collections.filter((collection) => collection.group === name).length
+						});
+					},
+					dragging: dragId !== null,
+					onDropTo: (name) => {
+						if (dragId !== null) moveToGroup([dragId], name);
+						setDragId(null);
+					},
+					locked: selecting
+				}) : null]
 			}),
 			visible.length === 0 ? /* @__PURE__ */ a(EmptyState, {
 				title: emptyCopy.title,
@@ -30770,14 +31101,42 @@ function CollectionsPage() {
 			}) : /* @__PURE__ */ a("div", {
 				className: view === "list" ? `${GRID_CLASS} ${GRID_LIST_CLASS}` : GRID_CLASS,
 				"aria-label": GRID_LABEL,
-				children: visible.map((collection) => /* @__PURE__ */ a(CollectionCard, {
-					collection,
-					select: selecting ? {
-						selected: selectedIds.includes(collection.id),
-						onToggle: () => {
-							toggleSelected(collection.id);
-						}
-					} : null
+				children: visible.map((collection) => /* @__PURE__ */ a("div", {
+					className: CELL_CLASS,
+					draggable: !selecting,
+					onDragStart: (event) => {
+						event.dataTransfer?.setData(DRAG_DATA_TYPE, collection.name);
+						setDragId(collection.id);
+					},
+					onDragEnd: () => {
+						setDragId(null);
+					},
+					children: [/* @__PURE__ */ a(CollectionCard, {
+						collection,
+						group: collection.group === groupTab ? "" : collection.group ?? "",
+						select: selecting ? {
+							selected: selectedIds.includes(collection.id),
+							onToggle: () => {
+								toggleSelected(collection.id);
+							}
+						} : null
+					}), selecting ? null : /* @__PURE__ */ a("div", {
+						className: CELL_ACTIONS_CLASS,
+						children: /* @__PURE__ */ a(MoveToGroupMenu, {
+							groups,
+							current: collection.group ?? "",
+							iconLabel: `${MOVE_ONE_PREFIX}${collection.name}`,
+							onMove: (name) => {
+								moveToGroup([collection.id], name);
+							},
+							onNew: () => {
+								setGroupRequest({
+									kind: "new",
+									targets: [collection.id]
+								});
+							}
+						})
+					})]
 				}, collection.id))
 			}),
 			/* @__PURE__ */ a(Dialog, {
@@ -30791,6 +31150,32 @@ function CollectionsPage() {
 				onConfirm: deleteSelected,
 				onClose: () => {
 					setConfirmOpen(false);
+				}
+			}),
+			/* @__PURE__ */ a(GroupDialogs, {
+				request: groupRequest,
+				groups,
+				countLabel: collectionsCountLabel,
+				onCreate: (name, targets) => {
+					if (targets.length > 0) setCollectionGroup(targets, name);
+					else createCollectionGroup(name);
+					setGroupRequest(null);
+					setRevision((value) => value + 1);
+				},
+				onRename: (from, to) => {
+					renameCollectionGroup(from, to);
+					if (groupTab === from) setGroupTab(to);
+					setGroupRequest(null);
+					setRevision((value) => value + 1);
+				},
+				onDelete: (name) => {
+					deleteCollectionGroup(name);
+					if (groupTab === name) setGroupTab("");
+					setGroupRequest(null);
+					setRevision((value) => value + 1);
+				},
+				onClose: () => {
+					setGroupRequest(null);
 				}
 			}),
 			/* @__PURE__ */ a(NewCollectionDialog, {
@@ -30820,7 +31205,7 @@ function CollectionsPage() {
 		]
 	});
 }})}}));
-System.register("./following-page-DTFxpLTA-M0_LuwzA.js", ['./___monkey.entry.js','./filter-terms-Dqag3iAV-Bgq_MKCQ.js','./app-IRmI9Qth-CKE1niYO.js'],(function(exports){'use strict';var d,T,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST,A,reloadFromStorage,getSeenPostId,listFollowGroups,followKindOf,FOLLOW_KIND_ARTIST,useEscape,a,EmptyState,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,$$1,Button,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,SelectionBar,Segmented,SearchField,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,Select,FOLLOW_KIND_CHARACTER,FOLLOW_KIND_COPYRIGHT,AiPostsToggle,AI_SCOPE_FOLLOWING,UI_TEXT,ProgressBar,Dialog,TextField,removeArtist,load,completeLastQueryToken,readLastQueryToken,STICKY_TOP,RDW_THEME_ATTR,APPEARANCE_THEME_CUSTOM,IconPlus,buildSearchUrl,TAG_TYPE_INCLUDE,IconCheck,IconButton,IconX,setFollowGroup,removeArtists,alignSiteAiFilter,rememberArtistSnapshot,fetchArtistSnapshot,log,addArtists,AutocompleteField,filterTerms,matchesAnyTerm,ARTIST_TERM_SEPARATOR,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,PAGE_CENTRE_PADDING,FOLLOWING_VIEW_STATE_ID,readViewMode;return{setters:[function(module){d=module.aH;T=module.aI;createAutocompleteQuerier=module.bt;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.cK;A=module.aJ;reloadFromStorage=module.ae;getSeenPostId=module.cL;listFollowGroups=module.cM;followKindOf=module.cN;FOLLOW_KIND_ARTIST=module.F;useEscape=module.ci;a=module.am;EmptyState=module.cn;ARTISTS_EMPTY_HINT=module.cO;ARTISTS_EMPTY_TITLE=module.cP;$$1=module.aw;Button=module.bh;SEARCH_PATH=module.al;SEARCH_PARAM_PAGE=module.ai;SEARCH_PAGE=module.cQ;SEARCH_SECTION=module.cR;SelectionBar=module.cj;Segmented=module.bd;SearchField=module.ck;ARTIST_FILTER_LABEL=module.cS;ARTIST_FILTER_ID=module.cT;Select=module.ba;FOLLOW_KIND_CHARACTER=module.n;FOLLOW_KIND_COPYRIGHT=module.o;AiPostsToggle=module.cl;AI_SCOPE_FOLLOWING=module.A;UI_TEXT=module.V;ProgressBar=module.by;Dialog=module.bz;TextField=module.bg;removeArtist=module.cU;load=module.t;completeLastQueryToken=module.cV;readLastQueryToken=module.cW;STICKY_TOP=module.b2;RDW_THEME_ATTR=module.az;APPEARANCE_THEME_CUSTOM=module.b7;IconPlus=module.cm;buildSearchUrl=module.cu;TAG_TYPE_INCLUDE=module.cX;IconCheck=module.cG;IconButton=module.cY;IconX=module.cZ;setFollowGroup=module.c_;removeArtists=module.c$;alignSiteAiFilter=module.i;rememberArtistSnapshot=module.d0;fetchArtistSnapshot=module.d1;log=module.q;addArtists=module.d2;AutocompleteField=module.bw;},function(module){filterTerms=module.f;matchesAnyTerm=module.m;ARTIST_TERM_SEPARATOR=module.A;},function(module){VIEW_OPTIONS=module.m;VIEW_LABEL=module.f;isViewMode=module.h;writeViewMode=module._;PAGE_CENTRE_PADDING=module.d;FOLLOWING_VIEW_STATE_ID=module.u;readViewMode=module.g;}],execute:(function(){exports("FollowingPage",FollowingPage);var EVENT_PAGESHOW = "pageshow";
+System.register("./following-page-Bt-JalzL-Dp4137yZ.js", ['./___monkey.entry.js','./filter-terms-B9HCPDo4-CWIEF9Km.js','./app-B906DLKQ-B7jq8PUu.js'],(function(exports){'use strict';var d,T,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST,A,reloadFromStorage,getSeenPostId,listFollowGroups,followKindOf,FOLLOW_KIND_ARTIST,useEscape,a,EmptyState,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,$$1,Button,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,SelectionBar,Segmented,SearchField,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,Select,FOLLOW_KIND_CHARACTER,FOLLOW_KIND_COPYRIGHT,AiPostsToggle,AI_SCOPE_FOLLOWING,UI_TEXT,ProgressBar,deleteFollowGroup,renameFollowGroup,setFollowGroup,createFollowGroup,Dialog,removeArtist,load,completeLastQueryToken,readLastQueryToken,STICKY_TOP,RDW_THEME_ATTR,APPEARANCE_THEME_CUSTOM,IconPlus,buildSearchUrl,TAG_TYPE_INCLUDE,IconCheck,IconButton,IconX,removeArtists,alignSiteAiFilter,rememberArtistSnapshot,fetchArtistSnapshot,log,addArtists,AutocompleteField,filterTerms,MoveToGroupMenu,GroupTabs,countGroups,GroupDialogs,matchesAnyTerm,inGroupTab,ARTIST_TERM_SEPARATOR,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,PAGE_CENTRE_PADDING,FOLLOWING_VIEW_STATE_ID,readViewMode;return{setters:[function(module){d=module.aH;T=module.aI;createAutocompleteQuerier=module.bt;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.cP;A=module.aJ;reloadFromStorage=module.ae;getSeenPostId=module.cQ;listFollowGroups=module.cR;followKindOf=module.cS;FOLLOW_KIND_ARTIST=module.F;useEscape=module.cj;a=module.am;EmptyState=module.co;ARTISTS_EMPTY_HINT=module.cT;ARTISTS_EMPTY_TITLE=module.cU;$$1=module.aw;Button=module.bh;SEARCH_PATH=module.al;SEARCH_PARAM_PAGE=module.ai;SEARCH_PAGE=module.cV;SEARCH_SECTION=module.cW;SelectionBar=module.ck;Segmented=module.bd;SearchField=module.cl;ARTIST_FILTER_LABEL=module.cX;ARTIST_FILTER_ID=module.cY;Select=module.ba;FOLLOW_KIND_CHARACTER=module.n;FOLLOW_KIND_COPYRIGHT=module.o;AiPostsToggle=module.cm;AI_SCOPE_FOLLOWING=module.A;UI_TEXT=module.V;ProgressBar=module.by;deleteFollowGroup=module.cZ;renameFollowGroup=module.c_;setFollowGroup=module.c$;createFollowGroup=module.d0;Dialog=module.bz;removeArtist=module.d1;load=module.t;completeLastQueryToken=module.d2;readLastQueryToken=module.d3;STICKY_TOP=module.b2;RDW_THEME_ATTR=module.az;APPEARANCE_THEME_CUSTOM=module.b7;IconPlus=module.cn;buildSearchUrl=module.cz;TAG_TYPE_INCLUDE=module.d4;IconCheck=module.cL;IconButton=module.d5;IconX=module.d6;removeArtists=module.d7;alignSiteAiFilter=module.i;rememberArtistSnapshot=module.d8;fetchArtistSnapshot=module.d9;log=module.q;addArtists=module.da;AutocompleteField=module.bw;},function(module){filterTerms=module.f;MoveToGroupMenu=module.M;GroupTabs=module.G;countGroups=module.c;GroupDialogs=module.a;matchesAnyTerm=module.m;inGroupTab=module.i;ARTIST_TERM_SEPARATOR=module.A;},function(module){VIEW_OPTIONS=module.m;VIEW_LABEL=module.f;isViewMode=module.h;writeViewMode=module._;PAGE_CENTRE_PADDING=module.d;FOLLOWING_VIEW_STATE_ID=module.u;readViewMode=module.g;}],execute:(function(){exports("FollowingPage",FollowingPage);var EVENT_PAGESHOW = "pageshow";
 var PAGE_CLASS = "rdw-following-page";
 var STICKY_CLASS = "rdw-following-sticky";
 var TOOLBAR_CLASS = "rdw-following-toolbar";
@@ -30921,20 +31306,10 @@ var KIND_CAPTION = {
 	[FOLLOW_KIND_CHARACTER]: "character",
 	[FOLLOW_KIND_COPYRIGHT]: "copyright"
 };
-var GROUP_LABEL = "Group";
-/** Values of the group filter that are not group names. */
-var GROUP_ALL = "";
-var GROUP_NONE = "\0none";
-var GROUP_ALL_LABEL = "All groups";
-var GROUP_NONE_LABEL = "No group";
-var GROUP_BUTTON_LABEL = "Group…";
-var GROUP_DIALOG_TITLE = "Put into a group";
-var GROUP_FIELD_LABEL = "Group name";
-var GROUP_SAVE_LABEL = "Save";
-var GROUP_REMOVE_LABEL = "Remove from group";
-var GROUP_DIALOG_CLASS = "rdw-following-group-dialog";
-var GROUP_EXISTING_CLASS = "rdw-following-group-existing";
-var GROUP_ROW_CLASS = "rdw-following-group-row";
+/** The small button of a card that opens "Move to group". */
+var MOVE_ONE_PREFIX = "Move to a group: ";
+/** What a card carries while it is dragged to a tab of a group. */
+var DRAG_DATA_TYPE = "text/plain";
 var SHOW_OPTIONS = [{
 	value: SHOW_ALL,
 	label: "All"
@@ -31022,24 +31397,6 @@ var FOLLOWING_PAGE_CSS = `
   border-radius: var(--rdw-radius-l);
   background: color-mix(in srgb, var(--rdw-surface) 88%, transparent);
   backdrop-filter: blur(10px);
-}
-.${GROUP_DIALOG_CLASS} {
-  display: grid;
-  gap: 10px;
-}
-.${GROUP_ROW_CLASS} {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0;
-}
-.${GROUP_ROW_CLASS} .rdw-field {
-  flex: 1 1 auto;
-}
-.${GROUP_EXISTING_CLASS} {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
 }
 .${META_CLASS},
 .${CAPTION_CLASS} {
@@ -31191,6 +31548,10 @@ var FOLLOWING_PAGE_CSS = `
   display: flex;
   gap: 4px;
 }
+/* With its menu open the corner of a card is over the cards after it. */
+.${CARD_ACTIONS_CLASS}:has([aria-expanded="true"]) {
+  z-index: ${String(4)};
+}
 .${CARD_ACTIONS_CLASS} .rdw-icon-btn {
   background: var(--rdw-surface);
   border: 1px solid var(--rdw-border);
@@ -31226,16 +31587,24 @@ var FOLLOWING_PAGE_CSS = `
 function isShowMode(value) {
 	return value === SHOW_ALL || value === SHOW_NEW;
 }
-/** "character · Favourites": what a card says under the name, when there is anything to say. */
-function followCaption(artist) {
-	return [KIND_CAPTION[followKindOf(artist)], artist.group ?? ""].filter((part) => part.length > 0).join(" · ");
+/**
+* "character · Favourites": what a card says under the name, when there is
+* anything to say. Under the tab of its own group the name of the group is
+* not said again.
+*/
+function followCaption(artist, openTab = "") {
+	const group = artist.group ?? "";
+	return [KIND_CAPTION[followKindOf(artist)], group === openTab ? "" : group].filter((part) => part.length > 0).join(" · ");
 }
 /** Whether an entry passes the Type and Group filters of the toolbar. */
 function matchesKindAndGroup(artist, kind, group) {
 	if (kind !== KIND_ALL && followKindOf(artist) !== kind) return false;
-	if (group === GROUP_ALL) return true;
-	const own = artist.group ?? "";
-	return group === GROUP_NONE ? own.length === 0 : own === group;
+	return inGroupTab(artist.group, group);
+}
+/** "22 artists", or "11 of 22 artists" when the filters leave fewer. */
+function artistsCountLabel(shown, total) {
+	const word = total === SINGLE ? "artist" : "artists";
+	return shown === total ? `${String(total)} ${word}` : `${String(shown)} of ${String(total)} ${word}`;
 }
 function isSortMode(value) {
 	return value === SORT_NAME || value === SORT_POSTS || value === SORT_ADDED;
@@ -31331,6 +31700,7 @@ function ArtistCover(props) {
 }
 function ArtistCard(props) {
 	const { artist, select } = props;
+	const caption = followCaption(artist, props.openTab);
 	const quiet = quietSince(artist, props.now);
 	const body = /* @__PURE__ */ a($$1, { children: [
 		/* @__PURE__ */ a(ArtistCover, { artist }),
@@ -31349,9 +31719,9 @@ function ArtistCard(props) {
 			className: CAPTION_CLASS,
 			children: postsCaption(artist)
 		}),
-		followCaption(artist).length > 0 ? /* @__PURE__ */ a("span", {
+		caption.length > 0 ? /* @__PURE__ */ a("span", {
 			className: CAPTION_CLASS,
-			children: followCaption(artist)
+			children: caption
 		}) : null,
 		quiet === null ? null : /* @__PURE__ */ a("span", {
 			className: CAPTION_CLASS,
@@ -31385,17 +31755,30 @@ function ArtistCard(props) {
 	return /* @__PURE__ */ a("div", {
 		className: CARD_CLASS,
 		"data-tag": artist.tag,
+		draggable: true,
+		onDragStart: (event) => {
+			event.dataTransfer?.setData(DRAG_DATA_TYPE, artist.tag);
+			props.onDragStart();
+		},
+		onDragEnd: props.onDragEnd,
 		children: [/* @__PURE__ */ a("a", {
 			className: CARD_LINK_CLASS,
 			href,
+			draggable: false,
 			children: body
 		}), /* @__PURE__ */ a("div", {
 			className: CARD_ACTIONS_CLASS,
-			children: /* @__PURE__ */ a(IconButton, {
+			children: [/* @__PURE__ */ a(MoveToGroupMenu, {
+				groups: props.groups,
+				current: artist.group ?? "",
+				iconLabel: `${MOVE_ONE_PREFIX}${artist.tag}`,
+				onMove: props.onMove,
+				onNew: props.onNewGroup
+			}), /* @__PURE__ */ a(IconButton, {
 				label: `Unfollow ${artist.tag}`,
 				onClick: props.onUnfollow,
 				children: /* @__PURE__ */ a(IconX, { size: ICON_PX })
-			})
+			})]
 		})]
 	});
 }
@@ -31463,9 +31846,9 @@ function FollowingPage() {
 	const [suggestions, setSuggestions] = d([]);
 	const [selecting, setSelecting] = d(false);
 	const [kindFilter, setKindFilter] = d(KIND_ALL);
-	const [groupFilter, setGroupFilter] = d(GROUP_ALL);
-	const [groupDialog, setGroupDialog] = d(false);
-	const [groupDraft, setGroupDraft] = d("");
+	const [groupFilter, setGroupFilter] = d("");
+	const [groupRequest, setGroupRequest] = d(null);
+	const [dragTag, setDragTag] = d(null);
 	const [selectedTags, setSelectedTags] = d([]);
 	const [confirmUnfollow, setConfirmUnfollow] = d(false);
 	const [unfollowTag, setUnfollowTag] = d(null);
@@ -31521,26 +31904,9 @@ function FollowingPage() {
 	};
 	const groups = listFollowGroups();
 	const hasOtherKinds = artists.some((artist) => followKindOf(artist) !== FOLLOW_KIND_ARTIST);
-	const groupOptions = [
-		{
-			value: GROUP_ALL,
-			label: GROUP_ALL_LABEL
-		},
-		...groups.map((name) => ({
-			value: name,
-			label: name
-		})),
-		{
-			value: GROUP_NONE,
-			label: GROUP_NONE_LABEL
-		}
-	];
-	const applyGroup = (name) => {
-		setFollowGroup(selectedTags.filter((tag) => artists.some((artist) => artist.tag === tag)), name);
-		setGroupDialog(false);
-		setGroupDraft("");
+	const moveToGroup = (tags, name) => {
+		setFollowGroup(tags, name);
 		setArtists(readArtists());
-		if (groupFilter !== GROUP_ALL && groupFilter !== GROUP_NONE && !listFollowGroups().includes(groupFilter)) setGroupFilter(GROUP_ALL);
 	};
 	const visible = sortArtists(artists, sort).filter(matches);
 	const selectedVisible = visible.filter((artist) => selectedTags.includes(artist.tag));
@@ -31663,7 +32029,7 @@ function FollowingPage() {
 			}) : /* @__PURE__ */ a($$1, { children: [
 				/* @__PURE__ */ a("div", {
 					className: STICKY_CLASS,
-					children: selecting ? /* @__PURE__ */ a(SelectionBar, {
+					children: [selecting ? /* @__PURE__ */ a(SelectionBar, {
 						count: selectedVisible.length,
 						onSelectAll: () => {
 							setSelectedTags(visible.map((artist) => artist.tag));
@@ -31680,14 +32046,18 @@ function FollowingPage() {
 							},
 							children: UNFOLLOW_SELECTED_LABEL
 						}),
-						children: /* @__PURE__ */ a(Button, {
-							variant: "secondary",
+						children: /* @__PURE__ */ a(MoveToGroupMenu, {
+							groups,
 							disabled: selectedVisible.length === 0,
-							onClick: () => {
-								setGroupDraft("");
-								setGroupDialog(true);
+							onMove: (name) => {
+								moveToGroup(selectedVisible.map((artist) => artist.tag), name);
 							},
-							children: GROUP_BUTTON_LABEL
+							onNew: () => {
+								setGroupRequest({
+									kind: "new",
+									targets: selectedVisible.map((artist) => artist.tag)
+								});
+							}
 						})
 					}) : /* @__PURE__ */ a("div", {
 						className: TOOLBAR_CLASS,
@@ -31722,12 +32092,6 @@ function FollowingPage() {
 								value: kindFilter,
 								onChange: setKindFilter
 							}) : null,
-							groups.length > 0 ? /* @__PURE__ */ a(Select, {
-								label: GROUP_LABEL,
-								options: groupOptions,
-								value: groupFilter,
-								onChange: setGroupFilter
-							}) : null,
 							/* @__PURE__ */ a(AiPostsToggle, { scope: AI_SCOPE_FOLLOWING }),
 							/* @__PURE__ */ a(Segmented, {
 								label: VIEW_LABEL,
@@ -31742,7 +32106,7 @@ function FollowingPage() {
 							}),
 							/* @__PURE__ */ a("span", {
 								className: `${META_CLASS} ${TOOLBAR_COUNT_CLASS}`,
-								children: `${String(count)} artist${count === SINGLE ? "" : "s"} · ${seen > 0 ? `${UI_TEXT.seenUpTo}${String(seen)}` : UI_TEXT.seenNothing}`
+								children: `${artistsCountLabel(visible.length, count)} · ${seen > 0 ? `${UI_TEXT.seenUpTo}${String(seen)}` : UI_TEXT.seenNothing}`
 							}),
 							/* @__PURE__ */ a("span", {
 								className: TOOLBAR_SPACER_CLASS,
@@ -31769,7 +32133,37 @@ function FollowingPage() {
 								addButton
 							] })
 						]
-					})
+					}), /* @__PURE__ */ a(GroupTabs, {
+						total: count,
+						groups: countGroups(groups, artists.map((artist) => artist.group)),
+						value: groupFilter,
+						onChange: setGroupFilter,
+						onNew: () => {
+							setGroupRequest({
+								kind: "new",
+								targets: []
+							});
+						},
+						onRename: (name) => {
+							setGroupRequest({
+								kind: "rename",
+								name
+							});
+						},
+						onDelete: (name) => {
+							setGroupRequest({
+								kind: "delete",
+								name,
+								count: artists.filter((artist) => artist.group === name).length
+							});
+						},
+						dragging: dragTag !== null,
+						onDropTo: (name) => {
+							if (dragTag !== null) moveToGroup([dragTag], name);
+							setDragTag(null);
+						},
+						locked: selecting
+					})]
 				}),
 				refresh === null ? null : /* @__PURE__ */ a("div", {
 					className: PROGRESS_CLASS,
@@ -31810,68 +32204,53 @@ function FollowingPage() {
 						} : null,
 						onUnfollow: () => {
 							setUnfollowTag(artist.tag);
+						},
+						groups,
+						openTab: groupFilter,
+						onMove: (name) => {
+							moveToGroup([artist.tag], name);
+						},
+						onNewGroup: () => {
+							setGroupRequest({
+								kind: "new",
+								targets: [artist.tag]
+							});
+						},
+						onDragStart: () => {
+							setDragTag(artist.tag);
+						},
+						onDragEnd: () => {
+							setDragTag(null);
 						}
 					}, artist.tag))
 				})
 			] }),
 			addDialog,
-			/* @__PURE__ */ a(Dialog, {
-				open: groupDialog,
-				title: GROUP_DIALOG_TITLE,
-				className: GROUP_DIALOG_CLASS,
-				onClose: () => {
-					setGroupDialog(false);
+			/* @__PURE__ */ a(GroupDialogs, {
+				request: groupRequest,
+				groups,
+				countLabel: (number) => artistsCountLabel(number, number),
+				onCreate: (name, targets) => {
+					if (targets.length > 0) setFollowGroup(targets, name);
+					else createFollowGroup(name);
+					setGroupRequest(null);
+					setArtists(readArtists());
 				},
-				children: [
-					/* @__PURE__ */ a("form", {
-						className: GROUP_ROW_CLASS,
-						onSubmit: (event) => {
-							event.preventDefault();
-							if (groupDraft.trim().length > 0) applyGroup(groupDraft);
-						},
-						children: [/* @__PURE__ */ a(TextField, {
-							value: groupDraft,
-							placeholder: GROUP_FIELD_LABEL,
-							"aria-label": GROUP_FIELD_LABEL,
-							onChange: setGroupDraft
-						}), /* @__PURE__ */ a(Button, {
-							type: "submit",
-							variant: "primary",
-							size: "s",
-							disabled: groupDraft.trim().length === 0,
-							children: GROUP_SAVE_LABEL
-						})]
-					}),
-					groups.length > 0 ? /* @__PURE__ */ a("div", {
-						className: GROUP_EXISTING_CLASS,
-						children: groups.map((name) => /* @__PURE__ */ a(Button, {
-							variant: "secondary",
-							size: "s",
-							onClick: () => {
-								applyGroup(name);
-							},
-							children: name
-						}, name))
-					}) : null,
-					/* @__PURE__ */ a("div", {
-						className: GROUP_ROW_CLASS,
-						children: [/* @__PURE__ */ a(Button, {
-							variant: "secondary",
-							size: "s",
-							onClick: () => {
-								applyGroup(null);
-							},
-							children: GROUP_REMOVE_LABEL
-						}), /* @__PURE__ */ a(Button, {
-							variant: "ghost",
-							size: "s",
-							onClick: () => {
-								setGroupDialog(false);
-							},
-							children: UI_TEXT.cancel
-						})]
-					})
-				]
+				onRename: (from, to) => {
+					renameFollowGroup(from, to);
+					if (groupFilter === from) setGroupFilter(to);
+					setGroupRequest(null);
+					setArtists(readArtists());
+				},
+				onDelete: (name) => {
+					deleteFollowGroup(name);
+					if (groupFilter === name) setGroupFilter("");
+					setGroupRequest(null);
+					setArtists(readArtists());
+				},
+				onClose: () => {
+					setGroupRequest(null);
+				}
 			}),
 			/* @__PURE__ */ a(Dialog, {
 				variant: "confirm",
@@ -31923,7 +32302,523 @@ function FollowingPage() {
 		]
 	});
 }})}}));
-System.register("./filter-terms-Dqag3iAV-Bgq_MKCQ.js", [],(function(exports){'use strict';return{execute:(function(){exports({f:filterTerms,m:matchesAnyTerm});/**
+System.register("./filter-terms-B9HCPDo4-CWIEF9Km.js", ['./___monkey.entry.js'],(function(exports){'use strict';var d,j,OverlayInPlace,T,a,Button,IconChevronDown,IconButton,Popover,IconCheck,A,IconDots,IconPlus,Dialog,TextField,$$1;return{setters:[function(module){d=module.aH;j=module.db;OverlayInPlace=module.an;T=module.aI;a=module.am;Button=module.bh;IconChevronDown=module.b4;IconButton=module.d5;Popover=module.dc;IconCheck=module.cL;A=module.aJ;IconDots=module.dd;IconPlus=module.cn;Dialog=module.bz;TextField=module.bg;$$1=module.aw;}],execute:(function(){exports({G:GroupTabs,M:MoveToGroupMenu,a:GroupDialogs,c:countGroups,f:filterTerms,i:inGroupTab,m:matchesAnyTerm});var GROUP_NONE = "\0none";
+var GROUPS_LABEL = "Groups";
+var GROUP_NONE_LABEL = "No group";
+var GROUP_NEW_LABEL = "New group";
+var GROUP_NEW_ITEM_LABEL = "New group…";
+var GROUP_MOVE_LABEL = "Move to group";
+var GROUP_ACTIONS_PREFIX = "Actions of the group ";
+var GROUP_RENAME_LABEL = "Rename";
+var GROUP_RENAME_TITLE = "Rename group";
+var GROUP_DELETE_LABEL = "Delete";
+var GROUP_DELETE_TITLE = "Delete group";
+var GROUP_NAME_LABEL = "Group name";
+var GROUP_CREATE_LABEL = "Create";
+var GROUP_SAVE_LABEL = "Save";
+var CANCEL_LABEL = "Cancel";
+var NAME_TAKEN = "There is a group with this name already.";
+var TABS_CLASS = "rdw-groups";
+var TAB_CLASS = "rdw-groups__tab";
+var TAB_WRAP_CLASS = "rdw-groups__item";
+var TAB_COUNT_CLASS = "rdw-groups__count";
+var TAB_OVER_CLASS = "rdw-groups__item--over";
+var TAB_MORE_CLASS = "rdw-groups__more";
+var MENU_CLASS = "rdw-groups-menu";
+var MENU_ITEM_CLASS = "rdw-groups-menu__item";
+var MENU_RULE_CLASS = "rdw-groups-menu__rule";
+/** On a menu drawn where it is opened, under its button, and not in the body. */
+var MENU_IN_PLACE_CLASS = "rdw-groups-menu--in-place";
+var MENU_END_CLASS = "rdw-groups-menu--end";
+var MENU_TICK_CLASS = "rdw-groups-menu__tick";
+var MOVE_TRIGGER_CLASS = "rdw-groups-move";
+var NAME_FORM_CLASS = "rdw-groups-name";
+var NAME_ERROR_CLASS = "rdw-groups-name__error";
+var NAME_ACTIONS_CLASS = "rdw-groups-name__actions";
+var MENU_WIDTH_PX = 220;
+var TAB_MENU_WIDTH_PX = 160;
+var ICON_PX = 14;
+var GROUPS_CSS = `
+.${TABS_CLASS} {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.${TABS_CLASS}[inert] {
+  opacity: 0.45;
+}
+.${TAB_WRAP_CLASS} {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--rdw-radius-m);
+}
+.${TAB_WRAP_CLASS}[data-selected="true"] {
+  border-color: var(--rdw-border);
+  background: var(--rdw-surface);
+}
+.${TAB_OVER_CLASS} {
+  border-color: var(--rdw-accent);
+  background: var(--rdw-accent-soft);
+}
+.${TAB_CLASS} {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--rdw-radius-m);
+  background: transparent;
+  color: var(--rdw-muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.${TAB_CLASS}:hover,
+.${TAB_WRAP_CLASS}[data-selected="true"] .${TAB_CLASS} {
+  color: var(--rdw-text);
+}
+.${TAB_COUNT_CLASS} {
+  color: var(--rdw-muted);
+  font-weight: 400;
+}
+.${TAB_MORE_CLASS} {
+  margin-right: 2px;
+}
+/* The button of a group's own actions shows for the open tab, under the
+   pointer and for the keyboard: on every tab at once it is noise. */
+.${TAB_WRAP_CLASS}:not([data-selected="true"]):not(:hover):not(:focus-within) .${TAB_MORE_CLASS} {
+  opacity: 0;
+}
+.${MOVE_TRIGGER_CLASS} {
+  position: relative;
+  display: inline-flex;
+}
+`;
+var MENU_CSS = `
+.${MENU_CLASS} {
+  padding: 4px;
+  gap: 0;
+}
+/*
+ * An own page hides everything of the body but itself, so a menu drawn in the
+ * body would not be seen there: it is drawn under its button instead, as the
+ * dialogs and the lists of an own page are drawn inside the page.
+ */
+.${MENU_CLASS}.${MENU_IN_PLACE_CLASS} {
+  top: calc(100% + 4px);
+  left: 0;
+  box-sizing: border-box;
+  width: max-content;
+  min-width: ${String(TAB_MENU_WIDTH_PX)}px;
+  max-width: ${String(MENU_WIDTH_PX)}px;
+}
+.${MENU_CLASS}.${MENU_IN_PLACE_CLASS}.${MENU_END_CLASS} {
+  left: auto;
+  right: 0;
+}
+.${MENU_ITEM_CLASS} {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--rdw-radius-s);
+  background: transparent;
+  color: var(--rdw-text);
+  font: 12px/1.35 var(--rdw-font);
+  text-align: left;
+  cursor: pointer;
+}
+.${MENU_ITEM_CLASS} > span:first-of-type {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.${MENU_ITEM_CLASS}:hover:not(:disabled),
+.${MENU_ITEM_CLASS}:focus-visible {
+  background: var(--rdw-surface-2);
+}
+.${MENU_ITEM_CLASS}:disabled {
+  cursor: default;
+  font-weight: 600;
+}
+.${MENU_ITEM_CLASS}[data-tone="danger"] {
+  color: var(--rdw-danger);
+}
+.${MENU_TICK_CLASS} {
+  flex: none;
+  display: inline-flex;
+  color: var(--rdw-accent);
+}
+.${MENU_RULE_CLASS} {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--rdw-border);
+}
+`;
+var NAME_CSS = `
+.${NAME_FORM_CLASS} {
+  display: grid;
+  gap: 8px;
+  min-width: 260px;
+}
+.${NAME_ERROR_CLASS} {
+  margin: 0;
+  color: var(--rdw-danger);
+  font-size: 12px;
+}
+.${NAME_ACTIONS_CLASS} {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+`;
+/** How many of the list are in each group, in the order of the names given. */
+function countGroups(names, groupsOfItems) {
+	const counts = /* @__PURE__ */ new Map();
+	for (const group of groupsOfItems) if (group !== void 0 && group.length > 0) counts.set(group, (counts.get(group) ?? 0) + 1);
+	return names.map((name) => ({
+		name,
+		count: counts.get(name) ?? 0
+	}));
+}
+/** Whether something of this group is under the open tab. */
+function inGroupTab(group, tab) {
+	if (tab === "") return true;
+	const own = group ?? "";
+	return tab === "\0none" ? own.length === 0 : own === tab;
+}
+function GroupTabs(props) {
+	const [over, setOver] = d(null);
+	const [menu, setMenu] = d(null);
+	const inPlace = j(OverlayInPlace);
+	const anchorRef = T(null);
+	anchorRef.current = menu?.anchor ?? null;
+	const dragging = props.dragging === true;
+	A(() => {
+		if (!dragging) setOver(null);
+	}, [dragging]);
+	const inGroups = props.groups.reduce((sum, group) => sum + group.count, 0);
+	const dropProps = (key, target) => dragging && props.onDropTo !== void 0 ? {
+		onDragOver: (event) => {
+			event.preventDefault();
+			setOver(key);
+		},
+		onDragLeave: () => {
+			setOver((current) => current === key ? null : current);
+		},
+		onDrop: (event) => {
+			event.preventDefault();
+			setOver(null);
+			props.onDropTo?.(target);
+		}
+	} : {};
+	const tab = (key, label, count) => /* @__PURE__ */ a("button", {
+		type: "button",
+		role: "tab",
+		className: `${TAB_CLASS} rdw-kit-focusable`,
+		"aria-selected": props.value === key,
+		onClick: () => {
+			props.onChange(key);
+		},
+		children: [label, /* @__PURE__ */ a("span", {
+			className: TAB_COUNT_CLASS,
+			children: String(count)
+		})]
+	});
+	const wrapClass = (key) => over === key ? `${TAB_WRAP_CLASS} ${TAB_OVER_CLASS}` : TAB_WRAP_CLASS;
+	const tabMenu = (name) => /* @__PURE__ */ a(Popover, {
+		open: true,
+		onClose: () => {
+			setMenu(null);
+		},
+		anchorRef,
+		...inPlace ? {} : { widthPx: TAB_MENU_WIDTH_PX },
+		role: "menu",
+		"aria-label": `${GROUP_ACTIONS_PREFIX}${name}`,
+		className: inPlace ? `${MENU_CLASS} ${MENU_IN_PLACE_CLASS}` : MENU_CLASS,
+		children: [
+			/* @__PURE__ */ a("style", { children: MENU_CSS }),
+			/* @__PURE__ */ a("button", {
+				type: "button",
+				role: "menuitem",
+				className: `${MENU_ITEM_CLASS} rdw-kit-focusable`,
+				onClick: () => {
+					setMenu(null);
+					props.onRename(name);
+				},
+				children: /* @__PURE__ */ a("span", { children: GROUP_RENAME_LABEL })
+			}),
+			/* @__PURE__ */ a("button", {
+				type: "button",
+				role: "menuitem",
+				className: `${MENU_ITEM_CLASS} rdw-kit-focusable`,
+				"data-tone": "danger",
+				onClick: () => {
+					setMenu(null);
+					props.onDelete(name);
+				},
+				children: /* @__PURE__ */ a("span", { children: GROUP_DELETE_LABEL })
+			})
+		]
+	});
+	return /* @__PURE__ */ a("div", {
+		className: TABS_CLASS,
+		role: "tablist",
+		"aria-label": GROUPS_LABEL,
+		...props.locked === true ? { inert: true } : {},
+		children: [
+			/* @__PURE__ */ a("style", { children: GROUPS_CSS }),
+			/* @__PURE__ */ a("span", {
+				className: TAB_WRAP_CLASS,
+				"data-selected": String(props.value === ""),
+				children: tab("", "All", props.total)
+			}),
+			props.groups.map((group) => /* @__PURE__ */ a("span", {
+				className: wrapClass(group.name),
+				"data-selected": String(props.value === group.name),
+				"data-group": group.name,
+				onContextMenu: (event) => {
+					event.preventDefault();
+					const anchor = event.currentTarget;
+					setMenu({
+						name: group.name,
+						anchor
+					});
+				},
+				...dropProps(group.name, group.name),
+				children: [
+					tab(group.name, group.name, group.count),
+					/* @__PURE__ */ a(IconButton, {
+						className: TAB_MORE_CLASS,
+						label: `${GROUP_ACTIONS_PREFIX}${group.name}`,
+						menuOpen: menu?.name === group.name,
+						onClick: (event) => {
+							const anchor = event.currentTarget;
+							setMenu((current) => current?.name === group.name ? null : {
+								name: group.name,
+								anchor
+							});
+						},
+						children: /* @__PURE__ */ a(IconDots, { size: ICON_PX })
+					}),
+					menu?.name === group.name ? tabMenu(group.name) : null
+				]
+			}, group.name)),
+			props.groups.length > 0 ? /* @__PURE__ */ a("span", {
+				className: wrapClass(GROUP_NONE),
+				"data-selected": String(props.value === GROUP_NONE),
+				...dropProps(GROUP_NONE, null),
+				children: tab(GROUP_NONE, GROUP_NONE_LABEL, props.total - inGroups)
+			}) : null,
+			/* @__PURE__ */ a(Button, {
+				variant: "ghost",
+				onClick: props.onNew,
+				children: [/* @__PURE__ */ a(IconPlus, { size: ICON_PX }), GROUP_NEW_LABEL]
+			})
+		]
+	});
+}
+/** "Move to group": the groups there are, "No group", and "New group…". */
+function MoveToGroupMenu(props) {
+	const [open, setOpen] = d(false);
+	const inPlace = j(OverlayInPlace);
+	const anchorRef = T(null);
+	const current = props.current ?? "";
+	const pick = (run) => {
+		setOpen(false);
+		run();
+	};
+	const toggle = () => {
+		setOpen((value) => !value);
+	};
+	return /* @__PURE__ */ a("span", {
+		className: MOVE_TRIGGER_CLASS,
+		children: [props.iconLabel === void 0 ? /* @__PURE__ */ a(Button, {
+			variant: "secondary",
+			disabled: props.disabled === true,
+			buttonRef: anchorRef,
+			onClick: toggle,
+			children: [GROUP_MOVE_LABEL, /* @__PURE__ */ a(IconChevronDown, { size: ICON_PX })]
+		}) : /* @__PURE__ */ a(IconButton, {
+			label: props.iconLabel,
+			menuOpen: open,
+			disabled: props.disabled === true,
+			buttonRef: anchorRef,
+			onClick: toggle,
+			children: /* @__PURE__ */ a(IconFolderMove, {})
+		}), /* @__PURE__ */ a(Popover, {
+			open,
+			onClose: () => {
+				setOpen(false);
+			},
+			anchorRef,
+			...inPlace ? {} : {
+				widthPx: MENU_WIDTH_PX,
+				alignEnd: true
+			},
+			role: "menu",
+			"aria-label": GROUP_MOVE_LABEL,
+			className: inPlace ? `${MENU_CLASS} ${MENU_IN_PLACE_CLASS} ${MENU_END_CLASS}` : MENU_CLASS,
+			children: [
+				/* @__PURE__ */ a("style", { children: MENU_CSS }),
+				props.groups.map((name) => /* @__PURE__ */ a("button", {
+					type: "button",
+					role: "menuitem",
+					className: `${MENU_ITEM_CLASS} rdw-kit-focusable`,
+					disabled: name === current,
+					onClick: () => {
+						pick(() => {
+							props.onMove(name);
+						});
+					},
+					children: [/* @__PURE__ */ a("span", { children: name }), name === current ? /* @__PURE__ */ a("span", {
+						className: MENU_TICK_CLASS,
+						"aria-hidden": "true",
+						children: /* @__PURE__ */ a(IconCheck, { size: ICON_PX })
+					}) : null]
+				}, name)),
+				props.groups.length > 0 ? /* @__PURE__ */ a("div", {
+					className: MENU_RULE_CLASS,
+					"aria-hidden": "true"
+				}) : null,
+				props.groups.length > 0 ? /* @__PURE__ */ a("button", {
+					type: "button",
+					role: "menuitem",
+					className: `${MENU_ITEM_CLASS} rdw-kit-focusable`,
+					disabled: props.current !== void 0 && current.length === 0,
+					onClick: () => {
+						pick(() => {
+							props.onMove(null);
+						});
+					},
+					children: [/* @__PURE__ */ a("span", { children: GROUP_NONE_LABEL }), props.current !== void 0 && current.length === 0 ? /* @__PURE__ */ a("span", {
+						className: MENU_TICK_CLASS,
+						"aria-hidden": "true",
+						children: /* @__PURE__ */ a(IconCheck, { size: ICON_PX })
+					}) : null]
+				}) : null,
+				/* @__PURE__ */ a("button", {
+					type: "button",
+					role: "menuitem",
+					className: `${MENU_ITEM_CLASS} rdw-kit-focusable`,
+					onClick: () => {
+						pick(props.onNew);
+					},
+					children: /* @__PURE__ */ a("span", { children: GROUP_NEW_ITEM_LABEL })
+				})
+			]
+		})]
+	});
+}
+/** A folder with an arrow: "move to a group". Drawn here, it is used nowhere else. */
+function IconFolderMove() {
+	return /* @__PURE__ */ a("svg", {
+		width: ICON_PX,
+		height: ICON_PX,
+		viewBox: "0 0 24 24",
+		fill: "none",
+		stroke: "currentColor",
+		"stroke-width": "2",
+		"stroke-linecap": "round",
+		"stroke-linejoin": "round",
+		"aria-hidden": "true",
+		children: [
+			/* @__PURE__ */ a("path", { d: "M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" }),
+			/* @__PURE__ */ a("path", { d: "M10 13h6" }),
+			/* @__PURE__ */ a("path", { d: "M13.5 10.5 16 13l-2.5 2.5" })
+		]
+	});
+}
+/** "Delete the group “Artists”? Its 3 artists go to No group." */
+function deleteGroupMessage(name, countText, count) {
+	const head = `Delete the group “${name}”?`;
+	if (count === 0) return `${head} Nothing is in it.`;
+	return `${head} Its ${countText} ${count === 1 ? "goes" : "go"} to ${GROUP_NONE_LABEL}; nothing else is deleted.`;
+}
+function GroupDialogs(props) {
+	const { request } = props;
+	const [draft, setDraft] = d("");
+	const naming = request !== null && request.kind !== "delete";
+	const initial = request !== null && request.kind === "rename" ? request.name : "";
+	A(() => {
+		if (naming) setDraft(initial);
+	}, [naming, initial]);
+	const name = draft.trim();
+	const taken = name.length > 0 && name !== initial && props.groups.includes(name);
+	const ready = name.length > 0 && name !== initial && !taken;
+	const submit = () => {
+		if (!ready || request === null) return;
+		if (request.kind === "new") props.onCreate(name, request.targets);
+		else if (request.kind === "rename") props.onRename(request.name, name);
+	};
+	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a(Dialog, {
+		open: naming,
+		title: request !== null && request.kind === "rename" ? GROUP_RENAME_TITLE : GROUP_NEW_LABEL,
+		onClose: props.onClose,
+		children: [/* @__PURE__ */ a("style", { children: NAME_CSS }), /* @__PURE__ */ a("form", {
+			className: NAME_FORM_CLASS,
+			onSubmit: (event) => {
+				event.preventDefault();
+				submit();
+			},
+			children: [
+				/* @__PURE__ */ a(TextField, {
+					value: draft,
+					placeholder: GROUP_NAME_LABEL,
+					"aria-label": GROUP_NAME_LABEL,
+					onChange: setDraft
+				}),
+				taken ? /* @__PURE__ */ a("p", {
+					className: NAME_ERROR_CLASS,
+					role: "alert",
+					children: NAME_TAKEN
+				}) : null,
+				/* @__PURE__ */ a("div", {
+					className: NAME_ACTIONS_CLASS,
+					children: [/* @__PURE__ */ a(Button, {
+						type: "button",
+						variant: "secondary",
+						size: "s",
+						onClick: props.onClose,
+						children: CANCEL_LABEL
+					}), /* @__PURE__ */ a(Button, {
+						type: "submit",
+						variant: "primary",
+						size: "s",
+						disabled: !ready,
+						children: request !== null && request.kind === "rename" ? GROUP_SAVE_LABEL : GROUP_CREATE_LABEL
+					})]
+				})
+			]
+		})]
+	}), /* @__PURE__ */ a(Dialog, {
+		variant: "confirm",
+		open: request !== null && request.kind === "delete",
+		title: GROUP_DELETE_TITLE,
+		message: request !== null && request.kind === "delete" ? deleteGroupMessage(request.name, props.countLabel(request.count), request.count) : "",
+		confirmLabel: GROUP_DELETE_LABEL,
+		cancelLabel: CANCEL_LABEL,
+		confirmTone: "danger",
+		onConfirm: () => {
+			if (request !== null && request.kind === "delete") props.onDelete(request.name);
+		},
+		onClose: props.onClose
+	})] });
+}
+/**
 * The filter fields of the Collections and Following pages take several
 * names at once; a card is shown when any of them matches.
 */
@@ -31941,7 +32836,7 @@ function matchesAnyTerm(texts, terms) {
 	const lowered = texts.map((text) => text.toLowerCase());
 	return terms.some((term) => lowered.some((text) => text.includes(term)));
 }})}}));
-System.register("./stats-section-LJbJ2v_Z-Pq7LHAbk.js", ['./___monkey.entry.js'],(function(exports){'use strict';var a,PANEL_UI_CLASS,Card,loadFavSet,load,resolveCollectionKind,d,A,Button,$$1,readFavoriteIndex,topFavoriteTags,getFeatureState,object,number,optional,string,setFeatureState,int,FETCH_CREDENTIALS,SEARCH_PATH,SEARCH_PARAM_PAGE;return{setters:[function(module){a=module.am;PANEL_UI_CLASS=module.ax;Card=module.b5;loadFavSet=module.p;load=module.t;resolveCollectionKind=module.co;d=module.aH;A=module.aJ;Button=module.bh;$$1=module.aw;readFavoriteIndex=module.d3;topFavoriteTags=module.d4;getFeatureState=module.I;object=module.bX;number=module.d5;optional=module.bZ;string=module.b_;setFeatureState=module.u;int=module.d6;FETCH_CREDENTIALS=module.d7;SEARCH_PATH=module.al;SEARCH_PARAM_PAGE=module.ai;}],execute:(function(){exports("StatsPage",StatsPage);/**
+System.register("./stats-section-DwmCaw6j-DdZCLInC.js", ['./___monkey.entry.js'],(function(exports){'use strict';var a,PANEL_UI_CLASS,Card,loadFavSet,load,resolveCollectionKind,d,A,Button,$$1,readFavoriteIndex,topFavoriteTags,getFeatureState,object,number,optional,string,setFeatureState,int,FETCH_CREDENTIALS,SEARCH_PATH,SEARCH_PARAM_PAGE;return{setters:[function(module){a=module.am;PANEL_UI_CLASS=module.ax;Card=module.b5;loadFavSet=module.p;load=module.t;resolveCollectionKind=module.ct;d=module.aH;A=module.aJ;Button=module.bh;$$1=module.aw;readFavoriteIndex=module.de;topFavoriteTags=module.df;getFeatureState=module.I;object=module.bX;number=module.dg;optional=module.bZ;string=module.b_;setFeatureState=module.u;int=module.dh;FETCH_CREDENTIALS=module.di;SEARCH_PATH=module.al;SEARCH_PARAM_PAGE=module.ai;}],execute:(function(){exports("StatsPage",StatsPage);/**
 * The numbers of the user's own profile page on the site, for Statistics.
 *
 * Read only when the user presses "Refresh profile": two requests with a
@@ -32658,7 +33553,7 @@ function StatsPage() {
 		children: /* @__PURE__ */ a(StatsSection, {})
 	});
 }})}}));
-System.register("./collection-detail-page-DeFoIY5T-rdk53Zyj.js", ['./___monkey.entry.js','./app-IRmI9Qth-CKE1niYO.js'],(function(exports){'use strict';var d,useEscape,T,w$1,b,downloadsAvailable,a,$$1,SelectionBar,Button,shuffleCollection,resetCollectionOrder,UI_TEXT,EmptyState,Dialog,TextField,Toast,getCollectionOrder,listPlaylists,RDW_HASH_COLLECTIONS,isDownloadBusy,startDownload,removePostsFromCollection,movePostInCollection,renameCollection,deleteCollection,RDW_ROUTE_COLLECTIONS,restorePosts,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION_VIEW,SEARCH_PATH,collectionQueueHash,navigateToRdwRoute;return{setters:[function(module){d=module.aH;useEscape=module.ci;T=module.aI;w$1=module.d8;b=module.bu;downloadsAvailable=module.d9;a=module.am;$$1=module.aw;SelectionBar=module.cj;Button=module.bh;shuffleCollection=module.da;resetCollectionOrder=module.db;UI_TEXT=module.V;EmptyState=module.cn;Dialog=module.bz;TextField=module.bg;Toast=module.dc;getCollectionOrder=module.dd;listPlaylists=module.de;RDW_HASH_COLLECTIONS=module.a0;isDownloadBusy=module.df;startDownload=module.dg;removePostsFromCollection=module.dh;movePostInCollection=module.di;renameCollection=module.dj;deleteCollection=module.cr;RDW_ROUTE_COLLECTIONS=module.dk;restorePosts=module.dl;SEARCH_PARAM_PAGE=module.ai;SEARCH_PAGE=module.cQ;SEARCH_SECTION_VIEW=module.dm;SEARCH_PATH=module.al;collectionQueueHash=module.dn;},function(module){navigateToRdwRoute=module.i;}],execute:(function(){exports("CollectionDetailPage",CollectionDetailPage);var CELL_SIZE_PX = 200;
+System.register("./collection-detail-page-DrO_ikPk-Bie_akBX.js", ['./___monkey.entry.js','./app-B906DLKQ-B7jq8PUu.js'],(function(exports){'use strict';var d,useEscape,T,w$1,b,downloadsAvailable,a,$$1,SelectionBar,Button,shuffleCollection,resetCollectionOrder,UI_TEXT,EmptyState,Dialog,TextField,Toast,getCollectionOrder,listPlaylists,RDW_HASH_COLLECTIONS,isDownloadBusy,startDownload,removePostsFromCollection,movePostInCollection,renameCollection,deleteCollection,RDW_ROUTE_COLLECTIONS,restorePosts,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION_VIEW,SEARCH_PATH,collectionQueueHash,navigateToRdwRoute;return{setters:[function(module){d=module.aH;useEscape=module.cj;T=module.aI;w$1=module.dj;b=module.bu;downloadsAvailable=module.dk;a=module.am;$$1=module.aw;SelectionBar=module.ck;Button=module.bh;shuffleCollection=module.dl;resetCollectionOrder=module.dm;UI_TEXT=module.V;EmptyState=module.co;Dialog=module.bz;TextField=module.bg;Toast=module.dn;getCollectionOrder=module.dp;listPlaylists=module.dq;RDW_HASH_COLLECTIONS=module.a0;isDownloadBusy=module.dr;startDownload=module.ds;removePostsFromCollection=module.dt;movePostInCollection=module.du;renameCollection=module.dv;deleteCollection=module.cw;RDW_ROUTE_COLLECTIONS=module.dw;restorePosts=module.dx;SEARCH_PARAM_PAGE=module.ai;SEARCH_PAGE=module.cV;SEARCH_SECTION_VIEW=module.dy;SEARCH_PATH=module.al;collectionQueueHash=module.dz;},function(module){navigateToRdwRoute=module.i;}],execute:(function(){exports("CollectionDetailPage",CollectionDetailPage);var CELL_SIZE_PX = 200;
 var GRID_GAP_PX = 4;
 var SECTION_GAP_PX = 12;
 var ACTIONS_GAP_PX = 8;

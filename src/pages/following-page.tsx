@@ -31,6 +31,8 @@ import {
 } from "../storage/schema";
 import {
   addArtists,
+  createFollowGroup,
+  deleteFollowGroup,
   followKindOf,
   getSeenPostId,
   listFollowGroups,
@@ -39,6 +41,7 @@ import {
   rememberArtistSnapshot,
   removeArtist,
   removeArtists,
+  renameFollowGroup,
   setFollowGroup,
 } from "../storage/store";
 import {
@@ -52,10 +55,18 @@ import {
   ProgressBar,
   Segmented,
   Select,
-  TextField,
   type SegmentedOption,
   type SelectOption,
 } from "../ui/kit";
+import {
+  GROUP_ALL,
+  GroupDialogs,
+  GroupTabs,
+  MoveToGroupMenu,
+  countGroups,
+  inGroupTab,
+  type GroupRequest,
+} from "../ui/groups";
 import { SearchField } from "../ui/kit/search-field";
 import { IconCheck, IconPlus, IconX } from "../ui/kit/icons";
 import { completeLastQueryToken, readLastQueryToken } from "../ui/query-field";
@@ -161,20 +172,10 @@ const KIND_CAPTION: Readonly<Record<FollowKind, string>> = {
   [FOLLOW_KIND_CHARACTER]: "character",
   [FOLLOW_KIND_COPYRIGHT]: "copyright",
 };
-const GROUP_LABEL = "Group";
-/** Values of the group filter that are not group names. */
-const GROUP_ALL = "";
-const GROUP_NONE = "\u0000none";
-const GROUP_ALL_LABEL = "All groups";
-const GROUP_NONE_LABEL = "No group";
-const GROUP_BUTTON_LABEL = "Group…";
-const GROUP_DIALOG_TITLE = "Put into a group";
-const GROUP_FIELD_LABEL = "Group name";
-const GROUP_SAVE_LABEL = "Save";
-const GROUP_REMOVE_LABEL = "Remove from group";
-const GROUP_DIALOG_CLASS = "rdw-following-group-dialog";
-const GROUP_EXISTING_CLASS = "rdw-following-group-existing";
-const GROUP_ROW_CLASS = "rdw-following-group-row";
+/** The small button of a card that opens "Move to group". */
+const MOVE_ONE_PREFIX = "Move to a group: ";
+/** What a card carries while it is dragged to a tab of a group. */
+const DRAG_DATA_TYPE = "text/plain";
 
 const SHOW_OPTIONS: readonly SegmentedOption[] = [
   { value: SHOW_ALL, label: "All" },
@@ -269,24 +270,6 @@ export const FOLLOWING_PAGE_CSS = `
   border-radius: var(--rdw-radius-l);
   background: color-mix(in srgb, var(--rdw-surface) 88%, transparent);
   backdrop-filter: blur(10px);
-}
-.${GROUP_DIALOG_CLASS} {
-  display: grid;
-  gap: 10px;
-}
-.${GROUP_ROW_CLASS} {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0;
-}
-.${GROUP_ROW_CLASS} .rdw-field {
-  flex: 1 1 auto;
-}
-.${GROUP_EXISTING_CLASS} {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
 }
 .${META_CLASS},
 .${CAPTION_CLASS} {
@@ -438,6 +421,10 @@ export const FOLLOWING_PAGE_CSS = `
   display: flex;
   gap: 4px;
 }
+/* With its menu open the corner of a card is over the cards after it. */
+.${CARD_ACTIONS_CLASS}:has([aria-expanded="true"]) {
+  z-index: ${String(TOOLBAR_Z_INDEX - 1)};
+}
 .${CARD_ACTIONS_CLASS} .rdw-icon-btn {
   background: var(--rdw-surface);
   border: 1px solid var(--rdw-border);
@@ -492,9 +479,14 @@ function isShowMode(value: string): value is ShowMode {
   return value === SHOW_ALL || value === SHOW_NEW;
 }
 
-/** "character · Favourites": what a card says under the name, when there is anything to say. */
-export function followCaption(artist: ArtistEntry): string {
-  return [KIND_CAPTION[followKindOf(artist)], artist.group ?? ""]
+/**
+ * "character · Favourites": what a card says under the name, when there is
+ * anything to say. Under the tab of its own group the name of the group is
+ * not said again.
+ */
+export function followCaption(artist: ArtistEntry, openTab: string = GROUP_ALL): string {
+  const group = artist.group ?? "";
+  return [KIND_CAPTION[followKindOf(artist)], group === openTab ? "" : group]
     .filter((part) => part.length > 0)
     .join(" · ");
 }
@@ -504,11 +496,13 @@ export function matchesKindAndGroup(artist: ArtistEntry, kind: string, group: st
   if (kind !== KIND_ALL && followKindOf(artist) !== kind) {
     return false;
   }
-  if (group === GROUP_ALL) {
-    return true;
-  }
-  const own = artist.group ?? "";
-  return group === GROUP_NONE ? own.length === 0 : own === group;
+  return inGroupTab(artist.group, group);
+}
+
+/** "22 artists", or "11 of 22 artists" when the filters leave fewer. */
+export function artistsCountLabel(shown: number, total: number): string {
+  const word = total === SINGLE ? "artist" : "artists";
+  return shown === total ? `${String(total)} ${word}` : `${String(shown)} of ${String(total)} ${word}`;
 }
 
 function isSortMode(value: string): value is SortMode {
@@ -653,8 +647,16 @@ function ArtistCard(props: {
   readonly now: number;
   readonly select: CardSelect | null;
   readonly onUnfollow: () => void;
+  readonly groups: readonly string[];
+  /** The open tab: its group is not named on the cards under it. */
+  readonly openTab: string;
+  readonly onMove: (group: string | null) => void;
+  readonly onNewGroup: () => void;
+  readonly onDragStart: () => void;
+  readonly onDragEnd: () => void;
 }): JSX.Element {
   const { artist, select } = props;
+  const caption = followCaption(artist, props.openTab);
   const quiet = quietSince(artist, props.now);
   const body = (
     <>
@@ -666,9 +668,7 @@ function ArtistCard(props: {
         {props.hasNew ? <span className={NEW_BADGE_CLASS}>{NEW_BADGE}</span> : null}
       </span>
       <span className={CAPTION_CLASS}>{postsCaption(artist)}</span>
-      {followCaption(artist).length > 0 ? (
-        <span className={CAPTION_CLASS}>{followCaption(artist)}</span>
-      ) : null}
+      {caption.length > 0 ? <span className={CAPTION_CLASS}>{caption}</span> : null}
       {quiet === null ? null : (
         <span className={CAPTION_CLASS}>{`${QUIET_PREFIX}${formatDay(quiet)}`}</span>
       )}
@@ -706,11 +706,29 @@ function ArtistCard(props: {
   }
 
   return (
-    <div className={CARD_CLASS} data-tag={artist.tag}>
-      <a className={CARD_LINK_CLASS} href={href}>
+    // Dragged, the card can be dropped on the tab of a group; the menu beside
+    // the cross does the same without dragging.
+    <div
+      className={CARD_CLASS}
+      data-tag={artist.tag}
+      draggable
+      onDragStart={(event) => {
+        event.dataTransfer?.setData(DRAG_DATA_TYPE, artist.tag);
+        props.onDragStart();
+      }}
+      onDragEnd={props.onDragEnd}
+    >
+      <a className={CARD_LINK_CLASS} href={href} draggable={false}>
         {body}
       </a>
       <div className={CARD_ACTIONS_CLASS}>
+        <MoveToGroupMenu
+          groups={props.groups}
+          current={artist.group ?? ""}
+          iconLabel={`${MOVE_ONE_PREFIX}${artist.tag}`}
+          onMove={props.onMove}
+          onNew={props.onNewGroup}
+        />
         <IconButton label={`Unfollow ${artist.tag}`} onClick={props.onUnfollow}>
           <IconX size={ICON_PX} />
         </IconButton>
@@ -791,8 +809,9 @@ export function FollowingPage(): JSX.Element {
   const [selecting, setSelecting] = useState(false);
   const [kindFilter, setKindFilter] = useState(KIND_ALL);
   const [groupFilter, setGroupFilter] = useState(GROUP_ALL);
-  const [groupDialog, setGroupDialog] = useState(false);
-  const [groupDraft, setGroupDraft] = useState("");
+  const [groupRequest, setGroupRequest] = useState<GroupRequest | null>(null);
+  // The tag of the card being dragged to a tab, or null.
+  const [dragTag, setDragTag] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<readonly string[]>([]);
   const [confirmUnfollow, setConfirmUnfollow] = useState(false);
   const [unfollowTag, setUnfollowTag] = useState<string | null>(null);
@@ -866,23 +885,9 @@ export function FollowingPage(): JSX.Element {
   const groups = listFollowGroups();
   // The Type filter is of use only once something other than an artist is followed.
   const hasOtherKinds = artists.some((artist) => followKindOf(artist) !== FOLLOW_KIND_ARTIST);
-  const groupOptions: SelectOption[] = [
-    { value: GROUP_ALL, label: GROUP_ALL_LABEL },
-    ...groups.map((name) => ({ value: name, label: name })),
-    { value: GROUP_NONE, label: GROUP_NONE_LABEL },
-  ];
-  const applyGroup = (name: string | null): void => {
-    setFollowGroup(
-      selectedTags.filter((tag) => artists.some((artist) => artist.tag === tag)),
-      name,
-    );
-    setGroupDialog(false);
-    setGroupDraft("");
+  const moveToGroup = (tags: readonly string[], name: string | null): void => {
+    setFollowGroup(tags, name);
     setArtists(readArtists());
-    // A filter on a group that no longer exists would show an empty page.
-    if (groupFilter !== GROUP_ALL && groupFilter !== GROUP_NONE && !listFollowGroups().includes(groupFilter)) {
-      setGroupFilter(GROUP_ALL);
-    }
   };
   const visible = sortArtists(artists, sort).filter(matches);
   // Only cards on screen count: a filter never hides a card that is acted on.
@@ -1054,16 +1059,22 @@ export function FollowingPage(): JSX.Element {
                 </Button>
               }
             >
-              <Button
-                variant="secondary"
+              <MoveToGroupMenu
+                groups={groups}
                 disabled={selectedVisible.length === 0}
-                onClick={() => {
-                  setGroupDraft("");
-                  setGroupDialog(true);
+                onMove={(name) => {
+                  moveToGroup(
+                    selectedVisible.map((artist) => artist.tag),
+                    name,
+                  );
                 }}
-              >
-                {GROUP_BUTTON_LABEL}
-              </Button>
+                onNew={() => {
+                  setGroupRequest({
+                    kind: "new",
+                    targets: selectedVisible.map((artist) => artist.tag),
+                  });
+                }}
+              />
             </SelectionBar>
           ) : (
           <div className={TOOLBAR_CLASS}>
@@ -1103,14 +1114,6 @@ export function FollowingPage(): JSX.Element {
                 onChange={setKindFilter}
               />
             ) : null}
-            {groups.length > 0 ? (
-              <Select
-                label={GROUP_LABEL}
-                options={groupOptions}
-                value={groupFilter}
-                onChange={setGroupFilter}
-              />
-            ) : null}
             {/* What a card opens, and what Refresh reads, with AI posts shown or hidden. */}
             <AiPostsToggle scope={AI_SCOPE_FOLLOWING} />
             <Segmented
@@ -1127,7 +1130,7 @@ export function FollowingPage(): JSX.Element {
             {/* How many are followed and how far the feed was seen: in the toolbar
                 itself (Kaze, 18.11.2026), not a line of its own under it. */}
             <span className={`${META_CLASS} ${TOOLBAR_COUNT_CLASS}`}>
-              {`${String(count)} artist${count === SINGLE ? "" : "s"} · ${
+              {`${artistsCountLabel(visible.length, count)} · ${
                 seen > 0 ? `${UI_TEXT.seenUpTo}${String(seen)}` : UI_TEXT.seenNothing
               }`}
             </span>
@@ -1156,6 +1159,35 @@ export function FollowingPage(): JSX.Element {
               </>
           </div>
           )}
+          {/* Under the toolbar and kept with it: each card is under one tab.
+              Locked while cards are selected, as the filters are away then. */}
+          <GroupTabs
+            total={count}
+            groups={countGroups(groups, artists.map((artist) => artist.group))}
+            value={groupFilter}
+            onChange={setGroupFilter}
+            onNew={() => {
+              setGroupRequest({ kind: "new", targets: [] });
+            }}
+            onRename={(name) => {
+              setGroupRequest({ kind: "rename", name });
+            }}
+            onDelete={(name) => {
+              setGroupRequest({
+                kind: "delete",
+                name,
+                count: artists.filter((artist) => artist.group === name).length,
+              });
+            }}
+            dragging={dragTag !== null}
+            onDropTo={(name) => {
+              if (dragTag !== null) {
+                moveToGroup([dragTag], name);
+              }
+              setDragTag(null);
+            }}
+            locked={selecting}
+          />
           </div>
 
 
@@ -1218,6 +1250,20 @@ export function FollowingPage(): JSX.Element {
                   onUnfollow={() => {
                     setUnfollowTag(artist.tag);
                   }}
+                  groups={groups}
+                  openTab={groupFilter}
+                  onMove={(name) => {
+                    moveToGroup([artist.tag], name);
+                  }}
+                  onNewGroup={() => {
+                    setGroupRequest({ kind: "new", targets: [artist.tag] });
+                  }}
+                  onDragStart={() => {
+                    setDragTag(artist.tag);
+                  }}
+                  onDragEnd={() => {
+                    setDragTag(null);
+                  }}
                 />
               ))}
             </div>
@@ -1226,70 +1272,39 @@ export function FollowingPage(): JSX.Element {
       )}
 
       {addDialog}
-      <Dialog
-        open={groupDialog}
-        title={GROUP_DIALOG_TITLE}
-        className={GROUP_DIALOG_CLASS}
-        onClose={() => {
-          setGroupDialog(false);
+      <GroupDialogs
+        request={groupRequest}
+        groups={groups}
+        countLabel={(number) => artistsCountLabel(number, number)}
+        onCreate={(name, targets) => {
+          if (targets.length > 0) {
+            setFollowGroup(targets, name);
+          } else {
+            createFollowGroup(name);
+          }
+          setGroupRequest(null);
+          setArtists(readArtists());
         }}
-      >
-        <form
-          className={GROUP_ROW_CLASS}
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (groupDraft.trim().length > 0) {
-              applyGroup(groupDraft);
-            }
-          }}
-        >
-          <TextField
-            value={groupDraft}
-            placeholder={GROUP_FIELD_LABEL}
-            aria-label={GROUP_FIELD_LABEL}
-            onChange={setGroupDraft}
-          />
-          <Button type="submit" variant="primary" size="s" disabled={groupDraft.trim().length === 0}>
-            {GROUP_SAVE_LABEL}
-          </Button>
-        </form>
-        {groups.length > 0 ? (
-          <div className={GROUP_EXISTING_CLASS}>
-            {groups.map((name) => (
-              <Button
-                key={name}
-                variant="secondary"
-                size="s"
-                onClick={() => {
-                  applyGroup(name);
-                }}
-              >
-                {name}
-              </Button>
-            ))}
-          </div>
-        ) : null}
-        <div className={GROUP_ROW_CLASS}>
-          <Button
-            variant="secondary"
-            size="s"
-            onClick={() => {
-              applyGroup(null);
-            }}
-          >
-            {GROUP_REMOVE_LABEL}
-          </Button>
-          <Button
-            variant="ghost"
-            size="s"
-            onClick={() => {
-              setGroupDialog(false);
-            }}
-          >
-            {UI_TEXT.cancel}
-          </Button>
-        </div>
-      </Dialog>
+        onRename={(from, to) => {
+          renameFollowGroup(from, to);
+          if (groupFilter === from) {
+            setGroupFilter(to);
+          }
+          setGroupRequest(null);
+          setArtists(readArtists());
+        }}
+        onDelete={(name) => {
+          deleteFollowGroup(name);
+          if (groupFilter === name) {
+            setGroupFilter(GROUP_ALL);
+          }
+          setGroupRequest(null);
+          setArtists(readArtists());
+        }}
+        onClose={() => {
+          setGroupRequest(null);
+        }}
+      />
       <Dialog
         variant="confirm"
         open={confirmUnfollow}

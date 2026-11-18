@@ -15,15 +15,29 @@ import {
 } from "../storage/schema";
 import { readCountMirror, readCoverMirror } from "../storage/cover-mirror";
 import {
+  createCollectionGroup,
   createDynamicCollection,
   createPlaylist,
   deleteCollection,
+  deleteCollectionGroup,
   dynamicHasNew,
   getFeatureState,
+  listCollectionGroups,
   load,
   reloadFromStorage,
+  renameCollectionGroup,
+  setCollectionGroup,
   setFeatureState,
 } from "../storage/store";
+import {
+  GROUP_ALL,
+  GroupDialogs,
+  GroupTabs,
+  MoveToGroupMenu,
+  countGroups,
+  inGroupTab,
+  type GroupRequest,
+} from "../ui/groups";
 import {
   Button,
   SelectionBar,
@@ -50,6 +64,12 @@ const TOOLBAR_CLASS = "rdw-collections-toolbar";
 const FILTER_FIELD_CLASS = "rdw-collections-filter";
 const GRID_CLASS = "rdw-collections-grid";
 const GRID_LIST_CLASS = "rdw-collections-grid--list";
+/** Around a card: the card is a link, and the button of its group cannot be inside one. */
+const CELL_CLASS = "rdw-collections-cell";
+const CELL_ACTIONS_CLASS = "rdw-collections-cell-actions";
+const MOVE_ONE_PREFIX = "Move to a group: ";
+/** What a card carries while it is dragged to a tab of a group. */
+const DRAG_DATA_TYPE = "text/plain";
 const LIST_COVER_PX = 44;
 const CARD_CLASS = "rdw-collection-card";
 const COVER_CLASS = "rdw-collection-cover";
@@ -263,6 +283,38 @@ export const COLLECTIONS_PAGE_CSS = `
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(${String(TILE_MIN_WIDTH_PX)}px, 1fr));
   gap: ${String(GRID_GAP_PX)}px;
+}
+.${CELL_CLASS} {
+  position: relative;
+  display: grid;
+  min-width: 0;
+}
+/* The button of a card's group: there under the pointer and for the keyboard,
+   and while its menu is open. Always there, it would cover every cover. */
+.${CELL_ACTIONS_CLASS} {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+}
+/* With its menu open the corner of a card is over the cards after it. */
+.${CELL_ACTIONS_CLASS}:has([aria-expanded="true"]) {
+  z-index: 4;
+}
+.${CELL_ACTIONS_CLASS} .rdw-icon-btn {
+  background: var(--rdw-surface);
+  border: 1px solid var(--rdw-border);
+}
+.${CELL_CLASS}:not(:hover):not(:focus-within) .${CELL_ACTIONS_CLASS}:not(:has([aria-expanded="true"])) {
+  opacity: 0;
+}
+.${GRID_LIST_CLASS} .${CELL_ACTIONS_CLASS} {
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+}
+.${GRID_LIST_CLASS} .${CARD_CLASS} {
+  padding-right: 44px;
 }
 .${CARD_CLASS} {
   display: flex;
@@ -626,7 +678,15 @@ type CardSelect = {
 type CardProps = {
   readonly collection: Collection;
   readonly select: CardSelect | null;
+  /** The name of the card's group to show, empty under the tab of that group. */
+  readonly group: string;
 };
+
+/** "Custom · 11 posts · Wallpapers": the caption of a card with its group. */
+export function cardCaptionWithGroup(kind: string, meta: string, group: string): string {
+  const caption = cardCaption(kind, meta);
+  return group.length > 0 ? `${caption}${CAPTION_SEPARATOR}${group}` : caption;
+}
 
 /**
  * What the confirmation says: how many, and which. Up to three names are
@@ -650,6 +710,13 @@ export function deleteMessage(names: readonly string[]): string {
 /** "1 collection", "12 collections": the count in the toolbar. */
 export function collectionsCountLabel(count: number): string {
   return `${count.toLocaleString(COUNT_LOCALE)} ${count === SINGLE_SELECTION ? "collection" : "collections"}`;
+}
+
+/** "11 collections", or "3 of 11 collections" when the filters leave fewer. */
+export function collectionsShownLabel(shown: number, total: number): string {
+  return shown === total
+    ? collectionsCountLabel(total)
+    : `${shown.toLocaleString(COUNT_LOCALE)} of ${collectionsCountLabel(total)}`;
 }
 
 const HTTP_TOO_MANY = "HTTP 429";
@@ -680,6 +747,7 @@ function CardLink(props: {
   /** A check found posts newer than the ones seen at the last opening. */
   readonly hasNew?: boolean;
   readonly select: CardSelect | null;
+  readonly group: string;
   readonly children: ComponentChildren;
 }): JSX.Element {
   const select = props.select;
@@ -710,7 +778,9 @@ function CardLink(props: {
           <span className={NAME_CLASS}>{props.collection.name}</span>
           {props.hasNew ? <span className={NEW_BADGE_CLASS}>{NEW_BADGE}</span> : null}
         </span>
-        <span className={CAPTION_CLASS}>{cardCaption(props.badge, props.meta)}</span>
+        <span className={CAPTION_CLASS}>
+          {cardCaptionWithGroup(props.badge, props.meta, props.group)}
+        </span>
       </a>
     );
   }
@@ -718,6 +788,7 @@ function CardLink(props: {
     <a
       className={CARD_CLASS}
       href={props.href}
+      draggable={false}
       aria-label={label}
       data-collection-id={props.collection.id}
       data-collection-kind={props.kind}
@@ -727,7 +798,9 @@ function CardLink(props: {
         <span className={NAME_CLASS}>{props.collection.name}</span>
         {props.hasNew ? <span className={NEW_BADGE_CLASS}>{NEW_BADGE}</span> : null}
       </span>
-      <span className={CAPTION_CLASS}>{cardCaption(props.badge, props.meta)}</span>
+      <span className={CAPTION_CLASS}>
+        {cardCaptionWithGroup(props.badge, props.meta, props.group)}
+      </span>
     </a>
   );
 }
@@ -798,6 +871,7 @@ function CustomCard(props: CardProps): JSX.Element {
       badge={BADGE_CUSTOM}
       meta={meta}
       select={props.select}
+      group={props.group}
     >
       <Cover collectionId={props.collection.id} urls={urls} postIds={slots} />
     </CardLink>
@@ -850,6 +924,7 @@ function DynamicCard(props: CardProps): JSX.Element {
       hasNew={dynamicHasNew(props.collection)}
       meta={dynamicMeta(props.collection)}
       select={props.select}
+      group={props.group}
     >
       <Cover collectionId={props.collection.id} urls={slots} />
     </CardLink>
@@ -858,9 +933,9 @@ function DynamicCard(props: CardProps): JSX.Element {
 
 function CollectionCard(props: CardProps): JSX.Element {
   if (resolveCollectionKind(props.collection) === COLLECTION_KIND_POSTS) {
-    return <CustomCard collection={props.collection} select={props.select} />;
+    return <CustomCard collection={props.collection} select={props.select} group={props.group} />;
   }
-  return <DynamicCard collection={props.collection} select={props.select} />;
+  return <DynamicCard collection={props.collection} select={props.select} group={props.group} />;
 }
 
 function NewCollectionDialog(props: {
@@ -965,6 +1040,11 @@ export function CollectionsPage(): JSX.Element {
   const [selecting, setSelecting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<readonly string[]>([]);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  // The open tab of the groups; what the dialogs of a group are asked for; the
+  // id of the card being dragged to a tab.
+  const [groupTab, setGroupTab] = useState(GROUP_ALL);
+  const [groupRequest, setGroupRequest] = useState<GroupRequest | null>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
   // The line of a "Check for new" run; empty before the first run.
   const [checkStatus, setCheckStatus] = useState("");
   // The last check stopped on an error: the line says why and offers to run it again.
@@ -1031,7 +1111,14 @@ export function CollectionsPage(): JSX.Element {
   }, []);
 
   const collections = load().collections;
-  const visible = sortCollections(visibleCollections(collections, filter, nameQuery), sort);
+  const groups = listCollectionGroups();
+  const visible = sortCollections(visibleCollections(collections, filter, nameQuery), sort).filter(
+    (collection) => inGroupTab(collection.group, groupTab),
+  );
+  const moveToGroup = (ids: readonly string[], name: string | null): void => {
+    setCollectionGroup(ids, name);
+    setRevision((value) => value + 1);
+  };
   const emptyCopy =
     collections.length === 0
       ? { title: EMPTY_TITLE, description: EMPTY_DESCRIPTION }
@@ -1125,7 +1212,24 @@ export function CollectionsPage(): JSX.Element {
                 {DELETE_SELECTED_LABEL}
               </Button>
             }
-          />
+          >
+            <MoveToGroupMenu
+              groups={groups}
+              disabled={selectedVisible.length === 0}
+              onMove={(name) => {
+                moveToGroup(
+                  selectedVisible.map((collection) => collection.id),
+                  name,
+                );
+              }}
+              onNew={() => {
+                setGroupRequest({
+                  kind: "new",
+                  targets: selectedVisible.map((collection) => collection.id),
+                });
+              }}
+            />
+          </SelectionBar>
         ) : (
         <div className={TOOLBAR_CLASS}>
           <Segmented
@@ -1171,7 +1275,9 @@ export function CollectionsPage(): JSX.Element {
             }}
           />
           {/* How many collections the filters leave: in the toolbar, as on Following. */}
-          <span className={SELECTED_COUNT_CLASS}>{collectionsCountLabel(visible.length)}</span>
+          <span className={SELECTED_COUNT_CLASS}>
+            {collectionsShownLabel(visible.length, collections.length)}
+          </span>
           <span className={TOOLBAR_SPACER_CLASS} aria-hidden="true" />
             <>
               {collections.length > 0 ? (
@@ -1222,6 +1328,37 @@ export function CollectionsPage(): JSX.Element {
             </>
         </div>
         )}
+        {/* Under the toolbar and kept with it: each card is under one tab.
+            Locked while cards are selected, as the filters are away then. */}
+        {collections.length > 0 ? (
+          <GroupTabs
+            total={collections.length}
+            groups={countGroups(groups, collections.map((collection) => collection.group))}
+            value={groupTab}
+            onChange={setGroupTab}
+            onNew={() => {
+              setGroupRequest({ kind: "new", targets: [] });
+            }}
+            onRename={(name) => {
+              setGroupRequest({ kind: "rename", name });
+            }}
+            onDelete={(name) => {
+              setGroupRequest({
+                kind: "delete",
+                name,
+                count: collections.filter((collection) => collection.group === name).length,
+              });
+            }}
+            dragging={dragId !== null}
+            onDropTo={(name) => {
+              if (dragId !== null) {
+                moveToGroup([dragId], name);
+              }
+              setDragId(null);
+            }}
+            locked={selecting}
+          />
+        ) : null}
       </header>
       {visible.length === 0 ? (
         <EmptyState title={emptyCopy.title} description={emptyCopy.description} />
@@ -1231,20 +1368,50 @@ export function CollectionsPage(): JSX.Element {
           aria-label={GRID_LABEL}
         >
           {visible.map((collection) => (
-            <CollectionCard
+            // Dragged, a card can be dropped on the tab of a group; the button
+            // in its corner opens the same "Move to group" without dragging.
+            <div
               key={collection.id}
-              collection={collection}
-              select={
-                selecting
-                  ? {
-                      selected: selectedIds.includes(collection.id),
-                      onToggle: () => {
-                        toggleSelected(collection.id);
-                      },
-                    }
-                  : null
-              }
-            />
+              className={CELL_CLASS}
+              draggable={!selecting}
+              onDragStart={(event) => {
+                event.dataTransfer?.setData(DRAG_DATA_TYPE, collection.name);
+                setDragId(collection.id);
+              }}
+              onDragEnd={() => {
+                setDragId(null);
+              }}
+            >
+              <CollectionCard
+                collection={collection}
+                group={collection.group === groupTab ? "" : (collection.group ?? "")}
+                select={
+                  selecting
+                    ? {
+                        selected: selectedIds.includes(collection.id),
+                        onToggle: () => {
+                          toggleSelected(collection.id);
+                        },
+                      }
+                    : null
+                }
+              />
+              {selecting ? null : (
+                <div className={CELL_ACTIONS_CLASS}>
+                  <MoveToGroupMenu
+                    groups={groups}
+                    current={collection.group ?? ""}
+                    iconLabel={`${MOVE_ONE_PREFIX}${collection.name}`}
+                    onMove={(name) => {
+                      moveToGroup([collection.id], name);
+                    }}
+                    onNew={() => {
+                      setGroupRequest({ kind: "new", targets: [collection.id] });
+                    }}
+                  />
+                </div>
+              )}
+            </div>
           ))}
         </div>
       )}
@@ -1259,6 +1426,39 @@ export function CollectionsPage(): JSX.Element {
         onConfirm={deleteSelected}
         onClose={() => {
           setConfirmOpen(false);
+        }}
+      />
+      <GroupDialogs
+        request={groupRequest}
+        groups={groups}
+        countLabel={collectionsCountLabel}
+        onCreate={(name, targets) => {
+          if (targets.length > 0) {
+            setCollectionGroup(targets, name);
+          } else {
+            createCollectionGroup(name);
+          }
+          setGroupRequest(null);
+          setRevision((value) => value + 1);
+        }}
+        onRename={(from, to) => {
+          renameCollectionGroup(from, to);
+          if (groupTab === from) {
+            setGroupTab(to);
+          }
+          setGroupRequest(null);
+          setRevision((value) => value + 1);
+        }}
+        onDelete={(name) => {
+          deleteCollectionGroup(name);
+          if (groupTab === name) {
+            setGroupTab(GROUP_ALL);
+          }
+          setGroupRequest(null);
+          setRevision((value) => value + 1);
+        }}
+        onClose={() => {
+          setGroupRequest(null);
         }}
       />
       <NewCollectionDialog

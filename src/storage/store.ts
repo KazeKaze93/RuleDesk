@@ -1286,21 +1286,59 @@ export function followKindOf(entry: ArtistEntry): FollowKind {
   return entry.kind ?? FOLLOW_KIND_ARTIST;
 }
 
-/** The names of the groups in use, in alphabetical order. */
-export function listFollowGroups(): string[] {
-  const names = new Set<string>();
-  for (const entry of load().artists) {
-    if (entry.group !== undefined && entry.group.length > 0) {
-      names.add(entry.group);
+/**
+ * Groups of the Following page and of the Collections page. A followed tag or
+ * a collection is in one group or in none: its `group` is the name. A group
+ * made with nothing in it yet, or left empty, has no entry to carry its name,
+ * so the names are kept as well, per page, in the feature state.
+ */
+const FOLLOW_GROUPS_STATE_ID = "follow-groups";
+const COLLECTION_GROUPS_STATE_ID = "collection-groups";
+
+function keptGroupNames(data: StorageData, stateId: string): string[] {
+  const kept = data.settings?.featureState?.[stateId];
+  if (!Array.isArray(kept)) {
+    return [];
+  }
+  const names: string[] = [];
+  for (const name of kept) {
+    if (typeof name === "string" && name.length > 0) {
+      names.push(name);
+    }
+  }
+  return names;
+}
+
+function writeKeptGroupNames(data: StorageData, stateId: string, names: readonly string[]): void {
+  const settings = currentSettings(data);
+  data.settings = {
+    ...settings,
+    featureState: { ...(settings.featureState ?? {}), [stateId]: [...new Set(names)] },
+  };
+}
+
+function sortedGroupNames(used: Iterable<string | undefined>, kept: readonly string[]): string[] {
+  const names = new Set<string>(kept);
+  for (const name of used) {
+    if (name !== undefined && name.length > 0) {
+      names.add(name);
     }
   }
   return [...names].sort((a, b) => a.localeCompare(b));
 }
 
+/** The names of the groups of the Following page, in alphabetical order. */
+export function listFollowGroups(): string[] {
+  const data = load();
+  return sortedGroupNames(
+    data.artists.map((entry) => entry.group),
+    keptGroupNames(data, FOLLOW_GROUPS_STATE_ID),
+  );
+}
+
 /**
  * Puts the given followed tags into a group, or takes them out of theirs when
- * `group` is null or blank. A group exists while something is in it. Returns
- * how many entries changed.
+ * `group` is null or blank. Returns how many entries changed.
  */
 export function setFollowGroup(tags: readonly string[], group: string | null): number {
   const name = group === null ? "" : group.trim();
@@ -1315,9 +1353,162 @@ export function setFollowGroup(tags: readonly string[], group: string | null): n
     const { group: _dropped, ...rest } = entry;
     return name.length > 0 ? { ...rest, group: name } : rest;
   });
-  if (changed > 0) {
+  if (name.length > 0) {
+    // The name stays when the group is emptied later.
+    writeKeptGroupNames(data, FOLLOW_GROUPS_STATE_ID, [
+      ...keptGroupNames(data, FOLLOW_GROUPS_STATE_ID),
+      name,
+    ]);
+  }
+  if (changed > 0 || name.length > 0) {
     save(data);
   }
+  return changed;
+}
+
+/** Makes a group with nothing in it. False when the name is blank or taken. */
+export function createFollowGroup(group: string): boolean {
+  const name = group.trim();
+  if (name.length === 0 || listFollowGroups().includes(name)) {
+    return false;
+  }
+  const data = reloadFromStorage();
+  writeKeptGroupNames(data, FOLLOW_GROUPS_STATE_ID, [
+    ...keptGroupNames(data, FOLLOW_GROUPS_STATE_ID),
+    name,
+  ]);
+  save(data);
+  return true;
+}
+
+/** Gives a group another name. False when the new name is blank or taken. */
+export function renameFollowGroup(from: string, to: string): boolean {
+  const name = to.trim();
+  if (name.length === 0 || name === from || listFollowGroups().includes(name)) {
+    return false;
+  }
+  const data = reloadFromStorage();
+  data.artists = data.artists.map((entry) =>
+    entry.group === from ? { ...entry, group: name } : entry,
+  );
+  writeKeptGroupNames(data, FOLLOW_GROUPS_STATE_ID, [
+    ...keptGroupNames(data, FOLLOW_GROUPS_STATE_ID).filter((kept) => kept !== from),
+    name,
+  ]);
+  save(data);
+  return true;
+}
+
+/** Deletes a group; what was in it is in no group. Returns how many entries that was. */
+export function deleteFollowGroup(group: string): number {
+  const data = reloadFromStorage();
+  let changed = 0;
+  data.artists = data.artists.map((entry) => {
+    if (entry.group !== group) {
+      return entry;
+    }
+    changed += 1;
+    const { group: _dropped, ...rest } = entry;
+    return rest;
+  });
+  writeKeptGroupNames(
+    data,
+    FOLLOW_GROUPS_STATE_ID,
+    keptGroupNames(data, FOLLOW_GROUPS_STATE_ID).filter((kept) => kept !== group),
+  );
+  save(data);
+  return changed;
+}
+
+/** The names of the groups of the Collections page, in alphabetical order. */
+export function listCollectionGroups(): string[] {
+  const data = load();
+  return sortedGroupNames(
+    data.collections.map((item) => item.group),
+    keptGroupNames(data, COLLECTION_GROUPS_STATE_ID),
+  );
+}
+
+/**
+ * Puts the given collections into a group, or takes them out of theirs when
+ * `group` is null or blank. Returns how many collections changed.
+ */
+export function setCollectionGroup(ids: readonly string[], group: string | null): number {
+  const name = group === null ? "" : group.trim();
+  const wanted = new Set(ids);
+  const data = reloadFromStorage();
+  let changed = 0;
+  data.collections = data.collections.map((item) => {
+    if (!wanted.has(item.id) || (item.group ?? "") === name) {
+      return item;
+    }
+    changed += 1;
+    const { group: _dropped, ...rest } = item;
+    return name.length > 0 ? { ...rest, group: name } : rest;
+  });
+  if (name.length > 0) {
+    writeKeptGroupNames(data, COLLECTION_GROUPS_STATE_ID, [
+      ...keptGroupNames(data, COLLECTION_GROUPS_STATE_ID),
+      name,
+    ]);
+  }
+  if (changed > 0 || name.length > 0) {
+    save(data);
+  }
+  return changed;
+}
+
+/** Makes a group of collections with nothing in it. False when the name is blank or taken. */
+export function createCollectionGroup(group: string): boolean {
+  const name = group.trim();
+  if (name.length === 0 || listCollectionGroups().includes(name)) {
+    return false;
+  }
+  const data = reloadFromStorage();
+  writeKeptGroupNames(data, COLLECTION_GROUPS_STATE_ID, [
+    ...keptGroupNames(data, COLLECTION_GROUPS_STATE_ID),
+    name,
+  ]);
+  save(data);
+  return true;
+}
+
+/** Gives a group of collections another name. False when the new name is blank or taken. */
+export function renameCollectionGroup(from: string, to: string): boolean {
+  const name = to.trim();
+  if (name.length === 0 || name === from || listCollectionGroups().includes(name)) {
+    return false;
+  }
+  const data = reloadFromStorage();
+  data.collections = data.collections.map((item) =>
+    item.group === from ? { ...item, group: name } : item,
+  );
+  writeKeptGroupNames(data, COLLECTION_GROUPS_STATE_ID, [
+    ...keptGroupNames(data, COLLECTION_GROUPS_STATE_ID).filter((kept) => kept !== from),
+    name,
+  ]);
+  save(data);
+  return true;
+}
+
+/** Deletes a group of collections; what was in it is in no group. Returns how many that was. */
+export function deleteCollectionGroup(group: string): number {
+  const data = reloadFromStorage();
+  let changed = 0;
+  data.collections = data.collections.map((item) => {
+    if (item.group !== group) {
+      return item;
+    }
+    changed += 1;
+    const { group: _dropped, ...rest } = item;
+    return rest;
+  });
+  writeKeptGroupNames(
+    data,
+    COLLECTION_GROUPS_STATE_ID,
+    keptGroupNames(data, COLLECTION_GROUPS_STATE_ID).filter((kept) => kept !== group),
+  );
+  save(data);
   return changed;
 }
 
