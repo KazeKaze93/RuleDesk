@@ -38,7 +38,7 @@ Separate the names with commas. A space is part of a name here.
 ## Video
 
 **The preview does not play when I point at a video.**
-"Video preview on hover" is off by default: switch it on in RuleDesk → Page. A preview loads the video file itself.
+"Video preview on hover" is off by default: switch it on in RuleDesk → Video. A preview loads the video file itself.
 
 **It plays on most posts but not on one.**
 If a preview fails to load, the script tries that post again half a minute later, when you point at it again.
@@ -66,12 +66,12 @@ The local list changes when you add or remove a favorite in this browser, or whe
 ## Post page
 
 **A GIF does not move.**
-"Play GIFs on the post page" in RuleDesk → Page puts the moving file in place of the still picture the site shows. A large GIF takes a while to load.
+"Play GIFs on the post page" in RuleDesk → Post page puts the moving file in place of the still picture the site shows. A large GIF takes a while to load.
 
 "Load full-size image" in the same place does it for a still picture: the site shows a scaled-down copy, and with this on the original is loaded in its place. It is off by default, because an original is often several megabytes.
 
 **A click on the picture opens a viewer and I do not want it.**
-Switch off "Zoom the picture on click" in RuleDesk → Page.
+Switch off "Zoom the picture on click" in RuleDesk → Post page.
 
 ## Downloads
 

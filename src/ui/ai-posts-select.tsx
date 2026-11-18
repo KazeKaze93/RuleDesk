@@ -11,7 +11,7 @@ import {
   setAiHiddenIn,
   type AiScope,
 } from "../features/ai-scope";
-import { SETTINGS_SECTION_PAGE, openSettingsAt } from "../pages/settings-focus";
+import { SETTINGS_SECTION_AI, openSettingsAt } from "../pages/settings-focus";
 import { Segmented } from "./kit";
 
 const TOGGLE_CLASS = "rdw-ai-toggle";
@@ -75,7 +75,7 @@ export function AiEverywhereNote(props: AiEverywhereNoteProps): JSX.Element {
           type="button"
           className={`${NOTE_LINK_CLASS} rdw-kit-focusable`}
           onClick={() => {
-            openSettingsAt(SETTINGS_SECTION_PAGE);
+            openSettingsAt(SETTINGS_SECTION_AI);
           }}
         >
           {NOTE_LINK}

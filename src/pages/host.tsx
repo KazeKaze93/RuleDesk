@@ -12,6 +12,7 @@ import {
   RDW_PAGE_ROOT_ID,
   RDW_ROUTE_COLLECTIONS,
   RDW_ROUTE_FOLLOWING,
+  RDW_ROUTE_SETTINGS,
   RDW_ROUTE_STATS,
   type RdwPage,
 } from "./constants";
@@ -162,7 +163,12 @@ function titleForRoute(route: RdwPage): string | null {
  * them as the current section: a visible title would only repeat that.
  */
 function titleHiddenForRoute(route: RdwPage): boolean {
-  return route === RDW_ROUTE_COLLECTIONS || route === RDW_ROUTE_FOLLOWING;
+  return (
+    route === RDW_ROUTE_COLLECTIONS ||
+    route === RDW_ROUTE_FOLLOWING ||
+    // The settings show their name over their list of sections.
+    route === RDW_ROUTE_SETTINGS
+  );
 }
 
 type PageFactory = () => Promise<JSX.Element>;
@@ -253,7 +259,11 @@ function syncRdwPageLayout(): void {
     return;
   }
   mountPoint.classList.toggle(LAYOUT_WIDE_CLASS, hasTiles(shownRoute));
-  mountPoint.classList.toggle(LAYOUT_FULL_CLASS, shownRoute === RDW_ROUTE_STATS);
+  // The settings lay themselves out: a list of sections and a column beside it.
+  mountPoint.classList.toggle(
+    LAYOUT_FULL_CLASS,
+    shownRoute === RDW_ROUTE_STATS || shownRoute === RDW_ROUTE_SETTINGS,
+  );
 }
 
 let hostElement: HTMLElement | null = null;

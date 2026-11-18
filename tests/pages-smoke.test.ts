@@ -76,7 +76,7 @@ describe("own pages smoke", () => {
     vi.restoreAllMocks();
   });
 
-  it("mounts Settings with Appearance, Page, Blacklist, Favorites, Data", async () => {
+  it("mounts Settings with Appearance, Header, Blacklist, Favorites, Data", async () => {
     const header = document.getElementById("header");
     if (!(header instanceof HTMLElement)) {
       throw new Error("header missing");
@@ -84,7 +84,7 @@ describe("own pages smoke", () => {
     await showRdwPage(RDW_ROUTE_SETTINGS, header);
     const text = shadowRoot().textContent ?? "";
     expect(text).toContain("Appearance");
-    expect(text).toContain("Page");
+    expect(text).toContain("Header");
     expect(text).toContain("Blacklist");
     expect(text).toContain("Favorites");
     expect(text).toContain("Data");

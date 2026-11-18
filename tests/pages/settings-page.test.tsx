@@ -6,7 +6,8 @@ import {
   VIDEO_PLAYER_SETTING_CAPTION,
   videoPlayerFeature,
 } from "../../src/features/video-player";
-import { createSettingsPage } from "../../src/pages/settings-page";
+import { SETTINGS_SECTION_CSS, createSettingsPage } from "../../src/pages/settings-page";
+import { settingsSectionFromHash, settingsSectionHash } from "../../src/pages/settings-focus";
 import {
   FEATURE_CHECKBOX_ID_PREFIX,
   FEATURE_CHOICE_ID_PREFIX,
@@ -97,78 +98,128 @@ describe("SettingsPage flat rows", () => {
     expect(flatIndex).toBeGreaterThan(appearanceOwn);
   });
 
-  it("folds a settings block to its title and remembers it", () => {
+  it("is sections in a list on the left, with no block over the groups and nothing to fold", () => {
     let root: HTMLElement | undefined;
     act(() => {
       root = createSettingsPage();
       document.body.append(root);
     });
-    const header = root?.querySelector('button[data-settings-section="page"]');
-    if (!(header instanceof HTMLButtonElement)) {
-      throw new Error("Page section header missing");
-    }
-    const body = root?.querySelector("#rdw-settings-section-page");
-    expect(header.textContent).toBe("Page");
-    expect(header.getAttribute("aria-expanded")).toBe("true");
-    expect(body?.hasAttribute("hidden")).toBe(false);
-    expect(
-      Array.from(root?.querySelectorAll("button[data-settings-section]") ?? []).map(
-        (node) => node.textContent,
-      ),
-    ).toEqual(["Appearance", "Page", "Blacklist", "Favorites", "Downloads", "Data"]);
-
-    act(() => {
-      header.click();
-    });
-    expect(header.getAttribute("aria-expanded")).toBe("false");
-    expect(body?.hasAttribute("hidden")).toBe(true);
-    // The body stays mounted: its controls keep their state while folded.
-    expect(body?.querySelector(`#${FEATURE_CHECKBOX_ID_PREFIX}tag-groups`)).not.toBeNull();
-    expect(getFeatureState("settings-sections")).toEqual(["page"]);
-
-    let again: HTMLElement | undefined;
-    act(() => {
-      again = createSettingsPage();
-      document.body.append(again);
-    });
-    expect(
-      again
-        ?.querySelector('button[data-settings-section="page"]')
-        ?.getAttribute("aria-expanded"),
-    ).toBe("false");
-    expect(
-      again
-        ?.querySelector('button[data-settings-section="data"]')
-        ?.getAttribute("aria-expanded"),
-    ).toBe("true");
+    const titles = Array.from(root?.querySelectorAll(".rdw-settings-section-title") ?? []).map(
+      (node) => node.textContent,
+    );
+    expect(titles).toEqual([
+      "Appearance",
+      "Header",
+      "Grid and thumbnails",
+      "Post page",
+      "Video",
+      "Feed",
+      "AI posts",
+      "Search and sidebar",
+      "Collections",
+      "Favorites",
+      "Downloads",
+      "Blacklist",
+      "Data",
+    ]);
+    // The list names the same sections, each by its own address.
+    const links = Array.from(root?.querySelectorAll("nav a.rdw-settings-nav-link") ?? []);
+    expect(links.map((node) => node.textContent)).toEqual(titles);
+    expect(links.map((node) => node.getAttribute("href")).slice(0, 2)).toEqual([
+      "#rdw/settings/appearance",
+      "#rdw/settings/header",
+    ]);
+    expect(root?.querySelectorAll('nav [aria-current="true"]')).toHaveLength(1);
+    expect(root?.querySelector("nav")?.textContent).toContain("RuleDesk");
+    expect(root?.querySelector("nav")?.textContent).toContain("Settings");
+    expect(root?.querySelector("button[data-settings-section]")).toBeNull();
+    // 200 px of list and a column of 720 px.
+    expect(SETTINGS_SECTION_CSS).toContain("grid-template-columns: 200px minmax(0, 720px)");
   });
 
-  it("shows the Page block in groups under subheadings, the master switch first", () => {
+  it("names a section in its address and reads the name back", () => {
+    expect(settingsSectionHash("video")).toBe("#rdw/settings/video");
+    expect(settingsSectionFromHash("#rdw/settings/video")).toBe("video");
+    expect(settingsSectionFromHash("#rdw/settings")).toBeNull();
+    expect(settingsSectionFromHash("#rdw/following")).toBeNull();
+  });
+
+  it("finds settings by their names and captions and hides the rest", () => {
     let root: HTMLElement | undefined;
     act(() => {
       root = createSettingsPage();
       document.body.append(root);
     });
-    const body = root?.querySelector("#rdw-settings-section-page");
-    if (!(body instanceof HTMLElement)) {
-      throw new Error("Page section body missing");
+    const search = root?.querySelector('input[aria-label="Search settings"]');
+    if (!(search instanceof HTMLInputElement)) {
+      throw new Error("search field missing");
     }
+    const type = (value: string): void => {
+      act(() => {
+        search.value = value;
+        search.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+    };
+    const shownSections = (): (string | null)[] =>
+      Array.from(root?.querySelectorAll("[data-settings-section]:not([data-settings-hidden])") ?? []).map(
+        (node) => node.getAttribute("data-settings-section"),
+      );
+    const shownLabels = (section: string): (string | null)[] =>
+      Array.from(
+        root?.querySelectorAll(
+          `[data-settings-section="${section}"] .${PANEL_UI_CLASS.settingsRow}:not([data-settings-hidden])`,
+        ) ?? [],
+      ).map((row) => row.querySelector(".rdw-switch__label, .rdw-select__label, .rdw-num__label")?.textContent ?? null);
 
-    const firstRow = body.querySelector(`.${PANEL_UI_CLASS.settingsRow}`);
+    // By a name: the setting, and its list with it.
+    type("video player");
+    expect(shownSections()).toEqual(["video"]);
+    expect(shownLabels("video")).toEqual(["Video player tweaks", "Video size"]);
+    // By a caption.
+    type("several mb");
+    expect(shownSections()).toEqual(["post"]);
+    expect(shownLabels("post")).toEqual(["Load full-size image"]);
+    // By the name of a section: all of it.
+    type("feed");
+    expect(shownSections()).toContain("feed");
+    expect(shownLabels("feed")).toHaveLength(3);
+    // The words of a style sheet are not words of the page.
+    type("grid-template");
+    expect(shownSections()).toEqual([]);
+    expect(root?.textContent).toContain("No settings match \u201cgrid-template\u201d.");
+    const clear = Array.from(root?.querySelectorAll("button") ?? []).find(
+      (node) => node.textContent === "Clear",
+    );
+    act(() => {
+      clear?.click();
+    });
+    expect(shownSections()).toHaveLength(13);
+    expect(root?.querySelector("[data-settings-hidden]")).toBeNull();
+  });
+
+  it("shows each group as a card of rows, the master switch first", () => {
+    let root: HTMLElement | undefined;
+    act(() => {
+      root = createSettingsPage();
+      document.body.append(root);
+    });
+    const firstRow = root?.querySelector(`.${PANEL_UI_CLASS.settingsRow}`);
     expect(firstRow?.querySelector(`#${TWEAKS_SWITCH_ID}`)).not.toBeNull();
     expect(firstRow?.querySelector(`.${PANEL_UI_CLASS.settingsCaption}`)?.textContent).toBe(
-      "Off: the site looks as without RuleDesk",
+      "Off: the site looks as without RuleDesk. The switches of the features need this on.",
     );
-    expect(firstRow?.closest("[data-settings-group]")).toBeNull();
+    // The master switch is a card of its own over the sections.
+    expect(firstRow?.closest(".rdw-card.rdw-settings-master")).not.toBeNull();
+    expect(firstRow?.closest("[data-settings-section]")).toBeNull();
 
-    const groups = Array.from(body.querySelectorAll("[data-settings-group]"));
+    const groups = Array.from(root?.querySelectorAll("[data-settings-rows]") ?? []);
     const labelsOf = (group: Element): string[] =>
       Array.from(
         group.querySelectorAll(".rdw-switch__label, .rdw-select__label, .rdw-num__label"),
       ).map((node) => node.textContent ?? "");
     expect(
       groups.map((group) => [
-        group.querySelector(".rdw-section-label")?.textContent,
+        group.querySelector(".rdw-settings-section-title")?.textContent,
         labelsOf(group),
       ]),
     ).toEqual([
@@ -220,21 +271,24 @@ describe("SettingsPage flat rows", () => {
         ],
       ],
       ["Collections", ["Add to collection button", "Collection header", "Collection part size"]],
-      ["Favorites page", ["Bulk remove favorites"]],
-      ["Other", ["Download manager", "Motion"]],
     ]);
     for (const group of groups) {
-      expect(group.getAttribute("role")).toBe("group");
-      expect(group.getAttribute("aria-label")).toBe(
-        group.querySelector(".rdw-section-label")?.textContent,
-      );
+      expect(group.querySelectorAll(".rdw-card.rdw-settings-rows")).toHaveLength(1);
     }
 
-    // Only the two that belong to no part of the site are under "Other".
+    // Nothing is left under "Other": what has a section of its own is shown there.
     const other = FEATURES.filter(
       (feature) => featureSettingsGroup(feature.id) === SETTINGS_GROUP.other,
     ).map((feature) => feature.id);
-    expect(other).toEqual(["downloads", "motion"]);
+    expect(other).toEqual([]);
+    const sectionOf = (label: string): string | null | undefined =>
+      Array.from(root?.querySelectorAll(".rdw-switch__label") ?? [])
+        .find((node) => node.textContent === label)
+        ?.closest("[data-settings-section]")
+        ?.getAttribute("data-settings-section");
+    expect(sectionOf("Download manager")).toBe("downloads");
+    expect(sectionOf("Bulk remove favorites")).toBe("favorites");
+    expect(sectionOf("Motion")).toBe("appearance");
     expect(featureSettingsGroup("not-in-the-list")).toBe(SETTINGS_GROUP.other);
   });
 
@@ -283,7 +337,7 @@ describe("SettingsPage flat rows", () => {
       ?.closest(`.${PANEL_UI_CLASS.settingsRow}`);
     expect(row?.querySelector(".rdw-num__label")?.textContent).toBe("Artists per search");
     expect(row?.querySelector(`.${PANEL_UI_CLASS.settingsCaption}`)?.textContent).toBe(
-      "0 = 400",
+      "0 means the default, 400.",
     );
   });
 
@@ -291,7 +345,7 @@ describe("SettingsPage flat rows", () => {
     const row = String.raw`\.${PANEL_UI_CLASS.settingsRow}`;
     expect(PAGE_CONTENT_CSS).toMatch(
       new RegExp(
-        String.raw`${row} \.rdw-select,\s*${row} \.rdw-num\s*\{[^}]*flex-direction:\s*row[^}]*justify-content:\s*space-between`,
+        String.raw`${row} \.rdw-select\s*\{[^}]*flex-direction:\s*row[^}]*justify-content:\s*space-between`,
       ),
     );
     expect(PAGE_CONTENT_CSS).toMatch(
@@ -307,6 +361,17 @@ describe("SettingsPage flat rows", () => {
     expect(PAGE_CONTENT_CSS).toMatch(
       new RegExp(
         String.raw`${row} \.rdw-num__input\s*\{[^}]*width:\s*${String(SETTINGS_NUMBER_WIDTH_PX)}px`,
+      ),
+    );
+    // The control stands in the middle of the name and its caption, which is close under the name.
+    expect(PAGE_CONTENT_CSS).toMatch(
+      new RegExp(
+        String.raw`:has\(> \.${PANEL_UI_CLASS.settingsCaption}\) > \.rdw-switch-row > \.rdw-switch,[^{]*\{[^}]*grid-row:\s*1 / span 2`,
+      ),
+    );
+    expect(PAGE_CONTENT_CSS).toMatch(
+      new RegExp(
+        String.raw`${row} > \.${PANEL_UI_CLASS.settingsCaption}\s*\{[^}]*grid-row:\s*2[^}]*margin:\s*3px 0 0`,
       ),
     );
     expect(SETTINGS_SELECT_WIDTH_PX).toBe(160);

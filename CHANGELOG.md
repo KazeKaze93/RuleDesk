@@ -2,6 +2,16 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.60.0
+
+- The settings are laid out anew. On the left, held in place, is the list of sections with "RuleDesk", "Settings" and the version of the script over it; beside it a column of settings 720 px wide, so a name and its switch are near each other. The block "Page" and the folding of blocks are gone: Header, Grid and thumbnails, Post page, Video, Feed, AI posts, Search and sidebar and Collections are sections like Appearance, and after a rule come Favorites, Downloads, Blacklist and Data. The section being read is marked in the list
+- A search over the list finds settings by their names and descriptions: rows that do not match are hidden, sections with nothing left too, and what matches is painted. When nothing matches there is "Clear"
+- A section has an address, "#rdw/settings/video". "Settings" in the line about AI posts hidden everywhere opens the AI posts section
+- A section is a name and a card of rows. The lines are between the rows of a card, the room is between the cards. A description is close under its name, and the switch is in the middle of the two
+- "Enable page tweaks" is a card of its own over the sections. A row that cannot be changed while it is off is dimmed whole
+- "Download manager" is in Downloads, "Bulk remove favorites" in Favorites, "Motion" in Appearance; the groups "Other" and "Favorites page" are gone. The hint of "Artists per search" reads "0 means the default, 400."
+- Statistics: "Top tags in favorites" shows at once what was counted the last time and puts it right when the count of now is ready. It used to stand grey for a moment at every opening
+
 ## 0.59.0
 
 The rest of the designer's remarks, in one release.

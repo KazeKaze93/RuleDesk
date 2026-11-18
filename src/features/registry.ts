@@ -66,7 +66,11 @@ export const SETTINGS_GROUP = {
   ai: "ai",
   search: "search",
   collections: "collections",
+  // Shown in other blocks of the settings, not in Page (the designer,
+  // 19.11.2026): Favorites, Downloads and Appearance have blocks of their own.
   favorites: "favorites",
+  downloads: "downloads",
+  appearance: "appearance",
   other: "other",
 } as const;
 
@@ -85,7 +89,7 @@ export const SETTINGS_GROUPS: readonly {
   { id: SETTINGS_GROUP.ai, title: "AI posts" },
   { id: SETTINGS_GROUP.search, title: "Search and sidebar" },
   { id: SETTINGS_GROUP.collections, title: "Collections" },
-  { id: SETTINGS_GROUP.favorites, title: "Favorites page" },
+  // Only for a feature that was given no group: none is left there now.
   { id: SETTINGS_GROUP.other, title: "Other" },
 ];
 
@@ -120,8 +124,8 @@ function buildFeatureSettingsGroups(): ReadonlyMap<string, SettingsGroupId> {
     [playlistMenuFeature.id, SETTINGS_GROUP.collections],
     [playlistBarFeature.id, SETTINGS_GROUP.collections],
     [favoritesBulkFeature.id, SETTINGS_GROUP.favorites],
-    [downloadsFeature.id, SETTINGS_GROUP.other],
-    [motionFeature.id, SETTINGS_GROUP.other],
+    [downloadsFeature.id, SETTINGS_GROUP.downloads],
+    [motionFeature.id, SETTINGS_GROUP.appearance],
   ]);
 }
 

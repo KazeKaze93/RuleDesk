@@ -256,15 +256,17 @@ Every colour in the script comes from a set of named values ("tokens": backgroun
 
 ![The settings page](img/settings.jpg)
 
-Header → the gear. Six blocks, each folds:
+Header → the gear. On the left is the list of sections, held in place, with the version of the script and a search over it; beside it the settings. A section has an address of its own, `#rdw/settings/video`. The search finds settings by their names and descriptions.
 
-| Block | What is there |
+"Enable page tweaks" stands over the sections: one switch for the switches of all the features.
+
+| Section | What is there |
 |---|---|
-| Appearance | Site theme; for Custom: base, background picture, dim; Grid size |
-| Page | "Enable page tweaks" (one switch for all of the below), then a switch for every feature named in this file, "Statistics in site menu", "Keep the header and the sidebar in place while scrolling", "Artists per search" (the size of a feed group) and "Collection part size" (how many posts go into one site search when a custom collection is opened on the site) |
+| Appearance | Site theme; for Custom: base, background picture, dim; Grid size; Motion |
+| Header, Grid and thumbnails, Post page, Video, Feed, AI posts, Search and sidebar, Collections | A switch for every feature named in this file, by the part of the site it changes, and with them "Statistics in site menu", "Keep the header and the sidebar in place while scrolling", "Artists per search" (the size of a feed group), "Hide AI posts everywhere" and "Collection part size" |
+| Favorites | Favorite buttons in the grid; Bulk remove favorites; Sync favorites and Full resync, with progress |
+| Downloads | Download manager; the API key; the file name mask |
 | Blacklist | The site's tag blacklist for this browser, as chips |
-| Favorites | Favorite buttons in the grid; Sync favorites and Full resync, with progress |
-| Downloads | The API key; the file name mask |
 | Data | Export and Import (Merge or Replace) of everything the script stores; when the last backup was made |
 
 A feature that only changes styles applies at once; any other reloads the page.

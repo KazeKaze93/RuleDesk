@@ -110,40 +110,44 @@ export const PAGE_CONTENT_CSS = `
 }
 .${PANEL_UI_CLASS.settingsGroup} {
   display: grid;
-  gap: 2px;
+  gap: 0;
 }
+/* A row is a name with its caption close under it on the left, and the
+   control on the right, in the middle of the two (the designer, 19.11.2026):
+   a caption half-way between two rows was nobody's. */
 .${PANEL_UI_CLASS.settingsRow} {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 12px;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 7px 8px;
-  border-radius: var(--rdw-radius-m);
+  padding: 9px 8px;
   font-size: 12.5px;
   color: var(--rdw-text);
+}
+.${PANEL_UI_CLASS.settingsRow} > * {
+  grid-column: 1 / -1;
 }
 /* A line between settings, so that a switch reads with its own name. */
 .${PANEL_UI_CLASS.settingsRow} + .${PANEL_UI_CLASS.settingsRow} {
   border-top: 1px solid var(--rdw-border);
-  border-top-left-radius: 0;
-  border-top-right-radius: 0;
 }
 /* The switches of the features are a group of their own inside the list:
    the line is also drawn where that group begins and where it ends. */
 .${PANEL_UI_CLASS.settingsRow} + .${PANEL_UI_CLASS.settingsGroup},
 .${PANEL_UI_CLASS.settingsGroup} + .${PANEL_UI_CLASS.settingsRow} {
   border-top: 1px solid var(--rdw-border);
-  border-top-left-radius: 0;
-  border-top-right-radius: 0;
 }
 /* The options of a setting are part of it: no line between the two. */
 .${PANEL_UI_CLASS.settingsRow} + .${PANEL_UI_CLASS.settingsRow}.${PANEL_UI_CLASS.settingsRowSub} {
   border-top: 0;
   padding-top: 0;
 }
+.${PANEL_UI_CLASS.settingsRow} > .${PANEL_UI_CLASS.settingsCaption} {
+  grid-column: 1;
+  grid-row: 2;
+  margin: 3px 0 0;
+}
 .${PANEL_UI_CLASS.settingsCaption} {
-  flex: 1 0 100%;
   margin: 0;
   font-size: ${String(SETTINGS_CAPTION_FONT_PX)}px;
   line-height: 1.4;
@@ -179,15 +183,37 @@ export const PAGE_CONTENT_CSS = `
 :host-context(${SITE_DARK_THEME_SELECTOR}) .${SECTION_LABEL_CLASS} {
   color: var(--rdw-text);
 }
-.${PANEL_UI_CLASS.settingsRow} .rdw-switch-row {
-  width: 100%;
-  justify-content: space-between;
-  flex-direction: row-reverse;
+/* The parts of a switch and of a number stand in the row's own grid. */
+.${PANEL_UI_CLASS.settingsRow} > .rdw-switch-row,
+.${PANEL_UI_CLASS.settingsRow} > .rdw-num {
+  display: contents;
+}
+.${PANEL_UI_CLASS.settingsRow} > .rdw-switch-row > .rdw-switch__label,
+.${PANEL_UI_CLASS.settingsRow} > .rdw-num > .rdw-num__label {
+  grid-column: 1;
+  grid-row: 1;
+}
+.${PANEL_UI_CLASS.settingsRow} > .rdw-switch-row > .rdw-switch,
+.${PANEL_UI_CLASS.settingsRow} > .rdw-num > .rdw-num__input {
+  grid-column: 2;
+  grid-row: 1;
+}
+/* With a caption the control is in the middle of the name and the caption. */
+.${PANEL_UI_CLASS.settingsRow}:has(> .${PANEL_UI_CLASS.settingsCaption}) > .rdw-switch-row > .rdw-switch,
+.${PANEL_UI_CLASS.settingsRow}:has(> .${PANEL_UI_CLASS.settingsCaption}) > .rdw-num > .rdw-num__input {
+  grid-row: 1 / span 2;
+}
+/* A row that cannot be changed now is dimmed whole, not its switch alone. */
+.${PANEL_UI_CLASS.settingsRow}:has(:disabled) {
+  opacity: 0.55;
+}
+.${PANEL_UI_CLASS.settingsRow} .rdw-switch:disabled,
+.${PANEL_UI_CLASS.settingsRow} .rdw-num__input:disabled {
+  opacity: 1;
 }
 /* A list and a number read as a switch does: the name on the left, the
    control on the right, as wide as what it holds. */
-.${PANEL_UI_CLASS.settingsRow} .rdw-select,
-.${PANEL_UI_CLASS.settingsRow} .rdw-num {
+.${PANEL_UI_CLASS.settingsRow} .rdw-select {
   width: 100%;
   flex-direction: row;
   align-items: center;

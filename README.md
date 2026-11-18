@@ -83,15 +83,15 @@ Updates arrive through the script manager from the same link. After an update re
 
 ![The settings page](docs/img/settings.jpg)
 
-Header menu → the gear (**RuleDesk**). Every block folds with a click on its title.
+Header menu → the gear (**RuleDesk**). The sections are listed on the left, with a search over them.
 
-| Block | What is there |
+| Section | What is there |
 |---|---|
 | Appearance | Theme and grid size; for the Custom theme a background picture |
-| Page | A switch for each page feature, and one switch, "Enable page tweaks", that turns all of them off |
-| Blacklist | The site's tag blacklist for this browser |
+| Header … Collections | A switch for each page feature, by the part of the site it changes. One switch over them, "Enable page tweaks", turns all of them off |
 | Favorites | Favorite buttons in the grid; Sync favorites and Full resync |
 | Downloads | Your API key and the file name of saved files |
+| Blacklist | The site's tag blacklist for this browser |
 | Data | Export and import of everything the script stores; when the last backup was made |
 
 To get the untouched site back: Appearance → Site theme → **Site default**, and Page → turn off **Enable page tweaks**.
@@ -109,7 +109,7 @@ To get the untouched site back: Appearance → Site theme → **Site default**, 
 - Collections, followed tags, marks and settings live in the script manager's storage, in this browser only. Nothing is sent anywhere
 - **Data → Export** saves one JSON file; **Import** restores it (Merge adds to what you have, Replace overwrites). This is the only way to move to another browser
 - The blacklist and the site theme are the site's own cookies and are not in the export. Neither is the API key
-- The one request made without an action of yours is the counter beside Feed: the first page of the feed, at most once in 15 minutes. It has its own switch in RuleDesk → Page
+- The one request made without an action of yours is the counter beside Feed: the first page of the feed, at most once in 15 minutes. It has its own switch in the settings (RuleDesk)
 - Otherwise the script reads the pages you open and makes a request only when you do something that needs one: favorite a post, sync favorites, start a download, type in a tag field, scroll for the next page, open a feed that spans several searches, press Refresh or Check for new, open Statistics (it reads your profile page, at most once in 15 minutes), click the "?" of a tag. Requests go one at a time with a pause
 
 ## What the script does not do
