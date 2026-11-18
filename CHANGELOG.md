@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.53.2
+
+- The site's "New Account Safety Check", shown before the first comment of an account, is in the colours of the theme and not light green with a dark blue button. What it asks, its checkbox and its buttons are the site's and are not touched
+
 ## 0.53.1
 
 - The post page: the side panel no longer rides over the header. At the bottom of a page a tall panel, as it is with the comment form open, is pushed up by the end of its block; it now goes under the header there

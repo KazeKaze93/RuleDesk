@@ -2356,6 +2356,56 @@ ${ROOT} .rdw-post-reply-links {
   font-weight: normal;
 }
 
+/*
+ * The site's "New Account Safety Check" (markup from Kaze, 18.11.2026): shown
+ * on "Respond" to an account that has not commented yet. It is light green
+ * with a dark blue button whatever the theme. Only its colours are changed:
+ * what it asks, its checkbox and its two buttons are the site's.
+ */
+${ROOT} div#new_user_modal {
+  background: ${v.surface};
+  border: 1px solid ${v.border};
+  border-radius: ${v.radiusL};
+  box-shadow: ${v.shadow2};
+  color: ${v.text};
+  font: 13px/1.5 ${v.font};
+}
+
+${ROOT} div#new_user_modal > h2 {
+  margin: 0 0 8px;
+  color: ${v.text};
+  font-size: 16px;
+}
+
+${ROOT} div#new_user_modal > p,
+${ROOT} div#new_user_modal > ul,
+${ROOT} div#new_user_modal > label {
+  color: ${v.text};
+}
+
+/* The site sets this line red in its own style attribute. */
+${ROOT} div#new_user_modal > p[style] {
+  color: ${v.danger} !important;
+}
+
+${ROOT} div#new_user_modal button {
+  height: 32px;
+  margin: 0 4px;
+  padding: 0 14px;
+  border: 1px solid ${v.border};
+  border-radius: ${v.radiusM};
+  background: ${v.surface};
+  color: ${v.text};
+  font: 600 13px ${v.font};
+  cursor: pointer;
+}
+
+${ROOT} div#new_user_modal button#confirm_agree_btn {
+  border-color: ${v.accent};
+  background: ${v.accent};
+  color: ${v.surface};
+}
+
 /* The site's form for a comment, brought into the panel under the comments. */
 ${ROOT} #${POST_ACTIONS_HOST_ID} form#comment_form table {
   width: 100%;
