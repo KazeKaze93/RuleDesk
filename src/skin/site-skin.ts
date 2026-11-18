@@ -134,6 +134,7 @@ const UPLOAD_FILE_NAME_CLASS = "rdw-upload-file-name";
 const UPLOAD_PREVIEW_CLASS = "rdw-upload-preview";
 const UPLOAD_HINT_CLASS = "rdw-upload-hint";
 const UPLOAD_NOTE_CLASS = "rdw-upload-note";
+const NOTICE_GONE_CLASS = "rdw-notice-gone";
 const UPLOAD_REMOVE_CLASS = "rdw-upload-remove";
 const UPLOAD_PREVIEW_BOX_CLASS = "rdw-upload-preview-box";
 const UPLOAD_CROSS_MASK =
@@ -2161,7 +2162,8 @@ ${ROOT} div.notice {
  * first thing in the body: "You can only cum once a day" and the like. In the
  * flow it stood as a bar over the whole page and pushed the header of the
  * panel and the picture down. It is a small plate at the bottom of the window,
- * over the page, and moves nothing.
+ * over the page, and moves nothing. The script takes it away after a time
+ * or on a click (site/site-notice.ts).
  */
 ${ROOT} body > div#notice.notice {
   position: fixed;
@@ -2181,7 +2183,12 @@ ${ROOT} body > div#notice.notice {
   box-shadow: ${v.shadow2};
 }
 
-${ROOT} body > div#notice.notice:empty {
+${ROOT} body > div#notice.notice {
+  cursor: pointer;
+}
+
+${ROOT} body > div#notice.notice:empty,
+${ROOT} body > div#notice.notice.${NOTICE_GONE_CLASS} {
   display: none;
 }
 

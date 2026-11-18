@@ -4,6 +4,7 @@ import { getSiteSkinCss } from "../skin/site-skin";
 import { applyAppearanceTheme } from "../skin/theme";
 import { mountCommentsPage } from "../site/comments-page";
 import { mountListPages } from "../site/list-pages";
+import { mountSiteNotice } from "../site/site-notice";
 import { mountUploadPage } from "../site/upload-page";
 import { recordStatsPoint } from "../storage/history";
 import { syncFavoritesPage } from "../site/favorites-page";
@@ -50,6 +51,8 @@ export async function startApp(): Promise<void> {
 
   const pageKind = detectPageKind(window.location.search);
   const search = window.location.search;
+
+  mountSiteNotice();
 
   if (pageKind === "list") {
     mountGifMarks(SITE_SELECTORS.thumb);

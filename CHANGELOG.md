@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.53.4
+
+- The site's message to the user, the plate at the bottom of the window, goes by itself after six seconds, or at once on a click. It used to stay until the page was loaded again
+
 ## 0.53.3
 
 - The site's message to the user, such as "You can only cum once a day" after a second "I came", is a small plate at the bottom of the window. It used to stand as a bar over the whole page and push the panel and the picture down
