@@ -420,8 +420,43 @@ function InfoPanel(props: {
   );
 }
 
+/** A comment in the site's list: `div#c{id}` (docs/site.md). */
+const COMMENT_SELECTOR = 'div#comment-list > div[id^="c"]';
+/** The site's link that shows the hidden comments; "(0 hidden)" when there are none. */
+const HIDDEN_LINK_SELECTOR = "div#comment-list > a#ci";
+const NO_HIDDEN_TEXT = "(0 hidden)";
+const RESPOND_TEXT = "Respond";
+const TEXT_NO_COMMENTS = "No comments yet";
+const TEXT_WRITE_COMMENT = "Write a comment";
+const CLASS_COMMENTS_EMPTY = "rdw-post-panel-comments-empty";
+
+/** The site's "Respond" link, which opens its form for a comment; it stands under the picture. */
+function findRespondLink(): HTMLAnchorElement | null {
+  for (const link of document.querySelectorAll("a")) {
+    if (link.textContent.trim() === RESPOND_TEXT) {
+      return link;
+    }
+  }
+  return null;
+}
+
 function CommentsHost(): JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null);
+  // With no comment the tab held only the site's line about the order: it is
+  // said that there are none, with the way to write the first.
+  const [empty] = useState(() => {
+    const comments = findPostComments();
+    return comments !== null && comments.querySelector(COMMENT_SELECTOR) === null;
+  });
+  const [respond] = useState<HTMLAnchorElement | null>(() => findRespondLink());
+
+  useLayoutEffect(() => {
+    // "(0 hidden)" is a link to nothing.
+    const hidden = findPostComments()?.querySelector(HIDDEN_LINK_SELECTOR);
+    if (hidden instanceof HTMLElement && hidden.textContent.trim() === NO_HIDDEN_TEXT) {
+      hidden.hidden = true;
+    }
+  }, []);
 
   useLayoutEffect(() => {
     const host = hostRef.current;
@@ -445,7 +480,28 @@ function CommentsHost(): JSX.Element {
     };
   }, []);
 
-  return <div className={CLASS_COMMENTS_HOST} ref={hostRef} />;
+  return (
+    <>
+      {empty ? (
+        <div className={CLASS_COMMENTS_EMPTY}>
+          <span>{TEXT_NO_COMMENTS}</span>
+          {respond !== null ? (
+            <Button
+              variant="secondary"
+              size="s"
+              onClick={() => {
+                respond.click();
+                respond.scrollIntoView({ block: "center" });
+              }}
+            >
+              {TEXT_WRITE_COMMENT}
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+      <div className={CLASS_COMMENTS_HOST} ref={hostRef} />
+    </>
+  );
 }
 
 function StatRowView(props: { readonly row: StatRow }): JSX.Element {

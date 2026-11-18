@@ -2,6 +2,11 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.52.0
+
+- Upload Video is laid out as Image Upload is: "My Tags" stands in the right column with the other fields and not under the file zone, the empty row of the site's form is gone, the progress of the upload is under the button, and the note about the rule change is inside the card, in the row of the button. The site's timing line under both upload forms is hidden
+- Comments of a post: a post with none says "No comments yet" and offers "Write a comment", which opens the site's form. The line about the order is a small grey line and not a card; the line of score, "Up" and "Report comment" is small and grey; the rule after each comment is gone; "(0 hidden)" is not shown
+
 ## 0.51.1
 
 - The viewer of the post page: a picture taller than the window is read as a page is. The wheel moves it up and down, and so do the arrows, Page Up, Page Down, Space, Home and End; it stops at its top and its bottom. Zoom is Ctrl with the wheel, the "+" and "−" keys and the buttons. A picture that fits the window is zoomed by the wheel as before

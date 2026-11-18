@@ -133,6 +133,7 @@ const UPLOAD_HAS_FILE_CLASS = "rdw-upload-has-file";
 const UPLOAD_FILE_NAME_CLASS = "rdw-upload-file-name";
 const UPLOAD_PREVIEW_CLASS = "rdw-upload-preview";
 const UPLOAD_HINT_CLASS = "rdw-upload-hint";
+const UPLOAD_NOTE_CLASS = "rdw-upload-note";
 const UPLOAD_REMOVE_CLASS = "rdw-upload-remove";
 const UPLOAD_PREVIEW_BOX_CLASS = "rdw-upload-preview-box";
 const UPLOAD_CROSS_MASK =
@@ -1389,6 +1390,38 @@ ${UPLOAD} > form > table > tbody > tr:has(#my-tags) {
   grid-area: mytags;
 }
 
+/* The video upload (from Kaze, 18.11.2026): its "My Tags" row is a line and
+   the link "Edit" with no #my-tags, it has a row with nothing in it, and a
+   row for the progress of the upload. Unplaced, the first stood under the
+   file zone, in the left column. */
+${UPLOAD} > form > table > tbody > tr:has(> td > a):not(:has(input)):not(:has(textarea)):not(:has(button)):not(:has(#my-tags)) {
+  grid-area: mytags;
+}
+
+${UPLOAD} > form > table > tbody > tr:has(> td:only-child:empty) {
+  display: none;
+}
+
+${UPLOAD} > form > table > tbody > tr:has(> td#progress) {
+  grid-column: 2;
+}
+
+/* The note the script moves into the row of the button on the video upload. */
+${UPLOAD} .${UPLOAD_NOTE_CLASS} {
+  color: ${v.muted};
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+${UPLOAD} .${UPLOAD_NOTE_CLASS} > b {
+  color: ${v.text};
+}
+
+/* The site's timing line under the form, a leftover of debugging. */
+${ROOT} div#content:has(> div#upload-form) > center {
+  display: none;
+}
+
 ${UPLOAD} > form > table > tbody > tr:has(input[type="submit"]) {
   grid-area: submit;
   padding-top: 12px;
@@ -2276,6 +2309,52 @@ ${ROOT} body.${RDW_POST_PANEL_MOUNTED_CLASS} div.link-list {
 
 ${ROOT} body.${RDW_POST_PANEL_MOUNTED_CLASS} ${POST_PANEL_ICAME_ROW} {
   display: none !important;
+}
+
+/*
+ * Comments of a post (markup from Kaze, 18.11.2026). The line about the order
+ * is the site's div holding the link "Change", among the comments: not a card, a small
+ * grey line. A comment keeps its card; the bold line of score, "Up" and
+ * "Report comment" is small and grey, and the rule after each comment and the
+ * line breaks between them go.
+ */
+${ROOT} div#post-comments div#comment-list > div:not([id]) {
+  padding: 0;
+  margin: 0 0 8px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: ${v.muted};
+  font-size: 12px;
+}
+
+${ROOT} div#post-comments div#comment-list > br,
+${ROOT} div#post-comments div#comment-list > div[id] > hr,
+${ROOT} div#post-comments div#comment-list > a#ci[hidden] {
+  display: none;
+}
+
+${ROOT} div#post-comments div#comment-list > div[id] > div.col1 > b {
+  display: block;
+  margin-top: 2px;
+  color: ${v.muted};
+  font-size: 11.5px;
+  font-weight: normal;
+}
+
+${ROOT} div#post-comments div#comment-list > div[id] > div.col1 > span {
+  color: ${v.muted};
+  font-size: 11.5px;
+}
+
+${ROOT} .rdw-post-panel-comments-empty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: ${v.muted};
+  font: 12.5px ${v.font};
 }
 
 /*

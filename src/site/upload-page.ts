@@ -33,6 +33,8 @@ export const UPLOAD_TAG_COUNT_SHORT_CLASS = "rdw-upload-tag-count--short";
 export const UPLOAD_GUIDE_TOGGLE_CLASS = "rdw-upload-guide-toggle";
 export const UPLOAD_GUIDE_FOLDED_CLASS = "rdw-upload-guide-folded";
 export const UPLOAD_GUIDE_STATE_ID = "upload-guide-folded";
+/** Around a note the site leaves after the table of the form (the video upload). */
+export const UPLOAD_NOTE_CLASS = "rdw-upload-note";
 
 /** The site's own rule: "at least 5 tags". */
 export const MIN_TAGS = 5;
@@ -238,6 +240,31 @@ function mountGuideToggle(form: Element): void {
   apply(getFeatureState(UPLOAD_GUIDE_STATE_ID) === true);
 }
 
+/**
+ * The video upload has a note after the table of the form, a bold heading and
+ * the text that follows it, where the image upload has it in the row of the
+ * button. Left there it stands under the card, outside it. The note is put
+ * into the row of the button; the fields of the form are not touched.
+ */
+function mountTrailingNote(form: Element): void {
+  const heading = form.querySelector(":scope > b");
+  const cell = form.querySelector('tr:has(input[type="submit"]) > td');
+  if (heading === null || cell === null || form.querySelector(`.${UPLOAD_NOTE_CLASS}`) !== null) {
+    return;
+  }
+  const note = document.createElement("div");
+  note.className = UPLOAD_NOTE_CLASS;
+  let node: ChildNode | null = heading;
+  while (node !== null && !(node instanceof HTMLScriptElement)) {
+    const next: ChildNode | null = node.nextSibling;
+    if (!(node instanceof HTMLBRElement)) {
+      note.append(node);
+    }
+    node = next;
+  }
+  cell.append(note);
+}
+
 /** Does nothing on a page that is not the image upload form. */
 export function mountUploadPage(): void {
   const form = document.querySelector(FORM_SELECTOR);
@@ -252,6 +279,7 @@ export function mountUploadPage(): void {
   if (skinIsOn()) {
     mountFileZone(input);
     mountGuideToggle(form);
+    mountTrailingNote(form);
   }
   if (tags instanceof HTMLTextAreaElement && form.contains(tags)) {
     mountTagCount(tags);
