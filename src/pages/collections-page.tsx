@@ -26,6 +26,7 @@ import {
 } from "../storage/store";
 import {
   Button,
+  SelectionBar,
   Dialog,
   OverlayInPlace,
   EmptyState,
@@ -82,8 +83,8 @@ const FILTER_DYNAMIC_LABEL = "Dynamic";
 const NEW_BUTTON_LABEL = "New";
 const SELECT_BUTTON_LABEL = "Select";
 const SELECT_BUTTON_TITLE = "Select collections to delete";
-const SELECT_ALL_LABEL = "Select all";
-const SELECTED_SUFFIX = " selected";
+/** In the bar of the selection: the dots say a confirmation follows. */
+const DELETE_SELECTED_LABEL = `${UI_TEXT.delete}\u2026`;
 const DELETE_DIALOG_TITLE = "Delete collections";
 const DELETE_ONE_MESSAGE = "Delete 1 collection? This cannot be undone.";
 const DELETE_MANY_PREFIX = "Delete ";
@@ -1100,6 +1101,32 @@ export function CollectionsPage(): JSX.Element {
     <div className={PAGE_CLASS}>
       <style>{COLLECTIONS_PAGE_CSS}</style>
       <header className={HEADER_CLASS}>
+        {selecting ? (
+          // The selection has the place of the toolbar: the filters are away
+          // while it lasts, so what is selected cannot change under it.
+          <SelectionBar
+            count={selectedVisible.length}
+            onSelectAll={() => {
+              setSelectedIds(visible.map((collection) => collection.id));
+            }}
+            onClear={() => {
+              setSelectedIds([]);
+            }}
+            onCancel={stopSelecting}
+            danger={
+              <Button
+                type="button"
+                variant="danger-quiet"
+                disabled={selectedVisible.length === 0}
+                onClick={() => {
+                  setConfirmOpen(true);
+                }}
+              >
+                {DELETE_SELECTED_LABEL}
+              </Button>
+            }
+          />
+        ) : (
         <div className={TOOLBAR_CLASS}>
           <Segmented
             label={TYPE_SEGMENTED_LABEL}
@@ -1146,35 +1173,6 @@ export function CollectionsPage(): JSX.Element {
           {/* How many collections the filters leave: in the toolbar, as on Following. */}
           <span className={SELECTED_COUNT_CLASS}>{collectionsCountLabel(visible.length)}</span>
           <span className={TOOLBAR_SPACER_CLASS} aria-hidden="true" />
-          {selecting ? (
-            <>
-              <span className={SELECTED_COUNT_CLASS} aria-live="polite">
-                {`${String(selectedVisible.length)}${SELECTED_SUFFIX}`}
-              </span>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => {
-                  setSelectedIds(visible.map((collection) => collection.id));
-                }}
-              >
-                {SELECT_ALL_LABEL}
-              </Button>
-              <Button
-                type="button"
-                variant="danger-quiet"
-                disabled={selectedVisible.length === 0}
-                onClick={() => {
-                  setConfirmOpen(true);
-                }}
-              >
-                {UI_TEXT.delete}
-              </Button>
-              <Button type="button" variant="secondary" onClick={stopSelecting}>
-                {UI_TEXT.cancel}
-              </Button>
-            </>
-          ) : (
             <>
               {collections.length > 0 ? (
                 <Button
@@ -1222,8 +1220,8 @@ export function CollectionsPage(): JSX.Element {
                 </span>
               ) : null}
             </>
-          )}
         </div>
+        )}
       </header>
       {visible.length === 0 ? (
         <EmptyState title={emptyCopy.title} description={emptyCopy.description} />

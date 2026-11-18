@@ -2,6 +2,16 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.56.0
+
+- Selecting is the same everywhere: one bar with the same parts in the same order on Posts, Favorites, Following, Collections and the page of a collection. First how many are selected, then "Select all" (or "Select page") and "Clear", then what can be done with them, the dangerous action after a rule, and "Cancel". The number is said once, in "N selected", and not inside the names of the buttons. A name that ends in dots asks before it acts
+- Following, Collections and the page of a collection: the bar stands in the place of the toolbar. The filters are away while posts or cards are being selected, so what is selected cannot change under the hand. The list under the bar does not move when the selection starts
+- Posts: the bar is a card at the top of the column, over the search panel, which stays in view, dimmed and locked. "Select page" and "Clear" are new there
+- Favorites: the bar is the same card. "Download selected" is new there, where downloads are set up
+- Collections and the page of a collection: "Clear" is new on the first; on the second "Remove from collection" is the name of what was "Remove selected (N)"
+- Ctrl+A selects all while something is being selected. In a field it selects the text, as before
+- The post page: the key F does not work only while the keyboard is in the video itself. 0.55.0 said "not in the video player": the player of the site has no key of its own on F
+
 ## 0.55.0
 
 - The post page: the key F adds the post to favorites and takes it out, as the Favorite button does. The hint of the button names the key. It is the place of the key that counts, so it works in the Russian layout too. Not while typing in a field, not with Ctrl, Alt or Shift, not while a dialog is open and not in the video player, which has its own keys

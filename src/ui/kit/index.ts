@@ -66,6 +66,12 @@ export {
   type SegmentedProps,
 } from "./segmented";
 export {
+  SelectionBar,
+  SELECTION_BAR_CSS,
+  type SelectionBarLayout,
+  type SelectionBarProps,
+} from "./selection-bar";
+export {
   Select,
   SELECT_CSS,
   type SelectOption,

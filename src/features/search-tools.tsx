@@ -38,6 +38,7 @@ import {
   Segmented,
   Select,
 } from "../ui/kit";
+import { isGridSelecting } from "./downloads/grid-select";
 import { DownloadControls, SELECT_NOTE_CLASS } from "./downloads/search-controls";
 import { SaveSearchButton } from "./save-search";
 import {
@@ -95,6 +96,10 @@ const CHIP_ATTR_REMOVE = "data-chip-remove";
 const FIELD_CLASS = "rdw-search-tools-field";
 const ROW_SORT_CLASS = "rdw-search-tools-row-sort";
 const FOOT_CLASS = "rdw-search-tools-foot";
+/** Over the card: the bar of a selection is drawn into it. */
+const BAR_HOST_CLASS = "rdw-search-tools-bar";
+/** Around the card while posts are being selected: seen, dimmed, not to be pressed. */
+const LOCKED_CLASS = "rdw-search-tools-locked";
 const RESET_CLASS = "rdw-search-tools-reset";
 
 const TOKEN_SPLIT_RE = /\s+/;
@@ -311,6 +316,13 @@ const FEATURE_CSS = [
   "}",
   `body.${BODY_CLASS} button.${SITE_SEARCH_TOOL_CLASS}:hover {`,
   "  color: var(--rdw-text);",
+  "}",
+  `body.${BODY_CLASS} .${BAR_HOST_CLASS}:not(:empty) {`,
+  "  margin-bottom: 8px;",
+  "}",
+  `body.${BODY_CLASS} .${LOCKED_CLASS} {`,
+  "  opacity: 0.45;",
+  "  pointer-events: none;",
   "}",
   `body.${BODY_CLASS} .${FOOT_CLASS} > .${SELECT_NOTE_CLASS} {`,
   "  flex: 1 1 100%;",
@@ -1137,6 +1149,9 @@ function SearchToolsPanel(props: SearchToolsPanelProps): JSX.Element {
       ? AI_POSTS_SECTION_LABEL
       : `${AI_POSTS_SECTION_LABEL} in ${aiScopeName}`;
 
+  const [barHost, setBarHost] = useState<HTMLElement | null>(null);
+  const [selecting, setSelecting] = useState(false);
+
   const onReset = (): void => {
     clearNavTimer();
     setInputValueOnly(input, []);
@@ -1149,6 +1164,10 @@ function SearchToolsPanel(props: SearchToolsPanelProps): JSX.Element {
   return (
     <>
       <style>{CHIP_CSS}</style>
+      <div className={BAR_HOST_CLASS} ref={setBarHost} />
+      {/* While posts are selected the filters are seen and locked: they say
+          what is being selected from, and cannot change it. */}
+      <div {...(selecting ? { className: LOCKED_CLASS, inert: true } : {})}>
       <Card className={CARD_CLASS}>
         {view.chips.length > 0 ? (
           <div className={FIELD_CLASS}>
@@ -1314,9 +1333,10 @@ function SearchToolsPanel(props: SearchToolsPanelProps): JSX.Element {
             {RESET_LABEL}
           </Button>
           <SaveSearchButton tags={input.value} />
-          <DownloadControls />
+          <DownloadControls barHost={barHost} onSelectingChange={setSelecting} />
         </div>
       </Card>
+      </div>
     </>
   );
 }
@@ -1340,6 +1360,10 @@ function mountSearchTools(_ctx: FeatureContext): void {
   // real height is kept for the next page load, so nothing jumps there.
   root.classList.add(SEARCH_TOOLS_MOUNTED_CLASS);
   const remember = (): void => {
+    // With the bar of a selection over it the panel is taller than it is on a fresh page.
+    if (isGridSelecting()) {
+      return;
+    }
     rememberSearchToolsHeight(root.getBoundingClientRect().height);
   };
   if (typeof ResizeObserver === "function") {

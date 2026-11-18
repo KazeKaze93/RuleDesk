@@ -403,14 +403,14 @@ describe("createCollectionsPage", () => {
     click(findButton(root, "Select") ?? root);
     const first = cardByName(root, "Drop one");
     expect(first.getAttribute("role")).toBe("checkbox");
-    expect(findButton(root, "Delete")?.disabled).toBe(true);
+    expect(findButton(root, "Delete…")?.disabled).toBe(true);
     click(first);
     click(cardByName(root, "Drop two"));
     expect(cardByName(root, "Drop one").getAttribute("aria-checked")).toBe("true");
     expect(root.textContent).toContain("2 selected");
     expect(load().collections).toHaveLength(3);
 
-    click(findButton(root, "Delete") ?? root);
+    click(findButton(root, "Delete…") ?? root);
     const dialog = dialogElement(root);
     expect(dialog.textContent).toContain(
       "Delete 2 collections? This cannot be undone.",

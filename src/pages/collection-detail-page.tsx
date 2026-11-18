@@ -26,6 +26,7 @@ import {
 } from "../storage/store";
 import {
   Button,
+  SelectionBar,
   Dialog,
   EmptyState,
   TextField,
@@ -83,18 +84,13 @@ const LABEL_SHUFFLE = "Shuffle";
 const LABEL_ORIGINAL_ORDER = "Original order";
 const LABEL_SELECT = "Select";
 const LABEL_DOWNLOAD_ALL = "Download all";
-const DOWNLOAD_SELECTED_PREFIX = "Download selected (";
-const DOWNLOAD_SELECTED_SUFFIX = ")";
+const LABEL_DOWNLOAD_SELECTED = "Download selected";
 const DRAG_HINT = "Drag a post onto another to change the order.";
 const CLASS_DRAGGING = "rdw-collection-cell--dragging";
 const CLASS_DROP_TARGET = "rdw-collection-cell--drop";
 const CLASS_HINT = "rdw-collection-hint";
-const LABEL_SELECT_ALL = "Select all";
-const LABEL_CLEAR = "Clear";
-const LABEL_CANCEL = UI_TEXT.cancel;
 const LABEL_UNDO = "Undo";
-const REMOVE_SELECTED_PREFIX = "Remove selected (";
-const REMOVE_SELECTED_SUFFIX = ")";
+const LABEL_REMOVE_SELECTED = "Remove from collection";
 const FALLBACK_PREFIX = "#";
 const POST_LINK_LABEL_PREFIX = "Post #";
 const POST_NOUN_SINGULAR = "post";
@@ -256,13 +252,7 @@ function removedPostsMessage(count: number): string {
   return `${REMOVED_PREFIX}${String(count)} ${noun}`;
 }
 
-function removeSelectedLabel(count: number): string {
-  return `${REMOVE_SELECTED_PREFIX}${String(count)}${REMOVE_SELECTED_SUFFIX}`;
-}
 
-function downloadSelectedLabel(count: number): string {
-  return `${DOWNLOAD_SELECTED_PREFIX}${String(count)}${DOWNLOAD_SELECTED_SUFFIX}`;
-}
 
 type PostDrag = {
   readonly draggingId: number | null;
@@ -598,53 +588,38 @@ export function CollectionDetailPage(
             <h1 className={CLASS_NAME}>{detail.name}</h1>
             <p className={CLASS_COUNT}>{postsCountLabel(detail.order.length)}</p>
           </div>
-          <div className={CLASS_ACTIONS}>
-            {selecting ? (
-              <>
-                <Button
-                  variant="secondary"
-                  size="s"
-                  onClick={() => {
-                    setSelected(new Set(detail.order));
-                  }}
-                >
-                  {LABEL_SELECT_ALL}
+          {selecting ? (
+            <SelectionBar
+              count={selected.size}
+              onSelectAll={() => {
+                setSelected(new Set(detail.order));
+              }}
+              onClear={() => {
+                setSelected(new Set());
+              }}
+              onCancel={leaveSelectMode}
+              danger={
+                // No dots: nothing is asked, the removal can be undone.
+                <Button variant="danger-quiet" disabled={selected.size === 0} onClick={removeSelected}>
+                  {LABEL_REMOVE_SELECTED}
                 </Button>
+              }
+            >
+              {downloadAvailable ? (
                 <Button
                   variant="secondary"
-                  size="s"
-                  onClick={() => {
-                    setSelected(new Set());
-                  }}
-                >
-                  {LABEL_CLEAR}
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="s"
                   disabled={selected.size === 0}
-                  onClick={removeSelected}
+                  onClick={() => {
+                    download(detail.name, detail.order.filter((id) => selected.has(id)));
+                    leaveSelectMode();
+                  }}
                 >
-                  {removeSelectedLabel(selected.size)}
+                  {LABEL_DOWNLOAD_SELECTED}
                 </Button>
-                {downloadAvailable ? (
-                  <Button
-                    variant="secondary"
-                    size="s"
-                    disabled={selected.size === 0}
-                    onClick={() => {
-                      download(detail.name, detail.order.filter((id) => selected.has(id)));
-                      leaveSelectMode();
-                    }}
-                  >
-                    {downloadSelectedLabel(selected.size)}
-                  </Button>
-                ) : null}
-                <Button variant="secondary" size="s" onClick={leaveSelectMode}>
-                  {LABEL_CANCEL}
-                </Button>
-              </>
-            ) : (
+              ) : null}
+            </SelectionBar>
+          ) : (
+          <div className={CLASS_ACTIONS}>
               <>
                 <Button
                   variant="secondary"
@@ -702,8 +677,8 @@ export function CollectionDetailPage(
                   {UI_TEXT.delete}
                 </Button>
               </>
-            )}
           </div>
+          )}
           {!selecting && detail.order.length > POST_COUNT_SINGULAR ? (
             <p className={CLASS_HINT}>{DRAG_HINT}</p>
           ) : null}

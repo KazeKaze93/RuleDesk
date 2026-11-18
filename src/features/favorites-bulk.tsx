@@ -54,6 +54,7 @@ import {
   IconTrash,
   Popover,
   ProgressBar,
+  SelectionBar,
 } from "../ui/kit";
 import { featureBodyClass, type Feature, type FeatureContext } from "./types";
 import { bindPressSelect } from "./press-select";
@@ -118,14 +119,16 @@ const MS_PER_DAY = 86_400_000;
 export const STALE_SYNC_DAYS = 7;
 /** Name of the download job and of its folder. */
 const DOWNLOAD_JOB_NAME = "Favorites";
-const TEXT_CLEAR = "Clear";
 const TEXT_CANCEL = UI_TEXT.cancel;
 const TEXT_CONFIRM = UI_TEXT.confirm;
 const TEXT_STOP = "Stop";
 const TEXT_DISMISS = "Dismiss";
-const TEXT_REMOVE_SELECTED_PREFIX = "Remove selected (";
-const TEXT_REMOVE_SELECTED_SUFFIX = ")";
-const TEXT_SELECTED_SUFFIX = " selected";
+/** The dots say a confirmation follows. */
+const TEXT_REMOVE_SELECTED = "Remove from favorites\u2026";
+const TEXT_DOWNLOAD_SELECTED = "Download selected";
+const DOWNLOAD_SELECTED_JOB_NAME = "Favorites (selected)";
+/** Around the bar of a selection and the line under it. */
+const SELECT_WRAP_CLASS = "rdw-favorites-bulk-select";
 const TEXT_CONFIRM_PREFIX = "Remove ";
 const TEXT_CONFIRM_MID = " favorite";
 const TEXT_CONFIRM_MID_PLURAL = " favorites";
@@ -312,6 +315,15 @@ body.${BODY_CLASS} .${SUMMARY_CLASS} {
   gap: 0.35rem 0.5rem;
   margin-top: 0.25rem;
 }
+body.${BODY_CLASS} .${SELECT_WRAP_CLASS} {
+  display: grid;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+body.${BODY_CLASS} .${FAVORITES_SIDE_BAR_CLASS} .${SELECT_WRAP_CLASS} {
+  margin-bottom: 8px;
+}
 body.${BODY_CLASS} .${BAR_CLASS} {
   display: flex;
   flex: 0 1 auto;
@@ -378,14 +390,6 @@ type BulkPhase =
   | { kind: "removing"; done: number; total: number }
   | { kind: "error"; message: string }
   | { kind: "stopped"; message: string };
-
-function removeSelectedLabel(count: number): string {
-  return `${TEXT_REMOVE_SELECTED_PREFIX}${String(count)}${TEXT_REMOVE_SELECTED_SUFFIX}`;
-}
-
-function selectedCountLabel(count: number): string {
-  return `${String(count)}${TEXT_SELECTED_SUFFIX}`;
-}
 
 function confirmMessage(count: number): string {
   const mid = count === 1 ? TEXT_CONFIRM_MID : TEXT_CONFIRM_MID_PLURAL;
@@ -761,6 +765,8 @@ type FavoritesBulkBarProps = {
   readonly summary: string;
   /** True while the bar has the pinned row to itself: selecting, removing, a message. */
   readonly onBusyChange: (busy: boolean) => void;
+  /** True where the bar stands in the column of filters, over their card. */
+  readonly inColumn: boolean;
 };
 
 function FavoritesBulkBar(props: FavoritesBulkBarProps): JSX.Element | null {
@@ -1012,39 +1018,53 @@ function FavoritesBulkBar(props: FavoritesBulkBarProps): JSX.Element | null {
   const browsing = document.body.classList.contains(FAVORITES_BROWSING_BODY_CLASS);
   return (
     <>
-      <div className={BAR_CLASS}>
-        <span className={STATUS_CLASS}>{selectedCountLabel(count)}</span>
-        <span className={SUMMARY_CLASS} role={note.length > 0 ? "status" : undefined}>
-          {note.length > 0 ? note : props.summary}
-        </span>
-        <Button variant="secondary" size="s" onClick={selectPage}>
-          {browsing ? TEXT_SELECT_LOADED : TEXT_SELECT_PAGE}
-        </Button>
-        <Button variant="secondary" size="s" onClick={clearSelection}>
-          {TEXT_CLEAR}
-        </Button>
-        <Button
-          variant="secondary"
-          size="s"
-          disabled={count === 0 || confirmOpen}
-          onClick={() => {
-            setCollectionPosts(selectedPostsOnPage(selectedRef.current));
-          }}
+      <div className={SELECT_WRAP_CLASS}>
+        {/* One bar for the whole product (ui/kit/selection-bar.tsx): a card
+            at the top of the column, a row where the page has no column. */}
+        <SelectionBar
+          layout={props.inColumn ? "stack" : "row"}
+          count={count}
+          selectAllLabel={browsing ? TEXT_SELECT_LOADED : TEXT_SELECT_PAGE}
+          onSelectAll={selectPage}
+          onClear={clearSelection}
+          onCancel={resetToIdle}
+          danger={
+            <Button variant="danger-quiet" disabled={count === 0 || confirmOpen} onClick={beginConfirm}>
+              <IconTrash size={14} />
+              {TEXT_REMOVE_SELECTED}
+            </Button>
+          }
         >
-          {TEXT_ADD_TO_COLLECTION}
-        </Button>
-        <Button
-          variant="danger-quiet"
-          size="s"
-          disabled={count === 0 || confirmOpen}
-          onClick={beginConfirm}
-        >
-          <IconTrash size={14} />
-          {removeSelectedLabel(count)}
-        </Button>
-        <Button variant="ghost" size="s" onClick={resetToIdle}>
-          {TEXT_CANCEL}
-        </Button>
+          <Button
+            variant="secondary"
+            disabled={count === 0 || confirmOpen}
+            onClick={() => {
+              setCollectionPosts(selectedPostsOnPage(selectedRef.current));
+            }}
+          >
+            {TEXT_ADD_TO_COLLECTION}
+          </Button>
+          {downloadsAvailable() ? (
+            <Button
+              variant="secondary"
+              disabled={count === 0 || confirmOpen}
+              onClick={() => {
+                const ids = selectedPostsOnPage(selectedRef.current).map((post) => post.id);
+                resetToIdle();
+                if (ids.length > 0 && !isDownloadBusy()) {
+                  void startDownload(DOWNLOAD_SELECTED_JOB_NAME, { kind: "ids", ids });
+                }
+              }}
+            >
+              {TEXT_DOWNLOAD_SELECTED}
+            </Button>
+          ) : null}
+        </SelectionBar>
+        {note.length > 0 || props.summary.length > 0 ? (
+          <span className={SUMMARY_CLASS} role={note.length > 0 ? "status" : undefined}>
+            {note.length > 0 ? note : props.summary}
+          </span>
+        ) : null}
       </div>
       <BulkCollectionDialog
         open={collectionPosts !== null}
@@ -1130,6 +1150,7 @@ function FavoritesPanel(props: FavoritesPanelProps): JSX.Element {
             headSlot={headActions}
             summary={summary}
             onBusyChange={setBusy}
+            inColumn={props.side !== null}
           />
         </>,
         props.pin,

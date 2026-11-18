@@ -110,6 +110,24 @@ export function readSelectedPosts(
   return posts;
 }
 
+/** Marks every post of the page. */
+export function selectGridPage(): void {
+  for (const thumb of document.querySelectorAll(SITE_SELECTORS.thumb)) {
+    if (extractPostIdFromThumb(thumb) !== null) {
+      thumb.classList.add(GRID_SELECTED_CLASS);
+    }
+  }
+  onCountChange?.(readSelectedPostIds().length);
+}
+
+/** Takes every mark off; picking stays on. */
+export function clearGridSelection(): void {
+  for (const thumb of document.querySelectorAll(`.${GRID_SELECTED_CLASS}`)) {
+    thumb.classList.remove(GRID_SELECTED_CLASS);
+  }
+  onCountChange?.(0);
+}
+
 export function isGridSelecting(): boolean {
   return document.body.classList.contains(GRID_SELECT_BODY_CLASS);
 }

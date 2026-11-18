@@ -276,9 +276,11 @@ describe("favoritesBulkFeature", () => {
     expect(text).toContain("0 selected");
     expect(text).toContain("Select page");
     expect(text).toContain("Clear");
-    expect(text).toContain("Remove selected (0)");
+    expect(text).toContain("Remove from favorites\u2026");
     expect(text).toContain("Cancel");
-    expect(root?.querySelector(".rdw-favorites-bulk-bar")).not.toBeNull();
+    // The bar of a selection is the kit's, the same on every page.
+    expect(root?.querySelector('.rdw-selbar[role="toolbar"]')).not.toBeNull();
+    expect(text).not.toContain("(0)");
   });
 
   it("toggles selection chrome as a sibling of a#p{ID}, not inside it", () => {
@@ -328,7 +330,7 @@ describe("favoritesBulkFeature", () => {
     mountFeature();
     clickButtonWithText("Select");
     clickButtonWithText("Select page");
-    clickButtonWithText("Remove selected (2)");
+    clickButtonWithText("Remove from favorites\u2026");
 
     expect(window.confirm).not.toHaveBeenCalled();
     expect(document.body.textContent).toContain("cannot be undone on the site");
@@ -339,9 +341,7 @@ describe("favoritesBulkFeature", () => {
     const confirmBtn = confirmButton();
     expect(confirmBtn?.textContent?.trim()).toBe("Remove 2");
     // Control bar stays; confirm is overlay, not an in-flow full-width Card.
-    expect(document.querySelector(".rdw-favorites-bulk-bar")?.textContent).toContain(
-      "2 selected",
-    );
+    expect(document.querySelector(".rdw-selbar")?.textContent).toContain("2 selected");
     expect(document.querySelector(".rdw-card.rdw-favorites-bulk-confirm")).toBeNull();
   });
 
@@ -355,7 +355,7 @@ describe("favoritesBulkFeature", () => {
 
     clickButtonWithText("Select");
     clickButtonWithText("Select page");
-    clickButtonWithText("Remove selected (2)");
+    clickButtonWithText("Remove from favorites\u2026");
     clickConfirm();
 
     await act(async () => {
@@ -393,7 +393,7 @@ describe("favoritesBulkFeature", () => {
 
     clickButtonWithText("Select");
     clickButtonWithText("Select page");
-    clickButtonWithText("Remove selected (2)");
+    clickButtonWithText("Remove from favorites\u2026");
     clickConfirm();
 
     await act(async () => {
@@ -419,7 +419,7 @@ describe("favoritesBulkFeature", () => {
 
     clickButtonWithText("Select");
     clickButtonWithText("Select page");
-    clickButtonWithText("Remove selected (3)");
+    clickButtonWithText("Remove from favorites\u2026");
     clickConfirm();
 
     await act(async () => {
@@ -449,7 +449,7 @@ describe("favoritesBulkFeature", () => {
 
     clickButtonWithText("Select");
     clickButtonWithText("Select page");
-    clickButtonWithText("Remove selected (2)");
+    clickButtonWithText("Remove from favorites\u2026");
     clickConfirm();
 
     await act(async () => {
@@ -478,7 +478,7 @@ describe("favoritesBulkFeature", () => {
 
     clickButtonWithText("Select");
     clickButtonWithText("Select page");
-    clickButtonWithText("Remove selected (1)");
+    clickButtonWithText("Remove from favorites\u2026");
     clickConfirm();
     await act(async () => {
       await vi.advanceTimersByTimeAsync(0);

@@ -254,7 +254,10 @@ describe("FollowingPage", () => {
     expect(root.textContent).toContain("2 selected");
     expect(artistTags()).toHaveLength(3);
 
-    click(button(root, "Unfollow"));
+    // The bar of the selection has the place of the toolbar and its filters.
+    expect(root.querySelector('[role="toolbar"][aria-label="Selection"]')).not.toBeNull();
+    expect(root.querySelector(".rdw-following-toolbar")).toBeNull();
+    click(button(root, "Unfollow…"));
     expect(dialog(root).textContent).toContain(
       "Unfollow 2 artists? This cannot be undone.",
     );

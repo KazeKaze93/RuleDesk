@@ -5,6 +5,7 @@ Everything RuleDesk does, screen by screen: what a feature is for, where it show
 - [How the script sits on the site](#how-the-script-sits-on-the-site)
 - [The header](#the-header)
 - [Posts: the results page](#posts-the-results-page)
+- [Selecting](#selecting)
 - [The post page](#the-post-page)
 - [Feed](#feed)
 - [Following](#following)
@@ -98,6 +99,10 @@ The sidebar lists the tags of the posts on the page by type: Copyright, Characte
 ### Dynamic collection bar — "Collection header"
 
 When a saved search is opened from the Collections page, a bar above the grid names the collection and has Shuffle, Edit query, Rename and Delete. The same search typed by hand is an ordinary search and has no bar.
+
+## Selecting
+
+Wherever posts or cards can be selected, the bar is the same: how many are selected, "Select all" or "Select page", "Clear", the actions, the dangerous action after a rule, "Cancel". On Following, Collections and the page of a collection it stands in the place of the toolbar. On Posts and Favorites it is a card at the top of the column, with the filters under it dimmed and locked. Escape cancels; Ctrl+A selects all. A name that ends in dots asks before it acts.
 
 ## The post page
 

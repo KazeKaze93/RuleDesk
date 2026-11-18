@@ -44,6 +44,7 @@ import {
 import {
   AutocompleteField,
   Button,
+  SelectionBar,
   Dialog,
   OverlayInPlace,
   EmptyState,
@@ -102,9 +103,9 @@ const SHOW_LABEL = "Show";
 const SORT_LABEL = "Sort";
 const NEW_BADGE = "new";
 const SELECT_LABEL = "Select";
-const SELECT_ALL_LABEL = "Select all";
-const SELECTED_SUFFIX = " selected";
 const UNFOLLOW_LABEL = "Unfollow";
+/** In the bar of the selection: the dots say a confirmation follows. */
+const UNFOLLOW_SELECTED_LABEL = "Unfollow\u2026";
 const REFRESH_LABEL = "Refresh";
 const REFRESH_TITLE = "Read each artist's first page again: cover, post count, newest post";
 const ADD_FIELD_LABEL = "Artist tags, separated by spaces";
@@ -1029,6 +1030,42 @@ export function FollowingPage(): JSX.Element {
       ) : (
         <>
           <div className={STICKY_CLASS}>
+          {selecting ? (
+            // The selection has the place of the toolbar: the filters are away
+            // while it lasts, so what is selected cannot change under it.
+            <SelectionBar
+              count={selectedVisible.length}
+              onSelectAll={() => {
+                setSelectedTags(visible.map((artist) => artist.tag));
+              }}
+              onClear={() => {
+                setSelectedTags([]);
+              }}
+              onCancel={stopSelecting}
+              danger={
+                <Button
+                  variant="danger-quiet"
+                  disabled={selectedVisible.length === 0}
+                  onClick={() => {
+                    setConfirmUnfollow(true);
+                  }}
+                >
+                  {UNFOLLOW_SELECTED_LABEL}
+                </Button>
+              }
+            >
+              <Button
+                variant="secondary"
+                disabled={selectedVisible.length === 0}
+                onClick={() => {
+                  setGroupDraft("");
+                  setGroupDialog(true);
+                }}
+              >
+                {GROUP_BUTTON_LABEL}
+              </Button>
+            </SelectionBar>
+          ) : (
           <div className={TOOLBAR_CLASS}>
             <Segmented
               label={SHOW_LABEL}
@@ -1095,43 +1132,6 @@ export function FollowingPage(): JSX.Element {
               }`}
             </span>
             <span className={TOOLBAR_SPACER_CLASS} aria-hidden="true" />
-            {selecting ? (
-              <>
-                <span className={META_CLASS} aria-live="polite">
-                  {`${String(selectedVisible.length)}${SELECTED_SUFFIX}`}
-                </span>
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    setSelectedTags(visible.map((artist) => artist.tag));
-                  }}
-                >
-                  {SELECT_ALL_LABEL}
-                </Button>
-                <Button
-                  variant="secondary"
-                  disabled={selectedVisible.length === 0}
-                  onClick={() => {
-                    setGroupDraft("");
-                    setGroupDialog(true);
-                  }}
-                >
-                  {GROUP_BUTTON_LABEL}
-                </Button>
-                <Button
-                  variant="danger-quiet"
-                  disabled={selectedVisible.length === 0}
-                  onClick={() => {
-                    setConfirmUnfollow(true);
-                  }}
-                >
-                  {UNFOLLOW_LABEL}
-                </Button>
-                <Button variant="secondary" onClick={stopSelecting}>
-                  {UI_TEXT.cancel}
-                </Button>
-              </>
-            ) : (
               <>
                 <Button
                   variant="secondary"
@@ -1154,8 +1154,8 @@ export function FollowingPage(): JSX.Element {
                 </Button>
                 {addButton}
               </>
-            )}
           </div>
+          )}
           </div>
 
 

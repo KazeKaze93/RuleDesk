@@ -302,7 +302,7 @@ describe("collection detail page", () => {
     click(first);
     click(second);
 
-    const remove = findButton(shadow, "Remove selected (2)");
+    const remove = findButton(shadow, "Remove from collection");
     if (remove === null) {
       throw new Error("remove missing");
     }
@@ -345,7 +345,7 @@ describe("collection detail page", () => {
           throw new Error("grid missing");
         }
         click(cell);
-        const remove = findButton(shadow, "Remove selected (1)");
+        const remove = findButton(shadow, "Remove from collection");
         if (remove === null) {
           throw new Error("remove missing");
         }

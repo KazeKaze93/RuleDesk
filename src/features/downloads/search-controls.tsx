@@ -1,4 +1,5 @@
 import type { JSX } from "preact";
+import { createPortal } from "preact/compat";
 import { useEffect, useState } from "preact/hooks";
 
 import {
@@ -15,12 +16,14 @@ import {
   BulkCollectionDialog,
   bulkCollectionSummary,
 } from "../../ui/bulk-collection-dialog";
-import { Button, Dialog } from "../../ui/kit";
+import { Button, Dialog, SelectionBar } from "../../ui/kit";
 import { readPreviewThumbUrl, refreshAddButtons } from "../playlist-menu";
 import { downloadsAvailable } from "./available";
 import {
+  clearGridSelection,
   readSelectedPostIds,
   readSelectedPosts,
+  selectGridPage,
   startGridSelect,
   stopGridSelect,
 } from "./grid-select";
@@ -41,11 +44,10 @@ const TITLE_DOWNLOAD_RESULTS = "Download every post of this search";
 const LABEL_SELECT = "Select";
 const TITLE_SELECT = "Pick posts on this page to add to a collection";
 const TITLE_SELECT_WITH_DOWNLOADS = "Pick posts on this page to add to a collection or to download";
-const ADD_SELECTED_PREFIX = "Add to collection (";
-const ADD_SELECTED_SUFFIX = ")";
+const LABEL_ADD_SELECTED = "Add to collection";
+const LABEL_SELECT_PAGE = "Select page";
 export const SELECT_NOTE_CLASS = "rdw-select-note";
-const DOWNLOAD_SELECTED_PREFIX = "Download selected (";
-const DOWNLOAD_SELECTED_SUFFIX = ")";
+const LABEL_DOWNLOAD_SELECTED = "Download selected";
 const DIALOG_TITLE = "Download results";
 const CONFIRM_LABEL = "Download";
 const SELECTION_LABEL_SUFFIX = " (selected)";
@@ -74,7 +76,14 @@ function jobLabel(query: string): string {
   return query;
 }
 
-export function DownloadControls(): JSX.Element | null {
+export type DownloadControlsProps = {
+  /** Where the bar of a selection is drawn: the top of the column, over the panel. */
+  readonly barHost?: HTMLElement | null;
+  /** Told when a selection starts and ends: the panel is locked meanwhile. */
+  readonly onSelectingChange?: (selecting: boolean) => void;
+};
+
+export function DownloadControls(props: DownloadControlsProps = {}): JSX.Element | null {
   const [selecting, setSelecting] = useState(false);
   const [count, setCount] = useState(0);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -91,6 +100,10 @@ export function DownloadControls(): JSX.Element | null {
     },
     [],
   );
+  const { onSelectingChange } = props;
+  useEffect(() => {
+    onSelectingChange?.(selecting);
+  }, [onSelectingChange, selecting]);
   // Escape leaves the selection, as Cancel does.
   useEscape(selecting, () => {
     stopGridSelect();
@@ -113,40 +126,50 @@ export function DownloadControls(): JSX.Element | null {
   };
 
   if (selecting) {
-    return (
-      <>
+    // One bar for the whole product (ui/kit/selection-bar.tsx): here a card
+    // at the top of the column, with the panel under it locked.
+    const bar = (
+      <SelectionBar
+        layout="stack"
+        count={count}
+        selectAllLabel={LABEL_SELECT_PAGE}
+        onSelectAll={selectGridPage}
+        onClear={clearGridSelection}
+        onCancel={leaveSelect}
+      >
         <Button
-          variant="primary"
-          size="s"
+          variant="secondary"
           disabled={count === 0}
           onClick={() => {
             setCollectionPosts(readSelectedPosts(readPreviewThumbUrl));
           }}
         >
-          {`${ADD_SELECTED_PREFIX}${String(count)}${ADD_SELECTED_SUFFIX}`}
+          {LABEL_ADD_SELECTED}
         </Button>
         {canDownload ? (
-        <Button
-          variant="secondary"
-          size="s"
-          disabled={count === 0}
-          onClick={() => {
-            const ids = readSelectedPostIds();
-            leaveSelect();
-            if (ids.length > 0 && !isDownloadBusy()) {
-              void startDownload(
-                label.length > 0 ? `${label}${SELECTION_LABEL_SUFFIX}` : UNNAMED_SELECTION,
-                { kind: "ids", ids },
-              );
-            }
-          }}
-        >
-          {`${DOWNLOAD_SELECTED_PREFIX}${String(count)}${DOWNLOAD_SELECTED_SUFFIX}`}
-        </Button>
+          <Button
+            variant="secondary"
+            disabled={count === 0}
+            onClick={() => {
+              const ids = readSelectedPostIds();
+              leaveSelect();
+              if (ids.length > 0 && !isDownloadBusy()) {
+                void startDownload(
+                  label.length > 0 ? `${label}${SELECTION_LABEL_SUFFIX}` : UNNAMED_SELECTION,
+                  { kind: "ids", ids },
+                );
+              }
+            }}
+          >
+            {LABEL_DOWNLOAD_SELECTED}
+          </Button>
         ) : null}
-        <Button variant="secondary" size="s" onClick={leaveSelect}>
-          {UI_TEXT.cancel}
-        </Button>
+      </SelectionBar>
+    );
+    const host = props.barHost ?? null;
+    return (
+      <>
+        {host === null ? bar : createPortal(bar, host)}
         <BulkCollectionDialog
           open={collectionPosts !== null}
           posts={collectionPosts ?? []}
