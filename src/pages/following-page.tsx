@@ -366,7 +366,10 @@ export const FOLLOWING_PAGE_CSS = `
   border-color: var(--rdw-muted);
   background: var(--rdw-surface-2);
 }
-.${CARD_CLASS}:focus-within,
+/* The keyboard's focus only: a card clicked with the mouse keeps the focus
+   too, and with ":focus-within" a card just unselected kept the frame of a
+   selected one. */
+.${CARD_CLASS}:has(:focus-visible),
 .${CARD_SELECTED_CLASS} {
   border-color: var(--rdw-accent);
 }

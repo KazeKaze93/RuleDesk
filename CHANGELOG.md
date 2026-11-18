@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.48.1
+
+- Following, selecting: a card clicked and then unselected kept the blue frame of a selected one until something else was clicked. The frame is now for a selected card and for the card the keyboard is on
+
 ## 0.48.0
 
 From the design audit, state that could not be seen:
