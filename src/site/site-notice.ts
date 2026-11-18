@@ -4,8 +4,8 @@ import { skinIsOn } from "../skin/skin-on";
 const NOTICE_SELECTOR = "body > div#notice";
 /** On the message once its time is out or it is clicked; the skin hides it. */
 export const NOTICE_GONE_CLASS = "rdw-notice-gone";
-/** How long a message stays: enough to read two lines. */
-export const NOTICE_SHOWN_MS = 6000;
+/** How long a message stays (Kaze, 18.11.2026: six seconds were too long). */
+export const NOTICE_SHOWN_MS = 2500;
 
 function findNotice(): HTMLElement | null {
   const notice = document.querySelector(NOTICE_SELECTOR);

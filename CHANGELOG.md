@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.53.5
+
+- The site's message to the user goes after two and a half seconds, not six
+
 ## 0.53.4
 
 - The site's message to the user, the plate at the bottom of the window, goes by itself after six seconds, or at once on a click. It used to stay until the page was loaded again
