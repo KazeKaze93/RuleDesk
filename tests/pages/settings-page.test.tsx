@@ -39,6 +39,7 @@ import { installSiteMenu } from "../../src/pages/menu";
 import {
   clearStorageCache,
   getFeatureState,
+  setFeatureEnabled,
   setFeatureState,
   setTweaksEnabled,
 } from "../../src/storage/store";
@@ -206,7 +207,7 @@ describe("SettingsPage flat rows", () => {
     const firstRow = root?.querySelector(`.${PANEL_UI_CLASS.settingsRow}`);
     expect(firstRow?.querySelector(`#${TWEAKS_SWITCH_ID}`)).not.toBeNull();
     expect(firstRow?.querySelector(`.${PANEL_UI_CLASS.settingsCaption}`)?.textContent).toBe(
-      "Off: the site looks as without RuleDesk. The switches of the features need this on.",
+      "Off: the site looks as without RuleDesk. The page features below need this on; Favorites sync, Blacklist and Data work without it.",
     );
     // The master switch is a card of its own over the sections.
     expect(firstRow?.closest(".rdw-card.rdw-settings-master")).not.toBeNull();
@@ -267,7 +268,7 @@ describe("SettingsPage flat rows", () => {
           "Collapse tags",
           "Search tools",
           "Sidebar on the right",
-          "Tag description on the ? in the sidebar",
+          "Tag description on \u201c?\u201d",
         ],
       ],
       ["Collections", ["Add to collection button", "Collection header", "Collection part size"]],
@@ -382,6 +383,56 @@ describe("SettingsPage flat rows", () => {
         String.raw`\.${PANEL_UI_CLASS.settingsCaption}\s*\{[^}]*font-size:\s*12px[^}]*color:\s*var\(--rdw-muted\)`,
       ),
     );
+  });
+
+  it("shows a switch that is off: an outline and a thumb told from the card", () => {
+    // WCAG 1.4.11: the parts a control is known by are 3:1 against what is next to them.
+    const UI = 3;
+    for (const palette of [LIGHT_PALETTE, DARK_PALETTE]) {
+      expect(contrastRatio(palette.muted, palette.surface)).toBeGreaterThanOrEqual(UI);
+      expect(contrastRatio(palette.muted, palette.border)).toBeGreaterThanOrEqual(UI);
+    }
+  });
+
+  it("says under its name what a switch does, where the name does not", () => {
+    let root: HTMLElement | undefined;
+    act(() => {
+      root = createSettingsPage();
+      document.body.append(root);
+    });
+    const captionOf = (label: string): string | null | undefined =>
+      Array.from(root?.querySelectorAll(".rdw-switch__label, .rdw-num__label") ?? [])
+        .find((node) => node.textContent === label)
+        ?.closest(`.${PANEL_UI_CLASS.settingsRow}`)
+        ?.querySelector(`.${PANEL_UI_CLASS.settingsCaption}`)?.textContent;
+    for (const label of [
+      "Search tools",
+      "Collapse tags",
+      "Post side panel",
+      "Collection header",
+      "Add to collection button",
+      "Collection part size",
+    ]) {
+      expect(captionOf(label)?.length ?? 0).toBeGreaterThan(20);
+    }
+  });
+
+  it("keeps the key and the file name off while the download manager is off", () => {
+    setFeatureEnabled("downloads", false);
+    let root: HTMLElement | undefined;
+    act(() => {
+      root = createSettingsPage();
+      document.body.append(root);
+    });
+    const downloads = root?.querySelector('[data-settings-section="downloads"]');
+    const key = downloads?.querySelector('input[type="password"]');
+    expect(key).toBeInstanceOf(HTMLInputElement);
+    expect(key instanceof HTMLInputElement && key.disabled).toBe(true);
+    const name = downloads?.querySelector("button.rdw-select__trigger");
+    expect(name instanceof HTMLButtonElement && name.disabled).toBe(true);
+    // The switch of the manager itself stays: it is how it is turned on again.
+    const manager = downloads?.querySelector(`#${FEATURE_CHECKBOX_ID_PREFIX}downloads`);
+    expect(manager instanceof HTMLButtonElement && manager.disabled).toBe(false);
   });
 
   it("keeps a description readable in every theme of the script", () => {

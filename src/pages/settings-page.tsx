@@ -49,8 +49,9 @@ import {
   OverlayInPlace,
   Select,
   Switch,
-  TextField,
 } from "../ui/kit";
+import { SearchField } from "../ui/kit/search-field";
+import { DOWNLOADS_FEATURE_ID } from "../features/downloads/available";
 import { BlacklistSection } from "./blacklist-section";
 import {
   FEATURE_CHECKBOX_ID_PREFIX,
@@ -85,7 +86,13 @@ const AI_EVERYWHERE_CAPTION =
   "When off, Posts, Feed, Following, Collections and Favorites each keep their own Show / Hide choice.";
 
 const TWEAKS_CAPTION =
-  "Off: the site looks as without RuleDesk. The switches of the features need this on.";
+  "Off: the site looks as without RuleDesk. The page features below need this on; Favorites sync, Blacklist and Data work without it.";
+const PART_SIZE_CAPTION =
+  "Posts of a custom collection opened as one search. A longer collection is opened in parts.";
+const LOCAL_INDEX_TITLE = "Local index";
+const BLOCK_CLASS = "rdw-settings-block";
+const BLOCK_TITLE_CLASS = "rdw-settings-block-title";
+const NAV_SEARCH_CLASS = "rdw-settings-nav-search";
 /** The name without the hint that used to be in it; the hint is a line under it. */
 const UPDATES_GROUP_SIZE_LABEL = "Artists per search";
 const UPDATES_GROUP_SIZE_HINT = "0 means the default, 400.";
@@ -264,8 +271,45 @@ export const SETTINGS_SECTION_CSS = `
   color: var(--rdw-text);
 }
 .rdw-card.${ROWS_CARD_CLASS} {
-  padding: 2px 8px;
+  padding: 2px 16px;
   gap: 0;
+}
+/* The rows of Appearance are its own: the same edge and height as the others. */
+.${CONTENT_CLASS} .rdw-appearance__row {
+  padding: 9px 0;
+  border-radius: 0;
+}
+/* The name of a field is written as the name of a row is, not in small capitals. */
+.${CONTENT_CLASS} .rdw-field__label,
+.${CONTENT_CLASS} .rdw-ac__label,
+.${CONTENT_CLASS} .rdw-select__label {
+  font: 400 12.5px var(--rdw-font);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--rdw-text);
+}
+.${CONTENT_CLASS} p a {
+  color: var(--rdw-accent);
+  text-decoration: none;
+}
+.${CONTENT_CLASS} p a:hover {
+  text-decoration: underline;
+}
+/* What is done, under what is set, in the same card: a line and a name between them. */
+.${BLOCK_CLASS} {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--rdw-border);
+}
+.${BLOCK_TITLE_CLASS} {
+  margin: 0;
+  font: 600 12.5px var(--rdw-font);
+  color: var(--rdw-text);
+}
+.${NAV_SEARCH_CLASS} {
+  width: 100%;
 }
 /* The switch the others depend on stands first and apart, on a ground of its own. */
 .rdw-card.${MASTER_CARD_CLASS} {
@@ -456,7 +500,8 @@ function FeatureRows(props: {
                   window.location.reload();
                 }}
               />
-              {feature.settingsCaption !== undefined ? (
+              {/* With a list of options the caption explains the options: it goes under the list. */}
+              {feature.settingsCaption !== undefined && choice === undefined ? (
                 <p className={PANEL_UI_CLASS.settingsCaption}>
                   {feature.settingsCaption}
                 </p>
@@ -469,7 +514,8 @@ function FeatureRows(props: {
               >
                 <Select
                   label={choice.label ?? label}
-                  disabled={props.disabled}
+                  // The list is a part of its setting: off with it.
+                  disabled={props.disabled || !isFeatureEnabled(feature.id)}
                   options={choice.options.map((option) => ({
                     value: option.value,
                     label: option.label,
@@ -485,6 +531,9 @@ function FeatureRows(props: {
                     window.location.reload();
                   }}
                 />
+                {feature.settingsCaption !== undefined ? (
+                  <p className={PANEL_UI_CLASS.settingsCaption}>{feature.settingsCaption}</p>
+                ) : null}
               </div>
             ) : null}
           </Fragment>
@@ -659,6 +708,7 @@ export function SettingsPage(): JSX.Element {
             setPlaylistChunk(getPlaylistChunkSize());
           }}
         />
+        <p className={PANEL_UI_CLASS.settingsCaption}>{PART_SIZE_CAPTION}</p>
       </div>
     ),
   };
@@ -708,7 +758,10 @@ export function SettingsPage(): JSX.Element {
             </div>
             <FeatureRows features={featuresOf(SETTINGS_GROUP.favorites)} disabled={!tweaks} />
           </div>
-          <FavoritesSyncSection includeHeading={false} />
+          <div className={BLOCK_CLASS}>
+            <p className={BLOCK_TITLE_CLASS}>{LOCAL_INDEX_TITLE}</p>
+            <FavoritesSyncSection includeHeading={false} />
+          </div>
         </Card>
       );
     }
@@ -718,7 +771,8 @@ export function SettingsPage(): JSX.Element {
           <div className={PANEL_UI_CLASS.settingsGroup}>
             <FeatureRows features={featuresOf(SETTINGS_GROUP.downloads)} disabled={!tweaks} />
           </div>
-          <DownloadsSection />
+          {/* The key and the name are of the download manager: off with it. */}
+          <DownloadsSection disabled={!tweaks || !isFeatureEnabled(DOWNLOADS_FEATURE_ID)} />
         </Card>
       );
     }
@@ -766,7 +820,8 @@ export function SettingsPage(): JSX.Element {
       <nav className={NAV_CLASS} aria-label={NAV_LABEL}>
         <p className={NAV_TITLE_CLASS}>{PRODUCT_NAME}</p>
         <p className={NAV_SUB_CLASS}>{settingsSubtitle()}</p>
-        <TextField
+        <SearchField
+          className={NAV_SEARCH_CLASS}
           value={query}
           placeholder={SEARCH_LABEL}
           aria-label={SEARCH_LABEL}

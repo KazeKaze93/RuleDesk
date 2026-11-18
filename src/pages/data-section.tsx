@@ -47,7 +47,7 @@ const EXPORT_LABEL = UI_TEXT.export;
 const IMPORT_LABEL = UI_TEXT.import;
 const EXPORT_ERROR_PREFIX = "Export failed:";
 const STORAGE_HINT =
-  "The file holds collections, followed artists (with covers and post counts) and settings. Favorites are optional. Blacklist and site theme are browser cookies and are not included.";
+  "The file holds collections, followed artists (with covers and post counts) and settings. Blacklist and site theme are browser cookies and are not included.";
 
 export const DATA_SECTION_CSS = `
 .${SECTION_CLASS} {
@@ -171,7 +171,8 @@ export function DataSection(props: DataSectionProps = {}): JSX.Element {
       });
   };
   const exportButton = (
-    <Button variant="secondary" onClick={exportNow}>
+    // The frequent and harmless one of the two is the main button.
+    <Button variant="primary" onClick={exportNow}>
       {EXPORT_LABEL}
     </Button>
   );

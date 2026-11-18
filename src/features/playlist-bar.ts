@@ -775,6 +775,8 @@ function mountPlaylistBar(ctx: FeatureContext): void {
 export const playlistBarFeature: Feature = {
   id: FEATURE_ID,
   label: FEATURE_LABEL,
+  settingsCaption:
+    "A bar over the grid of an opened dynamic collection: its name, Shuffle, Edit query, Rename and Delete.",
   pages: [...FEATURE_PAGES],
   defaultEnabled: true,
   css: FEATURE_CSS,

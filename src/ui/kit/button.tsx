@@ -92,6 +92,13 @@ ${KIT_FOCUS_CSS}
   opacity: 0.55;
   cursor: not-allowed;
 }
+/* A main button that cannot be pressed is grey: dimmed blue read as pressed. */
+.rdw-btn--primary:disabled:not([aria-busy="true"]) {
+  background: var(--rdw-surface-2);
+  border-color: var(--rdw-border);
+  color: var(--rdw-muted);
+  opacity: 1;
+}
 .rdw-btn__spinner {
   width: 12px;
   height: 12px;

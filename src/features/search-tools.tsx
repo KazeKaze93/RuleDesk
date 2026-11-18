@@ -1379,6 +1379,8 @@ function mountSearchTools(_ctx: FeatureContext): void {
 export const searchToolsFeature: Feature = {
   id: FEATURE_ID,
   label: FEATURE_LABEL,
+  settingsCaption:
+    "A panel under the search field: rating, type, order and score are picked there and written into the search as text.",
   pages: [...FEATURE_PAGES],
   defaultEnabled: true,
   css: FEATURE_CSS,

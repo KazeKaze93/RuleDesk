@@ -113,9 +113,16 @@ export const TWEAKS_SWITCH_ID = "rdw-tweaks-enabled";
 export const TAG_GROUPS_FEATURE_ID = "tag-groups";
 export const TAG_GROUPS_PANEL_LABEL = "Collapse tags";
 
+const TAG_WIKI_FEATURE_ID = "tag-wiki";
+/** Short in the settings; the caption under it says where the "?" is. */
+const TAG_WIKI_PANEL_LABEL = "Tag description on \u201c?\u201d";
+
 export function featurePanelLabel(featureId: string, fallback: string): string {
   if (featureId === TAG_GROUPS_FEATURE_ID) {
     return TAG_GROUPS_PANEL_LABEL;
+  }
+  if (featureId === TAG_WIKI_FEATURE_ID) {
+    return TAG_WIKI_PANEL_LABEL;
   }
   return fallback;
 }

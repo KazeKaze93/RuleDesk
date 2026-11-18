@@ -59,7 +59,7 @@ export const PAGE_CONTENT_CSS = `
   border-radius: 4px;
 }
 .${PANEL_UI_CLASS.pageCard} {
-  padding: 12px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -120,7 +120,8 @@ export const PAGE_CONTENT_CSS = `
   grid-template-columns: minmax(0, 1fr) auto;
   column-gap: 12px;
   align-items: center;
-  padding: 9px 8px;
+  /* No room at the sides: the card gives one left edge to all that is in it. */
+  padding: 9px 0;
   font-size: 12.5px;
   color: var(--rdw-text);
 }
@@ -141,6 +142,8 @@ export const PAGE_CONTENT_CSS = `
 .${PANEL_UI_CLASS.settingsRow} + .${PANEL_UI_CLASS.settingsRow}.${PANEL_UI_CLASS.settingsRowSub} {
   border-top: 0;
   padding-top: 0;
+  /* Set in: it belongs to the setting over it. */
+  padding-left: 16px;
 }
 .${PANEL_UI_CLASS.settingsRow} > .${PANEL_UI_CLASS.settingsCaption} {
   grid-column: 1;

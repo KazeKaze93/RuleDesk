@@ -198,6 +198,8 @@ function mountTagGroups(ctx: FeatureContext): void {
 export const tagGroupsFeature: Feature = {
   id: FEATURE_ID,
   label: FEATURE_LABEL,
+  settingsCaption:
+    "The tags in the sidebar fold by type, and an artist, character or copyright tag gets a Follow button.",
   pages: [...FEATURE_PAGES],
   defaultEnabled: true,
   css: FEATURE_CSS,

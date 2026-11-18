@@ -77,7 +77,7 @@ The site's field itself gets a magnifier, a button that clears it and a "?" that
 
 The sidebar lists the tags of the posts on the page by type: Copyright, Character, Artist, General, Meta. With the feature on, each type is a group that folds; General and Meta start folded because they are long. Next to an artist, character or copyright tag there is a **Follow** button.
 
-**Tag description on the ? in the sidebar**: the "?" beside a tag normally leaves the page for the wiki. With the feature on, a click shows the wiki text of the tag in a small panel next to it. It costs two requests per click (the wiki search, then the entry) and is kept until the page is left.
+**Tag description on the ? in the sidebar** ("Tag description on “?”" in the settings): the "?" beside a tag normally leaves the page for the wiki. With the feature on, a click shows the wiki text of the tag in a small panel next to it. It costs two requests per click (the wiki search, then the entry) and is kept until the page is left.
 
 ### The grid
 

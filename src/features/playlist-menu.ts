@@ -476,6 +476,8 @@ function mountPlaylistMenu(ctx: FeatureContext): void {
 export const playlistMenuFeature: Feature = {
   id: FEATURE_ID,
   label: FEATURE_LABEL,
+  settingsCaption:
+    "A \u201c+\u201d on each thumbnail and on the post page: it opens the list of custom collections.",
   pages: [...FEATURE_PAGES],
   defaultEnabled: true,
   css: FEATURE_CSS,

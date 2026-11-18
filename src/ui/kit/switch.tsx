@@ -69,6 +69,8 @@ ${KIT_FOCUS_CSS}
   margin: 0 auto;
   border-radius: 9px;
   background: var(--rdw-border);
+  /* Off, the track was dark on a dark card: an outline tells it from the card. */
+  box-shadow: inset 0 0 0 1px var(--rdw-muted);
   position: relative;
   transition: background 0.15s ease;
 }
@@ -79,14 +81,17 @@ ${KIT_FOCUS_CSS}
   width: 13px;
   height: 13px;
   border-radius: 50%;
-  background: var(--rdw-surface);
+  /* Lighter than the track it lies on while off. */
+  background: var(--rdw-muted);
   transition: left 0.15s ease;
 }
 .rdw-switch[aria-checked="true"] .rdw-switch__track {
   background: var(--rdw-accent);
+  box-shadow: none;
 }
 .rdw-switch[aria-checked="true"] .rdw-switch__thumb {
   left: 15px;
+  background: var(--rdw-surface);
 }
 .rdw-switch:disabled {
   opacity: 0.55;

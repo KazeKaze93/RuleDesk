@@ -340,6 +340,8 @@ function mountPostActions(ctx: FeatureContext): void {
 export const postActionsFeature: Feature = {
   id: FEATURE_ID,
   label: FEATURE_LABEL,
+  settingsCaption:
+    "One panel beside the picture: Favorite, vote, download, collections and the details of the post, in place of the site's scattered links.",
   pages: [...FEATURE_PAGES],
   defaultEnabled: true,
   css: FEATURE_CSS,

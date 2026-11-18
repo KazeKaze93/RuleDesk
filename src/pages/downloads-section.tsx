@@ -56,7 +56,8 @@ const MASK_SAMPLE = {
   height: 1632,
   owner: "uploader",
 } as const;
-const API_FIELD_LABEL = "API credentials";
+const API_FIELD_LABEL = "API key";
+const KEY_ROW_CLASS = "rdw-downloads-settings-key";
 const API_FIELD_PLACEHOLDER = "&api_key=…&user_id=…";
 const REMOVE_LABEL = "Remove key";
 const OPTIONS_URL = "https://rule34.xxx/index.php?page=account&s=options";
@@ -86,8 +87,15 @@ export const DOWNLOADS_SECTION_CSS = `
   color: var(--rdw-muted);
   font-size: 12px;
 }
-.${SECTION_CLASS} .${HINT_CLASS} a {
-  color: var(--rdw-accent);
+/* The field and what is done with it in one row: Save was a paragraph away. */
+.${KEY_ROW_CLASS} {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+.${KEY_ROW_CLASS} .rdw-field {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .${MASK_TOKENS_CLASS} {
   display: flex;
@@ -151,7 +159,7 @@ function presetLabel(name: string, mask: string): string {
  * alike. A ready mask is picked from the list and saved at once; "Custom…"
  * opens a field, where a click on a token adds it to the name.
  */
-function FileNameSetting(): JSX.Element {
+function FileNameSetting(props: { readonly disabled: boolean }): JSX.Element {
   const [mask, setMask] = useState(() => readFileMask());
   const [custom, setCustom] = useState(() => !MASK_PRESETS.includes(readFileMask()));
   const [saved, setSaved] = useState(false);
@@ -178,6 +186,7 @@ function FileNameSetting(): JSX.Element {
     >
       <Select
         label={MASK_FIELD_LABEL}
+        disabled={props.disabled}
         options={options}
         value={custom ? MASK_CUSTOM : mask}
         onChange={(value) => {
@@ -197,6 +206,7 @@ function FileNameSetting(): JSX.Element {
             value={mask}
             placeholder={DEFAULT_FILE_MASK}
             aria-label={MASK_FIELD_LABEL}
+            disabled={props.disabled}
             onChange={(value) => {
               setMask(value);
               setSaved(false);
@@ -210,6 +220,7 @@ function FileNameSetting(): JSX.Element {
                 type="button"
                 className={`${MASK_TOKEN_CLASS} rdw-kit-focusable`}
                 aria-pressed={maskHasToken(mask, token)}
+                disabled={props.disabled}
                 onClick={() => {
                   // A switch: a token is in the name once or not at all.
                   setMask(toggleMaskToken(mask, token));
@@ -221,7 +232,7 @@ function FileNameSetting(): JSX.Element {
             ))}
           </div>
           <div className={ACTIONS_CLASS}>
-            <Button type="submit" variant="primary" size="s">
+            <Button type="submit" variant="primary" size="s" disabled={props.disabled}>
               {UI_TEXT.save}
             </Button>
           </div>
@@ -242,7 +253,11 @@ function FileNameSetting(): JSX.Element {
   );
 }
 
-export function DownloadsSection(): JSX.Element {
+export function DownloadsSection(props: {
+  /** True while the download manager is off: what is here is shown and cannot be changed. */
+  readonly disabled?: boolean;
+}): JSX.Element {
+  const disabled = props.disabled === true;
   const [stored, setStored] = useState(() => hasApiCredentials());
   // The stored key is never put back into the field.
   const [draft, setDraft] = useState("");
@@ -276,17 +291,29 @@ export function DownloadsSection(): JSX.Element {
           save();
         }}
       >
-        <TextField
-          id={API_FIELD_ID}
-          label={API_FIELD_LABEL}
-          type="password"
-          value={draft}
-          placeholder={stored ? STATUS_STORED : API_FIELD_PLACEHOLDER}
-          onChange={(value) => {
-            setDraft(value);
-            setStatus("");
-          }}
-        />
+        <div className={KEY_ROW_CLASS}>
+          <TextField
+            id={API_FIELD_ID}
+            label={API_FIELD_LABEL}
+            type="password"
+            value={draft}
+            placeholder={stored ? STATUS_STORED : API_FIELD_PLACEHOLDER}
+            disabled={disabled}
+            onChange={(value) => {
+              setDraft(value);
+              setStatus("");
+            }}
+          />
+          {/* Nothing to save while nothing is typed: the stored key is not in the field. */}
+          <Button type="submit" variant="primary" disabled={disabled || draft.trim().length === 0}>
+            {UI_TEXT.save}
+          </Button>
+          {stored ? (
+            <Button type="button" variant="secondary" disabled={disabled} onClick={remove}>
+              {REMOVE_LABEL}
+            </Button>
+          ) : null}
+        </div>
         <p className={HINT_CLASS}>
           {HINT_BEFORE}
           <a href={OPTIONS_URL} target="_blank" rel="noopener">
@@ -294,24 +321,13 @@ export function DownloadsSection(): JSX.Element {
           </a>
           {HINT_AFTER}
         </p>
-        <div className={ACTIONS_CLASS}>
-          {/* Nothing to save while nothing is typed: the stored key is not in the field. */}
-          <Button type="submit" variant="primary" size="s" disabled={draft.trim().length === 0}>
-            {UI_TEXT.save}
-          </Button>
-          {stored ? (
-            <Button type="button" variant="secondary" size="s" onClick={remove}>
-              {REMOVE_LABEL}
-            </Button>
-          ) : null}
-        </div>
       </form>
       {status.length > 0 ? (
         <p className={HINT_CLASS} role="status">
           {status}
         </p>
       ) : null}
-      <FileNameSetting />
+      <FileNameSetting disabled={disabled} />
     </section>
   );
 }

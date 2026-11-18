@@ -2,6 +2,24 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.61.0
+
+The designer's review of the settings.
+
+- One left edge in a card: switches, text, fields and buttons start at the same 16 px
+- The names of fields are written as the names of rows are, not in small capitals: "API key", "File name", "Add a tag"
+- A switch that is off is seen: its track has an outline and its thumb is lighter than the track. This is in every switch of the script
+- A main button that cannot be pressed is grey; dimmed blue read as pressed
+- "Search tools", "Collapse tags", "Post side panel", "Collection header", "Add to collection button" and "Collection part size" each say under the name what they do
+- The search over the sections has the magnifier and a cross to clear it
+- "Enable page tweaks" says what needs it and what works without it
+- Video: the line about Fit height, Fit width and Original is under "Video size", which it explains. "Video size" is set in under "Video player tweaks" and is off with it
+- "Tag description on the ? in the sidebar" is "Tag description on “?”" in the settings
+- Favorites: the switches and the sync are parted by a line; the sync is under "Local index"
+- Downloads: Save and "Remove key" are in one row with the key field, the explanation under them. With "Download manager" off, the key and the file name cannot be changed
+- Blacklist: the tags come before the note about the cookie
+- Data: Export is the main button, Import the second
+
 ## 0.60.0
 
 - The settings are laid out anew. On the left, held in place, is the list of sections with "RuleDesk", "Settings" and the version of the script over it; beside it a column of settings 720 px wide, so a name and its switch are near each other. The block "Page" and the folding of blocks are gone: Header, Grid and thumbnails, Post page, Video, Feed, AI posts, Search and sidebar and Collections are sections like Appearance, and after a rule come Favorites, Downloads, Blacklist and Data. The section being read is marked in the list

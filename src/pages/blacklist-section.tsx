@@ -14,7 +14,7 @@ const CHIPS_CLASS = "rdw-blacklist-chips";
 const ADD_ROW_CLASS = "rdw-blacklist-add-row";
 const HINT_CLASS = "rdw-blacklist-hint";
 
-const ADD_LABEL = "Add tag";
+const ADD_LABEL = "Add a tag";
 const ADD_BUTTON = "Add";
 const PERMANENT_HINT =
   "Stored in this browser's site cookie. The list in your account settings is not changed and may overwrite this one after you log in again.";
@@ -134,7 +134,6 @@ export function BlacklistSection(
             {ADD_BUTTON}
           </Button>
         </form>
-        <p className={HINT_CLASS}>{PERMANENT_HINT}</p>
         <ul className={CHIPS_CLASS}>
           {tags.map((tag) => (
             <li key={tag}>
@@ -150,6 +149,8 @@ export function BlacklistSection(
             </li>
           ))}
         </ul>
+        {/* The list is what one comes for; the note about the cookie is under it. */}
+        <p className={HINT_CLASS}>{PERMANENT_HINT}</p>
       </section>
     </>
   );
