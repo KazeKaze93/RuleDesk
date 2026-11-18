@@ -10,7 +10,6 @@ What changed for the user in each version, newest first. Versions before 0.12.0 
 - A section is a name and a card of rows. The lines are between the rows of a card, the room is between the cards. A description is close under its name, and the switch is in the middle of the two
 - "Enable page tweaks" is a card of its own over the sections. A row that cannot be changed while it is off is dimmed whole
 - "Download manager" is in Downloads, "Bulk remove favorites" in Favorites, "Motion" in Appearance; the groups "Other" and "Favorites page" are gone. The hint of "Artists per search" reads "0 means the default, 400."
-- Statistics: "Top tags in favorites" shows at once what was counted the last time and puts it right when the count of now is ready. It used to stand grey for a moment at every opening
 
 ## 0.59.0
 
