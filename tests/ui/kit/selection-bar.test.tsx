@@ -83,6 +83,8 @@ describe("SelectionBar", () => {
       </SelectionBar>,
     );
     expect(host.querySelector(".rdw-selbar--stack")).not.toBeNull();
+    // The hint names the key that does the same.
+    expect(button(host, "Select page").title).toBe("Select page (Ctrl+A)");
     expect(labels(host)).toEqual([
       "Cancel",
       "Select page",

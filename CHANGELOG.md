@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.56.1
+
+- The bar of a selection: the hint of "Select all" and "Select page" names the key that does the same, Ctrl+A
+
 ## 0.56.0
 
 - Selecting is the same everywhere: one bar with the same parts in the same order on Posts, Favorites, Following, Collections and the page of a collection. First how many are selected, then "Select all" (or "Select page") and "Clear", then what can be done with them, the dangerous action after a rule, and "Cancel". The number is said once, in "N selected", and not inside the names of the buttons. A name that ends in dots asks before it acts

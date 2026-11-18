@@ -49,6 +49,8 @@ export const SELECTION_SELECT_ALL = "Select all";
 export const SELECTION_CLEAR = "Clear";
 export const SELECTION_CANCEL = "Cancel";
 const SELECTED_SUFFIX = " selected";
+/** In the hint of the button of select all: the key that does the same (Kaze, 18.11.2026). */
+const SELECT_ALL_KEY_HINT = " (Ctrl+A)";
 
 const EVENT_KEYDOWN = "keydown";
 const SELECT_ALL_KEY_CODE = "KeyA";
@@ -182,9 +184,14 @@ export function SelectionBar(props: SelectionBarProps): JSX.Element {
       {`${String(props.count)}${SELECTED_SUFFIX}`}
     </span>
   );
+  const selectAllLabel = props.selectAllLabel ?? SELECTION_SELECT_ALL;
   const selectAll = props.selectAll ?? (
-    <Button variant="ghost" onClick={props.onSelectAll}>
-      {props.selectAllLabel ?? SELECTION_SELECT_ALL}
+    <Button
+      variant="ghost"
+      title={`${selectAllLabel}${SELECT_ALL_KEY_HINT}`}
+      onClick={props.onSelectAll}
+    >
+      {selectAllLabel}
     </Button>
   );
   const clear = (
