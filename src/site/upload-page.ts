@@ -246,7 +246,12 @@ function mountGuideToggle(form: Element): void {
  * button. Left there it stands under the card, outside it. The note is put
  * into the row of the button; the fields of the form are not touched.
  */
-function mountTrailingNote(form: Element): void {
+function mountTrailingNote(box: Element): void {
+  // `box` is div#upload-form; the note is a child of the form inside it.
+  const form = box.querySelector(":scope > form");
+  if (form === null) {
+    return;
+  }
   const heading = form.querySelector(":scope > b");
   const cell = form.querySelector('tr:has(input[type="submit"]) > td');
   if (heading === null || cell === null || form.querySelector(`.${UPLOAD_NOTE_CLASS}`) !== null) {

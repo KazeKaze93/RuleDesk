@@ -215,6 +215,20 @@ describe("the upload page", () => {
     ).toBe(true);
   });
 
+  it("moves the note that stands after the table of the video upload into the row of the button", () => {
+    // The markup of the video upload (docs/site.md): the note is a child of the form.
+    document.documentElement.classList.add("rdw-skin");
+    document.body.innerHTML = `<div id="upload-form"><form id="upload-form-element"><h2>Video Upload</h2><table><tbody><tr><td><input type="file" id="fileUpload" name="upload"></td></tr><tr><td><div class="awesomplete"><textarea id="tags" name="tags"></textarea></div></td></tr><tr><td><input type="submit" id="submitBtn" name="submit"></td></tr></tbody></table><b>18 august rule change:</b><br> in regards to AI watermarking.<script></script></form></div>`;
+    mountUploadPage();
+    const note = document.querySelector(".rdw-upload-note");
+    expect(note?.closest("td")?.querySelector("#submitBtn")).not.toBeNull();
+    expect(note?.textContent).toBe("18 august rule change: in regards to AI watermarking.");
+    // Nothing of it is left after the table, and the fields are where they were.
+    expect(document.querySelector("form > b")).toBeNull();
+    expect(document.querySelector("form > table #fileUpload")).not.toBeNull();
+    document.documentElement.classList.remove("rdw-skin");
+  });
+
   it("leaves another form in the same box alone", () => {
     document.body.innerHTML = `<div id="upload-form"><form><table><tbody><tr><td><input type="file" id="videoUpload"></td></tr></tbody></table></form></div>`;
     mountUploadPage();

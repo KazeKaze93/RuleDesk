@@ -2347,6 +2347,15 @@ ${ROOT} div#post-comments div#comment-list > div[id] > div.col1 > span {
   font-size: 11.5px;
 }
 
+/* The site's "Edit | Respond" under the picture: two links, not the loudest
+   heading of the page. The script marks the line. */
+${ROOT} .rdw-post-reply-links {
+  margin: 8px 0;
+  color: ${v.muted};
+  font: 12.5px ${v.font};
+  font-weight: normal;
+}
+
 ${ROOT} .rdw-post-panel-comments-empty {
   display: flex;
   align-items: center;

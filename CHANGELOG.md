@@ -2,6 +2,12 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.52.1
+
+- Upload Video: the note about the rule change is inside the card, in the row of the button. 0.52.0 said so and did not do it: the note was looked for one level too high
+- Comments of a post: "Change" of the order reloads the page, which is the site's doing; the panel now opens on Comments again after it, not on Info
+- The post page: "Edit | Respond" under the picture is the size of ordinary links, not the largest text on the page
+
 ## 0.52.0
 
 - Upload Video is laid out as Image Upload is: "My Tags" stands in the right column with the other fields and not under the file zone, the empty row of the site's form is gone, the progress of the upload is under the button, and the note about the rule change is inside the card, in the row of the button. The site's timing line under both upload forms is hidden

@@ -172,7 +172,11 @@ export function PostPanel(props: PostPanelProps): JSX.Element {
   const [commentCount] = useState<number | null>(() =>
     hasComments ? readCommentCount() : null,
   );
-  const [activeTab, setActiveTab] = useState(POST_PANEL_TAB_INFO);
+  // The panel opens on Info, except right after "Change" of the comments'
+  // order: the site reloads the page for it, and the user was reading comments.
+  const [activeTab, setActiveTab] = useState(() =>
+    hasComments && takeCommentsReturn() ? POST_PANEL_TAB_COMMENTS : POST_PANEL_TAB_INFO,
+  );
 
   useEffect(() => {
     if (props.postId === null) {
@@ -429,6 +433,32 @@ const RESPOND_TEXT = "Respond";
 const TEXT_NO_COMMENTS = "No comments yet";
 const TEXT_WRITE_COMMENT = "Write a comment";
 const CLASS_COMMENTS_EMPTY = "rdw-post-panel-comments-empty";
+/** On the site's "Edit | Respond" line under the picture. */
+export const CLASS_REPLY_LINKS = "rdw-post-reply-links";
+
+/** The site's link that changes the order of the comments; the page is loaded again for it. */
+const SORT_LINK_SELECTOR = "div#comment-list > div:not([id]) > a";
+/** Holds the address the Comments tab is to be opened on after that reload. */
+const COMMENTS_RETURN_KEY = "ruledesk-web.comments-return";
+
+function rememberCommentsReturn(): void {
+  try {
+    window.sessionStorage.setItem(COMMENTS_RETURN_KEY, window.location.search);
+  } catch {
+    // Without session storage the panel opens on Info, as on any load.
+  }
+}
+
+/** True once, on the load that follows "Change" on this very post. */
+function takeCommentsReturn(): boolean {
+  try {
+    const kept = window.sessionStorage.getItem(COMMENTS_RETURN_KEY);
+    window.sessionStorage.removeItem(COMMENTS_RETURN_KEY);
+    return kept !== null && kept === window.location.search;
+  } catch {
+    return false;
+  }
+}
 
 /** The site's "Respond" link, which opens its form for a comment; it stands under the picture. */
 function findRespondLink(): HTMLAnchorElement | null {
@@ -452,11 +482,25 @@ function CommentsHost(): JSX.Element {
 
   useLayoutEffect(() => {
     // "(0 hidden)" is a link to nothing.
-    const hidden = findPostComments()?.querySelector(HIDDEN_LINK_SELECTOR);
+    const comments = findPostComments();
+    const hidden = comments?.querySelector(HIDDEN_LINK_SELECTOR);
     if (hidden instanceof HTMLElement && hidden.textContent.trim() === NO_HIDDEN_TEXT) {
       hidden.hidden = true;
     }
-  }, []);
+    // "Edit | Respond" under the picture is the site's line of two links, drawn
+    // as a heading. Its element is not known by name, so it is found through
+    // the link and marked only when it holds nothing but links.
+    const line = respond?.parentElement ?? null;
+    if (line !== null && Array.from(line.children).every((child) => child.tagName === "A")) {
+      line.classList.add(CLASS_REPLY_LINKS);
+    }
+    // "Change" reloads the page: the tab to come back to is remembered for that load.
+    const change = comments?.querySelector(SORT_LINK_SELECTOR);
+    change?.addEventListener("click", rememberCommentsReturn);
+    return () => {
+      change?.removeEventListener("click", rememberCommentsReturn);
+    };
+  }, [respond]);
 
   useLayoutEffect(() => {
     const host = hostRef.current;
