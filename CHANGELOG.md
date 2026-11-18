@@ -2,6 +2,16 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.51.0
+
+From the design audit, layout:
+
+- Collections: a cover is laid out for as many pictures as it has. One fills it, two stand side by side, three are one tall and two small; four are the grid as before. Empty cells of the grid looked like pictures that failed to load
+- "More" in the header: two named groups, "Browse" (Tags, Artists, Pools, Aliases, Wiki) and "Community" (Comments, Forum, Help), each a column, in place of eight sections in the site's own order
+- The viewer of the post page: a tall picture, a comic of several screens, opens at the width of the window from its top. Fitted whole it was a strip too narrow to read. "Fit" and zooming out still show it whole
+- Artists: the Follow buttons stand in one line at the right edge of the name's cell, not a staircase after names of different length
+- Tags: Follow and "Save as collection" show for the row under the pointer or the keyboard; "Following" and "Saved" stay in view
+
 ## 0.50.1
 
 - Upload: "0 of 5 tags" is grey on a form nothing was done with, as 0.50.0 said it would be. The red was still in the stylesheet for the line as such; it is now only for a field that was left, or a form that was sent, with too few tags

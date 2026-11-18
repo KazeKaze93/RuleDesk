@@ -37,17 +37,19 @@ const MORE_LABEL = "More";
 const ACCOUNT_LINK_TEXT = "My Account";
 const SUBNAV_SELECTOR = "div#header ul#subnavbar";
 
-/** The site's sections that go into "More", by the text of their menu link. */
-const RARE_LINK_TEXTS: ReadonlySet<string> = new Set([
-  "Comments",
-  "Wiki",
-  "Aliases",
-  "Artists",
-  "Tags",
-  "Pools",
-  "Forum",
-  "Help",
-]);
+/**
+ * The site's sections that go into "More", by the text of their menu link, in
+ * two named groups and in the order they are listed. The site's own order
+ * (Comments, Wiki, Aliases, Artists...) is neither by the alphabet nor by use.
+ */
+const MORE_GROUPS: readonly { readonly title: string; readonly links: readonly string[] }[] = [
+  { title: "Browse", links: ["Tags", "Artists", "Pools", "Aliases", "Wiki"] },
+  { title: "Community", links: ["Comments", "Forum", "Help"] },
+];
+const RARE_LINK_TEXTS: ReadonlySet<string> = new Set(MORE_GROUPS.flatMap((group) => group.links));
+const MORE_HEADING_CLASS = "rdw-nav-more-heading";
+/** The rows of the list: the longest group and its heading. */
+const MORE_ROWS = Math.max(...MORE_GROUPS.map((group) => group.links.length)) + 1;
 
 /** Second-row links of the Posts section, by text → icon name. */
 const SUBNAV_ICONS: ReadonlyMap<string, string> = new Map([
@@ -237,8 +239,11 @@ ${NAV} ul.${MORE_LIST_CLASS} {
   left: 0;
   z-index: ${String(MENU_Z_INDEX)};
   display: grid;
-  grid-template-columns: repeat(2, max-content);
-  gap: 2px 4px;
+  /* A column to a group: the heading, then its sections. */
+  grid-auto-flow: column;
+  grid-template-rows: repeat(${String(MORE_ROWS)}, auto);
+  grid-auto-columns: max-content;
+  gap: 2px 12px;
   margin: 4px 0 0;
   padding: 6px;
   list-style: none;
@@ -255,6 +260,15 @@ ${NAV} ul.${MORE_LIST_CLASS} > li {
 }
 ${NAV} ul.${MORE_LIST_CLASS} > li > a {
   display: block;
+}
+${NAV} ul.${MORE_LIST_CLASS} > li.${MORE_HEADING_CLASS} {
+  /* A group starts a column, whatever the number of sections before it. */
+  grid-row: 1;
+  padding: 4px 10px 2px;
+  color: var(--rdw-muted);
+  font: 600 10.5px var(--rdw-font);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 ${SUBNAV_SELECTOR} {
   display: flex;
@@ -362,7 +376,19 @@ function groupRareSections(navbar: Element): HTMLLIElement | null {
   }
   const { item, list } = buildMoreItem();
   first.before(item);
-  list.append(...rare);
+  for (const group of MORE_GROUPS) {
+    const sections = group.links
+      .map((text) => rare.find((entry) => linkText(entry) === text))
+      .filter((entry) => entry !== undefined);
+    if (sections.length === 0) {
+      continue;
+    }
+    const heading = document.createElement("li");
+    heading.className = MORE_HEADING_CLASS;
+    heading.textContent = group.title;
+    heading.setAttribute("role", "presentation");
+    list.append(heading, ...sections);
+  }
   return item;
 }
 

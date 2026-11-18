@@ -86,6 +86,8 @@ const FIRST_WORD = /^[a-z]+/;
 const TAGS_PAGE_PARAM = "tags";
 export const ROW_ACTIONS_CLASS = "rdw-row-actions";
 export const SAVE_TAG_CLASS = "rdw-save-tag";
+/** On the cell of an artist's name, which the Follow button is put into. */
+const ARTIST_NAME_CELL_CLASS = "rdw-artist-name-cell";
 const SAVE_TAG_LABEL = "Save as collection";
 const SAVED_TAG_LABEL = "Saved";
 const ACTIONS_HEADING = "RuleDesk";
@@ -147,6 +149,18 @@ tr.${FORUM_MARKED_ROW_CLASS} span.forum-topic a {
 }
 .${FORUM_READ_ALL_CLASS} {
   margin-left: auto;
+}
+/* Artists: Follow stands at the right edge of the name's cell, one under
+   another. Put straight after the name, the buttons made a staircase. */
+.${ARTIST_NAME_CELL_CLASS} > button {
+  float: right;
+  margin-left: 12px;
+}
+/* Tags: two buttons to a row is forty on a page, heavier than the table
+   itself. They show for the row under the pointer or the keyboard; a state
+   that is already set (Following, Saved) stays in view. */
+tr:not(:hover):not(:focus-within) > td.${ROW_ACTIONS_CLASS} > button:not(:disabled):not([aria-pressed="true"]) {
+  opacity: 0;
 }
 .${SAVE_TAG_CLASS}:disabled {
   color: var(--rdw-muted);
@@ -485,6 +499,7 @@ function mountArtists(rows: readonly Element[]): void {
     const tag = artistRowTag(row);
     const cell = row.querySelector(ARTIST_NAME_LINK_SELECTOR)?.closest("td");
     if (tag !== null && cell instanceof HTMLElement) {
+      cell.classList.add(ARTIST_NAME_CELL_CLASS);
       attachFollowButton(cell, tag, FOLLOW_KIND_ARTIST);
     }
   }

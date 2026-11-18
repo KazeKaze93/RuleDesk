@@ -389,6 +389,24 @@ export const COLLECTIONS_PAGE_CSS = `
 .${COVER_IMAGE_CLASS} {
   object-fit: cover;
 }
+/* One picture fills the cover; two stand side by side; three are one tall
+   and two small. Four are the grid as it is; none is one empty field. */
+.${COVER_CLASS}:not([data-filled="0"]):not([data-filled="4"]) > .${COVER_CELL_CLASS}[data-empty] {
+  display: none;
+}
+.${COVER_CLASS}[data-filled="1"] > .${COVER_CELL_CLASS}:not([data-empty]) {
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+}
+.${COVER_CLASS}[data-filled="2"] > .${COVER_CELL_CLASS}:not([data-empty]) {
+  grid-row: 1 / -1;
+}
+.${COVER_CLASS}[data-filled="3"] > .${COVER_CELL_CLASS}:nth-child(1 of :not([data-empty])) {
+  grid-row: 1 / -1;
+}
+.${COVER_CLASS}[data-filled="0"] {
+  gap: 0;
+}
 .${META_ROW_CLASS} {
   display: flex;
   align-items: baseline;
@@ -737,14 +755,18 @@ function Cover(props: {
   readonly urls: readonly (string | null)[];
   readonly postIds?: readonly (number | null)[];
 }): JSX.Element {
+  // With fewer than four pictures the cover is laid out for as many as there
+  // are: empty cells of a 2x2 grid looked like pictures that failed to load.
+  const filled = props.urls.filter((url) => url !== null).length;
   return (
-    <span className={COVER_CLASS}>
+    <span className={COVER_CLASS} data-filled={String(filled)}>
       {props.urls.map((url, index) => {
         const postId = props.postIds?.[index] ?? null;
         return (
           <span
             key={`${props.collectionId}-${String(index)}`}
             className={COVER_CELL_CLASS}
+            data-empty={url === null ? "true" : undefined}
             data-cover-index={String(index)}
             data-post-id={postId === null ? "" : String(postId)}
           >

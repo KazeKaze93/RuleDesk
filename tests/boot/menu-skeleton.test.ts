@@ -64,7 +64,9 @@ describe("menu skeleton", () => {
     // The rare sections sit inside "More", closed until it is pressed.
     const more = document.getElementById("rdw-nav-more");
     const list = more?.querySelector("ul");
+    // Under the heading of its group.
     expect([...(list?.children ?? [])].map((item) => item.textContent?.trim())).toEqual([
+      "Community",
       "Comments",
     ]);
     expect(list?.hidden).toBe(true);

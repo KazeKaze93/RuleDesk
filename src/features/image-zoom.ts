@@ -138,6 +138,35 @@ export function fitScale(
   return Math.min(1, roomWidth / imageWidth, roomHeight / imageHeight);
 }
 
+/** A picture this many windows tall at the window's width is read, not looked at whole. */
+const TALL_WINDOWS = 2;
+
+/**
+ * How a picture is shown when the viewer opens. One that fits is fitted. A
+ * tall one, a comic of several screens, fitted whole is a narrow strip nobody
+ * can read (smaller than on the post page itself): it opens at the width of
+ * the window, from its top, and is dragged or zoomed from there. "Fit" and
+ * zooming out still give the whole picture.
+ */
+export function openingState(
+  imageWidth: number,
+  imageHeight: number,
+  viewWidth: number,
+  viewHeight: number,
+): ViewState {
+  const whole = fitScale(imageWidth, imageHeight, viewWidth, viewHeight);
+  if (imageWidth <= 0 || imageHeight <= 0) {
+    return { scale: whole, x: 0, y: 0 };
+  }
+  const byWidth = Math.min(1, Math.max(1, viewWidth - FIT_MARGIN_PX * 2) / imageWidth);
+  const shownHeight = imageHeight * byWidth;
+  if (byWidth <= whole || shownHeight < viewHeight * TALL_WINDOWS) {
+    return { scale: whole, x: 0, y: 0 };
+  }
+  // The picture is centred on the window; moved down by this, its top is at the top.
+  return { scale: byWidth, x: 0, y: (shownHeight - viewHeight) / 2 + FIT_MARGIN_PX };
+}
+
 /** The least scale: the fitted one, so a picture cannot be lost by zooming out. */
 export function clampScale(scale: number, fit: number): number {
   return Math.min(MAX_SCALE, Math.max(fit, scale));
@@ -308,6 +337,13 @@ export function openImageViewer(url: string, opener: HTMLElement | null): void {
 
   image.addEventListener("load", () => {
     refit(created, true);
+    created.state = openingState(
+      image.naturalWidth,
+      image.naturalHeight,
+      window.innerWidth,
+      window.innerHeight,
+    );
+    render(created);
   });
   image.src = url;
 
