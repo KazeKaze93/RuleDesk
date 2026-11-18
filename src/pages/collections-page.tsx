@@ -596,6 +596,11 @@ export function deleteMessage(names: readonly string[]): string {
   return `${head} ${list}.`;
 }
 
+/** "1 collection", "12 collections": the count in the toolbar. */
+export function collectionsCountLabel(count: number): string {
+  return `${count.toLocaleString(COUNT_LOCALE)} ${count === SINGLE_SELECTION ? "collection" : "collections"}`;
+}
+
 const HTTP_TOO_MANY = "HTTP 429";
 const REASON_TOO_MANY = "the site is asked too often (429). Wait a minute, then retry.";
 const REASON_NETWORK = "no answer from the site. Check the connection, then retry.";
@@ -1065,6 +1070,8 @@ export function CollectionsPage(): JSX.Element {
               }
             }}
           />
+          {/* How many collections the filters leave: in the toolbar, as on Following. */}
+          <span className={SELECTED_COUNT_CLASS}>{collectionsCountLabel(visible.length)}</span>
           <span className={TOOLBAR_SPACER_CLASS} aria-hidden="true" />
           {selecting ? (
             <>

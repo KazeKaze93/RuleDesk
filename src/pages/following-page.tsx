@@ -143,6 +143,7 @@ const FILTER_FIELD_WIDTH_PX = 220;
 /** Above the cards and their corner buttons. */
 const TOOLBAR_Z_INDEX = 5;
 const TOOLBAR_SPACER_CLASS = "rdw-following-toolbar-spacer";
+const TOOLBAR_COUNT_CLASS = "rdw-following-toolbar-count";
 
 const FOLLOW_FILTER_PLACEHOLDER = "Filter by name";
 const KIND_ALL = "all";
@@ -292,17 +293,10 @@ export const FOLLOWING_PAGE_CSS = `
   color: var(--rdw-muted);
   font-size: 12px;
 }
-/* The line under the toolbar starts where the toolbar and the tiles do. */
-.${PAGE_CLASS} > p.${META_CLASS} {
-  padding-inline: 0;
-}
-/* Custom theme: that line stands on the user's picture, so it gets a backing
-   of the card's colour and takes only the width it needs. */
-:host-context(html[${RDW_THEME_ATTR}="${APPEARANCE_THEME_CUSTOM}"]) .${PAGE_CLASS} > p.${META_CLASS} {
-  align-self: flex-start;
-  padding: 2px 8px;
-  border-radius: var(--rdw-radius-s);
-  background: color-mix(in srgb, var(--rdw-surface) 88%, transparent);
+/* The count in the toolbar: level with the controls, never broken in two. */
+.${TOOLBAR_COUNT_CLASS} {
+  align-self: center;
+  white-space: nowrap;
 }
 .${GRID_CLASS} {
   display: grid;
@@ -1083,6 +1077,13 @@ export function FollowingPage(): JSX.Element {
                 }
               }}
             />
+            {/* How many are followed and how far the feed was seen: in the toolbar
+                itself (Kaze, 18.11.2026), not a line of its own under it. */}
+            <span className={`${META_CLASS} ${TOOLBAR_COUNT_CLASS}`}>
+              {`${String(count)} artist${count === SINGLE ? "" : "s"} · ${
+                seen > 0 ? `${UI_TEXT.seenUpTo}${String(seen)}` : UI_TEXT.seenNothing
+              }`}
+            </span>
             <span className={TOOLBAR_SPACER_CLASS} aria-hidden="true" />
             {selecting ? (
               <>
@@ -1147,11 +1148,6 @@ export function FollowingPage(): JSX.Element {
           </div>
           </div>
 
-          <p className={META_CLASS}>
-            {`${String(count)} artist${count === SINGLE ? "" : "s"} · ${
-              seen > 0 ? `${UI_TEXT.seenUpTo}${String(seen)}` : UI_TEXT.seenNothing
-            }`}
-          </p>
 
           {refresh === null ? null : (
             <div className={PROGRESS_CLASS} role="status">

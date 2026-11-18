@@ -2,6 +2,11 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.47.2
+
+- Following: the line "6 artists · Seen up to post #…" stands in the toolbar itself, after the filters, not under it
+- Collections: the toolbar shows how many collections the filters leave, in the same place
+
 ## 0.47.1
 
 - Following and Collections: the toolbar spans the width of the tiles, with the filters at the left and the actions at the right. Kept to a centred column, it broke into two rows with half the window free beside it
