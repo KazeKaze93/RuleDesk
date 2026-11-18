@@ -179,7 +179,12 @@ const NO_AI_SUMMARY = "no AI posts";
 const EMPTY_COLLECTION = "No favorites here";
 const EMPTY_COLLECTION_NOTE = "None of your favorites pass the Collection filter. Choose Any to see them all.";
 /** Not "Following": that is the page of the header, and this is a filter of the favorites. */
-const FOLLOWED_TITLE = "Followed in favorites";
+/**
+ * The designer's name (18.11.2026). "Following" is the item of the header and
+ * read as a link to that page; "Followed in favorites" named the filter, not
+ * what is in the card; "artists" is wrong, a followed tag can be a copyright.
+ */
+const FOLLOWED_TITLE = "Followed tags";
 /** How many followed entries are listed before "Show all". */
 export const FOLLOWED_SHORT_LIMIT = 12;
 const FOLLOWED_SHOW_ALL = "Show all";

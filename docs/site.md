@@ -37,7 +37,7 @@ The script works on the site's own HTML. This file holds what is known about it.
 
 ### Post page (`page=post&s=view`)
 
-- `div#post-view > [div.sidebar | div#right-col > div#fit-to-screen > div.flexi > div > img#image]`
+- `div#post-view > [div.sidebar | div#right-col > div#fit-to-screen > div.flexi > div > img#image]`. The site's CSS (`docs/design/site-desktop.css`): `div#post-view` and `div.flexi` are flex rows, `nowrap`, `justify-content: flex-start`; `div#right-col` has no size of its own (its `flex-basis: 100%` is commented out), so it is as wide as its content
 - `div.link-list > ul`: Edit, Resize image, Original image, Report, Add Note, Add to favorites
 - `div#stats > ul > li`: Id; Posted and author; Size; Source; Rating; Score in `span#psc{ID}`
 - "I came": `li > a[onclick="iCame('ID'); return false;"] > img[alt="I came!"]`. There is no counter in the markup

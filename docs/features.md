@@ -101,7 +101,7 @@ When a saved search is opened from the Collections page, a bar above the grid na
 
 ## The post page
 
-**Post side panel** replaces the site's scattered links with one panel beside the picture:
+**Post side panel** replaces the site's scattered links with one panel beside the picture. On a wide window the panel stands at the right edge of the page and the picture, in the size the site gives it, in the middle of the rest:
 
 - buttons: Favorite, Collections ("+"), Vote, "I came", Original (opens the full file), Download (saves the file; needs no key)
 - two tabs: **Info** (id, date, uploader, size, source, rating) and **Comments**

@@ -24,6 +24,7 @@ export const POST_PANEL_MOUNTED_CLASS = "rdw-post-panel-mounted";
 
 const NARROW_BREAKPOINT_PX = 1100;
 const NARROW_MEDIA_QUERY = `(max-width: ${String(NARROW_BREAKPOINT_PX - 1)}px)`;
+const WIDE_MEDIA_QUERY = `(min-width: ${String(NARROW_BREAKPOINT_PX)}px)`;
 const PANEL_WIDTH_PX = 360;
 const PANEL_MIN_WIDTH_PX = 320;
 const PANEL_MAX_WIDTH_PX = 420;
@@ -55,6 +56,17 @@ const WARN_NO_FLEXI =
 const BODY_CLASS = featureBodyClass(FEATURE_ID);
 const BODY_SELECTOR = `body.${BODY_CLASS}`;
 
+/*
+ * The last block of the CSS (the designer's variant D, 18.11.2026). The site's
+ * column of the post is as wide as what is in it, so on a wide window the
+ * picture and the panel stood at the left and some 400 px were empty at the
+ * right of the panel. The column takes the width that is left, the panel
+ * stands at its right edge, and the picture, in the size the site gives it,
+ * is in the middle of the rest: the block before the panel has the free space
+ * on both of its sides. The picture is not stretched and nothing more is
+ * loaded. The column keeps the site's least width, so nothing wraps that did
+ * not wrap before.
+ */
 const FEATURE_CSS = `
 ${BODY_SELECTOR} #fit-to-screen div.flexi,
 ${BODY_SELECTOR} div#right-col div.flexi,
@@ -198,6 +210,15 @@ ${BODY_SELECTOR} #${POST_ACTIONS_ID} .rdw-post-panel-comments-host {
     position: static;
     max-height: none;
     overflow-y: visible;
+  }
+}
+@media ${WIDE_MEDIA_QUERY} {
+  ${BODY_SELECTOR} div#post-view > div#right-col {
+    flex-grow: 1;
+  }
+  ${BODY_SELECTOR} div.flexi > :has(+ #${POST_ACTIONS_ID}.${CLASS_MODE_WIDE}) {
+    margin-left: auto;
+    margin-right: auto;
   }
 }
 `.trim();

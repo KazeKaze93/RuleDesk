@@ -2,6 +2,11 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.54.0
+
+- The post page on a wide window: the side panel stands at the right edge of the page and the picture is in the middle of the space that is left. They used to stand together at the left, with an empty strip at the right of the panel. The picture is the size the site gives it: it is not stretched, and no larger file is loaded
+- Favorites: the card of followed tags under the filters is named "Followed tags". It was "Followed in favorites"
+
 ## 0.53.5
 
 - The site's message to the user goes after two and a half seconds, not six

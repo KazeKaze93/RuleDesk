@@ -857,6 +857,15 @@ describe("postActionsFeature", () => {
     warnSpy.mockRestore();
   });
 
+  it("puts the panel at the right edge and the media in the middle of the rest", () => {
+    const wide = postActionsFeature.css.split("@media (min-width: 1100px)")[1] ?? "";
+    expect(wide).toMatch(/div#post-view > div#right-col \{\s*flex-grow: 1;/);
+    expect(wide).toMatch(
+      /div\.flexi > :has\(\+ #rdw-post-actions\.rdw-post-actions--wide\) \{\s*margin-left: auto;\s*margin-right: auto;/,
+    );
+    expect(postActionsFeature.css).not.toMatch(/img#image[^{]*\{[^}]*width/);
+  });
+
   it("keeps a gap between the media and the panel", () => {
     expect(postActionsFeature.css).toMatch(/div\.flexi \{[^}]*gap: 12px;/);
   });
