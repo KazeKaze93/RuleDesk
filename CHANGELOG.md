@@ -2,6 +2,12 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.57.3
+
+- The tabs of the groups on Following and Collections look as the tabs in the header of the site do: words with no frames, a thin line under the row and a blue one under the open tab, whose name is bold. The count is smaller and grey, so "11 2" reads as a name and a number. "No group" is the last and quieter; "New group" is at the right end of the row
+- The button of a group's actions comes under the pointer and for the keyboard, in the gap after the tab, so nothing moves when it comes; the right button of the mouse opens the same menu
+- The left and right arrows go from tab to tab
+
 ## 0.57.2
 
 - Following and Collections: a card carried to a tab goes with the pointer whole, cover, name and caption. It was one picture of the cover, the one the drag began on. The card left in its place is fainter

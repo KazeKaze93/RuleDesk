@@ -87,6 +87,34 @@ describe("groups", () => {
     expect(onNew).toHaveBeenCalledTimes(1);
   });
 
+  it("goes from tab to tab with the arrows and opens the one it comes to", () => {
+    const onChange = vi.fn();
+    const host = mount(
+      <GroupTabs
+        total={3}
+        groups={[{ name: "Artists", count: 2 }]}
+        value={GROUP_ALL}
+        onChange={onChange}
+        onNew={() => undefined}
+        onRename={() => undefined}
+        onDelete={() => undefined}
+      />,
+    );
+    const press = (from: string, key: string): void => {
+      byText(host, '[role="tab"]', from).dispatchEvent(
+        new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }),
+      );
+    };
+    press("All3", "ArrowRight");
+    expect(onChange).toHaveBeenLastCalledWith("Artists");
+    press("Artists2", "ArrowRight");
+    expect(onChange).toHaveBeenLastCalledWith(GROUP_NONE);
+    press("No group1", "ArrowRight");
+    expect(onChange).toHaveBeenCalledTimes(2);
+    press("Artists2", "ArrowLeft");
+    expect(onChange).toHaveBeenLastCalledWith(GROUP_ALL);
+  });
+
   it("has only All and New group while there is no group", () => {
     const host = mount(
       <GroupTabs
@@ -120,8 +148,8 @@ describe("groups", () => {
     );
     const more = host.querySelector('button[aria-label="Actions of the group Artists"]');
     expect(more).toBeInstanceOf(HTMLButtonElement);
-    // The button is a part of the tab and is not hidden until the pointer comes.
-    expect(GROUPS_CSS).not.toContain("opacity: 0;");
+    // The button comes under the pointer and for the keyboard, in the gap after the tab.
+    expect(GROUPS_CSS).toContain(":not(:hover):not(:focus-within) .rdw-groups__more");
     if (more instanceof HTMLButtonElement) {
       fireClick(more);
     }

@@ -44,6 +44,10 @@ const TAB_DROP_CLASS = "rdw-groups__item--drop";
 const TAB_LANDED_CLASS = "rdw-groups__item--landed";
 const TABS_DRAGGING_CLASS = "rdw-groups--dragging";
 const TAB_MORE_CLASS = "rdw-groups__more";
+const TAB_NEW_CLASS = "rdw-groups__new";
+const TAB_SELECTOR = '[role="tab"]';
+const KEY_PREVIOUS = "ArrowLeft";
+const KEY_NEXT = "ArrowRight";
 const MENU_CLASS = "rdw-groups-menu";
 const MENU_ITEM_CLASS = "rdw-groups-menu__item";
 const MENU_RULE_CLASS = "rdw-groups-menu__rule";
@@ -61,12 +65,15 @@ const TAB_MENU_WIDTH_PX = 160;
 const ICON_PX = 14;
 
 export const GROUPS_CSS = `
+/* Tabs as in the header of the site (the designer's mock-up, 18.11.2026):
+   words with no frames, a line under the row, a thicker one under the open tab. */
 .${TABS_CLASS} {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
+  align-items: flex-end;
+  column-gap: 28px;
   min-width: 0;
+  border-bottom: 1px solid var(--rdw-border);
 }
 .${TABS_CLASS}[inert] {
   opacity: 0.45;
@@ -75,69 +82,89 @@ export const GROUPS_CSS = `
   position: relative;
   display: inline-flex;
   align-items: center;
-  border: 1px solid var(--rdw-border);
-  border-radius: var(--rdw-radius-m);
-  background: var(--rdw-surface);
+  margin-bottom: -1px;
+  border-bottom: 2px solid transparent;
   transition: border-color 120ms ease, background-color 120ms ease, transform 120ms ease;
 }
-.${TAB_WRAP_CLASS}:hover {
-  border-color: var(--rdw-muted);
-}
 .${TAB_WRAP_CLASS}[data-selected="true"] {
-  border-color: var(--rdw-accent);
-  background: var(--rdw-accent-soft);
+  border-bottom-color: var(--rdw-accent);
 }
 .${TAB_CLASS} {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 28px;
-  padding: 0 10px;
+  padding: 8px 0 9px;
   border: 0;
-  border-radius: var(--rdw-radius-m);
   background: transparent;
   color: var(--rdw-muted);
   font: inherit;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 400;
   cursor: pointer;
   white-space: nowrap;
+}
+.${TAB_WRAP_CLASS}[data-none] .${TAB_CLASS} {
+  opacity: 0.8;
 }
 .${TAB_CLASS}:hover,
 .${TAB_WRAP_CLASS}[data-selected="true"] .${TAB_CLASS} {
   color: var(--rdw-text);
+  opacity: 1;
+}
+.${TAB_WRAP_CLASS}[data-selected="true"] .${TAB_CLASS} {
+  font-weight: 600;
 }
 .${TAB_COUNT_CLASS} {
   color: var(--rdw-muted);
+  font-size: 12px;
   font-weight: 400;
 }
-/* The button of a group's own actions is a part of its tab, small and grey,
-   and is always there: hidden until the pointer came, it was not found. */
+/* The button of a group's own actions stands in the gap after its tab, so
+   nothing moves when it comes. It is there under the pointer, for the keyboard
+   and while its menu is open: on every tab at once it is noise. */
 .${TAB_WRAP_CLASS} .${TAB_MORE_CLASS} {
-  min-width: 22px;
-  min-height: 22px;
-  width: 22px;
-  height: 22px;
-  margin: 0 3px 0 -6px;
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  z-index: 1;
+  min-width: 20px;
+  min-height: 20px;
+  width: 20px;
+  height: 20px;
+  margin-left: 4px;
+  transform: translateY(-50%);
   border: 0;
-  background: transparent;
+  background: var(--rdw-surface-2);
   color: var(--rdw-muted);
 }
 .${TAB_WRAP_CLASS} .${TAB_MORE_CLASS}:hover,
 .${TAB_WRAP_CLASS} .${TAB_MORE_CLASS}[aria-expanded="true"] {
-  background: var(--rdw-surface-2);
   color: var(--rdw-text);
+}
+.${TAB_WRAP_CLASS}:not(:hover):not(:focus-within) .${TAB_MORE_CLASS}:not([aria-expanded="true"]) {
+  opacity: 0;
+}
+.${TAB_NEW_CLASS} {
+  display: inline-flex;
+  align-items: center;
+  margin-left: auto;
+  padding-bottom: 2px;
 }
 /* While a card is carried, the tabs that take it say so, and the one under
    it comes forward; the tab that took it nods once. */
 .${TABS_DRAGGING_CLASS} .${TAB_DROP_CLASS} {
-  border-style: dashed;
-  border-color: var(--rdw-accent);
+  border-bottom-style: dashed;
+  border-bottom-color: var(--rdw-accent);
   animation: rdw-groups-wait 900ms ease-in-out infinite alternate;
 }
+.${TABS_DRAGGING_CLASS} .${TAB_DROP_CLASS} .${TAB_CLASS} {
+  color: var(--rdw-text);
+}
 .${TABS_DRAGGING_CLASS} .${TAB_DROP_CLASS}.${TAB_OVER_CLASS} {
-  border-style: solid;
+  border-bottom-style: solid;
   background: var(--rdw-accent-soft);
+  box-shadow: 0 0 0 6px var(--rdw-accent-soft);
+  border-radius: var(--rdw-radius-s);
   transform: scale(1.08);
   animation: none;
 }
@@ -145,8 +172,8 @@ export const GROUPS_CSS = `
   animation: rdw-groups-land 320ms ease-out;
 }
 @keyframes rdw-groups-wait {
-  from { box-shadow: 0 0 0 0 var(--rdw-accent-soft); }
-  to { box-shadow: 0 0 0 3px var(--rdw-accent-soft); }
+  from { opacity: 0.6; }
+  to { opacity: 1; }
 }
 @keyframes rdw-groups-land {
   0% { transform: scale(1.08); }
@@ -396,6 +423,26 @@ export function GroupTabs(props: GroupTabsProps): JSX.Element {
         }
       : {};
 
+  // The arrows go from tab to tab and open the one they come to.
+  const stepTabs = (event: KeyboardEvent): void => {
+    const step = event.key === KEY_NEXT ? 1 : event.key === KEY_PREVIOUS ? -1 : 0;
+    const from = event.target;
+    if (step === 0 || !(from instanceof HTMLElement) || !from.matches(TAB_SELECTOR)) {
+      return;
+    }
+    const row = event.currentTarget;
+    if (!(row instanceof HTMLElement)) {
+      return;
+    }
+    const tabs = [...row.querySelectorAll(TAB_SELECTOR)];
+    const next = tabs[tabs.indexOf(from) + step];
+    if (next instanceof HTMLElement) {
+      event.preventDefault();
+      next.focus();
+      next.click();
+    }
+  };
+
   const tabMenu = (name: string): JSX.Element => (
     <Popover
       open
@@ -440,6 +487,7 @@ export function GroupTabs(props: GroupTabsProps): JSX.Element {
       className={dragging ? `${TABS_CLASS} ${TABS_DRAGGING_CLASS}` : TABS_CLASS}
       role="tablist"
       aria-label={GROUPS_LABEL}
+      onKeyDown={stepTabs}
       {...(props.locked === true ? { inert: true } : {})}
     >
       <style>{GROUPS_CSS}</style>
@@ -481,16 +529,19 @@ export function GroupTabs(props: GroupTabsProps): JSX.Element {
         <span
           className={wrapClass(GROUP_NONE)}
           data-selected={String(props.value === GROUP_NONE)}
+          data-none=""
           {...dropProps(GROUP_NONE, null)}
           {...landProps(GROUP_NONE)}
         >
           {tab(GROUP_NONE, GROUP_NONE_LABEL, props.total - inGroups)}
         </span>
       ) : null}
-      <Button variant="ghost" onClick={props.onNew}>
-        <IconPlus size={ICON_PX} />
-        {GROUP_NEW_LABEL}
-      </Button>
+      <span className={TAB_NEW_CLASS}>
+        <Button variant="ghost" onClick={props.onNew}>
+          <IconPlus size={ICON_PX} />
+          {GROUP_NEW_LABEL}
+        </Button>
+      </span>
     </div>
   );
 }
