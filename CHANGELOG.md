@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.50.1
+
+- Upload: "0 of 5 tags" is grey on a form nothing was done with, as 0.50.0 said it would be. The red was still in the stylesheet for the line as such; it is now only for a field that was left, or a form that was sent, with too few tags
+
 ## 0.50.0
 
 From the design audit, forms and texts:

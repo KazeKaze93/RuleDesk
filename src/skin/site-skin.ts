@@ -1417,9 +1417,14 @@ ${UPLOAD} #tags {
   resize: vertical;
 }
 
-/* Shown only while there are fewer tags than the site asks for. */
+/* Shown only while there are fewer tags than the site asks for: a quiet count
+   at first, a warning once the field was left or the form was sent. */
 ${UPLOAD} .${UPLOAD_TAG_COUNT_CLASS} {
   margin: 4px 0 0;
+  color: ${v.muted};
+}
+
+${UPLOAD} .${UPLOAD_TAG_COUNT_CLASS}.${UPLOAD_TAG_COUNT_SHORT_CLASS} {
   color: ${v.danger};
   font-weight: 600;
 }
