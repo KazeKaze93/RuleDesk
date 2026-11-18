@@ -2,6 +2,11 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.51.1
+
+- The viewer of the post page: a picture taller than the window is read as a page is. The wheel moves it up and down, and so do the arrows, Page Up, Page Down, Space, Home and End; it stops at its top and its bottom. Zoom is Ctrl with the wheel, the "+" and "−" keys and the buttons. A picture that fits the window is zoomed by the wheel as before
+- "More" in the header: the names of the groups are small, faint captions with a rule under them, and the sections under them are in the colour of text; the two read alike before
+
 ## 0.51.0
 
 From the design audit, layout:

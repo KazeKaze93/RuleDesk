@@ -264,11 +264,20 @@ ${NAV} ul.${MORE_LIST_CLASS} > li > a {
 ${NAV} ul.${MORE_LIST_CLASS} > li.${MORE_HEADING_CLASS} {
   /* A group starts a column, whatever the number of sections before it. */
   grid-row: 1;
-  padding: 4px 10px 2px;
+  /* A caption, not a thing to press: small, faint, with a rule under it, and
+     the sections below in the colour of text. The two read alike before. */
+  margin: 0 4px 4px;
+  padding: 2px 6px 6px;
+  border-bottom: 1px solid var(--rdw-border);
   color: var(--rdw-muted);
-  font: 600 10.5px var(--rdw-font);
-  letter-spacing: 0.06em;
+  font: 600 10px var(--rdw-font);
+  letter-spacing: 0.08em;
   text-transform: uppercase;
+  cursor: default;
+  user-select: none;
+}
+${NAV} ul.${MORE_LIST_CLASS} > li:not(.${MORE_HEADING_CLASS}) > a {
+  color: var(--rdw-text);
 }
 ${SUBNAV_SELECTOR} {
   display: flex;

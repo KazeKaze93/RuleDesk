@@ -167,6 +167,34 @@ export function openingState(
   return { scale: byWidth, x: 0, y: (shownHeight - viewHeight) / 2 + FIT_MARGIN_PX };
 }
 
+/** How far the picture may be moved up or down from the centre, at this scale. */
+function verticalReach(imageHeight: number, scale: number, viewHeight: number): number {
+  const over = imageHeight * scale - viewHeight;
+  return over > 0 ? over / 2 + FIT_MARGIN_PX : 0;
+}
+
+/** True when the picture, as shown, is taller than the window: it is then read by scrolling. */
+export function isTallerThanWindow(imageHeight: number, scale: number, viewHeight: number): boolean {
+  return imageHeight * scale > viewHeight;
+}
+
+/**
+ * The picture moved by `dy` pixels up (a positive `dy`, as the wheel gives
+ * it), never past its top or its bottom.
+ */
+export function scrollPicture(
+  state: ViewState,
+  dy: number,
+  imageHeight: number,
+  viewHeight: number,
+): ViewState {
+  const reach = verticalReach(imageHeight, state.scale, viewHeight);
+  if (reach === 0) {
+    return { ...state, y: 0 };
+  }
+  return { ...state, y: Math.min(reach, Math.max(-reach, state.y - dy)) };
+}
+
 /** The least scale: the fitted one, so a picture cannot be lost by zooming out. */
 export function clampScale(scale: number, fit: number): number {
   return Math.min(MAX_SCALE, Math.max(fit, scale));
@@ -257,7 +285,35 @@ function onKeyDown(event: KeyboardEvent): void {
     zoomBy(viewer, 1 / ZOOM_STEP, 0, 0);
   } else if (event.key === "0") {
     refit(viewer, true);
+  } else {
+    // A picture taller than the window is paged through as a page is.
+    const step = SCROLL_KEYS.get(event.key);
+    if (step !== undefined && scrollViewer(viewer, step * window.innerHeight)) {
+      event.preventDefault();
+    }
   }
+}
+
+/** Keys that move a tall picture, in windows: down is positive. */
+const SCROLL_KEYS: ReadonlyMap<string, number> = new Map([
+  ["ArrowDown", 0.15],
+  ["ArrowUp", -0.15],
+  ["PageDown", 0.9],
+  ["PageUp", -0.9],
+  [" ", 0.9],
+  ["End", Number.MAX_SAFE_INTEGER],
+  ["Home", -Number.MAX_SAFE_INTEGER],
+]);
+
+/** Moves the picture when it is taller than the window. Returns false when it is not. */
+function scrollViewer(target: Viewer, dy: number): boolean {
+  const height = target.image.naturalHeight;
+  if (!isTallerThanWindow(height, target.state.scale, window.innerHeight)) {
+    return false;
+  }
+  target.state = scrollPicture(target.state, dy, height, window.innerHeight);
+  render(target);
+  return true;
 }
 
 function onResize(): void {
@@ -351,6 +407,11 @@ export function openImageViewer(url: string, opener: HTMLElement | null): void {
     "wheel",
     (event) => {
       event.preventDefault();
+      // A picture taller than the window is read with the wheel, as a page
+      // is; with Ctrl held, and for a picture that fits, the wheel zooms.
+      if (!event.ctrlKey && scrollViewer(created, event.deltaY)) {
+        return;
+      }
       const px = event.clientX - window.innerWidth / 2;
       const py = event.clientY - window.innerHeight / 2;
       zoomBy(created, event.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP, px, py);
