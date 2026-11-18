@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.53.1
+
+- The post page: the side panel no longer rides over the header. At the bottom of a page a tall panel, as it is with the comment form open, is pushed up by the end of its block; it now goes under the header there
+
 ## 0.53.0
 
 - The post page: "Write a comment" opens the site's form for a comment in the Comments tab, under the comments, where it is written beside what it answers. It used to open under the picture, at the other end of the page. The button is there on a post with comments too, not only on one without. The form is the site's own, with its fields and its address; only its place changes. The site's "Respond" link under the picture works as before

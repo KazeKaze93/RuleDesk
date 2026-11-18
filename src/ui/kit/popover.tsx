@@ -29,7 +29,7 @@ const EVENT_MOUSEDOWN = "mousedown";
 const EVENT_SCROLL = "scroll";
 const EVENT_RESIZE = "resize";
 const POPOVER_FIXED_CLASS = "rdw-popover--fixed";
-/** Above the post panel host (z-index 100 in post-actions.ts). */
+/** Above the header kept at the top, the post panel and the dialogs. */
 const POPOVER_FIXED_Z_INDEX = 120;
 const POPOVER_ANCHOR_GAP_PX = 4;
 /** Collections list width. */

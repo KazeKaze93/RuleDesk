@@ -34,7 +34,13 @@ const PANEL_BUTTON_GAP_PX = 8;
 const PANEL_CARD_PADDING_PX = 12;
 const PANEL_STICKY_GAP_PX = 12;
 const PANEL_MEDIA_GAP_PX = 12;
-const PANEL_Z_INDEX = 100;
+/**
+ * Under the header kept at the top (25, boot/sticky-header.ts) and over the
+ * page. At the bottom of a page the block the panel is in ends, and a tall
+ * panel is pushed up: it has to go under the header then, not over it. It
+ * was 100, and drew over the header and over the script's dialogs (40).
+ */
+const PANEL_Z_INDEX = 20;
 const STAT_LABEL_WIDTH_PX = 62;
 const ORIGINAL_BUTTON_SIZE_PX = 34;
 const STICKY_TOP_VAR = "--rdw-post-panel-sticky-top";
