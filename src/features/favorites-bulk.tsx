@@ -57,6 +57,7 @@ import {
 } from "../ui/kit";
 import { featureBodyClass, type Feature, type FeatureContext } from "./types";
 import { bindPressSelect } from "./press-select";
+import { useEscape } from "../ui/use-escape";
 
 const FEATURE_ID = "favorites-bulk";
 const FEATURE_LABEL = "Bulk remove favorites";
@@ -851,6 +852,8 @@ function FavoritesBulkBar(props: FavoritesBulkBarProps): JSX.Element | null {
     setSelected(new Set());
     setPhase({ kind: "idle" });
   };
+  // Escape leaves the selection, as Cancel does.
+  useEscape(phase.kind === "selecting", resetToIdle);
 
   const enterSelecting = (): void => {
     setSelected(new Set());

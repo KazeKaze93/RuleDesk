@@ -71,6 +71,12 @@ import {
 } from "./ai-scope";
 import { SETTINGS_SECTION_FAVORITES, openSettingsAt } from "../pages/settings-focus";
 import { AiEverywhereNote } from "../ui/ai-posts-select";
+import {
+  FAVORITES_BROWSING_BODY_CLASS,
+  FAVORITES_RESULTS_CLASS,
+  FAVORITES_VIEW_SCROLL,
+  FAVORITES_VIEW_STATE_ID,
+} from "./types";
 
 /**
  * Search, the Images / Videos switch and endless scrolling on the Favorites
@@ -84,8 +90,7 @@ import { AiEverywhereNote } from "../ui/ai-posts-select";
  * works on these too.
  */
 
-export const FAVORITES_BROWSING_BODY_CLASS = "rdw-fav-browsing";
-export const FAVORITES_RESULTS_CLASS = "rdw-fav-results";
+export { FAVORITES_BROWSING_BODY_CLASS, FAVORITES_RESULTS_CLASS };
 const MORE_CLASS = "rdw-fav-more";
 const CONTROLS_CLASS = "rdw-fav-controls";
 /** On the block the grid is in, once the column of filters is put beside it. */
@@ -116,9 +121,9 @@ const SEARCH_MIN_WIDTH_PX = 200;
 const SEARCH_MAX_WIDTH_PX = 560;
 const SYNTAX_POPOVER_WIDTH_PX = 340;
 
-const VIEW_STATE_ID = "favorites-view";
+const VIEW_STATE_ID = FAVORITES_VIEW_STATE_ID;
 export const VIEW_PAGES = "pages";
-export const VIEW_SCROLL = "scroll";
+export const VIEW_SCROLL = FAVORITES_VIEW_SCROLL;
 type FavoritesView = typeof VIEW_PAGES | typeof VIEW_SCROLL;
 
 /** How many tiles are added at a time. */

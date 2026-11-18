@@ -204,3 +204,16 @@ export function resolveFeatureChoice(
   }
   return defaultValue;
 }
+
+/**
+ * One feature's saved state, read without validating the storage: for a
+ * decision that has to be made before the first paint. Undefined when there
+ * is none.
+ */
+export function peekFeatureState(id: string): unknown {
+  const raw = readRawStorageOnce();
+  if (!isRecord(raw) || !isRecord(raw.settings) || !isRecord(raw.settings.featureState)) {
+    return undefined;
+  }
+  return raw.settings.featureState[id];
+}

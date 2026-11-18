@@ -2,6 +2,13 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.47.1
+
+- Following and Collections: the toolbar spans the width of the tiles, with the filters at the left and the actions at the right. Kept to a centred column, it broke into two rows with half the window free beside it
+- Custom theme: the toolbar of Following and Collections was a slab of the page's colour from edge to edge of the picture. It is a card there now, rounded and slightly see-through, like the tiles; the line under it and the "Tags" heading on Posts have a backing only as wide as their words
+- Favorites opened with "AI posts: Hide" or with Scroll remembered: for about a second the site's own grid was shown, small and with its frames, and then swapped for the script's. The site's grid is kept out of sight from the first paint
+- Escape leaves the selection of posts, artists and collections, as Cancel does. A dialog, an open list or a field under the caret still take the key first
+
 ## 0.47.0
 
 From the design audit, the things that broke work or misled:

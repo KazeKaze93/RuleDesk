@@ -209,6 +209,18 @@ describe("createCollectionsPage", () => {
     );
   });
 
+  it("leaves the selection on Escape, as Cancel does", () => {
+    createPlaylist("One");
+    const root = mount();
+    click(findButton(root, "Select") ?? root);
+    expect(root.textContent).toContain("0 selected");
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    expect(root.textContent).not.toContain("0 selected");
+    expect(findButton(root, "Select")).not.toBeNull();
+  });
+
   it("stays out of document-start imports", () => {
     expect(source("src/main.ts")).not.toContain("collections-page");
     expect(source("src/boot/app.ts")).not.toContain("collections-page");

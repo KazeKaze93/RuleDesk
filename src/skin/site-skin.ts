@@ -388,8 +388,10 @@ ${ROOT} ul#tag-sidebar h6 {
    anything. In a card the backing is the card's own colour and is not seen. */
 html[${RDW_THEME_ATTR}="${APPEARANCE_THEME_CUSTOM}"].${RDW_SKIN_CLASS} div.sidebar h5,
 html[${RDW_THEME_ATTR}="${APPEARANCE_THEME_CUSTOM}"].${RDW_SKIN_CLASS} ul#tag-sidebar h5 {
-  background: color-mix(in srgb, ${v.surface} 85%, transparent);
-  box-shadow: 0 0 0 4px color-mix(in srgb, ${v.surface} 85%, transparent);
+  /* Only as wide as its words: across the column it was a grey strip. */
+  max-width: max-content;
+  background: color-mix(in srgb, ${v.surface} 88%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, ${v.surface} 88%, transparent);
   border-radius: 2px;
 }
 

@@ -37,6 +37,7 @@ import {
   RDW_HASH_COLLECTIONS,
   RDW_ROUTE_COLLECTIONS,
 } from "./constants";
+import { useEscape } from "../ui/use-escape";
 
 const CELL_SIZE_PX = 200;
 const GRID_GAP_PX = 4;
@@ -440,6 +441,8 @@ export function CollectionDetailPage(
 ): JSX.Element {
   const [revision, setRevision] = useState(0);
   const [selecting, setSelecting] = useState(false);
+  // Escape leaves the selection, as Cancel does.
+  useEscape(selecting, leaveSelectMode);
   const [selected, setSelected] = useState<ReadonlySet<number>>(() => new Set());
   const [renameOpen, setRenameOpen] = useState(false);
   const [nameDraft, setNameDraft] = useState("");

@@ -5,6 +5,7 @@
 
 import { ensureStyleElement } from "./appearance-dom";
 import {
+  peekFeatureState,
   peekLayoutSettings,
   resolveFeatureChoice,
   resolveFeatureEnabled,
@@ -13,7 +14,18 @@ import { gridDensityFeature } from "../features/grid-density";
 import { sidebarRightFeature } from "../features/layout-options";
 import { menuCleanupFeature } from "../features/menu-cleanup";
 import { applyFeatureChrome } from "../features/runtime";
-import { featureBodyClass, type Feature } from "../features/types";
+import {
+  AI_SCOPE_FAVORITES,
+  AI_STATE_ALL,
+  AI_STATE_HIDE,
+  AI_STATE_ID,
+  FAVORITES_BROWSING_BODY_CLASS,
+  FAVORITES_RESULTS_CLASS,
+  FAVORITES_VIEW_SCROLL,
+  FAVORITES_VIEW_STATE_ID,
+  featureBodyClass,
+  type Feature,
+} from "../features/types";
 import { detectPageKind } from "../site/pages";
 import { installMenuSkeleton } from "./menu-skeleton";
 import {
@@ -147,6 +159,65 @@ export function startEarlyLayout(): void {
 export function applyLayoutBeforePaint(): void {
   applyLayoutFeatures();
   reserveSearchTools();
+  holdFavoritesGrid();
+}
+
+const FAVORITES_FEATURE_ID = "favorites-bulk";
+const FAVORITES_HOLD_STYLE_ID = "rdw-favorites-hold";
+/** If the script's own grid has not come by then, the site's grid is given back. */
+const FAVORITES_HOLD_MS = 5000;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+/** True when Favorites opens with something that replaces the site's grid: Scroll, or AI posts hidden. */
+function favoritesOpenNarrowed(): boolean {
+  if (peekFeatureState(FAVORITES_VIEW_STATE_ID) === FAVORITES_VIEW_SCROLL) {
+    return true;
+  }
+  const ai = peekFeatureState(AI_STATE_ID);
+  if (!isRecord(ai)) {
+    return false;
+  }
+  const hide = ai[AI_STATE_HIDE];
+  return ai[AI_STATE_ALL] === true || (isRecord(hide) && hide[AI_SCOPE_FAVORITES] === true);
+}
+
+/**
+ * Favorites that open narrowed show the script's own grid, and it comes about
+ * a second late: the local list has to be read first. Until then the page
+ * showed the site's grid, small and with its own frames, and then swapped it
+ * for the other. The site's grid is kept out of sight from the first paint
+ * instead. The feature takes the class away itself when there is nothing to
+ * narrow by; the timer is for a page where the feature never starts.
+ */
+function holdFavoritesGrid(): void {
+  if (document.body === null || detectPageKind(window.location.search) !== "favorites") {
+    return;
+  }
+  if (!resolveFeatureEnabled(peekLayoutSettings(), FAVORITES_FEATURE_ID, true)) {
+    return;
+  }
+  if (!favoritesOpenNarrowed()) {
+    return;
+  }
+  const style = ensureStyleElement(FAVORITES_HOLD_STYLE_ID);
+  style.textContent = [
+    `body.${FAVORITES_BROWSING_BODY_CLASS} div.image-list:not(.${FAVORITES_RESULTS_CLASS}),`,
+    `body.${FAVORITES_BROWSING_BODY_CLASS} #paginator {`,
+    "  display: none;",
+    "}",
+  ].join("\n");
+  const body = document.body;
+  body.classList.add(FAVORITES_BROWSING_BODY_CLASS);
+  window.setTimeout(() => {
+    const results = document.querySelector(`.${FAVORITES_RESULTS_CLASS}`);
+    // No grid of the script at all: the feature never started on this page.
+    if (results === null) {
+      body.classList.remove(FAVORITES_BROWSING_BODY_CLASS);
+    }
+  }, FAVORITES_HOLD_MS);
 }
 
 /**

@@ -85,3 +85,22 @@ export const THUMB_LABEL_RULES = `
   font: 700 10px/1.4 var(--rdw-font);
   letter-spacing: 0.04em;
   pointer-events: none;`;
+
+/**
+ * Names the start of the page needs before the features are loaded: whether
+ * the Favorites page opens narrowed (and the site's own grid must not be
+ * shown for the moment it takes to read the local list). Kept here, in a
+ * module that imports nothing, so that the start stays small.
+ */
+/** On <body> while the script's own grid of favorites stands in place of the site's. */
+export const FAVORITES_BROWSING_BODY_CLASS = "rdw-fav-browsing";
+/** On the script's own grid of favorites. */
+export const FAVORITES_RESULTS_CLASS = "rdw-fav-results";
+/** Feature state: how Favorites is paged. */
+export const FAVORITES_VIEW_STATE_ID = "favorites-view";
+export const FAVORITES_VIEW_SCROLL = "scroll";
+/** Feature state: AI posts shown or hidden, by the part of the site. */
+export const AI_STATE_ID = "ai-posts";
+export const AI_STATE_ALL = "all";
+export const AI_STATE_HIDE = "hide";
+export const AI_SCOPE_FAVORITES = "favorites";

@@ -19,6 +19,7 @@ import {
   setFeatureState,
 } from "../storage/store";
 import { log } from "../log";
+import { AI_SCOPE_FAVORITES, AI_STATE_ALL, AI_STATE_HIDE, AI_STATE_ID } from "./types";
 
 /**
  * AI posts, shown or hidden, by the part of the site.
@@ -37,7 +38,7 @@ export const AI_SCOPE_POSTS = "posts";
 export const AI_SCOPE_FEED = "feed";
 export const AI_SCOPE_FOLLOWING = "following";
 export const AI_SCOPE_COLLECTIONS = "collections";
-export const AI_SCOPE_FAVORITES = "favorites";
+export { AI_SCOPE_FAVORITES };
 
 export type AiScope =
   | typeof AI_SCOPE_POSTS
@@ -57,9 +58,9 @@ const AI_SCOPES: readonly AiScope[] = [
 /** The tag the site puts on an AI post; Favorites is narrowed by it. */
 export const AI_TAG = "ai_generated";
 
-export const AI_STATE_ID = "ai-posts";
-const STATE_ALL = "all";
-const STATE_HIDE = "hide";
+export { AI_STATE_ID };
+const STATE_ALL = AI_STATE_ALL;
+const STATE_HIDE = AI_STATE_HIDE;
 
 export const AI_MODE_SHOW = "show";
 export const AI_MODE_HIDE = "hide";

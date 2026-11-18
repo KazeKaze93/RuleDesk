@@ -142,6 +142,7 @@ const LIST_COVER_PX = 44;
 const FILTER_FIELD_WIDTH_PX = 220;
 /** Above the cards and their corner buttons. */
 const TOOLBAR_Z_INDEX = 5;
+const TOOLBAR_SPACER_CLASS = "rdw-following-toolbar-spacer";
 
 const FOLLOW_FILTER_PLACEHOLDER = "Filter by name";
 const KIND_ALL = "all";
@@ -198,6 +199,7 @@ import {
 } from "./view-mode";
 import { AI_SCOPE_FOLLOWING, alignSiteAiFilter } from "../features/ai-scope";
 import { AiPostsToggle } from "../ui/ai-posts-select";
+import { useEscape } from "../ui/use-escape";
 
 export const FOLLOWING_PAGE_CSS = `
 .${PAGE_CLASS} {
@@ -256,6 +258,16 @@ export const FOLLOWING_PAGE_CSS = `
   margin: -8px 0;
   background: var(--rdw-bg);
 }
+/* Custom theme: over the user's picture a bar of the page's colour from edge
+   to edge is a black slab. The toolbar is a card there, like the tiles. */
+:host-context(html[${RDW_THEME_ATTR}="${APPEARANCE_THEME_CUSTOM}"]) .${STICKY_CLASS} {
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--rdw-border);
+  border-radius: var(--rdw-radius-l);
+  background: color-mix(in srgb, var(--rdw-surface) 88%, transparent);
+  backdrop-filter: blur(10px);
+}
 .${GROUP_DIALOG_CLASS} {
   display: grid;
   gap: 10px;
@@ -280,13 +292,17 @@ export const FOLLOWING_PAGE_CSS = `
   color: var(--rdw-muted);
   font-size: 12px;
 }
-/* Custom theme: the line under the toolbar stands on the user's picture, so
-   it gets a backing of the card's colour and takes only the width it needs. */
-:host-context(html[${RDW_THEME_ATTR}="${APPEARANCE_THEME_CUSTOM}"]) p.${META_CLASS} {
+/* The line under the toolbar starts where the toolbar and the tiles do. */
+.${PAGE_CLASS} > p.${META_CLASS} {
+  padding-inline: 0;
+}
+/* Custom theme: that line stands on the user's picture, so it gets a backing
+   of the card's colour and takes only the width it needs. */
+:host-context(html[${RDW_THEME_ATTR}="${APPEARANCE_THEME_CUSTOM}"]) .${PAGE_CLASS} > p.${META_CLASS} {
   align-self: flex-start;
   padding: 2px 8px;
   border-radius: var(--rdw-radius-s);
-  background: color-mix(in srgb, var(--rdw-surface) 85%, transparent);
+  background: color-mix(in srgb, var(--rdw-surface) 88%, transparent);
 }
 .${GRID_CLASS} {
   display: grid;
@@ -294,12 +310,18 @@ export const FOLLOWING_PAGE_CSS = `
   gap: 12px;
 }
 /*
- * The tiles take the whole window; everything above them, and the list view,
- * stay in the centred column.
+ * The tiles take the whole window, and so does the toolbar over them: its
+ * filters start where the first tile starts and its actions end where the
+ * last one ends. Kept to a centred column, the toolbar broke into two rows
+ * with half the window free beside it. The list view stays centred.
  */
-.${PAGE_CLASS} > :not(.${GRID_CLASS}),
+.${PAGE_CLASS} > :not(.${GRID_CLASS}):not(.${STICKY_CLASS}),
 .${GRID_LIST_CLASS} {
   padding-inline: ${PAGE_CENTRE_PADDING};
+}
+/* Between the filters and the actions: the actions stand at the right end. */
+.${TOOLBAR_SPACER_CLASS} {
+  flex: 1 1 auto;
 }
 /* List view: one artist per row, a small cover, the numbers on the right. */
 .${GRID_LIST_CLASS} {
@@ -871,6 +893,8 @@ export function FollowingPage(): JSX.Element {
     setSelectedTags([]);
     setConfirmUnfollow(false);
   };
+  // Escape leaves the selection, as Cancel does.
+  useEscape(selecting, stopSelecting);
 
   const toggleSelected = (tag: string): void => {
     setSelectedTags((current) =>
@@ -1059,6 +1083,7 @@ export function FollowingPage(): JSX.Element {
                 }
               }}
             />
+            <span className={TOOLBAR_SPACER_CLASS} aria-hidden="true" />
             {selecting ? (
               <>
                 <span className={META_CLASS} aria-live="polite">

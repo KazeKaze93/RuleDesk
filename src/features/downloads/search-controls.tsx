@@ -25,6 +25,7 @@ import {
   stopGridSelect,
 } from "./grid-select";
 import { isDownloadBusy, startDownload } from "./queue";
+import { useEscape } from "../../ui/use-escape";
 
 /**
  * The buttons at the foot of the search panel that act on posts, on results
@@ -90,6 +91,12 @@ export function DownloadControls(): JSX.Element | null {
     },
     [],
   );
+  // Escape leaves the selection, as Cancel does.
+  useEscape(selecting, () => {
+    stopGridSelect();
+    setSelecting(false);
+    setCount(0);
+  });
 
   const search = window.location.search;
   if (!isResultsPage(search)) {

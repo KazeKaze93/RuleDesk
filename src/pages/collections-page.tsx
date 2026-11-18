@@ -131,6 +131,7 @@ const TOOLBAR_GAP_PX = 8;
 const FILTER_FIELD_WIDTH_PX = 220;
 /** Above the cards and their corner marks. */
 const TOOLBAR_Z_INDEX = 5;
+const TOOLBAR_SPACER_CLASS = "rdw-collections-toolbar-spacer";
 const CARD_PADDING_PX = 8;
 const CARD_GAP_PX = 8;
 const META_GAP_PX = 8;
@@ -177,6 +178,8 @@ import {
 } from "./view-mode";
 import { AI_SCOPE_COLLECTIONS } from "../features/ai-scope";
 import { AiPostsToggle } from "../ui/ai-posts-select";
+import { APPEARANCE_THEME_CUSTOM, RDW_THEME_ATTR } from "../config/constants";
+import { useEscape } from "../ui/use-escape";
 
 export const COLLECTIONS_PAGE_CSS = `
 .${PAGE_CLASS} {
@@ -231,6 +234,16 @@ export const COLLECTIONS_PAGE_CSS = `
   margin: -8px 0;
   background: var(--rdw-bg);
 }
+/* Custom theme: over the user's picture a bar of the page's colour from edge
+   to edge is a black slab. The toolbar is a card there, like the tiles. */
+:host-context(html[${RDW_THEME_ATTR}="${APPEARANCE_THEME_CUSTOM}"]) .${HEADER_CLASS} {
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--rdw-border);
+  border-radius: var(--rdw-radius-l);
+  background: color-mix(in srgb, var(--rdw-surface) 88%, transparent);
+  backdrop-filter: blur(10px);
+}
 .${GRID_CLASS} {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(${String(TILE_MIN_WIDTH_PX)}px, 1fr));
@@ -250,12 +263,18 @@ export const COLLECTIONS_PAGE_CSS = `
   border-radius: var(--rdw-radius-l);
 }
 /*
- * The tiles take the whole window; everything above them, and the list view,
- * stay in the centred column.
+ * The tiles take the whole window, and so does the toolbar over them: its
+ * filters start where the first tile starts and its actions end where the
+ * last one ends. Kept to a centred column, the toolbar broke into two rows
+ * with half the window free beside it. The list view stays centred.
  */
-.${PAGE_CLASS} > :not(.${GRID_CLASS}),
+.${PAGE_CLASS} > :not(.${GRID_CLASS}):not(.${HEADER_CLASS}),
 .${GRID_LIST_CLASS} {
   padding-inline: ${PAGE_CENTRE_PADDING};
+}
+/* Between the filters and the actions: the actions stand at the right end. */
+.${TOOLBAR_SPACER_CLASS} {
+  flex: 1 1 auto;
 }
 /* List view: one collection per row, a small cover, the count on the right. */
 .${GRID_LIST_CLASS} {
@@ -951,6 +970,8 @@ export function CollectionsPage(): JSX.Element {
     setSelectedIds([]);
     setConfirmOpen(false);
   };
+  // Escape leaves the selection, as Cancel does.
+  useEscape(selecting, stopSelecting);
 
   const toggleSelected = (id: string): void => {
     setSelectedIds((current) =>
@@ -1044,6 +1065,7 @@ export function CollectionsPage(): JSX.Element {
               }
             }}
           />
+          <span className={TOOLBAR_SPACER_CLASS} aria-hidden="true" />
           {selecting ? (
             <>
               <span className={SELECTED_COUNT_CLASS} aria-live="polite">
