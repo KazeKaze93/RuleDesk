@@ -605,6 +605,17 @@ ${ROOT} div.tag-search button[type="submit"]${WHERE_NOT_OUR_CONTROL}:hover {
   filter: brightness(1.05);
 }
 
+/* One ring for the keyboard's focus on anything of the site that is not a
+   field: links, thumbnails, buttons. The browser's own was a white rectangle
+   on the dark theme. */
+${ROOT} a:focus-visible,
+${ROOT} button:focus-visible,
+${ROOT} summary:focus-visible {
+  outline: 2px solid ${v.accent};
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 ${ROOT} input[type="text"]${WHERE_NOT_OUR_CONTROL}:focus,
 ${ROOT} input[type="password"]${WHERE_NOT_OUR_CONTROL}:focus,
 ${ROOT} input[type="search"]${WHERE_NOT_OUR_CONTROL}:focus,

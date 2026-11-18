@@ -2,6 +2,11 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.49.1
+
+- The keyboard's focus is the same blue ring on thumbnails, on the covers of posts in a collection and on every link and button of the site, not only in the header: on a thumbnail it was still the browser's white rectangle
+- Tab goes through the header left to right, as it is drawn: Posts, Feed, Collections, Following, Favorites, More, then the icons. It used to go logo, My Account, Posts, because the site has My Account first in its markup; the uploads of the second row are last there too
+
 ## 0.49.0
 
 From the design audit, one way of doing a thing in place of several:

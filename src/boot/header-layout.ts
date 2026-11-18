@@ -208,6 +208,12 @@ div#header button:focus-visible {
   outline-offset: 2px;
   border-radius: 4px;
 }
+/* A thumbnail's link in the themes of the site, where the skin's rule is not applied. */
+span.thumb > a:focus-visible {
+  outline: 2px solid var(--rdw-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
 ${NAV} > li#${MORE_ITEM_ID} > button[aria-expanded="true"] {
   color: var(--rdw-text);
 }
@@ -436,11 +442,48 @@ function watchCurrentItem(navbar: Element): void {
 }
 
 /** Lays the header out. Safe to call again: it adds what is missing. */
+/** Moves `items` to the end of `list`, in that order, unless they are there already. */
+function moveToEnd(list: Element, items: readonly Element[]): void {
+  const tail = Array.from(list.children).slice(-items.length);
+  if (items.length === 0 || items.every((item, at) => tail[at] === item)) {
+    return;
+  }
+  list.append(...items);
+}
+
+/**
+ * The header is laid out by CSS `order`: "More" and the three icons stand at
+ * the right end whatever their place in the markup. The keyboard goes by the
+ * markup, so Tab went logo, My Account, Posts: the site has My Account first.
+ * The items that CSS puts last are put last in the markup too, in the order
+ * they are seen. Nothing moves on the screen.
+ */
+function alignTabOrder(navbar: Element): void {
+  const tail: Element[] = [];
+  const more = navbar.querySelector(`:scope > li#${MORE_ITEM_ID}`);
+  const stats = navbar.querySelector(`:scope > li#${MENU_ITEM_ID.stats}`);
+  const account = navbar.querySelector(`:scope > li.${ACCOUNT_ITEM_CLASS}`);
+  const settings = navbar.querySelector(`:scope > li#${MENU_ITEM_ID.settings}`);
+  for (const item of [more, stats, account, settings]) {
+    if (item !== null) {
+      tail.push(item);
+    }
+  }
+  moveToEnd(navbar, tail);
+
+  // The second row: the actions (Upload, Upload Video) stand at its right end.
+  const subnav = document.querySelector(SUBNAV_SELECTOR);
+  if (subnav !== null) {
+    moveToEnd(subnav, Array.from(subnav.querySelectorAll(`:scope > li.${SUBNAV_ACTION_CLASS}`)));
+  }
+}
+
 export function applyHeaderLayout(navbar: Element): void {
   ensureStyle();
   groupRareSections(navbar);
   markIconItems(navbar);
   markSubnav();
+  alignTabOrder(navbar);
   markFavoritesCurrent(navbar);
   syncAriaCurrent(navbar);
   watchCurrentItem(navbar);

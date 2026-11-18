@@ -43,6 +43,14 @@ const SITE_DARK_THEME_SELECTOR = `[${RDW_THEME_ATTR}="${APPEARANCE_THEME_SITE_DA
  * Injected once from the page host shadow root.
  */
 export const PAGE_CONTENT_CSS = `
+/* One ring for the keyboard's focus on the own pages too: the cover of a post
+   in a collection, a link, a button without a ring of its own. Inside
+   ":where", so that a control with its own way of showing focus keeps it. */
+:where(a, button, summary, [tabindex]:not([tabindex="-1"])):focus-visible {
+  outline: 2px solid var(--rdw-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
 .${PANEL_UI_CLASS.pageCard} {
   padding: 12px;
   display: flex;

@@ -48,15 +48,17 @@ describe("menu skeleton", () => {
   it("puts the script's items after Posts and RuleDesk at the end", () => {
     buildHeader(true);
     expect(installMenuSkeleton(LAYOUT)).toBe(true);
+    // The markup follows the look, so that Tab goes left to right: the site
+    // has My Account first, and it is drawn among the icons at the right end.
     expect(menuLabels()).toEqual([
-      "My Account",
       "Posts",
       "Feed",
       "Collections",
       "Following",
       "Favorites",
-      "Statistics",
       "More",
+      "Statistics",
+      "My Account",
       "RuleDesk",
     ]);
     // The rare sections sit inside "More", closed until it is pressed.
@@ -97,11 +99,11 @@ describe("menu skeleton", () => {
       featureChoice: {},
     });
     expect(menuLabels()).toEqual([
-      "My Account",
       "Posts",
       "Collections",
       "Following",
       "More",
+      "My Account",
       "RuleDesk",
     ]);
   });
@@ -116,12 +118,13 @@ describe("menu skeleton", () => {
       );
     installMenuSkeleton(LAYOUT);
     const classes = [...document.querySelectorAll("#subnavbar > li")].map((item) => item.className);
+    // The uploads are drawn at the right end of the row and stand last in the markup too.
     expect(classes).toEqual([
       "rdw-subnav-video",
-      "rdw-subnav-upload rdw-subnav-action",
-      "rdw-subnav-upload-video rdw-subnav-action",
       "rdw-subnav-random",
       "",
+      "rdw-subnav-upload rdw-subnav-action",
+      "rdw-subnav-upload-video rdw-subnav-action",
     ]);
   });
 
