@@ -2,6 +2,16 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.50.0
+
+From the design audit, forms and texts:
+
+- Collections, "New": an error stands under the field it is about, and a name already taken is said while it is typed, with Create off until it is changed. Under the Custom / Dynamic switch a line says what the chosen kind is. The query field shows a real example, with "Same syntax as the site search." under it
+- "Save as collection" on Posts: the name starts as the query, to be kept with Enter or typed over
+- Upload: the reminder reads "0 of 5 tags" and turns red only after the field was left or the form was sent, not on a form nothing was done with
+- Favorites: the button that confirms a removal reads "Remove 2"; the card under the filters is "Followed in favorites"; the download dialog says "28 original files: favorites matching jcm2, from all pages."; an empty Collection filter says how to see everything again
+- Posts: "Min score" shows "Any" while empty; the note in "?" names the controls as they are labelled
+
 ## 0.49.1
 
 - The keyboard's focus is the same blue ring on thumbnails, on the covers of posts in a collection and on every link and button of the site, not only in the header: on a thumbnail it was still the browser's white rectangle

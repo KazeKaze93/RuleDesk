@@ -87,15 +87,14 @@ export function dedupeTags(text: string): string {
 }
 
 /**
- * "3 tags · 2 more to reach 5", "1 tag · 4 more to reach 5"; nothing once
- * there are enough: the line is a reminder, not a counter.
+ * "0 of 5 tags", "3 of 5 tags"; nothing once there are enough: the line is a
+ * reminder, not a counter.
  */
 export function tagCountText(count: number): string {
   if (count >= MIN_TAGS) {
     return "";
   }
-  const word = `${String(count)} ${count === 1 ? "tag" : "tags"}`;
-  return `${word} · ${String(MIN_TAGS - count)} more to reach ${String(MIN_TAGS)}`;
+  return `${String(count)} of ${String(MIN_TAGS)} tags`;
 }
 
 function mountFileZone(input: HTMLInputElement): void {
@@ -175,12 +174,21 @@ function mountTagCount(tags: HTMLTextAreaElement): void {
   line.setAttribute("role", "status");
   // After the box of the field, which also holds the site's suggestion list.
   (tags.parentElement?.parentElement === cell ? tags.parentElement : tags).after(line);
+  // Too few tags is said in red only once the field was left or the form was
+  // sent: on an untouched form it was an error shown before anything was done.
+  let touched = false;
   const sync = (): void => {
     const count = countTags(tags.value);
     line.textContent = tagCountText(count);
     line.hidden = count >= MIN_TAGS;
-    line.classList.toggle(UPLOAD_TAG_COUNT_SHORT_CLASS, count < MIN_TAGS);
+    line.classList.toggle(UPLOAD_TAG_COUNT_SHORT_CLASS, touched && count < MIN_TAGS);
   };
+  const touch = (): void => {
+    touched = true;
+    sync();
+  };
+  tags.addEventListener("blur", touch);
+  cell.closest("form")?.addEventListener("submit", touch, true);
   // A tag entered twice is taken out when the field is left, when a suggestion
   // is picked and when the form is sent; not while typing, which would move
   // the caret under the user's hands.

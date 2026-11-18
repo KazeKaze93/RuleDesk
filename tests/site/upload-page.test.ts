@@ -67,8 +67,8 @@ describe("upload: counting and sizes", () => {
   });
 
   it("says how many are missing until there are enough", () => {
-    expect(tagCountText(0)).toBe(`0 tags · ${String(MIN_TAGS)} more to reach ${String(MIN_TAGS)}`);
-    expect(tagCountText(1)).toBe("1 tag · 4 more to reach 5");
+    expect(tagCountText(0)).toBe(`0 of ${String(MIN_TAGS)} tags`);
+    expect(tagCountText(1)).toBe("1 of 5 tags");
     expect(tagCountText(5)).toBe("");
     expect(tagCountText(12)).toBe("");
   });
@@ -153,7 +153,10 @@ describe("the upload page", () => {
     mountUploadPage();
     const tags = document.getElementById("tags");
     const line = document.querySelector(`.${UPLOAD_TAG_COUNT_CLASS}`);
-    expect(line?.textContent).toBe("0 tags · 5 more to reach 5");
+    expect(line?.textContent).toBe("0 of 5 tags");
+    // Not a warning on a form nothing was done with; it becomes one when the field is left.
+    expect(line?.classList.contains(UPLOAD_TAG_COUNT_SHORT_CLASS)).toBe(false);
+    tags?.dispatchEvent(new Event("blur"));
     expect(line?.classList.contains(UPLOAD_TAG_COUNT_SHORT_CLASS)).toBe(true);
     if (tags instanceof HTMLTextAreaElement) {
       tags.value = "a b c d e";
@@ -167,7 +170,7 @@ describe("the upload page", () => {
       tags.dispatchEvent(new Event("input"));
     }
     expect(line?.hasAttribute("hidden")).toBe(false);
-    expect(line?.textContent).toBe("2 tags · 3 more to reach 5");
+    expect(line?.textContent).toBe("2 of 5 tags");
     // The line stands right after the field's box, not inside it.
     expect(line?.previousElementSibling?.classList.contains("awesomplete")).toBe(true);
   });

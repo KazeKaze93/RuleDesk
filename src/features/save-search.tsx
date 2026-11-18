@@ -217,6 +217,9 @@ export function SaveSearchButton(props: SaveSearchButtonProps): JSX.Element | nu
         title={SAVE_SEARCH_TITLE}
         onClick={() => {
           setQueryDraft(savable ?? "");
+          // Most of the time the name is the query: it is put in, to be kept
+          // with Enter or typed over.
+          setName(savable ?? "");
           setOpen(true);
         }}
       >

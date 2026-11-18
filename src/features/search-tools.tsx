@@ -1277,6 +1277,7 @@ function SearchToolsPanel(props: SearchToolsPanelProps): JSX.Element {
           >
             <NumberField
               label="Min score"
+              placeholder="Any"
               value={scoreDraft}
               min={1}
               step={1}

@@ -47,7 +47,7 @@ export const SITE_SEARCH_HELP: SearchHelp = {
     ["sourcedomains:x.com", "by the site of the source"],
     ["md5:abc*", "by the file's hash"],
   ],
-  note: "Order, least score, pictures or videos and AI posts are the controls under the field.",
+  note: "Sort, Min score, Media and AI posts are set with the controls below the field.",
 };
 
 function SiteSearchTools(props: { readonly input: HTMLInputElement }): JSX.Element {

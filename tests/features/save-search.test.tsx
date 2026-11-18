@@ -211,6 +211,8 @@ describe("SaveSearchLink", () => {
     }
     fireClick(link);
 
+    // The name starts as the query; with it wiped, saving is refused.
+    typeName("");
     submitDialog();
     expect(document.querySelector('[role="alert"]')?.textContent).toBe(
       "Enter a name.",

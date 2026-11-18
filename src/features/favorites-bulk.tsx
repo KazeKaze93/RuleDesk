@@ -563,7 +563,7 @@ function downloadNote(count: number): string {
 /** The same for a narrowed list: what narrows it is named, so that nothing else is expected. */
 function downloadResultsNote(count: number, summary: string): string {
   const files = count === 1 ? "original file" : "original files";
-  return `${count.toLocaleString(LOCALE)} ${files}: the favorites shown now (${summary}), on all pages of the result.`;
+  return `${count.toLocaleString(LOCALE)} ${files}: favorites matching ${summary}, from all pages.`;
 }
 
 /** Opens the settings page at its Favorites block, where the sync buttons are. */
@@ -1072,7 +1072,7 @@ function FavoritesBulkBar(props: FavoritesBulkBarProps): JSX.Element | null {
               void runRemoval();
             }}
           >
-            {TEXT_CONFIRM}
+            {`${TEXT_CONFIRM_PREFIX}${String(selected.size)}`}
           </Button>
           <Button variant="secondary" size="s" onClick={closeConfirm}>
             {TEXT_CANCEL}

@@ -164,6 +164,19 @@ function mountFeature(): void {
   });
 }
 
+/** The button that confirms a removal: "Remove N", the filled red one in the dialog. */
+function confirmButton(): HTMLButtonElement | null {
+  const button = document.querySelector('[role="dialog"] button.rdw-btn--danger');
+  return button instanceof HTMLButtonElement ? button : null;
+}
+
+function clickConfirm(): void {
+  const button = confirmButton();
+  act(() => {
+    button?.click();
+  });
+}
+
 function clickButtonWithText(label: string): void {
   const buttons = document.querySelectorAll("button");
   for (const button of buttons) {
@@ -323,10 +336,8 @@ describe("favoritesBulkFeature", () => {
     const dialog = document.querySelector('[role="dialog"][aria-modal="true"]');
     expect(dialog).not.toBeNull();
     expect(document.querySelector(".rdw-dialog-backdrop")).not.toBeNull();
-    const confirmBtn = [...document.querySelectorAll("button")].find(
-      (button) => button.textContent?.trim() === "Confirm",
-    );
-    expect(confirmBtn).toBeTruthy();
+    const confirmBtn = confirmButton();
+    expect(confirmBtn?.textContent?.trim()).toBe("Remove 2");
     // Control bar stays; confirm is overlay, not an in-flow full-width Card.
     expect(document.querySelector(".rdw-favorites-bulk-bar")?.textContent).toContain(
       "2 selected",
@@ -345,7 +356,7 @@ describe("favoritesBulkFeature", () => {
     clickButtonWithText("Select");
     clickButtonWithText("Select page");
     clickButtonWithText("Remove selected (2)");
-    clickButtonWithText("Confirm");
+    clickConfirm();
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(0);
@@ -383,7 +394,7 @@ describe("favoritesBulkFeature", () => {
     clickButtonWithText("Select");
     clickButtonWithText("Select page");
     clickButtonWithText("Remove selected (2)");
-    clickButtonWithText("Confirm");
+    clickConfirm();
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(0);
@@ -409,7 +420,7 @@ describe("favoritesBulkFeature", () => {
     clickButtonWithText("Select");
     clickButtonWithText("Select page");
     clickButtonWithText("Remove selected (3)");
-    clickButtonWithText("Confirm");
+    clickConfirm();
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(0);
@@ -439,7 +450,7 @@ describe("favoritesBulkFeature", () => {
     clickButtonWithText("Select");
     clickButtonWithText("Select page");
     clickButtonWithText("Remove selected (2)");
-    clickButtonWithText("Confirm");
+    clickConfirm();
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(0);
@@ -468,7 +479,7 @@ describe("favoritesBulkFeature", () => {
     clickButtonWithText("Select");
     clickButtonWithText("Select page");
     clickButtonWithText("Remove selected (1)");
-    clickButtonWithText("Confirm");
+    clickConfirm();
     await act(async () => {
       await vi.advanceTimersByTimeAsync(0);
     });

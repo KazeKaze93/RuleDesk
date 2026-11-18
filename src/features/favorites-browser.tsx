@@ -177,8 +177,9 @@ const SYNC_LINK_CLASS = "rdw-fav-sync-link";
 const NO_AI_TERM = `-${AI_TAG}`;
 const NO_AI_SUMMARY = "no AI posts";
 const EMPTY_COLLECTION = "No favorites here";
-const EMPTY_COLLECTION_NOTE = "Nothing of what you favorited passes the collection filter.";
-const FOLLOWED_TITLE = "Following";
+const EMPTY_COLLECTION_NOTE = "None of your favorites pass the Collection filter. Choose Any to see them all.";
+/** Not "Following": that is the page of the header, and this is a filter of the favorites. */
+const FOLLOWED_TITLE = "Followed in favorites";
 /** How many followed entries are listed before "Show all". */
 export const FOLLOWED_SHORT_LIMIT = 12;
 const FOLLOWED_SHOW_ALL = "Show all";

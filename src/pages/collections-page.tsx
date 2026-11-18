@@ -59,6 +59,13 @@ const META_ROW_CLASS = "rdw-collection-meta-row";
 const NAME_CLASS = "rdw-collection-name";
 const CAPTION_CLASS = "rdw-collection-caption";
 const FORM_ERROR_CLASS = "rdw-collection-form-error";
+const FORM_HINT_CLASS = "rdw-collections-form-hint";
+const FIELD_NAME = "name";
+const FIELD_QUERY = "query";
+type FormField = typeof FIELD_NAME | typeof FIELD_QUERY;
+const KIND_HINT_CUSTOM = "Posts you add by hand.";
+const KIND_HINT_DYNAMIC = "A saved search. Check for new shows when it grows.";
+const QUERY_HINT = "Same syntax as the site search.";
 const CARD_SELECTED_CLASS = "rdw-collection-card--selected";
 const CARD_MARK_CLASS = "rdw-collection-card-mark";
 const SELECTED_COUNT_CLASS = "rdw-collections-selected-count";
@@ -90,7 +97,7 @@ const CHECK_RETRY_LABEL = "Retry";
 const NEW_DIALOG_TITLE = "New collection";
 const CREATE_LABEL = "Create";
 const QUERY_FIELD_LABEL = "Query";
-const QUERY_PLACEHOLDER = "tag -tag ( a ~ b )";
+const QUERY_PLACEHOLDER = "cat_ears -comic";
 const TYPE_SEGMENTED_LABEL = "Show";
 const KIND_SEGMENTED_LABEL = "Collection kind";
 const FILTER_ARIA_LABEL = "Filter by name; several names separated by commas";
@@ -429,6 +436,11 @@ export const COLLECTIONS_PAGE_CSS = `
   margin: 0;
   color: var(--rdw-muted);
   font-size: ${String(CAPTION_FONT_PX)}px;
+}
+.${FORM_HINT_CLASS} {
+  margin: 0;
+  color: var(--rdw-muted);
+  font-size: 12px;
 }
 .${FORM_ERROR_CLASS} {
   margin: 0;
@@ -834,12 +846,22 @@ function NewCollectionDialog(props: {
   readonly name: string;
   readonly query: string;
   readonly error: string;
+  /** Which field the error is about: it is shown under that field. */
+  readonly errorField: FormField;
   readonly onClose: () => void;
   readonly onKindChange: (kind: NewKind) => void;
   readonly onNameChange: (name: string) => void;
   readonly onQueryChange: (query: string) => void;
   readonly onSubmit: () => void;
 }): JSX.Element {
+  const failed = props.error.length > 0;
+  const nameFailed = failed && props.errorField === FIELD_NAME;
+  const queryFailed = failed && props.errorField === FIELD_QUERY;
+  const error = (
+    <p id={FORM_ERROR_ID} className={FORM_ERROR_CLASS} role="alert">
+      {props.error}
+    </p>
+  );
   return (
     <Dialog
       variant="content"
@@ -857,6 +879,10 @@ function NewCollectionDialog(props: {
           }
         }}
       />
+      {/* What the two kinds are: the words "Custom" and "Dynamic" alone do not say. */}
+      <p className={FORM_HINT_CLASS}>
+        {props.kind === KIND_DYNAMIC ? KIND_HINT_DYNAMIC : KIND_HINT_CUSTOM}
+      </p>
       <form
         className="rdw-dialog__fields"
         onSubmit={(event) => {
@@ -870,19 +896,18 @@ function NewCollectionDialog(props: {
           value={props.name}
           onChange={props.onNameChange}
         />
+        {nameFailed ? error : null}
         {props.kind === KIND_DYNAMIC ? (
-          <QueryField
-            id={QUERY_FIELD_ID}
-            label={QUERY_FIELD_LABEL}
-            placeholder={QUERY_PLACEHOLDER}
-            value={props.query}
-            onChange={props.onQueryChange}
-          />
-        ) : null}
-        {props.error.length > 0 ? (
-          <p id={FORM_ERROR_ID} className={FORM_ERROR_CLASS} role="alert">
-            {props.error}
-          </p>
+          <>
+            <QueryField
+              id={QUERY_FIELD_ID}
+              label={QUERY_FIELD_LABEL}
+              placeholder={QUERY_PLACEHOLDER}
+              value={props.query}
+              onChange={props.onQueryChange}
+            />
+            {queryFailed ? error : <p className={FORM_HINT_CLASS}>{QUERY_HINT}</p>}
+          </>
         ) : null}
         <div className="rdw-dialog__actions">
           <Button
@@ -893,7 +918,7 @@ function NewCollectionDialog(props: {
           >
             {UI_TEXT.cancel}
           </Button>
-          <Button type="submit" variant="primary" size="s">
+          <Button type="submit" variant="primary" size="s" disabled={nameFailed}>
             {CREATE_LABEL}
           </Button>
         </div>
@@ -912,6 +937,7 @@ export function CollectionsPage(): JSX.Element {
   const [nameDraft, setNameDraft] = useState("");
   const [queryDraft, setQueryDraft] = useState("");
   const [formError, setFormError] = useState("");
+  const [formErrorField, setFormErrorField] = useState<FormField>(FIELD_NAME);
   const [, setRevision] = useState(0);
   const [selecting, setSelecting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<readonly string[]>([]);
@@ -1028,10 +1054,12 @@ export function CollectionsPage(): JSX.Element {
   const submitNew = (): void => {
     const message = nameError(nameDraft, load().collections);
     if (message !== null) {
+      setFormErrorField(FIELD_NAME);
       setFormError(message);
       return;
     }
     if (newKind === KIND_DYNAMIC && isUnfilteredQuery(queryDraft)) {
+      setFormErrorField(FIELD_QUERY);
       setFormError(EMPTY_QUERY_MESSAGE);
       return;
     }
@@ -1219,6 +1247,7 @@ export function CollectionsPage(): JSX.Element {
         name={nameDraft}
         query={queryDraft}
         error={formError}
+        errorField={formErrorField}
         onClose={closeDialog}
         onKindChange={(kind) => {
           setNewKind(kind);
@@ -1226,7 +1255,11 @@ export function CollectionsPage(): JSX.Element {
         }}
         onNameChange={(name) => {
           setNameDraft(name);
-          setFormError("");
+          // A name already taken is said while it is typed: the list of names
+          // is at hand, and there is no reason to wait for Create.
+          const taken = name.trim().length > 0 ? nameError(name, load().collections) : null;
+          setFormErrorField(FIELD_NAME);
+          setFormError(taken ?? "");
         }}
         onQueryChange={(query) => {
           setQueryDraft(query);
