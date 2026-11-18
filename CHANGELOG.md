@@ -2,6 +2,11 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.58.1
+
+- The button of a group's actions is on the tab of the open group, and there it is always seen; the other tabs have none. Shown under the pointer only, it was not found. Its hint is "Group options", and its menu reads "Rename…" and "Delete group…". The right button of the mouse opens the same menu on any group
+- A card carried to a tab is carried as in 0.57.1 again: what the browser shows by the pointer, and the card fading in its place
+
 ## 0.58.0
 
 - Following and Collections: when there are more groups than fit the row, the rest are behind "More (N)" at the end of it. "All" is always the first, "No group" and "New group" the last, and between them as many groups as fit. The row is counted again when the window gets another width and when a group is added. It used to wrap into a second row

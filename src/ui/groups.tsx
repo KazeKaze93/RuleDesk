@@ -24,9 +24,11 @@ export const GROUP_NEW_LABEL = "New group";
 export const GROUP_NEW_ITEM_LABEL = "New group…";
 export const GROUP_MOVE_LABEL = "Move to group";
 const GROUP_ACTIONS_PREFIX = "Actions of the group ";
-const GROUP_RENAME_LABEL = "Rename";
+const GROUP_OPTIONS_LABEL = "Group options";
+const GROUP_RENAME_LABEL = "Rename\u2026";
 const GROUP_RENAME_TITLE = "Rename group";
 const GROUP_DELETE_LABEL = "Delete";
+const GROUP_DELETE_ITEM_LABEL = "Delete group\u2026";
 const GROUP_DELETE_TITLE = "Delete group";
 const GROUP_NAME_LABEL = "Group name";
 const GROUP_CREATE_LABEL = "Create";
@@ -145,9 +147,10 @@ export const GROUPS_CSS = `
   font-size: 12px;
   font-weight: 400;
 }
-/* The button of a group's own actions stands in the gap after its tab, so
-   nothing moves when it comes. It is there under the pointer, for the keyboard
-   and while its menu is open: on every tab at once it is noise. */
+/* The button of a group's own actions stands in the gap after its tab. Only
+   the open group has it, and there it is always seen (the designer,
+   18.11.2026): a group is renamed or deleted when it is open, and one button
+   in the row is no noise. Hidden until the pointer came, it was not found. */
 .${TAB_WRAP_CLASS} .${TAB_MORE_CLASS} {
   position: absolute;
   left: 100%;
@@ -166,9 +169,6 @@ export const GROUPS_CSS = `
 .${TAB_WRAP_CLASS} .${TAB_MORE_CLASS}:hover,
 .${TAB_WRAP_CLASS} .${TAB_MORE_CLASS}[aria-expanded="true"] {
   color: var(--rdw-text);
-}
-.${TAB_WRAP_CLASS}:not(:hover):not(:focus-within) .${TAB_MORE_CLASS}:not([aria-expanded="true"]) {
-  opacity: 0;
 }
 /* Every group once more, unseen: by these it is counted how many fit the row. */
 .${TAB_MEASURE_CLASS} {
@@ -345,22 +345,6 @@ const NAME_CSS = `
   gap: 8px;
 }
 `;
-
-/**
- * What goes with the pointer while a card is carried is the card itself, whole.
- * Left to the browser it was the one picture the drag began on.
- */
-export function carryWholeCard(event: DragEvent): void {
-  const card = event.currentTarget;
-  // No transfer in an event made by hand, as in the tests.
-  const transfer = event.dataTransfer ?? undefined;
-  if (!(card instanceof HTMLElement) || transfer === undefined) {
-    return;
-  }
-  const box = card.getBoundingClientRect();
-  transfer.effectAllowed = "move";
-  transfer.setDragImage(card, event.clientX - box.left, event.clientY - box.top);
-}
 
 export type GroupCount = {
   readonly name: string;
@@ -760,7 +744,7 @@ export function GroupTabs(props: GroupTabsProps): JSX.Element {
           props.onDelete(name);
         }}
       >
-        <span>{GROUP_DELETE_LABEL}</span>
+        <span>{GROUP_DELETE_ITEM_LABEL}</span>
       </button>
     </Popover>
   );
@@ -809,19 +793,21 @@ export function GroupTabs(props: GroupTabsProps): JSX.Element {
           {...landProps(group.name)}
         >
           {tab(group.name, group.name, group.count)}
-          <IconButton
-            className={TAB_MORE_CLASS}
-            label={`${GROUP_ACTIONS_PREFIX}${group.name}`}
-            menuOpen={menu?.name === group.name}
-            onClick={(event) => {
-              const anchor = event.currentTarget;
-              setMenu((current) =>
-                current?.name === group.name ? null : { name: group.name, anchor },
-              );
-            }}
-          >
-            <IconDots size={ICON_PX} />
-          </IconButton>
+          {props.value === group.name ? (
+            <IconButton
+              className={TAB_MORE_CLASS}
+              label={GROUP_OPTIONS_LABEL}
+              menuOpen={menu?.name === group.name}
+              onClick={(event) => {
+                const anchor = event.currentTarget;
+                setMenu((current) =>
+                  current?.name === group.name ? null : { name: group.name, anchor },
+                );
+              }}
+            >
+              <IconDots size={ICON_PX} />
+            </IconButton>
+          ) : null}
           {menu?.name === group.name ? tabMenu(group.name) : null}
         </span>
       ))}

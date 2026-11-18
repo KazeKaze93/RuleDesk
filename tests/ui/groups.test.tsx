@@ -208,29 +208,33 @@ describe("groups", () => {
     const host = mount(
       <GroupTabs
         total={3}
-        groups={[{ name: "Artists", count: 2 }]}
-        value={GROUP_ALL}
+        groups={[
+          { name: "Artists", count: 2 },
+          { name: "Painters", count: 0 },
+        ]}
+        value="Artists"
         onChange={() => undefined}
         onNew={() => undefined}
         onRename={onRename}
         onDelete={onDelete}
       />,
     );
-    const more = host.querySelector('button[aria-label="Actions of the group Artists"]');
+    // Only the open group has the button, and there it is always seen.
+    expect(host.querySelectorAll('button[aria-label="Group options"]')).toHaveLength(1);
+    const more = host.querySelector('[data-group="Artists"] button[aria-label="Group options"]');
     expect(more).toBeInstanceOf(HTMLButtonElement);
-    // The button comes under the pointer and for the keyboard, in the gap after the tab.
-    expect(GROUPS_CSS).toContain(":not(:hover):not(:focus-within) .rdw-groups__more");
+    expect(GROUPS_CSS).not.toContain("opacity: 0;");
     if (more instanceof HTMLButtonElement) {
       fireClick(more);
     }
     await flushEffects();
-    fireClick(byText(document, '[role="menuitem"]', "Rename"));
+    fireClick(byText(document, '[role="menuitem"]', "Rename\u2026"));
     expect(onRename).toHaveBeenCalledWith("Artists");
     if (more instanceof HTMLButtonElement) {
       fireClick(more);
     }
     await flushEffects();
-    fireClick(byText(document, '[role="menuitem"]', "Delete"));
+    fireClick(byText(document, '[role="menuitem"]', "Delete group\u2026"));
     expect(onDelete).toHaveBeenCalledWith("Artists");
   });
 
