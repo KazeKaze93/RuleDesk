@@ -170,7 +170,7 @@ Two kinds, one page:
 | Post count | Exact | Exact for a single tag; a lower bound with "+" for several |
 
 - A card shows a cover, the name, the kind and the count. A dynamic one shows "saved search" until it has been opened once
-- Toolbar: All / Custom / Dynamic, a filter by name, sort, Tiles / List, Select (delete several, move several to a group), **Check for new**, New
+- Toolbar: All / Custom / Dynamic, a filter by name, sort ("Newest first", "Oldest first", "Name", "Most posts"), Tiles / List, Select (delete several, move several to a group), **Check for new**, New
 - **Groups**, as on Following and apart from its groups: tabs under the toolbar, "Move to group" on a card and in the bar of a selection, a card dragged onto a tab
 - The cross in the corner of a card, shown under the pointer, deletes the collection after a confirmation
 - **Check for new** asks the site for the first page of every dynamic collection, one at a time with a pause, and marks those that have posts newer than when they were last opened ("Dynamic · new"). It also refreshes covers and counts

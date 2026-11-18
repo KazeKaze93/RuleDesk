@@ -153,6 +153,12 @@ const EMPTY_DESCRIPTION =
   "Custom collections are posts you pick. Dynamic collections are saved searches.";
 const FILTER_EMPTY_TITLE = "No matching collections";
 const FILTER_EMPTY_DESCRIPTION = "Nothing matches this filter.";
+const CLEAR_FILTER_LABEL = "Clear filter";
+
+/** "No collections match “hdfh”.": said once, with what was typed. */
+export function noCollectionsMatch(query: string): string {
+  return `No collections match \u201c${query.trim()}\u201d.`;
+}
 const EMPTY_NAME_MESSAGE = "Enter a name.";
 const EMPTY_QUERY_MESSAGE = "Enter a query.";
 const DUPLICATE_NAME_MESSAGE = "A collection with this name already exists.";
@@ -606,19 +612,29 @@ function visibleCollections(
 }
 
 export const SORT_CREATED = "created";
+export const SORT_NEWEST = "newest";
 export const SORT_NAME = "name";
 export const SORT_SIZE = "size";
-export type CollectionSort = typeof SORT_CREATED | typeof SORT_NAME | typeof SORT_SIZE;
+export type CollectionSort =
+  | typeof SORT_CREATED
+  | typeof SORT_NEWEST
+  | typeof SORT_NAME
+  | typeof SORT_SIZE;
 const SORT_STATE_ID = "collections-sort";
 const SORT_LABEL = "Sort";
 const SORT_OPTIONS: readonly SelectOption[] = [
-  { value: SORT_CREATED, label: "As created" },
-  { value: SORT_NAME, label: "By name" },
-  { value: SORT_SIZE, label: "By size" },
+  // The words say the direction, and "size" was read as the size of files
+  // (the designer, 17.11.2026).
+  { value: SORT_NEWEST, label: "Newest first" },
+  { value: SORT_CREATED, label: "Oldest first" },
+  { value: SORT_NAME, label: "Name" },
+  { value: SORT_SIZE, label: "Most posts" },
 ];
 
 function isCollectionSort(value: unknown): value is CollectionSort {
-  return value === SORT_CREATED || value === SORT_NAME || value === SORT_SIZE;
+  return (
+    value === SORT_CREATED || value === SORT_NEWEST || value === SORT_NAME || value === SORT_SIZE
+  );
 }
 
 function readCollectionSort(): CollectionSort {
@@ -633,7 +649,10 @@ function collectionSize(collection: Collection): number {
     : (collection.postCount?.value ?? 0);
 }
 
-/** "As created" keeps the stored order; the other two break ties by name. */
+/**
+ * "Oldest first" keeps the stored order, which is the order of making, and
+ * "Newest first" turns it over; the other two break ties by name.
+ */
 export function sortCollections(
   collections: readonly Collection[],
   sort: CollectionSort,
@@ -641,6 +660,9 @@ export function sortCollections(
   const sorted = [...collections];
   if (sort === SORT_CREATED) {
     return sorted;
+  }
+  if (sort === SORT_NEWEST) {
+    return sorted.reverse();
   }
   const byName = (a: Collection, b: Collection): number =>
     a.name.localeCompare(b.name, undefined, { sensitivity: "base", numeric: true });
@@ -1146,7 +1168,9 @@ export function CollectionsPage(): JSX.Element {
   const emptyCopy =
     collections.length === 0
       ? { title: EMPTY_TITLE, description: EMPTY_DESCRIPTION }
-      : { title: FILTER_EMPTY_TITLE, description: FILTER_EMPTY_DESCRIPTION };
+      : nameQuery.trim().length > 0
+        ? { title: noCollectionsMatch(nameQuery), description: "" }
+        : { title: FILTER_EMPTY_TITLE, description: FILTER_EMPTY_DESCRIPTION };
 
   // Only cards that are on screen count: a filter never hides a doomed card.
   const selectedVisible = visible.filter((collection) =>
@@ -1385,7 +1409,25 @@ export function CollectionsPage(): JSX.Element {
         ) : null}
       </header>
       {visible.length === 0 ? (
-        <EmptyState title={emptyCopy.title} description={emptyCopy.description} />
+        <EmptyState
+          title={emptyCopy.title}
+          {...(emptyCopy.description.length > 0 ? { description: emptyCopy.description } : {})}
+          {...(collections.length > 0 && nameQuery.trim().length > 0
+            ? {
+                // The way out of a filter that found nothing is beside the words.
+                action: (
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setNameQuery("");
+                    }}
+                  >
+                    {CLEAR_FILTER_LABEL}
+                  </Button>
+                ),
+              }
+            : {})}
+        />
       ) : (
         <div
           className={view === VIEW_LIST ? `${GRID_CLASS} ${GRID_LIST_CLASS}` : GRID_CLASS}

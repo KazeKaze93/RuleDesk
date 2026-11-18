@@ -27,7 +27,7 @@ import {
   startGridSelect,
   stopGridSelect,
 } from "./grid-select";
-import { isDownloadBusy, startDownload } from "./queue";
+import { isDownloadBusy, startDownload, type DownloadScope } from "./queue";
 import { useEscape } from "../../ui/use-escape";
 
 /**
@@ -50,7 +50,9 @@ export const SELECT_NOTE_CLASS = "rdw-select-note";
 const LABEL_DOWNLOAD_SELECTED = "Download selected";
 const DIALOG_TITLE = "Download results";
 const CONFIRM_LABEL = "Download";
+/** Names the folder only; the panel says "N selected posts" (see SELECTION_SCOPE). */
 const SELECTION_LABEL_SUFFIX = " (selected)";
+const SELECTION_SCOPE: DownloadScope = "selection";
 const UNNAMED_SELECTION = "selected posts";
 const CONFIRM_PREFIX = "Download every post of “";
 const CONFIRM_SUFFIX =
@@ -157,6 +159,7 @@ export function DownloadControls(props: DownloadControlsProps = {}): JSX.Element
                 void startDownload(
                   label.length > 0 ? `${label}${SELECTION_LABEL_SUFFIX}` : UNNAMED_SELECTION,
                   { kind: "ids", ids },
+                  SELECTION_SCOPE,
                 );
               }
             }}

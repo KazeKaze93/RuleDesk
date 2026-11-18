@@ -54,6 +54,8 @@ export function IconButton(props: IconButtonProps): JSX.Element {
         type="button"
         className={className}
         aria-label={props.label}
+        // An icon has no words: its name is the hint under the pointer too.
+        title={props.label}
         aria-pressed={props.pressed}
         aria-haspopup={props.menuOpen === undefined ? undefined : "menu"}
         aria-expanded={props.menuOpen}

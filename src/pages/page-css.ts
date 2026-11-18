@@ -35,7 +35,14 @@ const KIT_TAB_CLASS = "rdw-tabs__tab";
 /** Active tab underline width — keep in sync with kit/tabs.tsx. */
 const TAB_UNDERLINE_PX = 2;
 
-const SITE_THEME_SELECTOR = `[${RDW_THEME_ATTR}="${APPEARANCE_THEME_SITE}"]`;
+/** A description under a setting: large enough to read at a glance. */
+const SETTINGS_CAPTION_FONT_PX = 12;
+/** A list in a settings row; the same width as the lists of Appearance. */
+export const SETTINGS_SELECT_WIDTH_PX = 160;
+/** A number in a settings row: room for four digits. */
+export const SETTINGS_NUMBER_WIDTH_PX = 80;
+
+const SITE_THEME_SELECTOR =`[${RDW_THEME_ATTR}="${APPEARANCE_THEME_SITE}"]`;
 const SITE_DARK_THEME_SELECTOR = `[${RDW_THEME_ATTR}="${APPEARANCE_THEME_SITE_DARK}"]`;
 
 /**
@@ -138,9 +145,14 @@ export const PAGE_CONTENT_CSS = `
 .${PANEL_UI_CLASS.settingsCaption} {
   flex: 1 0 100%;
   margin: 0;
-  font-size: 11px;
-  line-height: 1.35;
+  font-size: ${String(SETTINGS_CAPTION_FONT_PX)}px;
+  line-height: 1.4;
   color: var(--rdw-muted);
+}
+/* Muted fails AA on the site's own themes (see the section label below). */
+:host-context(${SITE_THEME_SELECTOR}) .${PANEL_UI_CLASS.settingsCaption},
+:host-context(${SITE_DARK_THEME_SELECTOR}) .${PANEL_UI_CLASS.settingsCaption} {
+  color: var(--rdw-text);
 }
 /*
  * Card vs page: surface not darker than page; Site default card = --c-bg,
@@ -172,9 +184,37 @@ export const PAGE_CONTENT_CSS = `
   justify-content: space-between;
   flex-direction: row-reverse;
 }
+/* A list and a number read as a switch does: the name on the left, the
+   control on the right, as wide as what it holds. */
 .${PANEL_UI_CLASS.settingsRow} .rdw-select,
 .${PANEL_UI_CLASS.settingsRow} .rdw-num {
   width: 100%;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+/* The name of a setting is not a heading: no capitals, the text of a row. */
+.${PANEL_UI_CLASS.settingsRow} .rdw-select__label,
+.${PANEL_UI_CLASS.settingsRow} .rdw-num__label {
+  font: 400 12.5px var(--rdw-font);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--rdw-text);
+}
+.${PANEL_UI_CLASS.settingsRow} .rdw-select__trigger {
+  flex: none;
+  width: ${String(SETTINGS_SELECT_WIDTH_PX)}px;
+}
+/* The open list keeps under its trigger, not under the whole row. */
+.${PANEL_UI_CLASS.settingsRow} .${KIT_SELECT_LIST_CLASS} {
+  left: auto;
+  width: ${String(SETTINGS_SELECT_WIDTH_PX)}px;
+  box-sizing: border-box;
+}
+.${PANEL_UI_CLASS.settingsRow} .rdw-num__input {
+  flex: none;
+  width: ${String(SETTINGS_NUMBER_WIDTH_PX)}px;
 }
 .${CSS_CLASS.list} {
   list-style: none;

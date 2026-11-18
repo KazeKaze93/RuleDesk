@@ -197,7 +197,7 @@ describe("createCollectionsPage", () => {
       "All",
       "Custom",
       "Dynamic",
-      "As created",
+      "Oldest first",
       "Show",
       "Hide",
       "Tiles",
@@ -507,8 +507,11 @@ describe("createCollectionsPage", () => {
     expect(cardByName(root, "Zebra")).toBeInstanceOf(HTMLAnchorElement);
 
     setInput(inputById(root, "rdw-collections-filter"), "missing");
-    expect(root.textContent).toContain("No matching collections");
-    expect(root.textContent).toContain("Nothing matches this filter.");
+    expect(root.textContent).toContain("No collections match “missing”.");
+    expect(root.textContent).not.toContain("Nothing matches this filter.");
+    click(findButton(root, "Clear filter") ?? root);
+    expect(root.querySelectorAll("a.rdw-collection-card")).toHaveLength(2);
+    setInput(inputById(root, "rdw-collections-filter"), "missing");
     expect(root.textContent).not.toContain("No collections yet");
   });
 

@@ -211,7 +211,78 @@ describe("createAppearanceSection", () => {
     ).toBe(true);
   });
 
-  it("reset to defaults restores light custom base", async () => {
+  it("shows the name of the background in one line over the field, and a small copy of the picture", async () => {
+    const dataUrl = "data:image/jpeg;base64,thumb";
+    loadBackgroundMock.mockResolvedValue(dataUrl);
+    setAppearance({
+      theme: "custom",
+      custom: { base: "light", backgroundDim: 0 },
+    });
+
+    host = createAppearanceSection();
+    document.body.append(host);
+    expect(host.querySelector(".rdw-appearance__bg-thumb")).toBeNull();
+    for (let i = 0; i < 20 && host.querySelector(".rdw-appearance__bg-thumb") === null; i += 1) {
+      await flushEffects();
+    }
+
+    const thumb = host.querySelector(".rdw-appearance__bg-thumb");
+    expect(thumb?.getAttribute("src")).toBe(dataUrl);
+    const field = thumb?.parentElement;
+    expect(field?.querySelector("input")).not.toBeNull();
+
+    const row = host.querySelector(".rdw-appearance__row--stack");
+    expect(row?.firstElementChild?.textContent).toBe(
+      "Background imageFrom a link or a file",
+    );
+    expect(APPEARANCE_SECTION_CSS).toMatch(
+      /\.rdw-appearance__row--stack\s*\{[^}]*flex-direction:\s*column/,
+    );
+  });
+
+  it("the chosen theme has a tick in the open list", () => {
+    host = createAppearanceSection();
+    document.body.append(host);
+    fireClick(selectTriggers(host)[0]!);
+    const ticked = Array.from(
+      host.querySelectorAll<HTMLElement>(".rdw-select__option"),
+    ).filter((option) => option.querySelector(".rdw-select__tick") !== null);
+    expect(ticked.map((option) => option.textContent)).toEqual(["Light"]);
+  });
+
+  it("Reset theme asks first, and Cancel keeps the theme", async () => {
+    host = createAppearanceSection();
+    document.body.append(host);
+
+    fireClick(selectTriggers(host)[0]!);
+    chooseSelectOption(host, "Custom");
+    await flushEffects();
+    const darkBase = Array.from(
+      host.querySelectorAll<HTMLButtonElement>('[role="radio"]'),
+    ).find((button) => button.textContent === "Dark");
+    fireClick(darkBase!);
+    await flushEffects();
+
+    const findButton = (label: string): HTMLButtonElement | undefined =>
+      Array.from(host?.querySelectorAll("button") ?? []).find(
+        (button) => button.textContent === label,
+      );
+    expect(findButton("Reset to defaults")).toBeUndefined();
+    fireClick(findButton("Reset theme")!);
+    await flushEffects();
+
+    const dialog = host.querySelector('[role="dialog"]');
+    expect(dialog?.textContent).toContain("Reset theme?");
+    expect(getAppearance().custom?.base).toBe("dark");
+
+    fireClick(findButton("Cancel")!);
+    await flushEffects();
+    expect(host.querySelector('[role="dialog"]')).toBeNull();
+    expect(getAppearance().custom?.base).toBe("dark");
+    expect(clearBackgroundMock).not.toHaveBeenCalled();
+  });
+
+  it("reset theme restores light custom base once confirmed", async () => {
     host = createAppearanceSection();
     document.body.append(host);
 
@@ -227,10 +298,16 @@ describe("createAppearanceSection", () => {
     expect(getAppearance().custom?.base).toBe("dark");
 
     const reset = Array.from(host.querySelectorAll("button")).find(
-      (button) => button.textContent === "Reset to defaults",
+      (button) => button.textContent === "Reset theme",
     );
     expect(reset).toBeTruthy();
     fireClick(reset!);
+    await flushEffects();
+    const confirm = Array.from(
+      host.querySelectorAll('[role="dialog"] button'),
+    ).find((button) => button.textContent === "Reset");
+    expect(confirm).toBeTruthy();
+    fireClick(confirm!);
     await flushEffects();
 
     expect(getAppearance().custom?.base).toBe("light");

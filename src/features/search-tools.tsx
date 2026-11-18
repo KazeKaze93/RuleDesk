@@ -256,15 +256,19 @@ const FEATURE_CSS = [
   "  gap: 8px;",
   "  align-items: start;",
   "}",
+  // Always a column of full-width buttons: in a row the two buttons of an
+  // empty search became four stacked ones as soon as a query was typed, and
+  // the same panel changed its layout with the number of buttons.
   `body.${BODY_CLASS} .${FOOT_CLASS} {`,
   "  display: flex;",
-  "  flex-wrap: wrap;",
+  "  flex-direction: column;",
+  "  align-items: stretch;",
   "  gap: 6px;",
   "  border-top: 1px solid var(--rdw-border);",
   "  padding-top: 10px;",
   "}",
   `body.${BODY_CLASS} .${FOOT_CLASS} > button {`,
-  "  flex: 1 1 auto;",
+  "  width: 100%;",
   "  white-space: nowrap;",
   "}",
   // The site's search field, dressed like the script's own (site-search-tools.tsx).
@@ -325,7 +329,6 @@ const FEATURE_CSS = [
   "  pointer-events: none;",
   "}",
   `body.${BODY_CLASS} .${FOOT_CLASS} > .${SELECT_NOTE_CLASS} {`,
-  "  flex: 1 1 100%;",
   "  font: 12px/1.4 var(--rdw-font);",
   "  color: var(--rdw-muted);",
   "}",

@@ -4,6 +4,7 @@ import { buildLiveEntry, readPostPageTags } from "../../src/features/favorites-i
 import { shuffleBySeed, topFavoriteTags } from "../../src/features/favorites-search";
 import {
   SORT_CREATED,
+  SORT_NEWEST,
   SORT_NAME,
   SORT_SIZE,
   sortCollections,
@@ -86,6 +87,7 @@ describe("collections: sorting", () => {
 
   it("keeps the stored order, or sorts by name or by size", () => {
     expect(ids(sortCollections(collections, SORT_CREATED))).toEqual(["a", "b", "c", "d"]);
+    expect(ids(sortCollections(collections, SORT_NEWEST))).toEqual(["d", "c", "b", "a"]);
     // Names ignore case and compare numbers as numbers.
     expect(ids(sortCollections(collections, SORT_NAME))).toEqual(["b", "d", "c", "a"]);
     // A dynamic collection whose count is unknown counts as empty; ties go by name.

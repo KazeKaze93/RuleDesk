@@ -206,7 +206,7 @@ function QueueStep(props: {
   const className = `${CLASS_NAV} ${CLASS_FOCUSABLE}`;
   if (props.href === null) {
     return (
-      <button type="button" className={className} disabled aria-label={props.label}>
+      <button type="button" className={className} disabled aria-label={props.label} title={props.label}>
         {props.glyph}
       </button>
     );
@@ -217,6 +217,7 @@ function QueueStep(props: {
       className={className}
       href={href}
       aria-label={props.label}
+      title={props.label}
       onClick={(event) => {
         if (!isPlainPrimaryClick(event)) {
           return;

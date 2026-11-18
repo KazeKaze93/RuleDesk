@@ -157,6 +157,8 @@ describe("download manager", () => {
     await vi.advanceTimersByTimeAsync(LONG_MS);
 
     expect(getDownloadState().phase).toBe("paused");
+    // Paused by the user: there is no reason to give.
+    expect(getDownloadState().message).toBe("");
     expect(names).toHaveLength(1);
     expect(memory.get(DOWNLOADS_POSITION_KEY)).toEqual({ next: 1, failed: [] });
 
@@ -181,7 +183,12 @@ describe("download manager", () => {
     memory.set(DOWNLOADS_POSITION_KEY, { next: 1, failed: [] });
 
     restoreDownloads();
-    expect(getDownloadState()).toMatchObject({ phase: "paused", total: 2, done: 1 });
+    expect(getDownloadState()).toMatchObject({
+      phase: "paused",
+      total: 2,
+      done: 1,
+      message: "started in another tab or session",
+    });
     expect(names).toEqual([]);
 
     resetDownloadsState();
@@ -190,6 +197,42 @@ describe("download manager", () => {
     await vi.advanceTimersByTimeAsync(FILE_INTERVAL_MS + LONG_MS);
     expect(names).toEqual(["Pics/rule34-2.png"]);
     expect(getDownloadState().phase).toBe("done");
+  });
+
+  it("knows how many posts a selection has, while looking them up and after a reload", async () => {
+    setApiCredentials("42", "key");
+    stubApi([3]);
+    stubDownload();
+
+    const run = startDownload("all (selected)", { kind: "ids", ids: [3, 2] }, "selection");
+    expect(getDownloadState()).toMatchObject({ phase: "collecting", selected: 2, expected: 2 });
+    await vi.advanceTimersByTimeAsync(LONG_MS);
+    await run;
+    expect(getDownloadState()).toMatchObject({ phase: "done", selected: 2, expected: null });
+
+    resetDownloadsState();
+    memory.set(DOWNLOADS_JOB_KEY, {
+      label: "all (selected)",
+      folder: "all (selected)",
+      selected: 2,
+      files: [{ postId: 3, url: "https://wimg.rule34.xxx//images/1/3.png" }],
+    });
+    restoreDownloads();
+    expect(getDownloadState()).toMatchObject({ phase: "paused", selected: 2 });
+  });
+
+  it("takes a list of ids that is not a selection, and a search, as the whole of something", async () => {
+    setApiCredentials("42", "key");
+    stubApi([3]);
+    stubDownload();
+
+    void startDownload("Pics", { kind: "ids", ids: [3] });
+    expect(getDownloadState()).toMatchObject({ phase: "collecting", selected: null, expected: 1 });
+    cancelDownload();
+
+    void startDownload("Pics", { kind: "query", tags: "cat" });
+    expect(getDownloadState()).toMatchObject({ phase: "collecting", selected: null, expected: null });
+    cancelDownload();
   });
 
   it("says so when the API finds no files, instead of finishing with nothing", async () => {

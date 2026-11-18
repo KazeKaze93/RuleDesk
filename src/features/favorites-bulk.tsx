@@ -1052,7 +1052,8 @@ function FavoritesBulkBar(props: FavoritesBulkBarProps): JSX.Element | null {
                 const ids = selectedPostsOnPage(selectedRef.current).map((post) => post.id);
                 resetToIdle();
                 if (ids.length > 0 && !isDownloadBusy()) {
-                  void startDownload(DOWNLOAD_SELECTED_JOB_NAME, { kind: "ids", ids });
+                  // A selection: the panel says "Downloading N selected posts".
+                  void startDownload(DOWNLOAD_SELECTED_JOB_NAME, { kind: "ids", ids }, "selection");
                 }
               }}
             >

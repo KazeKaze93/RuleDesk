@@ -4,7 +4,14 @@ import { Fragment, render as preactRender } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 
 import { UI_TEXT } from "../config/constants";
-import { FEATURES } from "../features/registry";
+import {
+  FEATURES,
+  SETTINGS_GROUP,
+  SETTINGS_GROUPS,
+  featureSettingsGroup,
+  type SettingsGroupId,
+} from "../features/registry";
+import type { Feature } from "../features/types";
 import {
   applyCssOnlyFeatureChoice,
   applyCssOnlyFeatureEnabled,
@@ -29,7 +36,7 @@ import {
 } from "../storage/store";
 import { AppearanceSection } from "../ui/appearance-section";
 import { setGridFavButtonsVisible } from "../ui/cards";
-import { Card, NumberField, OverlayInPlace, Select, Switch } from "../ui/kit";
+import { Card, NumberField, OverlayInPlace, SectionLabel, Select, Switch } from "../ui/kit";
 import { IconChevronDown, IconChevronRight } from "../ui/kit/icons";
 import { BlacklistSection } from "./blacklist-section";
 import {
@@ -64,6 +71,11 @@ const AI_EVERYWHERE_LABEL = "Hide AI posts everywhere";
 const AI_EVERYWHERE_CAPTION =
   "When off, Posts, Feed, Following, Collections and Favorites each keep their own Show / Hide choice.";
 
+const TWEAKS_CAPTION = "Off: the site looks as without RuleDesk";
+/** The name without the hint that used to be in it; the hint is a line under it. */
+const UPDATES_GROUP_SIZE_LABEL = "Artists per search";
+const UPDATES_GROUP_SIZE_HINT = "0 = 400";
+
 /** Grid density is owned by Appearance; omit from Page module list. */
 const PAGE_FEATURE_SKIP = new Set(["grid-density"]);
 
@@ -83,6 +95,12 @@ const SECTION_CLASS = "rdw-settings-section";
 const SECTION_HEADER_CLASS = "rdw-settings-section-header";
 const SECTION_BODY_CLASS = "rdw-settings-section-body";
 const SECTION_ID_ATTR = "data-settings-section";
+/** A group of settings inside the Page block, under its own subheading. */
+const GROUP_CLASS = "rdw-settings-subgroup";
+const GROUP_TITLE_CLASS = "rdw-settings-subgroup-title";
+const GROUP_ID_ATTR = "data-settings-group";
+/** The row of the switch all the page tweaks depend on. */
+const MASTER_ROW_CLASS = "rdw-settings-row--master";
 const CHEVRON_PX = 14;
 const SECTION_SCROLL_GAP_PX = 12;
 
@@ -132,6 +150,25 @@ export const SETTINGS_SECTION_CSS = `
 }
 .${SECTION_BODY_CLASS}[hidden] {
   display: none;
+}
+.${GROUP_CLASS} {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+/* A subheading is not a second block title: the size and the colour of a row's
+   text, heavier, and no capitals. */
+.${GROUP_TITLE_CLASS}.rdw-section-label {
+  margin: 0;
+  padding: 4px 8px;
+  font: 600 12.5px var(--rdw-font);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--rdw-text);
+}
+/* The switch the others depend on is told from them by its heavier name. */
+.${MASTER_ROW_CLASS} .rdw-switch__label {
+  font-weight: 600;
 }
 /* A block the page is opened at stops under the header held at the top. */
 .${SECTION_CLASS} {
@@ -190,73 +227,78 @@ function SettingsSection(props: {
   );
 }
 
-function FeatureModules(): JSX.Element {
+/** The switches of the features of one group, each with its list of options. */
+function FeatureRows(props: {
+  readonly features: readonly Feature[];
+  /** True while the master switch is off: the rows show what is saved and take no clicks. */
+  readonly disabled: boolean;
+}): JSX.Element {
   const [, bump] = useState(0);
   const refresh = (): void => {
     bump((value) => value + 1);
   };
 
   return (
-    <div className={PANEL_UI_CLASS.settingsGroup}>
-      {FEATURES.filter((feature) => !PAGE_FEATURE_SKIP.has(feature.id)).map(
-        (feature) => {
-          const label = featurePanelLabel(feature.id, feature.label);
-          const choice = feature.choice;
-          return (
-            <Fragment key={feature.id}>
-              <div className={PANEL_UI_CLASS.settingsRow}>
-                <Switch
-                  id={`${FEATURE_CHECKBOX_ID_PREFIX}${feature.id}`}
-                  label={label}
-                  checked={isFeatureEnabled(feature.id)}
-                  onChange={(checked) => {
-                    setFeatureEnabled(feature.id, checked);
-                    if (feature.resetStateOnToggle === true) {
-                      clearFeatureState(feature.id);
-                    }
+    <>
+      {props.features.map((feature) => {
+        const label = featurePanelLabel(feature.id, feature.label);
+        const choice = feature.choice;
+        return (
+          <Fragment key={feature.id}>
+            <div className={PANEL_UI_CLASS.settingsRow}>
+              <Switch
+                id={`${FEATURE_CHECKBOX_ID_PREFIX}${feature.id}`}
+                label={label}
+                checked={isFeatureEnabled(feature.id)}
+                disabled={props.disabled}
+                onChange={(checked) => {
+                  setFeatureEnabled(feature.id, checked);
+                  if (feature.resetStateOnToggle === true) {
+                    clearFeatureState(feature.id);
+                  }
+                  if (feature.cssOnly === true) {
+                    applyCssOnlyFeatureEnabled(feature.id, checked);
+                    refresh();
+                    return;
+                  }
+                  window.location.reload();
+                }}
+              />
+              {feature.settingsCaption !== undefined ? (
+                <p className={PANEL_UI_CLASS.settingsCaption}>
+                  {feature.settingsCaption}
+                </p>
+              ) : null}
+            </div>
+            {choice !== undefined ? (
+              <div
+                className={`${PANEL_UI_CLASS.settingsRow} ${PANEL_UI_CLASS.settingsRowSub}`}
+                id={`${FEATURE_CHOICE_ID_PREFIX}${feature.id}`}
+              >
+                <Select
+                  label={choice.label ?? label}
+                  disabled={props.disabled}
+                  options={choice.options.map((option) => ({
+                    value: option.value,
+                    label: option.label,
+                  }))}
+                  value={getFeatureChoice(feature.id)}
+                  onChange={(value) => {
+                    setFeatureChoiceValue(feature.id, value);
                     if (feature.cssOnly === true) {
-                      applyCssOnlyFeatureEnabled(feature.id, checked);
+                      applyCssOnlyFeatureChoice(feature.id, value);
                       refresh();
                       return;
                     }
                     window.location.reload();
                   }}
                 />
-                {feature.settingsCaption !== undefined ? (
-                  <p className={PANEL_UI_CLASS.settingsCaption}>
-                    {feature.settingsCaption}
-                  </p>
-                ) : null}
               </div>
-              {choice !== undefined ? (
-                <div
-                  className={`${PANEL_UI_CLASS.settingsRow} ${PANEL_UI_CLASS.settingsRowSub}`}
-                  id={`${FEATURE_CHOICE_ID_PREFIX}${feature.id}`}
-                >
-                  <Select
-                    label={choice.label ?? label}
-                    options={choice.options.map((option) => ({
-                      value: option.value,
-                      label: option.label,
-                    }))}
-                    value={getFeatureChoice(feature.id)}
-                    onChange={(value) => {
-                      setFeatureChoiceValue(feature.id, value);
-                      if (feature.cssOnly === true) {
-                        applyCssOnlyFeatureChoice(feature.id, value);
-                        refresh();
-                        return;
-                      }
-                      window.location.reload();
-                    }}
-                  />
-                </div>
-              ) : null}
-            </Fragment>
-          );
-        },
-      )}
-    </div>
+            ) : null}
+          </Fragment>
+        );
+      })}
+    </>
   );
 }
 
@@ -310,6 +352,88 @@ export function SettingsPage(): JSX.Element {
     }
   }, [focused]);
 
+  // Settings that are not features with a module. They work whether or not
+  // the page tweaks are on, so the master switch does not disable them.
+  const extraRows: Partial<Record<SettingsGroupId, JSX.Element>> = {
+    [SETTINGS_GROUP.header]: (
+      <>
+        <div className={PANEL_UI_CLASS.settingsRow}>
+          <Switch
+            id={STATS_MENU_SWITCH_ID}
+            label={STATS_MENU_SETTING_LABEL}
+            checked={statsMenu}
+            onChange={(checked) => {
+              setFeatureEnabled(STATS_MENU_SETTING_ID, checked);
+              setStatsMenu(checked);
+              // The menu is on this very page: add or remove the item at once.
+              installSiteMenu();
+            }}
+          />
+        </div>
+        <div className={PANEL_UI_CLASS.settingsRow}>
+          <Switch
+            id={STICKY_HEADER_SWITCH_ID}
+            label={STICKY_HEADER_SETTING_LABEL}
+            checked={stickyHeader}
+            onChange={(checked) => {
+              setFeatureEnabled(STICKY_HEADER_SETTING_ID, checked);
+              setStickyHeader(checked);
+              applyStickyHeader(checked);
+            }}
+          />
+        </div>
+      </>
+    ),
+    [SETTINGS_GROUP.feed]: (
+      <div className={PANEL_UI_CLASS.settingsRow}>
+        <NumberField
+          id={UPDATES_GROUP_SIZE_ID}
+          label={UPDATES_GROUP_SIZE_LABEL}
+          value={updatesGroup}
+          min={0}
+          step={1}
+          onChange={(value) => {
+            const next = value ?? 0;
+            setUpdatesGroupSize(next);
+            setUpdatesGroup(getUpdatesGroupSize());
+          }}
+        />
+        <p className={PANEL_UI_CLASS.settingsCaption}>{UPDATES_GROUP_SIZE_HINT}</p>
+      </div>
+    ),
+    [SETTINGS_GROUP.ai]: (
+      <div className={PANEL_UI_CLASS.settingsRow}>
+        <Switch
+          id={AI_EVERYWHERE_SWITCH_ID}
+          label={AI_EVERYWHERE_LABEL}
+          checked={aiEverywhere}
+          onChange={(checked) => {
+            // The site's switch is put right on the way to the next list.
+            setAiHiddenEverywhere(checked);
+            setAiEverywhere(checked);
+          }}
+        />
+        <p className={PANEL_UI_CLASS.settingsCaption}>{AI_EVERYWHERE_CAPTION}</p>
+      </div>
+    ),
+    [SETTINGS_GROUP.collections]: (
+      <div className={PANEL_UI_CLASS.settingsRow}>
+        <NumberField
+          id={PLAYLIST_CHUNK_SIZE_ID}
+          label={UI_TEXT.playlistChunkSizeLabel}
+          value={playlistChunk}
+          min={1}
+          step={1}
+          onChange={(value) => {
+            const next = value ?? 0;
+            setPlaylistChunkSize(next);
+            setPlaylistChunk(getPlaylistChunkSize());
+          }}
+        />
+      </div>
+    ),
+  };
+
   return (
     <div className={PANEL_UI_CLASS.scrollRegion} ref={rootRef}>
       <style>{SETTINGS_SECTION_CSS}</style>
@@ -320,7 +444,7 @@ export function SettingsPage(): JSX.Element {
 
       <SettingsSection {...section(SECTION_PAGE)}>
         <div className={PANEL_UI_CLASS.settingsGroup}>
-          <div className={PANEL_UI_CLASS.settingsRow}>
+          <div className={`${PANEL_UI_CLASS.settingsRow} ${MASTER_ROW_CLASS}`}>
             <Switch
               id={TWEAKS_SWITCH_ID}
               label={UI_TEXT.enablePageTweaksLabel}
@@ -331,75 +455,35 @@ export function SettingsPage(): JSX.Element {
                 window.location.reload();
               }}
             />
-          </div>
-          <FeatureModules />
-          <div className={PANEL_UI_CLASS.settingsRow}>
-            <Switch
-              id={STATS_MENU_SWITCH_ID}
-              label={STATS_MENU_SETTING_LABEL}
-              checked={statsMenu}
-              onChange={(checked) => {
-                setFeatureEnabled(STATS_MENU_SETTING_ID, checked);
-                setStatsMenu(checked);
-                // The menu is on this very page: add or remove the item at once.
-                installSiteMenu();
-              }}
-            />
-          </div>
-          <div className={PANEL_UI_CLASS.settingsRow}>
-            <Switch
-              id={STICKY_HEADER_SWITCH_ID}
-              label={STICKY_HEADER_SETTING_LABEL}
-              checked={stickyHeader}
-              onChange={(checked) => {
-                setFeatureEnabled(STICKY_HEADER_SETTING_ID, checked);
-                setStickyHeader(checked);
-                applyStickyHeader(checked);
-              }}
-            />
-          </div>
-          <div className={PANEL_UI_CLASS.settingsRow}>
-            <Switch
-              id={AI_EVERYWHERE_SWITCH_ID}
-              label={AI_EVERYWHERE_LABEL}
-              checked={aiEverywhere}
-              onChange={(checked) => {
-                // The site's switch is put right on the way to the next list.
-                setAiHiddenEverywhere(checked);
-                setAiEverywhere(checked);
-              }}
-            />
-            <p className={PANEL_UI_CLASS.settingsCaption}>{AI_EVERYWHERE_CAPTION}</p>
-          </div>
-          <div className={PANEL_UI_CLASS.settingsRow}>
-            <NumberField
-              id={UPDATES_GROUP_SIZE_ID}
-              label={UI_TEXT.updatesGroupSizeLabel}
-              value={updatesGroup}
-              min={0}
-              step={1}
-              onChange={(value) => {
-                const next = value ?? 0;
-                setUpdatesGroupSize(next);
-                setUpdatesGroup(getUpdatesGroupSize());
-              }}
-            />
-          </div>
-          <div className={PANEL_UI_CLASS.settingsRow}>
-            <NumberField
-              id={PLAYLIST_CHUNK_SIZE_ID}
-              label={UI_TEXT.playlistChunkSizeLabel}
-              value={playlistChunk}
-              min={1}
-              step={1}
-              onChange={(value) => {
-                const next = value ?? 0;
-                setPlaylistChunkSize(next);
-                setPlaylistChunk(getPlaylistChunkSize());
-              }}
-            />
+            <p className={PANEL_UI_CLASS.settingsCaption}>{TWEAKS_CAPTION}</p>
           </div>
         </div>
+        {SETTINGS_GROUPS.map((group) => {
+          const features = FEATURES.filter(
+            (feature) =>
+              !PAGE_FEATURE_SKIP.has(feature.id) &&
+              featureSettingsGroup(feature.id) === group.id,
+          );
+          const extra = extraRows[group.id];
+          if (features.length === 0 && extra === undefined) {
+            return null;
+          }
+          return (
+            <div
+              key={group.id}
+              className={GROUP_CLASS}
+              role="group"
+              aria-label={group.title}
+              {...{ [GROUP_ID_ATTR]: group.id }}
+            >
+              <SectionLabel className={GROUP_TITLE_CLASS}>{group.title}</SectionLabel>
+              <div className={PANEL_UI_CLASS.settingsGroup}>
+                <FeatureRows features={features} disabled={!tweaks} />
+                {extra}
+              </div>
+            </div>
+          );
+        })}
       </SettingsSection>
 
       <SettingsSection {...section(SECTION_BLACKLIST)}>

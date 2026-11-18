@@ -130,5 +130,10 @@ describe("site profile", () => {
       { label: "Level", text: "Members" },
       { label: "Posts uploaded", text: "2,753" },
     ]);
+
+    // The start of the account is the large line, its age the caption.
+    expect(profileTiles({ joinDate: "2019-08-23", readAt: NOW }, NOW)).toEqual([
+      { label: "7 years 2 months", text: "Since Aug 2019" },
+    ]);
   });
 });

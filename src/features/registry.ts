@@ -51,3 +51,84 @@ export const FEATURES: Feature[] = [
   tagWikiFeature,
   videoMarkFeature,
 ];
+
+/**
+ * The groups the settings page shows the page tweaks in, by the part of the
+ * site a tweak changes. Kept here, beside the list of the features, so that a
+ * new feature is given its group where it is added to the list.
+ */
+export const SETTINGS_GROUP = {
+  header: "header",
+  grid: "grid",
+  post: "post",
+  video: "video",
+  feed: "feed",
+  ai: "ai",
+  search: "search",
+  collections: "collections",
+  favorites: "favorites",
+  other: "other",
+} as const;
+
+export type SettingsGroupId = (typeof SETTINGS_GROUP)[keyof typeof SETTINGS_GROUP];
+
+/** The groups in the order they are shown; "Other" is last. */
+export const SETTINGS_GROUPS: readonly {
+  readonly id: SettingsGroupId;
+  readonly title: string;
+}[] = [
+  { id: SETTINGS_GROUP.header, title: "Header" },
+  { id: SETTINGS_GROUP.grid, title: "Grid and thumbnails" },
+  { id: SETTINGS_GROUP.post, title: "Post page" },
+  { id: SETTINGS_GROUP.video, title: "Video" },
+  { id: SETTINGS_GROUP.feed, title: "Feed" },
+  { id: SETTINGS_GROUP.ai, title: "AI posts" },
+  { id: SETTINGS_GROUP.search, title: "Search and sidebar" },
+  { id: SETTINGS_GROUP.collections, title: "Collections" },
+  { id: SETTINGS_GROUP.favorites, title: "Favorites page" },
+  { id: SETTINGS_GROUP.other, title: "Other" },
+];
+
+/**
+ * Made when first asked for, not when this module is loaded: some features
+ * import the runtime, which imports this list, so at load time a feature
+ * named here may not be there yet.
+ */
+function buildFeatureSettingsGroups(): ReadonlyMap<string, SettingsGroupId> {
+  return new Map<string, SettingsGroupId>([
+    [menuCleanupFeature.id, SETTINGS_GROUP.header],
+    [seenDimFeature.id, SETTINGS_GROUP.grid],
+    [blacklistHideFeature.id, SETTINGS_GROUP.grid],
+    [infiniteScrollFeature.id, SETTINGS_GROUP.grid],
+    [thumbTooltipFeature.id, SETTINGS_GROUP.grid],
+    // Set in the Appearance block; named here so that it is not counted as "Other".
+    [gridDensityFeature.id, SETTINGS_GROUP.grid],
+    [postActionsFeature.id, SETTINGS_GROUP.post],
+    [imageZoomFeature.id, SETTINGS_GROUP.post],
+    [fullImageFeature.id, SETTINGS_GROUP.post],
+    [gifPostFeature.id, SETTINGS_GROUP.post],
+    [cdnFallbackFeature.id, SETTINGS_GROUP.post],
+    [videoPlayerFeature.id, SETTINGS_GROUP.video],
+    [videoPreviewFeature.id, SETTINGS_GROUP.video],
+    [videoMarkFeature.id, SETTINGS_GROUP.video],
+    [feedFeature.id, SETTINGS_GROUP.feed],
+    [feedCounterFeature.id, SETTINGS_GROUP.feed],
+    [searchToolsFeature.id, SETTINGS_GROUP.search],
+    [tagGroupsFeature.id, SETTINGS_GROUP.search],
+    [tagWikiFeature.id, SETTINGS_GROUP.search],
+    [sidebarRightFeature.id, SETTINGS_GROUP.search],
+    [playlistMenuFeature.id, SETTINGS_GROUP.collections],
+    [playlistBarFeature.id, SETTINGS_GROUP.collections],
+    [favoritesBulkFeature.id, SETTINGS_GROUP.favorites],
+    [downloadsFeature.id, SETTINGS_GROUP.other],
+    [motionFeature.id, SETTINGS_GROUP.other],
+  ]);
+}
+
+let featureSettingsGroups: ReadonlyMap<string, SettingsGroupId> | null = null;
+
+/** The group of a feature; one that was given none is shown under "Other". */
+export function featureSettingsGroup(featureId: string): SettingsGroupId {
+  featureSettingsGroups ??= buildFeatureSettingsGroups();
+  return featureSettingsGroups.get(featureId) ?? SETTINGS_GROUP.other;
+}

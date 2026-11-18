@@ -39,10 +39,17 @@ const MASK_SAVED = "Saved.";
 const MASK_HINT =
   "Anything typed outside the brackets is kept as it is; the extension is added by itself. Keep id or md5 in the name, or files will share one.";
 const MASK_PREVIEW_PREFIX = "Files are saved as: ";
+const FOLDER_HINT =
+  "Files go to the browser's download folder, each download into a folder named after the collection or the search.";
+/** The hash in the made-up file's address. */
+const MASK_SAMPLE_HASH = "0f3a9c7b2d1e4f5a6b7c8d9e0f1a2b3c";
+/** In the list a hash is cut to its two ends: whole, it pushes the name of the mask out of sight. */
+const HASH_END_LENGTH = 4;
+const MASK_SAMPLE_HASH_SHORT = `${MASK_SAMPLE_HASH.slice(0, HASH_END_LENGTH)}…${MASK_SAMPLE_HASH.slice(-HASH_END_LENGTH)}`;
 /** A made-up post to show what a mask gives. */
 const MASK_SAMPLE = {
   postId: 19374686,
-  url: "https://wimg.rule34.xxx/images/1234/0f3a9c7b2d1e4f5a6b7c8d9e0f1a2b3c.jpg",
+  url: `https://wimg.rule34.xxx/images/1234/${MASK_SAMPLE_HASH}.jpg`,
   rating: "explicit",
   score: 42,
   width: 1080,
@@ -57,7 +64,7 @@ const OPTIONS_LINK_TEXT = "account options page";
 const HINT_BEFORE =
   "The download manager finds files through the site API with your own key. Generate it on the ";
 const HINT_AFTER =
-  ", copy the whole line it shows and paste it here. The key stays in this browser and is not part of the Data export. Without a key there are no download buttons. Files go to the browser's download folder, each download into a folder named after the collection or the search.";
+  ", copy the whole line it shows and paste it here. The key stays in this browser and is not part of the Data export. Without a key there are no download buttons.";
 const STATUS_SAVED = "Saved. Download buttons appear on collection pages and under the search panel.";
 const STATUS_REMOVED = "Key removed.";
 const STATUS_INVALID = "Paste the whole line from the site: it must hold both api_key and user_id.";
@@ -107,22 +114,36 @@ export const DOWNLOADS_SECTION_CSS = `
 }
 `.trim();
 
-/** Ready masks to pick from; anything else is "Custom". */
-export const MASK_PRESETS: readonly string[] = [
-  DEFAULT_FILE_MASK,
-  "[id]",
-  "[md5]",
-  "[date] [id]",
-  "[id] [width]x[height]",
-  "[rating] [id]",
-  "[owner] [id]",
-];
+/**
+ * Ready masks to pick from, each named by what it is made of; anything else
+ * is "Custom".
+ */
+const MASK_PRESET_LIST = [
+  { mask: DEFAULT_FILE_MASK, name: "Site + ID" },
+  { mask: "[id]", name: "ID" },
+  { mask: "[md5]", name: "MD5 hash" },
+  { mask: "[date] [id]", name: "Date + ID" },
+  { mask: "[id] [width]x[height]", name: "ID + size" },
+  { mask: "[rating] [id]", name: "Rating + ID" },
+  { mask: "[owner] [id]", name: "Uploader + ID" },
+] as const;
+export const MASK_PRESETS: readonly string[] = MASK_PRESET_LIST.map((preset) => preset.mask);
 const MASK_CUSTOM = "custom";
 const MASK_CUSTOM_LABEL = "Custom…";
 const MASK_TOKENS_LABEL = "In the name:";
+const MASK_NAME_SEPARATOR = " — ";
 
 function sample(mask: string): string {
   return buildFileName(mask, MASK_SAMPLE);
+}
+
+/**
+ * A row of the list: the name of the mask, then what it gives on one post.
+ * The example alone read as a list of random file names.
+ */
+function presetLabel(name: string, mask: string): string {
+  const example = sample(mask).replace(MASK_SAMPLE_HASH, MASK_SAMPLE_HASH_SHORT);
+  return `${name}${MASK_NAME_SEPARATOR}${example}`;
 }
 
 /**
@@ -139,9 +160,13 @@ function FileNameSetting(): JSX.Element {
     setMask(readFileMask());
     setSaved(true);
   };
+  // "Custom…" is first: as the last of eight it was under the fold of the list.
   const options: SelectOption[] = [
-    ...MASK_PRESETS.map((preset) => ({ value: preset, label: sample(preset) })),
     { value: MASK_CUSTOM, label: MASK_CUSTOM_LABEL },
+    ...MASK_PRESET_LIST.map((preset) => ({
+      value: preset.mask,
+      label: presetLabel(preset.name, preset.mask),
+    })),
   ];
   return (
     <form
@@ -203,9 +228,16 @@ function FileNameSetting(): JSX.Element {
           <p className={HINT_CLASS}>{MASK_HINT}</p>
         </>
       ) : null}
-      <p className={HINT_CLASS} role="status">
-        {`${MASK_PREVIEW_PREFIX}${sample(mask)}${saved ? ` ${MASK_SAVED}` : ""}`}
-      </p>
+      {/* A ready mask shows its example in the list itself; only a name built
+          from parts needs the line. */}
+      {custom || saved ? (
+        <p className={HINT_CLASS} role="status">
+          {[custom ? `${MASK_PREVIEW_PREFIX}${sample(mask)}` : "", saved ? MASK_SAVED : ""]
+            .filter((part) => part.length > 0)
+            .join(" ")}
+        </p>
+      ) : null}
+      <p className={HINT_CLASS}>{FOLDER_HINT}</p>
     </form>
   );
 }
@@ -255,8 +287,16 @@ export function DownloadsSection(): JSX.Element {
             setStatus("");
           }}
         />
+        <p className={HINT_CLASS}>
+          {HINT_BEFORE}
+          <a href={OPTIONS_URL} target="_blank" rel="noopener">
+            {OPTIONS_LINK_TEXT}
+          </a>
+          {HINT_AFTER}
+        </p>
         <div className={ACTIONS_CLASS}>
-          <Button type="submit" variant="primary" size="s">
+          {/* Nothing to save while nothing is typed: the stored key is not in the field. */}
+          <Button type="submit" variant="primary" size="s" disabled={draft.trim().length === 0}>
             {UI_TEXT.save}
           </Button>
           {stored ? (
@@ -271,13 +311,6 @@ export function DownloadsSection(): JSX.Element {
           {status}
         </p>
       ) : null}
-      <p className={HINT_CLASS}>
-        {HINT_BEFORE}
-        <a href={OPTIONS_URL} target="_blank" rel="noopener">
-          {OPTIONS_LINK_TEXT}
-        </a>
-        {HINT_AFTER}
-      </p>
       <FileNameSetting />
     </section>
   );

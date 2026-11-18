@@ -582,6 +582,16 @@ describe("searchToolsFeature", () => {
     }
   });
 
+  it("stacks the buttons of the foot in a column, however many there are", () => {
+    const foot = new RegExp(`\\.${FOOT_CLASS} \\{([^}]*)\\}`).exec(searchToolsFeature.css);
+    expect(foot?.[1]).toContain("flex-direction: column");
+    expect(foot?.[1]).not.toContain("flex-wrap");
+    const buttons = new RegExp(`\\.${FOOT_CLASS} > button \\{([^}]*)\\}`).exec(
+      searchToolsFeature.css,
+    );
+    expect(buttons?.[1]).toContain("width: 100%");
+  });
+
   it("omits the Tags section when there are no chips", () => {
     buildSearchForm("-video sort:score:desc");
     mountFeature();

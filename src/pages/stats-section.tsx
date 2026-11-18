@@ -12,6 +12,7 @@ import {
   refreshProfileStats,
   type ProfileStats,
 } from "../site/profile";
+import { formatDayTime, formatMonth } from "../ui/format-date";
 import { Button, Card } from "../ui/kit";
 import { PANEL_UI_CLASS } from "./constants";
 
@@ -20,8 +21,8 @@ import { PANEL_UI_CLASS } from "./constants";
  * page opens. Nothing is requested from the site, so these are counts of your
  * own library, not totals of the site.
  *
- * Tiles for single numbers, a ring for the two kinds of collections, bars for
- * the collections compared by size.
+ * Tiles for single numbers, a plain list of the largest collections, bars
+ * for the tags of the favorites.
  */
 
 const SECTION_CLASS = "rdw-stats";
@@ -29,53 +30,50 @@ const TILES_CLASS = "rdw-stats-tiles";
 const TILE_CLASS = "rdw-stats-tile";
 const TILE_VALUE_CLASS = "rdw-stats-value";
 const TILE_LABEL_CLASS = "rdw-stats-label";
-const CHARTS_CLASS = "rdw-stats-charts";
 const CHART_CLASS = "rdw-stats-chart";
-const RING_ROW_CLASS = "rdw-stats-ring-row";
-const RING_CLASS = "rdw-stats-ring";
-const RING_TRACK_CLASS = "rdw-stats-ring-track";
-const RING_ARC_CLASS = "rdw-stats-ring-arc";
-const RING_TOTAL_CLASS = "rdw-stats-ring-total";
-const LEGEND_CLASS = "rdw-stats-legend";
-const SWATCH_CLASS = "rdw-stats-swatch";
-const SWATCH_SECOND_CLASS = "rdw-stats-swatch--second";
+const HEADING_CLASS = "rdw-stats-heading";
 const TOP_CLASS = "rdw-stats-top";
 const TOP_ROW_CLASS = "rdw-stats-top-row";
 const TOP_BAR_CLASS = "rdw-stats-top-bar";
 const TOP_FILL_CLASS = "rdw-stats-top-fill";
 const HINT_CLASS = "rdw-stats-hint";
+const TOP_PLAIN_CLASS = "rdw-stats-top--plain";
+const SKELETON_CLASS = "rdw-stats-skeleton";
+const SKELETON_BAR_CLASS = "rdw-stats-skeleton-bar";
+const PROFILE_CLASS = "rdw-stats-profile";
 const PROFILE_HEAD_CLASS = "rdw-stats-profile-head";
+const PROFILE_SIDE_CLASS = "rdw-stats-profile-side";
 
 const LOCALE = "en-US";
 const TOP_COLLECTIONS_LIMIT = 10;
 const BYTES_PER_KB = 1024;
 const PERCENT = 100;
 const MIN_BAR_PERCENT = 2;
-const TILE_MIN_PX = 130;
+/** Wide enough for "Since Aug 2019" in the large type to stay on one line. */
+const TILE_MIN_PX = 160;
 const COLUMN_CLASS = "rdw-stats-column";
 const FOOT_CLASS = "rdw-stats-foot";
 const COLUMN_GAP_PX = 20;
 /** Narrower than this the two columns would be too tight for the bars. */
 const TWO_COLUMNS_FROM_PX = 1100;
-const CHART_MIN_PX = 260;
-const RING_SIZE_PX = 96;
-/** A circle of this radius has a circumference of 100, so a dash is a percentage. */
-const RING_RADIUS = 15.915;
-const RING_CENTRE = 21;
-const RING_VIEW_BOX = "0 0 42 42";
-const RING_STROKE = 5;
-const RING_TOTAL_Y = 24;
+/** One row of a list. Set, not left to the font, so that the grey rows shown
+    while the tags are counted take exactly the room of the real ones. */
+const TOP_ROW_HEIGHT_PX = 18;
+const SKELETON_PULSE_NAME = "rdw-stats-skeleton-pulse";
+const SKELETON_PULSE_MS = 1200;
+const SKELETON_DIM_OPACITY = 0.5;
 
-const KINDS_HEADING = "Collections by type";
-const KINDS_EMPTY = "No collections yet.";
-const KIND_CUSTOM_LABEL = "Custom";
-const KIND_DYNAMIC_LABEL = "Dynamic";
+const KIND_CUSTOM_WORD = "custom";
+const KIND_DYNAMIC_WORD = "dynamic";
+const KINDS_SEPARATOR = " · ";
+const COLLECTIONS_LABEL = "Collections";
 const TOP_HEADING = "Collections by posts";
 const TOP_EMPTY = "Collections show here once they hold posts or their count is known.";
 const TOP_TAGS_HEADING = "Top tags in favorites";
 const TOP_TAGS_EMPTY =
   "Run Full resync in RuleDesk → Favorites to fill this: it reads the tags of your favorites.";
 const TOP_TAGS_LIMIT = 20;
+const TOP_TAGS_BUSY_LABEL = "Counting the tags of your favorites";
 const PROFILE_HEADING = "Site profile";
 const PROFILE_REFRESH_LABEL = "Refresh profile";
 const PROFILE_REFRESH_TITLE =
@@ -91,7 +89,8 @@ export function profileIsStale(profile: ProfileStats | null, now: number): boole
 }
 const PROFILE_READ_PREFIX = "Read on ";
 const PROFILE_FAILED_PREFIX = "Could not read the profile: ";
-const DATE_LOCALE = "en-GB";
+const SINCE_PREFIX = "Since ";
+const LEVEL_LABEL = "Level";
 const MS_PER_YEAR = 31_557_600_000;
 const MONTHS_PER_YEAR = 12;
 const HINT =
@@ -135,18 +134,19 @@ export const STATS_SECTION_CSS = `
   background: var(--rdw-surface-2);
   border-radius: var(--rdw-radius-m);
 }
-.${CHARTS_CLASS} {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(${String(CHART_MIN_PX)}px, 1fr));
-  gap: 8px;
-  align-items: start;
-}
 .${CHART_CLASS} {
   gap: 8px;
   padding: 10px 12px;
 }
 .${TILE_VALUE_CLASS} {
   font-size: 18px;
+  font-weight: 600;
+  color: var(--rdw-text);
+  white-space: nowrap;
+}
+.${HEADING_CLASS} {
+  margin: 0;
+  font-size: 13px;
   font-weight: 600;
   color: var(--rdw-text);
 }
@@ -156,61 +156,20 @@ export const STATS_SECTION_CSS = `
   font-size: 12px;
   color: var(--rdw-muted);
 }
-.${PROFILE_HEAD_CLASS} {
+.${PROFILE_HEAD_CLASS},
+.${PROFILE_SIDE_CLASS} {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 12px;
 }
-.${RING_ROW_CLASS} {
-  display: flex;
-  align-items: center;
-  gap: 16px;
+.${PROFILE_HEAD_CLASS} {
+  justify-content: space-between;
 }
-.${RING_CLASS} {
-  flex: none;
-  width: ${String(RING_SIZE_PX)}px;
-  height: ${String(RING_SIZE_PX)}px;
-}
-.${RING_TRACK_CLASS},
-.${RING_ARC_CLASS} {
-  fill: none;
-  stroke-width: ${String(RING_STROKE)};
-}
-.${RING_TRACK_CLASS} {
-  stroke: var(--rdw-muted);
-}
-.${RING_ARC_CLASS} {
-  stroke: var(--rdw-accent);
-}
-.${RING_TOTAL_CLASS} {
-  fill: var(--rdw-text);
-  font: 600 9px var(--rdw-font);
-  text-anchor: middle;
-}
-.${LEGEND_CLASS} {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: 12px;
-}
-.${LEGEND_CLASS} > li {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.${SWATCH_CLASS} {
-  flex: none;
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-  background: var(--rdw-accent);
-}
-.${SWATCH_SECOND_CLASS} {
-  background: var(--rdw-muted);
+/* The block is a card of the same colour as a tile, so its own tiles take
+   the colour under the card to stay seen. */
+.${PROFILE_CLASS} .${TILE_CLASS} {
+  background: var(--rdw-surface);
 }
 .${TOP_CLASS} {
   display: flex;
@@ -225,7 +184,15 @@ export const STATS_SECTION_CSS = `
   grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto;
   align-items: center;
   gap: 8px;
+  min-height: ${String(TOP_ROW_HEIGHT_PX)}px;
   font-size: 12px;
+  line-height: ${String(TOP_ROW_HEIGHT_PX)}px;
+}
+.${TOP_PLAIN_CLASS} > .${TOP_ROW_CLASS} {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.${TOP_PLAIN_CLASS} > .${TOP_ROW_CLASS} > span:last-child {
+  font-variant-numeric: tabular-nums;
 }
 .${TOP_ROW_CLASS} > span:first-child {
   overflow: hidden;
@@ -243,6 +210,28 @@ export const STATS_SECTION_CSS = `
   height: 100%;
   background: var(--rdw-accent);
 }
+.${SKELETON_CLASS} > div {
+  display: flex;
+  align-items: center;
+  height: ${String(TOP_ROW_HEIGHT_PX)}px;
+}
+.${SKELETON_BAR_CLASS} {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--rdw-surface);
+}
+/* The grey rows breathe only for someone who has not asked for less motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .${SKELETON_BAR_CLASS} {
+    animation: ${SKELETON_PULSE_NAME} ${String(SKELETON_PULSE_MS)}ms ease-in-out infinite alternate;
+  }
+}
+@keyframes ${SKELETON_PULSE_NAME} {
+  to {
+    opacity: ${String(SKELETON_DIM_OPACITY)};
+  }
+}
 `.trim();
 
 export type StatsTile = {
@@ -250,6 +239,8 @@ export type StatsTile = {
   readonly value: number;
   /** Shown after the number, e.g. "KB". */
   readonly unit?: string;
+  /** A second small line under the label, e.g. "3 custom · 8 dynamic". */
+  readonly detail?: string;
 };
 
 export type TopCollection = {
@@ -265,6 +256,11 @@ export type Stats = {
   /** Largest first; a dynamic collection counts once its size is known. */
   readonly topCollections: readonly TopCollection[];
 };
+
+/** "3 custom · 8 dynamic": the two kinds of collections in one line of a tile. */
+export function collectionKindsLine(custom: number, dynamic: number): string {
+  return `${formatNumber(custom)} ${KIND_CUSTOM_WORD}${KINDS_SEPARATOR}${formatNumber(dynamic)} ${KIND_DYNAMIC_WORD}`;
+}
 
 /** Pure: the numbers for a stored state. */
 export function computeStats(data: StorageData, favoriteCount: number): Stats {
@@ -303,7 +299,14 @@ export function computeStats(data: StorageData, favoriteCount: number): Stats {
   return {
     tiles: [
       { label: "Followed artists", value: data.artists.length },
-      { label: "Collections", value: custom + dynamic },
+      // With no collections the line would be two zeroes under a zero.
+      custom + dynamic === 0
+        ? { label: COLLECTIONS_LABEL, value: 0 }
+        : {
+            label: COLLECTIONS_LABEL,
+            value: custom + dynamic,
+            detail: collectionKindsLine(custom, dynamic),
+          },
       { label: "Posts in custom collections", value: collected.size },
       { label: "Favorites", value: favoriteCount },
       { label: "Seen posts", value: seenPosts },
@@ -319,81 +322,25 @@ function formatNumber(value: number): string {
   return value.toLocaleString(LOCALE);
 }
 
-/** Share of the first part in the whole, as a whole percentage. */
-export function ringPercent(first: number, second: number): number {
-  const total = first + second;
-  return total === 0 ? 0 : Math.round((first / total) * PERCENT);
-}
-
-function KindsRing(props: {
-  readonly custom: number;
-  readonly dynamic: number;
-}): JSX.Element {
-  const total = props.custom + props.dynamic;
-  if (total === 0) {
-    return <p className={HINT_CLASS}>{KINDS_EMPTY}</p>;
-  }
-  const percent = ringPercent(props.custom, props.dynamic);
-  const summary = `${KIND_CUSTOM_LABEL} ${String(props.custom)}, ${KIND_DYNAMIC_LABEL} ${String(props.dynamic)}`;
-  return (
-    <div className={RING_ROW_CLASS}>
-      <svg className={RING_CLASS} viewBox={RING_VIEW_BOX} role="img" aria-label={summary}>
-        <circle
-          className={RING_TRACK_CLASS}
-          cx={RING_CENTRE}
-          cy={RING_CENTRE}
-          r={RING_RADIUS}
-        />
-        <circle
-          className={RING_ARC_CLASS}
-          cx={RING_CENTRE}
-          cy={RING_CENTRE}
-          r={RING_RADIUS}
-          stroke-dasharray={`${String(percent)} ${String(PERCENT - percent)}`}
-          transform={`rotate(-90 ${String(RING_CENTRE)} ${String(RING_CENTRE)})`}
-        />
-        <text className={RING_TOTAL_CLASS} x={RING_CENTRE} y={RING_TOTAL_Y}>
-          {formatNumber(total)}
-        </text>
-      </svg>
-      <ul className={LEGEND_CLASS}>
-        <li>
-          <span className={SWATCH_CLASS} aria-hidden="true" />
-          {`${KIND_CUSTOM_LABEL}: ${formatNumber(props.custom)}`}
-        </li>
-        <li>
-          <span className={`${SWATCH_CLASS} ${SWATCH_SECOND_CLASS}`} aria-hidden="true" />
-          {`${KIND_DYNAMIC_LABEL}: ${formatNumber(props.dynamic)}`}
-        </li>
-      </ul>
-    </div>
-  );
-}
-
-function CollectionBars(props: {
+/**
+ * The largest collections as names and numbers, largest first. No bars: one
+ * collection of millions of posts beside ones of a few left every other bar
+ * a dot (the designer, 17.11.2026).
+ */
+function CollectionList(props: {
   readonly collections: readonly TopCollection[];
 }): JSX.Element {
-  const largest = props.collections[0]?.posts ?? 0;
-  if (largest === 0) {
+  if (props.collections.length === 0) {
     return <p className={HINT_CLASS}>{TOP_EMPTY}</p>;
   }
   return (
-    <ol className={TOP_CLASS}>
-      {props.collections.map((collection) => {
-        const share = Math.max(
-          MIN_BAR_PERCENT,
-          Math.round((collection.posts / largest) * PERCENT),
-        );
-        return (
-          <li key={collection.id} className={TOP_ROW_CLASS}>
-            <span title={collection.name}>{collection.name}</span>
-            <span className={TOP_BAR_CLASS} aria-hidden="true">
-              <span className={TOP_FILL_CLASS} style={{ width: `${String(share)}%` }} />
-            </span>
-            <span>{formatNumber(collection.posts)}</span>
-          </li>
-        );
-      })}
+    <ol className={`${TOP_CLASS} ${TOP_PLAIN_CLASS}`}>
+      {props.collections.map((collection) => (
+        <li key={collection.id} className={TOP_ROW_CLASS}>
+          <span title={collection.name}>{collection.name}</span>
+          <span>{formatNumber(collection.posts)}</span>
+        </li>
+      ))}
     </ol>
   );
 }
@@ -424,10 +371,15 @@ export function profileTiles(profile: ProfileStats, now: number): ProfileTile[] 
   const tiles: ProfileTile[] = [];
   const age = profile.joinDate === undefined ? null : accountAge(profile.joinDate, now);
   if (age !== null && profile.joinDate !== undefined) {
-    tiles.push({ label: `Account age (since ${profile.joinDate})`, text: age });
+    // Read as a day of the local calendar: read as UTC, the first day of a
+    // month would show as the month before it west of Greenwich.
+    const joined = Date.parse(`${profile.joinDate}T00:00:00`);
+    tiles.push({ label: age, text: `${SINCE_PREFIX}${formatMonth(joined)}` });
   }
+  // The site gives the level only as its name ("Members"), there is no
+  // number behind it, so the name is the large value of the tile.
   if (profile.level !== undefined) {
-    tiles.push({ label: "Level", text: profile.level });
+    tiles.push({ label: LEVEL_LABEL, text: profile.level });
   }
   const counts: readonly (readonly [string, number | undefined])[] = [
     ["Posts uploaded", profile.posts],
@@ -445,16 +397,29 @@ export function profileTiles(profile: ProfileStats, now: number): ProfileTile[] 
   return tiles;
 }
 
-function formatDay(time: number): string {
-  return new Date(time).toLocaleDateString(DATE_LOCALE, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+/** Grey rows in place of the tags while they are counted, as many as the list is long. */
+function TagsSkeleton(): JSX.Element {
+  return (
+    <div
+      className={`${TOP_CLASS} ${SKELETON_CLASS}`}
+      role="status"
+      aria-label={TOP_TAGS_BUSY_LABEL}
+    >
+      {Array.from({ length: TOP_TAGS_LIMIT }, (_, index) => (
+        <div key={index}>
+          <span className={SKELETON_BAR_CLASS} />
+        </div>
+      ))}
+    </div>
+  );
 }
 
-/** Bars of the most frequent tags among the favorites, from the local index. */
-function FavoriteTagsBlock(): JSX.Element | null {
+/**
+ * Bars of the most frequent tags among the favorites, from the local index.
+ * The block stands on the page from the first paint with grey rows in it:
+ * drawn only once the tags were counted, it moved the page under the eyes.
+ */
+function FavoriteTagsBlock(): JSX.Element {
   const [tags, setTags] = useState<readonly TagCount[] | null>(null);
   useEffect(() => {
     let alive = true;
@@ -474,14 +439,13 @@ function FavoriteTagsBlock(): JSX.Element | null {
     };
   }, []);
 
-  if (tags === null) {
-    return null;
-  }
-  const largest = tags[0]?.count ?? 0;
+  const largest = tags?.[0]?.count ?? 0;
   return (
     <div className={CHART_CLASS}>
-      <p className={TILE_LABEL_CLASS}>{TOP_TAGS_HEADING}</p>
-      {largest === 0 ? (
+      <p className={HEADING_CLASS}>{TOP_TAGS_HEADING}</p>
+      {tags === null ? (
+        <TagsSkeleton />
+      ) : largest === 0 ? (
         <p className={HINT_CLASS}>{TOP_TAGS_EMPTY}</p>
       ) : (
         <ol className={TOP_CLASS}>
@@ -535,21 +499,25 @@ function ProfileBlock(): JSX.Element {
   }, []);
 
   return (
-    <>
+    <div className={`${CHART_CLASS} ${PROFILE_CLASS}`}>
       <div className={PROFILE_HEAD_CLASS}>
-        <p className={TILE_LABEL_CLASS}>{PROFILE_HEADING}</p>
-        <Button
-          variant="secondary"
-          size="s"
-          title={PROFILE_REFRESH_TITLE}
-          disabled={busy}
-          onClick={refresh}
-        >
-          {busy ? PROFILE_BUSY_LABEL : PROFILE_REFRESH_LABEL}
-        </Button>
-        {profile === null ? null : (
-          <span className={HINT_CLASS}>{`${PROFILE_READ_PREFIX}${formatDay(profile.readAt)}`}</span>
-        )}
+        <p className={HEADING_CLASS}>{PROFILE_HEADING}</p>
+        <div className={PROFILE_SIDE_CLASS}>
+          {profile === null ? null : (
+            <span className={HINT_CLASS}>
+              {`${PROFILE_READ_PREFIX}${formatDayTime(profile.readAt)}`}
+            </span>
+          )}
+          <Button
+            variant="secondary"
+            size="s"
+            title={PROFILE_REFRESH_TITLE}
+            disabled={busy}
+            onClick={refresh}
+          >
+            {busy ? PROFILE_BUSY_LABEL : PROFILE_REFRESH_LABEL}
+          </Button>
+        </div>
       </div>
       {error.length > 0 ? (
         <p className={HINT_CLASS} role="status">{`${PROFILE_FAILED_PREFIX}${error}`}</p>
@@ -566,7 +534,7 @@ function ProfileBlock(): JSX.Element {
           ))}
         </div>
       )}
-    </>
+    </div>
   );
 }
 
@@ -586,19 +554,16 @@ export function StatsSection(): JSX.Element {
                 : `${formatNumber(tile.value)} ${tile.unit}`}
             </span>
             <span className={TILE_LABEL_CLASS}>{tile.label}</span>
+            {tile.detail === undefined ? null : (
+              <span className={TILE_LABEL_CLASS}>{tile.detail}</span>
+            )}
           </div>
         ))}
       </div>
 
-      <div className={CHARTS_CLASS}>
-        <div className={CHART_CLASS}>
-          <p className={TILE_LABEL_CLASS}>{KINDS_HEADING}</p>
-          <KindsRing custom={stats.customCollections} dynamic={stats.dynamicCollections} />
-        </div>
-        <div className={CHART_CLASS}>
-          <p className={TILE_LABEL_CLASS}>{TOP_HEADING}</p>
-          <CollectionBars collections={stats.topCollections} />
-        </div>
+      <div className={CHART_CLASS}>
+        <p className={HEADING_CLASS}>{TOP_HEADING}</p>
+        <CollectionList collections={stats.topCollections} />
       </div>
         <ProfileBlock />
       </div>

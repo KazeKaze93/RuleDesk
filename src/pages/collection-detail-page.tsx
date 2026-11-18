@@ -621,16 +621,19 @@ export function CollectionDetailPage(
           ) : (
           <div className={CLASS_ACTIONS}>
               <>
-                <Button
-                  variant="secondary"
-                  size="s"
-                  onClick={() => {
-                    shuffleCollection(props.collectionId);
-                    refresh();
-                  }}
-                >
-                  {LABEL_SHUFFLE}
-                </Button>
+                {/* With no posts there is nothing to shuffle or to select. */}
+                {detail.order.length > 0 ? (
+                  <Button
+                    variant="secondary"
+                    size="s"
+                    onClick={() => {
+                      shuffleCollection(props.collectionId);
+                      refresh();
+                    }}
+                  >
+                    {LABEL_SHUFFLE}
+                  </Button>
+                ) : null}
                 {detail.shuffled ? (
                   <Button
                     variant="secondary"
@@ -643,16 +646,18 @@ export function CollectionDetailPage(
                     {LABEL_ORIGINAL_ORDER}
                   </Button>
                 ) : null}
-                <Button
-                  variant="secondary"
-                  size="s"
-                  onClick={() => {
-                    setSelected(new Set());
-                    setSelecting(true);
-                  }}
-                >
-                  {LABEL_SELECT}
-                </Button>
+                {detail.order.length > 0 ? (
+                  <Button
+                    variant="secondary"
+                    size="s"
+                    onClick={() => {
+                      setSelected(new Set());
+                      setSelecting(true);
+                    }}
+                  >
+                    {LABEL_SELECT}
+                  </Button>
+                ) : null}
                 {downloadAvailable && detail.order.length > 0 ? (
                   <Button
                     variant="secondary"

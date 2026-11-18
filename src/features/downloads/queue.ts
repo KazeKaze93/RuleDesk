@@ -37,6 +37,8 @@ const NO_FILES_MESSAGE =
 const JobSchema = z.object({
   label: z.string(),
   folder: z.string(),
+  // Absent in a job stored by an older version, and in one that is not a selection.
+  selected: z.optional(z.int()),
   files: z.array(
     z.object({
       postId: z.int(),
@@ -68,6 +70,10 @@ export type DownloadPhase =
 export type DownloadState = {
   readonly phase: DownloadPhase;
   readonly label: string;
+  /** How many posts were picked by hand, when the job is a selection; null for a whole search or collection. */
+  readonly selected: number | null;
+  /** How many posts are looked up while collecting, when that is known beforehand; null for a search. */
+  readonly expected: number | null;
   /** Files found so far while collecting; all files of the job afterwards. */
   readonly total: number;
   readonly done: number;
@@ -76,12 +82,22 @@ export type DownloadState = {
   readonly message: string;
 };
 
-/** A job found waiting in a tab that was not the one downloading it. */
-export const PAUSED_ELSEWHERE = "started in another tab; press Resume to go on here";
+/**
+ * The one pause the queue makes by itself: a stored job found in a tab that
+ * was not the one downloading it. A tab opened after the browser was closed
+ * is such a tab too, and the two cannot be told apart, so the words cover both.
+ */
+export const PAUSED_ELSEWHERE = "started in another tab or session";
+
+/** What a job is to the user: everything a source names, or posts picked by hand. */
+export type DownloadScope = "all" | "selection";
+const DEFAULT_SCOPE: DownloadScope = "all";
 
 const IDLE: DownloadState = {
   phase: "idle",
   label: "",
+  selected: null,
+  expected: null,
   total: 0,
   done: 0,
   failed: 0,
@@ -145,6 +161,8 @@ function progress(phase: DownloadPhase, message = ""): DownloadState {
   return {
     phase,
     label: job?.label ?? state.label,
+    selected: job === null ? state.selected : (job.selected ?? null),
+    expected: null,
     total: job?.files.length ?? state.total,
     done: next - failed.length,
     failed: failed.length,
@@ -229,7 +247,11 @@ export function isDownloadBusy(): boolean {
  * the job's folder (see `downloadFolder`). Does nothing while another job is busy or when no API
  * key is stored.
  */
-export async function startDownload(label: string, source: DownloadSource): Promise<void> {
+export async function startDownload(
+  label: string,
+  source: DownloadSource,
+  scope: DownloadScope = DEFAULT_SCOPE,
+): Promise<void> {
   const credentials = getApiCredentials();
   if (credentials === null || isDownloadBusy()) {
     return;
@@ -239,14 +261,18 @@ export async function startDownload(label: string, source: DownloadSource): Prom
   job = null;
   next = 0;
   failed = [];
-  emit({ ...IDLE, phase: "collecting", label });
+  const selected = scope === "selection" && source.kind === "ids" ? source.ids.length : null;
+  // A list of ids is looked up post by post, so its length is the total; a search has none.
+  const expected = source.kind === "ids" ? source.ids.length : null;
+  const collecting: DownloadState = { ...IDLE, phase: "collecting", label, selected, expected };
+  emit(collecting);
   let files: PostFile[];
   try {
     files = await collectPostFiles(source, {
       credentials,
       onProgress: (found) => {
         if (token === runToken) {
-          emit({ ...IDLE, phase: "collecting", label, total: found });
+          emit({ ...collecting, total: found });
         }
       },
       isCancelled: () => token !== runToken,
@@ -257,17 +283,22 @@ export async function startDownload(label: string, source: DownloadSource): Prom
     }
     const reason = error instanceof Error ? error.message : String(error);
     log.warn("downloads: collecting failed", reason);
-    emit({ ...IDLE, phase: "error", label, message: reason });
+    emit({ ...IDLE, phase: "error", label, selected, message: reason });
     return;
   }
   if (token !== runToken) {
     return;
   }
   if (files.length === 0) {
-    emit({ ...IDLE, phase: "error", label, message: NO_FILES_MESSAGE });
+    emit({ ...IDLE, phase: "error", label, selected, message: NO_FILES_MESSAGE });
     return;
   }
-  job = { label, folder: downloadFolder(label), files };
+  job = {
+    label,
+    folder: downloadFolder(label),
+    files,
+    ...(selected === null ? {} : { selected }),
+  };
   GM_setValue(DOWNLOADS_JOB_KEY, job);
   savePosition();
   await run();

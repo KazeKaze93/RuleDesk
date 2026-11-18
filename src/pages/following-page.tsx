@@ -131,6 +131,12 @@ const POST_WORD_PLURAL = "posts";
 const COUNT_AT_LEAST_MARK = "+";
 const NO_MATCH_TITLE = "No matching artists";
 const NO_MATCH_DESCRIPTION = "Nothing matches this filter.";
+const CLEAR_FILTER_LABEL = "Clear filter";
+
+/** "No artists match “фа”.": said once, with what was typed. */
+export function noArtistsMatch(query: string): string {
+  return `No artists match \u201c${query.trim()}\u201d.`;
+}
 const UNFOLLOW_DIALOG_TITLE = "Unfollow artists";
 const REFRESH_DIALOG_TITLE = "Refresh artists";
 const REFRESH_STOPPED_PREFIX = "Stopped at ";
@@ -1254,7 +1260,24 @@ export function FollowingPage(): JSX.Element {
           )}
 
           {visible.length === 0 ? (
-            <EmptyState title={NO_MATCH_TITLE} description={NO_MATCH_DESCRIPTION} />
+            filter.trim().length > 0 ? (
+              <EmptyState
+                title={noArtistsMatch(filter)}
+                // The way out of a filter that found nothing is beside the words.
+                action={
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setFilter("");
+                    }}
+                  >
+                    {CLEAR_FILTER_LABEL}
+                  </Button>
+                }
+              />
+            ) : (
+              <EmptyState title={NO_MATCH_TITLE} description={NO_MATCH_DESCRIPTION} />
+            )
           ) : (
             <div
               className={view === VIEW_LIST ? `${GRID_CLASS} ${GRID_LIST_CLASS}` : GRID_CLASS}

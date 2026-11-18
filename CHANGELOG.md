@@ -2,6 +2,23 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.59.0
+
+The rest of the designer's remarks, in one release.
+
+- RuleDesk → Page: the switches are in groups with headings: Header, Grid and thumbnails, Post page, Video, Feed, AI posts, Search and sidebar, Collections, Favorites page, Other. "Enable page tweaks" is the first row and says what it does: "Off: the site looks as without RuleDesk"; while it is off, the switches of the features are disabled. Descriptions are larger
+- Settings: a list and a number stand as a switch does, the name on the left and a narrow control on the right. "Artists per search" has its "0 = 400" as a line under the name
+- The Custom theme: the label of the background image is in one line above the field, a small preview of the picture is beside it, and "Reset theme" is a button that asks first
+- Settings → Favorites: at rest one line, "11,961 favorites · last sync 17 Nov 2026, 11:12", and the two buttons; while it runs, the bar, "Page 1 of 262" and Stop; after a stop, Resume. One explanation in place of three, with how long a full resync takes, counted from the pages
+- Settings → Downloads: each file name mask has a name, "Site + ID — rule34-19374686.jpg", and "Custom…" is the first of the list. Save is disabled while the key field is empty. How to get the key is under its field, where the files go is under File name
+- Settings → Data: "No backup yet" is a plate with a warning and Export in it. The two switches are at the right. Merge and Replace are asked after a file is picked for Import, and Replace asks once more
+- Statistics: the place of "Top tags in favorites" is taken at once by grey rows, so the page does not shift. "Collections by posts" is names and numbers, the largest first, with no bars. The ring of the kinds of collections is gone; the Collections tile says "3 custom · 8 dynamic". The account age reads "Since Aug 2019" with the years under it. "Site profile" is a block with a heading. Dates read "17 Nov 2026, 11:12"
+- The downloads panel: the title says what is done, "Downloading “test”" or "Downloading 3 selected posts"; the stage is in plain words, "Looking up files… 1 of 3"; a pause says why, "Paused: started in another tab or session · 2 of 3 files"; the panel can be minimised into a small plate with the percent. A job left paused by another tab is shown at once; it used not to be
+- The search panel on Posts: the buttons are always a column
+- Collections: the sort reads "Newest first", "Oldest first", "Name", "Most posts"; "Newest first" is new. A filter that found nothing says "No collections match “…”." and has "Clear filter"; the same on Following
+- The page of an empty collection has no Shuffle and no Select
+- Every icon button of the script has a hint under the pointer
+
 ## 0.58.1
 
 - The button of a group's actions is on the tab of the open group, and there it is always seen; the other tabs have none. Shown under the pointer only, it was not found. Its hint is "Group options", and its menu reads "Rename…" and "Delete group…". The right button of the mouse opens the same menu on any group

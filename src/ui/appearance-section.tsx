@@ -17,6 +17,7 @@ import {
   APPEARANCE_THEME_LIGHT,
   APPEARANCE_THEME_SITE,
   APPEARANCE_THEME_SITE_DARK,
+  UI_TEXT,
 } from "../config/constants";
 import { gridDensityFeature } from "../features/grid-density";
 import { applyCssOnlyFeatureChoice } from "../features/runtime";
@@ -40,6 +41,7 @@ import {
   setFeatureChoiceValue,
 } from "../storage/store";
 import { Button } from "./kit/button";
+import { Dialog } from "./kit/dialog";
 import { OverlayInPlace } from "./kit/overlay";
 import { SectionLabel } from "./kit/section-label";
 import { Select, type SelectOption } from "./kit/select";
@@ -81,7 +83,18 @@ const BG_URL_PLACEHOLDER = "https://… or data URL";
 const BG_DIM_LABEL = "Dim";
 const CHOOSE_LABEL = "Choose…";
 const REMOVE_LABEL = "Remove";
-const RESET_LABEL = "Reset to defaults";
+const RESET_LABEL = "Reset theme";
+const RESET_TITLE = "Reset theme?";
+const RESET_MESSAGE =
+  "The Custom theme goes back to the Light base, and its background image is removed. This cannot be undone.";
+const RESET_CONFIRM = "Reset";
+const RESET_CONFIRM_TONE = "danger";
+/** The small copy of the chosen background beside its field. */
+const BG_THUMB_CLASS = "rdw-appearance__bg-thumb";
+const BG_THUMB_WIDTH_PX = 56;
+const BG_THUMB_HEIGHT_PX = 36;
+/** One width for the lists of this block and of the settings rows under it. */
+const SELECT_WIDTH_PX = 160;
 const GRID_ROW_LABEL = "Grid";
 const SCREEN_HINT_PREFIX = "For this screen use at least ";
 const IMAGE_SIZE_PREFIX = "Image size: ";
@@ -105,9 +118,6 @@ ${KIT_FOCUS_CSS}
   border-radius: var(--rdw-radius-m);
   font-size: 12.5px;
   color: var(--rdw-text);
-}
-.rdw-appearance__row--top {
-  align-items: flex-start;
 }
 .rdw-appearance__row + .rdw-appearance__row {
   border-top: 1px solid var(--rdw-border);
@@ -134,12 +144,42 @@ ${KIT_FOCUS_CSS}
   font-size: 11px;
 }
 .rdw-appearance__select {
-  width: 130px;
+  width: ${String(SELECT_WIDTH_PX)}px;
   flex: none;
 }
 .rdw-appearance__base {
   width: 140px;
   flex: none;
+}
+/* The name of a wide setting stands in one line over its field: beside the
+   field it was pressed into a narrow column and broke into three lines. */
+.rdw-appearance__row--stack {
+  flex-direction: column;
+  align-items: stretch;
+}
+.rdw-appearance__row-text--line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+}
+.rdw-appearance__bg-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.rdw-appearance__bg-field .rdw-field {
+  flex: 1;
+}
+.${BG_THUMB_CLASS} {
+  flex: none;
+  box-sizing: border-box;
+  width: ${String(BG_THUMB_WIDTH_PX)}px;
+  height: ${String(BG_THUMB_HEIGHT_PX)}px;
+  border: 1px solid var(--rdw-border);
+  border-radius: var(--rdw-radius-s);
+  background: var(--rdw-surface-2);
+  object-fit: cover;
 }
 .rdw-appearance__bg {
   display: grid;
@@ -260,6 +300,7 @@ export function AppearanceSection(
     belowScreen: boolean;
   } | null>(null);
   const [screenHint] = useState<string>(() => formatScreenHint());
+  const [resetAsked, setResetAsked] = useState(false);
 
   // First paint uses base palette colors only; stored image loads async after.
   useEffect(() => {
@@ -292,6 +333,13 @@ export function AppearanceSection(
     (storedBackgroundUrl?.length ?? 0) > 0 ||
     (custom.backgroundImage?.length ?? 0) > 0 ||
     bgUrlDraft.length > 0;
+
+  // The picture in use: a file kept in the script's store, or the saved link.
+  // What is being typed is not shown until it is saved.
+  const backgroundPreviewUrl =
+    storedBackgroundUrl !== null && storedBackgroundUrl.length > 0
+      ? storedBackgroundUrl
+      : (custom.backgroundImage ?? "");
 
   function commitAppearance(
     next: Appearance,
@@ -503,8 +551,8 @@ export function AppearanceSection(
               />
             </div>
 
-            <div className="rdw-appearance__row rdw-appearance__row--top">
-              <div className="rdw-appearance__row-text">
+            <div className="rdw-appearance__row rdw-appearance__row--stack">
+              <div className="rdw-appearance__row-text rdw-appearance__row-text--line">
                 <span>{BG_IMAGE_LABEL}</span>
                 <small>{BG_IMAGE_HINT}</small>
               </div>
@@ -519,14 +567,19 @@ export function AppearanceSection(
                   onBgUrlCommit(bgUrlDraft);
                 }}
               >
-                <TextField
-                  value={bgUrlDraft}
-                  placeholder={BG_URL_PLACEHOLDER}
-                  aria-label={BG_IMAGE_LABEL}
-                  onChange={(value) => {
-                    setBgUrlDraft(value);
-                  }}
-                />
+                <div className="rdw-appearance__bg-field">
+                  <TextField
+                    value={bgUrlDraft}
+                    placeholder={BG_URL_PLACEHOLDER}
+                    aria-label={BG_IMAGE_LABEL}
+                    onChange={(value) => {
+                      setBgUrlDraft(value);
+                    }}
+                  />
+                  {backgroundPreviewUrl.length > 0 ? (
+                    <img className={BG_THUMB_CLASS} src={backgroundPreviewUrl} alt="" />
+                  ) : null}
+                </div>
                 <div className="rdw-appearance__bg-actions">
                   <Button
                     variant="secondary"
@@ -605,10 +658,32 @@ export function AppearanceSection(
             </div>
 
             <div className="rdw-appearance__footer">
-              <Button variant="ghost" size="s" onClick={onResetDefaults}>
+              <Button
+                variant="secondary"
+                size="s"
+                onClick={() => {
+                  setResetAsked(true);
+                }}
+              >
                 {RESET_LABEL}
               </Button>
             </div>
+            <Dialog
+              variant="confirm"
+              open={resetAsked}
+              title={RESET_TITLE}
+              message={RESET_MESSAGE}
+              confirmLabel={RESET_CONFIRM}
+              cancelLabel={UI_TEXT.cancel}
+              confirmTone={RESET_CONFIRM_TONE}
+              onConfirm={() => {
+                setResetAsked(false);
+                onResetDefaults();
+              }}
+              onClose={() => {
+                setResetAsked(false);
+              }}
+            />
           </>
         ) : null}
 
