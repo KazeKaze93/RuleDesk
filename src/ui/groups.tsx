@@ -254,6 +254,22 @@ const NAME_CSS = `
 }
 `;
 
+/**
+ * What goes with the pointer while a card is carried is the card itself, whole.
+ * Left to the browser it was the one picture the drag began on.
+ */
+export function carryWholeCard(event: DragEvent): void {
+  const card = event.currentTarget;
+  // No transfer in an event made by hand, as in the tests.
+  const transfer = event.dataTransfer ?? undefined;
+  if (!(card instanceof HTMLElement) || transfer === undefined) {
+    return;
+  }
+  const box = card.getBoundingClientRect();
+  transfer.effectAllowed = "move";
+  transfer.setDragImage(card, event.clientX - box.left, event.clientY - box.top);
+}
+
 export type GroupCount = {
   readonly name: string;
   readonly count: number;
@@ -330,6 +346,10 @@ export function GroupTabs(props: GroupTabsProps): JSX.Element {
       ? {
           onDragOver: (event: DragEvent) => {
             event.preventDefault();
+            const transfer = event.dataTransfer ?? undefined;
+            if (transfer !== undefined) {
+              transfer.dropEffect = "move";
+            }
             setOver(key);
           },
           onDragLeave: () => {

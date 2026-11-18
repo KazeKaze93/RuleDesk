@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.57.2
+
+- Following and Collections: a card carried to a tab goes with the pointer whole, cover, name and caption. It was one picture of the cover, the one the drag began on. The card left in its place is fainter
+
 ## 0.57.1
 
 - The tabs of the groups on Following and Collections are framed, each one a button of its own, and the open one is in the accent colour. The button of a group's actions is a part of its tab and is always there; it used to be hidden until the pointer came, with an empty gap in its place

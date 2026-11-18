@@ -34,6 +34,7 @@ import {
   GroupDialogs,
   GroupTabs,
   MoveToGroupMenu,
+  carryWholeCard,
   countGroups,
   inGroupTab,
   type GroupRequest,
@@ -321,7 +322,7 @@ export const COLLECTIONS_PAGE_CSS = `
   transition: opacity 160ms ease, transform 160ms ease;
 }
 .${CELL_CLASS}[data-dragged] {
-  opacity: 0.4;
+  opacity: 0.2;
   transform: scale(0.96);
 }
 @media (prefers-reduced-motion: reduce) {
@@ -1401,6 +1402,7 @@ export function CollectionsPage(): JSX.Element {
               draggable={!selecting}
               onDragStart={(event) => {
                 event.dataTransfer?.setData(DRAG_DATA_TYPE, collection.name);
+                carryWholeCard(event);
                 setDragId(collection.id);
               }}
               onDragEnd={() => {

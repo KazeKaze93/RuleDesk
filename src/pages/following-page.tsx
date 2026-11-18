@@ -63,6 +63,7 @@ import {
   GroupDialogs,
   GroupTabs,
   MoveToGroupMenu,
+  carryWholeCard,
   countGroups,
   inGroupTab,
   type GroupRequest,
@@ -445,7 +446,7 @@ export const FOLLOWING_PAGE_CSS = `
   transition: opacity 160ms ease, transform 160ms ease;
 }
 .${CARD_CLASS}[data-dragged] {
-  opacity: 0.4;
+  opacity: 0.2;
   transform: scale(0.96);
 }
 @media (prefers-reduced-motion: reduce) {
@@ -742,6 +743,7 @@ function ArtistCard(props: {
       draggable
       onDragStart={(event) => {
         event.dataTransfer?.setData(DRAG_DATA_TYPE, artist.tag);
+        carryWholeCard(event);
         props.onDragStart();
       }}
       onDragEnd={props.onDragEnd}
