@@ -470,8 +470,23 @@ function findRespondLink(): HTMLAnchorElement | null {
   return null;
 }
 
+/** The site's form for a comment: `form#comment_form` in `div#right-col` (docs/site.md). */
+const COMMENT_FORM_ID = "comment_form";
+
 function CommentsHost(): JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null);
+  // Where the form stood before it was brought into the panel, to put it back.
+  const formOriginRef = useRef<{ parent: Node | null; next: Node | null } | null>(null);
+  useEffect(
+    () => (): void => {
+      const origin = formOriginRef.current;
+      const form = document.getElementById(COMMENT_FORM_ID);
+      if (origin !== null && origin.parent !== null && form !== null) {
+        origin.parent.insertBefore(form, origin.next);
+      }
+    },
+    [],
+  );
   // With no comment the tab held only the site's line about the order: it is
   // said that there are none, with the way to write the first.
   const [empty] = useState(() => {
@@ -524,20 +539,39 @@ function CommentsHost(): JSX.Element {
     };
   }, []);
 
+  // The site's form for a comment opens under the picture, far from the
+  // comments. "Write a comment" brings it here, under the list: the form is
+  // the site's own, with its fields and its address, only standing elsewhere.
+  const writeComment = (): void => {
+    const host = hostRef.current;
+    const form = document.getElementById(COMMENT_FORM_ID);
+    if (host === null || respond === null) {
+      return;
+    }
+    if (!(form instanceof HTMLFormElement)) {
+      // No such form on this page: the site's link does what it does.
+      respond.click();
+      respond.scrollIntoView({ block: "center" });
+      return;
+    }
+    if (window.getComputedStyle(form).display === "none") {
+      // The site shows and hides the form by this link.
+      respond.click();
+    }
+    if (form.parentElement !== host) {
+      formOriginRef.current = { parent: form.parentNode, next: form.nextSibling };
+      host.append(form);
+    }
+    form.querySelector("textarea")?.focus();
+  };
+
   return (
     <>
-      {empty ? (
+      {empty || respond !== null ? (
         <div className={CLASS_COMMENTS_EMPTY}>
-          <span>{TEXT_NO_COMMENTS}</span>
+          <span>{empty ? TEXT_NO_COMMENTS : ""}</span>
           {respond !== null ? (
-            <Button
-              variant="secondary"
-              size="s"
-              onClick={() => {
-                respond.click();
-                respond.scrollIntoView({ block: "center" });
-              }}
-            >
+            <Button variant="secondary" size="s" onClick={writeComment}>
               {TEXT_WRITE_COMMENT}
             </Button>
           ) : null}

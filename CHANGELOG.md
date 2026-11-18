@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.53.0
+
+- The post page: "Write a comment" opens the site's form for a comment in the Comments tab, under the comments, where it is written beside what it answers. It used to open under the picture, at the other end of the page. The button is there on a post with comments too, not only on one without. The form is the site's own, with its fields and its address; only its place changes. The site's "Respond" link under the picture works as before
+
 ## 0.52.1
 
 - Upload Video: the note about the rule change is inside the card, in the row of the button. 0.52.0 said so and did not do it: the note was looked for one level too high

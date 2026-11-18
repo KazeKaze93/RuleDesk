@@ -932,6 +932,52 @@ describe("postActionsFeature", () => {
     );
   });
 
+  it("brings the site's comment form into the Comments tab on Write a comment", () => {
+    buildPostDom({ includeComments: true });
+    // The site's form and the link that shows it (docs/site.md): the form is
+    // in div#right-col, hidden until "Respond" is pressed.
+    const rightCol = document.createElement("div");
+    rightCol.id = "right-col";
+    const line = document.createElement("h4");
+    const respond = document.createElement("a");
+    respond.href = "#";
+    respond.textContent = "Respond";
+    line.append(respond);
+    const form = document.createElement("form");
+    form.id = "comment_form";
+    form.style.display = "none";
+    form.innerHTML = '<table><tbody><tr><td><textarea id="comment" name="comment"></textarea></td></tr><tr><td><input name="submit" type="submit"></td></tr></tbody></table>';
+    respond.addEventListener("click", (event) => {
+      event.preventDefault();
+      form.style.display = form.style.display === "none" ? "" : "none";
+    });
+    rightCol.append(line, form);
+    document.getElementById("post-view")?.append(rightCol);
+
+    postActionsFeature.mount(makeCtx());
+    const write = [...document.querySelectorAll("button")].find(
+      (button) => button.textContent?.trim() === "Write a comment",
+    );
+    expect(write).toBeTruthy();
+    act(() => {
+      write?.click();
+    });
+
+    const host = document.querySelector(`.${CLASS_COMMENTS_HOST}`);
+    expect(host?.contains(form)).toBe(true);
+    expect(form.style.display).toBe("");
+    // The form itself is untouched: the same fields, in the same form.
+    expect(form.querySelector('textarea[name="comment"]')).not.toBeNull();
+    expect(form.querySelector('input[type="submit"]')).not.toBeNull();
+    // Pressed again while the form is shown, it does not hide it.
+    act(() => {
+      write?.click();
+    });
+    expect(form.style.display).toBe("");
+    // The line of the site's two links is marked for the skin.
+    expect(line.classList.contains("rdw-post-reply-links")).toBe(true);
+  });
+
   it("restores #post-comments to the page on remount cleanup", () => {
     const { comments } = buildPostDom({ includeComments: true });
     expect(comments).not.toBeNull();

@@ -2356,6 +2356,32 @@ ${ROOT} .rdw-post-reply-links {
   font-weight: normal;
 }
 
+/* The site's form for a comment, brought into the panel under the comments. */
+${ROOT} #${POST_ACTIONS_HOST_ID} form#comment_form table {
+  width: 100%;
+  border: 0;
+  background: transparent;
+}
+
+${ROOT} #${POST_ACTIONS_HOST_ID} form#comment_form tr {
+  background: transparent;
+}
+
+${ROOT} #${POST_ACTIONS_HOST_ID} form#comment_form td {
+  padding: 0 0 6px;
+  border: 0;
+}
+
+${ROOT} #${POST_ACTIONS_HOST_ID} form#comment_form td:empty {
+  display: none;
+}
+
+${ROOT} #${POST_ACTIONS_HOST_ID} form#comment_form textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 96px;
+}
+
 ${ROOT} .rdw-post-panel-comments-empty {
   display: flex;
   align-items: center;
