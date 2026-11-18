@@ -1467,6 +1467,47 @@ ${UPLOAD} .${UPLOAD_TAG_COUNT_CLASS}[hidden] {
   display: none;
 }
 
+/* The user's own sets of tags: a row of small buttons under the field. */
+${UPLOAD} .rdw-upload-sets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 0;
+}
+
+${UPLOAD} .rdw-upload-sets-label {
+  color: ${v.muted};
+}
+
+${UPLOAD} .rdw-upload-set {
+  min-height: 26px;
+  padding: 0 10px;
+  border: 1px solid ${v.border};
+  border-radius: 13px;
+  background: ${v.surface2};
+  color: ${v.text};
+  font: inherit;
+  cursor: pointer;
+}
+
+${UPLOAD} .rdw-upload-set:hover {
+  border-color: ${v.muted};
+}
+
+${UPLOAD} .rdw-upload-sets-edit {
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: ${v.accent};
+  font: inherit;
+  cursor: pointer;
+}
+
+${UPLOAD} .rdw-upload-sets-edit:hover {
+  text-decoration: underline;
+}
+
 /* The line breaks the site spaces the tags cell with leave holes in a card. */
 ${UPLOAD} tr:has(#tags) > td > br:not(label + br) {
   display: none;

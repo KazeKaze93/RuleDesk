@@ -42,6 +42,18 @@ ${KIT_FOCUS_CSS}
   gap: 4px;
   min-width: 0;
 }
+.rdw-ac__dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 6px;
+  border-radius: 50%;
+  vertical-align: middle;
+}
+.rdw-ac__dot[data-kind="artist"] { background: var(--rdw-tag-artist); }
+.rdw-ac__dot[data-kind="character"] { background: var(--rdw-tag-character); }
+.rdw-ac__dot[data-kind="copyright"] { background: var(--rdw-tag-copyright); }
+.rdw-ac__dot[data-kind="metadata"] { background: var(--rdw-tag-metadata); }
 .rdw-ac__label {
   font: 600 10.5px var(--rdw-font);
   letter-spacing: 0.06em;
@@ -267,6 +279,12 @@ export function AutocompleteField(props: AutocompleteFieldProps): JSX.Element {
                   selectOption(option);
                 }}
               >
+                {option.type === "artist" ||
+                option.type === "character" ||
+                option.type === "copyright" ||
+                option.type === "metadata" ? (
+                  <span className="rdw-ac__dot" data-kind={option.type} aria-hidden="true" />
+                ) : null}
                 {option.label}
               </li>
             ))}

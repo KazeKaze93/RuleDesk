@@ -234,7 +234,7 @@ In the script's own themes (Light, Dark, Custom) these pages are restyled; in al
 | Artists | A **Follow** button in each row |
 | Tags | **Follow** and **Save as collection** in each row |
 | Comments | Long tag lists are folded |
-| Upload | Tags are counted against the five the site asks for (a line is shown only while there are fewer); a tag entered twice is dropped. In the script's themes the form is one card in two columns, the file field is a drop zone with a preview and a cross that removes the file, Rating is a switch, and the guidelines can be folded |
+| Upload | Tags are counted against the five the site asks for (a line is shown only while there are fewer); a tag entered twice is dropped. In the script's themes the form is one card in two columns, the file field is a drop zone with a preview and a cross that removes the file, Rating is a switch, and the guidelines can be folded. Under the Tags field stand your own sets of tags (RuleDesk → Upload), a button each: a press adds the tags of the set, none of them twice |
 
 ![The Upload form in the Dark theme](img/upload.jpg)
 
@@ -266,6 +266,7 @@ Header → the gear. On the left is the list of sections, held in place, with th
 | Header, Grid and thumbnails, Post page, Video, Feed, AI posts, Search and sidebar, Collections | A switch for every feature named in this file, by the part of the site it changes, and with them "Statistics in site menu", "Keep the header and the sidebar in place while scrolling", "Artists per search" (the size of a feed group), "Hide AI posts everywhere" and "Collection part size" |
 | Favorites | Favorite buttons in the grid; Bulk remove favorites; Sync favorites and Full resync, with progress |
 | Downloads | Download manager; the API key; the file name mask |
+| Upload | Your sets of tags for the Upload page: a name and the tags of each |
 | Blacklist | The site's tag blacklist for this browser, as chips |
 | Data | Export and Import (Merge or Replace) of everything the script stores; when the last backup was made |
 

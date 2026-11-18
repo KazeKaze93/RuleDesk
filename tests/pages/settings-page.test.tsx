@@ -120,6 +120,7 @@ describe("SettingsPage flat rows", () => {
       "Collections",
       "Favorites",
       "Downloads",
+      "Upload",
       "Blacklist",
       "Data",
     ]);
@@ -194,7 +195,7 @@ describe("SettingsPage flat rows", () => {
     act(() => {
       clear?.click();
     });
-    expect(shownSections()).toHaveLength(13);
+    expect(shownSections()).toHaveLength(14);
     expect(root?.querySelector("[data-settings-hidden]")).toBeNull();
   });
 

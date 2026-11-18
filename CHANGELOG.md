@@ -2,6 +2,11 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.62.0
+
+- Upload: your own sets of tags. A set is a name and its tags, made in RuleDesk → Upload, as many as you like. On the Upload page and on Upload Video each set is a button under the Tags field: a press adds its tags to the field, and a tag that is there already is not added twice. "Edit sets" beside the buttons opens the section of the settings. The site's own "My Tags" is left as it is
+- The dot of a tag's chip is in the colour of its kind: artist, character, copyright, metadata. This is in the search of Favorites and in the Blacklist, and the suggestions of a field have the same dot. The kind is what the site said of the tag where the script saw it, in the suggestions of a search and in the tag list beside the posts, and it is remembered; a tag seen nowhere yet has the grey dot. Nothing is asked of the site for it
+
 ## 0.61.0
 
 The designer's review of the settings.

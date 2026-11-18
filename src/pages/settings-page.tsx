@@ -68,6 +68,8 @@ import {
 } from "./constants";
 import { DataSection } from "./data-section";
 import { DownloadsSection } from "./downloads-section";
+import { UploadSetsSection } from "./upload-sets-section";
+import { SETTINGS_SECTION_UPLOAD } from "../site/upload-page";
 import { FavoritesSyncSection } from "./favorites-sync-section";
 import {
   STICKY_HEADER_DEFAULT,
@@ -160,6 +162,7 @@ const SECTION_APPEARANCE = "appearance";
 const SECTION_BLACKLIST = "blacklist";
 const SECTION_FAVORITES = SETTINGS_SECTION_FAVORITES;
 const SECTION_DOWNLOADS = "downloads";
+const SECTION_UPLOAD = SETTINGS_SECTION_UPLOAD;
 const SECTION_DATA = "data";
 
 type SectionDef = {
@@ -179,6 +182,7 @@ const SECTIONS: readonly SectionDef[] = [
   ...SETTINGS_GROUPS.map((group) => ({ id: group.id, title: group.title, service: false })),
   { id: SECTION_FAVORITES, title: "Favorites", service: true },
   { id: SECTION_DOWNLOADS, title: "Downloads", service: true },
+  { id: SECTION_UPLOAD, title: "Upload", service: true },
   { id: SECTION_BLACKLIST, title: "Blacklist", service: true },
   { id: SECTION_DATA, title: "Data", service: true },
 ];
@@ -773,6 +777,13 @@ export function SettingsPage(): JSX.Element {
           </div>
           {/* The key and the name are of the download manager: off with it. */}
           <DownloadsSection disabled={!tweaks || !isFeatureEnabled(DOWNLOADS_FEATURE_ID)} />
+        </Card>
+      );
+    }
+    if (id === SECTION_UPLOAD) {
+      return (
+        <Card className={PANEL_UI_CLASS.pageCard}>
+          <UploadSetsSection />
         </Card>
       );
     }

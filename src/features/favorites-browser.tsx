@@ -1,3 +1,4 @@
+import { chipKindOfTag } from "../ui/tag-chip-kind";
 import type { JSX } from "preact";
 import { createPortal } from "preact/compat";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
@@ -1372,6 +1373,8 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
                 <Chip
                   label={chip.label}
                   variant={chip.group ? "group" : chip.excluded ? "exclude" : "dot"}
+                  // The dot says what the tag is, where that was seen on the site.
+                  kind={chip.group || chip.excluded ? "default" : chipKindOfTag(chip.label)}
                   onRemove={() => {
                     setQuery(removeChip(text, chip));
                   }}

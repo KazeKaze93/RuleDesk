@@ -1,3 +1,4 @@
+import { chipKindOfTag } from "../ui/tag-chip-kind";
 import type { JSX } from "preact";
 import { render as preactRender } from "preact";
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
@@ -139,6 +140,8 @@ export function BlacklistSection(
             <li key={tag}>
               <Chip
                 label={tag}
+                variant="dot"
+                kind={chipKindOfTag(tag)}
                 onRemove={() => {
                   const next = readSiteBlacklist().filter(
                     (entry) => entry !== tag,

@@ -1,3 +1,4 @@
+import { rememberTagKinds } from "../site/tag-types";
 import {
   SEARCH_TOOLS_AI_ROW_BODY_CLASS,
   SEARCH_TOOLS_MOUNTED_CLASS,
@@ -610,6 +611,8 @@ function buildSidebarTagTypes(): Map<string, TagType> {
     }
     map.set(tag, tagType);
   }
+  // The tag list beside the posts names the kind of every tag in it.
+  rememberTagKinds(map);
   return map;
 }
 

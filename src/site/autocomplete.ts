@@ -6,6 +6,7 @@ import {
   SITE_ORIGIN,
 } from "../config/constants";
 import { log } from "../log";
+import { rememberTagKinds } from "./tag-types";
 
 export const AUTOCOMPLETE_PATH = "/public/autocomplete.php";
 export const AUTOCOMPLETE_QUERY_PARAM = "q";
@@ -60,6 +61,8 @@ function isAbortError(error: unknown): boolean {
 function normalizeItems(
   raw: z.infer<typeof AutocompleteResponseSchema>,
 ): AutocompleteSuggestion[] {
+  // The kinds the site names here colour the chips of these tags elsewhere.
+  rememberTagKinds(raw.map((item) => [item.value, item.type ?? undefined]));
   const result: AutocompleteSuggestion[] = [];
   for (const item of raw) {
     const type =

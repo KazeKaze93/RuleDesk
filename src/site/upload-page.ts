@@ -1,5 +1,7 @@
 import { skinIsOn } from "../skin/skin-on";
 import { getFeatureState, setFeatureState } from "../storage/store";
+import { openSettingsAt } from "../pages/settings-focus";
+import { addTagsToText, usableTagSets } from "./upload-tag-sets";
 
 /**
  * The site's Upload page, helped a little. The form and its fields stay the
@@ -13,6 +15,8 @@ import { getFeatureState, setFeatureState } from "../storage/store";
  *   is the one place where the script changes what is sent, and only by
  *   dropping repeats.
  * - The long guidelines can be folded; the choice is remembered.
+ * - Under the tags stand the user's own sets of tags, a button each: a press
+ *   adds the tags of the set to the field. The sets are made in the settings.
  *
  * The page is recognised by its markup. The layout is in the skin.
  */
@@ -33,6 +37,16 @@ export const UPLOAD_TAG_COUNT_SHORT_CLASS = "rdw-upload-tag-count--short";
 export const UPLOAD_GUIDE_TOGGLE_CLASS = "rdw-upload-guide-toggle";
 export const UPLOAD_GUIDE_FOLDED_CLASS = "rdw-upload-guide-folded";
 export const UPLOAD_GUIDE_STATE_ID = "upload-guide-folded";
+export const UPLOAD_SETS_CLASS = "rdw-upload-sets";
+export const UPLOAD_SET_CLASS = "rdw-upload-set";
+export const UPLOAD_SETS_LABEL_CLASS = "rdw-upload-sets-label";
+export const UPLOAD_SETS_EDIT_CLASS = "rdw-upload-sets-edit";
+/** The section of the settings where the sets are made. */
+export const SETTINGS_SECTION_UPLOAD = "upload";
+const SETS_LABEL = "Tag sets:";
+const SETS_EDIT_LABEL = "Edit sets";
+const SETS_ADD_LABEL = "Add tag sets";
+const SET_TITLE_PREFIX = "Adds: ";
 /** Around a note the site leaves after the table of the form (the video upload). */
 export const UPLOAD_NOTE_CLASS = "rdw-upload-note";
 
@@ -214,6 +228,55 @@ function mountTagCount(tags: HTMLTextAreaElement): void {
   sync();
 }
 
+/**
+ * The user's sets of tags under the Tags field. A press writes into the field
+ * as typing would and tells the site's own checks and the count that it did.
+ */
+function mountTagSets(tags: HTMLTextAreaElement): void {
+  const cell = tags.closest("td");
+  if (cell === null || cell.querySelector(`.${UPLOAD_SETS_CLASS}`) !== null) {
+    return;
+  }
+  const row = document.createElement("div");
+  row.className = UPLOAD_SETS_CLASS;
+  const sets = usableTagSets();
+  if (sets.length > 0) {
+    const label = document.createElement("span");
+    label.className = UPLOAD_SETS_LABEL_CLASS;
+    label.textContent = SETS_LABEL;
+    row.append(label);
+  }
+  for (const set of sets) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = UPLOAD_SET_CLASS;
+    button.textContent = set.name.trim();
+    button.title = `${SET_TITLE_PREFIX}${set.tags.trim()}`;
+    button.addEventListener("click", () => {
+      const next = addTagsToText(tags.value, set.tags);
+      if (next === tags.value) {
+        return;
+      }
+      tags.value = next;
+      for (const type of ["input", "change"]) {
+        tags.dispatchEvent(new Event(type, { bubbles: true }));
+      }
+    });
+    row.append(button);
+  }
+  const edit = document.createElement("button");
+  edit.type = "button";
+  edit.className = UPLOAD_SETS_EDIT_CLASS;
+  edit.textContent = sets.length > 0 ? SETS_EDIT_LABEL : SETS_ADD_LABEL;
+  edit.addEventListener("click", () => {
+    openSettingsAt(SETTINGS_SECTION_UPLOAD);
+  });
+  row.append(edit);
+  const count = cell.querySelector(`.${UPLOAD_TAG_COUNT_CLASS}`);
+  const box = tags.parentElement?.parentElement === cell ? tags.parentElement : tags;
+  (count ?? box).after(row);
+}
+
 function mountGuideToggle(form: Element): void {
   const guide = form.querySelector("td > div:has(> h3)");
   const cell = guide?.parentElement ?? null;
@@ -288,5 +351,6 @@ export function mountUploadPage(): void {
   }
   if (tags instanceof HTMLTextAreaElement && form.contains(tags)) {
     mountTagCount(tags);
+    mountTagSets(tags);
   }
 }
