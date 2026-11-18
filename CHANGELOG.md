@@ -2,6 +2,15 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.48.0
+
+From the design audit, state that could not be seen:
+
+- The post page: "Favorite" is the blue main button only until the post is a favorite; then it is a pressed button "In favorites", and its tooltip says a click removes it. "Vote" and "I came" stay pressed after they are used on the page. "Collections" reads "In 2 collections", with a tick, when custom collections hold the post
+- Collections: "NEW" is a mark of its own beside the name, the same pill as on Following. The kind of a collection moved to the grey line under the name: "Dynamic · 2,715 posts", "Custom · 3 posts". The accent colour on a card is kept for news
+- Collections and Following: a card under the pointer is only lighter. The accent frame is for the card the keyboard is on and for a selected one, which also gets a soft accent fill; hover used to look like selection
+- Lists (Sort, kinds, groups, themes, Collection in Favorites): the chosen option has a tick and a heavier text; the fill is for the option under the pointer
+
 ## 0.47.2
 
 - Following: the line "6 artists · Seen up to post #…" stands in the toolbar itself, after the filters, not under it

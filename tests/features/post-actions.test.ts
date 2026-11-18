@@ -988,7 +988,7 @@ describe("postActionsFeature", () => {
     expect(panel?.querySelector(`.${CLASS_CARD}`)).toBeNull();
   });
 
-  it("Favorite stays primary with accent fill in both states", () => {
+  it("Favorite is the main button until the post is a favorite, then a pressed one", () => {
     buildPostDom();
     postActionsFeature.mount(makeCtx());
     expect(
@@ -999,12 +999,13 @@ describe("postActionsFeature", () => {
     addFav(POST_ID);
     buildPostDom();
     postActionsFeature.mount(makeCtx());
-    expect(
-      document.querySelector(`.${CLASS_FAV}`)?.classList.contains("rdw-btn--primary"),
-    ).toBe(true);
-    expect(document.querySelector(`.${CLASS_FAV}`)?.textContent).toContain(
-      TEXT_IN_FAVORITES,
-    );
+    // Since 0.48.0 (design audit, 4.4): both states used to be the same blue
+    // button, and the state of the page's main action could not be seen.
+    const saved = document.querySelector(`.${CLASS_FAV}`);
+    expect(saved?.classList.contains("rdw-btn--primary")).toBe(false);
+    expect(saved?.getAttribute("aria-pressed")).toBe("true");
+    expect(saved?.getAttribute("title")).toBe("Remove from favorites");
+    expect(saved?.textContent).toContain(TEXT_IN_FAVORITES);
   });
 
   it("labels Comments tab with count from #comment-list and falls back without it", () => {

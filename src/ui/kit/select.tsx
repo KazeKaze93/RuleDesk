@@ -2,7 +2,7 @@ import type { JSX } from "preact";
 import { createPortal } from "preact/compat";
 import { useContext, useEffect, useId, useLayoutEffect, useRef, useState } from "preact/hooks";
 
-import { IconChevronDown } from "./icons";
+import { IconCheck, IconChevronDown } from "./icons";
 import { OVERLAY_Z_INDEX, OverlayInPlace } from "./overlay";
 import { KIT_CONTROL_FONT, KIT_CONTROL_HEIGHT, KIT_FOCUS_CSS } from "./shared";
 
@@ -23,6 +23,7 @@ export type SelectProps = {
 const LIST_CLASS = "rdw-select__list";
 const LIST_FLOATING_CLASS = "rdw-select__list--floating";
 const LIST_GAP_PX = 4;
+const TICK_ICON_PX = 14;
 const LIST_MAX_HEIGHT_PX = 220;
 const LIST_EDGE_PX = 8;
 /** A list drawn over the page may be wider than its trigger, up to this. */
@@ -103,9 +104,22 @@ ${KIT_FOCUS_CSS}
   color: var(--rdw-text);
   cursor: pointer;
 }
-.rdw-select__option[aria-selected="true"],
-.rdw-select__option:hover {
+.rdw-select__option {
+  justify-content: space-between;
+  gap: 12px;
+}
+/* The chosen option has a tick and a heavier text; the fill is for the option
+   under the pointer or the keyboard. One fill for both made them one. */
+.rdw-select__option:hover,
+.rdw-select__option:focus-visible {
   background: var(--rdw-surface-2);
+}
+.rdw-select__option[aria-selected="true"] {
+  font-weight: 600;
+}
+.rdw-select__tick {
+  flex: none;
+  color: var(--rdw-accent);
 }
 `;
 
@@ -211,7 +225,10 @@ export function Select(props: SelectProps): JSX.Element {
             }
           }}
         >
-          {option.label}
+          <span>{option.label}</span>
+          {option.value === props.value ? (
+            <IconCheck size={TICK_ICON_PX} className="rdw-select__tick" />
+          ) : null}
         </li>
       ))}
     </ul>

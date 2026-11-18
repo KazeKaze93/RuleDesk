@@ -4,12 +4,19 @@ import { useCallback, useRef, useState } from "preact/hooks";
 import { deriveThumbUrlFromMedia } from "../../site/thumb";
 import { CollectionPicker } from "../../ui/collection-picker";
 import { ANCHORED_POPOVER_WIDTH_PX, Button, Popover } from "../../ui/kit";
-import { IconPlus } from "../../ui/kit/icons";
+import { IconCheck, IconPlus } from "../../ui/kit/icons";
+import { playlistsContaining } from "../../storage/store";
 import { VIDEO_ELEMENT_ID } from "../video-player";
 import { IMAGE_ID } from "./site-reads";
 
 const TEXT_COLLECTIONS = "Collections";
 const ARIA_COLLECTIONS = "Custom collections";
+const SINGLE = 1;
+
+/** "In 1 collection", "In 3 collections": the button of a post that some collections hold. */
+export function collectionsHeldLabel(count: number): string {
+  return `In ${String(count)} ${count === SINGLE ? "collection" : "collections"}`;
+}
 const TRIGGER_ICON_PX = 14;
 
 const VIDEO_SOURCE_SELECTOR = "source";
@@ -111,9 +118,13 @@ export function CollectionsMenu(
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
+  // How many custom collections hold the post; read again when the list is
+  // closed, where it may have been changed.
+  const [held, setHeld] = useState(() => playlistsContaining(props.postId).length);
   const close = useCallback((): void => {
     setOpen(false);
-  }, []);
+    setHeld(playlistsContaining(props.postId).length);
+  }, [props.postId]);
 
   const bindTrigger = useCallback((node: HTMLDivElement | null): void => {
     const button = node?.querySelector("button");
@@ -132,13 +143,18 @@ export function CollectionsMenu(
         variant="secondary"
         size="m"
         className={CLASS_TRIGGER}
-        aria-label={TEXT_COLLECTIONS}
+        pressed={held > 0}
+        aria-label={held > 0 ? collectionsHeldLabel(held) : TEXT_COLLECTIONS}
         onClick={() => {
-          setOpen((value) => !value);
+          if (open) {
+            close();
+          } else {
+            setOpen(true);
+          }
         }}
       >
-        <IconPlus size={TRIGGER_ICON_PX} />
-        {TEXT_COLLECTIONS}
+        {held > 0 ? <IconCheck size={TRIGGER_ICON_PX} /> : <IconPlus size={TRIGGER_ICON_PX} />}
+        {held > 0 ? collectionsHeldLabel(held) : TEXT_COLLECTIONS}
       </Button>
       <Popover
         open={open}

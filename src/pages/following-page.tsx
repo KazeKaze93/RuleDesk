@@ -360,13 +360,20 @@ export const FOLLOWING_PAGE_CSS = `
   border: 1px solid var(--rdw-border);
   border-radius: var(--rdw-radius-l);
 }
-.${CARD_CLASS}:hover,
+/* Under the pointer a card is only lighter. The accent frame is for the card
+   the keyboard is in, and for a selected one: hover used to look selected. */
+.${CARD_CLASS}:hover {
+  border-color: var(--rdw-muted);
+  background: var(--rdw-surface-2);
+}
 .${CARD_CLASS}:focus-within,
 .${CARD_SELECTED_CLASS} {
   border-color: var(--rdw-accent);
 }
-.${CARD_SELECTED_CLASS} {
+.${CARD_SELECTED_CLASS},
+.${CARD_SELECTED_CLASS}:hover {
   box-shadow: 0 0 0 1px var(--rdw-accent);
+  background: var(--rdw-accent-soft);
 }
 .${CARD_LINK_CLASS} {
   display: flex;

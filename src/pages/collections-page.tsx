@@ -57,7 +57,6 @@ const COVER_IMAGE_CLASS = "rdw-collection-cover-image";
 const COVER_EMPTY_CLASS = "rdw-collection-cover-empty";
 const META_ROW_CLASS = "rdw-collection-meta-row";
 const NAME_CLASS = "rdw-collection-name";
-const BADGE_CLASS = "rdw-collection-badge";
 const CAPTION_CLASS = "rdw-collection-caption";
 const FORM_ERROR_CLASS = "rdw-collection-form-error";
 const CARD_SELECTED_CLASS = "rdw-collection-card--selected";
@@ -100,7 +99,15 @@ const GRID_LABEL = "Collections";
 const BADGE_CUSTOM = "Custom";
 const BADGE_DYNAMIC = "Dynamic";
 /** A saved search in which "Check for new" found posts newer than the last ones you saw. */
-const BADGE_DYNAMIC_NEW = "Dynamic · new";
+/** The mark of a collection with new posts: the same pill as on a card of Following. */
+const NEW_BADGE = "new";
+const NEW_BADGE_CLASS = "rdw-collection-new";
+const CAPTION_SEPARATOR = " \u00b7 ";
+
+/** "Dynamic · 2,715 posts": what kind the collection is and how much it holds, in one grey line. */
+export function cardCaption(kind: string, meta: string): string {
+  return `${kind}${CAPTION_SEPARATOR}${meta}`;
+}
 const CHECK_LABEL = "Check for new";
 const CHECK_TITLE =
   "Read the first page of every saved search: refresh its cover and post count and mark the ones with new posts. One request per search";
@@ -303,8 +310,15 @@ export const COLLECTIONS_PAGE_CSS = `
   left: 17px;
   transform: translateY(-50%);
 }
-.${CARD_CLASS}:hover,
-.${CARD_CLASS}:focus,
+/* Under the pointer a card is only lighter. The accent frame is for the card
+   the keyboard is on, and for a selected one: hover used to look selected. */
+.${CARD_CLASS}:hover {
+  border-color: var(--rdw-muted);
+  background: var(--rdw-surface-2);
+}
+.${CARD_CLASS}:focus {
+  outline: none;
+}
 .${CARD_CLASS}:focus-visible {
   border-color: var(--rdw-accent);
   background: var(--rdw-surface-2);
@@ -317,6 +331,7 @@ export const COLLECTIONS_PAGE_CSS = `
 .${CARD_SELECTED_CLASS}:hover {
   border-color: var(--rdw-accent);
   box-shadow: 0 0 0 1px var(--rdw-accent);
+  background: var(--rdw-accent-soft);
 }
 .${CARD_MARK_CLASS} {
   position: absolute;
@@ -397,13 +412,18 @@ export const COLLECTIONS_PAGE_CSS = `
   background: var(--rdw-warn-soft);
   color: var(--rdw-warn);
 }
-.${BADGE_CLASS} {
+/* "New" is news, the kind of a collection is not: the kind is in the grey line
+   under the name, and the accent colour is kept for this one mark. */
+.${NEW_BADGE_CLASS} {
   flex: none;
+  padding: 0 6px;
+  border-radius: 9px;
+  background: var(--rdw-accent);
+  color: var(--rdw-surface);
   font-size: ${String(BADGE_FONT_PX)}px;
   font-weight: 700;
   letter-spacing: ${BADGE_TRACKING};
   text-transform: uppercase;
-  color: var(--rdw-accent);
 }
 .${CAPTION_CLASS} {
   margin: 0;
@@ -626,6 +646,8 @@ function CardLink(props: {
   readonly kind: string;
   readonly badge: string;
   readonly meta: string;
+  /** A check found posts newer than the ones seen at the last opening. */
+  readonly hasNew?: boolean;
   readonly select: CardSelect | null;
   readonly children: ComponentChildren;
 }): JSX.Element {
@@ -655,9 +677,9 @@ function CardLink(props: {
         {props.children}
         <span className={META_ROW_CLASS}>
           <span className={NAME_CLASS}>{props.collection.name}</span>
-          <span className={BADGE_CLASS}>{props.badge}</span>
+          {props.hasNew ? <span className={NEW_BADGE_CLASS}>{NEW_BADGE}</span> : null}
         </span>
-        <span className={CAPTION_CLASS}>{props.meta}</span>
+        <span className={CAPTION_CLASS}>{cardCaption(props.badge, props.meta)}</span>
       </a>
     );
   }
@@ -672,9 +694,9 @@ function CardLink(props: {
       {props.children}
       <span className={META_ROW_CLASS}>
         <span className={NAME_CLASS}>{props.collection.name}</span>
-        <span className={BADGE_CLASS}>{props.badge}</span>
+        {props.hasNew ? <span className={NEW_BADGE_CLASS}>{NEW_BADGE}</span> : null}
       </span>
-      <span className={CAPTION_CLASS}>{props.meta}</span>
+      <span className={CAPTION_CLASS}>{cardCaption(props.badge, props.meta)}</span>
     </a>
   );
 }
@@ -789,7 +811,8 @@ function DynamicCard(props: CardProps): JSX.Element {
       collection={props.collection}
       href={dynamicHref(props.collection)}
       kind={COLLECTION_KIND_SEARCH}
-      badge={dynamicHasNew(props.collection) ? BADGE_DYNAMIC_NEW : BADGE_DYNAMIC}
+      badge={BADGE_DYNAMIC}
+      hasNew={dynamicHasNew(props.collection)}
       meta={dynamicMeta(props.collection)}
       select={props.select}
     >

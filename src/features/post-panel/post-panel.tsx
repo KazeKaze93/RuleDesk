@@ -64,6 +64,10 @@ const TEXT_COMMENTS_COUNTED_SEP = " · ";
 const LABEL_ORIGINAL = "Original";
 const LABEL_VOTE = "Vote";
 const LABEL_ICAME = "I came";
+const TITLE_FAVORITE = "Add to favorites";
+const TITLE_UNFAVORITE = "Remove from favorites";
+const TITLE_VOTE = "Vote up";
+const TITLE_VOTED = "Voted up";
 const ARIA_PANEL_TABS = "Post details";
 
 const ICON_SIZE = 14;
@@ -152,6 +156,11 @@ export function PostPanel(props: PostPanelProps): JSX.Element {
     return readScoreText(props.postId) ?? TEXT_SCORE_UNKNOWN;
   });
   const [votePending, setVotePending] = useState(false);
+  // Pressed after a vote and after "I came" made on this page. The site does
+  // not say on the page whether either was done before, so a page opened
+  // again shows them unpressed.
+  const [voted, setVoted] = useState(false);
+  const [cameDone, setCameDone] = useState(false);
   const [stats] = useState<readonly StatRow[]>(() => readStatRows());
   const [moreLinks] = useState<readonly MoreLink[]>(() => collectMoreLinks());
   const [originalHref] = useState<string | null>(() => {
@@ -221,6 +230,7 @@ export function PostPanel(props: PostPanelProps): JSX.Element {
       if (score !== null) {
         writeScoreText(props.postId, score);
         setScoreText(String(score));
+        setVoted(true);
       }
     } finally {
       setVotePending(false);
@@ -229,6 +239,7 @@ export function PostPanel(props: PostPanelProps): JSX.Element {
 
   const onICameClick = useCallback((): void => {
     iCame?.anchor.click();
+    setCameDone(true);
   }, [iCame]);
 
   const onTabChange = useCallback((id: string): void => {
@@ -257,11 +268,15 @@ export function PostPanel(props: PostPanelProps): JSX.Element {
         {props.postId !== null || numericId !== null ? (
           <div className={CLASS_ACTIONS_ROW}>
             {props.postId !== null ? (
+              // A post already in favorites is not the page's main action any
+              // more: the button is drawn pressed, and says what a click does.
               <Button
-                variant="primary"
+                variant={favorited ? "secondary" : "primary"}
                 size="m"
                 className={CLASS_FAV}
                 loading={favPending}
+                pressed={favorited}
+                title={favorited ? TITLE_UNFAVORITE : TITLE_FAVORITE}
                 aria-label={
                   favorited
                     ? `${UI_TEXT.cardFavRemoveLabel} ${props.postId}`
@@ -293,6 +308,8 @@ export function PostPanel(props: PostPanelProps): JSX.Element {
                 size="m"
                 className={CLASS_VOTE}
                 loading={votePending}
+                pressed={voted}
+                title={voted ? TITLE_VOTED : TITLE_VOTE}
                 aria-label={LABEL_VOTE}
                 onClick={() => {
                   void onVoteClick();
@@ -308,6 +325,7 @@ export function PostPanel(props: PostPanelProps): JSX.Element {
                 variant="secondary"
                 size="m"
                 className={CLASS_ICAME}
+                pressed={cameDone}
                 aria-label={LABEL_ICAME}
                 onClick={onICameClick}
               >
