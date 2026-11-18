@@ -2156,6 +2156,35 @@ ${ROOT} div.notice {
   margin-bottom: 1em;
 }
 
+/*
+ * The site's message to the user (from Kaze, 18.11.2026) is div#notice, the
+ * first thing in the body: "You can only cum once a day" and the like. In the
+ * flow it stood as a bar over the whole page and pushed the header of the
+ * panel and the picture down. It is a small plate at the bottom of the window,
+ * over the page, and moves nothing.
+ */
+${ROOT} body > div#notice.notice {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  z-index: 30;
+  transform: translateX(-50%);
+  box-sizing: border-box;
+  max-width: min(560px, calc(100vw - 32px));
+  margin: 0;
+  padding: 10px 16px;
+  color: ${v.text};
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+  box-shadow: ${v.shadow2};
+}
+
+${ROOT} body > div#notice.notice:empty {
+  display: none;
+}
+
 ${ROOT} div.has-mail {
   border-color: ${v.tagCharacter};
   background: ${v.accentSoft};

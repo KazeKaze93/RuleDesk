@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.53.3
+
+- The site's message to the user, such as "You can only cum once a day" after a second "I came", is a small plate at the bottom of the window. It used to stand as a bar over the whole page and push the panel and the picture down
+
 ## 0.53.2
 
 - The site's "New Account Safety Check", shown before the first comment of an account, is in the colours of the theme and not light green with a dark blue button. What it asks, its checkbox and its buttons are the site's and are not touched
