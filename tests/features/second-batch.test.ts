@@ -275,7 +275,7 @@ describe("groups and kinds of followed tags, new posts of saved searches", () =>
     expect(listCollectionGroups()).toEqual(["Wallpapers"]);
     expect(listFollowGroups()).toEqual([]);
     expect(createCollectionGroup("Empty")).toBe(true);
-    expect(listCollectionGroups()).toEqual(["Empty", "Wallpapers"]);
+    expect(listCollectionGroups()).toEqual(["Wallpapers", "Empty"]);
     expect(renameCollectionGroup("Wallpapers", "Empty")).toBe(false);
     expect(renameCollectionGroup("Wallpapers", "Walls")).toBe(true);
     expect(load().collections.map((item) => item.group)).toEqual(["Walls", "Walls"]);

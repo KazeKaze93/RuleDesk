@@ -2,6 +2,14 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.58.0
+
+- Following and Collections: when there are more groups than fit the row, the rest are behind "More (N)" at the end of it. "All" is always the first, "No group" and "New group" the last, and between them as many groups as fit. The row is counted again when the window gets another width and when a group is added. It used to wrap into a second row
+- The open group always has a tab: picked from "More", it takes the last place in the row, and the group that was there goes to the menu
+- The groups stand in the order they were made, in the row and in the menus. They used to stand by name. A renamed group keeps its place
+- With more than ten groups the "More" menu and the "Move to group" menu have a field to find a group by name, and the field has the focus at once. Enter picks the first found; the up and down arrows go through the items; Esc closes the menu. "New group…" is always the last item
+- A long name is cut on its tab after 20 characters; whole, it is in the hint of the tab and in the menus. The name of a group may be 40 characters long, and the window of a new name says how many there are
+
 ## 0.57.3
 
 - The tabs of the groups on Following and Collections look as the tabs in the header of the site do: words with no frames, a thin line under the row and a blue one under the open tab, whose name is bold. The count is smaller and grey, so "11 2" reads as a name and a number. "No group" is the last and quieter; "New group" is at the right end of the row

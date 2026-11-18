@@ -1317,17 +1317,23 @@ function writeKeptGroupNames(data: StorageData, stateId: string, names: readonly
   };
 }
 
+/**
+ * The groups in the order they were made (the designer, 18.11.2026). A group
+ * older than the kept list, known only from what is in it, comes after those,
+ * by name.
+ */
 function sortedGroupNames(used: Iterable<string | undefined>, kept: readonly string[]): string[] {
   const names = new Set<string>(kept);
+  const older = new Set<string>();
   for (const name of used) {
-    if (name !== undefined && name.length > 0) {
-      names.add(name);
+    if (name !== undefined && name.length > 0 && !names.has(name)) {
+      older.add(name);
     }
   }
-  return [...names].sort((a, b) => a.localeCompare(b));
+  return [...names, ...[...older].sort((a, b) => a.localeCompare(b))];
 }
 
-/** The names of the groups of the Following page, in alphabetical order. */
+/** The names of the groups of the Following page, in the order they were made. */
 export function listFollowGroups(): string[] {
   const data = load();
   return sortedGroupNames(
@@ -1392,7 +1398,7 @@ export function renameFollowGroup(from: string, to: string): boolean {
     entry.group === from ? { ...entry, group: name } : entry,
   );
   writeKeptGroupNames(data, FOLLOW_GROUPS_STATE_ID, [
-    ...keptGroupNames(data, FOLLOW_GROUPS_STATE_ID).filter((kept) => kept !== from),
+    ...keptGroupNames(data, FOLLOW_GROUPS_STATE_ID).map((kept) => (kept === from ? name : kept)),
     name,
   ]);
   save(data);
@@ -1420,7 +1426,7 @@ export function deleteFollowGroup(group: string): number {
   return changed;
 }
 
-/** The names of the groups of the Collections page, in alphabetical order. */
+/** The names of the groups of the Collections page, in the order they were made. */
 export function listCollectionGroups(): string[] {
   const data = load();
   return sortedGroupNames(
@@ -1484,7 +1490,7 @@ export function renameCollectionGroup(from: string, to: string): boolean {
     item.group === from ? { ...item, group: name } : item,
   );
   writeKeptGroupNames(data, COLLECTION_GROUPS_STATE_ID, [
-    ...keptGroupNames(data, COLLECTION_GROUPS_STATE_ID).filter((kept) => kept !== from),
+    ...keptGroupNames(data, COLLECTION_GROUPS_STATE_ID).map((kept) => (kept === from ? name : kept)),
     name,
   ]);
   save(data);

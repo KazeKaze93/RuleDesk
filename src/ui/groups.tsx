@@ -1,5 +1,5 @@
-import type { JSX } from "preact";
-import { useContext, useEffect, useRef, useState } from "preact/hooks";
+import type { ComponentChildren, JSX } from "preact";
+import { useContext, useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 
 import { Button, Dialog, IconButton, OverlayInPlace, Popover, TextField } from "./kit";
 import { IconCheck, IconChevronDown, IconDots, IconPlus } from "./kit/icons";
@@ -33,6 +33,23 @@ const GROUP_CREATE_LABEL = "Create";
 const GROUP_SAVE_LABEL = "Save";
 const CANCEL_LABEL = "Cancel";
 const NAME_TAKEN = "There is a group with this name already.";
+const GROUP_MORE_LABEL = "More";
+const GROUP_FIND_LABEL = "Find a group";
+const GROUP_NOT_FOUND = "No group with this name.";
+
+/** With more groups than this a menu of groups has a field to find one in. */
+export const GROUP_SEARCH_FROM = 10;
+/** A name longer than this is cut on its tab; whole, it is in the hint and in the menus. */
+export const GROUP_TAB_NAME_SHOWN = 20;
+/** How long the name of a group may be. */
+export const GROUP_NAME_MAX = 40;
+const ELLIPSIS = "\u2026";
+/** Between two tabs, in the styles and in the count of what fits. */
+const TAB_GAP_PX = 28;
+const EVENT_RESIZE = "resize";
+const KEY_DOWN = "ArrowDown";
+const KEY_UP = "ArrowUp";
+const KEY_ENTER = "Enter";
 
 const TABS_CLASS = "rdw-groups";
 const TAB_CLASS = "rdw-groups__tab";
@@ -45,6 +62,14 @@ const TAB_LANDED_CLASS = "rdw-groups__item--landed";
 const TABS_DRAGGING_CLASS = "rdw-groups--dragging";
 const TAB_MORE_CLASS = "rdw-groups__more";
 const TAB_NEW_CLASS = "rdw-groups__new";
+const TAB_MEASURE_CLASS = "rdw-groups__measure";
+const MENU_LIST_BOX_CLASS = "rdw-groups-menu__box";
+const MENU_LIST_CLASS = "rdw-groups-menu__list";
+const MENU_COUNT_CLASS = "rdw-groups-menu__count";
+const MENU_EMPTY_CLASS = "rdw-groups-menu__empty";
+const NAME_COUNT_CLASS = "rdw-groups-name__count";
+const MENU_ITEM_SELECTOR = '[role="menuitem"]:not(:disabled)';
+const MENU_STOP_SELECTOR = `input, ${MENU_ITEM_SELECTOR}`;
 const TAB_SELECTOR = '[role="tab"]';
 const KEY_PREVIOUS = "ArrowLeft";
 const KEY_NEXT = "ArrowRight";
@@ -71,7 +96,8 @@ export const GROUPS_CSS = `
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  column-gap: 28px;
+  position: relative;
+  column-gap: ${String(TAB_GAP_PX)}px;
   min-width: 0;
   border-bottom: 1px solid var(--rdw-border);
 }
@@ -143,6 +169,20 @@ export const GROUPS_CSS = `
 }
 .${TAB_WRAP_CLASS}:not(:hover):not(:focus-within) .${TAB_MORE_CLASS}:not([aria-expanded="true"]) {
   opacity: 0;
+}
+/* Every group once more, unseen: by these it is counted how many fit the row. */
+.${TAB_MEASURE_CLASS} {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  visibility: hidden;
+  pointer-events: none;
+  height: 0;
+  overflow: hidden;
+}
+.${TAB_MEASURE_CLASS} > * {
+  flex: none;
 }
 .${TAB_NEW_CLASS} {
   display: inline-flex;
@@ -240,6 +280,25 @@ const MENU_CSS = `
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.${MENU_LIST_BOX_CLASS} {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.${MENU_LIST_CLASS} {
+  display: grid;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.${MENU_COUNT_CLASS} {
+  flex: none;
+  color: var(--rdw-muted);
+}
+.${MENU_EMPTY_CLASS} {
+  margin: 0;
+  padding: 6px 8px;
+  color: var(--rdw-muted);
+}
 .${MENU_ITEM_CLASS}:hover:not(:disabled),
 .${MENU_ITEM_CLASS}:focus-visible {
   background: var(--rdw-surface-2);
@@ -268,6 +327,12 @@ const NAME_CSS = `
   display: grid;
   gap: 8px;
   min-width: 260px;
+}
+.${NAME_COUNT_CLASS} {
+  margin: 0;
+  color: var(--rdw-muted);
+  font-size: 11px;
+  text-align: right;
 }
 .${NAME_ERROR_CLASS} {
   margin: 0;
@@ -325,6 +390,163 @@ export function inGroupTab(group: string | undefined, tab: string): boolean {
   return tab === GROUP_NONE ? own.length === 0 : own === tab;
 }
 
+/** The name of a group as its tab shows it: cut when long. */
+export function shortGroupName(name: string): string {
+  return name.length > GROUP_TAB_NAME_SHOWN
+    ? `${name.slice(0, GROUP_TAB_NAME_SHOWN)}${ELLIPSIS}`
+    : name;
+}
+
+/**
+ * Which of the groups have a tab in a row with this much room, by their
+ * places in the list. All of them when they fit. Otherwise as many of the
+ * first as fit beside "More", and the open one is among them always: it takes
+ * the last place, and what was there goes to the menu.
+ */
+export function fitGroupTabs(
+  widths: readonly number[],
+  selected: number,
+  room: number,
+  moreWidth: number,
+  gap: number,
+): number[] {
+  const all = widths.map((_width, index) => index);
+  const whole = widths.reduce((sum, width) => sum + width + gap, 0);
+  if (whole <= room) {
+    return all;
+  }
+  let left = room - moreWidth - gap;
+  const shown: number[] = [];
+  for (const index of all) {
+    const cost = (widths[index] ?? 0) + gap;
+    if (cost > left) {
+      break;
+    }
+    shown.push(index);
+    left -= cost;
+  }
+  if (selected >= 0 && selected < widths.length && !shown.includes(selected)) {
+    const cost = (widths[selected] ?? 0) + gap;
+    while (shown.length > 0 && left < cost) {
+      const last = shown.pop();
+      left += (last === undefined ? 0 : (widths[last] ?? 0)) + gap;
+    }
+    shown.push(selected);
+  }
+  return shown;
+}
+
+type MenuEntry = {
+  readonly key: string;
+  readonly label: string;
+  readonly count?: number;
+  /** Ticked and not to be picked: where the thing is already. */
+  readonly current?: boolean;
+  readonly onPick: () => void;
+};
+
+/**
+ * The list of groups of a menu. With many groups it has a field to find one
+ * in, and the field has the focus at once. The arrows go through the field and
+ * the items, Enter in the field picks the first found.
+ */
+function GroupMenuList(props: {
+  readonly entries: readonly MenuEntry[];
+  readonly searchable: boolean;
+  /** What stands under the list whatever is typed. */
+  readonly children?: ComponentChildren;
+}): JSX.Element {
+  const [query, setQuery] = useState("");
+  const boxRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const { searchable } = props;
+  useEffect(() => {
+    if (searchable) {
+      inputRef.current?.focus();
+      return;
+    }
+    const first = boxRef.current?.querySelector(MENU_ITEM_SELECTOR);
+    if (first instanceof HTMLElement) {
+      first.focus();
+    }
+  }, [searchable]);
+
+  const needle = query.trim().toLowerCase();
+  const found =
+    needle.length === 0
+      ? props.entries
+      : props.entries.filter((entry) => entry.label.toLowerCase().includes(needle));
+
+  const onKeyDown = (event: KeyboardEvent): void => {
+    const box = boxRef.current;
+    if (box === null) {
+      return;
+    }
+    if (event.key === KEY_ENTER && event.target instanceof HTMLInputElement) {
+      const first = box.querySelector(`.${MENU_LIST_CLASS} ${MENU_ITEM_SELECTOR}`);
+      if (first instanceof HTMLElement) {
+        event.preventDefault();
+        first.click();
+      }
+      return;
+    }
+    const step = event.key === KEY_DOWN ? 1 : event.key === KEY_UP ? -1 : 0;
+    if (step === 0) {
+      return;
+    }
+    const stops = [...box.querySelectorAll(MENU_STOP_SELECTOR)];
+    if (stops.length === 0) {
+      return;
+    }
+    const at = event.target instanceof Element ? stops.indexOf(event.target) : -1;
+    const next = stops[(at + step + stops.length) % stops.length];
+    if (next instanceof HTMLElement) {
+      event.preventDefault();
+      next.focus();
+    }
+  };
+
+  return (
+    <div className={MENU_LIST_BOX_CLASS} ref={boxRef} onKeyDown={onKeyDown}>
+      {searchable ? (
+        <TextField
+          value={query}
+          placeholder={GROUP_FIND_LABEL}
+          aria-label={GROUP_FIND_LABEL}
+          inputRef={inputRef}
+          onChange={setQuery}
+        />
+      ) : null}
+      <div className={MENU_LIST_CLASS}>
+        {found.map((entry) => (
+          <button
+            key={entry.key}
+            type="button"
+            role="menuitem"
+            className={`${MENU_ITEM_CLASS} rdw-kit-focusable`}
+            disabled={entry.current === true}
+            onClick={entry.onPick}
+          >
+            <span>{entry.label}</span>
+            {entry.count === undefined ? null : (
+              <span className={MENU_COUNT_CLASS}>{String(entry.count)}</span>
+            )}
+            {entry.current === true ? (
+              <span className={MENU_TICK_CLASS} aria-hidden="true">
+                <IconCheck size={ICON_PX} />
+              </span>
+            ) : null}
+          </button>
+        ))}
+        {found.length === 0 && needle.length > 0 ? (
+          <p className={MENU_EMPTY_CLASS}>{GROUP_NOT_FOUND}</p>
+        ) : null}
+      </div>
+      {props.children}
+    </div>
+  );
+}
+
 export type GroupTabsProps = {
   /** How many there are in all: the number of "All". */
   readonly total: number;
@@ -357,6 +579,12 @@ export function GroupTabs(props: GroupTabsProps): JSX.Element {
   const [over, setOver] = useState<string | null>(null);
   const [menu, setMenu] = useState<TabMenu | null>(null);
   const [landed, setLanded] = useState<string | null>(null);
+  // The names of the groups that have a tab; null while all of them have.
+  const [fitting, setFitting] = useState<readonly string[] | null>(null);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const rowRef = useRef<HTMLDivElement | null>(null);
+  const measureRef = useRef<HTMLSpanElement | null>(null);
+  const moreRef = useRef<HTMLButtonElement | null>(null);
   const inPlace = useContext(OverlayInPlace);
   const anchorRef = useRef<HTMLElement | null>(null);
   anchorRef.current = menu?.anchor ?? null;
@@ -368,6 +596,60 @@ export function GroupTabs(props: GroupTabsProps): JSX.Element {
   }, [dragging]);
 
   const inGroups = props.groups.reduce((sum, group) => sum + group.count, 0);
+
+  // How many tabs fit is counted again when the groups change and when the
+  // row gets another width.
+  const groupsKey = props.groups.map((group) => `${group.name}\u0000${String(group.count)}`).join("\u0001");
+  const { value, total } = props;
+  useLayoutEffect(() => {
+    const row = rowRef.current;
+    const measure = measureRef.current;
+    if (row === null || measure === null) {
+      return;
+    }
+    const count = (): void => {
+      const names = groupsKey.length === 0 ? [] : groupsKey.split("\u0001").map((part) => part.split("\u0000")[0] ?? "");
+      const samples = [...measure.querySelectorAll("[data-measure]")];
+      const widths = samples.map((sample) => (sample instanceof HTMLElement ? sample.offsetWidth : 0));
+      const more = measure.querySelector("[data-measure-more]");
+      let room = row.clientWidth;
+      for (const fixed of row.querySelectorAll("[data-fixed]")) {
+        room -= (fixed instanceof HTMLElement ? fixed.offsetWidth : 0) + TAB_GAP_PX;
+      }
+      // A row with no width is one that is not laid out: nothing to count by.
+      const places =
+        row.clientWidth === 0
+          ? widths.map((_width, index) => index)
+          : fitGroupTabs(
+              widths,
+              names.indexOf(value),
+              room,
+              more instanceof HTMLElement ? more.offsetWidth : 0,
+              TAB_GAP_PX,
+            );
+      const next = places.length === names.length ? null : places.map((place) => names[place] ?? "");
+      setFitting((current) =>
+        (current === null ? "" : current.join("\u0001")) === (next === null ? "" : next.join("\u0001")) &&
+        (current === null) === (next === null)
+          ? current
+          : next,
+      );
+    };
+    count();
+    window.addEventListener(EVENT_RESIZE, count);
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(count);
+    observer?.observe(row);
+    return () => {
+      window.removeEventListener(EVENT_RESIZE, count);
+      observer?.disconnect();
+    };
+  }, [groupsKey, value, total]);
+
+  const tabbed =
+    fitting === null
+      ? props.groups
+      : fitting.flatMap((name) => props.groups.filter((group) => group.name === name));
+  const inMenu = fitting === null ? [] : props.groups.filter((group) => !fitting.includes(group.name));
   const dropProps = (key: string, target: string | null): DropHandlers =>
     dragging && props.onDropTo !== undefined
       ? {
@@ -397,11 +679,12 @@ export function GroupTabs(props: GroupTabsProps): JSX.Element {
       role="tab"
       className={`${TAB_CLASS} rdw-kit-focusable`}
       aria-selected={props.value === key}
+      {...(shortGroupName(label) === label ? {} : { title: label })}
       onClick={() => {
         props.onChange(key);
       }}
     >
-      {label}
+      {shortGroupName(label)}
       <span className={TAB_COUNT_CLASS}>{String(count)}</span>
     </button>
   );
@@ -485,16 +768,33 @@ export function GroupTabs(props: GroupTabsProps): JSX.Element {
   return (
     <div
       className={dragging ? `${TABS_CLASS} ${TABS_DRAGGING_CLASS}` : TABS_CLASS}
+      ref={rowRef}
       role="tablist"
       aria-label={GROUPS_LABEL}
       onKeyDown={stepTabs}
       {...(props.locked === true ? { inert: true } : {})}
     >
       <style>{GROUPS_CSS}</style>
-      <span className={TAB_WRAP_CLASS} data-selected={String(props.value === GROUP_ALL)}>
+      <span className={TAB_MEASURE_CLASS} ref={measureRef} aria-hidden="true">
+        {props.groups.map((group) => (
+          <span key={group.name} className={TAB_CLASS} data-measure="">
+            {shortGroupName(group.name)}
+            <span className={TAB_COUNT_CLASS}>{String(group.count)}</span>
+          </span>
+        ))}
+        <span className={TAB_CLASS} data-measure-more="">
+          {`${GROUP_MORE_LABEL} (${String(props.groups.length)})`}
+          <IconChevronDown size={ICON_PX} />
+        </span>
+      </span>
+      <span
+        className={TAB_WRAP_CLASS}
+        data-selected={String(props.value === GROUP_ALL)}
+        data-fixed=""
+      >
         {tab(GROUP_ALL, GROUP_ALL_LABEL, props.total)}
       </span>
-      {props.groups.map((group) => (
+      {tabbed.map((group) => (
         <span
           key={group.name}
           className={wrapClass(group.name)}
@@ -525,10 +825,55 @@ export function GroupTabs(props: GroupTabsProps): JSX.Element {
           {menu?.name === group.name ? tabMenu(group.name) : null}
         </span>
       ))}
+      {inMenu.length > 0 ? (
+        <span className={TAB_WRAP_CLASS} data-selected="false" data-more="">
+          <button
+            type="button"
+            className={`${TAB_CLASS} rdw-kit-focusable`}
+            aria-haspopup="menu"
+            aria-expanded={moreOpen}
+            ref={moreRef}
+            onClick={() => {
+              setMoreOpen((open) => !open);
+            }}
+          >
+            {`${GROUP_MORE_LABEL} (${String(inMenu.length)})`}
+            <IconChevronDown size={ICON_PX} />
+          </button>
+          {moreOpen ? (
+            <Popover
+              open
+              onClose={() => {
+                setMoreOpen(false);
+              }}
+              anchorRef={moreRef}
+              {...(inPlace ? {} : { widthPx: MENU_WIDTH_PX })}
+              role="menu"
+              aria-label={GROUPS_LABEL}
+              className={inPlace ? `${MENU_CLASS} ${MENU_IN_PLACE_CLASS}` : MENU_CLASS}
+            >
+              <style>{MENU_CSS}</style>
+              <GroupMenuList
+                searchable={props.groups.length > GROUP_SEARCH_FROM}
+                entries={inMenu.map((group) => ({
+                  key: group.name,
+                  label: group.name,
+                  count: group.count,
+                  onPick: () => {
+                    setMoreOpen(false);
+                    props.onChange(group.name);
+                  },
+                }))}
+              />
+            </Popover>
+          ) : null}
+        </span>
+      ) : null}
       {props.groups.length > 0 ? (
         <span
           className={wrapClass(GROUP_NONE)}
           data-selected={String(props.value === GROUP_NONE)}
+          data-fixed=""
           data-none=""
           {...dropProps(GROUP_NONE, null)}
           {...landProps(GROUP_NONE)}
@@ -536,7 +881,7 @@ export function GroupTabs(props: GroupTabsProps): JSX.Element {
           {tab(GROUP_NONE, GROUP_NONE_LABEL, props.total - inGroups)}
         </span>
       ) : null}
-      <span className={TAB_NEW_CLASS}>
+      <span className={TAB_NEW_CLASS} data-fixed="">
         <Button variant="ghost" onClick={props.onNew}>
           <IconPlus size={ICON_PX} />
           {GROUP_NEW_LABEL}
@@ -608,58 +953,52 @@ export function MoveToGroupMenu(props: MoveToGroupMenuProps): JSX.Element {
         }
       >
         <style>{MENU_CSS}</style>
-        {props.groups.map((name) => (
-          <button
-            key={name}
-            type="button"
-            role="menuitem"
-            className={`${MENU_ITEM_CLASS} rdw-kit-focusable`}
-            disabled={name === current}
-            onClick={() => {
+        <GroupMenuList
+          key={String(open)}
+          searchable={props.groups.length > GROUP_SEARCH_FROM}
+          entries={props.groups.map((name) => ({
+            key: name,
+            label: name,
+            current: name === current,
+            onPick: () => {
               pick(() => {
                 props.onMove(name);
               });
-            }}
-          >
-            <span>{name}</span>
-            {name === current ? (
-              <span className={MENU_TICK_CLASS} aria-hidden="true">
-                <IconCheck size={ICON_PX} />
-              </span>
-            ) : null}
-          </button>
-        ))}
-        {props.groups.length > 0 ? <div className={MENU_RULE_CLASS} aria-hidden="true" /> : null}
-        {props.groups.length > 0 ? (
+            },
+          }))}
+        >
+          {props.groups.length > 0 ? <div className={MENU_RULE_CLASS} aria-hidden="true" /> : null}
+          {props.groups.length > 0 ? (
+            <button
+              type="button"
+              role="menuitem"
+              className={`${MENU_ITEM_CLASS} rdw-kit-focusable`}
+              disabled={props.current !== undefined && current.length === 0}
+              onClick={() => {
+                pick(() => {
+                  props.onMove(null);
+                });
+              }}
+            >
+              <span>{GROUP_NONE_LABEL}</span>
+              {props.current !== undefined && current.length === 0 ? (
+                <span className={MENU_TICK_CLASS} aria-hidden="true">
+                  <IconCheck size={ICON_PX} />
+                </span>
+              ) : null}
+            </button>
+          ) : null}
           <button
             type="button"
             role="menuitem"
             className={`${MENU_ITEM_CLASS} rdw-kit-focusable`}
-            disabled={props.current !== undefined && current.length === 0}
             onClick={() => {
-              pick(() => {
-                props.onMove(null);
-              });
+              pick(props.onNew);
             }}
           >
-            <span>{GROUP_NONE_LABEL}</span>
-            {props.current !== undefined && current.length === 0 ? (
-              <span className={MENU_TICK_CLASS} aria-hidden="true">
-                <IconCheck size={ICON_PX} />
-              </span>
-            ) : null}
+            <span>{GROUP_NEW_ITEM_LABEL}</span>
           </button>
-        ) : null}
-        <button
-          type="button"
-          role="menuitem"
-          className={`${MENU_ITEM_CLASS} rdw-kit-focusable`}
-          onClick={() => {
-            pick(props.onNew);
-          }}
-        >
-          <span>{GROUP_NEW_ITEM_LABEL}</span>
-        </button>
+        </GroupMenuList>
       </Popover>
     </span>
   );
@@ -760,8 +1099,12 @@ export function GroupDialogs(props: GroupDialogsProps): JSX.Element {
             value={draft}
             placeholder={GROUP_NAME_LABEL}
             aria-label={GROUP_NAME_LABEL}
-            onChange={setDraft}
+            inputAttrs={{ maxLength: GROUP_NAME_MAX }}
+            onChange={(next) => {
+              setDraft(next.slice(0, GROUP_NAME_MAX));
+            }}
           />
+          <p className={NAME_COUNT_CLASS}>{`${String(draft.length)} / ${String(GROUP_NAME_MAX)}`}</p>
           {taken ? (
             <p className={NAME_ERROR_CLASS} role="alert">
               {NAME_TAKEN}
