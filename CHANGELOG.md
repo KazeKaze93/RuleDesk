@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.55.0
+
+- The post page: the key F adds the post to favorites and takes it out, as the Favorite button does. The hint of the button names the key. It is the place of the key that counts, so it works in the Russian layout too. Not while typing in a field, not with Ctrl, Alt or Shift, not while a dialog is open and not in the video player, which has its own keys
+
 ## 0.54.1
 
 - The post page on a wide window: the picture and the side panel stand together, 24 px apart, in the middle of the page. In 0.54.0 the panel stood at the right edge, away from the picture, and Favorite was a long way to reach

@@ -43,6 +43,7 @@ The script works on the site's own HTML. This file holds what is known about it.
 - "I came": `li > a[onclick="iCame('ID'); return false;"] > img[alt="I came!"]`. There is no counter in the markup
 - Comments: `div#post-comments > div#comment-list > div#c{CID}`
 - Previous / next in the last search: `a#prev_search_link[href="#"]`, `a#next_search_link[href="#"]`; the site's script navigates on click
+- Keys of the site on a post page (from Kaze, 18.11.2026): one handler, `document.onkeydown`. It does nothing when the target is `INPUT`, `TEXTAREA`, `VIDEO` or `BUTTON`, or with Alt, Ctrl or Meta. `ArrowLeft` clicks `#prev_search_link`, `ArrowRight` clicks `#next_search_link`; `a` and `d` are commented out in it. No other key is taken by the site; a third-party script also listens for `keydown` and `keyup` on `document` without acting on a key
 - Player: Fluid Player, `video#gelcomVideoPlayer[loop][preload=auto]` inside `div#fluid_video_wrapper_gelcomVideoPlayer.fluid_video_wrapper`
 
 ### Account page (`page=account&s=home`)

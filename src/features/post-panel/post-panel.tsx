@@ -26,6 +26,7 @@ import {
   kitTabId,
   kitTabPanelId,
 } from "../../ui/kit";
+import { useHotkey } from "../../ui/use-hotkey";
 import { CollectionQueue } from "./collection-queue";
 import { CollectionsMenu } from "./collections-menu";
 import { DownloadOne } from "./download-one";
@@ -64,8 +65,14 @@ const TEXT_COMMENTS_COUNTED_SEP = " · ";
 const LABEL_ORIGINAL = "Original";
 const LABEL_VOTE = "Vote";
 const LABEL_ICAME = "I came";
-const TITLE_FAVORITE = "Add to favorites";
-const TITLE_UNFAVORITE = "Remove from favorites";
+/**
+ * The key of the Favorite button (the designer, 18.11.2026): the place of the
+ * letter F. The site's own keys on a post are the left and right arrows only
+ * (docs/site.md), and the script had none on F.
+ */
+const FAVORITE_KEY_CODE = "KeyF";
+const TITLE_FAVORITE = "Add to favorites (F)";
+const TITLE_UNFAVORITE = "Remove from favorites (F)";
 const TITLE_VOTE = "Vote up";
 const TITLE_VOTED = "Voted up";
 const ARIA_PANEL_TABS = "Post details";
@@ -223,6 +230,10 @@ export function PostPanel(props: PostPanelProps): JSX.Element {
       setFavPending(false);
     }
   }, [favPending, favorited, props.postId]);
+
+  useHotkey(FAVORITE_KEY_CODE, props.postId !== null, () => {
+    void onFavClick();
+  });
 
   const onVoteClick = useCallback(async (): Promise<void> => {
     if (props.postId === null || votePending) {

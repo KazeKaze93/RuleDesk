@@ -546,6 +546,49 @@ describe("postActionsFeature", () => {
     warnSpy.mockRestore();
   });
 
+  it("presses Favorite on the key F, whatever the layout, and not while typing", async () => {
+    buildPostDom({ score: "14" });
+    mockFetchSequence([{ body: ADDFAV_RESPONSE_ADDED }, { body: "21" }]);
+    // Inside act: the panel listens for the key from an effect.
+    await act(async () => {
+      postActionsFeature.mount(makeCtx());
+      await Promise.resolve();
+    });
+    const button = document.querySelector(`.${CLASS_FAV}`);
+    if (!(button instanceof HTMLButtonElement)) {
+      throw new Error("no Favorite button");
+    }
+    expect(button.getAttribute("title")).toBe("Add to favorites (F)");
+    const press = (target: Element, init: KeyboardEventInit): void => {
+      target.dispatchEvent(
+        new KeyboardEvent("keydown", { bubbles: true, cancelable: true, composed: true, ...init }),
+      );
+    };
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const field = document.createElement("input");
+    document.body.append(field);
+    press(field, { code: "KeyF", key: "f" });
+    press(document.body, { code: "KeyF", key: "f", ctrlKey: true });
+    press(document.body, { code: "KeyF", key: "f", repeat: true });
+    press(document.body, { code: "KeyD", key: "d" });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(isFav(POST_ID)).toBe(false);
+
+    // The Russian layout types another letter with the same key.
+    press(document.body, { code: "KeyF", key: "\u0430" });
+    await vi.waitFor(() => {
+      expect(isFav(POST_ID)).toBe(true);
+    });
+    expect(document.querySelector(`.${CLASS_FAV}`)?.getAttribute("title")).toBe(
+      "Remove from favorites (F)",
+    );
+  });
+
   it("shows Favorite label and reflects isFav initial state", () => {
     buildPostDom();
     postActionsFeature.mount(makeCtx());
@@ -1063,7 +1106,7 @@ describe("postActionsFeature", () => {
     const saved = document.querySelector(`.${CLASS_FAV}`);
     expect(saved?.classList.contains("rdw-btn--primary")).toBe(false);
     expect(saved?.getAttribute("aria-pressed")).toBe("true");
-    expect(saved?.getAttribute("title")).toBe("Remove from favorites");
+    expect(saved?.getAttribute("title")).toBe("Remove from favorites (F)");
     expect(saved?.textContent).toContain(TEXT_IN_FAVORITES);
   });
 
