@@ -91,6 +91,22 @@ describe("mountUpdatesBar", () => {
     expect(document.querySelectorAll(`.${FEED_NEW_CLASS}`).length).toBe(0);
   });
 
+  it("asks for the search again with the new mark when all is marked seen in Only new", () => {
+    seedArtists(5);
+    buildListPage(["10", "42"], ["10", "42"]);
+    const assign = vi.fn();
+    vi.stubGlobal("location", { ...window.location, assign });
+    mountUpdatesBar(document, "?page=post&s=list&tags=(+a+~+b+)+id%3A%3E5");
+
+    const bar = document.getElementById(UPDATES_BAR_ID);
+    bar?.querySelector("button")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(getSeenPostId()).toBe(42);
+    expect(assign).toHaveBeenCalledTimes(1);
+    const url = String(assign.mock.calls[0]?.[0] ?? "");
+    expect(decodeURIComponent(url)).toContain("id:>42");
+    expect(decodeURIComponent(url)).not.toContain("id:>5");
+  });
+
   it("shows No new posts since #N without a mark button when nothing is new", () => {
     seedArtists(42);
     buildListPage(["10", "42", "7"]);

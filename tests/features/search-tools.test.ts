@@ -751,6 +751,30 @@ describe("searchToolsFeature", () => {
     clearAiCookie();
   });
 
+  it("searches for what is typed and not yet searched, instead of losing it with the page", () => {
+    clearAiCookie();
+    mountFilterAiCheckbox(false);
+    const { input } = buildSearchForm("cat");
+    mountFeature();
+    const reload = vi.fn();
+    const assign = vi.fn();
+    vi.stubGlobal("location", {
+      ...window.location,
+      href: window.location.href,
+      search: "?page=post&s=list&tags=cat",
+      reload,
+      assign,
+    });
+    input.value = "cat dog";
+
+    click(aiPostsRadio("Hide"));
+    expect(document.cookie).toContain("filter_ai=1");
+    expect(reload).not.toHaveBeenCalled();
+    expect(assign).toHaveBeenCalledTimes(1);
+    expect(String(assign.mock.calls[0]?.[0] ?? "")).toContain("tags=cat+dog");
+    clearAiCookie();
+  });
+
   it("does nothing when the AI option already matches", () => {
     clearAiCookie();
     mountFilterAiCheckbox(false);

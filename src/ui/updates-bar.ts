@@ -275,6 +275,20 @@ function mountFullBar(
     setSeenPostId(nextSeen);
     clearNewHighlights(document);
 
+    // In "Only new" the page is the posts past the old mark. With the mark
+    // moved they are not new any more, and left on the page they would be
+    // shown as "only new" all the same: the search is asked again with the
+    // new mark. One request, on the user's click.
+    if (!merged && tagsHaveIdFilter(tagsParam)) {
+      const base = stripUpdatesIdFilter(tagsParam);
+      window.location.assign(
+        buildUpdatesSearchUrl(
+          `${base}${TAG_SEPARATOR}${UPDATES_ID_PREFIX}${String(nextSeen)}`,
+        ),
+      );
+      return;
+    }
+
     bar.replaceChildren();
     const confirm = document.createElement("p");
     confirm.className = CSS_CLASS.hint;

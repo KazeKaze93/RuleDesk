@@ -708,7 +708,35 @@ export function rememberDynamicCoverFromPage(
   rememberDynamicCover(collectionId, readTagsParam(search), search);
 }
 
+const EVENT_HASHCHANGE = "hashchange";
+let hashBound = false;
+/** The mark the bars were last drawn for; "" for none. */
+let drawnMark = "";
+
+/**
+ * A card of Collections is a link to the search with the collection's mark in
+ * the hash. When the page under Collections already shows that very search
+ * (the search was saved a moment ago, and Collections was opened over it), the
+ * link changes nothing but the hash: the browser loads nothing, and the page
+ * that comes back into view was drawn without the bar. So the bar is drawn
+ * again whenever the mark in the address changes.
+ */
+function bindHashRedraw(ctx: FeatureContext): void {
+  if (hashBound) {
+    return;
+  }
+  hashBound = true;
+  window.addEventListener(EVENT_HASHCHANGE, () => {
+    const mark = readDynamicCollectionMark(window.location.hash) ?? "";
+    if (mark !== drawnMark) {
+      mountPlaylistBar({ ...ctx, search: window.location.search });
+    }
+  });
+}
+
 function mountPlaylistBar(ctx: FeatureContext): void {
+  bindHashRedraw(ctx);
+  drawnMark = readDynamicCollectionMark(window.location.hash) ?? "";
   removeExistingBar(document);
   removeDynamicBar(document);
 

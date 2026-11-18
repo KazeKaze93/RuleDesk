@@ -1124,6 +1124,17 @@ function SearchToolsPanel(props: SearchToolsPanelProps): JSX.Element {
     setAiHiddenIn(scope, mode === AI_MODE_HIDE);
     alignSiteAiFilter(scope);
     setAiPosts(mode);
+    // What is typed in the field and not searched yet would be lost with the
+    // page: it is searched for instead, as a change of Media or Sort does.
+    const typed = parseTokens(input.value);
+    const shown = parseTokens(
+      new URLSearchParams(window.location.search).get(SEARCH_PARAM_TAGS) ?? "",
+    );
+    if (joinTokens(typed) !== joinTokens(shown)) {
+      clearNavTimer();
+      navigateTokens(typed);
+      return;
+    }
     window.location.reload();
   };
 

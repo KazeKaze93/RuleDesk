@@ -315,6 +315,29 @@ describe("dynamic collection bar", () => {
     expect(document.getElementById(ROOT_ID)).toBeNull();
   });
 
+  it("is drawn when only the mark in the address changes and nothing is loaded", () => {
+    // The search was saved, Collections was opened over the same page, and the
+    // card of the new collection was clicked: only the hash changes.
+    const saved = createDynamicCollection("Birds", "cat");
+    buildListPage();
+    window.history.replaceState(null, "", `/index.php${tagsSearch("cat")}`);
+    playlistBarFeature.mount(makeCtx(tagsSearch("cat")));
+    expect(document.getElementById(DYNAMIC_ROOT_ID)).toBeNull();
+
+    window.location.hash = `#rdw-dc=${saved.id}`;
+    act(() => {
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    });
+    expect(document.getElementById(DYNAMIC_ROOT_ID)).not.toBeNull();
+
+    window.location.hash = "#rdw/collections";
+    act(() => {
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    });
+    expect(document.getElementById(DYNAMIC_ROOT_ID)).toBeNull();
+    window.history.replaceState(null, "", "/");
+  });
+
   it("stays off the plain post list, even for a collection saved with the query all", () => {
     createDynamicCollection("Cats", "cat");
     const broken = createDynamicCollection("Everything", "all");

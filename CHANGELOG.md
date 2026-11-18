@@ -2,6 +2,14 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.46.1
+
+Three faults found in the design audit:
+
+- A saved search opened from its card had no bar over the grid (name, Shuffle, Edit query, Rename, Delete) when the page under Collections already showed that very search, as it does right after "Save as collection". The link then changes only the end of the address and nothing is loaded; the bar is now drawn whenever that mark changes
+- Feed, "Only new": after "Mark all seen" the posts just marked stayed on the page as if still new. The search is asked again with the new mark and shows what is new past it, or that nothing is
+- "AI posts" in the sidebar: a query typed into the field and not searched yet was lost when the switch reloaded the list. It is searched for instead, as a change of Media or Sort does
+
 ## 0.46.0
 
 AI posts are shown or hidden by the part of the site, not for the whole site at once:
