@@ -35,6 +35,8 @@ const PANEL_BUTTON_GAP_PX = 8;
 const PANEL_CARD_PADDING_PX = 12;
 const PANEL_STICKY_GAP_PX = 12;
 const PANEL_MEDIA_GAP_PX = 12;
+/** Between the picture and the panel on a wide window, where they are one group. */
+const PANEL_GROUP_GAP_PX = 24;
 /**
  * Under the header kept at the top (25, boot/sticky-header.ts) and over the
  * page. At the bottom of a page the block the panel is in ends, and a tall
@@ -57,15 +59,17 @@ const BODY_CLASS = featureBodyClass(FEATURE_ID);
 const BODY_SELECTOR = `body.${BODY_CLASS}`;
 
 /*
- * The last block of the CSS (the designer's variant D, 18.11.2026). The site's
- * column of the post is as wide as what is in it, so on a wide window the
- * picture and the panel stood at the left and some 400 px were empty at the
- * right of the panel. The column takes the width that is left, the panel
- * stands at its right edge, and the picture, in the size the site gives it,
- * is in the middle of the rest: the block before the panel has the free space
- * on both of its sides. The picture is not stretched and nothing more is
- * loaded. The column keeps the site's least width, so nothing wraps that did
- * not wrap before.
+ * The last block of the CSS (the designer's variant D, 18.11.2026, as she
+ * corrected it the same day). The site's column of the post is as wide as
+ * what is in it, so on a wide window the picture and the panel stood at the
+ * left and some 400 px were empty at the right of the panel. The column takes
+ * the width that is left, and the picture and the panel are one group in the
+ * middle of it: the free space is before the picture and after the panel.
+ * 0.54.0 put the panel at the right edge and the picture in the middle of the
+ * rest; the empty space then stood between the picture and Favorite, the
+ * button pressed on every post (Kaze: right by logic, awkward to press).
+ * The picture is not stretched and nothing more is loaded. The column keeps
+ * the site's least width, so nothing wraps that did not wrap before.
  */
 const FEATURE_CSS = `
 ${BODY_SELECTOR} #fit-to-screen div.flexi,
@@ -218,6 +222,9 @@ ${BODY_SELECTOR} #${POST_ACTIONS_ID} .rdw-post-panel-comments-host {
   }
   ${BODY_SELECTOR} div.flexi > :has(+ #${POST_ACTIONS_ID}.${CLASS_MODE_WIDE}) {
     margin-left: auto;
+  }
+  ${BODY_SELECTOR} #${POST_ACTIONS_ID}.${CLASS_MODE_WIDE} {
+    margin-left: ${String(PANEL_GROUP_GAP_PX - PANEL_MEDIA_GAP_PX)}px;
     margin-right: auto;
   }
 }
