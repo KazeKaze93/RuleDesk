@@ -424,6 +424,21 @@ describe("createCollectionsPage", () => {
     expect(cardByName(root, "Keep").getAttribute("role")).toBeNull();
   });
 
+  it("deletes one collection from the cross of its card, after a confirmation", () => {
+    createPlaylist("Keep");
+    createPlaylist("Drop");
+    const root = mount();
+    const cross = root.querySelector('button[aria-label="Delete Drop"]');
+    expect(cross).toBeInstanceOf(HTMLButtonElement);
+    click(cross ?? root);
+    const dialog = dialogElement(root);
+    expect(dialog.textContent).toContain("Delete 1 collection? This cannot be undone. “Drop”.");
+    expect(load().collections).toHaveLength(2);
+    click(findButton(dialog, "Delete") ?? dialog);
+    expect(load().collections.map((item) => item.name)).toEqual(["Keep"]);
+    expect(root.querySelector('button[aria-label="Delete Drop"]')).toBeNull();
+  });
+
   it("leaves everything in place when selection is cancelled", () => {
     createPlaylist("One");
     createPlaylist("Two");

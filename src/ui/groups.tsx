@@ -39,6 +39,10 @@ const TAB_CLASS = "rdw-groups__tab";
 const TAB_WRAP_CLASS = "rdw-groups__item";
 const TAB_COUNT_CLASS = "rdw-groups__count";
 const TAB_OVER_CLASS = "rdw-groups__item--over";
+/** On a tab that takes a dropped card, and on the one that has just taken it. */
+const TAB_DROP_CLASS = "rdw-groups__item--drop";
+const TAB_LANDED_CLASS = "rdw-groups__item--landed";
+const TABS_DRAGGING_CLASS = "rdw-groups--dragging";
 const TAB_MORE_CLASS = "rdw-groups__more";
 const MENU_CLASS = "rdw-groups-menu";
 const MENU_ITEM_CLASS = "rdw-groups-menu__item";
@@ -61,7 +65,7 @@ export const GROUPS_CSS = `
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   min-width: 0;
 }
 .${TABS_CLASS}[inert] {
@@ -71,14 +75,15 @@ export const GROUPS_CSS = `
   position: relative;
   display: inline-flex;
   align-items: center;
-  border: 1px solid transparent;
+  border: 1px solid var(--rdw-border);
   border-radius: var(--rdw-radius-m);
+  background: var(--rdw-surface);
+  transition: border-color 120ms ease, background-color 120ms ease, transform 120ms ease;
+}
+.${TAB_WRAP_CLASS}:hover {
+  border-color: var(--rdw-muted);
 }
 .${TAB_WRAP_CLASS}[data-selected="true"] {
-  border-color: var(--rdw-border);
-  background: var(--rdw-surface);
-}
-.${TAB_OVER_CLASS} {
   border-color: var(--rdw-accent);
   background: var(--rdw-accent-soft);
 }
@@ -106,13 +111,55 @@ export const GROUPS_CSS = `
   color: var(--rdw-muted);
   font-weight: 400;
 }
-.${TAB_MORE_CLASS} {
-  margin-right: 2px;
+/* The button of a group's own actions is a part of its tab, small and grey,
+   and is always there: hidden until the pointer came, it was not found. */
+.${TAB_WRAP_CLASS} .${TAB_MORE_CLASS} {
+  min-width: 22px;
+  min-height: 22px;
+  width: 22px;
+  height: 22px;
+  margin: 0 3px 0 -6px;
+  border: 0;
+  background: transparent;
+  color: var(--rdw-muted);
 }
-/* The button of a group's own actions shows for the open tab, under the
-   pointer and for the keyboard: on every tab at once it is noise. */
-.${TAB_WRAP_CLASS}:not([data-selected="true"]):not(:hover):not(:focus-within) .${TAB_MORE_CLASS} {
-  opacity: 0;
+.${TAB_WRAP_CLASS} .${TAB_MORE_CLASS}:hover,
+.${TAB_WRAP_CLASS} .${TAB_MORE_CLASS}[aria-expanded="true"] {
+  background: var(--rdw-surface-2);
+  color: var(--rdw-text);
+}
+/* While a card is carried, the tabs that take it say so, and the one under
+   it comes forward; the tab that took it nods once. */
+.${TABS_DRAGGING_CLASS} .${TAB_DROP_CLASS} {
+  border-style: dashed;
+  border-color: var(--rdw-accent);
+  animation: rdw-groups-wait 900ms ease-in-out infinite alternate;
+}
+.${TABS_DRAGGING_CLASS} .${TAB_DROP_CLASS}.${TAB_OVER_CLASS} {
+  border-style: solid;
+  background: var(--rdw-accent-soft);
+  transform: scale(1.08);
+  animation: none;
+}
+.${TAB_LANDED_CLASS} {
+  animation: rdw-groups-land 320ms ease-out;
+}
+@keyframes rdw-groups-wait {
+  from { box-shadow: 0 0 0 0 var(--rdw-accent-soft); }
+  to { box-shadow: 0 0 0 3px var(--rdw-accent-soft); }
+}
+@keyframes rdw-groups-land {
+  0% { transform: scale(1.08); }
+  45% { transform: scale(0.94); }
+  100% { transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .${TAB_WRAP_CLASS},
+  .${TABS_DRAGGING_CLASS} .${TAB_DROP_CLASS},
+  .${TAB_LANDED_CLASS} {
+    animation: none;
+    transition: none;
+  }
 }
 .${MOVE_TRIGGER_CLASS} {
   position: relative;
@@ -266,6 +313,7 @@ type TabMenu = {
 export function GroupTabs(props: GroupTabsProps): JSX.Element {
   const [over, setOver] = useState<string | null>(null);
   const [menu, setMenu] = useState<TabMenu | null>(null);
+  const [landed, setLanded] = useState<string | null>(null);
   const inPlace = useContext(OverlayInPlace);
   const anchorRef = useRef<HTMLElement | null>(null);
   anchorRef.current = menu?.anchor ?? null;
@@ -290,6 +338,7 @@ export function GroupTabs(props: GroupTabsProps): JSX.Element {
           onDrop: (event: DragEvent) => {
             event.preventDefault();
             setOver(null);
+            setLanded(key);
             props.onDropTo?.(target);
           },
         }
@@ -310,7 +359,22 @@ export function GroupTabs(props: GroupTabsProps): JSX.Element {
     </button>
   );
   const wrapClass = (key: string): string =>
-    over === key ? `${TAB_WRAP_CLASS} ${TAB_OVER_CLASS}` : TAB_WRAP_CLASS;
+    [
+      TAB_WRAP_CLASS,
+      TAB_DROP_CLASS,
+      over === key ? TAB_OVER_CLASS : "",
+      landed === key ? TAB_LANDED_CLASS : "",
+    ]
+      .filter((name) => name.length > 0)
+      .join(" ");
+  const landProps = (key: string): { readonly onAnimationEnd?: () => void } =>
+    landed === key
+      ? {
+          onAnimationEnd: () => {
+            setLanded(null);
+          },
+        }
+      : {};
 
   const tabMenu = (name: string): JSX.Element => (
     <Popover
@@ -353,7 +417,7 @@ export function GroupTabs(props: GroupTabsProps): JSX.Element {
 
   return (
     <div
-      className={TABS_CLASS}
+      className={dragging ? `${TABS_CLASS} ${TABS_DRAGGING_CLASS}` : TABS_CLASS}
       role="tablist"
       aria-label={GROUPS_LABEL}
       {...(props.locked === true ? { inert: true } : {})}
@@ -374,6 +438,7 @@ export function GroupTabs(props: GroupTabsProps): JSX.Element {
             setMenu({ name: group.name, anchor });
           }}
           {...dropProps(group.name, group.name)}
+          {...landProps(group.name)}
         >
           {tab(group.name, group.name, group.count)}
           <IconButton
@@ -397,6 +462,7 @@ export function GroupTabs(props: GroupTabsProps): JSX.Element {
           className={wrapClass(GROUP_NONE)}
           data-selected={String(props.value === GROUP_NONE)}
           {...dropProps(GROUP_NONE, null)}
+          {...landProps(GROUP_NONE)}
         >
           {tab(GROUP_NONE, GROUP_NONE_LABEL, props.total - inGroups)}
         </span>

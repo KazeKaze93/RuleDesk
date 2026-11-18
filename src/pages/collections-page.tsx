@@ -42,6 +42,7 @@ import {
   Button,
   SelectionBar,
   Dialog,
+  IconButton,
   OverlayInPlace,
   EmptyState,
   Segmented,
@@ -51,7 +52,7 @@ import {
   type SelectOption,
 } from "../ui/kit";
 import { SearchField } from "../ui/kit/search-field";
-import { IconCheck, IconPlus } from "../ui/kit/icons";
+import { IconCheck, IconPlus, IconX } from "../ui/kit/icons";
 import { QueryField } from "../ui/query-field";
 import { collectionDetailHash, dynamicCollectionMarkHash } from "./constants";
 import { checkableCollections, runCollectionsCheck } from "./collections-check";
@@ -106,6 +107,9 @@ const SELECT_BUTTON_TITLE = "Select collections to delete";
 /** In the bar of the selection: the dots say a confirmation follows. */
 const DELETE_SELECTED_LABEL = `${UI_TEXT.delete}\u2026`;
 const DELETE_DIALOG_TITLE = "Delete collections";
+const DELETE_ONE_DIALOG_TITLE = "Delete collection";
+/** The cross of a card: "Delete " and the name of the collection. */
+export const DELETE_ONE_PREFIX = `${UI_TEXT.delete} `;
 const DELETE_ONE_MESSAGE = "Delete 1 collection? This cannot be undone.";
 const DELETE_MANY_PREFIX = "Delete ";
 const DELETE_MANY_SUFFIX = " collections? This cannot be undone.";
@@ -296,6 +300,8 @@ export const COLLECTIONS_PAGE_CSS = `
   top: 12px;
   right: 12px;
   display: flex;
+  gap: 4px;
+  transition: opacity 120ms ease;
 }
 /* With its menu open the corner of a card is over the cards after it. */
 .${CELL_ACTIONS_CLASS}:has([aria-expanded="true"]) {
@@ -305,8 +311,24 @@ export const COLLECTIONS_PAGE_CSS = `
   background: var(--rdw-surface);
   border: 1px solid var(--rdw-border);
 }
-.${CELL_CLASS}:not(:hover):not(:focus-within) .${CELL_ACTIONS_CLASS}:not(:has([aria-expanded="true"])) {
-  opacity: 0;
+@media (hover: hover) {
+  .${CELL_CLASS}:not(:hover):not(:focus-within) .${CELL_ACTIONS_CLASS}:not(:has([aria-expanded="true"])) {
+    opacity: 0;
+  }
+}
+/* The card that is being carried to a tab stays in its place, faded. */
+.${CELL_CLASS} {
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+.${CELL_CLASS}[data-dragged] {
+  opacity: 0.4;
+  transform: scale(0.96);
+}
+@media (prefers-reduced-motion: reduce) {
+  .${CELL_CLASS},
+  .${CELL_ACTIONS_CLASS} {
+    transition: none;
+  }
 }
 .${GRID_LIST_CLASS} .${CELL_ACTIONS_CLASS} {
   top: 50%;
@@ -314,7 +336,7 @@ export const COLLECTIONS_PAGE_CSS = `
   transform: translateY(-50%);
 }
 .${GRID_LIST_CLASS} .${CARD_CLASS} {
-  padding-right: 44px;
+  padding-right: 76px;
 }
 .${CARD_CLASS} {
   display: flex;
@@ -1045,6 +1067,8 @@ export function CollectionsPage(): JSX.Element {
   const [groupTab, setGroupTab] = useState(GROUP_ALL);
   const [groupRequest, setGroupRequest] = useState<GroupRequest | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
+  // The collection whose cross was pressed: it is deleted after a confirmation.
+  const [deleteOne, setDeleteOne] = useState<Collection | null>(null);
   // The line of a "Check for new" run; empty before the first run.
   const [checkStatus, setCheckStatus] = useState("");
   // The last check stopped on an error: the line says why and offers to run it again.
@@ -1373,6 +1397,7 @@ export function CollectionsPage(): JSX.Element {
             <div
               key={collection.id}
               className={CELL_CLASS}
+              {...(dragId === collection.id ? { "data-dragged": "" } : {})}
               draggable={!selecting}
               onDragStart={(event) => {
                 event.dataTransfer?.setData(DRAG_DATA_TYPE, collection.name);
@@ -1409,6 +1434,14 @@ export function CollectionsPage(): JSX.Element {
                       setGroupRequest({ kind: "new", targets: [collection.id] });
                     }}
                   />
+                  <IconButton
+                    label={`${DELETE_ONE_PREFIX}${collection.name}`}
+                    onClick={() => {
+                      setDeleteOne(collection);
+                    }}
+                  >
+                    <IconX size={ICON_PX} />
+                  </IconButton>
                 </div>
               )}
             </div>
@@ -1426,6 +1459,25 @@ export function CollectionsPage(): JSX.Element {
         onConfirm={deleteSelected}
         onClose={() => {
           setConfirmOpen(false);
+        }}
+      />
+      <Dialog
+        variant="confirm"
+        open={deleteOne !== null}
+        title={DELETE_ONE_DIALOG_TITLE}
+        message={deleteOne === null ? "" : deleteMessage([deleteOne.name])}
+        confirmLabel={UI_TEXT.delete}
+        cancelLabel={UI_TEXT.cancel}
+        confirmTone="danger"
+        onConfirm={() => {
+          if (deleteOne !== null) {
+            deleteCollection(deleteOne.id);
+            setRevision((value) => value + 1);
+          }
+          setDeleteOne(null);
+        }}
+        onClose={() => {
+          setDeleteOne(null);
         }}
       />
       <GroupDialogs

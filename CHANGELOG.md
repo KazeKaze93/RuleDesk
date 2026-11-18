@@ -2,6 +2,13 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.57.1
+
+- The tabs of the groups on Following and Collections are framed, each one a button of its own, and the open one is in the accent colour. The button of a group's actions is a part of its tab and is always there; it used to be hidden until the pointer came, with an empty gap in its place
+- Following: the buttons in the corner of a card, "Move to group" and the cross, are there under the pointer, as on Collections. On every card at once they crowded the covers
+- Collections: a card has a cross that deletes the collection, after a confirmation. It used to be done only from the page of the collection or from a selection
+- Dragging a card onto a tab is animated: the card fades in its place, the tabs that take it are outlined and pulse, the one under the card grows, and the one that took it nods. With reduced motion set in the system, nothing moves
+
 ## 0.57.0
 
 - Following and Collections: groups are tabs over the list. "All", each group with how many are in it, "No group" for the rest, and "New group". A card is in one group or in none, so it is under exactly one tab. The list of groups in the toolbar of Following is gone

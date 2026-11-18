@@ -429,6 +429,31 @@ export const FOLLOWING_PAGE_CSS = `
   background: var(--rdw-surface);
   border: 1px solid var(--rdw-border);
 }
+/* The buttons of a card are there under the pointer, for the keyboard and
+   while the menu is open: on every card at once they crowded the covers.
+   Where there is no pointer to hover with, they stay. */
+@media (hover: hover) {
+  .${CARD_CLASS}:not(:hover):not(:focus-within) .${CARD_ACTIONS_CLASS}:not(:has([aria-expanded="true"])) {
+    opacity: 0;
+  }
+}
+.${CARD_ACTIONS_CLASS} {
+  transition: opacity 120ms ease;
+}
+/* The card that is being carried to a tab stays in its place, faded. */
+.${CARD_CLASS} {
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+.${CARD_CLASS}[data-dragged] {
+  opacity: 0.4;
+  transform: scale(0.96);
+}
+@media (prefers-reduced-motion: reduce) {
+  .${CARD_CLASS},
+  .${CARD_ACTIONS_CLASS} {
+    transition: none;
+  }
+}
 .${CARD_MARK_CLASS} {
   position: absolute;
   top: 14px;
@@ -654,6 +679,8 @@ function ArtistCard(props: {
   readonly onNewGroup: () => void;
   readonly onDragStart: () => void;
   readonly onDragEnd: () => void;
+  /** True while this card is carried to a tab. */
+  readonly dragged: boolean;
 }): JSX.Element {
   const { artist, select } = props;
   const caption = followCaption(artist, props.openTab);
@@ -711,6 +738,7 @@ function ArtistCard(props: {
     <div
       className={CARD_CLASS}
       data-tag={artist.tag}
+      {...(props.dragged ? { "data-dragged": "" } : {})}
       draggable
       onDragStart={(event) => {
         event.dataTransfer?.setData(DRAG_DATA_TYPE, artist.tag);
@@ -1264,6 +1292,7 @@ export function FollowingPage(): JSX.Element {
                   onDragEnd={() => {
                     setDragTag(null);
                   }}
+                  dragged={dragTag === artist.tag}
                 />
               ))}
             </div>

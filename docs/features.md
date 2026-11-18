@@ -151,7 +151,7 @@ The script's own page: everyone followed, as cards (tiles or a list).
 - A card shows a cover of four thumbnails, the name, the post count, a NEW mark when there are posts newer than the feed's seen mark, and the kind when it is not an artist (character, copyright)
 - **Follow** is pressed next to a tag in the sidebar, on the site's Artists and Tags pages, or through "Add artists" here, which takes one or several tags
 - Toolbar: All / New, a filter by name, sort (name, post count, date followed), a filter by type, Tiles / List, Select (unfollow several at once, move several to a group), Refresh
-- **Groups** are tabs under the toolbar: "All", each group with its count, "No group", "New group". A card is in one group or in none. It is moved with "Move to group" (the button in its corner, or in the bar of a selection) or by dragging it onto a tab. A group is renamed or deleted from the button on its tab; deleting it puts its cards into "No group"
+- **Groups** are tabs under the toolbar: "All", each group with its count, "No group", "New group". A card is in one group or in none. It is moved with "Move to group" (the button in its corner, shown under the pointer beside the cross, or in the bar of a selection) or by dragging it onto a tab. A group is renamed or deleted from the button on its tab; deleting it puts its cards into "No group"
 - **Refresh** re-reads the first page of every followed tag for a fresh cover and count: one request per tag, 1.5 seconds apart, after a confirmation. It stops at the first error
 - A card that says "not opened yet" has never been seen by the script: open the tag's page once, or press Refresh
 
@@ -172,6 +172,7 @@ Two kinds, one page:
 - A card shows a cover, the name, the kind and the count. A dynamic one shows "saved search" until it has been opened once
 - Toolbar: All / Custom / Dynamic, a filter by name, sort, Tiles / List, Select (delete several, move several to a group), **Check for new**, New
 - **Groups**, as on Following and apart from its groups: tabs under the toolbar, "Move to group" on a card and in the bar of a selection, a card dragged onto a tab
+- The cross in the corner of a card, shown under the pointer, deletes the collection after a confirmation
 - **Check for new** asks the site for the first page of every dynamic collection, one at a time with a pause, and marks those that have posts newer than when they were last opened ("Dynamic · new"). It also refreshes covers and counts
 - A custom collection can be shuffled, renamed, deleted, and, with an API key, downloaded as files
 

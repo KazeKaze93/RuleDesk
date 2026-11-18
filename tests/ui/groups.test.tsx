@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   GROUP_ALL,
   GROUP_NONE,
+  GROUPS_CSS,
   GroupDialogs,
   GroupTabs,
   MoveToGroupMenu,
@@ -119,6 +120,8 @@ describe("groups", () => {
     );
     const more = host.querySelector('button[aria-label="Actions of the group Artists"]');
     expect(more).toBeInstanceOf(HTMLButtonElement);
+    // The button is a part of the tab and is not hidden until the pointer comes.
+    expect(GROUPS_CSS).not.toContain("opacity: 0;");
     if (more instanceof HTMLButtonElement) {
       fireClick(more);
     }
@@ -133,7 +136,7 @@ describe("groups", () => {
     expect(onDelete).toHaveBeenCalledWith("Artists");
   });
 
-  it("takes a dropped card on a group and on No group, not on All", () => {
+  it("takes a dropped card on a group and on No group, not on All", async () => {
     const onDropTo = vi.fn();
     const host = mount(
       <GroupTabs
@@ -159,6 +162,12 @@ describe("groups", () => {
     expect(onDropTo).toHaveBeenLastCalledWith("Artists");
     drop("No group1");
     expect(onDropTo).toHaveBeenLastCalledWith(null);
+    // The tabs say they take a card, and the one that took it nods once.
+    expect(host.querySelector('[role="tablist"]')?.className).toContain("rdw-groups--dragging");
+    await flushEffects();
+    const took = byText(host, '[role="tab"]', "No group1").parentElement;
+    expect(took?.className).toContain("rdw-groups__item--landed");
+    took?.dispatchEvent(new Event("animationend", { bubbles: true }));
   });
 
   it("moves from one menu: the groups, No group, New group", async () => {
