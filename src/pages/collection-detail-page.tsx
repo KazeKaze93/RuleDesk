@@ -106,6 +106,14 @@ const EMPTY_COLLECTION_HINT =
 const RENAME_INPUT_ID = "rdw-collection-rename-name";
 const RENAME_DIALOG_LABEL = "Rename collection";
 const DELETE_DIALOG_LABEL = "Delete collection";
+
+/** The confirmation names the collection and says what is and is not lost. */
+export function deleteCollectionMessage(name: string): string {
+  if (name.length === 0) {
+    return UI_TEXT.confirmDelete;
+  }
+  return `Delete the collection \u201c${name}\u201d? The posts stay on the site; the list of them is lost. This cannot be undone.`;
+}
 const GRID_LABEL = "Collection posts";
 
 const COLLECTION_DETAIL_CSS = `
@@ -757,7 +765,7 @@ export function CollectionDetailPage(
             }}
             title={UI_TEXT.delete}
             aria-label={DELETE_DIALOG_LABEL}
-            message={UI_TEXT.confirmDelete}
+            message={deleteCollectionMessage(detail === null ? "" : detail.name)}
             confirmLabel={UI_TEXT.delete}
             cancelLabel={UI_TEXT.cancel}
             confirmTone="danger"

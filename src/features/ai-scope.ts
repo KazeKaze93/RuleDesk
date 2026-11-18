@@ -69,7 +69,6 @@ export const AI_MODE_OPTIONS = [
   { value: AI_MODE_SHOW, label: "Show" },
   { value: AI_MODE_HIDE, label: "Hide" },
 ] as const;
-export const AI_EVERYWHERE_NOTE = "Hidden everywhere: RuleDesk → Settings.";
 
 type AiState = {
   readonly all: boolean;

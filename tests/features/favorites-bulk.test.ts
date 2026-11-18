@@ -12,7 +12,13 @@ import {
   type FeatureContext,
 } from "../../src/features/types";
 import { FAVORITES_SYNC_PAGE_PAUSE_MS } from "../../src/site/favorites-sync";
-import { addFav, clearFavsCache, isFav } from "../../src/storage/favs";
+import {
+  addFav,
+  clearFavsCache,
+  getSyncState,
+  isFav,
+  setSyncState,
+} from "../../src/storage/favs";
 import { startDownload } from "../../src/features/downloads/queue";
 import { clearStorageCache, createPlaylist, listPlaylists } from "../../src/storage/store";
 
@@ -474,7 +480,36 @@ describe("favoritesBulkFeature", () => {
     expect(url).toContain("id=55");
   });
 
+  /** A sync that has finished: the column is then the full one. */
+  function markSynced(): void {
+    setSyncState({
+      nextPid: 0,
+      lastPid: 0,
+      startedAt: "2026-11-15T00:00:00.000Z",
+      finishedAt: "2026-11-15T00:01:00.000Z",
+      userId: 1,
+    });
+  }
+
+  it("with no sync shows a plate and the way to the sync in place of filters that would do nothing", () => {
+    buildFavoritesBlock([11, 22]);
+    expect(getSyncState()?.finishedAt).toBeUndefined();
+    mountFeature();
+
+    const side = document.getElementById("rdw-favorites-side");
+    const text = side?.textContent ?? "";
+    expect(text).toContain("Favorites aren\u2019t synced yet.");
+    expect(side?.querySelector('input[aria-label="Search favorites"]')).toBeNull();
+    expect(side?.querySelector('[role="radiogroup"]')).toBeNull();
+    // Select works on the thumbnails of the page; a random post and a download need the list.
+    const labels = Array.from(side?.querySelectorAll("button") ?? []).map(
+      (button) => (button.textContent?.trim() ?? "") || `[${button.getAttribute("aria-label") ?? "?"}]`,
+    );
+    expect(labels).toEqual(["Sync favorites\u2026", "Select"]);
+  });
+
   it("puts everything in a column beside the grid: filters, the count, the buttons", () => {
+    markSynced();
     buildFavoritesBlock([11, 22]);
     addFav(11);
     addFav(22);
@@ -507,6 +542,7 @@ describe("favoritesBulkFeature", () => {
   });
 
   it("shows the selection over the filters and locks them until it is finished", () => {
+    markSynced();
     buildFavoritesBlock([11, 22]);
     mountFeature();
     const side = document.getElementById("rdw-favorites-side");

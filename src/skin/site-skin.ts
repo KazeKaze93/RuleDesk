@@ -11,6 +11,7 @@ import {
 } from "../features/types";
 import { VIDEO_THUMB_CLASS } from "../site/video-thumbs";
 import {
+  APPEARANCE_THEME_CUSTOM,
   APPEARANCE_THEME_DARK,
   APPEARANCE_THEME_SITE,
   APPEARANCE_THEME_SITE_DARK,
@@ -39,6 +40,8 @@ const SEARCH_TOOLS_ROOT_ID = "rdw-search-tools";
 const SITE_CONTROL_MIN_HEIGHT_PX = 30;
 /** Widest a comment or forum post grows before the line gets too long to read. */
 const COMMENT_MAX_WIDTH_PX = 1100;
+/** The least width a preview on Comments is drawn at; a narrower one is cropped to it. */
+const COMMENT_THUMB_MIN_WIDTH_PX = 96;
 /** Anchor of a favorites preview, visible to the Remove link beside its thumb. */
 const FAV_REMOVE_ANCHOR_NAME = FAVORITE_IMAGE_ANCHOR_NAME;
 const FAV_REMOVE_INSET_PX = 6;
@@ -377,6 +380,24 @@ ${ROOT} ul#tag-sidebar h6 {
   text-transform: uppercase;
   color: ${v.muted};
   margin: 0 0 6px;
+}
+
+/* Custom theme: a heading of the sidebar may stand straight on the user's
+   picture, where grey small text is unreadable. It gets a backing of the
+   card's colour; a shadow of the same colour widens it without moving
+   anything. In a card the backing is the card's own colour and is not seen. */
+html[${RDW_THEME_ATTR}="${APPEARANCE_THEME_CUSTOM}"].${RDW_SKIN_CLASS} div.sidebar h5,
+html[${RDW_THEME_ATTR}="${APPEARANCE_THEME_CUSTOM}"].${RDW_SKIN_CLASS} ul#tag-sidebar h5 {
+  background: color-mix(in srgb, ${v.surface} 85%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, ${v.surface} 85%, transparent);
+  border-radius: 2px;
+}
+
+/* A preview of a very tall post is a strip a few pixels wide: it is given a
+   width and cropped to it, so that there is something to see and to click. */
+${ROOT} div#comments div#comment-list > div.post > div.col1 img.preview {
+  min-width: ${String(COMMENT_THUMB_MIN_WIDTH_PX)}px;
+  object-fit: cover;
 }
 
 /* Standalone "Tags"/"Search" (and similar) headings above the list card */

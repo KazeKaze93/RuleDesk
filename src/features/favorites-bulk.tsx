@@ -16,6 +16,7 @@ import {
   FAVORITES_SIDE_BAR_CLASS,
   FAVORITES_SIDE_CARD_CLASS,
   FAVORITES_SIDE_ID,
+  favoritesSynced,
   shownFavoriteIds,
   FAVORITES_SIDE_SLOT_CLASS,
   FavoritesBrowser,
@@ -596,6 +597,10 @@ function IdleActions(props: IdleActionsProps): JSX.Element {
     setDownloadOpen(true);
   };
   const age = syncAge(getSyncState()?.finishedAt, Date.now());
+  // With no sync there is nothing to pick a random post from and nothing to
+  // count for a download, and the way to the sync is in the card above: only
+  // Select is left, which works on the thumbnails of the page.
+  const synced = favoritesSynced();
 
   const closeMenu = (): void => {
     setMenuOpen(false);
@@ -606,14 +611,16 @@ function IdleActions(props: IdleActionsProps): JSX.Element {
 
   return (
     <>
-      <Button variant="secondary" size="s" title={TEXT_RANDOM_TITLE} onClick={openRandomFavorite}>
-        <IconDice size={14} />
-        {TEXT_RANDOM}
-      </Button>
+      {synced || !props.stacked ? (
+        <Button variant="secondary" size="s" title={TEXT_RANDOM_TITLE} onClick={openRandomFavorite}>
+          <IconDice size={14} />
+          {TEXT_RANDOM}
+        </Button>
+      ) : null}
       <Button variant="secondary" size="s" onClick={props.onSelect}>
         {TEXT_SELECT}
       </Button>
-      {props.stacked ? (
+      {props.stacked && !synced ? null : props.stacked ? (
         <>
           {downloadsAvailable() ? (
             <Button

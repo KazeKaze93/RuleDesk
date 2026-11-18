@@ -437,7 +437,7 @@ describe("collection detail page", () => {
     }
     click(remove);
     const dialog = shadow.querySelector('[role="dialog"]');
-    expect(dialog?.textContent).toContain(UI_TEXT.confirmDelete);
+    expect(dialog?.textContent).toContain("Delete the collection “Watch”?");
     const confirm = dialog === null ? null : findButton(dialog, UI_TEXT.delete);
     if (confirm === null) {
       throw new Error("confirm missing");

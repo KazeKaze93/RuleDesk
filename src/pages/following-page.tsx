@@ -4,6 +4,8 @@ import { render as preactRender } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 
 import {
+  APPEARANCE_THEME_CUSTOM,
+  RDW_THEME_ATTR,
   SEARCH_PAGE,
   SEARCH_PARAM_PAGE,
   SEARCH_PARAM_SECTION,
@@ -195,7 +197,7 @@ import {
   type ViewMode,
 } from "./view-mode";
 import { AI_SCOPE_FOLLOWING, alignSiteAiFilter } from "../features/ai-scope";
-import { AiPostsSelect } from "../ui/ai-posts-select";
+import { AiPostsToggle } from "../ui/ai-posts-select";
 
 export const FOLLOWING_PAGE_CSS = `
 .${PAGE_CLASS} {
@@ -277,6 +279,14 @@ export const FOLLOWING_PAGE_CSS = `
   margin: 0;
   color: var(--rdw-muted);
   font-size: 12px;
+}
+/* Custom theme: the line under the toolbar stands on the user's picture, so
+   it gets a backing of the card's colour and takes only the width it needs. */
+:host-context(html[${RDW_THEME_ATTR}="${APPEARANCE_THEME_CUSTOM}"]) p.${META_CLASS} {
+  align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: var(--rdw-radius-s);
+  background: color-mix(in srgb, var(--rdw-surface) 85%, transparent);
 }
 .${GRID_CLASS} {
   display: grid;
@@ -1037,7 +1047,7 @@ export function FollowingPage(): JSX.Element {
               />
             ) : null}
             {/* What a card opens, and what Refresh reads, with AI posts shown or hidden. */}
-            <AiPostsSelect scope={AI_SCOPE_FOLLOWING} />
+            <AiPostsToggle scope={AI_SCOPE_FOLLOWING} />
             <Segmented
               label={VIEW_LABEL}
               options={VIEW_OPTIONS}

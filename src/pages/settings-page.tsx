@@ -60,12 +60,9 @@ import { installSiteMenu } from "./menu";
 import { aiHiddenEverywhere, setAiHiddenEverywhere } from "../features/ai-scope";
 
 const AI_EVERYWHERE_SWITCH_ID = "rdw-ai-everywhere";
-/**
- * Off, every part of the site keeps its own choice: the "AI posts" control of
- * Posts, Feed, Following, Collections and Favorites.
- */
-const AI_EVERYWHERE_LABEL =
-  "Hide AI posts everywhere (off: Posts, Feed, Following, Collections and Favorites each keep their own choice)";
+const AI_EVERYWHERE_LABEL = "Hide AI posts everywhere";
+const AI_EVERYWHERE_CAPTION =
+  "When off, Posts, Feed, Following, Collections and Favorites each keep their own Show / Hide choice.";
 
 /** Grid density is owned by Appearance; omit from Page module list. */
 const PAGE_FEATURE_SKIP = new Set(["grid-density"]);
@@ -372,6 +369,7 @@ export function SettingsPage(): JSX.Element {
                 setAiEverywhere(checked);
               }}
             />
+            <p className={PANEL_UI_CLASS.settingsCaption}>{AI_EVERYWHERE_CAPTION}</p>
           </div>
           <div className={PANEL_UI_CLASS.settingsRow}>
             <NumberField

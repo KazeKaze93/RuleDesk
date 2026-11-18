@@ -84,6 +84,10 @@ const DELETE_MANY_PREFIX = "Delete ";
 const DELETE_MANY_SUFFIX = " collections? This cannot be undone.";
 const ROLE_CHECKBOX = "checkbox";
 const SINGLE_SELECTION = 1;
+/** How many names the confirmation of a delete lists before "and N more". */
+const DELETE_NAMES_SHOWN = 3;
+const CHECK_FAILED_CLASS = "rdw-collections-check--failed";
+const CHECK_RETRY_LABEL = "Retry";
 const NEW_DIALOG_TITLE = "New collection";
 const CREATE_LABEL = "Create";
 const QUERY_FIELD_LABEL = "Query";
@@ -172,7 +176,7 @@ import {
   type ViewMode,
 } from "./view-mode";
 import { AI_SCOPE_COLLECTIONS } from "../features/ai-scope";
-import { AiPostsSelect } from "../ui/ai-posts-select";
+import { AiPostsToggle } from "../ui/ai-posts-select";
 
 export const COLLECTIONS_PAGE_CSS = `
 .${PAGE_CLASS} {
@@ -363,6 +367,17 @@ export const COLLECTIONS_PAGE_CSS = `
   color: var(--rdw-muted);
   font-size: 12px;
 }
+/* A check that stopped: not a grey line among others, and with a way on. */
+.${CHECK_STATUS_CLASS}.${CHECK_FAILED_CLASS} {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--rdw-radius-m);
+  background: var(--rdw-warn-soft);
+  color: var(--rdw-warn);
+}
 .${BADGE_CLASS} {
   flex: none;
   font-size: ${String(BADGE_FONT_PX)}px;
@@ -543,11 +558,38 @@ type CardProps = {
   readonly select: CardSelect | null;
 };
 
-function deleteMessage(count: number): string {
-  if (count === SINGLE_SELECTION) {
-    return DELETE_ONE_MESSAGE;
+/**
+ * What the confirmation says: how many, and which. Up to three names are
+ * given, so that a wrong pick is seen before it is deleted.
+ */
+export function deleteMessage(names: readonly string[]): string {
+  const count = names.length;
+  const head =
+    count === SINGLE_SELECTION
+      ? DELETE_ONE_MESSAGE
+      : `${DELETE_MANY_PREFIX}${String(count)}${DELETE_MANY_SUFFIX}`;
+  if (count === 0) {
+    return head;
   }
-  return `${DELETE_MANY_PREFIX}${String(count)}${DELETE_MANY_SUFFIX}`;
+  const shown = names.slice(0, DELETE_NAMES_SHOWN).map((name) => `\u201c${name}\u201d`);
+  const rest = count - shown.length;
+  const list = rest > 0 ? `${shown.join(", ")} and ${String(rest)} more` : shown.join(", ");
+  return `${head} ${list}.`;
+}
+
+const HTTP_TOO_MANY = "HTTP 429";
+const REASON_TOO_MANY = "the site is asked too often (429). Wait a minute, then retry.";
+const REASON_NETWORK = "no answer from the site. Check the connection, then retry.";
+
+/** Why a check stopped, in words: the browser's "Failed to fetch" says nothing to a user. */
+export function checkFailureReason(reason: string): string {
+  if (reason.includes(HTTP_TOO_MANY)) {
+    return REASON_TOO_MANY;
+  }
+  if (/failed to fetch|networkerror|load failed/i.test(reason)) {
+    return REASON_NETWORK;
+  }
+  return `${reason}. Retry later.`;
 }
 
 function cardAriaLabel(name: string, badge: string, meta: string): string {
@@ -829,6 +871,8 @@ export function CollectionsPage(): JSX.Element {
   const [confirmOpen, setConfirmOpen] = useState(false);
   // The line of a "Check for new" run; empty before the first run.
   const [checkStatus, setCheckStatus] = useState("");
+  // The last check stopped on an error: the line says why and offers to run it again.
+  const [checkFailed, setCheckFailed] = useState(false);
   const [checking, setChecking] = useState(false);
   const checkCancelledRef = useRef(false);
 
@@ -845,6 +889,7 @@ export function CollectionsPage(): JSX.Element {
       return;
     }
     checkCancelledRef.current = false;
+    setCheckFailed(false);
     setChecking(true);
     setCheckStatus(`Checking 0 of ${String(targets.length)}…`);
     void runCollectionsCheck(
@@ -863,8 +908,9 @@ export function CollectionsPage(): JSX.Element {
       setCheckStatus(
         result.ok
           ? `Checked ${String(result.checked)}; ${String(withNew)} with new posts.`
-          : `Stopped at “${result.name}” after ${String(result.checked)}: ${result.reason}. Try again later.`,
+          : `Stopped at “${result.name}” after ${String(result.checked)} checked: ${checkFailureReason(result.reason)}`,
       );
+      setCheckFailed(!result.ok);
       setRevision((value) => value + 1);
     });
   };
@@ -986,7 +1032,7 @@ export function CollectionsPage(): JSX.Element {
             }}
           />
           {/* What a saved search opens, and what "Check for new" reads, with AI posts shown or hidden. */}
-          <AiPostsSelect scope={AI_SCOPE_COLLECTIONS} />
+          <AiPostsToggle scope={AI_SCOPE_COLLECTIONS} />
           <Segmented
             label={VIEW_LABEL}
             options={VIEW_OPTIONS}
@@ -1056,8 +1102,21 @@ export function CollectionsPage(): JSX.Element {
                 {NEW_BUTTON_LABEL}
               </Button>
               {checkStatus.length > 0 ? (
-                <span className={CHECK_STATUS_CLASS} role="status">
+                <span
+                  className={
+                    checkFailed ? `${CHECK_STATUS_CLASS} ${CHECK_FAILED_CLASS}` : CHECK_STATUS_CLASS
+                  }
+                  role="status"
+                >
                   {checkStatus}
+                  {checkFailed ? (
+                    <>
+                      {" "}
+                      <Button type="button" variant="secondary" size="s" onClick={runCheck}>
+                        {CHECK_RETRY_LABEL}
+                      </Button>
+                    </>
+                  ) : null}
                 </span>
               ) : null}
             </>
@@ -1093,7 +1152,7 @@ export function CollectionsPage(): JSX.Element {
         variant="confirm"
         open={confirmOpen}
         title={DELETE_DIALOG_TITLE}
-        message={deleteMessage(selectedVisible.length)}
+        message={deleteMessage(selectedVisible.map((collection) => collection.name))}
         confirmLabel={UI_TEXT.delete}
         cancelLabel={UI_TEXT.cancel}
         confirmTone="danger"

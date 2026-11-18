@@ -2,6 +2,22 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.47.0
+
+From the design audit, the things that broke work or misled:
+
+- Favorites that were never synced: the card showed search and filters that changed nothing. Now it says "Favorites aren’t synced yet" and offers "Sync favorites…"; "Select" stays, because it works on the thumbnails of the page. The card becomes the usual one after the first sync
+- Favorites with an incomplete index: the line "The index holds N of M favorites…" ends with "Sync now"
+- "AI posts" while "Hide AI posts everywhere" is on: the switch is shown as it is, not to be changed, with "Hidden everywhere. Change in Settings" under it, the last words opening the settings at Page
+- "AI posts" elsewhere: the label reads "AI posts in Feed", "in Following", "in Collections"; in the toolbars of Following and Collections it is the same two-option switch as everywhere, "AI: Show | Hide", in place of a list; in Favorites the filters stand together (Type, AI posts, Collection) before Sort and View; the setting has a short name and a line of explanation
+- Deleting collections: the question names what is deleted, up to three names and "and N more"; on the page of a collection it names the collection and says the posts stay on the site
+- Data → Import with "Replace": asks before erasing what is in this browser. Export stands first, and "Merge / Replace" stands with the Import it belongs to
+- "Check for new" that stopped on an error: a plate that says why in words ("the site is asked too often", "no answer from the site") and a "Retry" button, in place of a grey line with "Failed to fetch"
+- A download found waiting in a tab other than the one that ran it says so: "Paused · started in another tab; press Resume to go on here"
+- Custom theme: the headings of the sidebar and the line under the toolbar of Following have a backing, so that they can be read on any picture
+- Comments: the preview of a very tall post was a strip a few pixels wide; it is drawn at least 96 px wide
+- "Select posts" is "Select", as on Favorites and Following
+
 ## 0.46.1
 
 Three faults found in the design audit:

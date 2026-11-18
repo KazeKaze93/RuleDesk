@@ -72,9 +72,12 @@ export type DownloadState = {
   readonly total: number;
   readonly done: number;
   readonly failed: number;
-  /** Why the job stopped, when `phase` is "error". */
+  /** Why the job stopped, when `phase` is "error"; why it waits, when it was not the user who paused it. */
   readonly message: string;
 };
+
+/** A job found waiting in a tab that was not the one downloading it. */
+export const PAUSED_ELSEWHERE = "started in another tab; press Resume to go on here";
 
 const IDLE: DownloadState = {
   phase: "idle",
@@ -317,7 +320,8 @@ export function restoreDownloads(): void {
     void run();
     return;
   }
-  emit(progress("paused"));
+  // Not paused by the user: the panel says why it stands and what to press.
+  emit(progress("paused", PAUSED_ELSEWHERE));
 }
 
 /** Forgets the in-memory job without touching storage (tests). */

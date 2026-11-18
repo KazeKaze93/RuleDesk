@@ -36,7 +36,8 @@ import { isDownloadBusy, startDownload } from "./queue";
 
 const LABEL_DOWNLOAD_RESULTS = "Download results";
 const TITLE_DOWNLOAD_RESULTS = "Download every post of this search";
-const LABEL_SELECT = "Select posts";
+/** One word wherever posts are picked: Posts, Feed, Favorites, Following. */
+const LABEL_SELECT = "Select";
 const TITLE_SELECT = "Pick posts on this page to add to a collection";
 const TITLE_SELECT_WITH_DOWNLOADS = "Pick posts on this page to add to a collection or to download";
 const ADD_SELECTED_PREFIX = "Add to collection (";

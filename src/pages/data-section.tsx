@@ -12,6 +12,7 @@ import {
 } from "../storage/backup";
 import {
   Button,
+  Dialog,
   SectionLabel,
   Segmented,
   Switch,
@@ -35,6 +36,10 @@ const INCLUDE_FAVORITES_ID = "rdw-backup-include-favs";
 const FAVORITES_EXPORT_HINT =
   "Favorites restore via Favorites sync. Include them in the file only if you need to copy the local fav list.";
 const IMPORT_MODE_LABEL = "Import mode";
+const REPLACE_TITLE = "Replace everything?";
+const REPLACE_MESSAGE =
+  "Collections, followed artists, marks and settings in this browser are erased and the file is put in their place. This cannot be undone. Export first if you are not sure.";
+const REPLACE_CONFIRM = "Replace";
 const EXPORT_LABEL = UI_TEXT.export;
 const IMPORT_LABEL = UI_TEXT.import;
 const EXPORT_ERROR_PREFIX = "Export failed:";
@@ -96,6 +101,24 @@ export function DataSection(props: DataSectionProps = {}): JSX.Element {
   const [error, setError] = useState("");
   const [summary, setSummary] = useState("");
   const [backup, setBackup] = useState(() => currentBackupStatus());
+  // A file chosen for "Replace", held until the user confirms: Replace erases
+  // what is in this browser, and a file picked by mistake must not do that.
+  const [pendingReplace, setPendingReplace] = useState<string | null>(null);
+
+  const runImport = (text: string, importMode: BackupImportMode): void => {
+    void importBackupJson(text, importMode)
+      .then((result) => {
+        if (!result.ok) {
+          setError(`${UI_TEXT.importErrorPrefix} ${result.error}`);
+          return;
+        }
+        setSummary(formatSummary(result.summary));
+      })
+      .catch((caught: unknown) => {
+        const message = caught instanceof Error ? caught.message : "Could not read file";
+        setError(`${UI_TEXT.importErrorPrefix} ${message}`);
+      });
+  };
 
   return (
     <>
@@ -118,19 +141,6 @@ export function DataSection(props: DataSectionProps = {}): JSX.Element {
           onChange={setIncludeFavorites}
         />
         <p className={HINT_CLASS}>{FAVORITES_EXPORT_HINT}</p>
-        <Segmented
-          label={IMPORT_MODE_LABEL}
-          options={[...MODE_OPTIONS]}
-          value={mode}
-          onChange={(value) => {
-            if (
-              value === IMPORT_MODE_MERGE ||
-              value === IMPORT_MODE_REPLACE
-            ) {
-              setMode(value);
-            }
-          }}
-        />
         <div className={ACTIONS_CLASS}>
           <Button
             variant="secondary"
@@ -156,6 +166,21 @@ export function DataSection(props: DataSectionProps = {}): JSX.Element {
           >
             {EXPORT_LABEL}
           </Button>
+        </div>
+        <Segmented
+          label={IMPORT_MODE_LABEL}
+          options={[...MODE_OPTIONS]}
+          value={mode}
+          onChange={(value) => {
+            if (
+              value === IMPORT_MODE_MERGE ||
+              value === IMPORT_MODE_REPLACE
+            ) {
+              setMode(value);
+            }
+          }}
+        />
+        <div className={ACTIONS_CLASS}>
           <Button
             variant="secondary"
             onClick={() => {
@@ -180,19 +205,16 @@ export function DataSection(props: DataSectionProps = {}): JSX.Element {
               setError("");
               setSummary("");
               void readFileText(file)
-                .then((text) => importBackupJson(text, mode))
-                .then((result) => {
-                  if (!result.ok) {
-                    setError(`${UI_TEXT.importErrorPrefix} ${result.error}`);
+                .then((text) => {
+                  if (mode === IMPORT_MODE_REPLACE) {
+                    setPendingReplace(text);
                     return;
                   }
-                  setSummary(formatSummary(result.summary));
+                  runImport(text, mode);
                 })
                 .catch((caught: unknown) => {
                   const message =
-                    caught instanceof Error
-                      ? caught.message
-                      : "Could not read file";
+                    caught instanceof Error ? caught.message : "Could not read file";
                   setError(`${UI_TEXT.importErrorPrefix} ${message}`);
                 });
             }}
@@ -201,6 +223,25 @@ export function DataSection(props: DataSectionProps = {}): JSX.Element {
         {error.length > 0 ? <p className="rdw-error">{error}</p> : null}
         {summary.length > 0 ? <p className="rdw-hint">{summary}</p> : null}
         <p className={HINT_CLASS}>{STORAGE_HINT}</p>
+        <Dialog
+          variant="confirm"
+          open={pendingReplace !== null}
+          title={REPLACE_TITLE}
+          message={REPLACE_MESSAGE}
+          confirmLabel={REPLACE_CONFIRM}
+          cancelLabel={UI_TEXT.cancel}
+          confirmTone="danger"
+          onConfirm={() => {
+            const text = pendingReplace;
+            setPendingReplace(null);
+            if (text !== null) {
+              runImport(text, IMPORT_MODE_REPLACE);
+            }
+          }}
+          onClose={() => {
+            setPendingReplace(null);
+          }}
+        />
       </section>
     </>
   );

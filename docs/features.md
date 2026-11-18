@@ -122,14 +122,14 @@ The site has one switch for AI posts, for every list at once. The script keeps a
 | Part | What belongs to it | Where the choice is |
 |---|---|---|
 | Posts | any search that is none of the below | "AI posts" in the sidebar |
-| Feed | the search of everyone followed | "AI posts · Feed" in the sidebar |
-| Following | the Following page, and the list of one followed tag | the toolbar of Following; "AI posts · Following" in the sidebar |
-| Collections | the Collections page, and a saved search | the toolbar of Collections; "AI posts · Collections" in the sidebar |
+| Feed | the search of everyone followed | "AI posts in Feed" in the sidebar |
+| Following | the Following page, and the list of one followed tag | the toolbar of Following; "AI posts in Following" in the sidebar |
+| Collections | the Collections page, and a saved search | the toolbar of Collections; "AI posts in Collections" in the sidebar |
 | Favorites | the favorites page | "AI posts" in the card of filters |
 
 On the lists the server leaves AI posts out, so pages stay full. Favorites is not filtered by the site: the script leaves out the posts tagged `ai_generated`, which needs a synced index. A collection of posts shows what was put into it, whatever the choice.
 
-"Hide AI posts everywhere" in the settings overrides every part.
+"Hide AI posts everywhere" in the settings overrides every part: the controls then show Hide, cannot be changed, and link to the setting.
 
 ## Feed
 

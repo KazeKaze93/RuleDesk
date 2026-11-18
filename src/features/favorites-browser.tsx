@@ -6,7 +6,7 @@ import { UI_TEXT } from "../config/constants";
 import { log } from "../log";
 import { removeFavorite } from "../site/favorites";
 import { SITE_SELECTORS, extractPostIdFromFavoritesDeleteOnclick } from "../site/selectors";
-import { loadFavSet } from "../storage/favs";
+import { getSyncState, loadFavSet } from "../storage/favs";
 import {
   readFavoriteIndex,
   type FavoriteIndexEntry,
@@ -59,7 +59,6 @@ import {
 } from "./favorites-scope";
 import { notifyThumbsAdded } from "./runtime";
 import {
-  AI_EVERYWHERE_NOTE,
   AI_LABEL,
   AI_MODE_HIDE,
   AI_MODE_OPTIONS,
@@ -70,6 +69,8 @@ import {
   aiHiddenIn,
   setAiHiddenIn,
 } from "./ai-scope";
+import { SETTINGS_SECTION_FAVORITES, openSettingsAt } from "../pages/settings-focus";
+import { AiEverywhereNote } from "../ui/ai-posts-select";
 
 /**
  * Search, the Images / Videos switch and endless scrolling on the Favorites
@@ -162,6 +163,11 @@ const UNSUPPORTED_TAIL = " Favorites search uses tags only.";
 const META_SEPARATOR = ":";
 const RESET_LABEL = "Reset search";
 const COLLECTION_LABEL = "Collection";
+const UNSYNCED_NOTE =
+  "Favorites aren\u2019t synced yet. Search, filters and Scroll need a one-time sync (about 1.5 s per page).";
+const UNSYNCED_BUTTON = "Sync favorites\u2026";
+const SYNC_NOW = "Sync now";
+const SYNC_LINK_CLASS = "rdw-fav-sync-link";
 /** Added to the typed query while AI posts are hidden here. */
 const NO_AI_TERM = `-${AI_TAG}`;
 const NO_AI_SUMMARY = "no AI posts";
@@ -403,6 +409,15 @@ body:not(.${FAVORITES_BROWSING_BODY_CLASS}) .${MORE_CLASS} {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.${SYNC_LINK_CLASS} {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--rdw-accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
 }
 /* The followed among the favorites: a card of its own under the filters. */
 .${FOLLOWED_CARD_CLASS} {
@@ -906,6 +921,11 @@ export function unsupportedNotice(terms: readonly string[]): string {
   return `${names.join(", ")}${names.length === 1 ? UNSUPPORTED_ONE : UNSUPPORTED_MANY}${UNSUPPORTED_TAIL}`;
 }
 
+/** True once a sync of the favorites has finished: the local list is then whole, or was. */
+export function favoritesSynced(): boolean {
+  return getSyncState()?.finishedAt !== undefined;
+}
+
 /** Opens a random post of the local list of favorites. */
 export function openRandomFavorite(): void {
   const ids = [...loadFavSet()];
@@ -997,6 +1017,20 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
   // The site does not filter Favorites; the script leaves the posts tagged as
   // AI out itself. The choice is remembered, as it is for the other parts.
   const [aiHidden, setAiHidden] = useState(() => aiHiddenIn(AI_SCOPE_FAVORITES));
+  // True while the index holds fewer posts than the list of favorites.
+  const [indexPartial, setIndexPartial] = useState(false);
+  // No sync has ever finished. Looked at again when the page comes back from
+  // the settings, which are opened over it: the sync is run there.
+  const [synced, setSynced] = useState(() => favoritesSynced());
+  useEffect(() => {
+    const check = (): void => {
+      setSynced(favoritesSynced());
+    };
+    window.addEventListener("hashchange", check);
+    return () => {
+      window.removeEventListener("hashchange", check);
+    };
+  }, []);
   const aiEverywhere = aiHiddenEverywhere();
   const [followedAll, setFollowedAll] = useState(false);
   // The column: the card is drawn into `sideHost`, a child of it; the column
@@ -1004,6 +1038,8 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
   const { sideHost } = props;
   const stacked = sideHost !== null && sideHost !== undefined;
   const column = stacked ? (sideHost.closest(`.${FAVORITES_SIDE_CLASS}`) ?? sideHost) : null;
+
+  const unsynced = stacked && !synced;
 
   const query = parseFavoritesQuery(applied);
   const active =
@@ -1118,9 +1154,10 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
   }, []);
 
   useEffect(() => {
-    if (!active) {
+    if (!active || unsynced) {
       hideFavoriteResults();
       setStatus("");
+      setIndexPartial(false);
       setFound(null);
       return undefined;
     }
@@ -1171,12 +1208,13 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
       }
       const indexed = index.filter((entry) => favorites.has(entry.id)).length;
       setStatus(indexNotice(indexed, favorites.size));
+      setIndexPartial(indexed < favorites.size);
       setFound(results.length);
     }, TYPING_PAUSE_MS);
     return () => {
       window.clearTimeout(timer);
     };
-  }, [active, index, applied, media, shuffleSeed, order, tagCounts, collection, aiHidden]);
+  }, [active, unsynced, index, applied, media, shuffleSeed, order, tagCounts, collection, aiHidden]);
 
   const warning = unsupportedNotice(query.unsupported);
   const notices = [
@@ -1236,12 +1274,32 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
       <div className={SIDE_BODY_CLASS} {...(locked ? { inert: true } : {})}>
         <div className={SIDE_HEAD_CLASS}>
           <SectionLabel>{SIDE_TITLE}</SectionLabel>
-          {stacked && count.length > 0 ? (
+          {stacked && !unsynced && count.length > 0 ? (
             <span className={COUNT_CLASS} role="status">
               {count}
             </span>
           ) : null}
         </div>
+        {unsynced ? (
+          // The local list is what search, the filters and Scroll work on. With
+          // no sync it is empty or a fragment, and controls that look alive
+          // and change nothing are worse than none.
+          <>
+            <p className={WARNING_CLASS} role="status">
+              {UNSYNCED_NOTE}
+            </p>
+            <Button
+              variant="secondary"
+              size="s"
+              onClick={() => {
+                openSettingsAt(SETTINGS_SECTION_FAVORITES);
+              }}
+            >
+              {UNSYNCED_BUTTON}
+            </Button>
+          </>
+        ) : (
+          <>
         <SearchField
           id={SEARCH_FIELD_ID}
           className={SEARCH_BOX_CLASS}
@@ -1266,6 +1324,20 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
         {notices.length > 0 ? (
           <span className={STATUS_CLASS} role="status">
             {notices.join(" ")}
+            {indexPartial ? (
+              <>
+                {" "}
+                <button
+                  type="button"
+                  className={`${SYNC_LINK_CLASS} rdw-kit-focusable`}
+                  onClick={() => {
+                    openSettingsAt(SETTINGS_SECTION_FAVORITES);
+                  }}
+                >
+                  {SYNC_NOW}
+                </button>
+              </>
+            ) : null}
           </span>
         ) : null}
         {chips.length > 0 ? (
@@ -1297,6 +1369,7 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
             ))}
           </div>
         ) : null}
+        {/* What narrows the list first, then how it is looked at. */}
         <div className={SIDE_GROUP_CLASS}>
           <SectionLabel>{MEDIA_LABEL}</SectionLabel>
           <Segmented
@@ -1308,6 +1381,32 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
                 setMedia(value);
               }
             }}
+          />
+        </div>
+        <div className={SIDE_GROUP_CLASS}>
+          <SectionLabel>{AI_LABEL}</SectionLabel>
+          <Segmented
+            label={AI_LABEL}
+            options={AI_MODE_OPTIONS}
+            value={aiHidden ? AI_MODE_HIDE : AI_MODE_SHOW}
+            disabled={aiEverywhere}
+            onChange={(value) => {
+              if (aiEverywhere) {
+                return;
+              }
+              const hide = value === AI_MODE_HIDE;
+              setAiHiddenIn(AI_SCOPE_FAVORITES, hide);
+              setAiHidden(hide);
+            }}
+          />
+          {aiEverywhere ? <AiEverywhereNote /> : null}
+        </div>
+        <div className={SIDE_GROUP_CLASS}>
+          <SectionLabel>{COLLECTION_LABEL}</SectionLabel>
+          <Select
+            options={collectionOptions}
+            value={collectionValue}
+            onChange={setCollection}
           />
         </div>
         <div className={SIDE_GROUP_CLASS}>
@@ -1335,31 +1434,6 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
             {viewSwitch}
           </div>
         ) : null}
-        <div className={SIDE_GROUP_CLASS}>
-          <SectionLabel>{AI_LABEL}</SectionLabel>
-          <Segmented
-            label={AI_LABEL}
-            options={AI_MODE_OPTIONS}
-            value={aiHidden ? AI_MODE_HIDE : AI_MODE_SHOW}
-            onChange={(value) => {
-              if (aiEverywhere) {
-                return;
-              }
-              const hide = value === AI_MODE_HIDE;
-              setAiHiddenIn(AI_SCOPE_FAVORITES, hide);
-              setAiHidden(hide);
-            }}
-          />
-          {aiEverywhere ? <p className={SIDE_HINT_CLASS}>{AI_EVERYWHERE_NOTE}</p> : null}
-        </div>
-        <div className={SIDE_GROUP_CLASS}>
-          <SectionLabel>{COLLECTION_LABEL}</SectionLabel>
-          <Select
-            options={collectionOptions}
-            value={collectionValue}
-            onChange={setCollection}
-          />
-        </div>
         {text.trim().length > 0 || media !== MEDIA_ALL || collection !== COLLECTION_ANY ? (
           // The search and the type are what narrows the list; the order and
           // the paging are a way of looking at it and are left as they are.
@@ -1377,12 +1451,14 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
             </Button>
           </div>
         ) : null}
+          </>
+        )}
         {stacked ? (
           // Random post, Select and the rest: the bulk bar draws them here.
           <div className={`${ACTIONS_CLASS} ${SIDE_ACTIONS_CLASS}`} ref={actionsSlotRef} />
         ) : null}
       </div>
-      {stacked && followed.length > 0 ? (
+      {stacked && !unsynced && followed.length > 0 ? (
         <div
           className={`${SIDE_BODY_CLASS} ${FOLLOWED_CARD_CLASS}`}
           {...(locked ? { inert: true } : {})}

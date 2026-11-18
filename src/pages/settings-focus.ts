@@ -1,3 +1,5 @@
+import { RDW_HASH_SETTINGS } from "./constants";
+
 /**
  * A way to open the settings page at one of its blocks: the caller names the
  * block before going to the page, and the page takes the name when it is
@@ -11,6 +13,8 @@ const FOCUS_KEY = "ruledesk-web.settings-focus";
 
 /** The id of the Favorites block of the settings page. */
 export const SETTINGS_SECTION_FAVORITES = "favorites";
+/** The id of the Page block of the settings page. */
+export const SETTINGS_SECTION_PAGE = "page";
 
 export function requestSettingsSection(id: string): void {
   try {
@@ -29,4 +33,10 @@ export function takeSettingsSection(): string | null {
   } catch {
     return null;
   }
+}
+
+/** Opens the settings page at one of its blocks. */
+export function openSettingsAt(id: string): void {
+  requestSettingsSection(id);
+  window.location.hash = RDW_HASH_SETTINGS;
 }

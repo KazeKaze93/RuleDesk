@@ -48,7 +48,6 @@ import {
 } from "./site-search-tools";
 import { featureBodyClass, type Feature, type FeatureContext } from "./types";
 import {
-  AI_EVERYWHERE_NOTE,
   AI_LABEL,
   AI_MODE_HIDE,
   AI_MODE_OPTIONS,
@@ -63,6 +62,7 @@ import {
   setAiHiddenIn,
   type AiScope,
 } from "./ai-scope";
+import { AiEverywhereNote } from "../ui/ai-posts-select";
 
 const FEATURE_ID = "search-tools";
 const FEATURE_LABEL = "Search tools";
@@ -166,13 +166,12 @@ const MEDIA_OPTIONS = [
 const AI_POSTS_OPTIONS = AI_MODE_OPTIONS;
 
 const AI_POSTS_SECTION_LABEL = AI_LABEL;
-/** After "AI posts" in the label, where the choice is not that of Posts: "AI posts · Feed". */
+/** After "AI posts" in the label, where the choice is not that of Posts: "AI posts in Feed". */
 const AI_SCOPE_NAMES: Partial<Record<AiScope, string>> = {
   [AI_SCOPE_FEED]: "Feed",
   [AI_SCOPE_FOLLOWING]: "Following",
   [AI_SCOPE_COLLECTIONS]: "Collections",
 };
-const AI_NOTE_CLASS = "rdw-search-tools-ai-note";
 
 const SORT_OPTIONS: ReadonlyArray<{
   value: SortMode;
@@ -245,12 +244,6 @@ const FEATURE_CSS = [
   "  display: grid;",
   "  gap: 0;",
   "  min-width: 0;",
-  "}",
-  `body.${BODY_CLASS} .${AI_NOTE_CLASS} {`,
-  "  margin: 4px 0 0;",
-  "  color: var(--rdw-muted);",
-  "  font-size: 11.5px;",
-  "  line-height: 1.35;",
   "}",
   `body.${BODY_CLASS} .${ROW_SORT_CLASS} {`,
   "  display: grid;",
@@ -1142,7 +1135,7 @@ function SearchToolsPanel(props: SearchToolsPanelProps): JSX.Element {
   const aiLabel =
     aiScopeName === undefined
       ? AI_POSTS_SECTION_LABEL
-      : `${AI_POSTS_SECTION_LABEL} \u00b7 ${aiScopeName}`;
+      : `${AI_POSTS_SECTION_LABEL} in ${aiScopeName}`;
 
   const onReset = (): void => {
     clearNavTimer();
@@ -1302,9 +1295,10 @@ function SearchToolsPanel(props: SearchToolsPanelProps): JSX.Element {
                 label: entry.label,
               }))}
               value={aiPosts}
+              disabled={aiHiddenEverywhere()}
               onChange={onAiPostsChange}
             />
-            {aiHiddenEverywhere() ? <p className={AI_NOTE_CLASS}>{AI_EVERYWHERE_NOTE}</p> : null}
+            {aiHiddenEverywhere() ? <AiEverywhereNote /> : null}
           </div>
         ) : null}
 

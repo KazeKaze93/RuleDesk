@@ -13,6 +13,8 @@ export type SegmentedProps = {
   readonly onChange: (value: string) => void;
   readonly label?: string;
   readonly className?: string;
+  /** Shown with its value, and not to be changed: clicks and keys do nothing. */
+  readonly disabled?: boolean;
 };
 
 export const SEGMENTED_CSS = `
@@ -49,12 +51,23 @@ ${KIT_FOCUS_CSS}
   color: var(--rdw-seg-on-text, var(--rdw-text));
   font-weight: 600;
 }
+/* Not to be changed: the chosen option is still read, the others are faint. */
+.rdw-seg[aria-disabled="true"] .rdw-seg__btn {
+  cursor: not-allowed;
+}
+.rdw-seg[aria-disabled="true"] .rdw-seg__btn[aria-checked="false"] {
+  opacity: 0.4;
+}
+.rdw-seg[aria-disabled="true"] .rdw-seg__btn[aria-checked="true"] {
+  opacity: 0.75;
+}
 `;
 
 export function Segmented(props: SegmentedProps): JSX.Element {
   const className = ["rdw-seg", props.className]
     .filter((part) => part !== undefined && part.length > 0)
     .join(" ");
+  const disabled = props.disabled === true;
 
   return (
     <>
@@ -63,6 +76,7 @@ export function Segmented(props: SegmentedProps): JSX.Element {
         className={className}
         role="radiogroup"
         aria-label={props.label}
+        aria-disabled={disabled ? true : undefined}
       >
         {props.options.map((option) => {
           const selected = option.value === props.value;
@@ -73,11 +87,17 @@ export function Segmented(props: SegmentedProps): JSX.Element {
               role="radio"
               className="rdw-seg__btn rdw-kit-focusable"
               aria-checked={selected}
+              aria-disabled={disabled ? true : undefined}
               tabIndex={selected ? 0 : -1}
               onClick={() => {
-                props.onChange(option.value);
+                if (!disabled) {
+                  props.onChange(option.value);
+                }
               }}
               onKeyDown={(event) => {
+                if (disabled) {
+                  return;
+                }
                 if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") {
                   return;
                 }

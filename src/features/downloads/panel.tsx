@@ -101,7 +101,8 @@ function statusText(state: DownloadState): string {
     return state.message;
   }
   if (state.phase === "paused") {
-    return `${TEXT_PAUSED} · ${downloadCountText(state)}`;
+    const count = `${TEXT_PAUSED} · ${downloadCountText(state)}`;
+    return state.message.length > 0 ? `${count} · ${state.message}` : count;
   }
   if (state.phase === "done") {
     return `${TEXT_DONE} · ${downloadCountText(state)}`;

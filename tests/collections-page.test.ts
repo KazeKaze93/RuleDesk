@@ -198,7 +198,8 @@ describe("createCollectionsPage", () => {
       "Custom",
       "Dynamic",
       "As created",
-      "AI posts: shown",
+      "Show",
+      "Hide",
       "Tiles",
       "List",
       "New",
@@ -401,6 +402,7 @@ describe("createCollectionsPage", () => {
     const dialog = dialogElement(root);
     expect(dialog.textContent).toContain(
       "Delete 2 collections? This cannot be undone.",
+      // and the names follow, so that a wrong pick is seen
     );
     expect(load().collections).toHaveLength(3);
     click(findButton(dialog, "Delete") ?? dialog);
