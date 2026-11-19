@@ -51,6 +51,7 @@ import { PostActionsList } from "./post-actions-list";
 import {
   SOURCE_LINK_REL,
   collectMoreLinks,
+  findDeletedNotice,
   findICameTarget,
   findOriginalAnchor,
   findPostComments,
@@ -187,10 +188,16 @@ export function PostPanel(props: PostPanelProps): JSX.Element {
   const [cameDone, setCameDone] = useState(false);
   const [stats] = useState<readonly StatRow[]>(() => readStatRows());
   const [moreLinks] = useState<readonly MoreLink[]>(() => collectMoreLinks());
+  // A deleted post has no file: the page may still carry the link to it, but
+  // there is nothing to open or to save (Kaze, 19.11.2026).
   const [originalHref] = useState<string | null>(() => {
+    if (findDeletedNotice() !== null) {
+      return null;
+    }
     const anchor = findOriginalAnchor();
     return anchor?.href ?? null;
   });
+  const [deleted] = useState(() => findDeletedNotice() !== null);
   const [iCame] = useState<ICameTarget | null>(() => findICameTarget());
   const [hasComments] = useState(() => findPostComments() !== null);
   const [commentCount] = useState<number | null>(() =>
@@ -412,7 +419,7 @@ export function PostPanel(props: PostPanelProps): JSX.Element {
                 <IconExternalLink size={ORIGINAL_ICON_SIZE} />
               </a>
             ) : null}
-            {numericId !== null ? (
+            {numericId !== null && !deleted ? (
               <DownloadOne
                 originalHref={originalHref}
                 info={fileNameInfo(numericId, stats, scoreText)}

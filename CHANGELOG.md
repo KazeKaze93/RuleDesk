@@ -2,6 +2,12 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.70.0
+
+- The page of a deleted post: "This post was deleted", the reason and the hash of the file stand where the picture was, as a block of its place, with the panel beside it. The site said it in a strip over an empty page
+- On such a page the panel has no "open the original" and no "save": there is no file. Collections, Info, Comments and Related posts are as on any post
+- Related posts: tags that say how many are in the picture and of what sex, "1girl", "2girls", "solo", "duo", "female", "male_only" and the like, are not mixed from, nor "simple_background" and "looking_at_viewer"
+
 ## 0.69.0
 
 - Related posts: the sources are chips, of which one is picked. Each has a frame of its own, and the picked one is in the accent colour: its frame, its name and a light ground. They wrap into a second row as they will. They were one switch on a grey ground with no borders between the names, heavy in the Light theme and lost in the Dark one

@@ -923,6 +923,55 @@ describe("postActionsFeature", () => {
     expect(wide).toMatch(/margin-right: auto;\s*flex-shrink: 0;/);
   });
 
+  it("shows a deleted post as a post that is gone: the words where the picture was, no buttons for the file", () => {
+    const { mediaWrap } = buildPostDom({});
+    // The page of a deleted post (from Kaze, 19.11.2026): no picture, the
+    // site's notice over the page, the "previous / next" strip still there.
+    mediaWrap?.querySelector("img")?.remove();
+    const strip = document.createElement("div");
+    strip.innerHTML = '<a id="prev_search_link" href="#">&lt; previous</a>';
+    mediaWrap?.append(strip);
+    const notices = document.createElement("div");
+    notices.className = "status-notices";
+    notices.innerHTML =
+      '<div class="status-notice">This post was deleted. Reason: tos / MD5: e2922692f40a8766ab21420eb3c3ff7f</div>';
+    document.body.prepend(notices);
+
+    postActionsFeature.mount(makeCtx());
+    postActionsFeature.mount(makeCtx());
+
+    const blocks = document.querySelectorAll("#rdw-post-deleted");
+    expect(blocks).toHaveLength(1);
+    const block = blocks[0];
+    expect(block?.previousElementSibling).toBe(strip);
+    expect([...(block?.querySelectorAll("p") ?? [])].map((line) => line.textContent)).toEqual([
+      "This post was deleted",
+      "Reason: tos",
+      "MD5 e2922692f40a8766ab21420eb3c3ff7f",
+    ]);
+    // The site's notice says the same: it is hidden, not removed.
+    const notice = notices.querySelector("div.status-notice");
+    expect(notice?.classList.contains("rdw-post-deleted-notice")).toBe(true);
+    expect(postActionsFeature.css).toMatch(
+      /div\.status-notice\.rdw-post-deleted-notice \{\s*display: none;/,
+    );
+    // Nothing to open and nothing to save; the rest of the panel is there.
+    expect(document.querySelector("a.rdw-post-panel-original")).toBeNull();
+    expect(document.querySelector(".rdw-post-panel-download")).toBeNull();
+    expect(actionsPanel()?.querySelector(`.${CLASS_ACTIONS}`)).not.toBeNull();
+  });
+
+  it("leaves a post with a picture alone when a notice says something else", () => {
+    buildPostDom({});
+    const notices = document.createElement("div");
+    notices.className = "status-notices";
+    notices.innerHTML = '<div class="status-notice">This post is pending approval.</div>';
+    document.body.prepend(notices);
+    postActionsFeature.mount(makeCtx());
+    expect(document.getElementById("rdw-post-deleted")).toBeNull();
+    expect(document.querySelector("a.rdw-post-panel-original")).not.toBeNull();
+  });
+
   it("keeps a gap between the media and the panel", () => {
     expect(postActionsFeature.css).toMatch(/div\.flexi \{[^}]*gap: 12px;/);
   });

@@ -86,6 +86,39 @@ function liPrefixLabel(li: HTMLElement): string | null {
   return raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
 }
 
+/**
+ * The site's notice on the page of a deleted post (from Kaze, 19.11.2026):
+ * `div.status-notices > div.status-notice`, "This post was deleted. Reason:
+ * tos / MD5: <hash>". The page has no picture then.
+ */
+const DELETED_NOTICE_SELECTOR = "div.status-notices > div.status-notice";
+const DELETED_PREFIX = "This post was deleted";
+const DELETED_REASON = /Reason:\s*(.*?)\s*(?:\/\s*MD5:|$)/;
+const DELETED_MD5 = /MD5:\s*([0-9a-f]+)/i;
+
+export type DeletedNotice = {
+  readonly element: HTMLElement;
+  /** What the site gives as the reason; empty when it gives none. */
+  readonly reason: string;
+  /** The hash of the file that was there; empty when the notice has none. */
+  readonly md5: string;
+};
+
+export function findDeletedNotice(root: ParentNode = document): DeletedNotice | null {
+  for (const element of root.querySelectorAll(DELETED_NOTICE_SELECTOR)) {
+    const text = element.textContent?.trim() ?? "";
+    if (!(element instanceof HTMLElement) || !text.startsWith(DELETED_PREFIX)) {
+      continue;
+    }
+    return {
+      element,
+      reason: DELETED_REASON.exec(text)?.[1] ?? "",
+      md5: DELETED_MD5.exec(text)?.[1] ?? "",
+    };
+  }
+  return null;
+}
+
 export function findFlexi(): HTMLElement | null {
   const node = document.querySelector(FLEXI_SELECTOR);
   return node instanceof HTMLElement ? node : null;

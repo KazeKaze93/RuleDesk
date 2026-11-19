@@ -108,6 +108,8 @@ Wherever posts or cards can be selected, the bar is the same: how many are selec
 
 **Related posts** is the third tab of the post panel: posts that share tags with the open one, by other artists. The site has no such list. A switch over the grid names the sources. "Similar", the one the tab opens on, is a mix: one search for posts that have any of the three to five rarest tags of the post that say what is in the picture, without the posts of its artist, from one of the first pages by chance; the posts with two or more of those tags come first, and all are shuffled. A line says what the mix is made from, and "Another mix" asks for another. Each character and each copyright of the post is a source too, also without the artist's own posts, in order of the tags shared with the post. "Favorites" is matched in the browser, with no request. Six posts are shown, the rest open in place. Likeness is of tags, not of the pictures.
 
+**A deleted post** has no picture: the site's words about it, with the reason, stand in the place of the picture, and the panel has no buttons for the file.
+
 **Post side panel** replaces the site's scattered links with one panel beside the picture. On a wide window the picture and the panel stand together in the middle of the page. The picture is in the size the site gives it. It is made smaller only to be no wider than the room beside the panel, and a picture the site shows larger than its usual copy (wider than 850 px) also to be no taller than the window. The key F presses Favorite:
 
 - buttons: Favorite, Collections ("+"), Vote, "I came", Original (opens the full file), Download (saves the file; needs no key)

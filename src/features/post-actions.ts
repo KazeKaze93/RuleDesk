@@ -5,6 +5,7 @@ import { log } from "../log";
 import { readPostIdFromSearch } from "../site/pages";
 import { PostPanel } from "./post-panel/post-panel";
 import {
+  findDeletedNotice,
   findFlexi,
   findMediaWrapper,
   measureHeaderOffsetPx,
@@ -60,6 +61,17 @@ export const SITE_COPY_WIDTH_PX = 850;
 const CLASS_PANEL = "rdw-post-actions";
 const CLASS_MODE_WIDE = "rdw-post-actions--wide";
 const CLASS_MODE_NARROW = "rdw-post-actions--narrow";
+
+export const POST_DELETED_ID = "rdw-post-deleted";
+const CLASS_DELETED_TITLE = "rdw-post-deleted-title";
+const CLASS_DELETED_MD5 = "rdw-post-deleted-md5";
+/** On the site's own notice once its words are shown in the block. */
+export const CLASS_DELETED_NOTICE = "rdw-post-deleted-notice";
+const TEXT_DELETED = "This post was deleted";
+const TEXT_DELETED_REASON = "Reason: ";
+const TEXT_DELETED_MD5 = "MD5 ";
+const DELETED_BLOCK_WIDTH_PX = 640;
+const DELETED_BLOCK_MIN_HEIGHT_PX = 360;
 
 const WARN_NO_FLEXI =
   "post-actions: div.flexi missing; panel not mounted";
@@ -240,6 +252,39 @@ ${BODY_SELECTOR} #${POST_ACTIONS_ID} .rdw-post-panel-post-action:hover {
 ${BODY_SELECTOR} #${POST_ACTIONS_ID} .rdw-post-panel-tabpanel[hidden] {
   display: none;
 }
+${BODY_SELECTOR} #${POST_DELETED_ID} {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: ${String(DELETED_BLOCK_WIDTH_PX)}px;
+  max-width: 100%;
+  min-height: ${String(DELETED_BLOCK_MIN_HEIGHT_PX)}px;
+  padding: 24px;
+  border: 1px dashed var(--rdw-border);
+  border-radius: var(--rdw-radius-l);
+  background: var(--rdw-surface);
+  color: var(--rdw-muted);
+  font: 12px/1.4 var(--rdw-font);
+  text-align: center;
+}
+${BODY_SELECTOR} #${POST_DELETED_ID} p {
+  margin: 0;
+}
+${BODY_SELECTOR} #${POST_DELETED_ID} .${CLASS_DELETED_TITLE} {
+  color: var(--rdw-text);
+  font-size: 16px;
+  font-weight: 600;
+}
+${BODY_SELECTOR} #${POST_DELETED_ID} .${CLASS_DELETED_MD5} {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+${BODY_SELECTOR} div.status-notice.${CLASS_DELETED_NOTICE} {
+  display: none;
+}
 ${BODY_SELECTOR} #${POST_ACTIONS_ID} .rdw-post-panel-comments-host {
   min-width: 0;
 }
@@ -399,6 +444,60 @@ function bindLayout(panel: HTMLElement, flexi: HTMLElement): void {
   };
 }
 
+/**
+ * On the page of a deleted post the site says so in a strip over an empty
+ * page, and the panel stood beside nothing (Kaze, 19.11.2026). The words are
+ * put where the picture was, as a block of its size, and the strip is hidden:
+ * the page reads as a post that is gone, not as a page that broke.
+ */
+function mountDeletedBlock(flexi: HTMLElement): void {
+  document.getElementById(POST_DELETED_ID)?.remove();
+  const notice = findDeletedNotice();
+  if (notice === null || flexi.querySelector(`#${IMAGE_ID}, video`) !== null) {
+    return;
+  }
+  const block = document.createElement("div");
+  block.id = POST_DELETED_ID;
+  block.setAttribute("role", "status");
+  const title = document.createElement("p");
+  title.className = CLASS_DELETED_TITLE;
+  title.textContent = TEXT_DELETED;
+  block.append(title);
+  if (notice.reason.length > 0) {
+    const reason = document.createElement("p");
+    reason.textContent = `${TEXT_DELETED_REASON}${notice.reason}`;
+    block.append(reason);
+  }
+  if (notice.md5.length > 0) {
+    const md5 = document.createElement("p");
+    md5.className = CLASS_DELETED_MD5;
+    md5.textContent = `${TEXT_DELETED_MD5}${notice.md5}`;
+    block.append(md5);
+  }
+  // In the block the picture would be in, under the site's "previous / next".
+  let media: Element | null = null;
+  for (const child of flexi.children) {
+    if (child.id !== POST_ACTIONS_ID) {
+      media = child;
+      break;
+    }
+  }
+  if (media === null) {
+    flexi.prepend(block);
+  } else {
+    let strip: Element | null = media.querySelector("a#prev_search_link, a#next_search_link");
+    while (strip !== null && strip.parentElement !== media) {
+      strip = strip.parentElement;
+    }
+    if (strip === null) {
+      media.prepend(block);
+    } else {
+      strip.after(block);
+    }
+  }
+  notice.element.classList.add(CLASS_DELETED_NOTICE);
+}
+
 function mountPostActions(ctx: FeatureContext): void {
   removeExistingPanel();
 
@@ -419,6 +518,7 @@ function mountPostActions(ctx: FeatureContext): void {
   document.body.classList.add(POST_PANEL_MOUNTED_CLASS);
   placePanel(host, flexi);
   bindLayout(host, flexi);
+  mountDeletedBlock(flexi);
   render(h(PostPanel, { postId }), host);
 }
 
