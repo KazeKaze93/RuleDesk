@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   APPEARANCE_BACKGROUND_KEY,
   APPEARANCE_BACKGROUND_TOO_LARGE,
-  DEBUG_KEY,
   STORAGE_KEY,
 } from "../src/config/constants";
 import { createDefaultStorage } from "../src/storage/schema";
@@ -40,7 +39,6 @@ function installGmMocks(): void {
 describe("appearance settings", () => {
   beforeEach(() => {
     installGmMocks();
-    memory.set(DEBUG_KEY, false);
   });
 
   it("defaults to light theme", () => {

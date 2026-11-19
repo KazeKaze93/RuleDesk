@@ -1,6 +1,6 @@
 # Architecture
 
-RuleDesk is one userscript file, `dist/ruledesk-web.user.js`, built from TypeScript with Vite and `vite-plugin-monkey`. Its own interface is Preact (`preact/compat`); data is validated with `zod/mini`. It runs at `document-start` on `https://rule34.xxx/*` with these grants: `GM_getValue`, `GM_setValue`, `GM_info` (the version shown in Settings), and for the download manager `GM_download` and `GM_xmlhttpRequest`, the last with `@connect api.rule34.xxx` as the only host it may reach.
+RuleDesk is one userscript file, `dist/ruledesk-web.user.js`, built from TypeScript with Vite and `vite-plugin-monkey`. Its own interface is Preact (`preact/compat`); data is validated with `zod/mini`. It runs at `document-start` on `https://rule34.xxx/*` with these grants: `GM_getValue`, `GM_setValue`, `GM_info` (the version shown in Settings), `GM_download` (the download manager and the Download button of a post) and `GM_xmlhttpRequest` (the manager's API requests), the last with `@connect api.rule34.xxx` as the only host it may reach.
 
 The approach: the site's pages and markup stay. The script recolours the whole site with its own skin, adds controls to the site's pages, and adds pages of its own that open by URL hash without a request to the site. What each feature does for the user is in [features.md](features.md); this file says how it is built and where it lives.
 
@@ -61,18 +61,19 @@ Nothing heavy may be imported on the path of steps 1 and 2: `tests/boot-path.tes
 | Grid: star, "+", marks | `ui/fav-button.ts`, `features/playlist-menu.ts`, `features/grid-marks.ts`, `site/video-thumbs.ts` (which thumbs are videos and GIFs), `features/video-mark.ts` (the play sign) |
 | Infinite scroll | `features/infinite-scroll.ts`, `site/next-page.ts` |
 | Dynamic collection bar | `features/playlist-bar.ts` |
-| Post panel | `features/post-actions.ts`, `features/post-panel/*` |
-| Picture viewer, GIFs, video | `features/image-zoom.ts`, `features/gif-post.ts`, `features/video-player.ts`, `features/video-preview.ts` |
+| Post panel, the block of a deleted post, Related posts | `features/post-actions.ts`, `features/post-panel/*`, `features/more-like-this.tsx`, `site/related.ts` |
+| Picture viewer, GIFs, video | `features/image-zoom.ts`, `features/gif-post.ts`, `features/full-image.ts`, `features/cdn-fallback.ts`, `features/video-player.ts`, `features/video-preview.ts`, `features/video-mark.ts` |
+| Kinds of tags (the colour of a chip's dot) | `site/tag-types.ts`, `site/tag-type-lookup.ts`, `ui/tag-chip-kind.ts`, `ui/use-tag-kinds.ts` |
 | Feed | `features/feed.ts`, `features/feed-merge.ts`, `ui/updates-bar.ts` |
 | Following | `pages/following-page.tsx`, `features/artist-snapshots.ts`, `site/artist-snapshot.ts` |
 | Collections | `pages/collections-page.tsx`, `pages/collection-detail-page.tsx`, `pages/collections-check.ts`, `ui/collection-picker.tsx`, `ui/bulk-collection-dialog.tsx` |
 | Favorites | `features/favorites-bulk.tsx`, `features/favorites-browser.tsx`, `features/favorites-search.ts`, `site/favorites*.ts`, `storage/favorites-index.ts` |
 | Downloads | `features/downloads/*`, `site/api.ts`, `site/download.ts`, `pages/downloads-section.tsx` |
 | Statistics | `pages/stats-section.tsx`, `site/profile.ts`; `storage/history.ts` keeps a point a day for the backup reminder |
-| Settings | `pages/settings-page.tsx`, `ui/appearance-section.tsx`, `pages/blacklist-section.tsx`, `pages/favorites-sync-section.tsx`, `pages/downloads-section.tsx`, `pages/data-section.tsx` |
+| Settings | `pages/settings-page.tsx`, `ui/appearance-section.tsx`, `pages/blacklist-section.tsx`, `pages/favorites-sync-section.tsx`, `pages/downloads-section.tsx`, `pages/upload-sets-section.tsx`, `pages/data-section.tsx`, `pages/settings-focus.ts` |
 | Forum, Artists, Tags | `site/list-pages.ts` |
 | Comments | `site/comments-page.ts` |
-| Upload | `site/upload-page.ts` |
+| Upload | `site/upload-page.ts`, `site/upload-tag-sets.ts` |
 | The look of every site page | `skin/site-skin.ts` |
 
 ## Features
@@ -89,7 +90,7 @@ The additions to the forum, the list pages and Upload are not features with swit
 
 ## Own pages
 
-`#rdw/collections`, `#rdw/collections/<id>`, `#rdw/following`, `#rdw/stats`, `#rdw/settings`. `src/pages/router.ts` parses the hash, `src/pages/host.tsx` mounts the page in a shadow root (`#rdw-page-root`) after the site header and hides the rest of the site until the hash is left. Back returns to the site page.
+`#rdw/collections`, `#rdw/collections/<id>`, `#rdw/following`, `#rdw/stats`, `#rdw/settings`, `#rdw/settings/<section>`. `src/pages/router.ts` parses the hash, `src/pages/host.tsx` mounts the page in a shadow root (`#rdw-page-root`) after the site header and hides the rest of the site until the hash is left. Back returns to the site page.
 
 Collections and Following span the window so their tiles can (`LAYOUT_WIDE_CLASS`); their toolbar and everything else stay in a centred column. Their titles, and that of Favorites, are kept for screen readers only (`titleHiddenForRoute`): the menu already says which page is open.
 
@@ -135,7 +136,7 @@ Contrast is tested: `tests/features/favorites-panel.test.ts` and the skin tests 
 
 | Component | For |
 |---|---|
-| `Button` | Variants primary, secondary, ghost, danger; sizes; `pressed` for a toggle |
+| `Button` | Variants primary, secondary, ghost, danger, danger-quiet; sizes; `pressed` for a toggle |
 | `IconButton` | A button that is only an icon, always with a name for the tooltip and screen readers |
 | `Segmented` | A switch of two to four options |
 | `Switch` | On / off |
@@ -145,7 +146,7 @@ Contrast is tested: `tests/features/favorites-panel.test.ts` and the skin tests 
 | `AutocompleteField` | A tag field with the site's suggestions |
 | `Chip` | A tag; can be removed or toggled |
 | `Card`, `SectionLabel`, `EmptyState` | Layout pieces |
-| `Tabs` | Info / Comments on the post panel |
+| `Tabs` | Info / Comments / Related posts on the post panel |
 | `SelectionBar` | The bar of a selection on Posts, Favorites, Following, Collections and the page of a collection |
 | `KitStyle`, `KitStylesProvided` | A component's own `<style>`, left out inside a tree that has put the styles of the whole kit in once: the pages of the script do (`pages/host.tsx`). What a component draws into `document.body` is outside that tree and brings its styles |
 | `Dialog`, `Popover` | Modal and anchored surfaces |

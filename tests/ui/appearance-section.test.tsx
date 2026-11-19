@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
-  DEBUG_KEY,
   RDW_SKIN_CLASS,
   RDW_THEME_ATTR,
   SITE_THEME_COOKIE_NAME,
@@ -116,7 +115,6 @@ describe("createAppearanceSection", () => {
     loadBackgroundMock.mockResolvedValue(null);
     saveBackgroundMock.mockResolvedValue(undefined);
     clearBackgroundMock.mockResolvedValue(undefined);
-    memory.set(DEBUG_KEY, false);
     document.head.replaceChildren();
     document.body.replaceChildren();
     document.documentElement.removeAttribute(RDW_THEME_ATTR);

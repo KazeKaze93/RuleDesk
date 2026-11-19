@@ -1,7 +1,6 @@
 export const STORAGE_KEY = "ruledesk-web.storage";
 export const STORAGE_BACKUP_KEY = "ruledesk-web.storage.backup";
 export const FAVS_STORAGE_KEY = "ruledesk-web.favs";
-export const DEBUG_KEY = "ruledesk-web.debug";
 export const APPEARANCE_BACKGROUND_KEY = "ruledesk-web.appearance.background";
 
 export const APPEARANCE_BACKGROUND_MAX_BYTES = 1_572_864;

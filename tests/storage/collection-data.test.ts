@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { DEBUG_KEY, STORAGE_KEY } from "../../src/config/constants";
+import { STORAGE_KEY } from "../../src/config/constants";
 import { clearFavsCache } from "../../src/storage/favs";
 import {
   StorageSchema,
@@ -111,7 +111,6 @@ describe("collection media migration", () => {
 describe("collection store API", () => {
   beforeEach(() => {
     installGmMocks();
-    memory.set(DEBUG_KEY, false);
   });
 
   afterEach(() => {

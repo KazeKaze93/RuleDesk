@@ -269,8 +269,8 @@ function applyWrapperSize(wrapper: HTMLElement, video: HTMLVideoElement): void {
 }
 
 /**
- * Apply persisted volume/mute/rate. Fluid's own volume UI may not mirror
- * programmatic `video.volume` / `video.muted` — see LIVE-CHECK note.
+ * Apply persisted volume/mute/rate. The site's player may not show a volume
+ * set from here in its own volume control.
  */
 function applyPersistedPlayback(
   video: HTMLVideoElement,

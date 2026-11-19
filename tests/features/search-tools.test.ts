@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act } from "preact/test-utils";
 
-import { DEBUG_KEY } from "../../src/config/constants";
 import {
   SEARCH_TOOLS_AI_ROW_BODY_CLASS,
   searchToolsFeature,
@@ -48,7 +47,6 @@ function installGmMocks(): void {
   vi.stubGlobal("GM_setValue", (key: string, value: unknown): void => {
     memory.set(key, value);
   });
-  memory.set(DEBUG_KEY, false);
 }
 
 function makeCtx(): FeatureContext {

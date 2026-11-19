@@ -38,7 +38,7 @@ The live site cannot be opened from an automated session, and its markup is know
 
 To check a theme without the skin, add the site's font rule to the page (`body, div, input, button { font-family: verdana }`): the site's stylesheet has one, and it is what makes those themes differ.
 
-The screenshots in `docs/img` are taken from such pages with the Dark theme, at a 1024 px wide window.
+The screenshots in `docs/img` are taken from such pages with the Dark theme, in a window 800 px wide, and cut to what they are about.
 
 Features mount after the first paint. The local page checks the script's own pages and logic; it has none of the site's markup or styles, so anything that depends on them still needs the live site.
 

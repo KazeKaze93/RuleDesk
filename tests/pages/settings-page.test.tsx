@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act } from "preact/test-utils";
 
-import { DEBUG_KEY } from "../../src/config/constants";
 import {
   VIDEO_PLAYER_SETTING_CAPTION,
   videoPlayerFeature,
@@ -66,7 +65,6 @@ describe("SettingsPage flat rows", () => {
     vi.stubGlobal("GM_setValue", (key: string, value: unknown): void => {
       memory.set(key, value);
     });
-    memory.set(DEBUG_KEY, false);
   });
 
   afterEach(() => {

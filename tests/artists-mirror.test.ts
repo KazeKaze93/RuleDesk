@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { DEBUG_KEY, STORAGE_KEY } from "../src/config/constants";
+import { STORAGE_KEY } from "../src/config/constants";
 import {
   ARTISTS_MIRROR_KEY,
   clearArtistsMirror,
@@ -43,7 +43,6 @@ function installGmMocks(): void {
 describe("artists-mirror", () => {
   beforeEach(() => {
     installGmMocks();
-    memory.set(DEBUG_KEY, false);
     localStorage.clear();
   });
 

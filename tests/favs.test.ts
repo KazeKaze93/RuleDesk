@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
-  DEBUG_KEY,
   FAVS_STORAGE_KEY,
   STORAGE_KEY,
 } from "../src/config/constants";
@@ -55,7 +54,6 @@ function installGmMocks(): void {
 describe("favs storage", () => {
   beforeEach(() => {
     installGmMocks();
-    memory.set(DEBUG_KEY, false);
   });
 
   it("migrates marks.fav into favs.ids and strips fav from marks", () => {

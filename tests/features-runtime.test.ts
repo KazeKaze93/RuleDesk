@@ -2,7 +2,7 @@ import * as z from "zod/mini";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { DEBUG_KEY, STORAGE_KEY } from "../src/config/constants";
+import { STORAGE_KEY } from "../src/config/constants";
 import { FEATURES } from "../src/features/registry";
 import {
   applyCssOnlyFeatureChoice,
@@ -97,7 +97,6 @@ function makeFeature(
 describe("features runtime", () => {
   beforeEach(() => {
     installGmMocks();
-    memory.set(DEBUG_KEY, false);
     clearFeatures();
     resetFeatureRuntimeState();
     document.body.replaceChildren();
@@ -508,7 +507,6 @@ describe("features runtime", () => {
 describe("settings page feature apply", () => {
   beforeEach(() => {
     installGmMocks();
-    memory.set(DEBUG_KEY, false);
     clearFeatures();
     resetFeatureRuntimeState();
     document.body.replaceChildren();

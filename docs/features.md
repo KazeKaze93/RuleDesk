@@ -68,7 +68,7 @@ The site has one text field for a search, and everything is typed as text: tags,
 | AI posts: Show / Hide | The choice of the part of the site this list is of (Posts, Feed, Following, Collections): kept by the script, applied through the site's own "Filter AI posts" cookie, and the list is loaded again |
 | Reset | Clears the query |
 | Save as collection | Saves the query as a dynamic collection |
-| Select posts | Turns on picking posts in the grid, then "Add to collection (N)" and, with an API key, "Download selected (N)" |
+| Select | Turns on picking posts in the grid; a bar at the top of the column then has "Select page", "Clear", "Add to collection" and, with an API key, "Download selected" |
 | Download results | With an API key: saves the files of the whole search |
 
 The site's field itself gets a magnifier, a button that clears it and a "?" that lists the search syntax (in the script's own themes only).
@@ -106,14 +106,14 @@ Wherever posts or cards can be selected, the bar is the same: how many are selec
 
 ## The post page
 
-**Related posts** is the third tab of the post panel: posts that share tags with the open one, by other artists. The site has no such list. A switch over the grid names the sources. "Similar", the one the tab opens on, is a mix: one search for posts that have any of the three to five rarest tags of the post that say what is in the picture, without the posts of its artist, from one of the first pages by chance; the posts with two or more of those tags come first, and all are shuffled. A line says what the mix is made from, and "Another mix" asks for another. Each character and each copyright of the post is a source too, also without the artist's own posts, in order of the tags shared with the post. "Favorites" is matched in the browser, with no request. Six posts are shown, the rest open in place. Likeness is of tags, not of the pictures.
+**Related posts** is the third tab of the post panel: posts that share tags with the open one, by other artists. The site has no such list. The sources are chips over the grid, one of them picked; they take two rows at most, and the rest are behind "N more". The tab opens on the kind of source picked the last time, and on "Similar" otherwise. "Similar" is a mix: one search for posts that have any of the three to five rarest tags of the post that say what is in the picture, without the posts of its artist, from one of the first pages by chance; the posts with two or more of those tags come first, and all are shuffled. A line says what the mix is made from, and "Another mix" asks for another. Each character and each copyright of the post is a source too, also without the artist's own posts, in order of the tags shared with the post. "Favorites", with a count, is there only when some of your favorites are like the post; it is matched in the browser, with no request. Six posts are shown, "Show all" opens the rest in place, and a link under the grid opens the same search on Posts. When the site answers that there were too many requests, the tab counts down and offers to try again. Likeness is of tags, not of the pictures.
 
 **A deleted post** has no picture: a block of the shape of the post stands in its place and says that the post was deleted, why in plain words, and the MD5 of the file with a button to copy it. "Show related posts" in the block opens the panel's tab of related posts. The panel has no buttons for the file; Vote and "I came" cannot be pressed; Favorite and Collections only let a post that is already there be taken out.
 
 **Post side panel** replaces the site's scattered links with one panel beside the picture. On a wide window the picture and the panel stand together in the middle of the page. The picture is in the size the site gives it. It is made smaller only to be no wider than the room beside the panel, and a picture the site shows larger than its usual copy (wider than 850 px) also to be no taller than the window. The key F presses Favorite:
 
 - buttons: Favorite, Collections ("+"), Vote, "I came", Original (opens the full file), Download (saves the file; needs no key)
-- two tabs: **Info** (id, date, uploader, size, source, rating) and **Comments**
+- three tabs: **Info** (id, date, uploader, size, source, rating), **Comments** with their count, and **Related posts**
 - the site's own actions in one list: Edit, Resize image, Report to moderation, Add note
 - when the post was opened from a custom collection: a strip with previous / next that walks the collection, and a button back to it
 
@@ -124,6 +124,7 @@ Wherever posts or cards can be selected, the bar is the same: how many are selec
 | Load full-size image | Off unless turned on. The file behind "Original image" is loaded and shown in place of the scaled-down copy: sharper and as wide as the room allows, but an original is often several MB |
 | Video player tweaks | The player remembers volume and speed between posts; a click on the video plays and pauses; "Video size" fits the height, fits the width or keeps the original size |
 | Retry a failed post image on other servers | If the picture fails to load, the same path is tried on the site's other image servers |
+| Related posts tab | The third tab of the panel. Posts are loaded when the tab is opened: one request per source |
 
 ## AI posts, by the part of the site
 
@@ -155,20 +156,22 @@ The script's own page: everyone followed, as cards (tiles or a list).
 - A card shows a cover of four thumbnails, the name, the post count, a NEW mark when there are posts newer than the feed's seen mark, and the kind when it is not an artist (character, copyright)
 - **Follow** is pressed next to a tag in the sidebar, on the site's Artists and Tags pages, or through "Add artists" here, which takes one or several tags
 - Toolbar: All / New, a filter by name, sort (name, post count, date followed), a filter by type, Tiles / List, Select (unfollow several at once, move several to a group), Refresh
-- **Groups** are tabs under the toolbar: "All", each group with its count, "No group", and "New group" at the right end. The open tab is underlined; the arrows go from tab to tab. The groups stand in the order they were made. Those that do not fit the row are behind "More (N)"; the open one always has a tab. With more than ten groups the menus of groups have a field to find one in. A name may be 40 characters long and is cut on its tab after 20. A card is in one group or in none. It is moved with "Move to group" (the button in its corner, shown under the pointer beside the cross, or in the bar of a selection) or by dragging it onto a tab. A group is renamed or deleted from the button on its tab; deleting it puts its cards into "No group"
+- **Groups** are tabs under the toolbar: "All", each group with its count, "No group", and "New group" at the right end. The open tab is underlined; the arrows go from tab to tab. The groups stand in the order they were made. Those that do not fit the row are behind "More (N)"; the open one always has a tab. With more than ten groups the menus of groups have a field to find one in. A name may be 40 characters long and is cut on its tab after 20. A card is in one group or in none. It is moved with "Move to group" (the button in its corner, shown under the pointer beside the cross, or in the bar of a selection) or by dragging it onto a tab. A group is renamed or deleted from the "Group options" button on the tab of the open group, or with the right mouse button on any tab; deleting it puts its cards into "No group"
+
+![The Following page](img/following.jpg)
 - **Refresh** re-reads the first page of every followed tag for a fresh cover and count: one request per tag, 1.5 seconds apart, after a confirmation. It stops at the first error
 - A card that says "not opened yet" has never been seen by the script: open the tag's page once, or press Refresh
 
 ## Collections
 
-![The Collections page before anything is saved](img/collections-empty.jpg)
+![The Collections page](img/collections.jpg)
 
 Two kinds, one page:
 
 | | Custom | Dynamic |
 |---|---|---|
 | What it is | Posts picked by hand | A saved search |
-| How it is made | "+" on a thumbnail or on a post; "Select posts" → "Add to collection"; "New" on the page | "Save as collection" in the search panel; "Save as collection" on the site's Tags page; "New" on the page |
+| How it is made | "+" on a thumbnail or on a post; "Select" → "Add to collection"; "New" on the page | "Save as collection" in the search panel; "Save as collection" on the site's Tags page; "New" on the page |
 | Where it opens | On the script's own page, at once | On the site, as that search |
 | Order | By hand: posts are dragged | The site's |
 | Post count | Exact | Exact for a single tag; a lower bound with "+" for several |
@@ -177,12 +180,12 @@ Two kinds, one page:
 - Toolbar: All / Custom / Dynamic, a filter by name, sort ("Newest first", "Oldest first", "Name", "Most posts"), Tiles / List, Select (delete several, move several to a group), **Check for new**, New
 - **Groups**, as on Following and apart from its groups: tabs under the toolbar, "Move to group" on a card and in the bar of a selection, a card dragged onto a tab
 - The cross in the corner of a card, shown under the pointer, deletes the collection after a confirmation
-- **Check for new** asks the site for the first page of every dynamic collection, one at a time with a pause, and marks those that have posts newer than when they were last opened ("Dynamic · new"). It also refreshes covers and counts
-- A custom collection can be shuffled, renamed, deleted, and, with an API key, downloaded as files
+- **Check for new** asks the site for the first page of every dynamic collection, one at a time with a pause, and marks those that have posts newer than when they were last opened with "new" beside the name. It also refreshes covers and counts
+- A custom collection can be shuffled ("Original order" puts it back), renamed, deleted, and, with an API key, downloaded as files ("Download all"). "Select" on its page removes several posts from it ("Remove from collection", with "Undo") or downloads only those
 
 ## Favorites
 
-![The top row of the Favorites page](img/favorites.jpg)
+![The column of filters on the Favorites page](img/favorites.jpg)
 
 The site's Favorites page, with a column at the left that holds everything the script adds to it and stays in place while scrolling ("Bulk remove favorites" in settings). The grid itself is the site's and is not wrapped or moved. In the column:
 
@@ -201,7 +204,7 @@ The site's Favorites page, with a column at the left that holds everything the s
 - at the foot of the card, each a button of its own: **Random post**, **Select**, and, quieter, **Download all…** (with an API key; with a search, a Type or a Collection set it is **Download results…** and takes only what the list shows, on all its pages) and **Sync favorites…**, which opens the settings at the Favorites block
 - a condition that does not work here (`rating:`, `user:`…) is named in a warning plate under the field for as long as it stands there
 
-Select puts a selection bar at the top of the column: pick posts, then remove them from favorites or add them to a collection. While posts are being selected the filters under the bar are shown but locked.
+Select puts a selection bar at the top of the column: pick posts, then remove them from favorites, add them to a collection or, with an API key, download them. While posts are being selected the filters under the bar are shown but locked.
 
 The site has no search inside favorites. The script can offer one only because it keeps a local list: **Sync favorites** (settings → Favorites) walks the user's favorites pages once and stores ids and tags; "Full resync" rebuilds the list. Search, the type switch, Scroll and Shuffle appear after a full resync. The local list holds tags and ids only, so the site's other metatags (`rating:`, `score:`, `user:`) do not work here; they do on Posts.
 
@@ -221,7 +224,7 @@ Saves original files in bulk: a custom collection (all of it or selected posts),
 The script's own page, counted from its own data in this browser. It uses the width of the window: the numbers on the left, the list of tags on the right, so that on a wide screen all of it is seen without scrolling:
 
 - tiles: followed, collections, posts in custom collections, favorites, seen posts, stored data size
-- collections by type and by post count
+- collections by post count, the largest first; the Collections tile says how many are custom and how many dynamic
 - top tags in favorites (after a favorites sync)
 - **Site profile**: account age, level, uploads, comments, edits. Read from the user's profile page (two requests) when Statistics is opened, at most once in 15 minutes; "Refresh profile" reads it at once
 
@@ -266,13 +269,13 @@ Header → the gear. On the left is the list of sections, held in place, with th
 
 | Section | What is there |
 |---|---|
-| Appearance | Site theme; for Custom: base, background picture, dim; Grid size; Motion |
-| Header, Grid and thumbnails, Post page, Video, Feed, AI posts, Search and sidebar, Collections | A switch for every feature named in this file, by the part of the site it changes, and with them "Statistics in site menu", "Keep the header and the sidebar in place while scrolling", "Artists per search" (the size of a feed group), "Hide AI posts everywhere" and "Collection part size" |
+| Appearance | Site theme; for Custom: Base, Background image, Dim, Reset theme; Grid; Motion |
+| Header, Grid and thumbnails, Post page, Video, Feed, AI posts, Search and sidebar, Collections | A switch for every feature named in this file, by the part of the site it changes, and with them "Statistics in site menu", "Keep the header and the sidebar in place while scrolling", "Feed in site menu", "Artists per search" (the size of a feed group), "Hide AI posts everywhere", "Look up the kind of unknown tags" and "Collection part size". Over the sections stands one switch for all of them, "Enable page tweaks"; the column at the left lists the sections and has a field that finds a setting by its words |
 | Favorites | Favorite buttons in the grid; Bulk remove favorites; Sync favorites and Full resync, with progress |
 | Downloads | Download manager; the API key; the file name mask |
 | Upload | Your sets of tags for the Upload page: a name and the tags of each |
 | Blacklist | The site's tag blacklist for this browser, as chips |
-| Data | Export and Import (Merge or Replace) of everything the script stores; when the last backup was made |
+| Data | Export and Import (Merge or Replace) of everything the script stores, with "Include background image" and "Include favorites" for the file; when the last backup was made |
 
 The dot of a tag's chip is in the colour of its kind. The kind is what the site said of the tag where the script met it; for a tag not met yet the site's tag suggestions are asked once ("Look up the kind of unknown tags" in Search and sidebar turns that off).
 
@@ -284,7 +287,7 @@ These are decisions, not gaps. A design that needs one of them cannot be built.
 
 | Limit | Why |
 |---|---|
-| No request without a user's action | The site rate-limits fast. Two requests are tied to opening a page and not to a button, each at most once in 15 minutes: the Feed counter (any page, with its own switch) and the profile numbers (the Statistics page only) |
+| No request without a user's action | The site rate-limits fast. Four things ask without a button. The Feed counter (any page, with its own switch) and the profile numbers (the Statistics page only), each at most once in 15 minutes. The kind of a tag not met yet, once for a tag and 30 a page at most (its own switch). A sync of favorites that was cut short, which goes on by itself on the next page |
 | No background refresh of covers, counts, "new" marks | Same reason. They update from pages the user opens, or by Refresh / Check for new |
 | No site API, except for downloads with the user's own key | The API needs a key, and the script has no server to hold one. The key allows 60 requests a minute, and the script keeps under that. The API gives posts named by id one a request, which is why a download of picked posts starts slowly and why the favorites search has no rating or score |
 | No account data | The login cookies are never read. The account settings form is never submitted |

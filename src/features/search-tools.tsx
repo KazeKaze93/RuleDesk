@@ -851,7 +851,7 @@ function buildChipModels(tokens: readonly string[]): ChipModel[] {
   return chips;
 }
 
-function readPanelView(inputValue: string, search: string): PanelView {
+function readPanelView(inputValue: string): PanelView {
   const tokens = parseTokens(inputValue);
   const chips = buildChipModels(tokens);
   return {
@@ -889,7 +889,7 @@ type SearchToolsPanelProps = {
 function SearchToolsPanel(props: SearchToolsPanelProps): JSX.Element {
   const { input } = props;
   const [view, setView] = useState<PanelView>(() =>
-    readPanelView(input.value, window.location.search),
+    readPanelView(input.value),
   );
   const [scoreDraft, setScoreDraft] = useState<number | null>(view.minScore);
   useTagKindLookup(
@@ -927,7 +927,7 @@ function SearchToolsPanel(props: SearchToolsPanelProps): JSX.Element {
   const applyViewFromInput = (options: {
     readonly navigate: boolean;
   }): void => {
-    const next = readPanelView(input.value, window.location.search);
+    const next = readPanelView(input.value);
     lastPolledValueRef.current = input.value;
     setView((prev) => {
       const chipsUnchanged = next.chipsSig === prev.chipsSig;
@@ -958,7 +958,7 @@ function SearchToolsPanel(props: SearchToolsPanelProps): JSX.Element {
   ): void => {
     setInputValueOnly(input, tokens);
     lastPolledValueRef.current = input.value;
-    const next = readPanelView(input.value, window.location.search);
+    const next = readPanelView(input.value);
     setView((prev) => {
       const chipsUnchanged = next.chipsSig === prev.chipsSig;
       return {
@@ -1184,7 +1184,7 @@ function SearchToolsPanel(props: SearchToolsPanelProps): JSX.Element {
     clearNavTimer();
     setInputValueOnly(input, []);
     lastPolledValueRef.current = input.value;
-    setView(readPanelView("", window.location.search));
+    setView(readPanelView(""));
     setScoreDraft(null);
     window.location.assign(buildSearchUrl([]));
   };
@@ -1406,7 +1406,7 @@ export const searchToolsFeature: Feature = {
   id: FEATURE_ID,
   label: FEATURE_LABEL,
   settingsCaption:
-    "A panel under the search field: rating, type, order and score are picked there and written into the search as text.",
+    "A panel under the search field: type, order and score are picked there and written into the search as text.",
   pages: [...FEATURE_PAGES],
   defaultEnabled: true,
   css: FEATURE_CSS,

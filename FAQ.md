@@ -11,7 +11,7 @@ Tampermonkey checks for updates on its own schedule, once a day by default. To c
 Reload the site's page: an open page keeps running the old version. Right after a release GitHub may serve the previous file for a few minutes; check again a little later.
 
 **Which version do I have?**
-The Tampermonkey dashboard shows it next to the script name.
+RuleDesk (the gear in the header): the line under the name at the top left reads "Settings · " and the version. The Tampermonkey dashboard shows it too, next to the script name.
 
 ## Feed and Following
 
@@ -43,8 +43,8 @@ Separate the names with commas. A space is part of a name here.
 **It plays on most posts but not on one.**
 If a preview fails to load, the script tries that post again half a minute later, when you point at it again.
 
-**On Favorites and Comments some videos have no outline.**
-On those pages the site does not mark videos, so the script goes by the `video` tag of the post. A video without that tag gets no outline and no preview there.
+**On Favorites and Comments some videos have no play sign.**
+On those pages the site does not mark videos, so the script goes by the `video` tag of the post. A video without that tag gets no play sign (or frame, when the play sign is switched off) and no preview there.
 
 ## Favorites
 
@@ -108,7 +108,7 @@ It reads your profile page on the site, two requests per press, and stores the n
 The script keeps the blacklist in the site's cookie in this browser. The list in your account settings on the site is separate and may replace it after you log in again.
 
 **How do I move everything to another browser?**
-RuleDesk → Data → Export saves one file with collections, followed artists, favorites, marks and settings; Import reads it on the other side. The API key is not in the file and has to be pasted again.
+RuleDesk → Data → Export saves one file with collections, followed artists, marks and settings, and the local list of favorites too when "Include favorites" is on (favorites are normally brought back with Sync favorites); Import reads it on the other side. The file does not hold your account id. The API key is not in the file and has to be pasted again.
 
 **The page looks like the plain site.**
 With Site default or Site dark the script does not restyle the site's own pages. Pick Light, Dark or Custom in RuleDesk → Appearance.
@@ -120,4 +120,4 @@ Those two themes keep the site's own look: its white fields, plain buttons and t
 A feature that only changes styles applies at once; one that adds controls needs the page loaded again.
 
 **Does the script send my data anywhere?**
-No. Everything is kept in the script manager's storage on your computer. Requests go only to the site itself, and only when you do something that needs one.
+No. Everything is kept in the script manager's storage on your computer. Requests go only to the site and its API address, and only when you do something that needs one. Two exceptions have a switch each in the settings: the counter beside Feed, and the kind of a tag the script has not met yet.

@@ -1,7 +1,7 @@
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { DEBUG_KEY, STORAGE_KEY, UI_TEXT } from "../../src/config/constants";
+import { STORAGE_KEY, UI_TEXT } from "../../src/config/constants";
 import { playlistBarFeature } from "../../src/features/playlist-bar";
 import {
   featureBodyClass,
@@ -52,7 +52,6 @@ function installGmMocks(): void {
   vi.stubGlobal("GM_setValue", (key: string, value: unknown): void => {
     memory.set(key, value);
   });
-  memory.set(DEBUG_KEY, false);
 }
 
 function makeCtx(search: string): FeatureContext {

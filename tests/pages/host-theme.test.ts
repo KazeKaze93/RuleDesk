@@ -15,7 +15,7 @@ import {
   SITE_DEFAULT_PALETTE_RESOLVED,
 } from "../../src/skin/theme";
 import { DARK_PALETTE, LIGHT_PALETTE, TOKEN_VAR } from "../../src/ui/tokens";
-import { DEBUG_KEY, SITE_THEME_STYLESHEET_LIGHT } from "../../src/config/constants";
+import { SITE_THEME_STYLESHEET_LIGHT } from "../../src/config/constants";
 
 const memory = new Map<string, unknown>();
 
@@ -41,7 +41,6 @@ describe("rdw page host theme tokens", () => {
 
   beforeEach(() => {
     installGmMocks();
-    memory.set(DEBUG_KEY, false);
     document.head.replaceChildren();
     document.body.replaceChildren();
     header = document.createElement("div");

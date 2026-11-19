@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   APPEARANCE_BACKGROUND_KEY,
   APPEARANCE_BACKGROUND_TOO_LARGE,
-  DEBUG_KEY,
 } from "../src/config/constants";
 import {
   clearBackground,
@@ -202,7 +201,6 @@ describe("background-store", () => {
   beforeEach(() => {
     installGmMocks();
     installFakeIndexedDb();
-    memory.set(DEBUG_KEY, false);
   });
 
   it("returns null when nothing is stored", async () => {

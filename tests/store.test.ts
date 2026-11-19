@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
-  DEBUG_KEY,
   MAX_UPDATES_GROUP_SIZE,
   STORAGE_BACKUP_KEY,
   STORAGE_KEY,
@@ -57,7 +56,6 @@ function installGmMocks(): void {
 describe("store", () => {
   beforeEach(() => {
     installGmMocks();
-    memory.set(DEBUG_KEY, false);
   });
 
   it("returns the default object when storage is empty", () => {

@@ -2,7 +2,7 @@
 
 A userscript for `rule34.xxx`. It adds a feed of the artists you follow, collections, search inside your favorites, a reworked search panel and post page, a download manager, statistics and themes, and it tidies the site's own pages. It runs in your browser on the site's pages, keeps all its data on your computer and has no server.
 
-![The Favorites page with the script's top row](docs/img/favorites.jpg)
+![The Favorites page with the script's column of filters](docs/img/favorites.jpg)
 
 *Screenshots here are taken on a local test page with grey boxes in place of pictures.*
 
@@ -29,18 +29,20 @@ The site's long menu becomes three zones: **Posts, Feed, Collections, Following,
 
 **Follow** an artist, a character or a copyright with the button next to its tag. **Feed** is one grid with the posts of everyone you follow, newest first, with NEW marks and "Mark all seen". **Following** lists them as cards with a cover, a post count and a "new" mark; filter, sort, group, unfollow several at once.
 
+![The Following page](docs/img/following.jpg)
+
 ### Collections
 
-![The Collections page](docs/img/collections-empty.jpg)
+![The Collections page](docs/img/collections.jpg)
 
-- **Custom**: posts you pick, with the "+" on a thumbnail or a post, or several at once with "Select posts". Reordered by dragging. A post opened from one gets previous / next arrows through the collection
+- **Custom**: posts you pick, with the "+" on a thumbnail or a post, or several at once with "Select" in the search panel. Reordered by dragging. A post opened from one gets previous / next arrows through the collection
 - **Dynamic**: a saved search. "Save as collection" in the search panel; "Check for new" tells which of them got new posts
 
 ### A search panel instead of typing syntax
 
 ![The search panel](docs/img/search-panel.jpg)
 
-Under the site's search field: the tags of the query as chips (click to exclude, cross to remove), Images / Videos, sort order, minimum score, AI posts on or off, Reset, "Save as collection", "Select posts".
+Under the site's search field: the tags of the query as chips (click to exclude, cross to remove), Images / Videos, sort order, minimum score, AI posts on or off, Reset, "Save as collection", "Select". A dot on a chip has the colour of the tag's kind: artist, character, copyright, metadata.
 
 ### Search inside your favorites
 
@@ -48,11 +50,11 @@ The site cannot search favorites. After one **Sync favorites**, the Favorites pa
 
 ### The post page
 
-Favorite, Collections, Vote, "I came", Original and Download as buttons; details and comments in two tabs; the site's own actions in one list. A click on a picture opens a zoom viewer. GIFs play on the page. The video player keeps volume and speed, toggles on a click and can fit the height or the width.
+Favorite, Collections, Vote, "I came", Original and Download as buttons; details, comments and related posts in three tabs; the site's own actions in one list. Related posts are posts by other artists that share tags with the open one: a mix by its rarest tags, or by one of its characters or copyrights. A deleted post gets a block in the place of the picture that says why it is gone. A click on a picture opens a zoom viewer. GIFs play on the page. The video player keeps volume and speed, toggles on a click and can fit the height or the width.
 
 ### The grid
 
-A favorite star and "+" on thumbnails, three sizes, infinite scroll, dimming of posts you opened, hiding of blacklisted posts, optional video preview on hover, a "GIF" label, folding tag groups in the sidebar, the wiki text of a tag on its "?".
+A favorite star and "+" on thumbnails, three sizes, infinite scroll, dimming of posts you opened, hiding of blacklisted posts, optional video preview on hover, a "GIF" label, a play sign on videos, folding tag groups in the sidebar, the wiki text of a tag on its "?".
 
 ### Download manager
 
@@ -66,7 +68,7 @@ Counts of what you keep, the top tags of your favorites, and the numbers of your
 
 ### The site's other pages
 
-Forum: marks for new and updated topics, "New for me", "Mark all as read". Artists and Tags: Follow and "Save as collection" in each row. Upload: a drop zone with a preview, a tag count against the site's minimum, repeated tags dropped.
+Forum: marks for new and updated topics, "New for me", "Mark all as read". Artists and Tags: Follow and "Save as collection" in each row. Upload: a drop zone with a preview, a tag count against the site's minimum, repeated tags dropped, and your own sets of tags as buttons under the Tags field.
 
 ![The Upload form](docs/img/upload.jpg)
 
@@ -87,14 +89,15 @@ Header menu → the gear (**RuleDesk**). The sections are listed on the left, wi
 
 | Section | What is there |
 |---|---|
-| Appearance | Theme and grid size; for the Custom theme a background picture |
+| Appearance | Theme, grid size and Motion; for the Custom theme a background picture |
 | Header … Collections | A switch for each page feature, by the part of the site it changes. One switch over them, "Enable page tweaks", turns all of them off |
-| Favorites | Favorite buttons in the grid; Sync favorites and Full resync |
-| Downloads | Your API key and the file name of saved files |
+| Favorites | Favorite buttons in the grid; Bulk remove favorites; Sync favorites and Full resync |
+| Downloads | The download manager's switch, your API key and the file name of saved files |
+| Upload | Your sets of tags for the Upload page |
 | Blacklist | The site's tag blacklist for this browser |
 | Data | Export and import of everything the script stores; when the last backup was made |
 
-To get the untouched site back: Appearance → Site theme → **Site default**, and Page → turn off **Enable page tweaks**.
+To get the untouched site back: Appearance → Site theme → **Site default**, and turn off **Enable page tweaks** at the top of the settings.
 
 ## Themes
 
@@ -110,7 +113,7 @@ To get the untouched site back: Appearance → Site theme → **Site default**, 
 - **Data → Export** saves one JSON file; **Import** restores it (Merge adds to what you have, Replace overwrites). This is the only way to move to another browser
 - The blacklist and the site theme are the site's own cookies and are not in the export. Neither is the API key
 - Two requests are made without an action of yours, and each has its own switch in the settings (RuleDesk). The counter beside Feed asks for the first page of the feed, at most once in 15 minutes. The kind of a tag the script has not met yet is asked of the site's tag suggestions, once for a tag, to colour its chip
-- Otherwise the script reads the pages you open and makes a request only when you do something that needs one: favorite a post, sync favorites, start a download, type in a tag field, scroll for the next page, open a feed that spans several searches, press Refresh or Check for new, open Statistics (it reads your profile page, at most once in 15 minutes), click the "?" of a tag. Requests go one at a time with a pause
+- Otherwise the script reads the pages you open and makes a request only when you do something that needs one: favorite a post, sync favorites, start a download, type in a tag field, scroll for the next page, open a feed that spans several searches, press Refresh or Check for new, open Statistics (it reads your profile page, at most once in 15 minutes), click the "?" of a tag, open the Related posts tab of a post or press "Another mix" there. Requests go one at a time with a pause
 
 ## What the script does not do
 

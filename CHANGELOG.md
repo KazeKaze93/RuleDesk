@@ -2,6 +2,12 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.74.1
+
+- The script writes to the browser's console only what went wrong. The lines of a favorites sync that went well, and the hidden storage key that showed them, were for the making of the script and are gone
+- The caption of "Search tools" in the settings no longer names a rating control the panel does not have
+- The documentation is brought up to the script: Related posts, the page of a deleted post, tag sets for Upload, the kinds of tags, the settings as they are laid out now, what asks the site without a button. New screenshots, one of Following among them
+
 ## 0.74.0
 
 The rest of the audit. Nothing looks different.

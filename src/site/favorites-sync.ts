@@ -614,12 +614,6 @@ export async function runFavoritesSync(
           finishedAt,
         });
         onProgress({ page, pages, total });
-        log.info("favorites sync: completed on empty trailing page", {
-          total,
-          pages,
-          pid,
-          mode,
-        });
         return { status: "completed", total, pages };
       }
 
@@ -671,12 +665,6 @@ export async function runFavoritesSync(
           running: false,
           finishedAt,
         });
-        log.info("favorites sync: incremental early stop", {
-          total,
-          pages,
-          page,
-          pid,
-        });
         return { status: "completed", total, pages };
       }
 
@@ -688,7 +676,6 @@ export async function runFavoritesSync(
           running: false,
           finishedAt,
         });
-        log.info("favorites sync: completed", { total, pages, mode });
         return { status: "completed", total, pages };
       }
 
@@ -702,7 +689,6 @@ export async function runFavoritesSync(
   } catch (error) {
     if (isAbortError(error)) {
       writeProgress({ running: false });
-      log.info("favorites sync: aborted", { pid, total, mode });
       return createAbortResult(total, page, pages);
     }
     log.error("favorites sync: unexpected failure", error);

@@ -17,7 +17,6 @@ import {
   whenDomReady,
 } from "../src/boot/ready";
 import {
-  DEBUG_KEY,
   DEFAULT_APPEARANCE_THEME,
   RDW_SKIN_CLASS,
   RDW_THEME_ATTR,
@@ -107,7 +106,6 @@ describe("cheap appearance parse (no zod)", () => {
 describe("boot early appearance — CSS first", () => {
   beforeEach(() => {
     installGmMocks();
-    memory.set(DEBUG_KEY, false);
     document.documentElement.removeAttribute(RDW_THEME_ATTR);
     document.documentElement.classList.remove(RDW_SKIN_CLASS);
     document.getElementById(TOKEN_STYLE_ID)?.remove();
@@ -286,7 +284,6 @@ describe("whenDomReady + scheduleAfterFirstPaint", () => {
 describe("boot order contract", () => {
   beforeEach(() => {
     installGmMocks();
-    memory.set(DEBUG_KEY, false);
     document.documentElement.removeAttribute(RDW_THEME_ATTR);
     document.documentElement.classList.remove(RDW_SKIN_CLASS);
     document.getElementById(TOKEN_STYLE_ID)?.remove();
@@ -364,7 +361,6 @@ describe("token injection helpers", () => {
 describe("old storage still loads for boot", () => {
   beforeEach(() => {
     installGmMocks();
-    memory.set(DEBUG_KEY, false);
     document.getElementById(TOKEN_STYLE_ID)?.remove();
   });
 
