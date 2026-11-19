@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.64.3
+
+- The post page: the site's "previous / next" strip over the picture begins where the panel beside it begins and is as wide as the picture. It stood lower than the panel and was narrower than the picture
+
 ## 0.64.2
 
 - The site is not asked for the kind of a tag you follow: the kind it is followed as is known already

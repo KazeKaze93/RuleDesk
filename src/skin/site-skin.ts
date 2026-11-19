@@ -2192,6 +2192,14 @@ ${ROOT} div.status-notice {
   color: ${v.text};
 }
 
+/* In the row of a post a notice stands over the picture, beside the panel:
+   it begins where the panel begins and is as wide as the picture. With the
+   margin of a notice it was lower than the panel and narrower than the
+   picture (Kaze, 19.11.2026, the "previous / next" strip). */
+${ROOT} div#post-view div.flexi div.status-notice {
+  margin: 0 0 12px;
+}
+
 ${ROOT} div.notice {
   color: ${v.danger};
   padding: 0.75em 1em;
