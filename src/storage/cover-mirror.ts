@@ -39,7 +39,9 @@ function writeAll(mirror: CoverMirror): void {
 
 /** Mirrored cover of one collection, or null when none is stored. */
 export function readCoverMirror(collectionId: string): readonly string[] | null {
-  const cover = readAll()[collectionId];
+  // An id may be a word every object has ("constructor"): only what is stored counts.
+  const all = readAll();
+  const cover = Object.hasOwn(all, collectionId) ? all[collectionId] : undefined;
   return cover === undefined ? null : cover;
 }
 
@@ -52,7 +54,7 @@ export function writeCoverMirror(
   const current = readAll();
   const next: CoverMirror = {};
   for (const id of knownIds) {
-    const kept = current[id];
+    const kept = Object.hasOwn(current, id) ? current[id] : undefined;
     if (kept !== undefined) {
       next[id] = kept;
     }
@@ -64,7 +66,7 @@ export function writeCoverMirror(
 /** Forgets the cover of one collection (query changed, collection deleted). */
 export function removeCoverMirror(collectionId: string): void {
   const current = readAll();
-  if (current[collectionId] === undefined) {
+  if (!Object.hasOwn(current, collectionId)) {
     return;
   }
   const next: CoverMirror = {};
@@ -118,7 +120,8 @@ function writeAllCounts(mirror: CountMirror): void {
 
 /** Mirrored post count of one collection, or null when none is stored. */
 export function readCountMirror(collectionId: string): CountEntry | null {
-  const count = readAllCounts()[collectionId];
+  const all = readAllCounts();
+  const count = Object.hasOwn(all, collectionId) ? all[collectionId] : undefined;
   return count === undefined ? null : count;
 }
 
@@ -131,7 +134,7 @@ export function writeCountMirror(
   const current = readAllCounts();
   const next: CountMirror = {};
   for (const id of knownIds) {
-    const kept = current[id];
+    const kept = Object.hasOwn(current, id) ? current[id] : undefined;
     if (kept !== undefined) {
       next[id] = kept;
     }
@@ -143,7 +146,7 @@ export function writeCountMirror(
 /** Forgets the count of one collection (query changed, collection deleted). */
 export function removeCountMirror(collectionId: string): void {
   const current = readAllCounts();
-  if (current[collectionId] === undefined) {
+  if (!Object.hasOwn(current, collectionId)) {
     return;
   }
   const next: CountMirror = {};

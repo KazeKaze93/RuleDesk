@@ -4,7 +4,7 @@ import {
   readSiteBlacklist,
 } from "../site/blacklist";
 import { SITE_SELECTORS } from "../site/selectors";
-import { onThumbsAdded } from "./runtime";
+import { onThumbsAdded } from "../site/thumbs-bus";
 import { featureBodyClass, type Feature, type FeatureContext } from "./types";
 
 const FEATURE_ID = "blacklist-hide";

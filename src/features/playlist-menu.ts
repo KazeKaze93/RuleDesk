@@ -17,7 +17,7 @@ import {
   type Feature,
   type FeatureContext,
 } from "./types";
-import { onThumbsAdded } from "./runtime";
+import { onThumbsAdded } from "../site/thumbs-bus";
 
 const FEATURE_ID = "playlist-menu";
 const FEATURE_LABEL = "Add to collection button";

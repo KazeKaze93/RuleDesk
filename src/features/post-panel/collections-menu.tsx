@@ -7,6 +7,7 @@ import { ANCHORED_POPOVER_WIDTH_PX, Button, Popover } from "../../ui/kit";
 import { IconCheck, IconPlus } from "../../ui/kit/icons";
 import { playlistsContaining } from "../../storage/store";
 import { VIDEO_ELEMENT_ID } from "../video-player";
+import { TITLE_DELETED } from "./deleted-block";
 import { IMAGE_ID } from "./site-reads";
 
 const TEXT_COLLECTIONS = "Collections";
@@ -35,7 +36,7 @@ export type CollectionsMenuProps = {
   readonly deleted?: boolean;
 };
 
-const TITLE_DELETED = "The post was deleted";
+
 
 function readAttributeSrc(
   element: HTMLImageElement | HTMLSourceElement | HTMLVideoElement,

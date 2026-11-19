@@ -9,6 +9,7 @@ import {
   isMediaFileUrl,
   type FileNameInfo,
 } from "../../site/download";
+import { isSiteUrl } from "../../site/urls";
 import { readFileMask } from "../../storage/download-name";
 import { IconCheck, IconDownload } from "../../ui/kit";
 import { IMAGE_ID } from "./site-reads";
@@ -62,7 +63,11 @@ export function resolvePostFileUrl(
     originalHref ?? "",
     image instanceof HTMLImageElement ? image.currentSrc || image.src : "",
   ];
-  return candidates.find((url) => url.length > 0 && isMediaFileUrl(url)) ?? null;
+  // Only from the site: the page is not trusted to name another server to
+  // save a file from (the audit of 19.11.2026).
+  return (
+    candidates.find((url) => url.length > 0 && isMediaFileUrl(url) && isSiteUrl(url)) ?? null
+  );
 }
 
 export type DownloadOneProps = {

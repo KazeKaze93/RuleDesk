@@ -1,6 +1,7 @@
 import { bootEarly } from "./boot/early";
 import { applyLayoutBeforePaint, startEarlyLayout } from "./boot/layout";
 import { scheduleAfterFirstPaint, whenDomReady } from "./boot/ready";
+import { log } from "./log";
 
 bootEarly();
 startEarlyLayout();
@@ -8,8 +9,10 @@ startEarlyLayout();
 whenDomReady(() => {
   applyLayoutBeforePaint();
   scheduleAfterFirstPaint(() => {
-    void import("./boot/app").then(({ startApp }) => {
-      void startApp();
-    });
+    import("./boot/app")
+      .then(({ startApp }) => startApp())
+      .catch((error: unknown) => {
+        log.error("start failed", error);
+      });
   });
 });

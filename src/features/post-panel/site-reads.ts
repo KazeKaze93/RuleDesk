@@ -309,6 +309,10 @@ function parseSourceRow(li: HTMLElement): StatRow | null {
   if (href === null || href.length === 0 || href === "#") {
     return null;
   }
+  // The address is the uploader's: only one of the web is made a link again.
+  if (!/^https?:/i.test(link.href)) {
+    return null;
+  }
   const text = link.textContent?.trim() ?? "";
   return {
     label: "Source",
@@ -392,9 +396,16 @@ export function readStatRows(): StatRow[] {
 const POST_SIZE_RE = /^(\d+)\s*x\s*(\d+)$/i;
 
 /** The size of the post's file as the statistics give it, "1290x1018"; null when they do not. */
-export function readPostSize(): { readonly width: number; readonly height: number } | null {
+export function readPostSize(): PostSize | null {
   const row = readStatRows().find((entry) => entry.label === "Size");
-  const match = row === undefined ? null : POST_SIZE_RE.exec(row.value.trim());
+  return row === undefined ? null : parsePostSize(row.value);
+}
+
+export type PostSize = { readonly width: number; readonly height: number };
+
+/** "1290x1018" as numbers; null for anything else. */
+export function parsePostSize(text: string): PostSize | null {
+  const match = POST_SIZE_RE.exec(text.trim());
   if (match === null) {
     return null;
   }

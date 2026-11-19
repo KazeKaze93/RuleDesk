@@ -26,12 +26,10 @@ import {
   writeCoverMirror,
 } from "./cover-mirror";
 import {
-  addFav,
   addFavs,
   extractFavIdsFromMarks,
   loadFavSet,
   migrateMarksFavToFavs,
-  removeFav,
 } from "./favs";
 import { pruneMarksIfNeeded } from "./marks-prune";
 import {
@@ -42,7 +40,6 @@ import {
   CollectionSchema,
   ExportBlobSchema,
   StorageSchema,
-  createDefaultAppearance,
   createDefaultStorage,
   isPlaylist,
   migrateCollectionMediaFields,
@@ -143,7 +140,14 @@ function loadUncached(): StorageData {
     seedArtistsMirrorIfMissing(empty);
     return empty;
   }
-  migrateMarksFavToFavs();
+  // The storage was read and validated once, above; the migration works on
+  // that. It is read again only when the migration wrote it, which is once in
+  // the life of old data. It used to be read and validated three times on
+  // every load (the audit of 19.11.2026).
+  if (!migrateMarksFavToFavs(parsed.data)) {
+    seedArtistsMirrorIfMissing(parsed.data);
+    return persistCollectionMediaMigration(parsed.data);
+  }
   const after = readRaw();
   if (after === undefined || after === null) {
     const empty = createDefaultStorage();
@@ -1015,39 +1019,13 @@ export function updateDynamicQuery(
   return target;
 }
 
-/** Thin wrapper over favs storage (keeps callers compiling). */
-export function setPostFavMark(postId: string, fav: boolean): void {
-  if (fav) {
-    addFav(postId);
-  } else {
-    removeFav(postId);
-  }
-}
-
-/** Thin wrapper over favs storage (keeps callers compiling). */
-export function setPostFavMarks(postIds: string[], fav: boolean): void {
-  if (postIds.length === 0) {
-    return;
-  }
-  if (fav) {
-    const ids: number[] = [];
-    for (const postId of postIds) {
-      const parsed = Number(postId);
-      if (Number.isFinite(parsed)) {
-        ids.push(Math.trunc(parsed));
-      }
-    }
-    addFavs(ids);
-    return;
-  }
-  for (const postId of postIds) {
-    removeFav(postId);
-  }
-}
-
 export function setPostSeenMark(postId: string): void {
   const data = load();
   const previous: MarkFlags = data.marks[postId] ?? {};
+  if (previous.seen === true) {
+    // Seen before: nothing to write. Each visit to a post rewrote everything.
+    return;
+  }
   data.marks[postId] = { ...previous, seen: true };
   save(data);
 }
@@ -1143,7 +1121,16 @@ export function setFeatureState(id: string, value: unknown): void {
   // groups, the view of a page).
   const data = reloadFromStorage();
   const settings = currentSettings(data);
-  const featureState = { ...(settings.featureState ?? {}), [id]: value };
+  const kept = settings.featureState;
+  if (
+    kept !== undefined &&
+    Object.hasOwn(kept, id) &&
+    JSON.stringify(kept[id]) === JSON.stringify(value)
+  ) {
+    // The same value is there: the whole storage is not written for nothing.
+    return;
+  }
+  const featureState = { ...(kept ?? {}), [id]: value };
   data.settings = {
     ...settings,
     featureState,
@@ -1232,10 +1219,6 @@ export function clearAppearanceBackgroundDataUrl(): void {
   getGmSetValue()(APPEARANCE_BACKGROUND_KEY, "");
 }
 
-export function createDefaultAppearanceSettings(): Appearance {
-  return createDefaultAppearance();
-}
-
 export function getSeenPostId(): number {
   return resolveSeenPostId(load());
 }
@@ -1256,14 +1239,6 @@ export function setSeenPostId(seenPostId: number): void {
  */
 export function listArtistTags(): string[] {
   return loadRecent().artists.map((entry) => entry.tag);
-}
-
-export function isFollowingArtist(tag: string): boolean {
-  const normalized = normalizeArtistTag(tag);
-  if (normalized === null) {
-    return false;
-  }
-  return listArtistTags().includes(normalized);
 }
 
 export function addArtist(tag: string): ArtistEntry {

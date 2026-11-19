@@ -1,12 +1,14 @@
 import * as z from "zod/mini";
 
 import {
+  APPEARANCE_BACKGROUND_TOO_LARGE,
   FAVS_STORAGE_KEY,
   IMPORT_SCHEMA_ERROR_PREFIX,
   STORAGE_BACKUP_KEY,
 } from "../config/constants";
 import { log } from "../log";
 import {
+  backgroundTooLarge,
   clearBackground,
   loadBackground,
   saveBackground,
@@ -50,6 +52,8 @@ export const BackupFileSchema = z.object({
 });
 
 export type BackupFile = z.infer<typeof BackupFileSchema>;
+
+const IMPORT_BACKGROUND_NOT_PICTURE = "The background in this file is not a picture";
 
 export type BackupExportOptions = {
   readonly includeBackground: boolean;
@@ -152,6 +156,7 @@ function siteUrlsOnly(urls: readonly string[] | undefined): string[] | undefined
 export function keepSiteMedia(storage: StorageData): StorageData {
   return {
     ...storage,
+    settings: keepOwnBackground(storage.settings),
     collections: storage.collections.map((collection) => {
       const next = { ...collection };
       const cover = siteUrlsOnly(collection.cover);
@@ -174,6 +179,45 @@ export function keepSiteMedia(storage: StorageData): StorageData {
       return cover === undefined ? artist : { ...artist, cover };
     }),
   };
+}
+
+/** A picture kept in the file itself: it asks no server for anything. */
+const DATA_IMAGE_PREFIX = /^data:image\/(?:jpeg|png|webp|gif|avif);base64,/i;
+
+function isDataImage(value: string): boolean {
+  return DATA_IMAGE_PREFIX.test(value);
+}
+
+/**
+ * The address of the page background in imported settings is kept only when it
+ * is on the site or is the picture itself. Any other address would be asked
+ * for on every page of the site, and tell its server when the user is there.
+ */
+function keepOwnBackground(settings: StorageData["settings"]): StorageData["settings"] {
+  const custom = settings?.appearance?.custom;
+  const address = custom?.backgroundImage;
+  if (
+    settings === undefined ||
+    settings.appearance === undefined ||
+    custom === undefined ||
+    address === undefined ||
+    isSiteUrl(address) ||
+    isDataImage(address)
+  ) {
+    return settings;
+  }
+  const { backgroundImage: _dropped, ...kept } = custom;
+  return { ...settings, appearance: { ...settings.appearance, custom: kept } };
+}
+
+/**
+ * What a file says of the run of "Sync favorites" is not taken: the state of
+ * a run is of this browser. A file with "running" set made the next page walk
+ * all the pages of favorites by itself, and with its own account id (found by
+ * the audit of 19.11.2026).
+ */
+function withoutSync(favs: FavsData): FavsData {
+  return { version: favs.version, ids: favs.ids };
 }
 
 function mergeArtists(
@@ -223,9 +267,7 @@ function mergeFavs(current: FavsData, incoming: FavsData): FavsData {
     version: incoming.version,
     ids: Array.from(ids),
   };
-  if (incoming.sync !== undefined) {
-    next.sync = incoming.sync;
-  } else if (current.sync !== undefined) {
+  if (current.sync !== undefined) {
     next.sync = current.sync;
   }
   return next;
@@ -361,12 +403,23 @@ export async function importBackupJson(
   }
 
   const incoming = { ...parsed.data, storage: keepSiteMedia(parsed.data.storage) };
+  // The stored background is a picture as data. Anything else in its place,
+  // an address among them, is not a background: the file is refused before
+  // anything is written, as is a picture too large to keep.
+  if (incoming.background !== undefined && incoming.background.length > 0) {
+    if (!isDataImage(incoming.background)) {
+      return { ok: false, error: IMPORT_BACKGROUND_NOT_PICTURE };
+    }
+    if (backgroundTooLarge(incoming.background)) {
+      return { ok: false, error: APPEARANCE_BACKGROUND_TOO_LARGE };
+    }
+  }
   const hasBackgroundField = Object.prototype.hasOwnProperty.call(
     incoming,
     "background",
   );
   const hasFavsField = Object.prototype.hasOwnProperty.call(incoming, "favs");
-  const incomingFavs = incoming.favs;
+  const incomingFavs = incoming.favs === undefined ? undefined : withoutSync(incoming.favs);
 
   try {
     if (mode === IMPORT_MODE_REPLACE) {

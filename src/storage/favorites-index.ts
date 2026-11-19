@@ -125,24 +125,6 @@ export async function readFavoriteIndex(): Promise<FavoriteIndexEntry[]> {
   }
 }
 
-/** Removes entries by post id. */
-export async function deleteFavoriteIndexEntries(ids: readonly number[]): Promise<void> {
-  if (ids.length === 0 || !favoritesIndexAvailable()) {
-    return;
-  }
-  const db = await openDb();
-  try {
-    const tx = db.transaction(STORE_NAME, "readwrite");
-    const store = tx.objectStore(STORE_NAME);
-    for (const id of ids) {
-      store.delete(id);
-    }
-    await whenDone(tx);
-  } finally {
-    db.close();
-  }
-}
-
 /** Like {@link putFavoriteIndexEntries}, but a failure is logged, not thrown. */
 export function putFavoriteIndexEntriesQuietly(entries: readonly FavoriteIndexEntry[]): void {
   putFavoriteIndexEntries(entries).catch((error: unknown) => {

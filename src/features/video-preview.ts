@@ -22,7 +22,7 @@ import {
   buildVideoUrlFromThumbUrl,
   ensureThumbAnchor,
 } from "../site/thumb";
-import { onThumbsAdded } from "./runtime";
+import { onThumbsAdded } from "../site/thumbs-bus";
 import {
   THUMB_ANCHOR_NAME,
   featureBodyClass,

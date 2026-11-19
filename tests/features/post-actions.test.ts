@@ -1081,7 +1081,13 @@ describe("postActionsFeature", () => {
       details.onload?.();
     });
     vi.stubGlobal("GM_download", download);
+    // A file is saved from the site only: an address of another server on the
+    // page gives no button.
     buildPostDom({});
+    postActionsFeature.mount(makeCtx());
+    expect(document.querySelector(".rdw-post-panel-download")).toBeNull();
+    document.body.replaceChildren();
+    buildPostDom({ originalHref: "https://wimg.rule34.xxx/images/1/original.jpg" });
     postActionsFeature.mount(makeCtx());
     const button = document.querySelector(".rdw-post-panel-download");
     expect(button).not.toBeNull();

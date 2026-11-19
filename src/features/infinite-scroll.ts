@@ -3,7 +3,7 @@ import { isBlacklisted, readSiteBlacklist } from "../site/blacklist";
 import { fetchNextPage } from "../site/next-page";
 import { SITE_SELECTORS } from "../site/selectors";
 import { FEED_MERGE_BODY_CLASS } from "./feed-merge";
-import { notifyThumbsAdded } from "./runtime";
+import { notifyThumbsAdded } from "../site/thumbs-bus";
 import { featureBodyClass, type Feature, type FeatureContext } from "./types";
 import { AI_SCOPE_POSTS, alignSiteAiFilter, currentListScope } from "./ai-scope";
 

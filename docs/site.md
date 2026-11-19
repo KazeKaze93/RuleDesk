@@ -11,7 +11,7 @@ The script works on the site's own HTML. This file holds what is known about it.
   | File | When it asks | Pause |
   |---|---|---|
   | `favorites.ts` | Click on a favorite star (add, vote, remove) | none, one per click |
-  | `favorites-sync.ts` | "Sync favorites" / "Full resync" in settings | 1.5 s per page |
+  | `favorites-sync.ts` | "Sync favorites" / "Full resync" in settings; a run that was cut short (the page was left, a request failed) goes on by itself on the next page load, `favorites-sync-runner.ts` | 1.5 s per page |
   | `autocomplete.ts` | Typing in a tag field of the script | debounced, one at a time |
   | `next-page.ts` | Infinite scroll; other artist groups of a merged feed | 1 s |
   | `artist-snapshot.ts` | "Refresh" on Following, after a confirmation | 1.5 s per artist |
@@ -20,7 +20,7 @@ The script works on the site's own HTML. This file holds what is known about it.
 | `download.ts` | A download job: the files, one at a time (`GM_download` from the CDN) | 0.4 s; one retry after 5 s |
 
 - **Cookies:** only `tag_blacklist`, `theme` and `filter_ai` are read or written (`filter_ai` allowed by Kaze on 17.11.2026, for AI posts shown or hidden by the part of the site; written with `path=/` like the other two — the attributes the site itself gives it have not been read). `user_id` and `pass_hash` are never read. One exception outside cookies, allowed by Kaze: "Refresh profile" takes the address of the "My Profile" link from the My Account page, which holds the user's id, uses it for one request and stores nothing of it. The account settings form is never submitted.
-- **Outside addresses are checked.** A file address from an API answer and a picture address from an imported file are used only when they are `https` on the site's domain (`src/site/urls.ts`).
+- **Outside addresses are checked.** A file address from an API answer, the address the one-post download button takes from the page, and a picture address from an imported file (covers, thumbs, the page background) are used only when they are `https` on the site's domain (`src/site/urls.ts`); the background may also be the picture itself, as `data:image/...`. The Source of a post is repeated as a link only when it is `http` or `https`.
 - **The grid link is left alone.** Nothing inside `a#p{ID}` is changed; thumbnail size is set only by `grid-density`.
 
 ## Markup

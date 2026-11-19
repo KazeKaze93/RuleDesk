@@ -21,6 +21,8 @@ export const CLASS_DELETED_COPY = "rdw-post-deleted-copy";
 export const OPEN_RELATED_EVENT = "rdw-post-panel-open-related";
 
 export const TEXT_DELETED = "This post was deleted";
+/** On the buttons of the panel that do nothing for a post that is gone. */
+export const TITLE_DELETED = "The post was deleted";
 export const TEXT_SHOW_RELATED = "Show related posts";
 const TEXT_REASON_PREFIX = "Reason: ";
 const TEXT_MD5_PREFIX = "MD5 ";

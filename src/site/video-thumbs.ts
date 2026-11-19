@@ -1,4 +1,4 @@
-import { onThumbsAdded } from "../features/runtime";
+import { onThumbsAdded } from "./thumbs-bus";
 import {
   FAVORITE_IMAGE_ANCHOR_NAME,
   FAVORITES_PAGE_CLASS,

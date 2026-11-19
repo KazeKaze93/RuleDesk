@@ -46,7 +46,7 @@ import {
 import { useHotkey } from "../../ui/use-hotkey";
 import { CollectionQueue } from "./collection-queue";
 import { CollectionsMenu } from "./collections-menu";
-import { OPEN_RELATED_EVENT } from "./deleted-block";
+import { OPEN_RELATED_EVENT, TITLE_DELETED } from "./deleted-block";
 import { DownloadOne } from "./download-one";
 import { PostActionsList } from "./post-actions-list";
 import {
@@ -57,6 +57,7 @@ import {
   findOriginalAnchor,
   findPostComments,
   observeScoreSpan,
+  parsePostSize,
   readCommentCount,
   readScoreText,
   readStatRows,
@@ -94,8 +95,6 @@ const TITLE_FAVORITE = "Add to favorites (F)";
 const TITLE_UNFAVORITE = "Remove from favorites (F)";
 const TITLE_VOTE = "Vote up";
 const TITLE_VOTED = "Voted up";
-/** On the buttons that do nothing for a post that is gone. */
-export const TITLE_DELETED = "The post was deleted";
 const ARIA_PANEL_TABS = "Post details";
 
 const ICON_SIZE = 14;
@@ -135,8 +134,6 @@ function parseNumericPostId(postId: string | null): number | null {
   return truncated < 0 ? null : truncated;
 }
 
-const SIZE_PATTERN = /^(\d+)\s*x\s*(\d+)$/i;
-
 function statValue(stats: readonly StatRow[], label: StatRow["label"]): string {
   return stats.find((row) => row.label === label)?.value.trim() ?? "";
 }
@@ -147,7 +144,7 @@ export function fileNameInfo(
   stats: readonly StatRow[],
   scoreText: string,
 ): { postId: number; rating?: string; score?: number; width?: number; height?: number; owner?: string } {
-  const size = SIZE_PATTERN.exec(statValue(stats, "Size"));
+  const size = parsePostSize(statValue(stats, "Size"));
   const score = Number(scoreText);
   const rating = statValue(stats, "Rating").toLowerCase();
   const owner = statValue(stats, "By");
@@ -155,7 +152,7 @@ export function fileNameInfo(
     postId,
     ...(rating.length > 0 ? { rating } : {}),
     ...(scoreText.trim().length > 0 && Number.isFinite(score) ? { score } : {}),
-    ...(size === null ? {} : { width: Number(size[1]), height: Number(size[2]) }),
+    ...(size === null ? {} : { width: size.width, height: size.height }),
     ...(owner.length > 0 ? { owner } : {}),
   };
 }

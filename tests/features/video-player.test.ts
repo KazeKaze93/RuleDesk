@@ -365,22 +365,32 @@ describe("videoPlayerFeature mount behavior", () => {
     videoPlayerFeature.mount(ctx);
     await flushFirstPaint();
 
+    // Dragging the volume fires many events: the last value is written once,
+    // as the page is left or after a pause, not the whole storage for each.
+    const before = writes.length;
+    video.volume = 0.3;
+    video.dispatchEvent(new Event("volumechange"));
     video.volume = 0.55;
     video.dispatchEvent(new Event("volumechange"));
     video.playbackRate = 0.75;
     video.dispatchEvent(new Event("ratechange"));
+    expect(writes.length).toBe(before);
 
-    expect(writes.length).toBeGreaterThanOrEqual(2);
-    expect(writes).toContainEqual({
-      volume: 0.55,
-      muted: false,
-      playbackRate: 1,
-    });
-    expect(writes).toContainEqual({
+    window.dispatchEvent(new Event("pagehide"));
+    expect(writes.length).toBe(before + 1);
+    expect(writes.at(-1)).toEqual({
       volume: 0.55,
       muted: false,
       playbackRate: 0.75,
     });
+
+    // And after a pause with no page left.
+    video.volume = 0.2;
+    video.dispatchEvent(new Event("volumechange"));
+    await vi.waitFor(() => {
+      expect(writes.at(-1)).toEqual({ volume: 0.2, muted: false, playbackRate: 0.75 });
+    });
+    expect(writes.length).toBe(before + 2);
   });
 
   it("does not bind wheel volume handlers", async () => {

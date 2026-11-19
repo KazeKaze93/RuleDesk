@@ -395,7 +395,7 @@ export function applyCustomThemeProperties(
   if (custom.backgroundImage !== undefined && custom.backgroundImage.length > 0) {
     target.style.setProperty(
       TOKEN_VAR.backgroundImage,
-      `url("${custom.backgroundImage.replace(/"/g, '\\"')}")`,
+      `url("${custom.backgroundImage.replace(/[\\"]/g, "\\$&")}")`,
     );
   }
   if (custom.backgroundDim !== undefined) {

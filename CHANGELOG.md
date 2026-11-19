@@ -2,6 +2,31 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.72.0
+
+An audit of security, speed and the structure of the code. Nothing looks different.
+
+Safer:
+
+- A file given to Import cannot start "Sync favorites": what a file says of a run of the sync is not taken. A file with the run marked as going made the next page walk every page of favorites by itself
+- A file given to Import cannot make every page ask another server for a picture: the address of the page background in its settings is kept only when it is on the site or is the picture itself, and the stored background must be a picture. A file with a background that is not one, or too large, is refused before anything is written
+- The button that saves the file of a post saves only from the site
+- The Source of a post is a link in the panel only when it is an address of the web
+- The Collections page no longer breaks on a saved search whose id is a word such as "constructor"
+
+Faster:
+
+- The code run before the page is first drawn is a third of what it was: 306 KB of the file, from 915 KB. The list of all the features had got into it
+- Loading the stored data reads and checks it once, not three times; with thousands of favorites each read also compared every favorite with every other
+- A value that is already stored is not written again, nor a post marked as seen a second time: each such write was of all the data
+- Dragging the volume of a video writes once, after the dragging, not many times a second
+- Statistics: the top tags of the last time are no longer kept. It did not help and cost a write of all the data
+
+Sturdier:
+
+- A part of the start that fails is written to the log and the rest goes on. One failure used to leave the page with no features and no pages of the script
+- One listener of added thumbnails that fails does not silence the others
+
 ## 0.71.1
 
 - On the page of a deleted post, Favorite of a post that is not in favorites is grey, as Vote is. It could not be pressed in 0.71.0 either, but was still bright blue: the skin painted it over the grey of a button that cannot be pressed

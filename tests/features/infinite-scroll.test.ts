@@ -10,7 +10,7 @@ const { notifyThumbsAddedMock } = vi.hoisted(() => ({
   notifyThumbsAddedMock: vi.fn(),
 }));
 
-vi.mock("../../src/features/runtime", () => ({
+vi.mock("../../src/site/thumbs-bus", () => ({
   notifyThumbsAdded: notifyThumbsAddedMock,
 }));
 

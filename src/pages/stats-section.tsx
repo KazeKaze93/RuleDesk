@@ -6,7 +6,7 @@ import { topFavoriteTags, type TagCount } from "../features/favorites-search";
 import { readFavoriteIndex } from "../storage/favorites-index";
 import { loadFavSet } from "../storage/favs";
 import { resolveCollectionKind, type StorageData } from "../storage/schema";
-import { getFeatureState, load, setFeatureState } from "../storage/store";
+import { load } from "../storage/store";
 import {
   readStoredProfileStats,
   refreshProfileStats,
@@ -397,37 +397,6 @@ export function profileTiles(profile: ProfileStats, now: number): ProfileTile[] 
   return tiles;
 }
 
-/** Under featureState: the top tags as they were counted the last time. */
-const TOP_TAGS_STATE_ID = "stats-top-tags";
-
-/** The top tags kept from the last count, or null when none were kept. */
-export function readKeptTopTags(): TagCount[] | null {
-  const kept = getFeatureState(TOP_TAGS_STATE_ID);
-  if (!Array.isArray(kept)) {
-    return null;
-  }
-  const tags: TagCount[] = [];
-  for (const item of kept) {
-    if (!Array.isArray(item)) {
-      return null;
-    }
-    const [tag, count]: readonly unknown[] = item;
-    if (typeof tag !== "string" || typeof count !== "number") {
-      return null;
-    }
-    tags.push({ tag, count });
-  }
-  return tags;
-}
-
-/** Keeps the count for the next opening of the page; nothing is written when it is the same. */
-export function keepTopTags(tags: readonly TagCount[]): void {
-  const next = tags.map((entry) => [entry.tag, entry.count]);
-  if (JSON.stringify(getFeatureState(TOP_TAGS_STATE_ID)) !== JSON.stringify(next)) {
-    setFeatureState(TOP_TAGS_STATE_ID, next);
-  }
-}
-
 /** Grey rows in place of the tags while they are counted, as many as the list is long. */
 function TagsSkeleton(): JSX.Element {
   return (
@@ -451,15 +420,15 @@ function TagsSkeleton(): JSX.Element {
  * drawn only once the tags were counted, it moved the page under the eyes.
  */
 function FavoriteTagsBlock(): JSX.Element {
-  // What was counted the last time is shown at once, and put right when the
-  // count of now is ready: reading the whole index takes a moment every time.
-  const [tags, setTags] = useState<readonly TagCount[] | null>(() => readKeptTopTags());
+  // Null while the tags are counted. The count of the last time was kept and
+  // shown at once (0.61.0); it did not help where it was meant to (Kaze,
+  // 19.11.2026) and cost a write of the whole storage, so it is gone.
+  const [tags, setTags] = useState<readonly TagCount[] | null>(null);
   useEffect(() => {
     let alive = true;
     readFavoriteIndex()
       .then((entries) => {
         const counted = topFavoriteTags(entries, loadFavSet(), TOP_TAGS_LIMIT);
-        keepTopTags(counted);
         if (alive) {
           setTags(counted);
         }

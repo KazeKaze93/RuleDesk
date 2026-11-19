@@ -2,7 +2,7 @@ import { useTagKindLookup } from "../ui/use-tag-kinds";
 import { chipKindOfTag } from "../ui/tag-chip-kind";
 import type { JSX } from "preact";
 import { createPortal } from "preact/compat";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
+import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 
 import { UI_TEXT } from "../config/constants";
 import { log } from "../log";
@@ -59,7 +59,7 @@ import {
   queryHasTag,
   toggleQueryTag,
 } from "./favorites-scope";
-import { notifyThumbsAdded } from "./runtime";
+import { notifyThumbsAdded } from "../site/thumbs-bus";
 import {
   AI_LABEL,
   AI_MODE_HIDE,
@@ -118,9 +118,6 @@ export const ACTIONS_CLASS = "rdw-favorites-head-actions";
  */
 export const FIT_ATTRIBUTE = "data-fit";
 export const FIT_STEPS = [0, 1, 2, 3] as const;
-const SEARCH_WIDTH_PX = 320;
-const SEARCH_MIN_WIDTH_PX = 200;
-const SEARCH_MAX_WIDTH_PX = 560;
 const SYNTAX_POPOVER_WIDTH_PX = 340;
 
 const VIEW_STATE_ID = FAVORITES_VIEW_STATE_ID;
@@ -256,8 +253,6 @@ const LOCALE = "en-US";
 const NO_INDEX_STATUS =
   "No index yet: run Full resync in RuleDesk → Favorites to search and scroll here.";
 const REMOVE_FAILED_STATUS = "Could not remove the favorite. Try again.";
-const SHUFFLE_LABEL = "Shuffle";
-const SHUFFLE_TITLE = "Show the favorites in a random order";
 
 const MEDIA_OPTIONS: readonly SegmentedOption[] = [
   { value: MEDIA_ALL, label: "All" },

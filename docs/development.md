@@ -48,7 +48,7 @@ Tampermonkey: Dashboard → Settings → Security → Content Script API → **U
 
 ## Speed
 
-Measured on a mock list page with 12,000 favorites: first paint about 104 ms without the script and 132 ms (median) with version 0.15.1. The rules that keep it there: before the theme CSS is inserted the script does one settings read and a cheap parse; feature modules load after the first paint; the code of the script's own pages does not run until one is opened. The build has grown since that measurement (about 670 KB at 0.22, about 980 KB at 0.40); repeat the measurement before blaming or clearing size.
+Measured on a mock list page with 12,000 favorites: first paint about 104 ms without the script and 132 ms (median) with version 0.15.1. The rules that keep it there: before the theme CSS is inserted the script does one settings read and a cheap parse; feature modules load after the first paint; the code of the script's own pages does not run until one is opened. The build has grown since that measurement (about 670 KB at 0.22, about 980 KB at 0.40, about 1,280 KB at 0.72); repeat the measurement before blaming or clearing size. What counts for the first paint is the entry part of the file, the code run at document-start: 306 KB at 0.72.0 (it was 915 KB at 0.71, when the list of features was imported on that path). The build is not minified.
 
 ## Design files
 

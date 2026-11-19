@@ -15,6 +15,8 @@ The blacklist and the site theme are site cookies and are never in the file.
 - **Merge**: collections are joined by `id`, artists by `tag`, marks by post id; favorites are united. For an artist present on both sides the file's fields are laid over the current ones, so a file that has only the tag does not wipe a known cover or count. Settings come from the file
 - **Replace**: the stored data becomes what the file holds. A file without `favs` leaves the local favorite list as it is
 
+Not taken from a file in either mode: `favs.sync` (the state of a run of "Sync favorites" is of the browser it ran in), and picture addresses that are not on the site (covers, thumbs, `settings.appearance.custom.backgroundImage`). `background` must be a picture as `data:image/...;base64,` no larger than the limit for a background: a file where it is anything else is refused whole, before anything is written.
+
 Before an import the current data is copied to `ruledesk-web.storage.backup` in the script manager's storage.
 
 ## Shape

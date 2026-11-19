@@ -29,7 +29,7 @@ import { ensureDocumentStyles } from "../ui/cards";
 import { mountUpdatesBar } from "../ui/updates-bar";
 import { rememberArtistsFromPage } from "./artist-snapshots";
 import { FEED_MERGE_CSS, isMergedFeedPage, mountFeedMerge } from "./feed-merge";
-import { onThumbsAdded } from "./runtime";
+import { onThumbsAdded } from "../site/thumbs-bus";
 import {
   THUMB_ANCHOR_NAME,
   THUMB_CLASS,

@@ -237,15 +237,38 @@ function applyPersistedPlayback(
   video.playbackRate = playbackRate;
 }
 
+/** After the last change of volume or speed, before it is written. */
+const PERSIST_PAUSE_MS = 400;
+let persistTimer: number | undefined;
+let persistNow: (() => void) | null = null;
+
+/**
+ * Keeps the volume and the speed. Dragging the volume fires the event many
+ * times a second, and each write is of the whole storage: the last value is
+ * written once the dragging has paused, or as the page is left.
+ */
 function persistFromVideo(
   ctx: FeatureContext,
   video: HTMLVideoElement,
 ): void {
-  writeStoredState(ctx, {
-    volume: clampVolume(video.volume),
-    muted: video.muted,
-    playbackRate: video.playbackRate,
-  });
+  persistNow = (): void => {
+    persistNow = null;
+    window.clearTimeout(persistTimer);
+    persistTimer = undefined;
+    writeStoredState(ctx, {
+      volume: clampVolume(video.volume),
+      muted: video.muted,
+      playbackRate: video.playbackRate,
+    });
+  };
+  window.clearTimeout(persistTimer);
+  persistTimer = window.setTimeout(() => {
+    persistNow?.();
+  }, PERSIST_PAUSE_MS);
+}
+
+function flushPersist(): void {
+  persistNow?.();
 }
 
 function bindPlayer(ctx: FeatureContext, video: HTMLVideoElement): void {
@@ -275,6 +298,7 @@ function bindPlayer(ctx: FeatureContext, video: HTMLVideoElement): void {
   video.addEventListener("ratechange", () => {
     persistFromVideo(ctx, video);
   });
+  window.addEventListener("pagehide", flushPersist);
 
   const onResize = (): void => {
     applyLayout();

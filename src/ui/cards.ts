@@ -2,7 +2,7 @@ import {
   CSS_CLASS,
   DOCUMENT_STYLE_ID,
 } from "../config/constants";
-import { onThumbsAdded } from "../features/runtime";
+import { onThumbsAdded } from "../site/thumbs-bus";
 import { detectPageKind } from "../site/pages";
 import {
   SITE_SELECTORS,

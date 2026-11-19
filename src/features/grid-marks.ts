@@ -5,7 +5,7 @@ import {
   SITE_SELECTORS,
   extractPostIdFromThumb,
 } from "../site/selectors";
-import { onThumbsAdded } from "./runtime";
+import { onThumbsAdded } from "../site/thumbs-bus";
 import {
   featureBodyClass,
   type Feature,

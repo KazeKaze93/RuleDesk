@@ -8,7 +8,7 @@ import {
   rememberArtistLastPosts,
   rememberArtistSnapshot,
 } from "../storage/store";
-import { onThumbsAdded } from "./runtime";
+import { onThumbsAdded } from "../site/thumbs-bus";
 
 /**
  * Keeps what the Following page shows about each followed artist (cover, post

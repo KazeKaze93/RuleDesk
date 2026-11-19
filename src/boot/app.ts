@@ -1,4 +1,5 @@
 import { runFeaturesYielding, yieldToMain } from "../features/runtime";
+import { log } from "../log";
 import { startRdwPages } from "../pages/router";
 import { getSiteSkinCss } from "../skin/site-skin";
 import { applyAppearanceTheme } from "../skin/theme";
@@ -36,11 +37,32 @@ async function syncAppearanceAfterPaint(): Promise<void> {
 }
 
 /**
+ * One step of the start. A step that throws is written to the log and the
+ * next ones go on: one broken part of a page used to leave the page with no
+ * features, no pages of the script and no word of why (the audit of 19.11.2026).
+ */
+function step(name: string, run: () => void): void {
+  try {
+    run();
+  } catch (error) {
+    log.error(`start: ${name} failed`, error);
+  }
+}
+
+async function stepAsync(name: string, run: () => Promise<void>): Promise<void> {
+  try {
+    await run();
+  } catch (error) {
+    log.error(`start: ${name} failed`, error);
+  }
+}
+
+/**
  * Feature + own-page mount — after first paint (body exists).
  * Modules run one-by-one with yields between them.
  */
 export async function startApp(): Promise<void> {
-  await syncAppearanceAfterPaint();
+  await stepAsync("appearance", syncAppearanceAfterPaint);
   await yieldToMain();
 
   // A list given with the site's AI switch the wrong way for this part of the
@@ -52,39 +74,45 @@ export async function startApp(): Promise<void> {
   const pageKind = detectPageKind(window.location.search);
   const search = window.location.search;
 
-  mountSiteNotice();
+  step("site notice", mountSiteNotice);
 
   if (pageKind === "list") {
-    mountGifMarks(SITE_SELECTORS.thumb);
-    mountVideoMarks(SITE_SELECTORS.thumb);
-    mountCards();
+    step("gif marks", () => {
+      mountGifMarks(SITE_SELECTORS.thumb);
+    });
+    step("video marks", () => {
+      mountVideoMarks(SITE_SELECTORS.thumb);
+    });
+    step("cards", mountCards);
     await yieldToMain();
-    mountArtistSidebar();
+    step("artist sidebar", mountArtistSidebar);
     await yieldToMain();
   } else if (pageKind === "post") {
-    mountArtistSidebar();
+    step("artist sidebar", mountArtistSidebar);
     await yieldToMain();
   } else if (pageKind === "favorites") {
-    syncFavoritesPage();
-    mountFavoriteVideoMarks();
-    mountGifMarks(SITE_SELECTORS.thumb);
-    mountFavoritesPager();
+    step("favorites page", syncFavoritesPage);
+    step("favorite video marks", mountFavoriteVideoMarks);
+    step("gif marks", () => {
+      mountGifMarks(SITE_SELECTORS.thumb);
+    });
+    step("favorites pager", mountFavoritesPager);
     await yieldToMain();
   } else {
-    mountCommentsPage();
-    mountListPages();
-    mountUploadPage();
+    step("comments page", mountCommentsPage);
+    step("list pages", mountListPages);
+    step("upload page", mountUploadPage);
     await yieldToMain();
   }
 
-  await runFeaturesYielding(pageKind, search);
+  await stepAsync("features", () => runFeaturesYielding(pageKind, search));
   await yieldToMain();
 
   // After Feed inserts its nav item so Collections/Following sit after Feed.
-  await startRdwPages();
+  await stepAsync("own pages", startRdwPages);
   await yieldToMain();
 
-  maybeResumeFavoritesSync();
+  step("favorites sync resume", maybeResumeFavoritesSync);
   // Last and cheap: one small write on the first page of a day, none after.
-  recordStatsPoint();
+  step("stats point", recordStatsPoint);
 }

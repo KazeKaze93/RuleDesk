@@ -1,7 +1,7 @@
 import { SETTINGS_SECTION_FAVORITES, requestSettingsSection } from "../pages/settings-focus";
 import { STICKY_TOP } from "../boot/sticky-header";
 import { render } from "preact";
-import type { ComponentChildren, JSX } from "preact";
+import type { JSX } from "preact";
 import { createPortal } from "preact/compat";
 import { useEffect, useRef, useState } from "preact/hooks";
 
@@ -120,7 +120,6 @@ export const STALE_SYNC_DAYS = 7;
 /** Name of the download job and of its folder. */
 const DOWNLOAD_JOB_NAME = "Favorites";
 const TEXT_CANCEL = UI_TEXT.cancel;
-const TEXT_CONFIRM = UI_TEXT.confirm;
 const TEXT_STOP = "Stop";
 const TEXT_DISMISS = "Dismiss";
 /** The dots say a confirmation follows. */

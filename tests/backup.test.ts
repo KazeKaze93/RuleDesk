@@ -529,4 +529,53 @@ describe("backup export/import", () => {
       shuffledOrder: null,
     });
   });
+
+  it("takes from a file neither the run of the sync, nor a background that is an address", async () => {
+    const file = {
+      format: BACKUP_FORMAT,
+      version: BACKUP_VERSION,
+      exportedAt: "2026-11-19T00:00:00.000Z",
+      storage: {
+        ...createDefaultStorage(),
+        settings: {
+          ...createDefaultStorage().settings,
+          appearance: {
+            theme: "custom",
+            custom: { base: "dark", backgroundImage: "https://evil.example/p.png" },
+          },
+        },
+      },
+      favs: {
+        version: createDefaultFavs().version,
+        ids: [7],
+        sync: { nextPid: 0, lastPid: 0, startedAt: "x", running: true, mode: "full", userId: 99 },
+      },
+    };
+    for (const mode of [IMPORT_MODE_MERGE, IMPORT_MODE_REPLACE]) {
+      const result = await importBackupJson(JSON.stringify(file), mode);
+      expect(result.ok, mode).toBe(true);
+      expect(loadFavSet().has(7), mode).toBe(true);
+      // The next page would have walked all the favorites by itself.
+      expect(JSON.stringify(memory.get(FAVS_STORAGE_KEY)), mode).not.toContain("running");
+      expect(load().settings?.appearance?.custom, mode).toEqual({ base: "dark" });
+    }
+
+    // A picture on the site, or the picture itself, is kept.
+    const own = structuredClone(file);
+    own.storage.settings.appearance.custom.backgroundImage = "https://wimg.rule34.xxx/a.png";
+    await importBackupJson(JSON.stringify(own), IMPORT_MODE_REPLACE);
+    expect(load().settings?.appearance?.custom?.backgroundImage).toBe(
+      "https://wimg.rule34.xxx/a.png",
+    );
+
+    // The stored background is a picture as data: an address in its place
+    // refuses the file, and nothing is written.
+    const before = JSON.stringify(memory.get(STORAGE_KEY));
+    const refused = await importBackupJson(
+      JSON.stringify({ ...file, background: "https://evil.example/p.png" }),
+      IMPORT_MODE_REPLACE,
+    );
+    expect(refused.ok).toBe(false);
+    expect(JSON.stringify(memory.get(STORAGE_KEY))).toBe(before);
+  });
 });

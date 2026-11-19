@@ -148,9 +148,13 @@ function writeMainStorage(data: StorageData): void {
  * strip legacy panel window size from featureState, save both keys.
  * Idempotent. Preserves `marks.seen` and other featureState keys.
  * Favs blob: full zod when rewriting after a marks/panel change; cheap read otherwise.
+ *
+ * `known` is the main storage the caller has just read and validated: it is
+ * not read and validated a second time. Returns whether the main storage was
+ * written, so that the caller reads it again only then.
  */
-export function migrateMarksFavToFavs(): void {
-  const main = readMainStorageRaw();
+export function migrateMarksFavToFavs(known?: StorageData): boolean {
+  const main = known ?? readMainStorageRaw();
   const favsRaw = getGmGetValue()(FAVS_STORAGE_KEY, undefined);
   const favsCheap =
     favsRaw === undefined || favsRaw === null
@@ -213,9 +217,11 @@ export function migrateMarksFavToFavs(): void {
     nextFavs.sync = favs.sync;
   }
 
+  // By a set: with `includes` this was a pass over all the favorites for each
+  // of them, on every read of the storage.
+  const had = new Set(favs.ids);
   const idsChanged =
-    nextFavs.ids.length !== favs.ids.length ||
-    nextFavs.ids.some((id) => !favs.ids.includes(id));
+    nextFavs.ids.length !== favs.ids.length || nextFavs.ids.some((id) => !had.has(id));
 
   if (idsChanged) {
     const strict = parseFavsStrict(nextFavs);
@@ -226,11 +232,12 @@ export function migrateMarksFavToFavs(): void {
     } else {
       writeFavsData(strict);
       setCacheFromData(strict);
-      return;
+      return mainToWrite !== null;
     }
   }
 
   setCacheFromData(nextFavs);
+  return mainToWrite !== null;
 }
 
 function ensureCache(): Set<number> {

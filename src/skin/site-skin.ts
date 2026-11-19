@@ -7,6 +7,7 @@
 import {
   FAVORITE_IMAGE_ANCHOR_NAME,
   FAVORITES_PAGE_CLASS,
+  POST_ACTIONS_ID,
   THUMB_ANCHOR_NAME,
 } from "../features/types";
 import { VIDEO_THUMB_CLASS } from "../site/video-thumbs";
@@ -69,8 +70,8 @@ const WHERE_NOT_OUR_CONTROL = `:where(${NOT_RDW_CLASS}${NOT_SEARCH_TOOLS_DESCEND
 export const RDW_POST_PANEL_MOUNTED_CLASS = "rdw-post-panel-mounted";
 /** Native "I came" counter row — hide with panel chrome (E HANDOFF). */
 const POST_PANEL_ICAME_ROW = 'li:has(a[onclick^="iCame("])';
-/** Post panel host id — keep in sync with POST_ACTIONS_ID in features/types.ts. */
-const POST_ACTIONS_HOST_ID = "rdw-post-actions";
+/** Post panel host id: the one of features/types.ts, under the name the skin has for it. */
+const POST_ACTIONS_HOST_ID = POST_ACTIONS_ID;
 
 /** Kit select list — keep in sync with src/ui/kit/select.tsx. */
 const KIT_SELECT_LIST_CLASS = "rdw-select__list";

@@ -4,7 +4,7 @@ import { buildUpdatesSearchUrl, feedGroupQueries, findFeedGroupIndex } from "../
 import { isBlacklisted, readSiteBlacklist } from "../site/blacklist";
 import { fetchNextPage } from "../site/next-page";
 import { SITE_SELECTORS, extractPostIdFromThumb } from "../site/selectors";
-import { notifyThumbsAdded } from "./runtime";
+import { notifyThumbsAdded } from "../site/thumbs-bus";
 import { AI_SCOPE_FEED, alignSiteAiFilter } from "./ai-scope";
 
 /**

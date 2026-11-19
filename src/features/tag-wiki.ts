@@ -359,13 +359,6 @@ function mountTagWiki(_ctx: FeatureContext): void {
   });
 }
 
-/** Forgets the kept answers and the open panel (tests). */
-export function resetTagWikiState(): void {
-  closeTagWiki();
-  answers.clear();
-  boundSidebar = null;
-}
-
 export const tagWikiFeature: Feature = {
   id: FEATURE_ID,
   label: FEATURE_LABEL,

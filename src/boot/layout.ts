@@ -13,7 +13,7 @@ import {
 import { gridDensityFeature } from "../features/grid-density";
 import { sidebarRightFeature } from "../features/layout-options";
 import { menuCleanupFeature } from "../features/menu-cleanup";
-import { applyFeatureChrome } from "../features/runtime";
+import { applyFeatureChrome } from "../features/chrome";
 import {
   AI_SCOPE_FAVORITES,
   AI_STATE_ALL,

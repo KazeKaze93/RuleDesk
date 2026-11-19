@@ -155,9 +155,14 @@ export async function loadBackground(): Promise<string | null> {
   }
 }
 
+/** True for a picture too large to be kept as the background. */
+export function backgroundTooLarge(dataUrl: string): boolean {
+  return byteLengthUtf8(dataUrl) > APPEARANCE_BACKGROUND_MAX_BYTES;
+}
+
 /** Stores a background image data URL in IndexedDB (clears any leftover GM value). */
 export async function saveBackground(dataUrl: string): Promise<void> {
-  if (byteLengthUtf8(dataUrl) > APPEARANCE_BACKGROUND_MAX_BYTES) {
+  if (backgroundTooLarge(dataUrl)) {
     throw new Error(APPEARANCE_BACKGROUND_TOO_LARGE);
   }
   const db = await openBackgroundDb();

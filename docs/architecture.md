@@ -28,7 +28,7 @@ The approach: the site's pages and markup stay. The script recolours the whole s
 2. `boot/layout.ts`, while the page is parsed and before paint: the features that change layout (grid size, the space of the search panel, the sidebar side), the menu items (`boot/menu-skeleton.ts`: labels and addresses that need no storage) and the place of the search panel at the height it last had (`boot/search-tools-reserve.ts`, plain `localStorage`).
 3. `boot/app.ts`, after the first paint, loaded by dynamic import: everything else. The code of the script's own pages does not run until such a page is opened.
 
-Nothing heavy may be imported on the path of steps 1 and 2.
+Nothing heavy may be imported on the path of steps 1 and 2: `tests/boot-path.test.ts` follows the imports from `main.ts` and fails when the list of features (`features/registry.ts`, `features/runtime.ts`), a page of the script or the kit gets onto it. Step 2 puts its three features on the page through `features/chrome.ts`, which knows no feature by name. Each part of step 3 runs guarded: one that throws is logged and the next goes on.
 
 ## Source layout
 
@@ -82,7 +82,7 @@ A feature is an object of type `Feature` (`src/features/types.ts`): an id, a lab
 - A feature's CSS is always scoped by its body class, so turning the feature off removes its effect
 - `cssOnly: true` means the settings switch applies at once; any other feature reloads the page
 - A feature may keep a small state of its own through `ctx.getState` / `ctx.setState` (stored under `settings.featureState[id]`)
-- Features talk through one event: `notifyThumbsAdded` / `onThumbsAdded` in `runtime.ts`, fired when thumbnails are appended to the grid (infinite scroll, merged feed)
+- Features talk through one event: `notifyThumbsAdded` / `onThumbsAdded` in `src/site/thumbs-bus.ts` (a module with no imports but the log, so that listening to it draws nothing in; a listener that throws does not stop the others), fired when thumbnails are appended to the grid (infinite scroll, merged feed)
 - A caption under a switch in settings comes from `settingsCaption`; a list of options from `choice`
 
 The additions to the forum, the list pages and Upload are not features with switches: `boot/app.ts` mounts them, and each recognises its page by markup and does nothing elsewhere.
