@@ -1,5 +1,5 @@
 import type { JSX } from "preact";
-import { useEffect, useRef, useState } from "preact/hooks";
+import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 
 import {
   RelatedError,
@@ -13,7 +13,7 @@ import {
   type RelatedSource,
   type RelatedSourceKind,
 } from "../site/related";
-import { Segmented } from "../ui/kit";
+import { Popover, Segmented } from "../ui/kit";
 import { POST_ACTIONS_ID, featureBodyClass, type Feature } from "./types";
 
 /**
@@ -31,12 +31,13 @@ import { POST_ACTIONS_ID, featureBodyClass, type Feature } from "./types";
  */
 
 export const MORE_LIKE_THIS_FEATURE_ID = "more-like-this";
-const FEATURE_LABEL = "More like this tab";
+const FEATURE_LABEL = "Related Posts tab";
 const FEATURE_CAPTION = "Loads posts when you open the tab: one request per source.";
 /** Under featureState: the kind of the source picked last. */
 export const MORE_LIKE_THIS_STATE_ID = "more-like-this-source";
 
-export const MORE_LIKE_THIS_TAB_LABEL = "More like this";
+/** Kaze's name for it (19.11.2026); the designer's was "More like this". */
+export const MORE_LIKE_THIS_TAB_LABEL = "Related Posts";
 const NONE_IN_FAVORITES = "None of your favorites share tags with this post.";
 const OFFLINE_TEXT = "Couldn't load: no connection.";
 const LIMITED_TEXT = "The site asked to slow down. Try again in a minute.";
@@ -62,6 +63,13 @@ const CELL_HEIGHT_PX = 150;
  * grid (Kaze, 19.11.2026): here the switch is as tall as its rows.
  */
 const SOURCE_BUTTON_HEIGHT_PX = 24;
+/** The switch is two rows at most; what does not fit is behind "+N" (the designer, 19.11.2026). */
+export const SOURCE_ROWS_MAX = 2;
+/** The value of the "+N" option: it opens the list of the rest, it is not a source. */
+const MORE_VALUE = "\u0000more";
+const MORE_MENU_LABEL = "More sources";
+const MORE_MENU_WIDTH_PX = 240;
+const CHEVRON = "\u25be";
 
 const BODY_SELECTOR = `body.${featureBodyClass(MORE_LIKE_THIS_FEATURE_ID)}`;
 const ROOT_CLASS = "rdw-mlt";
@@ -81,13 +89,37 @@ ${ROOT} .rdw-mlt-sources {
 }
 ${ROOT} .rdw-mlt-sources .rdw-seg__btn {
   display: block;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-width: 0;
   max-width: 100%;
   height: ${String(SOURCE_BUTTON_HEIGHT_PX)}px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+${BODY_SELECTOR} .rdw-mlt-menu {
+  padding: 4px;
+  gap: 0;
+}
+${BODY_SELECTOR} .rdw-mlt-menu button {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 28px;
+  padding: 0 8px;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--rdw-radius-s);
+  background: transparent;
+  color: var(--rdw-text);
+  font: 12px/1.35 var(--rdw-font);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+${BODY_SELECTOR} .rdw-mlt-menu button:hover {
+  background: var(--rdw-surface-2);
 }
 ${ROOT} .rdw-mlt-line {
   margin: 0;
@@ -205,6 +237,31 @@ export function fewTagsText(count: number): string {
   return `Few shared tags — this post has only ${String(count)} ${count === 1 ? "tag" : "tags"}.`;
 }
 
+/** How many rows the buttons of the switch stand in, by their tops. */
+export function rowsOf(tops: readonly number[]): number {
+  return new Set(tops).size;
+}
+
+/**
+ * The sources by tag that have a place in the switch when only `fit` of them
+ * do: the first ones, and the picked one always among them, in the last place.
+ */
+export function shownTagSources(
+  tagSources: readonly RelatedSource[],
+  fit: number | null,
+  picked: string | null,
+): RelatedSource[] {
+  if (fit === null || fit >= tagSources.length) {
+    return [...tagSources];
+  }
+  const shown = tagSources.slice(0, Math.max(1, fit));
+  const chosen = tagSources.find((source) => source.key === picked);
+  if (chosen !== undefined && !shown.includes(chosen)) {
+    shown[shown.length - 1] = chosen;
+  }
+  return shown;
+}
+
 /**
  * The source the tab opens on: the one of the kind picked last, where the
  * post has such; else the first, which is an artist, a character, or the
@@ -237,6 +294,10 @@ export function MoreLikeThis(props: MoreLikeThisProps): JSX.Element {
   const [favorites, setFavorites] = useState<readonly RankedPost[] | null>(null);
   const [showAll, setShowAll] = useState<readonly string[]>([]);
   const [, tick] = useState(0);
+  // How many sources by tag fit the two rows of the switch; null until fewer than all do.
+  const [fit, setFit] = useState<number | null>(null);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const switchRef = useRef<HTMLDivElement | null>(null);
   const gridRef = useRef<HTMLDivElement | null>(null);
   const now = props.now ?? Date.now;
   const { readFavorites } = props;
@@ -330,10 +391,42 @@ export function MoreLikeThis(props: MoreLikeThisProps): JSX.Element {
     const state = loaded[source.key];
     return state?.state === "ready" ? state.posts.length : null;
   };
-  const options = sources.map((source) => {
-    const count = countOf(source);
-    const name = source.kind === "favorites" ? FAVORITES_SHORT : source.name;
-    return { value: source.key, label: count === null ? name : `${name} ${String(count)}` };
+  // The names of the tags stand as they are, with no number: the number was of
+  // the posts a page of a search gave, 41 or 42 for no reason a reader could
+  // see. The favorites are counted, and stand last.
+  const tagSources = sources.filter((source) => source.kind !== "favorites");
+  const favoritesSource = sources.find((source) => source.kind === "favorites");
+  const shownTags = shownTagSources(tagSources, fit, picked);
+  const hiddenTags = tagSources.filter((source) => !shownTags.includes(source));
+  const favoritesCount = favoritesSource === undefined ? null : countOf(favoritesSource);
+  const options = [
+    ...shownTags.map((source) => ({ value: source.key, label: source.name })),
+    ...(hiddenTags.length > 0
+      ? [{ value: MORE_VALUE, label: `+${String(hiddenTags.length)} ${CHEVRON}` }]
+      : []),
+    ...(favoritesSource === undefined
+      ? []
+      : [
+          {
+            value: favoritesSource.key,
+            label:
+              favoritesCount === null
+                ? FAVORITES_SHORT
+                : `${FAVORITES_SHORT} ${String(favoritesCount)}`,
+          },
+        ]),
+  ];
+  const shownCount = shownTags.length;
+  // After each drawing: while the switch stands in more rows than it may, one
+  // more source goes behind "+N".
+  useLayoutEffect(() => {
+    const buttons = switchRef.current?.querySelectorAll(".rdw-seg__btn") ?? [];
+    const tops = [...buttons].map((button) =>
+      button instanceof HTMLElement ? button.offsetTop : 0,
+    );
+    if (rowsOf(tops) > SOURCE_ROWS_MAX && shownCount > 1) {
+      setFit(shownCount - 1);
+    }
   });
 
   const all = pickedSource !== undefined && showAll.includes(pickedSource.key);
@@ -342,20 +435,52 @@ export function MoreLikeThis(props: MoreLikeThisProps): JSX.Element {
 
   return (
     <div className={ROOT_CLASS}>
-      <Segmented
-        className="rdw-mlt-sources"
-        label={SOURCES_LABEL}
-        options={options}
-        value={picked ?? ""}
-        // One request at a time.
-        disabled={busy}
-        onChange={(key) => {
-          const source = sources.find((entry) => entry.key === key);
-          if (source !== undefined) {
-            open(source, true);
-          }
-        }}
-      />
+      <div ref={switchRef}>
+        <Segmented
+          className="rdw-mlt-sources"
+          label={SOURCES_LABEL}
+          options={options}
+          value={picked ?? ""}
+          // One request at a time.
+          disabled={busy}
+          onChange={(key) => {
+            if (key === MORE_VALUE) {
+              setMoreOpen((value) => !value);
+              return;
+            }
+            const source = sources.find((entry) => entry.key === key);
+            if (source !== undefined) {
+              open(source, true);
+            }
+          }}
+        />
+        <Popover
+          open={moreOpen}
+          onClose={() => {
+            setMoreOpen(false);
+          }}
+          anchorRef={switchRef}
+          widthPx={MORE_MENU_WIDTH_PX}
+          role="menu"
+          aria-label={MORE_MENU_LABEL}
+          className="rdw-mlt-menu"
+        >
+          {hiddenTags.map((source) => (
+            <button
+              key={source.key}
+              type="button"
+              role="menuitem"
+              className="rdw-kit-focusable"
+              onClick={() => {
+                setMoreOpen(false);
+                open(source, true);
+              }}
+            >
+              {source.name}
+            </button>
+          ))}
+        </Popover>
+      </div>
       {pickedSource === undefined || current === undefined ? null : current.state === "loading" ? (
         <>
           <p className="rdw-mlt-line" role="status">

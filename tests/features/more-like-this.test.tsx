@@ -8,8 +8,11 @@ import {
   MoreLikeThis,
   fewTagsText,
   firstSource,
+  SOURCE_ROWS_MAX,
   moreLikeThisFeature,
+  rowsOf,
   sharedTagsText,
+  shownTagSources,
   type MoreLikeThisProps,
 } from "../../src/features/more-like-this";
 import {
@@ -189,8 +192,9 @@ describe("the tab of the panel", () => {
     expect(props.load).toHaveBeenCalledWith("esqeazy");
     // Opening is not a choice of a source: nothing is remembered for it.
     expect(props.onPick).not.toHaveBeenCalled();
+    // The names of the tags have no number; the favorites are counted and stand last.
     expect(tabs().map((tab) => tab.textContent)).toEqual([
-      "esqeazy 2",
+      "esqeazy",
       "jessica rabbit",
       "Favorites 2",
     ]);
@@ -205,6 +209,32 @@ describe("the tab of the panel", () => {
     expect(host.querySelector('a.rdw-mlt-link[href*="tags=esqeazy"]')?.textContent).toBe(
       "Search esqeazy \u2192",
     );
+  });
+
+  it("keeps the switch to two rows: the rest are behind +N, the picked one always in sight", () => {
+    const sources = relatedSources(postTags()).filter((source) => source.kind !== "favorites");
+    const five = [
+      ...sources,
+      { ...sources[1]!, key: "character:b", name: "b" },
+      { ...sources[1]!, key: "character:c", name: "c" },
+      { ...sources[1]!, key: "character:d", name: "d" },
+    ];
+    expect(rowsOf([0, 0, 28, 28, 56])).toBe(3);
+    expect(SOURCE_ROWS_MAX).toBe(2);
+    expect(shownTagSources(five, null, null).map((source) => source.name)).toHaveLength(5);
+    expect(shownTagSources(five, 3, null).map((source) => source.name)).toEqual([
+      "esqeazy",
+      "jessica rabbit",
+      "b",
+    ]);
+    // One picked from the rest takes the last place.
+    expect(shownTagSources(five, 3, "character:d").map((source) => source.name)).toEqual([
+      "esqeazy",
+      "jessica rabbit",
+      "d",
+    ]);
+    // As wide as their words, not shares of the row.
+    expect(moreLikeThisFeature.css).toMatch(/\.rdw-seg__btn \{[^}]*flex: 0 1 auto;/);
   });
 
   it("opens on the kind of source picked last, where the post has one", async () => {
@@ -303,7 +333,7 @@ describe("the tab of the panel", () => {
   it("is a setting of the post page that is on unless turned off", () => {
     expect(moreLikeThisFeature.pages).toEqual(["post"]);
     expect(moreLikeThisFeature.defaultEnabled).toBe(true);
-    expect(moreLikeThisFeature.label).toBe("More like this tab");
+    expect(moreLikeThisFeature.label).toBe("Related Posts tab");
     expect(moreLikeThisFeature.settingsCaption).toBe(
       "Loads posts when you open the tab: one request per source.",
     );

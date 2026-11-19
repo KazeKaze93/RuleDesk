@@ -2,6 +2,12 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.66.2
+
+- The tab of the post panel is called "Related Posts"; it was "More like this". In the settings: "Related Posts tab"
+- Its switch of sources: each source is as wide as its name, not a share of the row; the names of the tags have no numbers, which were of the page that came and said nothing; "Favorites" is always the last and keeps its count
+- The switch is two rows at most. Sources that do not fit are behind "+N", a list; one picked from it takes the last place in the switch
+
 ## 0.66.1
 
 - "More like this": the switch of sources is as tall as its rows. With long names it took a second row, and that row stood behind the grid
