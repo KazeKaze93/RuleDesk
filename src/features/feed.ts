@@ -85,11 +85,17 @@ const EVENT_CLICK = "click";
 
 const BODY_CLASS = featureBodyClass(FEATURE_ID);
 
+/*
+ * The NEW plate is the ::before of a thumb. It was the ::after, which the play
+ * sign of a video and the GIF plate also are: on a new video the two rules met
+ * in one element, with its top from this one and its bottom from that, and
+ * the plate was a blue bar as tall as the thumbnail (Kaze, 19.11.2026).
+ */
 const FEATURE_CSS = `
 body.${BODY_CLASS} span.thumb.${FEED_NEW_CLASS}.${THUMB_CLASS} {
   position: relative;
 }
-body.${BODY_CLASS} span.thumb.${FEED_NEW_CLASS}.${THUMB_CLASS}::after {
+body.${BODY_CLASS} span.thumb.${FEED_NEW_CLASS}.${THUMB_CLASS}::before {
   content: "NEW";
   position: absolute;
   z-index: 4;
@@ -104,7 +110,7 @@ body.${BODY_CLASS} span.thumb.${FEED_NEW_CLASS}.${THUMB_CLASS}::after {
   pointer-events: none;
 }
 @supports (anchor-name: --a) {
-  body.${BODY_CLASS} span.thumb.${FEED_NEW_CLASS}.${THUMB_CLASS}::after {
+  body.${BODY_CLASS} span.thumb.${FEED_NEW_CLASS}.${THUMB_CLASS}::before {
     position-anchor: ${THUMB_ANCHOR_NAME};
     left: calc(anchor(left) + ${String(NEW_PLAQUE_LEFT_PX)}px);
     top: calc(anchor(top) + ${String(NEW_PLAQUE_TOP_PX)}px);

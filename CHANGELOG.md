@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.72.4
+
+- Feed: a new video has the NEW plate at the top and the play sign at the bottom. The two were one element, which took its top from one and its bottom from the other and stood as a blue bar as tall as the thumbnail
+
 ## 0.72.3
 
 - The video player does not go under the panel. In 0.72.2 its room was counted as all the row has left beside the panel, 1210 px on a wide window, while the block it stands in is no wider than 1000 px there. The room is now measured on the page itself: the width that block really takes when the player is as wide as the row could give
