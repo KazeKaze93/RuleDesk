@@ -3,8 +3,11 @@ import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 
 import {
   RelatedError,
+  SIMILAR_RETRY_PAUSE_MS,
   SOURCE_KEY_FAVORITES,
+  loadByFewerTags,
   relatedPostUrl,
+  relatedQuery,
   relatedSearchUrl,
   relatedSources,
   type PostTag,
@@ -13,7 +16,7 @@ import {
   type RelatedSource,
   type RelatedSourceKind,
 } from "../site/related";
-import { Popover, Segmented } from "../ui/kit";
+import { Chip, Popover, Segmented } from "../ui/kit";
 import { POST_ACTIONS_ID, featureBodyClass, type Feature } from "./types";
 
 /**
@@ -44,6 +47,11 @@ const LIMITED_TEXT = "The site asked to slow down. Try again in a minute.";
 const FAILED_TEXT = "Couldn't load: the site did not answer as expected.";
 const RETRY_LABEL = "Try again";
 const SOURCES_LABEL = "Where the posts come from";
+const SIMILAR_TAGS_LABEL = "Tags the similar posts are searched by";
+const SIMILAR_TAG_OUT = "Take this tag out of the search";
+const SIMILAR_TAG_BACK = "Search by this tag again";
+const SIMILAR_TAG_LAST = "The search needs at least one tag";
+const SEARCH_TAGS_LABEL = "Search these tags";
 const FAVORITES_SHORT = "Favorites";
 const VIDEO_MARK = "▶";
 const ARROW = "→";
@@ -121,6 +129,21 @@ ${BODY_SELECTOR} .rdw-mlt-menu button {
 ${BODY_SELECTOR} .rdw-mlt-menu button:hover {
   background: var(--rdw-surface-2);
 }
+${ROOT} .rdw-mlt-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+${ROOT} .rdw-mlt-tag {
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  cursor: pointer;
+}
+${ROOT} .rdw-mlt-tag:disabled {
+  cursor: default;
+}
 ${ROOT} .rdw-mlt-line {
   margin: 0;
   color: var(--rdw-muted);
@@ -192,35 +215,42 @@ ${ROOT} .rdw-mlt-foot {
 
 type Loaded =
   | { readonly state: "loading" }
-  | { readonly state: "ready"; readonly posts: readonly RankedPost[] }
+  | {
+      readonly state: "ready";
+      readonly posts: readonly RankedPost[];
+      /** The tags the search that gave them was by; fewer than asked when that found nothing. */
+      readonly used: readonly string[];
+      readonly asked: number;
+    }
   | { readonly state: "error"; readonly failure: RelatedFailure; readonly at: number };
 
 export function isRelatedSourceKind(value: unknown): value is RelatedSourceKind {
-  return value === "artist" || value === "character" || value === "shared" || value === "favorites";
-}
-
-function tagsText(source: RelatedSource): string {
-  return source.tags.join(", ").replaceAll("_", " ");
+  return value === "similar" || value === "character" || value === "favorites";
 }
 
 function loadingText(source: RelatedSource): string {
-  if (source.kind === "artist") {
-    return `Loading posts by ${source.name}${ELLIPSIS}`;
+  if (source.kind === "similar") {
+    return `Loading similar posts${ELLIPSIS}`;
   }
   if (source.kind === "favorites") {
     return `Looking through your favorites${ELLIPSIS}`;
   }
-  return `Loading posts with ${tagsText(source)}${ELLIPSIS}`;
+  return `Loading posts with ${source.name}${ELLIPSIS}`;
 }
 
 function emptyText(source: RelatedSource): string {
   if (source.kind === "favorites") {
     return NONE_IN_FAVORITES;
   }
-  if (source.kind === "artist") {
-    return `No other posts by ${source.name}.`;
+  if (source.kind === "similar") {
+    return "No posts by other artists with these tags.";
   }
-  return `No other posts with ${tagsText(source)}.`;
+  return `No posts with ${source.name} by other artists.`;
+}
+
+/** "Few posts with all 3 tags — showing posts with 2 of them." */
+export function fewerTagsText(asked: number, used: number): string {
+  return `Few posts with all ${String(asked)} tags \u2014 showing posts with ${String(used)} of them.`;
 }
 
 function errorText(failure: RelatedFailure): string {
@@ -284,7 +314,29 @@ export type MoreLikeThisProps = {
   readonly load: (query: string) => Promise<RankedPost[]>;
   /** The clock, for the wait after "slow down". */
   readonly now?: () => number;
+  /** The pause before a search by fewer tags; the tests pass one that does not wait. */
+  readonly pause?: () => Promise<void>;
 };
+
+function waitBeforeRetry(): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, SIMILAR_RETRY_PAUSE_MS);
+  });
+}
+
+const TAG_SEPARATOR = " ";
+
+/** The tags of a source that are searched by now: all of them but those turned off. */
+function activeTags(source: RelatedSource, off: readonly string[]): string[] {
+  return source.tags.filter((tag) => !off.includes(tag));
+}
+
+/** Under which what a source gave is kept: "Similar" by its tags, any other by itself. */
+function cacheKey(source: RelatedSource, off: readonly string[]): string {
+  return source.kind === "similar"
+    ? `${source.key}|${activeTags(source, off).join(TAG_SEPARATOR)}`
+    : source.key;
+}
 
 /** What is in the tab. It is mounted when the tab is first opened, and that opening loads the first source. */
 export function MoreLikeThis(props: MoreLikeThisProps): JSX.Element {
@@ -297,29 +349,39 @@ export function MoreLikeThis(props: MoreLikeThisProps): JSX.Element {
   // How many sources by tag fit the two rows of the switch; null until fewer than all do.
   const [fit, setFit] = useState<number | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
+  // The tags of "Similar" the user took out of its search.
+  const [off, setOff] = useState<readonly string[]>([]);
   const switchRef = useRef<HTMLDivElement | null>(null);
   const gridRef = useRef<HTMLDivElement | null>(null);
   const now = props.now ?? Date.now;
   const { readFavorites } = props;
 
-  const open = (source: RelatedSource, remember: boolean): void => {
+  const open = (
+    source: RelatedSource,
+    remember: boolean,
+    without: readonly string[] = off,
+  ): void => {
     setPicked(source.key);
     if (remember) {
       props.onPick(source.kind);
     }
-    const have = loaded[source.key];
+    const key = cacheKey(source, without);
+    const have = loaded[key];
     if (source.kind === "favorites" || (have !== undefined && have.state !== "error")) {
       return;
     }
-    setLoaded((all) => ({ ...all, [source.key]: { state: "loading" } }));
-    props
-      .load(source.query)
-      .then((posts) => {
-        setLoaded((all) => ({ ...all, [source.key]: { state: "ready", posts } }));
+    const tags = activeTags(source, without);
+    setLoaded((all) => ({ ...all, [key]: { state: "loading" } }));
+    loadByFewerTags(tags, source.without, props.load, props.pause ?? waitBeforeRetry)
+      .then((result) => {
+        setLoaded((all) => ({
+          ...all,
+          [key]: { state: "ready", posts: result.posts, used: result.used, asked: tags.length },
+        }));
       })
       .catch((error: unknown) => {
         const failure = error instanceof RelatedError ? error.failure : "failed";
-        setLoaded((all) => ({ ...all, [source.key]: { state: "error", failure, at: now() } }));
+        setLoaded((all) => ({ ...all, [key]: { state: "error", failure, at: now() } }));
       });
   };
 
@@ -362,8 +424,8 @@ export function MoreLikeThis(props: MoreLikeThisProps): JSX.Element {
       : pickedSource.kind === "favorites"
         ? favorites === null
           ? { state: "loading" }
-          : { state: "ready", posts: favorites }
-        : loaded[pickedSource.key];
+          : { state: "ready", posts: favorites, used: [], asked: 0 }
+        : loaded[cacheKey(pickedSource, off)];
 
   const waitLeft =
     current?.state === "error" && current.failure === "limited"
@@ -481,6 +543,33 @@ export function MoreLikeThis(props: MoreLikeThisProps): JSX.Element {
           ))}
         </Popover>
       </div>
+      {pickedSource?.kind === "similar" ? (
+        // What "Similar" searches by, each tag a switch: out of the search and back.
+        <div className="rdw-mlt-tags" role="group" aria-label={SIMILAR_TAGS_LABEL}>
+          {pickedSource.tags.map((tag) => {
+            const out = off.includes(tag);
+            const last = !out && activeTags(pickedSource, off).length === 1;
+            return (
+              <button
+                key={tag}
+                type="button"
+                className="rdw-mlt-tag rdw-kit-focusable"
+                aria-pressed={!out}
+                title={out ? SIMILAR_TAG_BACK : last ? SIMILAR_TAG_LAST : SIMILAR_TAG_OUT}
+                // One request at a time, and a search needs a tag to be by.
+                disabled={busy || last}
+                onClick={() => {
+                  const next = out ? off.filter((entry) => entry !== tag) : [...off, tag];
+                  setOff(next);
+                  open(pickedSource, false, next);
+                }}
+              >
+                <Chip label={tag.replaceAll("_", " ")} variant={out ? "exclude" : "dot"} />
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
       {pickedSource === undefined || current === undefined ? null : current.state === "loading" ? (
         <>
           <p className="rdw-mlt-line" role="status">
@@ -514,6 +603,9 @@ export function MoreLikeThis(props: MoreLikeThisProps): JSX.Element {
         <>
           {props.tags.length < FEW_TAGS ? (
             <p className="rdw-mlt-line">{fewTagsText(props.tags.length)}</p>
+          ) : null}
+          {current.used.length < current.asked ? (
+            <p className="rdw-mlt-line">{fewerTagsText(current.asked, current.used.length)}</p>
           ) : null}
           <div className="rdw-mlt-grid" ref={gridRef}>
             {visible.map((post) => (
@@ -558,8 +650,12 @@ export function MoreLikeThis(props: MoreLikeThisProps): JSX.Element {
               <span />
             )}
             {pickedSource.kind === "favorites" ? null : (
-              <a className="rdw-mlt-link" href={relatedSearchUrl(pickedSource.query)}>
-                {`Search ${pickedSource.kind === "shared" ? pickedSource.tags.join(" ") : pickedSource.name} ${ARROW}`}
+              // The same search as gave the list, in the usual place for a search.
+              <a
+                className="rdw-mlt-link"
+                href={relatedSearchUrl(relatedQuery(current.used, pickedSource.without))}
+              >
+                {`${pickedSource.kind === "similar" ? SEARCH_TAGS_LABEL : `Search ${pickedSource.name}`} ${ARROW}`}
               </a>
             )}
           </div>

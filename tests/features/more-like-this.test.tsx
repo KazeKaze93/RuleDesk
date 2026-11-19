@@ -7,6 +7,7 @@ import {
   LIMITED_WAIT_S,
   MoreLikeThis,
   fewTagsText,
+  fewerTagsText,
   firstSource,
   SOURCE_ROWS_MAX,
   moreLikeThisFeature,
@@ -22,8 +23,11 @@ import {
   rankCandidates,
   readCandidates,
   readPostTags,
+  loadByFewerTags,
+  relatedQuery,
   relatedSearchUrl,
   relatedSources,
+  similarTags,
   type PostTag,
   type RankedPost,
 } from "../../src/site/related";
@@ -36,6 +40,9 @@ const SIDEBAR = `
 <li class="tag-type-character tag"><a href="index.php?page=post&amp;s=list&amp;tags=jessica_rabbit">jessica rabbit</a> <span class="tag-count">9000</span></li>
 <li class="tag-type-copyright tag"><a href="index.php?page=post&amp;s=list&amp;tags=disney">disney</a> <span class="tag-count">200000</span></li>
 <li class="tag-type-general tag"><a href="index.php?page=post&amp;s=list&amp;tags=red_dress">red dress</a> <span class="tag-count">30000</span></li>
+<li class="tag-type-general tag"><a href="index.php?page=post&amp;s=list&amp;tags=fairy">fairy</a> <span class="tag-count">900</span></li>
+<li class="tag-type-general tag"><a href="index.php?page=post&amp;s=list&amp;tags=size_difference">size difference</a> <span class="tag-count">70000</span></li>
+<li class="tag-type-general tag"><a href="index.php?page=post&amp;s=list&amp;tags=own_tag_of_the_artist">own tag</a> <span class="tag-count">3</span></li>
 <li class="tag-type-general tag"><a href="index.php?page=post&amp;s=list&amp;tags=1girls">1girls</a> <span class="tag-count">5000000</span></li>
 <li class="tag-type-metadata tag"><a href="index.php?page=post&amp;s=list&amp;tags=hi_res">hi res</a> <span class="tag-count">900000</span></li>
 </ul>`;
@@ -75,12 +82,14 @@ async function mount(over: Partial<MoreLikeThisProps> = {}): Promise<MoreLikeThi
     onPick: vi.fn(),
     readFavorites: () => Promise.resolve([ranked(7), ranked(8)]),
     load: vi.fn(() => Promise.resolve([ranked(11), ranked(12, 5, true)])),
+    pause: () => Promise.resolve(),
     ...over,
   };
   document.body.append(host);
   await act(async () => {
     render(<MoreLikeThis {...props} />, host);
   });
+  await settle();
   return props;
 }
 
@@ -89,21 +98,34 @@ function tabs(): HTMLButtonElement[] {
   return [...host.querySelectorAll<HTMLButtonElement>(".rdw-mlt-sources button")];
 }
 
+/** Lets a search and the searches by fewer tags that may follow it come to their end. */
+async function settle(): Promise<void> {
+  await act(async () => {
+    for (let turn = 0; turn < 20; turn += 1) {
+      await Promise.resolve();
+    }
+  });
+}
+
 async function press(element: Element | undefined): Promise<void> {
   await act(async () => {
     element?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
   });
+  await settle();
 }
 
 describe("reading the post and its candidates", () => {
   it("reads the tags of the post with their kinds and counts", () => {
-    expect(postTags()).toEqual([
-      { tag: "esqeazy", kind: "artist", count: 410 },
-      { tag: "jessica_rabbit", kind: "character", count: 9000 },
-      { tag: "disney", kind: "copyright", count: 200000 },
-      { tag: "red_dress", kind: "general", count: 30000 },
-      { tag: "1girls", kind: "general", count: 5000000 },
-      { tag: "hi_res", kind: "metadata", count: 900000 },
+    expect(postTags().map((tag) => [tag.tag, tag.kind, tag.count])).toEqual([
+      ["esqeazy", "artist", 410],
+      ["jessica_rabbit", "character", 9000],
+      ["disney", "copyright", 200000],
+      ["red_dress", "general", 30000],
+      ["fairy", "general", 900],
+      ["size_difference", "general", 70000],
+      ["own_tag_of_the_artist", "general", 3],
+      ["1girls", "general", 5000000],
+      ["hi_res", "metadata", 900000],
     ]);
   });
 
@@ -116,23 +138,46 @@ describe("reading the post and its candidates", () => {
     expect(moreLikeThisFeature.css).toMatch(/\.rdw-mlt-sources \{[^}]*flex-wrap: wrap;[^}]*height: auto;/);
   });
 
-  it("offers the artists, then the characters, then the favorites", () => {
-    expect(relatedSources(postTags()).map((source) => [source.kind, source.name, source.query])).toEqual([
-      ["artist", "esqeazy", "esqeazy"],
-      ["character", "jessica rabbit", "jessica_rabbit"],
-      ["favorites", "In your favorites", ""],
+  it("offers Similar first, then the characters, then the favorites, and no artist", () => {
+    const sources = relatedSources(postTags());
+    expect(sources.map((source) => [source.kind, source.name])).toEqual([
+      ["similar", "Similar"],
+      ["character", "jessica rabbit"],
+      ["favorites", "In your favorites"],
     ]);
+    // The rarest tags that say what is in the picture: no tag about the file,
+    // none so rare that it is one artist's own, none that is on every post.
+    expect(similarTags(postTags())).toEqual(["fairy", "red_dress", "size_difference"]);
+    // The posts of the artist of the post are left out of both searches.
+    expect(relatedQuery(sources[0]?.tags ?? [], sources[0]?.without ?? [])).toBe(
+      "fairy red_dress size_difference -esqeazy",
+    );
+    expect(relatedQuery(sources[1]?.tags ?? [], sources[1]?.without ?? [])).toBe(
+      "jessica_rabbit -esqeazy",
+    );
+    expect(relatedSearchUrl("fairy -esqeazy")).toBe(
+      "https://rule34.xxx/index.php?page=post&s=list&tags=fairy+-esqeazy",
+    );
   });
 
-  it("searches by the rarest tags of a post that names nobody", () => {
-    const tags = postTags().filter((tag) => tag.kind !== "artist" && tag.kind !== "character");
-    const sources = relatedSources(tags);
-    expect(sources.map((source) => source.kind)).toEqual(["shared", "favorites"]);
-    // The two rarest, and never a tag about the file.
-    expect(sources[0]?.tags).toEqual(["red_dress", "disney"]);
-    expect(sources[0]?.query).toBe("red_dress disney");
-    expect(relatedSearchUrl("red_dress disney")).toBe(
-      "https://rule34.xxx/index.php?page=post&s=list&tags=red_dress+disney",
+  it("searches by fewer tags when all of them find nothing, the rarest kept", async () => {
+    const asked: string[] = [];
+    const pause = vi.fn(() => Promise.resolve());
+    const result = await loadByFewerTags(
+      ["a", "b", "c"],
+      ["x"],
+      (query) => {
+        asked.push(query);
+        return Promise.resolve(query === "a -x" ? [ranked(5)] : []);
+      },
+      pause,
+    );
+    expect(asked).toEqual(["a b c -x", "a b -x", "a -x"]);
+    expect(pause).toHaveBeenCalledTimes(2);
+    expect(result.used).toEqual(["a"]);
+    expect(result.posts.map((post) => post.id)).toEqual([5]);
+    expect(fewerTagsText(3, 1)).toBe(
+      "Few posts with all 3 tags \u2014 showing posts with 1 of them.",
     );
   });
 
@@ -186,15 +231,15 @@ describe("reading the post and its candidates", () => {
 });
 
 describe("the tab of the panel", () => {
-  it("loads the first source as soon as it is opened, with nothing to press", async () => {
+  it("loads Similar as soon as it is opened, with nothing to press", async () => {
     const props = await mount();
     expect(props.load).toHaveBeenCalledTimes(1);
-    expect(props.load).toHaveBeenCalledWith("esqeazy");
+    expect(props.load).toHaveBeenCalledWith("fairy red_dress size_difference -esqeazy");
     // Opening is not a choice of a source: nothing is remembered for it.
     expect(props.onPick).not.toHaveBeenCalled();
-    // The names of the tags have no number; the favorites are counted and stand last.
+    // No artist among the sources, no numbers on the tags; the favorites are counted and last.
     expect(tabs().map((tab) => tab.textContent)).toEqual([
-      "esqeazy",
+      "Similar",
       "jessica rabbit",
       "Favorites 2",
     ]);
@@ -205,10 +250,48 @@ describe("the tab of the panel", () => {
     ]);
     expect(cells[1]?.getAttribute("title")).toBe("5 shared tags");
     expect(cells[1]?.querySelector(".rdw-mlt-video")).not.toBeNull();
-    expect(cells[0]?.querySelector("img")?.getAttribute("alt")).toBe("esqeazy #11");
-    expect(host.querySelector('a.rdw-mlt-link[href*="tags=esqeazy"]')?.textContent).toBe(
-      "Search esqeazy \u2192",
+    expect(host.querySelector("a.rdw-mlt-link")?.textContent).toBe("Search these tags \u2192");
+    expect(host.querySelector("a.rdw-mlt-link")?.getAttribute("href")).toContain(
+      "tags=fairy+red_dress+size_difference+-esqeazy",
     );
+  });
+
+  it("shows the tags Similar searched by, and searches anew when one is taken out", async () => {
+    const props = await mount();
+    const chips = (): HTMLButtonElement[] => [
+      ...host.querySelectorAll<HTMLButtonElement>("button.rdw-mlt-tag"),
+    ];
+    expect(chips().map((chip) => chip.querySelector(".rdw-chip")?.textContent)).toEqual([
+      "fairy",
+      "red dress",
+      "size difference",
+    ]);
+    expect(chips().every((chip) => chip.getAttribute("aria-pressed") === "true")).toBe(true);
+    await press(chips()[1]);
+    expect(props.load).toHaveBeenLastCalledWith("fairy size_difference -esqeazy");
+    expect(chips()[1]?.getAttribute("aria-pressed")).toBe("false");
+    // Back in: what that search gave is still there, nothing is asked again.
+    await press(chips()[1]);
+    expect(props.load).toHaveBeenCalledTimes(2);
+    // A search needs a tag to be by: the last one cannot be taken out.
+    await press(chips()[0]);
+    await press(chips()[1]);
+    expect(chips()[2]?.disabled).toBe(true);
+    // The tags are of Similar only.
+    await press(tabs()[1]);
+    expect(chips()).toHaveLength(0);
+  });
+
+  it("says so when the search was by fewer tags than it began with", async () => {
+    const load = vi.fn((query: string) =>
+      Promise.resolve(query === "fairy red_dress -esqeazy" ? [ranked(11)] : []),
+    );
+    await mount({ load });
+    expect(load).toHaveBeenCalledTimes(2);
+    expect(host.textContent).toContain(
+      "Few posts with all 3 tags \u2014 showing posts with 2 of them.",
+    );
+    expect(host.querySelectorAll("a.rdw-mlt-cell")).toHaveLength(1);
   });
 
   it("keeps the switch to two rows: the rest are behind +N, the picked one always in sight", () => {
@@ -223,13 +306,13 @@ describe("the tab of the panel", () => {
     expect(SOURCE_ROWS_MAX).toBe(2);
     expect(shownTagSources(five, null, null).map((source) => source.name)).toHaveLength(5);
     expect(shownTagSources(five, 3, null).map((source) => source.name)).toEqual([
-      "esqeazy",
+      "Similar",
       "jessica rabbit",
       "b",
     ]);
     // One picked from the rest takes the last place.
     expect(shownTagSources(five, 3, "character:d").map((source) => source.name)).toEqual([
-      "esqeazy",
+      "Similar",
       "jessica rabbit",
       "d",
     ]);
@@ -239,11 +322,10 @@ describe("the tab of the panel", () => {
 
   it("opens on the kind of source picked last, where the post has one", async () => {
     const sources = relatedSources(postTags());
-    expect(firstSource(sources, null)?.kind).toBe("artist");
+    expect(firstSource(sources, null)?.kind).toBe("similar");
     expect(firstSource(sources, "character")?.name).toBe("jessica rabbit");
-    expect(firstSource(sources, "shared")?.kind).toBe("artist");
     const props = await mount({ lastKind: "character" });
-    expect(props.load).toHaveBeenCalledWith("jessica_rabbit");
+    expect(props.load).toHaveBeenCalledWith("jessica_rabbit -esqeazy");
     render(null, host);
     // The favorites need no request at all.
     const quiet = await mount({ lastKind: "favorites" });
@@ -255,7 +337,7 @@ describe("the tab of the panel", () => {
     const props = await mount();
     await press(tabs()[1]);
     expect(props.load).toHaveBeenCalledTimes(2);
-    expect(props.load).toHaveBeenLastCalledWith("jessica_rabbit");
+    expect(props.load).toHaveBeenLastCalledWith("jessica_rabbit -esqeazy");
     expect(props.onPick).toHaveBeenLastCalledWith("character");
     await press(tabs()[2]);
     await press(tabs()[0]);
@@ -277,7 +359,7 @@ describe("the tab of the panel", () => {
 
   it("says so when nothing came, and why when the site did not answer", async () => {
     await mount({ load: () => Promise.resolve([]) });
-    expect(host.textContent).toContain("No other posts by esqeazy.");
+    expect(host.textContent).toContain("No posts by other artists with these tags.");
     render(null, host);
 
     const load = vi
@@ -322,8 +404,8 @@ describe("the tab of the panel", () => {
   it("is honest about favorites that are not alike and about a post with few tags", async () => {
     await mount({ readFavorites: () => Promise.resolve([]) });
     expect(tabs()[2]?.textContent).toBe("Favorites 0");
-    // Six tags on the post: the list is shown, with a line that says it is weak.
-    expect(host.textContent).toContain("Few shared tags \u2014 this post has only 6 tags.");
+    // Nine tags on the post: the list is shown, with a line that says it is weak.
+    expect(host.textContent).toContain("Few shared tags \u2014 this post has only 9 tags.");
     await press(tabs()[2]);
     expect(host.textContent).toContain("None of your favorites share tags with this post.");
     expect(fewTagsText(1)).toBe("Few shared tags \u2014 this post has only 1 tag.");

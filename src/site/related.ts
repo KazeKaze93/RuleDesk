@@ -37,17 +37,21 @@ export type RankedPost = Candidate & {
   readonly score: number;
 };
 
-export type RelatedSourceKind = "artist" | "character" | "shared" | "favorites";
+export type RelatedSourceKind = "similar" | "character" | "favorites";
 
 export type RelatedSource = {
   readonly key: string;
   readonly kind: RelatedSourceKind;
   /** What the tab reads: the tag with spaces, or the name of the source. */
   readonly name: string;
-  /** The search asked of the site; empty for the favorites. */
-  readonly query: string;
-  /** The tags of the search, for the hint of the tab. */
+  /**
+   * The tags the search is by, the rarest first; empty for the favorites.
+   * "Similar" may be asked by fewer of them: the user turns a tag off, and a
+   * search that found nothing is asked again by fewer.
+   */
   readonly tags: readonly string[];
+  /** The artists of the post: their posts are left out of the search. */
+  readonly without: readonly string[];
 };
 
 /** Why a page of candidates did not come. */
@@ -73,8 +77,52 @@ const HTTP_TOO_MANY_REQUESTS = 429;
 const WEIGHT_BASE = 2;
 /** The weight of a tag whose count is not known: that of a tag of a thousand posts. */
 const UNKNOWN_COUNT = 1000;
-/** How many of the rarest tags make the search of a post with no artist and no character. */
-export const SHARED_QUERY_TAGS = 2;
+/** How many of the rarest tags of a post "Similar" searches by. */
+export const SIMILAR_QUERY_TAGS = 3;
+/** A tag on fewer posts than this is the mark of one artist or one set, not of a scene. */
+const SIMILAR_MIN_COUNT = 20;
+/** Between two searches of one "Similar", when the first found nothing. */
+export const SIMILAR_RETRY_PAUSE_MS = 1100;
+const EXCLUDE_MARK = "-";
+/**
+ * Tags that say how a picture was made or signed, not what is in it. They are
+ * not searched by: a post is not like another for being large or signed.
+ */
+const SERVICE_TAGS: ReadonlySet<string> = new Set([
+  "highres",
+  "hi_res",
+  "absurdres",
+  "absurd_res",
+  "lowres",
+  "text",
+  "english_text",
+  "japanese_text",
+  "dialogue",
+  "speech_bubble",
+  "watermark",
+  "signature",
+  "artist_name",
+  "artist_signature",
+  "patreon_username",
+  "twitter_username",
+  "web_address",
+  "url",
+  "dated",
+  "logo",
+  "ai_generated",
+  "ai_assisted",
+  "stable_diffusion",
+  "novelai",
+  "commentary",
+  "tagme",
+  "translated",
+  "translation_request",
+  "sound",
+  "animated",
+  "video",
+  "1girls",
+  "1boy",
+]);
 /** How many of them a favorite has to share to be like such a post. */
 const SHARED_FAVORITE_MIN = 2;
 /** The rarest tags a favorite is tried against when the post names nobody. */
@@ -82,9 +130,9 @@ const SHARED_FAVORITE_POOL = 4;
 /** A page of a search of the site. */
 export const RELATED_PAGE_SIZE = 42;
 export const SOURCE_KEY_FAVORITES = "favorites";
-export const SOURCE_KEY_SHARED = "shared";
+export const SOURCE_KEY_SIMILAR = "similar";
 const NAME_FAVORITES = "In your favorites";
-const NAME_SHARED = "Shared tags";
+const NAME_SIMILAR = "Similar";
 
 function kindOfRow(row: Element): PostTagKind | null {
   for (const name of row.classList) {
@@ -230,34 +278,56 @@ function displayName(tag: string): string {
 }
 
 /**
- * Where candidates can come from for this post: its artists, then its
- * characters, each by its own search; with neither, one search by the rarest
- * tags of the post; and the favorites, last.
+ * The tags "Similar" searches by: the rarest of the post that say what is in
+ * the picture, the rarest first.
+ */
+export function similarTags(post: readonly PostTag[]): string[] {
+  return post
+    .filter(
+      (entry) =>
+        entry.kind === "general" &&
+        entry.count >= SIMILAR_MIN_COUNT &&
+        !SERVICE_TAGS.has(entry.tag),
+    )
+    .sort((a, b) => a.count - b.count)
+    .slice(0, SIMILAR_QUERY_TAGS)
+    .map((entry) => entry.tag);
+}
+
+/** The search by these tags that leaves out the posts of these artists. */
+export function relatedQuery(tags: readonly string[], without: readonly string[]): string {
+  return [...tags, ...without.map((tag) => `${EXCLUDE_MARK}${tag}`)].join(TAG_SEPARATOR);
+}
+
+/**
+ * Where candidates can come from for this post (the designer, 19.11.2026,
+ * after Kaze asked what the sense is of showing an artist's posts on a post
+ * of that artist): "Similar", the same scene by other artists, a search by
+ * the rarest tags of the post; then each character of the post, by other
+ * artists too; and the favorites, last. The artist is no source: all of an
+ * artist's posts are one press on the tag beside the post.
  */
 export function relatedSources(post: readonly PostTag[]): RelatedSource[] {
+  const without = post.filter((entry) => entry.kind === "artist").map((entry) => entry.tag);
   const sources: RelatedSource[] = [];
-  for (const kind of ["artist", "character"] as const) {
-    for (const entry of post) {
-      if (entry.kind === kind) {
-        sources.push({
-          key: `${kind}:${entry.tag}`,
-          kind,
-          name: displayName(entry.tag),
-          query: entry.tag,
-          tags: [entry.tag],
-        });
-      }
-    }
+  const similar = similarTags(post);
+  if (similar.length > 0) {
+    sources.push({
+      key: SOURCE_KEY_SIMILAR,
+      kind: "similar",
+      name: NAME_SIMILAR,
+      tags: similar,
+      without,
+    });
   }
-  if (sources.length === 0) {
-    const tags = rarest(post, SHARED_QUERY_TAGS).map((entry) => entry.tag);
-    if (tags.length > 0) {
+  for (const entry of post) {
+    if (entry.kind === "character") {
       sources.push({
-        key: SOURCE_KEY_SHARED,
-        kind: "shared",
-        name: NAME_SHARED,
-        query: tags.join(TAG_SEPARATOR),
-        tags,
+        key: `character:${entry.tag}`,
+        kind: "character",
+        name: displayName(entry.tag),
+        tags: [entry.tag],
+        without,
       });
     }
   }
@@ -265,10 +335,38 @@ export function relatedSources(post: readonly PostTag[]): RelatedSource[] {
     key: SOURCE_KEY_FAVORITES,
     kind: "favorites",
     name: NAME_FAVORITES,
-    query: "",
     tags: [],
+    without: [],
   });
   return sources;
+}
+
+export type SimilarResult = {
+  readonly posts: RankedPost[];
+  /** The tags of the search that gave them. */
+  readonly used: readonly string[];
+};
+
+/**
+ * A search by all the tags given; when it finds nothing, by one tag fewer,
+ * the rarest kept, down to one, with a pause before each. Every search is one
+ * request; the first is the user's action, the rest follow from it.
+ */
+export async function loadByFewerTags(
+  tags: readonly string[],
+  without: readonly string[],
+  load: (query: string) => Promise<RankedPost[]>,
+  pause: () => Promise<void>,
+): Promise<SimilarResult> {
+  for (let count = tags.length; count > 0; count -= 1) {
+    const used = tags.slice(0, count);
+    const posts = await load(relatedQuery(used, without));
+    if (posts.length > 0 || count === 1) {
+      return { posts, used };
+    }
+    await pause();
+  }
+  return { posts: [], used: [] };
 }
 
 /**

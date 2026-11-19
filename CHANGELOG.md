@@ -2,6 +2,15 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.67.0
+
+- Related Posts: the first source, the one the tab opens on, is "Similar": the same scene by other artists. It searches by the two or three rarest tags of the post that say what is in the picture, and leaves out the posts of the artist of the post
+- The tags of that search stand over the grid. A press on one takes it out of the search or puts it back, and the list is searched anew
+- When all the tags together find nothing, the search is made by one tag fewer, down to one, and a line says so: "Few posts with all 3 tags — showing posts with 2 of them."
+- Tags about the file and its making are not searched by: highres, text, watermark, signature, ai_generated and the like; nor a tag on fewer than 20 posts, which is one artist's own
+- A character is still a source, now without the posts of the artist of the post: this character by others
+- The artist is no longer a source: all of an artist's posts are one press on the tag beside the post. The switch is "Similar · character · Favorites", in one row on most posts
+
 ## 0.66.2
 
 - The tab of the post panel is called "Related Posts"; it was "More like this". In the settings: "Related Posts tab"

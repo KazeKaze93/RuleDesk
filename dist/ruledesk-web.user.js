@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RuleDesk Web
 // @namespace    https://github.com/kazekaze93/ruledesk-web
-// @version      0.66.2
+// @version      0.67.0
 // @description  Collections, playlists, favorites, artist updates, and page tweaks for rule34.xxx
 // @downloadURL  https://raw.githubusercontent.com/KazeKaze93/RuleDesk/main/dist/ruledesk-web.user.js
 // @updateURL    https://raw.githubusercontent.com/KazeKaze93/RuleDesk/main/dist/ruledesk-web.user.js
@@ -8516,7 +8516,7 @@ function AiPostsToggle(props) {
 */
 var QUERY_MARK$1 = "?";
 var PID_PATTERN = /^\d+$/;
-var EXCLUDE_MARK = "-";
+var EXCLUDE_MARK$1 = "-";
 var FILTER_MARK$1$1 = ":";
 var OR_MARKS = [
 	"(",
@@ -8577,7 +8577,7 @@ function readSingleTag(tagsParam) {
 	const tokens = withoutSortRandom(tagsParam).split(" ");
 	const tag = tokens[0];
 	if (tokens.length !== 1 || tag === void 0 || tag.length === 0) return null;
-	if (tag.startsWith(EXCLUDE_MARK) || tag.includes(FILTER_MARK$1$1) || OR_MARKS.includes(tag)) return null;
+	if (tag.startsWith(EXCLUDE_MARK$1) || tag.includes(FILTER_MARK$1$1) || OR_MARKS.includes(tag)) return null;
 	return tag.toLowerCase();
 }
 function rowLinksToTag(row, tag) {
@@ -10474,7 +10474,7 @@ function putFavoriteIndexEntriesQuietly(entries) {
 * be cut, and its ends are judged by the tags themselves: the site does not
 * cut every list, so an end that is a known tag is left as it is.
 */
-var TAG_SEPARATOR$2 = /\s+/;
+var TAG_SEPARATOR$3 = /\s+/;
 var CUT_LENGTH = 1;
 /**
 * What is known of a tag at an end of the list: it is whole (as read, or
@@ -10484,7 +10484,7 @@ var CUT_LENGTH = 1;
 var END_WHOLE = "whole";
 var END_UNKNOWN = "unknown";
 function splitTags(text) {
-	return text.trim().split(TAG_SEPARATOR$2).filter((tag) => tag.length > 0);
+	return text.trim().split(TAG_SEPARATOR$3).filter((tag) => tag.length > 0);
 }
 function addTo(map, key, tag) {
 	const known = map.get(key);
@@ -16636,21 +16636,65 @@ var KINDS = [
 ];
 var NON_DIGITS = /\D/g;
 var QUERY_MARK = "?";
-var TAG_SEPARATOR$1 = " ";
+var TAG_SEPARATOR$2 = " ";
 var VIDEO_THUMB_CLASS = "webm-thumb";
 var HTTP_TOO_MANY_REQUESTS = 429;
 /** A tag on every post tells nothing: the weight falls with the logarithm of its count. */
 var WEIGHT_BASE = 2;
 /** The weight of a tag whose count is not known: that of a tag of a thousand posts. */
 var UNKNOWN_COUNT = 1e3;
+/** A tag on fewer posts than this is the mark of one artist or one set, not of a scene. */
+var SIMILAR_MIN_COUNT = 20;
+/** Between two searches of one "Similar", when the first found nothing. */
+var SIMILAR_RETRY_PAUSE_MS = 1100;
+var EXCLUDE_MARK = "-";
+/**
+* Tags that say how a picture was made or signed, not what is in it. They are
+* not searched by: a post is not like another for being large or signed.
+*/
+var SERVICE_TAGS = /* @__PURE__ */ new Set([
+	"highres",
+	"hi_res",
+	"absurdres",
+	"absurd_res",
+	"lowres",
+	"text",
+	"english_text",
+	"japanese_text",
+	"dialogue",
+	"speech_bubble",
+	"watermark",
+	"signature",
+	"artist_name",
+	"artist_signature",
+	"patreon_username",
+	"twitter_username",
+	"web_address",
+	"url",
+	"dated",
+	"logo",
+	"ai_generated",
+	"ai_assisted",
+	"stable_diffusion",
+	"novelai",
+	"commentary",
+	"tagme",
+	"translated",
+	"translation_request",
+	"sound",
+	"animated",
+	"video",
+	"1girls",
+	"1boy"
+]);
 /** How many of them a favorite has to share to be like such a post. */
 var SHARED_FAVORITE_MIN = 2;
 /** The rarest tags a favorite is tried against when the post names nobody. */
 var SHARED_FAVORITE_POOL = 4;
 var SOURCE_KEY_FAVORITES = "favorites";
-var SOURCE_KEY_SHARED = "shared";
+var SOURCE_KEY_SIMILAR = "similar";
 var NAME_FAVORITES = "In your favorites";
-var NAME_SHARED = "Shared tags";
+var NAME_SIMILAR = "Similar";
 function kindOfRow(row) {
 	for (const name of row.classList) {
 		if (!name.startsWith(TAG_TYPE_CLASS_PREFIX$1)) continue;
@@ -16684,7 +16728,7 @@ function tagOfRow(row) {
 		const mark = href.indexOf(QUERY_MARK);
 		if (mark < 0) continue;
 		const tag = decodeTagEntities(new URLSearchParams(href.slice(mark + 1)).get("tags")?.trim().toLowerCase() ?? "");
-		if (tag.length > 0 && !tag.includes(TAG_SEPARATOR$1)) return tag;
+		if (tag.length > 0 && !tag.includes(TAG_SEPARATOR$2)) return tag;
 	}
 	return null;
 }
@@ -16762,37 +16806,70 @@ function displayName(tag) {
 	return tag.replaceAll("_", " ");
 }
 /**
-* Where candidates can come from for this post: its artists, then its
-* characters, each by its own search; with neither, one search by the rarest
-* tags of the post; and the favorites, last.
+* The tags "Similar" searches by: the rarest of the post that say what is in
+* the picture, the rarest first.
+*/
+function similarTags(post) {
+	return post.filter((entry) => entry.kind === "general" && entry.count >= SIMILAR_MIN_COUNT && !SERVICE_TAGS.has(entry.tag)).sort((a, b) => a.count - b.count).slice(0, 3).map((entry) => entry.tag);
+}
+/** The search by these tags that leaves out the posts of these artists. */
+function relatedQuery(tags, without) {
+	return [...tags, ...without.map((tag) => `${EXCLUDE_MARK}${tag}`)].join(TAG_SEPARATOR$2);
+}
+/**
+* Where candidates can come from for this post (the designer, 19.11.2026,
+* after Kaze asked what the sense is of showing an artist's posts on a post
+* of that artist): "Similar", the same scene by other artists, a search by
+* the rarest tags of the post; then each character of the post, by other
+* artists too; and the favorites, last. The artist is no source: all of an
+* artist's posts are one press on the tag beside the post.
 */
 function relatedSources(post) {
+	const without = post.filter((entry) => entry.kind === "artist").map((entry) => entry.tag);
 	const sources = [];
-	for (const kind of ["artist", "character"]) for (const entry of post) if (entry.kind === kind) sources.push({
-		key: `${kind}:${entry.tag}`,
-		kind,
-		name: displayName(entry.tag),
-		query: entry.tag,
-		tags: [entry.tag]
+	const similar = similarTags(post);
+	if (similar.length > 0) sources.push({
+		key: SOURCE_KEY_SIMILAR,
+		kind: "similar",
+		name: NAME_SIMILAR,
+		tags: similar,
+		without
 	});
-	if (sources.length === 0) {
-		const tags = rarest(post, 2).map((entry) => entry.tag);
-		if (tags.length > 0) sources.push({
-			key: SOURCE_KEY_SHARED,
-			kind: "shared",
-			name: NAME_SHARED,
-			query: tags.join(TAG_SEPARATOR$1),
-			tags
-		});
-	}
+	for (const entry of post) if (entry.kind === "character") sources.push({
+		key: `character:${entry.tag}`,
+		kind: "character",
+		name: displayName(entry.tag),
+		tags: [entry.tag],
+		without
+	});
 	sources.push({
 		key: SOURCE_KEY_FAVORITES,
 		kind: "favorites",
 		name: NAME_FAVORITES,
-		query: "",
-		tags: []
+		tags: [],
+		without: []
 	});
 	return sources;
+}
+/**
+* A search by all the tags given; when it finds nothing, by one tag fewer,
+* the rarest kept, down to one, with a pause before each. Every search is one
+* request; the first is the user's action, the rest follow from it.
+*/
+async function loadByFewerTags(tags, without, load, pause) {
+	for (let count = tags.length; count > 0; count -= 1) {
+		const used = tags.slice(0, count);
+		const posts = await load(relatedQuery(used, without));
+		if (posts.length > 0 || count === 1) return {
+			posts,
+			used
+		};
+		await pause();
+	}
+	return {
+		posts: [],
+		used: []
+	};
 }
 /**
 * The favorites that are like the post, most like first: those that share an
@@ -16871,6 +16948,11 @@ var LIMITED_TEXT = "The site asked to slow down. Try again in a minute.";
 var FAILED_TEXT = "Couldn't load: the site did not answer as expected.";
 var RETRY_LABEL = "Try again";
 var SOURCES_LABEL = "Where the posts come from";
+var SIMILAR_TAGS_LABEL = "Tags the similar posts are searched by";
+var SIMILAR_TAG_OUT = "Take this tag out of the search";
+var SIMILAR_TAG_BACK = "Search by this tag again";
+var SIMILAR_TAG_LAST = "The search needs at least one tag";
+var SEARCH_TAGS_LABEL = "Search these tags";
 var FAVORITES_SHORT = "Favorites";
 var VIDEO_MARK = "▶";
 var ARROW = "→";
@@ -16938,6 +17020,21 @@ ${BODY_SELECTOR$3} .rdw-mlt-menu button {
 }
 ${BODY_SELECTOR$3} .rdw-mlt-menu button:hover {
   background: var(--rdw-surface-2);
+}
+${ROOT$1} .rdw-mlt-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+${ROOT$1} .rdw-mlt-tag {
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  cursor: pointer;
+}
+${ROOT$1} .rdw-mlt-tag:disabled {
+  cursor: default;
 }
 ${ROOT$1} .rdw-mlt-line {
   margin: 0;
@@ -17008,20 +17105,21 @@ ${ROOT$1} .rdw-mlt-foot {
 }
 `.trim();
 function isRelatedSourceKind(value) {
-	return value === "artist" || value === "character" || value === "shared" || value === "favorites";
-}
-function tagsText(source) {
-	return source.tags.join(", ").replaceAll("_", " ");
+	return value === "similar" || value === "character" || value === "favorites";
 }
 function loadingText(source) {
-	if (source.kind === "artist") return `Loading posts by ${source.name}${ELLIPSIS}`;
+	if (source.kind === "similar") return `Loading similar posts${ELLIPSIS}`;
 	if (source.kind === "favorites") return `Looking through your favorites${ELLIPSIS}`;
-	return `Loading posts with ${tagsText(source)}${ELLIPSIS}`;
+	return `Loading posts with ${source.name}${ELLIPSIS}`;
 }
 function emptyText(source) {
 	if (source.kind === "favorites") return NONE_IN_FAVORITES;
-	if (source.kind === "artist") return `No other posts by ${source.name}.`;
-	return `No other posts with ${tagsText(source)}.`;
+	if (source.kind === "similar") return "No posts by other artists with these tags.";
+	return `No posts with ${source.name} by other artists.`;
+}
+/** "Few posts with all 3 tags — showing posts with 2 of them." */
+function fewerTagsText(asked, used) {
+	return `Few posts with all ${String(asked)} tags \u2014 showing posts with ${String(used)} of them.`;
 }
 function errorText(failure) {
 	return failure === "offline" ? OFFLINE_TEXT : failure === "limited" ? LIMITED_TEXT : FAILED_TEXT;
@@ -17057,6 +17155,20 @@ function shownTagSources(tagSources, fit, picked) {
 function firstSource(sources, lastKind) {
 	return sources.find((source) => source.kind === lastKind) ?? sources[0] ?? null;
 }
+function waitBeforeRetry() {
+	return new Promise((resolve) => {
+		window.setTimeout(resolve, SIMILAR_RETRY_PAUSE_MS);
+	});
+}
+var TAG_SEPARATOR$1 = " ";
+/** The tags of a source that are searched by now: all of them but those turned off. */
+function activeTags(source, off) {
+	return source.tags.filter((tag) => !off.includes(tag));
+}
+/** Under which what a source gave is kept: "Similar" by its tags, any other by itself. */
+function cacheKey(source, off) {
+	return source.kind === "similar" ? `${source.key}|${activeTags(source, off).join(TAG_SEPARATOR$1)}` : source.key;
+}
 /** What is in the tab. It is mounted when the tab is first opened, and that opening loads the first source. */
 function MoreLikeThis(props) {
 	const sources = relatedSources(props.tags);
@@ -17067,32 +17179,37 @@ function MoreLikeThis(props) {
 	const [, tick] = d(0);
 	const [fit, setFit] = d(null);
 	const [moreOpen, setMoreOpen] = d(false);
+	const [off, setOff] = d([]);
 	const switchRef = T(null);
 	const gridRef = T(null);
 	const now = props.now ?? Date.now;
 	const { readFavorites } = props;
-	const open = (source, remember) => {
+	const open = (source, remember, without = off) => {
 		setPicked(source.key);
 		if (remember) props.onPick(source.kind);
-		const have = loaded[source.key];
+		const key = cacheKey(source, without);
+		const have = loaded[key];
 		if (source.kind === "favorites" || have !== void 0 && have.state !== "error") return;
+		const tags = activeTags(source, without);
 		setLoaded((all) => ({
 			...all,
-			[source.key]: { state: "loading" }
+			[key]: { state: "loading" }
 		}));
-		props.load(source.query).then((posts) => {
+		loadByFewerTags(tags, source.without, props.load, props.pause ?? waitBeforeRetry).then((result) => {
 			setLoaded((all) => ({
 				...all,
-				[source.key]: {
+				[key]: {
 					state: "ready",
-					posts
+					posts: result.posts,
+					used: result.used,
+					asked: tags.length
 				}
 			}));
 		}).catch((error) => {
 			const failure = error instanceof RelatedError ? error.failure : "failed";
 			setLoaded((all) => ({
 				...all,
-				[source.key]: {
+				[key]: {
 					state: "error",
 					failure,
 					at: now()
@@ -17122,8 +17239,10 @@ function MoreLikeThis(props) {
 	const pickedSource = sources.find((source) => source.key === picked);
 	const current = pickedSource === void 0 ? void 0 : pickedSource.kind === "favorites" ? favorites === null ? { state: "loading" } : {
 		state: "ready",
-		posts: favorites
-	} : loaded[pickedSource.key];
+		posts: favorites,
+		used: [],
+		asked: 0
+	} : loaded[cacheKey(pickedSource, off)];
 	const waitLeft = current?.state === "error" && current.failure === "limited" ? Math.max(0, 60 - Math.floor((now() - current.at) / SECOND_MS)) : 0;
 	const waiting = waitLeft > 0;
 	A(() => {
@@ -17169,117 +17288,149 @@ function MoreLikeThis(props) {
 	const visible = all ? posts : posts.slice(0, 6);
 	return /* @__PURE__ */ a("div", {
 		className: ROOT_CLASS$2,
-		children: [/* @__PURE__ */ a("div", {
-			ref: switchRef,
-			children: [/* @__PURE__ */ a(Segmented, {
-				className: "rdw-mlt-sources",
-				label: SOURCES_LABEL,
-				options,
-				value: picked ?? "",
-				disabled: busy,
-				onChange: (key) => {
-					if (key === MORE_VALUE) {
-						setMoreOpen((value) => !value);
-						return;
+		children: [
+			/* @__PURE__ */ a("div", {
+				ref: switchRef,
+				children: [/* @__PURE__ */ a(Segmented, {
+					className: "rdw-mlt-sources",
+					label: SOURCES_LABEL,
+					options,
+					value: picked ?? "",
+					disabled: busy,
+					onChange: (key) => {
+						if (key === MORE_VALUE) {
+							setMoreOpen((value) => !value);
+							return;
+						}
+						const source = sources.find((entry) => entry.key === key);
+						if (source !== void 0) open(source, true);
 					}
-					const source = sources.find((entry) => entry.key === key);
-					if (source !== void 0) open(source, true);
-				}
-			}), /* @__PURE__ */ a(Popover, {
-				open: moreOpen,
-				onClose: () => {
-					setMoreOpen(false);
-				},
-				anchorRef: switchRef,
-				widthPx: MORE_MENU_WIDTH_PX,
-				role: "menu",
-				"aria-label": MORE_MENU_LABEL,
-				className: "rdw-mlt-menu",
-				children: hiddenTags.map((source) => /* @__PURE__ */ a("button", {
-					type: "button",
-					role: "menuitem",
-					className: "rdw-kit-focusable",
-					onClick: () => {
+				}), /* @__PURE__ */ a(Popover, {
+					open: moreOpen,
+					onClose: () => {
 						setMoreOpen(false);
-						open(source, true);
 					},
-					children: source.name
-				}, source.key))
-			})]
-		}), pickedSource === void 0 || current === void 0 ? null : current.state === "loading" ? /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("p", {
-			className: "rdw-mlt-line",
-			role: "status",
-			children: loadingText(pickedSource)
-		}), /* @__PURE__ */ a("div", {
-			className: "rdw-mlt-grid",
-			"aria-hidden": "true",
-			children: Array.from({ length: 6 }, (_unused, index) => /* @__PURE__ */ a("span", {
-				className: "rdw-mlt-cell",
-				"data-waiting": ""
-			}, index))
-		})] }) : current.state === "error" ? /* @__PURE__ */ a("p", {
-			className: "rdw-mlt-line",
-			role: "alert",
-			children: [
-				errorText(current.failure),
-				" ",
-				/* @__PURE__ */ a("button", {
-					type: "button",
-					className: "rdw-mlt-link",
-					disabled: waiting,
-					onClick: () => {
-						open(pickedSource, false);
-					},
-					children: waiting ? `${RETRY_LABEL} (${String(waitLeft)})` : RETRY_LABEL
-				})
-			]
-		}) : posts.length === 0 ? /* @__PURE__ */ a("p", {
-			className: "rdw-mlt-line",
-			role: "status",
-			children: emptyText(pickedSource)
-		}) : /* @__PURE__ */ a($$1, { children: [
-			props.tags.length < FEW_TAGS ? /* @__PURE__ */ a("p", {
-				className: "rdw-mlt-line",
-				children: fewTagsText(props.tags.length)
-			}) : null,
-			/* @__PURE__ */ a("div", {
-				className: "rdw-mlt-grid",
-				ref: gridRef,
-				children: visible.map((post) => /* @__PURE__ */ a("a", {
-					className: "rdw-mlt-cell",
-					href: relatedPostUrl(post.id),
-					title: sharedTagsText(post.shared),
-					children: [/* @__PURE__ */ a("img", {
-						src: post.thumb,
-						alt: `${pickedSource.name} #${String(post.id)}`,
-						loading: "lazy"
-					}), post.video ? /* @__PURE__ */ a("span", {
-						className: "rdw-mlt-video",
-						"aria-hidden": "true",
-						children: VIDEO_MARK
-					}) : null]
-				}, post.id))
-			}),
-			/* @__PURE__ */ a("div", {
-				className: "rdw-mlt-foot",
-				children: [!all && posts.length > 6 ? /* @__PURE__ */ a("button", {
-					type: "button",
-					className: "rdw-mlt-link",
-					onClick: () => {
-						setShowAll((keys) => [...keys, pickedSource.key]);
-						window.setTimeout(() => {
-							const first = gridRef.current?.querySelectorAll("a")[6];
-							if (first instanceof HTMLElement) first.focus();
-						}, 0);
-					},
-					children: `Show all ${String(posts.length)}`
-				}) : /* @__PURE__ */ a("span", {}), pickedSource.kind === "favorites" ? null : /* @__PURE__ */ a("a", {
-					className: "rdw-mlt-link",
-					href: relatedSearchUrl(pickedSource.query),
-					children: `Search ${pickedSource.kind === "shared" ? pickedSource.tags.join(" ") : pickedSource.name} ${ARROW}`
+					anchorRef: switchRef,
+					widthPx: MORE_MENU_WIDTH_PX,
+					role: "menu",
+					"aria-label": MORE_MENU_LABEL,
+					className: "rdw-mlt-menu",
+					children: hiddenTags.map((source) => /* @__PURE__ */ a("button", {
+						type: "button",
+						role: "menuitem",
+						className: "rdw-kit-focusable",
+						onClick: () => {
+							setMoreOpen(false);
+							open(source, true);
+						},
+						children: source.name
+					}, source.key))
 				})]
-			})
-		] })]
+			}),
+			pickedSource?.kind === "similar" ? /* @__PURE__ */ a("div", {
+				className: "rdw-mlt-tags",
+				role: "group",
+				"aria-label": SIMILAR_TAGS_LABEL,
+				children: pickedSource.tags.map((tag) => {
+					const out = off.includes(tag);
+					const last = !out && activeTags(pickedSource, off).length === 1;
+					return /* @__PURE__ */ a("button", {
+						type: "button",
+						className: "rdw-mlt-tag rdw-kit-focusable",
+						"aria-pressed": !out,
+						title: out ? SIMILAR_TAG_BACK : last ? SIMILAR_TAG_LAST : SIMILAR_TAG_OUT,
+						disabled: busy || last,
+						onClick: () => {
+							const next = out ? off.filter((entry) => entry !== tag) : [...off, tag];
+							setOff(next);
+							open(pickedSource, false, next);
+						},
+						children: /* @__PURE__ */ a(Chip, {
+							label: tag.replaceAll("_", " "),
+							variant: out ? "exclude" : "dot"
+						})
+					}, tag);
+				})
+			}) : null,
+			pickedSource === void 0 || current === void 0 ? null : current.state === "loading" ? /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("p", {
+				className: "rdw-mlt-line",
+				role: "status",
+				children: loadingText(pickedSource)
+			}), /* @__PURE__ */ a("div", {
+				className: "rdw-mlt-grid",
+				"aria-hidden": "true",
+				children: Array.from({ length: 6 }, (_unused, index) => /* @__PURE__ */ a("span", {
+					className: "rdw-mlt-cell",
+					"data-waiting": ""
+				}, index))
+			})] }) : current.state === "error" ? /* @__PURE__ */ a("p", {
+				className: "rdw-mlt-line",
+				role: "alert",
+				children: [
+					errorText(current.failure),
+					" ",
+					/* @__PURE__ */ a("button", {
+						type: "button",
+						className: "rdw-mlt-link",
+						disabled: waiting,
+						onClick: () => {
+							open(pickedSource, false);
+						},
+						children: waiting ? `${RETRY_LABEL} (${String(waitLeft)})` : RETRY_LABEL
+					})
+				]
+			}) : posts.length === 0 ? /* @__PURE__ */ a("p", {
+				className: "rdw-mlt-line",
+				role: "status",
+				children: emptyText(pickedSource)
+			}) : /* @__PURE__ */ a($$1, { children: [
+				props.tags.length < FEW_TAGS ? /* @__PURE__ */ a("p", {
+					className: "rdw-mlt-line",
+					children: fewTagsText(props.tags.length)
+				}) : null,
+				current.used.length < current.asked ? /* @__PURE__ */ a("p", {
+					className: "rdw-mlt-line",
+					children: fewerTagsText(current.asked, current.used.length)
+				}) : null,
+				/* @__PURE__ */ a("div", {
+					className: "rdw-mlt-grid",
+					ref: gridRef,
+					children: visible.map((post) => /* @__PURE__ */ a("a", {
+						className: "rdw-mlt-cell",
+						href: relatedPostUrl(post.id),
+						title: sharedTagsText(post.shared),
+						children: [/* @__PURE__ */ a("img", {
+							src: post.thumb,
+							alt: `${pickedSource.name} #${String(post.id)}`,
+							loading: "lazy"
+						}), post.video ? /* @__PURE__ */ a("span", {
+							className: "rdw-mlt-video",
+							"aria-hidden": "true",
+							children: VIDEO_MARK
+						}) : null]
+					}, post.id))
+				}),
+				/* @__PURE__ */ a("div", {
+					className: "rdw-mlt-foot",
+					children: [!all && posts.length > 6 ? /* @__PURE__ */ a("button", {
+						type: "button",
+						className: "rdw-mlt-link",
+						onClick: () => {
+							setShowAll((keys) => [...keys, pickedSource.key]);
+							window.setTimeout(() => {
+								const first = gridRef.current?.querySelectorAll("a")[6];
+								if (first instanceof HTMLElement) first.focus();
+							}, 0);
+						},
+						children: `Show all ${String(posts.length)}`
+					}) : /* @__PURE__ */ a("span", {}), pickedSource.kind === "favorites" ? null : /* @__PURE__ */ a("a", {
+						className: "rdw-mlt-link",
+						href: relatedSearchUrl(relatedQuery(current.used, pickedSource.without)),
+						children: `${pickedSource.kind === "similar" ? SEARCH_TAGS_LABEL : `Search ${pickedSource.name}`} ${ARROW}`
+					})]
+				})
+			] })
+		]
 	});
 }
 var moreLikeThisFeature = {
@@ -27173,12 +27324,12 @@ startEarlyLayout();
 whenDomReady(() => {
 	applyLayoutBeforePaint();
 	scheduleAfterFirstPaint(() => {
-		module.import('./app-EtNgmmKU-JWIj56GW.js').then(({ startApp }) => {
+		module.import('./app-D7g8CxOS-D1eDlOpt.js').then(({ startApp }) => {
 			startApp();
 		});
 	});
 });})}}));
-System.register("./app-EtNgmmKU-JWIj56GW.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var yieldToMain,detectPageKind,mountGifMarks,mountVideoMarks,mountCards,syncFavoritesPage,mountFavoriteVideoMarks,mountCommentsPage,runFeaturesYielding,getAppearance,applyAppearanceTheme,adoptSiteAiChoice,alignSiteAiFilter,currentListScope,skinIsOn,ensureDocumentStyles,SITE_SELECTORS,FOLLOW_KIND_ARTIST,FOLLOW_KIND_CHARACTER,FOLLOW_KIND_COPYRIGHT,loadFavSet,log,load$1,setFeatureState,scopeOfListUrl,setAiHiddenIn,parseRdwHash,AI_SCOPE_FOLLOWING,isCollectionDetailPage,AI_SCOPE_COLLECTIONS,SITE_ORIGIN,SEARCH_PARAM_TAGS,normalizeArtistTag,CSS_CLASS,getSyncState,getFeatureState,openSettingsAt,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,HEADER_SELECTOR$1,RDW_OWN_PAGE_CLASS,MENU_ITEM_ID,getFeatureEnabled,applyHeaderLayout,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,runFavoritesSync,UI_TEXT,createDynamicCollection,Q$1,RDW_PAGE_ROOT_ID,markFavoritesCurrent,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,resolveFavoritesUserId,RDW_HASH_STATS,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,NAV_DUE_CLASS,rdwPageHash,createFavoritesSyncTabId,APPEARANCE_BACKGROUND_KEY,readArtistsMirror,listArtistTags,writeArtistsMirror,reloadFromStorage,save,CURRENT_PAGE_CLASS,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,a,OverlayInPlace,applyTokenProperties,resolveAppearancePalette,menuRouteForPage,getSiteSkinCss,KIT_CONTROL_HEIGHT_VAR,KIT_CONTROL_FONT_VAR,MOTION_PAGE_CSS,$$1,PANEL_UI_CLASS,TOKEN_VAR,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,SITE_LIGHT_C_BG,SITE_LIGHT_C_BG_ALT,SITE_DARK_C_BG,SITE_DARK_C_BORDER,APPEARANCE_BACKGROUND_TOO_LARGE;return{setters:[function(module){yieldToMain=module.y;detectPageKind=module.d;mountGifMarks=module.m;mountVideoMarks=module.a;mountCards=module.b;syncFavoritesPage=module.s;mountFavoriteVideoMarks=module.c;mountCommentsPage=module.e;runFeaturesYielding=module.r;getAppearance=module.g;applyAppearanceTheme=module.f;adoptSiteAiChoice=module.h;alignSiteAiFilter=module.i;currentListScope=module.j;skinIsOn=module.k;ensureDocumentStyles=module.l;SITE_SELECTORS=module.S;FOLLOW_KIND_ARTIST=module.F;FOLLOW_KIND_CHARACTER=module.n;FOLLOW_KIND_COPYRIGHT=module.o;loadFavSet=module.p;log=module.q;load$1=module.t;setFeatureState=module.u;scopeOfListUrl=module.v;setAiHiddenIn=module.w;parseRdwHash=module.x;AI_SCOPE_FOLLOWING=module.A;isCollectionDetailPage=module.z;AI_SCOPE_COLLECTIONS=module.B;SITE_ORIGIN=module.C;SEARCH_PARAM_TAGS=module.D;normalizeArtistTag=module.E;CSS_CLASS=module.G;getSyncState=module.H;getFeatureState=module.I;openSettingsAt=module.J;ensureStyleElement=module.K;RDW_OWN_PAGE_STYLE_ID=module.R;buildOwnPageCss=module.L;HEADER_SELECTOR$1=module.M;RDW_OWN_PAGE_CLASS=module.N;MENU_ITEM_ID=module.O;getFeatureEnabled=module.P;applyHeaderLayout=module.Q;readFavoritesSyncMode=module.T;FAVORITES_SYNC_MODE_FULL=module.U;runFavoritesSync=module.V;UI_TEXT=module.W;createDynamicCollection=module.X;Q$1=module.Y;RDW_PAGE_ROOT_ID=module.Z;markFavoritesCurrent=module._;NAVBAR_SELECTOR=module.$;FEED_MENU_ITEM_ID=module.a0;RDW_HASH_COLLECTIONS=module.a1;MENU_LABEL=module.a2;RDW_HASH_FOLLOWING=module.a3;resolveFavoritesUserId=module.a4;RDW_HASH_STATS=module.a5;MY_FAVORITES_CONTAINER_ID=module.a6;RDW_HASH_SETTINGS=module.a7;NAV_DUE_CLASS=module.a8;rdwPageHash=module.a9;createFavoritesSyncTabId=module.aa;APPEARANCE_BACKGROUND_KEY=module.ab;readArtistsMirror=module.ac;listArtistTags=module.ad;writeArtistsMirror=module.ae;reloadFromStorage=module.af;save=module.ag;CURRENT_PAGE_CLASS=module.ah;setSyncState=module.ai;SEARCH_PARAM_PAGE=module.aj;FAVORITES_PAGE=module.ak;FAVORITES_SECTION_VIEW=module.al;SEARCH_PATH=module.am;a=module.an;OverlayInPlace=module.ao;applyTokenProperties=module.ap;resolveAppearancePalette=module.aq;menuRouteForPage=module.ar;getSiteSkinCss=module.as;KIT_CONTROL_HEIGHT_VAR=module.at;KIT_CONTROL_FONT_VAR=module.au;MOTION_PAGE_CSS=module.av;$$1=module.aw;PANEL_UI_CLASS=module.ax;TOKEN_VAR=module.ay;RDW_THEME_ATTR=module.az;APPEARANCE_THEME_SITE=module.aA;APPEARANCE_THEME_SITE_DARK=module.aB;SITE_LIGHT_C_BG=module.aC;SITE_LIGHT_C_BG_ALT=module.aD;SITE_DARK_C_BG=module.aE;SITE_DARK_C_BORDER=module.aF;APPEARANCE_BACKGROUND_TOO_LARGE=module.aG;}],execute:(function(){exports({S:writeViewMode,b:isViewMode,c:navigateToRdwRoute,d:currentBackupStatus,f:readLastBackup,l:installSiteMenu,n:loadBackground,o:readTagSets,p:rememberBackup,r:saveBackground,s:writeTagSets,startApp:startApp,t:clearBackground,u:markBackupDue,x:readViewMode});/** Matches host.tsx page title class (owned there; styled here for site polish). */
+System.register("./app-D7g8CxOS-D1eDlOpt.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var yieldToMain,detectPageKind,mountGifMarks,mountVideoMarks,mountCards,syncFavoritesPage,mountFavoriteVideoMarks,mountCommentsPage,runFeaturesYielding,getAppearance,applyAppearanceTheme,adoptSiteAiChoice,alignSiteAiFilter,currentListScope,skinIsOn,ensureDocumentStyles,SITE_SELECTORS,FOLLOW_KIND_ARTIST,FOLLOW_KIND_CHARACTER,FOLLOW_KIND_COPYRIGHT,loadFavSet,log,load$1,setFeatureState,scopeOfListUrl,setAiHiddenIn,parseRdwHash,AI_SCOPE_FOLLOWING,isCollectionDetailPage,AI_SCOPE_COLLECTIONS,SITE_ORIGIN,SEARCH_PARAM_TAGS,normalizeArtistTag,CSS_CLASS,getSyncState,getFeatureState,openSettingsAt,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,HEADER_SELECTOR$1,RDW_OWN_PAGE_CLASS,MENU_ITEM_ID,getFeatureEnabled,applyHeaderLayout,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,runFavoritesSync,UI_TEXT,createDynamicCollection,Q$1,RDW_PAGE_ROOT_ID,markFavoritesCurrent,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,resolveFavoritesUserId,RDW_HASH_STATS,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,NAV_DUE_CLASS,rdwPageHash,createFavoritesSyncTabId,APPEARANCE_BACKGROUND_KEY,readArtistsMirror,listArtistTags,writeArtistsMirror,reloadFromStorage,save,CURRENT_PAGE_CLASS,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,a,OverlayInPlace,applyTokenProperties,resolveAppearancePalette,menuRouteForPage,getSiteSkinCss,KIT_CONTROL_HEIGHT_VAR,KIT_CONTROL_FONT_VAR,MOTION_PAGE_CSS,$$1,PANEL_UI_CLASS,TOKEN_VAR,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,SITE_LIGHT_C_BG,SITE_LIGHT_C_BG_ALT,SITE_DARK_C_BG,SITE_DARK_C_BORDER,APPEARANCE_BACKGROUND_TOO_LARGE;return{setters:[function(module){yieldToMain=module.y;detectPageKind=module.d;mountGifMarks=module.m;mountVideoMarks=module.a;mountCards=module.b;syncFavoritesPage=module.s;mountFavoriteVideoMarks=module.c;mountCommentsPage=module.e;runFeaturesYielding=module.r;getAppearance=module.g;applyAppearanceTheme=module.f;adoptSiteAiChoice=module.h;alignSiteAiFilter=module.i;currentListScope=module.j;skinIsOn=module.k;ensureDocumentStyles=module.l;SITE_SELECTORS=module.S;FOLLOW_KIND_ARTIST=module.F;FOLLOW_KIND_CHARACTER=module.n;FOLLOW_KIND_COPYRIGHT=module.o;loadFavSet=module.p;log=module.q;load$1=module.t;setFeatureState=module.u;scopeOfListUrl=module.v;setAiHiddenIn=module.w;parseRdwHash=module.x;AI_SCOPE_FOLLOWING=module.A;isCollectionDetailPage=module.z;AI_SCOPE_COLLECTIONS=module.B;SITE_ORIGIN=module.C;SEARCH_PARAM_TAGS=module.D;normalizeArtistTag=module.E;CSS_CLASS=module.G;getSyncState=module.H;getFeatureState=module.I;openSettingsAt=module.J;ensureStyleElement=module.K;RDW_OWN_PAGE_STYLE_ID=module.R;buildOwnPageCss=module.L;HEADER_SELECTOR$1=module.M;RDW_OWN_PAGE_CLASS=module.N;MENU_ITEM_ID=module.O;getFeatureEnabled=module.P;applyHeaderLayout=module.Q;readFavoritesSyncMode=module.T;FAVORITES_SYNC_MODE_FULL=module.U;runFavoritesSync=module.V;UI_TEXT=module.W;createDynamicCollection=module.X;Q$1=module.Y;RDW_PAGE_ROOT_ID=module.Z;markFavoritesCurrent=module._;NAVBAR_SELECTOR=module.$;FEED_MENU_ITEM_ID=module.a0;RDW_HASH_COLLECTIONS=module.a1;MENU_LABEL=module.a2;RDW_HASH_FOLLOWING=module.a3;resolveFavoritesUserId=module.a4;RDW_HASH_STATS=module.a5;MY_FAVORITES_CONTAINER_ID=module.a6;RDW_HASH_SETTINGS=module.a7;NAV_DUE_CLASS=module.a8;rdwPageHash=module.a9;createFavoritesSyncTabId=module.aa;APPEARANCE_BACKGROUND_KEY=module.ab;readArtistsMirror=module.ac;listArtistTags=module.ad;writeArtistsMirror=module.ae;reloadFromStorage=module.af;save=module.ag;CURRENT_PAGE_CLASS=module.ah;setSyncState=module.ai;SEARCH_PARAM_PAGE=module.aj;FAVORITES_PAGE=module.ak;FAVORITES_SECTION_VIEW=module.al;SEARCH_PATH=module.am;a=module.an;OverlayInPlace=module.ao;applyTokenProperties=module.ap;resolveAppearancePalette=module.aq;menuRouteForPage=module.ar;getSiteSkinCss=module.as;KIT_CONTROL_HEIGHT_VAR=module.at;KIT_CONTROL_FONT_VAR=module.au;MOTION_PAGE_CSS=module.av;$$1=module.aw;PANEL_UI_CLASS=module.ax;TOKEN_VAR=module.ay;RDW_THEME_ATTR=module.az;APPEARANCE_THEME_SITE=module.aA;APPEARANCE_THEME_SITE_DARK=module.aB;SITE_LIGHT_C_BG=module.aC;SITE_LIGHT_C_BG_ALT=module.aD;SITE_DARK_C_BG=module.aE;SITE_DARK_C_BORDER=module.aF;APPEARANCE_BACKGROUND_TOO_LARGE=module.aG;}],execute:(function(){exports({S:writeViewMode,b:isViewMode,c:navigateToRdwRoute,d:currentBackupStatus,f:readLastBackup,l:installSiteMenu,n:loadBackground,o:readTagSets,p:rememberBackup,r:saveBackground,s:writeTagSets,startApp:startApp,t:clearBackground,u:markBackupDue,x:readViewMode});/** Matches host.tsx page title class (owned there; styled here for site polish). */
 var PAGE_TITLE_CLASS$1 = "rdw-page-title";
 /** Matches kit SectionLabel class. */
 var SECTION_LABEL_CLASS = "rdw-section-label";
@@ -27604,35 +27755,35 @@ var followingFactory = null;
 var statsFactory = null;
 function getSettingsFactory() {
 	if (settingsFactory === null) settingsFactory = async () => {
-		const mod = await module.import('./settings-page-D-awvW1i-DjGUSRti.js');
+		const mod = await module.import('./settings-page-Bxc0qFYD-B1jdoo2M.js');
 		return /* @__PURE__ */ a(mod.SettingsPage, {});
 	};
 	return settingsFactory;
 }
 function getCollectionsFactory() {
 	if (collectionsFactory === null) collectionsFactory = async () => {
-		const mod = await module.import('./collections-page-BvL8zYux-C7Wq5wAg.js');
+		const mod = await module.import('./collections-page-CCDlZc4--Cb-dneVM.js');
 		return /* @__PURE__ */ a(mod.CollectionsPage, {});
 	};
 	return collectionsFactory;
 }
 function getFollowingFactory() {
 	if (followingFactory === null) followingFactory = async () => {
-		const mod = await module.import('./following-page-DZe8prpC-7x9NnxU3.js');
+		const mod = await module.import('./following-page-DctQ81aC-CLew_7pU.js');
 		return /* @__PURE__ */ a(mod.FollowingPage, {});
 	};
 	return followingFactory;
 }
 function getStatsFactory() {
 	if (statsFactory === null) statsFactory = async () => {
-		const mod = await module.import('./stats-section-CVOKgXZC-CN4wUxAT.js');
+		const mod = await module.import('./stats-section-ChnopvdS-CN4wUxAT.js');
 		return /* @__PURE__ */ a(mod.StatsPage, {});
 	};
 	return statsFactory;
 }
 function collectionDetailFactory(collectionId) {
 	return async () => {
-		const mod = await module.import('./collection-detail-page-B-jrYewR-ySAqBGHF.js');
+		const mod = await module.import('./collection-detail-page-COljyiZ7-5mCLkKq6.js');
 		return /* @__PURE__ */ a(mod.CollectionDetailPage, { collectionId }, collectionId);
 	};
 }
@@ -29525,7 +29676,7 @@ async function startApp() {
 	maybeResumeFavoritesSync();
 	recordStatsPoint();
 }})}}));
-System.register("./settings-page-D-awvW1i-DjGUSRti.js", ['./___monkey.entry.js','./app-EtNgmmKU-JWIj56GW.js','./format-date-BzlgeVEi-Bc3e-WAe.js'],(function(exports){'use strict';var d,T,A,settingsSectionFromHash,F,SETTINGS_GROUPS,SETTINGS_SECTION_FAVORITES,a,SearchField,PANEL_UI_CLASS,Card,Switch,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,EmptyState,Button,STICKY_TOP,settingsSectionHash,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,setGridFavButtonsVisible,isFeatureEnabled,FEATURES,featureSettingsGroup,SETTINGS_GROUP,NumberField,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,setFeatureEnabled,setAiHiddenEverywhere,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,STATS_MENU_SETTING_LABEL,STATS_MENU_SWITCH_ID,STICKY_HEADER_SETTING_LABEL,STICKY_HEADER_SWITCH_ID,applyStickyHeader,$$1,P$1,getAppearance,applyAppearanceTheme,getSiteSkinCss,APPEARANCE_THEME_CUSTOM,KIT_FOCUS_CSS,SectionLabel,Select,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,Segmented,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,TextField,clampBackgroundDim,Dialog,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,clearFeatureState,applyCssOnlyFeatureEnabled,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,applyCssOnlyFeatureChoice,getFeatureChoice,ProgressBar,QueryField,IconButton,IconX,IconPlus,createAutocompleteQuerier,useTagKindLookup,b,readSiteBlacklist,AutocompleteField,Chip,chipKindOfTag,createDefaultCustomTheme,AppearanceThemeSchema,prepareBackgroundImageFile,runFavoritesSync,log,getSyncState,clearApiCredentials,parseApiCredentials,setApiCredentials,DEFAULT_FILE_MASK,FILE_MASK_TOKENS,toggleMaskToken,maskHasToken,writeSiteBlacklist,writeFileMask,readFileMask,buildFileName,load$1,createDefaultStorage,clearStorageCache,clearFavsCache,setAppearance,loadFavSet,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,isSiteUrl,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,gridDensityFeature,FAVORITES_SYNC_MODE_INCREMENTAL,TAG_KIND_LOOKUP_SETTING_ID,STATS_MENU_SETTING_ID,STICKY_HEADER_SETTING_ID,FAVORITES_SYNC_PAGE_PAUSE_MS,hasApiCredentials,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureEnabled,aiHiddenEverywhere,takeSettingsSection,getFeatureChoiceValue,getScreenPixelSize,SETTINGS_SECTION_UPLOAD,installSiteMenu,loadBackground,TAG_SET_TAGS_MAX,clearBackground,saveBackground,writeTagSets,currentBackupStatus,readLastBackup,markBackupDue,rememberBackup,readTagSets,formatDayTime;return{setters:[function(module){d=module.aH;T=module.aI;A=module.aJ;settingsSectionFromHash=module.aK;F=module.aL;SETTINGS_GROUPS=module.aM;SETTINGS_SECTION_FAVORITES=module.aN;a=module.an;SearchField=module.aO;PANEL_UI_CLASS=module.ax;Card=module.aP;Switch=module.aQ;UI_TEXT=module.W;TWEAKS_SWITCH_ID=module.aR;setTweaksEnabled=module.aS;EmptyState=module.aT;Button=module.aU;STICKY_TOP=module.aV;settingsSectionHash=module.aW;GRID_FAV_CHECKBOX_ID=module.aX;setGridFavButtonsEnabled=module.aY;setGridFavButtonsVisible=module.aZ;isFeatureEnabled=module.a_;FEATURES=module.a$;featureSettingsGroup=module.b0;SETTINGS_GROUP=module.b1;NumberField=module.b2;PLAYLIST_CHUNK_SIZE_ID=module.b3;setPlaylistChunkSize=module.b4;getPlaylistChunkSize=module.b5;setFeatureEnabled=module.b6;setAiHiddenEverywhere=module.b7;UPDATES_GROUP_SIZE_ID=module.b8;setUpdatesGroupSize=module.b9;getUpdatesGroupSize=module.ba;STATS_MENU_SETTING_LABEL=module.bb;STATS_MENU_SWITCH_ID=module.bc;STICKY_HEADER_SETTING_LABEL=module.bd;STICKY_HEADER_SWITCH_ID=module.be;applyStickyHeader=module.bf;$$1=module.aw;P$1=module.bg;getAppearance=module.g;applyAppearanceTheme=module.f;getSiteSkinCss=module.as;APPEARANCE_THEME_CUSTOM=module.bh;KIT_FOCUS_CSS=module.bi;SectionLabel=module.bj;Select=module.bk;APPEARANCE_THEME_SITE=module.aA;APPEARANCE_THEME_SITE_DARK=module.aB;APPEARANCE_THEME_LIGHT=module.bl;APPEARANCE_THEME_DARK=module.bm;Segmented=module.bn;APPEARANCE_CUSTOM_BASE_LIGHT=module.bo;APPEARANCE_CUSTOM_BASE_DARK=module.bp;TextField=module.bq;clampBackgroundDim=module.br;Dialog=module.bs;featurePanelLabel=module.bt;FEATURE_CHECKBOX_ID_PREFIX=module.bu;clearFeatureState=module.bv;applyCssOnlyFeatureEnabled=module.bw;FEATURE_CHOICE_ID_PREFIX=module.bx;setFeatureChoiceValue=module.by;applyCssOnlyFeatureChoice=module.bz;getFeatureChoice=module.bA;ProgressBar=module.bB;QueryField=module.bC;IconButton=module.bD;IconX=module.bE;IconPlus=module.bF;createAutocompleteQuerier=module.bG;useTagKindLookup=module.bH;b=module.bI;readSiteBlacklist=module.bJ;AutocompleteField=module.bK;Chip=module.bL;chipKindOfTag=module.bM;createDefaultCustomTheme=module.bN;AppearanceThemeSchema=module.bO;prepareBackgroundImageFile=module.bP;runFavoritesSync=module.V;log=module.q;getSyncState=module.H;clearApiCredentials=module.bQ;parseApiCredentials=module.bR;setApiCredentials=module.bS;DEFAULT_FILE_MASK=module.bT;FILE_MASK_TOKENS=module.bU;toggleMaskToken=module.bV;maskHasToken=module.bW;writeSiteBlacklist=module.bX;writeFileMask=module.bY;readFileMask=module.bZ;buildFileName=module.b_;load$1=module.t;createDefaultStorage=module.b$;clearStorageCache=module.c0;clearFavsCache=module.c1;setAppearance=module.c2;loadFavSet=module.p;readFavoritesSyncMode=module.T;FAVORITES_SYNC_MODE_FULL=module.U;object=module.c3;StorageSchema=module.c4;optional=module.c5;string=module.c6;FavsSchema=module.c7;literal=module.c8;IMPORT_SCHEMA_ERROR_PREFIX=module.c9;isSiteUrl=module.ca;stripLegacyPanelWindowSize=module.cb;save=module.ag;migrateMarksFavToFavs=module.cc;FAVS_STORAGE_KEY=module.cd;createDefaultFavs=module.ce;parseFavsStrict=module.cf;STORAGE_BACKUP_KEY=module.cg;extractFavIdsFromMarks=module.ch;gridDensityFeature=module.ci;FAVORITES_SYNC_MODE_INCREMENTAL=module.cj;TAG_KIND_LOOKUP_SETTING_ID=module.ck;STATS_MENU_SETTING_ID=module.cl;STICKY_HEADER_SETTING_ID=module.cm;FAVORITES_SYNC_PAGE_PAUSE_MS=module.cn;hasApiCredentials=module.co;getTweaksEnabled=module.cp;getGridFavButtonsEnabled=module.cq;getFeatureEnabled=module.P;aiHiddenEverywhere=module.cr;takeSettingsSection=module.cs;getFeatureChoiceValue=module.ct;getScreenPixelSize=module.cu;},function(module){SETTINGS_SECTION_UPLOAD=module.i;installSiteMenu=module.l;loadBackground=module.n;TAG_SET_TAGS_MAX=module.a;clearBackground=module.t;saveBackground=module.r;writeTagSets=module.s;currentBackupStatus=module.d;readLastBackup=module.f;markBackupDue=module.u;rememberBackup=module.p;readTagSets=module.o;},function(module){formatDayTime=module.f;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
+System.register("./settings-page-Bxc0qFYD-B1jdoo2M.js", ['./___monkey.entry.js','./app-D7g8CxOS-D1eDlOpt.js','./format-date-BzlgeVEi-Bc3e-WAe.js'],(function(exports){'use strict';var d,T,A,settingsSectionFromHash,F,SETTINGS_GROUPS,SETTINGS_SECTION_FAVORITES,a,SearchField,PANEL_UI_CLASS,Card,Switch,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,EmptyState,Button,STICKY_TOP,settingsSectionHash,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,setGridFavButtonsVisible,isFeatureEnabled,FEATURES,featureSettingsGroup,SETTINGS_GROUP,NumberField,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,setFeatureEnabled,setAiHiddenEverywhere,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,STATS_MENU_SETTING_LABEL,STATS_MENU_SWITCH_ID,STICKY_HEADER_SETTING_LABEL,STICKY_HEADER_SWITCH_ID,applyStickyHeader,$$1,P$1,getAppearance,applyAppearanceTheme,getSiteSkinCss,APPEARANCE_THEME_CUSTOM,KIT_FOCUS_CSS,SectionLabel,Select,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,Segmented,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,TextField,clampBackgroundDim,Dialog,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,clearFeatureState,applyCssOnlyFeatureEnabled,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,applyCssOnlyFeatureChoice,getFeatureChoice,ProgressBar,QueryField,IconButton,IconX,IconPlus,createAutocompleteQuerier,useTagKindLookup,b,readSiteBlacklist,AutocompleteField,Chip,chipKindOfTag,createDefaultCustomTheme,AppearanceThemeSchema,prepareBackgroundImageFile,runFavoritesSync,log,getSyncState,clearApiCredentials,parseApiCredentials,setApiCredentials,DEFAULT_FILE_MASK,FILE_MASK_TOKENS,toggleMaskToken,maskHasToken,writeSiteBlacklist,writeFileMask,readFileMask,buildFileName,load$1,createDefaultStorage,clearStorageCache,clearFavsCache,setAppearance,loadFavSet,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,isSiteUrl,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,gridDensityFeature,FAVORITES_SYNC_MODE_INCREMENTAL,TAG_KIND_LOOKUP_SETTING_ID,STATS_MENU_SETTING_ID,STICKY_HEADER_SETTING_ID,FAVORITES_SYNC_PAGE_PAUSE_MS,hasApiCredentials,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureEnabled,aiHiddenEverywhere,takeSettingsSection,getFeatureChoiceValue,getScreenPixelSize,SETTINGS_SECTION_UPLOAD,installSiteMenu,loadBackground,TAG_SET_TAGS_MAX,clearBackground,saveBackground,writeTagSets,currentBackupStatus,readLastBackup,markBackupDue,rememberBackup,readTagSets,formatDayTime;return{setters:[function(module){d=module.aH;T=module.aI;A=module.aJ;settingsSectionFromHash=module.aK;F=module.aL;SETTINGS_GROUPS=module.aM;SETTINGS_SECTION_FAVORITES=module.aN;a=module.an;SearchField=module.aO;PANEL_UI_CLASS=module.ax;Card=module.aP;Switch=module.aQ;UI_TEXT=module.W;TWEAKS_SWITCH_ID=module.aR;setTweaksEnabled=module.aS;EmptyState=module.aT;Button=module.aU;STICKY_TOP=module.aV;settingsSectionHash=module.aW;GRID_FAV_CHECKBOX_ID=module.aX;setGridFavButtonsEnabled=module.aY;setGridFavButtonsVisible=module.aZ;isFeatureEnabled=module.a_;FEATURES=module.a$;featureSettingsGroup=module.b0;SETTINGS_GROUP=module.b1;NumberField=module.b2;PLAYLIST_CHUNK_SIZE_ID=module.b3;setPlaylistChunkSize=module.b4;getPlaylistChunkSize=module.b5;setFeatureEnabled=module.b6;setAiHiddenEverywhere=module.b7;UPDATES_GROUP_SIZE_ID=module.b8;setUpdatesGroupSize=module.b9;getUpdatesGroupSize=module.ba;STATS_MENU_SETTING_LABEL=module.bb;STATS_MENU_SWITCH_ID=module.bc;STICKY_HEADER_SETTING_LABEL=module.bd;STICKY_HEADER_SWITCH_ID=module.be;applyStickyHeader=module.bf;$$1=module.aw;P$1=module.bg;getAppearance=module.g;applyAppearanceTheme=module.f;getSiteSkinCss=module.as;APPEARANCE_THEME_CUSTOM=module.bh;KIT_FOCUS_CSS=module.bi;SectionLabel=module.bj;Select=module.bk;APPEARANCE_THEME_SITE=module.aA;APPEARANCE_THEME_SITE_DARK=module.aB;APPEARANCE_THEME_LIGHT=module.bl;APPEARANCE_THEME_DARK=module.bm;Segmented=module.bn;APPEARANCE_CUSTOM_BASE_LIGHT=module.bo;APPEARANCE_CUSTOM_BASE_DARK=module.bp;TextField=module.bq;clampBackgroundDim=module.br;Dialog=module.bs;featurePanelLabel=module.bt;FEATURE_CHECKBOX_ID_PREFIX=module.bu;clearFeatureState=module.bv;applyCssOnlyFeatureEnabled=module.bw;FEATURE_CHOICE_ID_PREFIX=module.bx;setFeatureChoiceValue=module.by;applyCssOnlyFeatureChoice=module.bz;getFeatureChoice=module.bA;ProgressBar=module.bB;QueryField=module.bC;IconButton=module.bD;IconX=module.bE;IconPlus=module.bF;createAutocompleteQuerier=module.bG;useTagKindLookup=module.bH;b=module.bI;readSiteBlacklist=module.bJ;AutocompleteField=module.bK;Chip=module.bL;chipKindOfTag=module.bM;createDefaultCustomTheme=module.bN;AppearanceThemeSchema=module.bO;prepareBackgroundImageFile=module.bP;runFavoritesSync=module.V;log=module.q;getSyncState=module.H;clearApiCredentials=module.bQ;parseApiCredentials=module.bR;setApiCredentials=module.bS;DEFAULT_FILE_MASK=module.bT;FILE_MASK_TOKENS=module.bU;toggleMaskToken=module.bV;maskHasToken=module.bW;writeSiteBlacklist=module.bX;writeFileMask=module.bY;readFileMask=module.bZ;buildFileName=module.b_;load$1=module.t;createDefaultStorage=module.b$;clearStorageCache=module.c0;clearFavsCache=module.c1;setAppearance=module.c2;loadFavSet=module.p;readFavoritesSyncMode=module.T;FAVORITES_SYNC_MODE_FULL=module.U;object=module.c3;StorageSchema=module.c4;optional=module.c5;string=module.c6;FavsSchema=module.c7;literal=module.c8;IMPORT_SCHEMA_ERROR_PREFIX=module.c9;isSiteUrl=module.ca;stripLegacyPanelWindowSize=module.cb;save=module.ag;migrateMarksFavToFavs=module.cc;FAVS_STORAGE_KEY=module.cd;createDefaultFavs=module.ce;parseFavsStrict=module.cf;STORAGE_BACKUP_KEY=module.cg;extractFavIdsFromMarks=module.ch;gridDensityFeature=module.ci;FAVORITES_SYNC_MODE_INCREMENTAL=module.cj;TAG_KIND_LOOKUP_SETTING_ID=module.ck;STATS_MENU_SETTING_ID=module.cl;STICKY_HEADER_SETTING_ID=module.cm;FAVORITES_SYNC_PAGE_PAUSE_MS=module.cn;hasApiCredentials=module.co;getTweaksEnabled=module.cp;getGridFavButtonsEnabled=module.cq;getFeatureEnabled=module.P;aiHiddenEverywhere=module.cr;takeSettingsSection=module.cs;getFeatureChoiceValue=module.ct;getScreenPixelSize=module.cu;},function(module){SETTINGS_SECTION_UPLOAD=module.i;installSiteMenu=module.l;loadBackground=module.n;TAG_SET_TAGS_MAX=module.a;clearBackground=module.t;saveBackground=module.r;writeTagSets=module.s;currentBackupStatus=module.d;readLastBackup=module.f;markBackupDue=module.u;rememberBackup=module.p;readTagSets=module.o;},function(module){formatDayTime=module.f;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
 var THEME_OPTIONS = [
 	{
 		value: APPEARANCE_THEME_SITE,
@@ -32190,7 +32341,7 @@ function SettingsPage() {
 		]
 	});
 }})}}));
-System.register("./collections-page-BvL8zYux-C7Wq5wAg.js", ['./___monkey.entry.js','./filter-terms-IaN29Uyw-Ds8M9dF7.js','./app-EtNgmmKU-JWIj56GW.js'],(function(exports){'use strict';var d,T,A,b,reloadFromStorage,load$1,listCollectionGroups,useEscape,a,SelectionBar,Button,UI_TEXT,Segmented,SearchField,Select,setFeatureState,AiPostsToggle,AI_SCOPE_COLLECTIONS,$$1,IconPlus,EmptyState,IconButton,IconX,Dialog,deleteCollection,deleteCollectionGroup,renameCollectionGroup,setCollectionGroup,createCollectionGroup,resolveCollectionKind,STICKY_TOP,RDW_THEME_ATTR,APPEARANCE_THEME_CUSTOM,isUnfilteredQuery,dynamicHasNew,TextField,QueryField,createDynamicCollection,createPlaylist,buildSearchUrl,alignSiteAiFilter,fetchNextPage,setDynamicCover,readFirstThumbUrls,readResultCount,setDynamicPostCount,setDynamicNewest,COLLECTION_KIND_POSTS,collectionDetailHash,readCoverMirror,COLLECTION_KIND_SEARCH,extractPostIdFromThumb,IconCheck,readCountMirror,dynamicCollectionMarkHash,serialize,getFeatureState,inGroupTab,MoveToGroupMenu,GroupTabs,countGroups,GroupDialogs,matchesAnyTerm,filterTerms,COLLECTION_TERM_SEPARATOR,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,PAGE_CENTRE_PADDING,COLLECTIONS_VIEW_STATE_ID,readViewMode;return{setters:[function(module){d=module.aH;T=module.aI;A=module.aJ;b=module.bI;reloadFromStorage=module.af;load$1=module.t;listCollectionGroups=module.cv;useEscape=module.cw;a=module.an;SelectionBar=module.cx;Button=module.aU;UI_TEXT=module.W;Segmented=module.bn;SearchField=module.aO;Select=module.bk;setFeatureState=module.u;AiPostsToggle=module.cy;AI_SCOPE_COLLECTIONS=module.B;$$1=module.aw;IconPlus=module.bF;EmptyState=module.aT;IconButton=module.bD;IconX=module.bE;Dialog=module.bs;deleteCollection=module.cz;deleteCollectionGroup=module.cA;renameCollectionGroup=module.cB;setCollectionGroup=module.cC;createCollectionGroup=module.cD;resolveCollectionKind=module.cE;STICKY_TOP=module.aV;RDW_THEME_ATTR=module.az;APPEARANCE_THEME_CUSTOM=module.bh;isUnfilteredQuery=module.cF;dynamicHasNew=module.cG;TextField=module.bq;QueryField=module.bC;createDynamicCollection=module.X;createPlaylist=module.cH;buildSearchUrl=module.cI;alignSiteAiFilter=module.i;fetchNextPage=module.cJ;setDynamicCover=module.cK;readFirstThumbUrls=module.cL;readResultCount=module.cM;setDynamicPostCount=module.cN;setDynamicNewest=module.cO;COLLECTION_KIND_POSTS=module.cP;collectionDetailHash=module.cQ;readCoverMirror=module.cR;COLLECTION_KIND_SEARCH=module.cS;extractPostIdFromThumb=module.cT;IconCheck=module.cU;readCountMirror=module.cV;dynamicCollectionMarkHash=module.cW;serialize=module.cX;getFeatureState=module.I;},function(module){inGroupTab=module.i;MoveToGroupMenu=module.M;GroupTabs=module.G;countGroups=module.c;GroupDialogs=module.a;matchesAnyTerm=module.m;filterTerms=module.f;COLLECTION_TERM_SEPARATOR=module.C;},function(module){VIEW_OPTIONS=module.y;VIEW_LABEL=module._;isViewMode=module.b;writeViewMode=module.S;PAGE_CENTRE_PADDING=module.g;COLLECTIONS_VIEW_STATE_ID=module.m;readViewMode=module.x;}],execute:(function(){exports("CollectionsPage",CollectionsPage);/**
+System.register("./collections-page-CCDlZc4--Cb-dneVM.js", ['./___monkey.entry.js','./filter-terms-IaN29Uyw-Ds8M9dF7.js','./app-D7g8CxOS-D1eDlOpt.js'],(function(exports){'use strict';var d,T,A,b,reloadFromStorage,load$1,listCollectionGroups,useEscape,a,SelectionBar,Button,UI_TEXT,Segmented,SearchField,Select,setFeatureState,AiPostsToggle,AI_SCOPE_COLLECTIONS,$$1,IconPlus,EmptyState,IconButton,IconX,Dialog,deleteCollection,deleteCollectionGroup,renameCollectionGroup,setCollectionGroup,createCollectionGroup,resolveCollectionKind,STICKY_TOP,RDW_THEME_ATTR,APPEARANCE_THEME_CUSTOM,isUnfilteredQuery,dynamicHasNew,TextField,QueryField,createDynamicCollection,createPlaylist,buildSearchUrl,alignSiteAiFilter,fetchNextPage,setDynamicCover,readFirstThumbUrls,readResultCount,setDynamicPostCount,setDynamicNewest,COLLECTION_KIND_POSTS,collectionDetailHash,readCoverMirror,COLLECTION_KIND_SEARCH,extractPostIdFromThumb,IconCheck,readCountMirror,dynamicCollectionMarkHash,serialize,getFeatureState,inGroupTab,MoveToGroupMenu,GroupTabs,countGroups,GroupDialogs,matchesAnyTerm,filterTerms,COLLECTION_TERM_SEPARATOR,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,PAGE_CENTRE_PADDING,COLLECTIONS_VIEW_STATE_ID,readViewMode;return{setters:[function(module){d=module.aH;T=module.aI;A=module.aJ;b=module.bI;reloadFromStorage=module.af;load$1=module.t;listCollectionGroups=module.cv;useEscape=module.cw;a=module.an;SelectionBar=module.cx;Button=module.aU;UI_TEXT=module.W;Segmented=module.bn;SearchField=module.aO;Select=module.bk;setFeatureState=module.u;AiPostsToggle=module.cy;AI_SCOPE_COLLECTIONS=module.B;$$1=module.aw;IconPlus=module.bF;EmptyState=module.aT;IconButton=module.bD;IconX=module.bE;Dialog=module.bs;deleteCollection=module.cz;deleteCollectionGroup=module.cA;renameCollectionGroup=module.cB;setCollectionGroup=module.cC;createCollectionGroup=module.cD;resolveCollectionKind=module.cE;STICKY_TOP=module.aV;RDW_THEME_ATTR=module.az;APPEARANCE_THEME_CUSTOM=module.bh;isUnfilteredQuery=module.cF;dynamicHasNew=module.cG;TextField=module.bq;QueryField=module.bC;createDynamicCollection=module.X;createPlaylist=module.cH;buildSearchUrl=module.cI;alignSiteAiFilter=module.i;fetchNextPage=module.cJ;setDynamicCover=module.cK;readFirstThumbUrls=module.cL;readResultCount=module.cM;setDynamicPostCount=module.cN;setDynamicNewest=module.cO;COLLECTION_KIND_POSTS=module.cP;collectionDetailHash=module.cQ;readCoverMirror=module.cR;COLLECTION_KIND_SEARCH=module.cS;extractPostIdFromThumb=module.cT;IconCheck=module.cU;readCountMirror=module.cV;dynamicCollectionMarkHash=module.cW;serialize=module.cX;getFeatureState=module.I;},function(module){inGroupTab=module.i;MoveToGroupMenu=module.M;GroupTabs=module.G;countGroups=module.c;GroupDialogs=module.a;matchesAnyTerm=module.m;filterTerms=module.f;COLLECTION_TERM_SEPARATOR=module.C;},function(module){VIEW_OPTIONS=module.y;VIEW_LABEL=module._;isViewMode=module.b;writeViewMode=module.S;PAGE_CENTRE_PADDING=module.g;COLLECTIONS_VIEW_STATE_ID=module.m;readViewMode=module.x;}],execute:(function(){exports("CollectionsPage",CollectionsPage);/**
 * "Check for new" on the Collections page: reads the first results page of
 * every saved search. From it the card gets its cover and post count (as on a
 * visit to the search), and the newest post is remembered, so a card can say
@@ -33544,7 +33695,7 @@ function CollectionsPage() {
 		]
 	});
 }})}}));
-System.register("./following-page-DZe8prpC-7x9NnxU3.js", ['./___monkey.entry.js','./filter-terms-IaN29Uyw-Ds8M9dF7.js','./app-EtNgmmKU-JWIj56GW.js'],(function(exports){'use strict';var d,T,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST,A,reloadFromStorage,getSeenPostId,listFollowGroups,followKindOf,FOLLOW_KIND_ARTIST,useEscape,a,EmptyState,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,$$1,Button,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,SelectionBar,Segmented,SearchField,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,Select,FOLLOW_KIND_CHARACTER,FOLLOW_KIND_COPYRIGHT,AiPostsToggle,AI_SCOPE_FOLLOWING,UI_TEXT,ProgressBar,deleteFollowGroup,renameFollowGroup,setFollowGroup,createFollowGroup,Dialog,removeArtist,load$1,completeLastQueryToken,readLastQueryToken,STICKY_TOP,RDW_THEME_ATTR,APPEARANCE_THEME_CUSTOM,IconPlus,buildSearchUrl,TAG_TYPE_INCLUDE,IconCheck,IconButton,IconX,removeArtists,alignSiteAiFilter,rememberArtistSnapshot,fetchArtistSnapshot,log,addArtists,AutocompleteField,filterTerms,MoveToGroupMenu,GroupTabs,countGroups,GroupDialogs,matchesAnyTerm,inGroupTab,ARTIST_TERM_SEPARATOR,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,PAGE_CENTRE_PADDING,FOLLOWING_VIEW_STATE_ID,readViewMode;return{setters:[function(module){d=module.aH;T=module.aI;createAutocompleteQuerier=module.bG;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.cY;A=module.aJ;reloadFromStorage=module.af;getSeenPostId=module.cZ;listFollowGroups=module.c_;followKindOf=module.c$;FOLLOW_KIND_ARTIST=module.F;useEscape=module.cw;a=module.an;EmptyState=module.aT;ARTISTS_EMPTY_HINT=module.d0;ARTISTS_EMPTY_TITLE=module.d1;$$1=module.aw;Button=module.aU;SEARCH_PATH=module.am;SEARCH_PARAM_PAGE=module.aj;SEARCH_PAGE=module.d2;SEARCH_SECTION=module.d3;SelectionBar=module.cx;Segmented=module.bn;SearchField=module.aO;ARTIST_FILTER_LABEL=module.d4;ARTIST_FILTER_ID=module.d5;Select=module.bk;FOLLOW_KIND_CHARACTER=module.n;FOLLOW_KIND_COPYRIGHT=module.o;AiPostsToggle=module.cy;AI_SCOPE_FOLLOWING=module.A;UI_TEXT=module.W;ProgressBar=module.bB;deleteFollowGroup=module.d6;renameFollowGroup=module.d7;setFollowGroup=module.d8;createFollowGroup=module.d9;Dialog=module.bs;removeArtist=module.da;load$1=module.t;completeLastQueryToken=module.db;readLastQueryToken=module.dc;STICKY_TOP=module.aV;RDW_THEME_ATTR=module.az;APPEARANCE_THEME_CUSTOM=module.bh;IconPlus=module.bF;buildSearchUrl=module.cI;TAG_TYPE_INCLUDE=module.dd;IconCheck=module.cU;IconButton=module.bD;IconX=module.bE;removeArtists=module.de;alignSiteAiFilter=module.i;rememberArtistSnapshot=module.df;fetchArtistSnapshot=module.dg;log=module.q;addArtists=module.dh;AutocompleteField=module.bK;},function(module){filterTerms=module.f;MoveToGroupMenu=module.M;GroupTabs=module.G;countGroups=module.c;GroupDialogs=module.a;matchesAnyTerm=module.m;inGroupTab=module.i;ARTIST_TERM_SEPARATOR=module.A;},function(module){VIEW_OPTIONS=module.y;VIEW_LABEL=module._;isViewMode=module.b;writeViewMode=module.S;PAGE_CENTRE_PADDING=module.g;FOLLOWING_VIEW_STATE_ID=module.h;readViewMode=module.x;}],execute:(function(){exports("FollowingPage",FollowingPage);var EVENT_PAGESHOW = "pageshow";
+System.register("./following-page-DctQ81aC-CLew_7pU.js", ['./___monkey.entry.js','./filter-terms-IaN29Uyw-Ds8M9dF7.js','./app-D7g8CxOS-D1eDlOpt.js'],(function(exports){'use strict';var d,T,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST,A,reloadFromStorage,getSeenPostId,listFollowGroups,followKindOf,FOLLOW_KIND_ARTIST,useEscape,a,EmptyState,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,$$1,Button,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,SelectionBar,Segmented,SearchField,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,Select,FOLLOW_KIND_CHARACTER,FOLLOW_KIND_COPYRIGHT,AiPostsToggle,AI_SCOPE_FOLLOWING,UI_TEXT,ProgressBar,deleteFollowGroup,renameFollowGroup,setFollowGroup,createFollowGroup,Dialog,removeArtist,load$1,completeLastQueryToken,readLastQueryToken,STICKY_TOP,RDW_THEME_ATTR,APPEARANCE_THEME_CUSTOM,IconPlus,buildSearchUrl,TAG_TYPE_INCLUDE,IconCheck,IconButton,IconX,removeArtists,alignSiteAiFilter,rememberArtistSnapshot,fetchArtistSnapshot,log,addArtists,AutocompleteField,filterTerms,MoveToGroupMenu,GroupTabs,countGroups,GroupDialogs,matchesAnyTerm,inGroupTab,ARTIST_TERM_SEPARATOR,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,PAGE_CENTRE_PADDING,FOLLOWING_VIEW_STATE_ID,readViewMode;return{setters:[function(module){d=module.aH;T=module.aI;createAutocompleteQuerier=module.bG;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.cY;A=module.aJ;reloadFromStorage=module.af;getSeenPostId=module.cZ;listFollowGroups=module.c_;followKindOf=module.c$;FOLLOW_KIND_ARTIST=module.F;useEscape=module.cw;a=module.an;EmptyState=module.aT;ARTISTS_EMPTY_HINT=module.d0;ARTISTS_EMPTY_TITLE=module.d1;$$1=module.aw;Button=module.aU;SEARCH_PATH=module.am;SEARCH_PARAM_PAGE=module.aj;SEARCH_PAGE=module.d2;SEARCH_SECTION=module.d3;SelectionBar=module.cx;Segmented=module.bn;SearchField=module.aO;ARTIST_FILTER_LABEL=module.d4;ARTIST_FILTER_ID=module.d5;Select=module.bk;FOLLOW_KIND_CHARACTER=module.n;FOLLOW_KIND_COPYRIGHT=module.o;AiPostsToggle=module.cy;AI_SCOPE_FOLLOWING=module.A;UI_TEXT=module.W;ProgressBar=module.bB;deleteFollowGroup=module.d6;renameFollowGroup=module.d7;setFollowGroup=module.d8;createFollowGroup=module.d9;Dialog=module.bs;removeArtist=module.da;load$1=module.t;completeLastQueryToken=module.db;readLastQueryToken=module.dc;STICKY_TOP=module.aV;RDW_THEME_ATTR=module.az;APPEARANCE_THEME_CUSTOM=module.bh;IconPlus=module.bF;buildSearchUrl=module.cI;TAG_TYPE_INCLUDE=module.dd;IconCheck=module.cU;IconButton=module.bD;IconX=module.bE;removeArtists=module.de;alignSiteAiFilter=module.i;rememberArtistSnapshot=module.df;fetchArtistSnapshot=module.dg;log=module.q;addArtists=module.dh;AutocompleteField=module.bK;},function(module){filterTerms=module.f;MoveToGroupMenu=module.M;GroupTabs=module.G;countGroups=module.c;GroupDialogs=module.a;matchesAnyTerm=module.m;inGroupTab=module.i;ARTIST_TERM_SEPARATOR=module.A;},function(module){VIEW_OPTIONS=module.y;VIEW_LABEL=module._;isViewMode=module.b;writeViewMode=module.S;PAGE_CENTRE_PADDING=module.g;FOLLOWING_VIEW_STATE_ID=module.h;readViewMode=module.x;}],execute:(function(){exports("FollowingPage",FollowingPage);var EVENT_PAGESHOW = "pageshow";
 var PAGE_CLASS = "rdw-following-page";
 var STICKY_CLASS = "rdw-following-sticky";
 var TOOLBAR_CLASS = "rdw-following-toolbar";
@@ -35593,7 +35744,7 @@ function matchesAnyTerm(texts, terms) {
 	const lowered = texts.map((text) => text.toLowerCase());
 	return terms.some((term) => lowered.some((text) => text.includes(term)));
 }})}}));
-System.register("./stats-section-CVOKgXZC-CN4wUxAT.js", ['./___monkey.entry.js','./format-date-BzlgeVEi-Bc3e-WAe.js'],(function(exports){'use strict';var a,PANEL_UI_CLASS,Card,loadFavSet,load$1,resolveCollectionKind,d,A,Button,readFavoriteIndex,topFavoriteTags,getFeatureState,setFeatureState,object,number,optional,string,int,FETCH_CREDENTIALS,SEARCH_PATH,SEARCH_PARAM_PAGE,formatDayTime,formatMonth;return{setters:[function(module){a=module.an;PANEL_UI_CLASS=module.ax;Card=module.aP;loadFavSet=module.p;load$1=module.t;resolveCollectionKind=module.cE;d=module.aH;A=module.aJ;Button=module.aU;readFavoriteIndex=module.dm;topFavoriteTags=module.dn;getFeatureState=module.I;setFeatureState=module.u;object=module.c3;number=module.dp;optional=module.c5;string=module.c6;int=module.dq;FETCH_CREDENTIALS=module.dr;SEARCH_PATH=module.am;SEARCH_PARAM_PAGE=module.aj;},function(module){formatDayTime=module.f;formatMonth=module.a;}],execute:(function(){exports("StatsPage",StatsPage);/**
+System.register("./stats-section-ChnopvdS-CN4wUxAT.js", ['./___monkey.entry.js','./format-date-BzlgeVEi-Bc3e-WAe.js'],(function(exports){'use strict';var a,PANEL_UI_CLASS,Card,loadFavSet,load$1,resolveCollectionKind,d,A,Button,readFavoriteIndex,topFavoriteTags,getFeatureState,setFeatureState,object,number,optional,string,int,FETCH_CREDENTIALS,SEARCH_PATH,SEARCH_PARAM_PAGE,formatDayTime,formatMonth;return{setters:[function(module){a=module.an;PANEL_UI_CLASS=module.ax;Card=module.aP;loadFavSet=module.p;load$1=module.t;resolveCollectionKind=module.cE;d=module.aH;A=module.aJ;Button=module.aU;readFavoriteIndex=module.dm;topFavoriteTags=module.dn;getFeatureState=module.I;setFeatureState=module.u;object=module.c3;number=module.dp;optional=module.c5;string=module.c6;int=module.dq;FETCH_CREDENTIALS=module.dr;SEARCH_PATH=module.am;SEARCH_PARAM_PAGE=module.aj;},function(module){formatDayTime=module.f;formatMonth=module.a;}],execute:(function(){exports("StatsPage",StatsPage);/**
 * The numbers of the user's own profile page on the site, for Statistics.
 *
 * Read only when the user presses "Refresh profile": two requests with a
@@ -36302,7 +36453,7 @@ function formatMonth(time) {
 		year: "numeric"
 	});
 }})}}));
-System.register("./collection-detail-page-B-jrYewR-ySAqBGHF.js", ['./___monkey.entry.js','./app-EtNgmmKU-JWIj56GW.js'],(function(exports){'use strict';var d,useEscape,T,w$1,b,downloadsAvailable,a,$$1,SelectionBar,Button,shuffleCollection,resetCollectionOrder,UI_TEXT,EmptyState,Dialog,TextField,Toast,getCollectionOrder,listPlaylists,RDW_HASH_COLLECTIONS,isDownloadBusy,startDownload,removePostsFromCollection,movePostInCollection,renameCollection,deleteCollection,RDW_ROUTE_COLLECTIONS,restorePosts,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION_VIEW,SEARCH_PATH,collectionQueueHash,navigateToRdwRoute;return{setters:[function(module){d=module.aH;useEscape=module.cw;T=module.aI;w$1=module.ds;b=module.bI;downloadsAvailable=module.dt;a=module.an;$$1=module.aw;SelectionBar=module.cx;Button=module.aU;shuffleCollection=module.du;resetCollectionOrder=module.dv;UI_TEXT=module.W;EmptyState=module.aT;Dialog=module.bs;TextField=module.bq;Toast=module.dw;getCollectionOrder=module.dx;listPlaylists=module.dy;RDW_HASH_COLLECTIONS=module.a1;isDownloadBusy=module.dz;startDownload=module.dA;removePostsFromCollection=module.dB;movePostInCollection=module.dC;renameCollection=module.dD;deleteCollection=module.cz;RDW_ROUTE_COLLECTIONS=module.dE;restorePosts=module.dF;SEARCH_PARAM_PAGE=module.aj;SEARCH_PAGE=module.d2;SEARCH_SECTION_VIEW=module.dG;SEARCH_PATH=module.am;collectionQueueHash=module.dH;},function(module){navigateToRdwRoute=module.c;}],execute:(function(){exports("CollectionDetailPage",CollectionDetailPage);var CELL_SIZE_PX = 200;
+System.register("./collection-detail-page-COljyiZ7-5mCLkKq6.js", ['./___monkey.entry.js','./app-D7g8CxOS-D1eDlOpt.js'],(function(exports){'use strict';var d,useEscape,T,w$1,b,downloadsAvailable,a,$$1,SelectionBar,Button,shuffleCollection,resetCollectionOrder,UI_TEXT,EmptyState,Dialog,TextField,Toast,getCollectionOrder,listPlaylists,RDW_HASH_COLLECTIONS,isDownloadBusy,startDownload,removePostsFromCollection,movePostInCollection,renameCollection,deleteCollection,RDW_ROUTE_COLLECTIONS,restorePosts,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION_VIEW,SEARCH_PATH,collectionQueueHash,navigateToRdwRoute;return{setters:[function(module){d=module.aH;useEscape=module.cw;T=module.aI;w$1=module.ds;b=module.bI;downloadsAvailable=module.dt;a=module.an;$$1=module.aw;SelectionBar=module.cx;Button=module.aU;shuffleCollection=module.du;resetCollectionOrder=module.dv;UI_TEXT=module.W;EmptyState=module.aT;Dialog=module.bs;TextField=module.bq;Toast=module.dw;getCollectionOrder=module.dx;listPlaylists=module.dy;RDW_HASH_COLLECTIONS=module.a1;isDownloadBusy=module.dz;startDownload=module.dA;removePostsFromCollection=module.dB;movePostInCollection=module.dC;renameCollection=module.dD;deleteCollection=module.cz;RDW_ROUTE_COLLECTIONS=module.dE;restorePosts=module.dF;SEARCH_PARAM_PAGE=module.aj;SEARCH_PAGE=module.d2;SEARCH_SECTION_VIEW=module.dG;SEARCH_PATH=module.am;collectionQueueHash=module.dH;},function(module){navigateToRdwRoute=module.c;}],execute:(function(){exports("CollectionDetailPage",CollectionDetailPage);var CELL_SIZE_PX = 200;
 var GRID_GAP_PX = 4;
 var SECTION_GAP_PX = 12;
 var ACTIONS_GAP_PX = 8;
