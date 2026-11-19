@@ -1,3 +1,4 @@
+import { chipKindOfTag } from "../ui/tag-chip-kind";
 import { rememberTagKinds } from "../site/tag-types";
 import {
   SEARCH_TOOLS_AI_ROW_BODY_CLASS,
@@ -560,12 +561,19 @@ function readTagTypeFromClassList(classList: DOMTokenList): TagType | null {
   return null;
 }
 
+/** The marks a row of the tag list has before the tag: the wiki, add, exclude. */
+const SIDEBAR_MARK_LINKS: readonly string[] = ["?", "+", "-"];
+const SINGLE_TOKEN = 1;
+
+/**
+ * The tag of a row of the tag list. A row is "? + - tag count": the link of
+ * the tag is the one that searches for this tag alone, and it is the last.
+ * Taking the first link gave "?" for every row, or the tag of the search the
+ * "+" adds to, and no chip of the panel was coloured.
+ */
 function extractSidebarTag(li: Element): string | null {
-  const links = li.querySelectorAll("a[href]");
+  const links = [...li.querySelectorAll("a[href]")].reverse();
   for (const node of links) {
-    if (!(node instanceof HTMLAnchorElement)) {
-      continue;
-    }
     const href = node.getAttribute("href");
     if (href === null || href.length === 0) {
       continue;
@@ -577,14 +585,18 @@ function extractSidebarTag(li: Element): string | null {
       continue;
     }
     const tags = url.searchParams.get(SEARCH_PARAM_TAGS);
-    if (tags !== null && tags.trim().length > 0) {
-      const first = parseTokens(tags)[0];
-      if (first !== undefined) {
-        return normalizeTagKey(bareTag(first));
-      }
+    if (tags === null) {
+      continue;
     }
+    const tokens = parseTokens(tags);
+    const only = tokens[0];
+    if (tokens.length === SINGLE_TOKEN && only !== undefined) {
+      return normalizeTagKey(bareTag(only));
+    }
+  }
+  for (const node of links) {
     const text = node.textContent?.trim() ?? "";
-    if (text.length > 0) {
+    if (text.length > 0 && !SIDEBAR_MARK_LINKS.includes(text)) {
       return normalizeTagKey(text);
     }
   }
@@ -828,7 +840,9 @@ function buildChipModels(tokens: readonly string[]): ChipModel[] {
       token,
       label: token,
       excluded,
-      chipKind: chipKindFromTagType(tagType),
+      // Not in the list beside the posts: what is remembered of the tag, or
+      // the kind it is followed as.
+      chipKind: tagType === null ? chipKindOfTag(bareTag(token)) : chipKindFromTagType(tagType),
       title: isMetaToken(token) ? token : null,
     });
     index += 1;

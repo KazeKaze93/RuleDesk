@@ -403,6 +403,24 @@ describe("searchToolsFeature", () => {
     expect(chipRoots()[1]?.classList.contains("rdw-chip--artist")).toBe(false);
   });
 
+  it("reads the tag of a row that has the wiki, add and exclude links before it", () => {
+    // A row of the list page (from Kaze): "? + - tag count".
+    const sidebar = document.createElement("ul");
+    sidebar.id = "tag-sidebar";
+    sidebar.innerHTML =
+      '<li class="tag-type-artist tag"><a href="index.php?page=wiki&amp;s=list&amp;search=nyx_x">?</a> ' +
+      '<a href="index.php?page=post&amp;s=list&amp;tags=other+nyx_x">+</a> ' +
+      '<a href="index.php?page=post&amp;s=list&amp;tags=other+-nyx_x">-</a> ' +
+      '<a href="index.php?page=post&amp;s=list&amp;tags=nyx_x">nyx x</a> <span class="tag-count">9</span></li>';
+    document.body.append(sidebar);
+
+    buildSearchForm("nyx_x other");
+    mountFeature();
+
+    expect(chipRoots()[0]?.classList.contains("rdw-chip--artist")).toBe(true);
+    expect(chipRoots()[1]?.classList.contains("rdw-chip--artist")).toBe(false);
+  });
+
   it("updates chips from site input events without stealing focus or navigating", () => {
     const assign = vi.fn();
     vi.stubGlobal("location", {

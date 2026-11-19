@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.62.2
+
+- The search panel on Posts: the dot of a tag's chip is in the colour of its kind again. The kind was read from the tag list beside the posts by the first link of a row, which on a list page is the "?" of the wiki, so every chip stayed grey. A tag that is not in that list takes the kind remembered of it, or the kind it is followed as
+
 ## 0.62.1
 
 - RuleDesk → Upload: the Tags field of a set completes the tag being typed from the site's list, as the other fields of tags do
