@@ -529,13 +529,19 @@ describe("site-skin CSS export", () => {
     expect(SITE_SKIN_CSS).toContain(`${host} .rdw-post-panel-tabpanel`);
     expect(SITE_SKIN_CSS).toContain(`${host} .rdw-post-panel-post-action`);
     expect(SITE_SKIN_CSS).toContain(`${host} .rdw-post-panel-fav`);
+    // The accent is for a Favorite that can be pressed: a disabled one keeps
+    // the kit's grey (it was bright blue on a deleted post).
+    expect(SITE_SKIN_CSS).not.toMatch(/\.rdw-post-panel-fav\.rdw-btn--primary\s*\{/);
+    expect(SITE_SKIN_CSS).toContain(
+      '.rdw-post-panel-fav.rdw-btn--primary:not(:disabled:not([aria-busy="true"])) {',
+    );
     expect(SITE_SKIN_CSS).toContain(`${host} .rdw-post-panel-original`);
     expect(SITE_SKIN_CSS).toContain(`${host} .rdw-tabs`);
     expect(SITE_SKIN_CSS).toContain(`${host} .rdw-tabs__tab`);
 
     expect(SITE_SKIN_CSS).toMatch(
       new RegExp(
-        `${host}\\s*\\.rdw-post-panel-fav\\.rdw-btn--primary\\s*\\{[^}]*background:\\s*var\\(--rdw-accent\\)[^}]*border-color:\\s*var\\(--rdw-accent\\)[^}]*color:\\s*var\\(--rdw-surface\\)`,
+        `${host}\\s*\\.rdw-post-panel-fav\\.rdw-btn--primary[^{]*\\{[^}]*background:\\s*var\\(--rdw-accent\\)[^}]*border-color:\\s*var\\(--rdw-accent\\)[^}]*color:\\s*var\\(--rdw-surface\\)`,
         "s",
       ),
     );
@@ -579,7 +585,7 @@ describe("site-skin CSS export", () => {
     );
     expect(SITE_SKIN_CSS).toMatch(
       new RegExp(
-        `${darkSel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s+#${POST_ACTIONS_ID}\\s*\\.rdw-post-panel-fav\\.rdw-btn--primary\\s*\\{[^}]*color:\\s*var\\(--rdw-text\\)`,
+        `${darkSel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s+#${POST_ACTIONS_ID}\\s*\\.rdw-post-panel-fav\\.rdw-btn--primary[^{]*\\{[^}]*color:\\s*var\\(--rdw-text\\)`,
         "s",
       ),
     );
@@ -588,7 +594,7 @@ describe("site-skin CSS export", () => {
     // Must not gate panel chrome solely under html.rdw-skin (breaks Site themes).
     expect(bare).not.toMatch(
       new RegExp(
-        `html\\.${RDW_SKIN_CLASS}\\s+#${POST_ACTIONS_ID}\\s*\\.rdw-post-panel-fav\\.rdw-btn--primary\\s*\\{[^}]*background:\\s*var\\(--rdw-accent\\)`,
+        `html\\.${RDW_SKIN_CLASS}\\s+#${POST_ACTIONS_ID}\\s*\\.rdw-post-panel-fav\\.rdw-btn--primary[^{]*\\{[^}]*background:\\s*var\\(--rdw-accent\\)`,
         "s",
       ),
     );

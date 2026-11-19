@@ -100,6 +100,13 @@ const POST_PANEL_POST_ACTION_CLASS = "rdw-post-panel-post-action";
 const KIT_TABS_CLASS = "rdw-tabs";
 const KIT_TAB_CLASS = "rdw-tabs__tab";
 const KIT_BTN_PRIMARY_CLASS = "rdw-btn--primary";
+/**
+ * The skin paints Favorite in the accent by rules stronger than the kit's own
+ * grey of a main button that cannot be pressed: on a deleted post the button
+ * was disabled and still bright blue (Kaze, 19.11.2026). The paint is for a
+ * button that can be pressed, or is busy with a press.
+ */
+const FAV_CAN_BE_PRESSED = ':not(:disabled:not([aria-busy="true"]))';
 
 /**
  * Body class while search-tools «AI posts» row is rendered
@@ -2641,7 +2648,7 @@ ${ROOT_DARK} div.tag-search input[type="submit"],
 ${ROOT_DARK} div.tag-search button[type="submit"],
 ${ROOT_DARK} .manual-page-chooser > input[type="submit"],
 ${ROOT_DARK} span.thumb > .${FAV_BULK_CHECK_CLASS},
-${ROOT_DARK} #${POST_ACTIONS_HOST_ID} .${POST_PANEL_FAV_CLASS}.${KIT_BTN_PRIMARY_CLASS} {
+${ROOT_DARK} #${POST_ACTIONS_HOST_ID} .${POST_PANEL_FAV_CLASS}.${KIT_BTN_PRIMARY_CLASS}${FAV_CAN_BE_PRESSED} {
   color: ${v.text};
 }
 
@@ -2661,7 +2668,7 @@ ${ROOT_DARK} div.has-mail {
   color: ${v.text};
 }
 
-#${POST_ACTIONS_HOST_ID} .${POST_PANEL_FAV_CLASS}.${KIT_BTN_PRIMARY_CLASS} {
+#${POST_ACTIONS_HOST_ID} .${POST_PANEL_FAV_CLASS}.${KIT_BTN_PRIMARY_CLASS}${FAV_CAN_BE_PRESSED} {
   background: ${v.accent};
   border-color: ${v.accent};
   color: ${v.surface};
@@ -2717,7 +2724,7 @@ ${ROOT_SITE_DARK} #${POST_ACTIONS_HOST_ID} .${KIT_TAB_CLASS}[aria-selected="true
 }
 
 /* Dark RuleDesk: primary fill uses light label (surface token is dark). */
-${ROOT_THEME_DARK} #${POST_ACTIONS_HOST_ID} .${POST_PANEL_FAV_CLASS}.${KIT_BTN_PRIMARY_CLASS} {
+${ROOT_THEME_DARK} #${POST_ACTIONS_HOST_ID} .${POST_PANEL_FAV_CLASS}.${KIT_BTN_PRIMARY_CLASS}${FAV_CAN_BE_PRESSED} {
   color: ${v.text};
 }
 

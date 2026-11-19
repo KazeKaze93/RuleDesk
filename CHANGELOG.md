@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.71.1
+
+- On the page of a deleted post, Favorite of a post that is not in favorites is grey, as Vote is. It could not be pressed in 0.71.0 either, but was still bright blue: the skin painted it over the grey of a button that cannot be pressed
+
 ## 0.71.0
 
 - The page of a deleted post, its block in the place of the picture: a whole frame, not a dashed one, which is the place to drop a file on Upload; the shape of the post, from the size in its statistics, 4:3 when that is not known; a picture of a crossed image over the words

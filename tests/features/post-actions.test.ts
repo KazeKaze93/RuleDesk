@@ -999,7 +999,11 @@ describe("postActionsFeature", () => {
     Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
     vi.stubGlobal(
       "fetch",
-      vi.fn(() => Promise.reject(new Error("offline"))),
+      vi.fn((url: string) =>
+        url.includes("delete")
+          ? Promise.resolve(new Response("", { status: 200 }))
+          : Promise.reject(new Error("offline")),
+      ),
     );
 
     await act(async () => {
@@ -1035,6 +1039,24 @@ describe("postActionsFeature", () => {
     });
     expect(tab?.getAttribute("aria-selected")).toBe("true");
     expect(document.getElementById(kitTabPanelId("related"))?.hidden).toBe(false);
+
+    // A click takes the post out; after that it cannot be put back.
+    await act(async () => {
+      fav?.click();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await vi.waitFor(() => {
+      expect(isFav(POST_ID)).toBe(false);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const after = actionsPanel()?.querySelector<HTMLButtonElement>(`button.${CLASS_FAV}`);
+    expect(after?.disabled).toBe(true);
+    expect(after?.textContent).toContain(TEXT_FAVORITE);
+    expect(after?.title).toBe("The post was deleted");
   });
 
   it("leaves a post with a picture alone when a notice says something else", () => {
