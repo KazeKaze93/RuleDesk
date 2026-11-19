@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.68.1
+
+- Related Posts: "Favorites" is among the sources only when some of your favorites are like the post. "Favorites 0" was a button that led to nothing
+
 ## 0.68.0
 
 - Related Posts: "Similar" is a mix. One search for posts that have any of the three to five rarest tags of the post, without the posts of its artist, taken from one of the first pages of that search by chance, so that it is not always the newest uploads

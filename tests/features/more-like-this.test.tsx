@@ -335,9 +335,13 @@ describe("the tab of the panel", () => {
     const props = await mount({ lastKind: "character" });
     expect(props.load).toHaveBeenCalledWith("jessica_rabbit -esqeazy", 0);
     render(null, host);
-    // The favorites need no request at all.
-    const quiet = await mount({ lastKind: "favorites" });
-    expect(quiet.load).not.toHaveBeenCalled();
+    // Never on the favorites: whether there are any is not known when the tab opens.
+    expect(firstSource(sources, "favorites")?.kind).toBe("similar");
+    const again = await mount({ lastKind: "favorites" });
+    expect(again.load).toHaveBeenCalledTimes(1);
+    // Picked, they need no request.
+    await press(tabs()[3]);
+    expect(again.load).toHaveBeenCalledTimes(1);
     expect(host.querySelectorAll("a.rdw-mlt-cell")).toHaveLength(2);
   });
 
@@ -412,13 +416,11 @@ describe("the tab of the panel", () => {
     );
   });
 
-  it("is honest about favorites that are not alike and about a post with few tags", async () => {
+  it("has no Favorites where none of them is like the post, and is honest about a post with few tags", async () => {
     await mount({ readFavorites: () => Promise.resolve([]) });
-    expect(tabs()[3]?.textContent).toBe("Favorites 0");
+    expect(tabs().map((tab) => tab.textContent)).toEqual(["Similar", "jessica rabbit", "disney"]);
     // Nine tags on the post: the list is shown, with a line that says it is weak.
     expect(host.textContent).toContain("Few shared tags \u2014 this post has only 9 tags.");
-    await press(tabs()[3]);
-    expect(host.textContent).toContain("None of your favorites share tags with this post.");
     expect(fewTagsText(1)).toBe("Few shared tags \u2014 this post has only 1 tag.");
     expect(sharedTagsText(1)).toBe("1 shared tag");
   });
