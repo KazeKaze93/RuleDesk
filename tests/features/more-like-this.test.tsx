@@ -14,6 +14,7 @@ import {
 } from "../../src/features/more-like-this";
 import {
   RelatedError,
+  decodeTagEntities,
   favoriteCandidates,
   rankCandidates,
   readCandidates,
@@ -101,6 +102,15 @@ describe("reading the post and its candidates", () => {
       { tag: "1girls", kind: "general", count: 5000000 },
       { tag: "hi_res", kind: "metadata", count: 900000 },
     ]);
+  });
+
+  it("reads a tag with an apostrophe as the tag, not as the code the site writes into the link", () => {
+    document.body.innerHTML =
+      '<ul id="tag-sidebar"><li class="tag-type-copyright tag"><a href="index.php?page=post&amp;s=list&amp;tags=shadowheart_%28baldur%26%23039%3Bs_gate%29">shadowheart</a> <span class="tag-count">41</span></li></ul>';
+    expect(readPostTags(document)[0]?.tag).toBe("shadowheart_(baldur's_gate)");
+    expect(decodeTagEntities("a&amp;b&#039;c")).toBe("a&b'c");
+    // The switch of sources is as tall as its rows: a second row is not behind the grid.
+    expect(moreLikeThisFeature.css).toMatch(/\.rdw-mlt-sources \{[^}]*flex-wrap: wrap;[^}]*height: auto;/);
   });
 
   it("offers the artists, then the characters, then the favorites", () => {

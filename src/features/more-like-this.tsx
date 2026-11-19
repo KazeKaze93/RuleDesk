@@ -56,6 +56,12 @@ const FEW_TAGS = 10;
 export const LIMITED_WAIT_S = 60;
 const SECOND_MS = 1000;
 const CELL_HEIGHT_PX = 150;
+/**
+ * A source in the switch. The kit's switch is one row as tall as a field;
+ * with long names of tags it takes a second row, which stood behind the
+ * grid (Kaze, 19.11.2026): here the switch is as tall as its rows.
+ */
+const SOURCE_BUTTON_HEIGHT_PX = 24;
 
 const BODY_SELECTOR = `body.${featureBodyClass(MORE_LIKE_THIS_FEATURE_ID)}`;
 const ROOT_CLASS = "rdw-mlt";
@@ -71,10 +77,14 @@ ${ROOT} .rdw-mlt-sources {
   display: flex;
   flex-wrap: wrap;
   width: 100%;
+  height: auto;
 }
 ${ROOT} .rdw-mlt-sources .rdw-seg__btn {
+  display: block;
   flex: 1 1 auto;
   min-width: 0;
+  max-width: 100%;
+  height: ${String(SOURCE_BUTTON_HEIGHT_PX)}px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

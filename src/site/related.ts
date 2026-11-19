@@ -99,6 +99,27 @@ function kindOfRow(row: Element): PostTagKind | null {
   return null;
 }
 
+const NUMERIC_ENTITY = /&#(\d+);/g;
+const NAMED_ENTITIES: Readonly<Record<string, string>> = {
+  "&amp;": "&",
+  "&quot;": '"',
+  "&lt;": "<",
+  "&gt;": ">",
+};
+const NAMED_ENTITY = /&(?:amp|quot|lt|gt);/g;
+
+/**
+ * The site writes an apostrophe of a tag into the address of its link as the
+ * text "&#039;", escaped once more than a link needs: read back from the
+ * address, the tag was "baldur&#039;s_gate" (Kaze, 19.11.2026). The codes are
+ * turned into the characters they stand for.
+ */
+export function decodeTagEntities(tag: string): string {
+  return tag
+    .replace(NUMERIC_ENTITY, (_match, code: string) => String.fromCodePoint(Number(code)))
+    .replace(NAMED_ENTITY, (match) => NAMED_ENTITIES[match] ?? match);
+}
+
 /** The tag a row of the tag list is of: its last link that searches for one tag. */
 function tagOfRow(row: Element): string | null {
   const links = [...row.querySelectorAll("a[href]")].reverse();
@@ -109,7 +130,7 @@ function tagOfRow(row: Element): string | null {
       continue;
     }
     const tags = new URLSearchParams(href.slice(mark + QUERY_MARK.length)).get(SEARCH_PARAM_TAGS);
-    const tag = tags?.trim().toLowerCase() ?? "";
+    const tag = decodeTagEntities(tags?.trim().toLowerCase() ?? "");
     if (tag.length > 0 && !tag.includes(TAG_SEPARATOR)) {
       return tag;
     }

@@ -2,6 +2,11 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.66.1
+
+- "More like this": the switch of sources is as tall as its rows. With long names it took a second row, and that row stood behind the grid
+- A tag with an apostrophe reads as it is, "shadowheart (baldur's gate)", and is searched for as it is; it read "baldur&#039;s gate"
+
 ## 0.66.0
 
 - "More like this" is the third tab of the post panel, after Info and Comments; the block under the picture is gone. Opening the tab loads the first source at once: there is nothing to pick first. The sources are a switch over the grid, "esqeazy 41 | jessica rabbit | Favorites 0"; the tab opens on the kind of source picked last. Six posts are shown, two in a row; "Show all" opens the rest in place
