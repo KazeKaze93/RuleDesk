@@ -21,6 +21,7 @@ import {
 } from "../storage/schema";
 import { measureHeaderOffsetPx } from "./post-panel/site-reads";
 import {
+  POST_ACTIONS_ID,
   featureBodyClass,
   featureChoiceBodyClass,
   type Feature,
@@ -177,7 +178,39 @@ function readSizeModeFromBody(): VideoSize {
   return resolveVideoSize(DEFAULT_VIDEO_SIZE);
 }
 
-function measureMediaColumnWidthPx(wrapper: HTMLElement): number {
+/** The row of the post: the media and, on a wide window, the panel beside it. */
+const POST_ROW_SELECTOR = "div.flexi";
+const PANEL_BESIDE_POSITION = "sticky";
+
+function pixels(value: string): number {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+/**
+ * The room the player has. With the panel beside it, the block the player is
+ * in is as wide as the player itself, so its width says nothing: the player
+ * was then sized by its own size of the moment, and when the panel was there
+ * first it stayed as small as the site had drawn it (Kaze, 19.11.2026: a
+ * player of 264 px on a wide window, after 0.72 made the start quicker). The
+ * room is what the row has left beside the panel.
+ */
+export function measureMediaColumnWidthPx(wrapper: HTMLElement): number {
+  const row = wrapper.closest(POST_ROW_SELECTOR);
+  const panel = document.getElementById(POST_ACTIONS_ID);
+  if (row instanceof HTMLElement && panel !== null && panel.parentElement === row) {
+    const panelStyle = window.getComputedStyle(panel);
+    if (panelStyle.position === PANEL_BESIDE_POSITION && row.clientWidth > 0) {
+      const taken =
+        panel.offsetWidth +
+        pixels(panelStyle.marginLeft) +
+        pixels(window.getComputedStyle(row).columnGap);
+      const room = Math.floor(row.clientWidth - taken);
+      if (room > 0) {
+        return room;
+      }
+    }
+  }
   const parent = wrapper.parentElement;
   if (parent !== null && parent.clientWidth > 0) {
     return parent.clientWidth;
@@ -271,15 +304,37 @@ function flushPersist(): void {
   persistNow?.();
 }
 
+/** How long the site's player is waited for after the script has started. */
+const WRAPPER_WAIT_MS = 15000;
+
 function bindPlayer(ctx: FeatureContext, video: HTMLVideoElement): void {
-  const wrapper = findWrapper();
   const state = readStoredState(ctx);
 
+  // The site's player puts its block around the video some time after the
+  // page has loaded. It was looked for once, as the script started: since
+  // 0.72 the script starts before the player has done that, found no block
+  // and never sized the player, which stayed as the site drew it, 264 px wide
+  // for one video and taller than the window for another (Kaze, 19.11.2026).
+  // The block is looked for each time the size is set, and waited for.
   const applyLayout = (): void => {
+    const wrapper = findWrapper();
     if (wrapper !== null) {
       applyWrapperSize(wrapper, video);
     }
   };
+
+  if (findWrapper() === null) {
+    const waiting = new MutationObserver(() => {
+      if (findWrapper() !== null) {
+        waiting.disconnect();
+        applyLayout();
+      }
+    });
+    waiting.observe(document.body, { childList: true, subtree: true });
+    window.setTimeout(() => {
+      waiting.disconnect();
+    }, WRAPPER_WAIT_MS);
+  }
 
   const onLoadedMetadata = (): void => {
     applyPersistedPlayback(video, readStoredState(ctx));

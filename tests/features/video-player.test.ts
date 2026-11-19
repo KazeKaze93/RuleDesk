@@ -7,6 +7,7 @@ import {
   VIDEO_PLAYER_ID,
   VIDEO_PLAYER_SETTING_CAPTION,
   computeVideoPlayerSize,
+  measureMediaColumnWidthPx,
   videoPlayerFeature,
 } from "../../src/features/video-player";
 import {
@@ -438,6 +439,40 @@ describe("videoPlayerFeature mount behavior", () => {
     expect(expected.widthPx).toBeGreaterThan(SIZE_FIXTURE_SMALL_WIDTH);
   });
 
+  it("sizes a player whose block the site makes after the script has started", async () => {
+    const { wrapper, column, video } = buildPlayerDom({
+      videoWidth: SIZE_FIXTURE_SMALL_WIDTH,
+      videoHeight: SIZE_FIXTURE_SMALL_HEIGHT,
+      columnWidthPx: SIZE_FIXTURE_COLUMN_PX,
+    });
+    // The page as the script finds it since 0.72: the video is there, the
+    // player's block around it is not yet.
+    column.append(video);
+    wrapper.remove();
+    const { ctx } = makeCtx();
+
+    videoPlayerFeature.mount(ctx);
+    await flushFirstPaint();
+    expect(wrapper.style.width).toBe("");
+
+    // The site's player puts its block around the video.
+    wrapper.append(video);
+    column.append(wrapper);
+    await vi.waitFor(() => {
+      expect(wrapper.style.width).not.toBe("");
+    });
+
+    const expected = computeVideoPlayerSize({
+      mode: VIDEO_SIZE_FIT_HEIGHT,
+      videoWidth: SIZE_FIXTURE_SMALL_WIDTH,
+      videoHeight: SIZE_FIXTURE_SMALL_HEIGHT,
+      columnWidthPx: SIZE_FIXTURE_COLUMN_PX,
+      availableHeightPx: SIZE_FIXTURE_AVAILABLE_HEIGHT_PX,
+    });
+    expect(wrapper.style.width).toBe(`${String(expected.widthPx)}px`);
+    expect(wrapper.style.height).toBe(`${String(expected.heightPx)}px`);
+  });
+
   it("does not strip Fluid wrapper class or replace the wrapper element", async () => {
     const { wrapper } = buildPlayerDom({ inlineSize: true });
     const { ctx } = makeCtx();
@@ -455,3 +490,40 @@ describe("videoPlayerFeature mount behavior", () => {
     expect(document.getElementById(VIDEO_ELEMENT_ID)).not.toBeNull();
   });
 });
+
+describe("the room of the player beside the panel", () => {
+  function width(element: HTMLElement, name: "clientWidth" | "offsetWidth", value: number): void {
+    Object.defineProperty(element, name, { value, configurable: true });
+  }
+
+  it("is what the row has left beside the panel, not the width of the player's own block", () => {
+    document.body.replaceChildren();
+    const row = document.createElement("div");
+    row.className = "flexi";
+    row.style.columnGap = "12px";
+    const media = document.createElement("div");
+    const wrapper = document.createElement("div");
+    media.append(wrapper);
+    const panel = document.createElement("div");
+    panel.id = "rdw-post-actions";
+    panel.style.position = "sticky";
+    panel.style.marginLeft = "12px";
+    row.append(media, panel);
+    document.body.append(row);
+    width(row, "clientWidth", 1640);
+    // The block of the player is as wide as the small player the site drew.
+    width(media, "clientWidth", 264);
+    width(panel, "offsetWidth", 360);
+
+    expect(measureMediaColumnWidthPx(wrapper)).toBe(1640 - 360 - 12 - 12);
+
+    // On a narrow window the panel is under the player: the block's own width, as before.
+    panel.style.position = "static";
+    expect(measureMediaColumnWidthPx(wrapper)).toBe(264);
+
+    // With no panel on the page, the same.
+    panel.remove();
+    expect(measureMediaColumnWidthPx(wrapper)).toBe(264);
+  });
+});
+

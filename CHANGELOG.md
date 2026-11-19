@@ -2,6 +2,11 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.72.2
+
+- The video player has its size again: as tall as the window allows, in the room beside the panel. Since 0.72.0 it was left as the site draws it, 264 px wide for one video and taller than the window for another. The script now starts before the site's player has put its block around the video, looked for that block once, found none and sized nothing. The block is looked for each time the size is set, and waited for
+- The room of the player is what the row has left beside the panel. It was the width of the player's own block, which is as wide as the player
+
 ## 0.72.1
 
 - The built file is minified: 659 KB, from 1,277 KB, and the part of it run before the page is first drawn is 164 KB, from 306 KB. The file in the script manager is no longer readable; the readable code is `src/` at the commit of the release
