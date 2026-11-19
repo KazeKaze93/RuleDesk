@@ -106,7 +106,7 @@ Wherever posts or cards can be selected, the bar is the same: how many are selec
 
 ## The post page
 
-**Post side panel** replaces the site's scattered links with one panel beside the picture. On a wide window the picture and the panel stand together in the middle of the page. The picture is in the size the site gives it, made smaller only to fit: no wider than the room beside the panel and no taller than the window. The key F presses Favorite:
+**Post side panel** replaces the site's scattered links with one panel beside the picture. On a wide window the picture and the panel stand together in the middle of the page. The picture is in the size the site gives it. It is made smaller only to be no wider than the room beside the panel, and a picture the site shows larger than its usual copy (wider than 850 px) also to be no taller than the window. The key F presses Favorite:
 
 - buttons: Favorite, Collections ("+"), Vote, "I came", Original (opens the full file), Download (saves the file; needs no key)
 - two tabs: **Info** (id, date, uploader, size, source, rating) and **Comments**

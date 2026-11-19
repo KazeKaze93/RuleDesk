@@ -48,6 +48,14 @@ const PANEL_Z_INDEX = 20;
 const STAT_LABEL_WIDTH_PX = 62;
 const ORIGINAL_BUTTON_SIZE_PX = 34;
 const STICKY_TOP_VAR = "--rdw-post-panel-sticky-top";
+/** How far under the top of the row the picture begins: the site's previous / next strip. */
+const MEDIA_HEAD_VAR = "--rdw-post-media-head";
+/** On a picture the site shows wider than its usual copy. */
+export const LARGE_PICTURE_ATTR = "data-rdw-large";
+/** Set by full-image.ts on a picture that shows the original: that one is not made to fit. */
+const FULL_PICTURE_ATTR = "data-rdw-full";
+/** The width of the copy the site makes of a large picture; wider is the picture itself. */
+export const SITE_COPY_WIDTH_PX = 850;
 
 const CLASS_PANEL = "rdw-post-actions";
 const CLASS_MODE_WIDE = "rdw-post-actions--wide";
@@ -62,7 +70,14 @@ const WARN_NO_FLEXI =
  * panel went under a picture two screens tall, and the page was as wide as
  * the picture (Kaze, 19.11.2026, a post of 1528x1952). In the last block of
  * the CSS the row is kept whole, the panel keeps its width, and the picture
- * gives way: it is as wide as the room and no taller than the window.
+ * gives way: it is as wide as the room.
+ *
+ * A picture the site shows larger than its usual copy is also no taller than
+ * the window under the header and under what stands over the picture (the
+ * previous / next strip): the whole of it is seen at once, and a click opens
+ * it in full. Both sizes are left to the picture, so it keeps its shape. A
+ * usual copy is left as the site shows it, taller than the window or not
+ * (Kaze, 19.11.2026: made to fit, an ordinary post was small and ugly).
  */
 const BODY_CLASS = featureBodyClass(FEATURE_ID);
 const BODY_SELECTOR = `body.${BODY_CLASS}`;
@@ -249,12 +264,11 @@ ${BODY_SELECTOR} #${POST_ACTIONS_ID} .rdw-post-panel-comments-host {
   }
   ${BODY_SELECTOR} div.flexi > :has(+ #${POST_ACTIONS_ID}.${CLASS_MODE_WIDE}) img#${IMAGE_ID} {
     max-width: 100%;
-    /* And no taller than the window under the header (Kaze, 19.11.2026): the
-       whole picture is seen at once; a click opens it in full. Both sizes are
-       left to the picture, so it keeps its shape and is never made larger. */
-    max-height: calc(100vh - var(${STICKY_TOP_VAR}, ${String(PANEL_STICKY_GAP_PX)}px) - ${String(PANEL_STICKY_GAP_PX)}px);
-    width: auto !important;
     height: auto !important;
+  }
+  ${BODY_SELECTOR} div.flexi > :has(+ #${POST_ACTIONS_ID}.${CLASS_MODE_WIDE}) img#${IMAGE_ID}[${LARGE_PICTURE_ATTR}]:not([${FULL_PICTURE_ATTR}]) {
+    max-height: calc(100vh - var(${STICKY_TOP_VAR}, ${String(PANEL_STICKY_GAP_PX)}px) - var(${MEDIA_HEAD_VAR}, 0px) - ${String(PANEL_STICKY_GAP_PX)}px);
+    width: auto !important;
   }
 }
 `.trim();
@@ -291,6 +305,35 @@ function applyStickyTop(panel: HTMLElement): void {
   panel.style.setProperty(STICKY_TOP_VAR, `${String(topPx)}px`);
 }
 
+/**
+ * Marks a picture the site shows in its own, large size, and says how far
+ * under the top of the row it begins. The width is the one the site wrote on
+ * the picture; where it wrote none, the width of the file once it has come.
+ */
+function markLargePicture(flexi: HTMLElement): void {
+  const image = flexi.querySelector(`img#${IMAGE_ID}`);
+  if (!(image instanceof HTMLImageElement) || image.hasAttribute(FULL_PICTURE_ATTR)) {
+    return;
+  }
+  const written = Number(image.getAttribute("width"));
+  const width = Number.isFinite(written) && written > 0 ? written : image.naturalWidth;
+  if (width === 0 && !image.complete) {
+    image.addEventListener(
+      "load",
+      () => {
+        markLargePicture(flexi);
+      },
+      { once: true },
+    );
+  }
+  image.toggleAttribute(LARGE_PICTURE_ATTR, width > SITE_COPY_WIDTH_PX);
+  const head = Math.max(
+    0,
+    Math.round(image.getBoundingClientRect().top - flexi.getBoundingClientRect().top),
+  );
+  flexi.style.setProperty(MEDIA_HEAD_VAR, `${String(head)}px`);
+}
+
 function placePanel(panel: HTMLElement, flexi: HTMLElement): void {
   const narrow = isNarrowViewport();
   panel.classList.toggle(CLASS_MODE_WIDE, !narrow);
@@ -302,9 +345,10 @@ function placePanel(panel: HTMLElement, flexi: HTMLElement): void {
   const media = findMediaWrapper(flexi, POST_ACTIONS_ID);
   if (media !== null) {
     media.after(panel);
-    return;
+  } else {
+    flexi.append(panel);
   }
-  flexi.append(panel);
+  markLargePicture(flexi);
 }
 
 function bindLayout(panel: HTMLElement, flexi: HTMLElement): void {

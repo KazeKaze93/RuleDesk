@@ -2,6 +2,11 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.64.1
+
+- The post page: only a picture the site shows larger than its usual copy, wider than 850 px, is made to fit the height of the window. An ordinary post is again in the size the site gives it; fitted in 0.64.0, it came out small
+- Such a large picture fits whole also when the site's "previous / next" strip stands over it; its lower edge was cut by the height of the strip
+
 ## 0.64.0
 
 - The post page, on a wide window: the picture is no taller than the window under the header, so the whole of it is seen at once, with the panel beside it. A tall picture used to run a screen or two down. The picture keeps its shape and is never made larger than the site gives it; a click still opens it in full
