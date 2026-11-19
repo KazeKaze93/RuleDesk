@@ -1,3 +1,21 @@
+import {
+  MORE_LIKE_THIS_FEATURE_ID,
+  MORE_LIKE_THIS_STATE_ID,
+  MORE_LIKE_THIS_TAB_LABEL,
+  MoreLikeThis,
+  isRelatedSourceKind,
+} from "../more-like-this";
+import {
+  favoriteCandidates,
+  fetchCandidates,
+  rankCandidates,
+  readPostTags,
+  type PostTag,
+  type RankedPost,
+  type RelatedSourceKind,
+} from "../../site/related";
+import { getFeatureEnabled, getFeatureState, setFeatureState } from "../../storage/store";
+import { favoritesIndexAvailable, readFavoriteIndex } from "../../storage/favorites-index";
 import { indexFavoriteFromPostPage } from "../favorites-index-live";
 import type { JSX } from "preact";
 import {
@@ -21,7 +39,6 @@ import {
   IconExternalLink,
   IconStar,
   IconStarFilled,
-  SectionLabel,
   Tabs,
   kitTabId,
   kitTabPanelId,
@@ -51,6 +68,7 @@ import {
 export const POST_PANEL_TAB_CHOICE_ID = "post-actions";
 export const POST_PANEL_TAB_INFO = "info";
 export const POST_PANEL_TAB_COMMENTS = "comments";
+export const POST_PANEL_TAB_RELATED = "related";
 
 const TEXT_FAVORITE = "Favorite";
 const TEXT_IN_FAVORITES = "In favorites";
@@ -60,7 +78,6 @@ const TEXT_SCORE_UNKNOWN = "—";
 const TEXT_ICAME = "I came";
 const TEXT_COMMENTS = "Comments";
 const TEXT_INFO = "Info";
-const TEXT_POST = "Post";
 const TEXT_COMMENTS_COUNTED_SEP = " · ";
 const LABEL_ORIGINAL = "Original";
 const LABEL_VOTE = "Vote";
@@ -184,6 +201,34 @@ export function PostPanel(props: PostPanelProps): JSX.Element {
   const [activeTab, setActiveTab] = useState(() =>
     hasComments && takeCommentsReturn() ? POST_PANEL_TAB_COMMENTS : POST_PANEL_TAB_INFO,
   );
+  // "More like this": the tags of the post, read once. With the setting off,
+  // or on a post whose tags the page does not list, there is no such tab.
+  const [relatedTags] = useState<readonly PostTag[]>(() =>
+    props.postId !== null && getFeatureEnabled(MORE_LIKE_THIS_FEATURE_ID, true)
+      ? readPostTags(document)
+      : [],
+  );
+  const hasRelated = relatedTags.length > 0;
+  // What is in that tab is drawn once the tab was opened, and kept after: the
+  // opening is what asks the site, and what came stays until the page is left.
+  const [relatedOpened, setRelatedOpened] = useState(false);
+  const [relatedLast] = useState<RelatedSourceKind | null>(() => {
+    const kept = getFeatureState(MORE_LIKE_THIS_STATE_ID);
+    return isRelatedSourceKind(kept) ? kept : null;
+  });
+  const selfId = props.postId === null ? Number.NaN : Number(props.postId);
+  const [readRelatedFavorites] = useState(() =>
+    favoritesIndexAvailable()
+      ? async (): Promise<RankedPost[]> =>
+          favoriteCandidates(await readFavoriteIndex(), relatedTags, selfId)
+      : null,
+  );
+  const loadRelated = useCallback(
+    async (query: string): Promise<RankedPost[]> =>
+      rankCandidates(relatedTags, await fetchCandidates(query), selfId),
+    [relatedTags, selfId],
+  );
+  const hasTabs = hasComments || hasRelated;
 
   useEffect(() => {
     if (props.postId === null) {
@@ -259,6 +304,9 @@ export function PostPanel(props: PostPanelProps): JSX.Element {
 
   const onTabChange = useCallback((id: string): void => {
     setActiveTab(id);
+    if (id === POST_PANEL_TAB_RELATED) {
+      setRelatedOpened(true);
+    }
   }, []);
 
   const tabItems = useMemo(() => {
@@ -269,11 +317,14 @@ export function PostPanel(props: PostPanelProps): JSX.Element {
         label: commentsTabLabel(commentCount),
       });
     }
+    if (hasRelated) {
+      items.push({ id: POST_PANEL_TAB_RELATED, label: MORE_LIKE_THIS_TAB_LABEL });
+    }
     return items;
-  }, [commentCount, hasComments]);
+  }, [commentCount, hasComments, hasRelated]);
 
   const showInfoCard =
-    stats.length > 0 || moreLinks.length > 0 || hasComments;
+    stats.length > 0 || moreLinks.length > 0 || hasTabs;
   const showActionsRow2 = props.postId !== null || iCame !== null || originalHref !== null;
 
   return (
@@ -374,7 +425,7 @@ export function PostPanel(props: PostPanelProps): JSX.Element {
 
       {showInfoCard ? (
         <Card className={CLASS_CARD} as="section">
-          {hasComments ? (
+          {hasTabs ? (
             <Tabs
               className={CLASS_TABS}
               aria-label={ARIA_PANEL_TABS}
@@ -389,7 +440,7 @@ export function PostPanel(props: PostPanelProps): JSX.Element {
             role="tabpanel"
             id={kitTabPanelId(POST_PANEL_TAB_INFO)}
             aria-labelledby={kitTabId(POST_PANEL_TAB_INFO)}
-            hidden={hasComments && activeTab !== POST_PANEL_TAB_INFO}
+            hidden={hasTabs && activeTab !== POST_PANEL_TAB_INFO}
           >
             <InfoPanel stats={stats} moreLinks={moreLinks} />
           </div>
@@ -403,6 +454,28 @@ export function PostPanel(props: PostPanelProps): JSX.Element {
               hidden={activeTab !== POST_PANEL_TAB_COMMENTS}
             >
               <CommentsHost />
+            </div>
+          ) : null}
+
+          {hasRelated ? (
+            <div
+              className={CLASS_TAB_PANEL}
+              role="tabpanel"
+              id={kitTabPanelId(POST_PANEL_TAB_RELATED)}
+              aria-labelledby={kitTabId(POST_PANEL_TAB_RELATED)}
+              hidden={activeTab !== POST_PANEL_TAB_RELATED}
+            >
+              {relatedOpened ? (
+                <MoreLikeThis
+                  tags={relatedTags}
+                  lastKind={relatedLast}
+                  onPick={(kind) => {
+                    setFeatureState(MORE_LIKE_THIS_STATE_ID, kind);
+                  }}
+                  readFavorites={readRelatedFavorites}
+                  load={loadRelated}
+                />
+              ) : null}
             </div>
           ) : null}
         </Card>
@@ -425,12 +498,8 @@ function InfoPanel(props: {
         </div>
       ) : null}
 
-      {props.moreLinks.length > 0 ? (
-        <>
-          <SectionLabel>{TEXT_POST}</SectionLabel>
-          <PostActionsList links={props.moreLinks} />
-        </>
-      ) : null}
+      {/* No heading over them: "Post" on the page of a post said nothing. */}
+      {props.moreLinks.length > 0 ? <PostActionsList links={props.moreLinks} /> : null}
     </div>
   );
 }
@@ -641,6 +710,5 @@ export {
   TEXT_ICAME,
   TEXT_COMMENTS,
   TEXT_INFO,
-  TEXT_POST,
   TEXT_SCORE_UNKNOWN,
 };

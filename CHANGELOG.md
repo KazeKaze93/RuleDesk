@@ -2,6 +2,12 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.66.0
+
+- "More like this" is the third tab of the post panel, after Info and Comments; the block under the picture is gone. Opening the tab loads the first source at once: there is nothing to pick first. The sources are a switch over the grid, "esqeazy 41 | jessica rabbit | Favorites 0"; the tab opens on the kind of source picked last. Six posts are shown, two in a row; "Show all" opens the rest in place
+- The Info tab of the panel: the word "Post" over the site's actions is gone, and the actions (Edit, Resize image, Add note, Report…) are quiet buttons two in a row under a thin line. They took more room than the details of the post
+- In the settings the switch reads "More like this tab"
+
 ## 0.65.0
 
 - The post page: "More like this" under the picture, as wide as the picture. It names the sources, the artists and the characters of the post, each by its tag and in the colour of its kind, and "In your favorites" with how many of them are like the post. Nothing is loaded until a source is picked. A picked one is one page of a search of the site, up to 42 posts, put in order by the tags they share with the post, a rare tag counting for more than a common one; the post itself is left out. Eight are shown, "Show all" opens the rest in place, "Search … →" opens the usual search. A source that was loaded stays until the page is left

@@ -221,11 +221,21 @@ ${BODY_SELECTOR} #${POST_ACTIONS_ID} .rdw-post-panel-info {
 }
 ${BODY_SELECTOR} #${POST_ACTIONS_ID} .rdw-post-panel-post-actions {
   display: grid;
-  gap: ${String(PANEL_BUTTON_GAP_PX)}px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px ${String(PANEL_BUTTON_GAP_PX)}px;
+  padding-top: ${String(PANEL_BUTTON_GAP_PX)}px;
+  border-top: 1px solid var(--rdw-border);
 }
 ${BODY_SELECTOR} #${POST_ACTIONS_ID} .rdw-post-panel-post-action {
   width: 100%;
   justify-content: flex-start;
+  padding-left: 6px;
+  padding-right: 6px;
+  color: var(--rdw-text);
+  font-weight: 400;
+}
+${BODY_SELECTOR} #${POST_ACTIONS_ID} .rdw-post-panel-post-action:hover {
+  background: var(--rdw-surface-2);
 }
 ${BODY_SELECTOR} #${POST_ACTIONS_ID} .rdw-post-panel-tabpanel[hidden] {
   display: none;

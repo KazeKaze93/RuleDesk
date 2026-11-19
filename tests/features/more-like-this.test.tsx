@@ -7,6 +7,7 @@ import {
   LIMITED_WAIT_S,
   MoreLikeThis,
   fewTagsText,
+  firstSource,
   moreLikeThisFeature,
   sharedTagsText,
   type MoreLikeThisProps,
@@ -65,7 +66,6 @@ afterEach(() => {
 async function mount(over: Partial<MoreLikeThisProps> = {}): Promise<MoreLikeThisProps> {
   const tags = over.tags ?? postTags();
   const props: MoreLikeThisProps = {
-    postId: 100,
     tags,
     lastKind: null,
     onPick: vi.fn(),
@@ -80,8 +80,9 @@ async function mount(over: Partial<MoreLikeThisProps> = {}): Promise<MoreLikeThi
   return props;
 }
 
+/** The buttons of the switch of sources. */
 function tabs(): HTMLButtonElement[] {
-  return [...host.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+  return [...host.querySelectorAll<HTMLButtonElement>(".rdw-mlt-sources button")];
 }
 
 async function press(element: Element | undefined): Promise<void> {
@@ -171,29 +172,18 @@ describe("reading the post and its candidates", () => {
   });
 });
 
-describe("the block under the picture", () => {
-  it("shows only the sources before one is picked, with the count of the favorites", async () => {
-    const props = await mount({ lastKind: "character" });
-    expect(host.querySelector(".rdw-mlt-title")?.textContent).toBe("More like this");
-    expect(tabs().map((tab) => tab.textContent)).toEqual([
-      "esqeazy",
-      "jessica rabbit",
-      "In your favorites2",
-    ]);
-    expect(host.textContent).toContain("Pick a source to load up to 42 posts, most similar first.");
-    expect(host.querySelector(".rdw-mlt-grid")).toBeNull();
-    expect(props.load).not.toHaveBeenCalled();
-    // The kind picked on the post before is marked, and not loaded.
-    expect(tabs()[1]?.hasAttribute("data-last")).toBe(true);
-    expect(tabs()[0]?.getAttribute("title")).toBe("Artist");
-  });
-
-  it("loads a source when it is picked, once, and keeps it", async () => {
+describe("the tab of the panel", () => {
+  it("loads the first source as soon as it is opened, with nothing to press", async () => {
     const props = await mount();
-    await press(tabs()[0]);
     expect(props.load).toHaveBeenCalledTimes(1);
     expect(props.load).toHaveBeenCalledWith("esqeazy");
-    expect(props.onPick).toHaveBeenCalledWith("artist");
+    // Opening is not a choice of a source: nothing is remembered for it.
+    expect(props.onPick).not.toHaveBeenCalled();
+    expect(tabs().map((tab) => tab.textContent)).toEqual([
+      "esqeazy 2",
+      "jessica rabbit",
+      "Favorites 2",
+    ]);
     const cells = [...host.querySelectorAll("a.rdw-mlt-cell")];
     expect(cells.map((cell) => cell.getAttribute("href"))).toEqual([
       "index.php?page=post&s=view&id=11",
@@ -202,22 +192,42 @@ describe("the block under the picture", () => {
     expect(cells[1]?.getAttribute("title")).toBe("5 shared tags");
     expect(cells[1]?.querySelector(".rdw-mlt-video")).not.toBeNull();
     expect(cells[0]?.querySelector("img")?.getAttribute("alt")).toBe("esqeazy #11");
-    expect(tabs()[0]?.textContent).toBe("esqeazy2");
     expect(host.querySelector('a.rdw-mlt-link[href*="tags=esqeazy"]')?.textContent).toBe(
-      "Search esqeazy →",
+      "Search esqeazy \u2192",
     );
-    // The favorites need no request; coming back to the artist makes none either.
-    await press(tabs()[2]);
-    expect(host.querySelectorAll("a.rdw-mlt-cell")).toHaveLength(2);
-    await press(tabs()[0]);
-    expect(props.load).toHaveBeenCalledTimes(1);
   });
 
-  it("shows eight at first and the rest in place", async () => {
+  it("opens on the kind of source picked last, where the post has one", async () => {
+    const sources = relatedSources(postTags());
+    expect(firstSource(sources, null)?.kind).toBe("artist");
+    expect(firstSource(sources, "character")?.name).toBe("jessica rabbit");
+    expect(firstSource(sources, "shared")?.kind).toBe("artist");
+    const props = await mount({ lastKind: "character" });
+    expect(props.load).toHaveBeenCalledWith("jessica_rabbit");
+    render(null, host);
+    // The favorites need no request at all.
+    const quiet = await mount({ lastKind: "favorites" });
+    expect(quiet.load).not.toHaveBeenCalled();
+    expect(host.querySelectorAll("a.rdw-mlt-cell")).toHaveLength(2);
+  });
+
+  it("loads another source when it is picked, once, and keeps both", async () => {
+    const props = await mount();
+    await press(tabs()[1]);
+    expect(props.load).toHaveBeenCalledTimes(2);
+    expect(props.load).toHaveBeenLastCalledWith("jessica_rabbit");
+    expect(props.onPick).toHaveBeenLastCalledWith("character");
+    await press(tabs()[2]);
+    await press(tabs()[0]);
+    await press(tabs()[1]);
+    expect(props.load).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows six at first and the rest in place", async () => {
     const many = Array.from({ length: 12 }, (_unused, index) => ranked(index + 1));
     await mount({ load: () => Promise.resolve(many) });
-    await press(tabs()[0]);
     expect(host.querySelectorAll("a.rdw-mlt-cell")).toHaveLength(FIRST_SHOWN);
+    expect(FIRST_SHOWN).toBe(6);
     const all = [...host.querySelectorAll("button.rdw-mlt-link")].find(
       (button) => button.textContent === "Show all 12",
     );
@@ -227,7 +237,6 @@ describe("the block under the picture", () => {
 
   it("says so when nothing came, and why when the site did not answer", async () => {
     await mount({ load: () => Promise.resolve([]) });
-    await press(tabs()[0]);
     expect(host.textContent).toContain("No other posts by esqeazy.");
     render(null, host);
 
@@ -236,7 +245,6 @@ describe("the block under the picture", () => {
       .mockRejectedValueOnce(new RelatedError("offline", "x"))
       .mockResolvedValueOnce([ranked(11)]);
     await mount({ load });
-    await press(tabs()[0]);
     expect(host.textContent).toContain("Couldn't load: no connection.");
     const retry = [...host.querySelectorAll("button.rdw-mlt-link")].find(
       (button) => button.textContent === "Try again",
@@ -253,7 +261,6 @@ describe("the block under the picture", () => {
       load: () => Promise.reject(new RelatedError("limited", "HTTP 429")),
       now: () => clock,
     });
-    await press(tabs()[0]);
     expect(host.textContent).toContain("The site asked to slow down. Try again in a minute.");
     const retry = host.querySelector<HTMLButtonElement>("p[role='alert'] button.rdw-mlt-link");
     expect(retry?.disabled).toBe(true);
@@ -272,28 +279,25 @@ describe("the block under the picture", () => {
     );
   });
 
-  it("keeps the favorites off when none is like the post, and is honest about a post with few tags", async () => {
+  it("is honest about favorites that are not alike and about a post with few tags", async () => {
     await mount({ readFavorites: () => Promise.resolve([]) });
-    const favorites = tabs()[2];
-    expect(favorites?.disabled).toBe(true);
-    expect(favorites?.getAttribute("title")).toBe(
-      "None of your favorites share tags with this post.",
-    );
-    await press(tabs()[0]);
+    expect(tabs()[2]?.textContent).toBe("Favorites 0");
     // Six tags on the post: the list is shown, with a line that says it is weak.
-    expect(host.textContent).toContain("Few shared tags — this post has only 6 tags.");
-    expect(fewTagsText(1)).toBe("Few shared tags — this post has only 1 tag.");
+    expect(host.textContent).toContain("Few shared tags \u2014 this post has only 6 tags.");
+    await press(tabs()[2]);
+    expect(host.textContent).toContain("None of your favorites share tags with this post.");
+    expect(fewTagsText(1)).toBe("Few shared tags \u2014 this post has only 1 tag.");
     expect(sharedTagsText(1)).toBe("1 shared tag");
   });
 
-  it("is a feature of the post page that is on unless turned off, and keeps to its own block", () => {
+  it("is a setting of the post page that is on unless turned off", () => {
     expect(moreLikeThisFeature.pages).toEqual(["post"]);
     expect(moreLikeThisFeature.defaultEnabled).toBe(true);
-    expect(moreLikeThisFeature.label).toBe("More like this");
+    expect(moreLikeThisFeature.label).toBe("More like this tab");
     expect(moreLikeThisFeature.settingsCaption).toBe(
-      "Under the picture. Loads posts only when you pick a source: one request per source.",
+      "Loads posts when you open the tab: one request per source.",
     );
-    // As wide as the picture's column, and never the cause of its width.
-    expect(moreLikeThisFeature.css).toMatch(/#rdw-more-like-this \{[^}]*width: 0;\s*min-width: 100%;/);
+    // Two in a row, in the width of the panel.
+    expect(moreLikeThisFeature.css).toMatch(/\.rdw-mlt-grid \{[^}]*repeat\(2, minmax\(0, 1fr\)\)/);
   });
 });

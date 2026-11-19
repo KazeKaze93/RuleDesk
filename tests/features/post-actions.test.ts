@@ -38,7 +38,6 @@ import {
   TEXT_INFO,
   TEXT_IN_FAVORITES,
   TEXT_ORIGINAL,
-  TEXT_POST,
   TEXT_SCORE_UNKNOWN,
   TEXT_VOTE_PREFIX,
 } from "../../src/features/post-panel/post-panel";
@@ -817,7 +816,8 @@ describe("postActionsFeature", () => {
     expect(panel?.querySelector(`.${CLASS_ACTIONS}`)).not.toBeNull();
     expect(panel?.querySelector(`.${CLASS_ACTIONS}`)?.closest(`.${CLASS_CARD}`)).toBeNull();
     expect(panel?.querySelectorAll(`.${CLASS_CARD}`)).toHaveLength(1);
-    expect(panel?.textContent).toContain(TEXT_POST);
+    // No heading over the site's actions: "Post" on the page of a post said nothing.
+    expect(panel?.querySelector(".rdw-section-label")).toBeNull();
     expect(document.querySelector(`.${CLASS_MORE_BTN}`)).toBeNull();
     expect(
       document.querySelector('[role="dialog"][aria-label="More post actions"]'),
