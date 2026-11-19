@@ -26,6 +26,7 @@ describe("FEATURES registry", () => {
       "image-zoom",
       "gif-post",
       "full-image",
+      "more-like-this",
       "sidebar-right",
       "motion",
       "feed-counter",

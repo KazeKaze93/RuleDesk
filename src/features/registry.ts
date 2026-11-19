@@ -5,6 +5,7 @@ import { favoritesBulkFeature } from "./favorites-bulk";
 import { feedFeature } from "./feed";
 import { feedCounterFeature } from "./feed-counter";
 import { fullImageFeature } from "./full-image";
+import { moreLikeThisFeature } from "./more-like-this";
 import { gifPostFeature } from "./gif-post";
 import { gridDensityFeature } from "./grid-density";
 import { seenDimFeature } from "./grid-marks";
@@ -45,6 +46,7 @@ export const FEATURES: Feature[] = [
   imageZoomFeature,
   gifPostFeature,
   fullImageFeature,
+  moreLikeThisFeature,
   sidebarRightFeature,
   motionFeature,
   feedCounterFeature,
@@ -110,6 +112,7 @@ function buildFeatureSettingsGroups(): ReadonlyMap<string, SettingsGroupId> {
     [postActionsFeature.id, SETTINGS_GROUP.post],
     [imageZoomFeature.id, SETTINGS_GROUP.post],
     [fullImageFeature.id, SETTINGS_GROUP.post],
+    [moreLikeThisFeature.id, SETTINGS_GROUP.post],
     [gifPostFeature.id, SETTINGS_GROUP.post],
     [cdnFallbackFeature.id, SETTINGS_GROUP.post],
     [videoPlayerFeature.id, SETTINGS_GROUP.video],

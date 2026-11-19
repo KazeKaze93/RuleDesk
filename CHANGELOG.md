@@ -2,6 +2,14 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.65.0
+
+- The post page: "More like this" under the picture, as wide as the picture. It names the sources, the artists and the characters of the post, each by its tag and in the colour of its kind, and "In your favorites" with how many of them are like the post. Nothing is loaded until a source is picked. A picked one is one page of a search of the site, up to 42 posts, put in order by the tags they share with the post, a rare tag counting for more than a common one; the post itself is left out. Eight are shown, "Show all" opens the rest in place, "Search … →" opens the usual search. A source that was loaded stays until the page is left
+- A post with no artist and no character has one source, "Shared tags": a search by its two rarest tags
+- "In your favorites" asks the site for nothing: the tags of the favorites are in the browser. It lists those that share an artist or a character with the post
+- Under the pointer a post of the list says how many tags it shares. A post with few tags says the list is weak. When the site asks to slow down, "Try again" waits a minute and counts it down
+- Likeness is of tags, not of the pictures. RuleDesk → Post page → "More like this" turns the block off
+
 ## 0.64.3
 
 - The post page: the site's "previous / next" strip over the picture begins where the panel beside it begins and is as wide as the picture. It stood lower than the panel and was narrower than the picture
