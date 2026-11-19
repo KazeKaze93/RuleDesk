@@ -2,6 +2,14 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.71.0
+
+- The page of a deleted post, its block in the place of the picture: a whole frame, not a dashed one, which is the place to drop a file on Upload; the shape of the post, from the size in its statistics, 4:3 when that is not known; a picture of a crossed image over the words
+- The reason is said in words: "Breaks the site’s terms of service" for the site's "tos". A code that is not known is shown as the site gives it
+- "Show related posts" in the block opens the tab of related posts in the panel. It is there when that tab is
+- The MD5 of the file is a small pale line in a fixed-width font at the bottom of the block, with "Copy" beside it
+- On such a page Vote and "I came" cannot be pressed. Favorite cannot be pressed for a post that is not in favorites; one that is there reads "In favorites" and can be taken out. Collections cannot be pressed for a post that no collection holds
+
 ## 0.70.1
 
 - The page of a deleted post is recognised: in 0.70.0 the site's notice was looked for under a parent with a class it does not have, so nothing changed on such a page

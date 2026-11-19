@@ -389,6 +389,20 @@ export function readStatRows(): StatRow[] {
   return rows;
 }
 
+const POST_SIZE_RE = /^(\d+)\s*x\s*(\d+)$/i;
+
+/** The size of the post's file as the statistics give it, "1290x1018"; null when they do not. */
+export function readPostSize(): { readonly width: number; readonly height: number } | null {
+  const row = readStatRows().find((entry) => entry.label === "Size");
+  const match = row === undefined ? null : POST_SIZE_RE.exec(row.value.trim());
+  if (match === null) {
+    return null;
+  }
+  const width = Number(match[1]);
+  const height = Number(match[2]);
+  return width > 0 && height > 0 ? { width, height } : null;
+}
+
 export const SOURCE_LINK_REL = SOURCE_REL;
 
 function readDigitsCandidate(node: Element): string | null {

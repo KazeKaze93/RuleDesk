@@ -46,6 +46,7 @@ import {
 import { useHotkey } from "../../ui/use-hotkey";
 import { CollectionQueue } from "./collection-queue";
 import { CollectionsMenu } from "./collections-menu";
+import { OPEN_RELATED_EVENT } from "./deleted-block";
 import { DownloadOne } from "./download-one";
 import { PostActionsList } from "./post-actions-list";
 import {
@@ -93,6 +94,8 @@ const TITLE_FAVORITE = "Add to favorites (F)";
 const TITLE_UNFAVORITE = "Remove from favorites (F)";
 const TITLE_VOTE = "Vote up";
 const TITLE_VOTED = "Voted up";
+/** On the buttons that do nothing for a post that is gone. */
+export const TITLE_DELETED = "The post was deleted";
 const ARIA_PANEL_TABS = "Post details";
 
 const ICON_SIZE = 14;
@@ -246,8 +249,28 @@ export function PostPanel(props: PostPanelProps): JSX.Element {
     });
   }, [props.postId]);
 
+  // The button of the block that stands for a deleted picture opens this tab.
+  useEffect(() => {
+    if (!hasRelated) {
+      return;
+    }
+    const open = (): void => {
+      setActiveTab(POST_PANEL_TAB_RELATED);
+      setRelatedOpened(true);
+      document.getElementById(kitTabId(POST_PANEL_TAB_RELATED))?.focus();
+    };
+    document.addEventListener(OPEN_RELATED_EVENT, open);
+    return () => {
+      document.removeEventListener(OPEN_RELATED_EVENT, open);
+    };
+  }, [hasRelated]);
+
+  // A deleted post is not added to favorites: there is nothing to keep. One
+  // that is there already can be taken out (the designer, 19.11.2026).
+  const favBlocked = deleted && !favorited;
+
   const onFavClick = useCallback(async (): Promise<void> => {
-    if (props.postId === null || favPending) {
+    if (props.postId === null || favPending || favBlocked) {
       return;
     }
     setFavPending(true);
@@ -281,14 +304,14 @@ export function PostPanel(props: PostPanelProps): JSX.Element {
     } finally {
       setFavPending(false);
     }
-  }, [favPending, favorited, props.postId]);
+  }, [favBlocked, favPending, favorited, props.postId]);
 
-  useHotkey(FAVORITE_KEY_CODE, props.postId !== null, () => {
+  useHotkey(FAVORITE_KEY_CODE, props.postId !== null && !favBlocked, () => {
     void onFavClick();
   });
 
   const onVoteClick = useCallback(async (): Promise<void> => {
-    if (props.postId === null || votePending) {
+    if (props.postId === null || votePending || deleted) {
       return;
     }
     setVotePending(true);
@@ -302,7 +325,7 @@ export function PostPanel(props: PostPanelProps): JSX.Element {
     } finally {
       setVotePending(false);
     }
-  }, [props.postId, votePending]);
+  }, [deleted, props.postId, votePending]);
 
   const onICameClick = useCallback((): void => {
     iCame?.anchor.click();
@@ -348,8 +371,9 @@ export function PostPanel(props: PostPanelProps): JSX.Element {
                 size="m"
                 className={CLASS_FAV}
                 loading={favPending}
+                disabled={favBlocked}
                 pressed={favorited}
-                title={favorited ? TITLE_UNFAVORITE : TITLE_FAVORITE}
+                title={favBlocked ? TITLE_DELETED : favorited ? TITLE_UNFAVORITE : TITLE_FAVORITE}
                 aria-label={
                   favorited
                     ? `${UI_TEXT.cardFavRemoveLabel} ${props.postId}`
@@ -368,7 +392,7 @@ export function PostPanel(props: PostPanelProps): JSX.Element {
               </Button>
             ) : null}
             {numericId !== null ? (
-              <CollectionsMenu postId={numericId} />
+              <CollectionsMenu postId={numericId} deleted={deleted} />
             ) : null}
           </div>
         ) : null}
@@ -381,8 +405,9 @@ export function PostPanel(props: PostPanelProps): JSX.Element {
                 size="m"
                 className={CLASS_VOTE}
                 loading={votePending}
+                disabled={deleted}
                 pressed={voted}
-                title={voted ? TITLE_VOTED : TITLE_VOTE}
+                title={deleted ? TITLE_DELETED : voted ? TITLE_VOTED : TITLE_VOTE}
                 aria-label={LABEL_VOTE}
                 onClick={() => {
                   void onVoteClick();
@@ -398,6 +423,8 @@ export function PostPanel(props: PostPanelProps): JSX.Element {
                 variant="secondary"
                 size="m"
                 className={CLASS_ICAME}
+                disabled={deleted}
+                {...(deleted ? { title: TITLE_DELETED } : {})}
                 pressed={cameDone}
                 aria-label={LABEL_ICAME}
                 onClick={onICameClick}

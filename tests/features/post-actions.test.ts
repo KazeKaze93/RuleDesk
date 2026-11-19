@@ -924,7 +924,7 @@ describe("postActionsFeature", () => {
   });
 
   it("shows a deleted post as a post that is gone: the words where the picture was, no buttons for the file", () => {
-    const { mediaWrap } = buildPostDom({});
+    const { mediaWrap } = buildPostDom({ includeICame: true });
     // The page of a deleted post (from Kaze, 19.11.2026): no picture, the
     // site's notice over the page, the "previous / next" strip still there.
     mediaWrap?.querySelector("img")?.remove();
@@ -942,15 +942,34 @@ describe("postActionsFeature", () => {
     postActionsFeature.mount(makeCtx());
     postActionsFeature.mount(makeCtx());
 
-    const blocks = document.querySelectorAll("#rdw-post-deleted");
+    const blocks = document.querySelectorAll<HTMLElement>("#rdw-post-deleted");
     expect(blocks).toHaveLength(1);
     const block = blocks[0];
     expect(block?.previousElementSibling).toBe(strip);
+    // The code of the reason is said in words; the hash is a line of its own kind.
     expect([...(block?.querySelectorAll("p") ?? [])].map((line) => line.textContent)).toEqual([
       "This post was deleted",
-      "Reason: tos",
-      "MD5 e2922692f40a8766ab21420eb3c3ff7f",
+      "Breaks the site\u2019s terms of service",
     ]);
+    expect(block?.querySelector("svg")).not.toBeNull();
+    expect(block?.querySelector(".rdw-post-deleted-md5")?.textContent).toBe(
+      "MD5 e2922692f40a8766ab21420eb3c3ff7f",
+    );
+    expect(block?.querySelector(".rdw-post-deleted-copy")?.textContent).toBe("Copy");
+    // Of the shape of the post (the statistics say 1344x1728), a whole frame.
+    expect(block?.style.getPropertyValue("--rdw-post-deleted-ratio")).toBe("1344 / 1728");
+    expect(postActionsFeature.css).toMatch(
+      /#rdw-post-deleted \{[^}]*aspect-ratio: var\(--rdw-post-deleted-ratio, 4 \/ 3\);[^}]*border: 1px solid var\(--rdw-border\);/,
+    );
+    expect(postActionsFeature.css).toMatch(/\.rdw-post-deleted-md5 \{[^}]*monospace;/);
+    // No tags are listed on this page: there is no tab to open, so no button for it.
+    expect(block?.querySelector(".rdw-post-deleted-related")).toBeNull();
+    // Vote, "I came", Favorite and Collections do nothing for a post that is gone.
+    for (const name of [CLASS_FAV, CLASS_VOTE, CLASS_ICAME, CLASS_COLLECTIONS_BTN]) {
+      const button = actionsPanel()?.querySelector<HTMLButtonElement>(`button.${name}`);
+      expect(button?.disabled, name).toBe(true);
+      expect(button?.title, name).toBe("The post was deleted");
+    }
     // The site's notice says the same: it is hidden, not removed.
     const notice = notices.querySelector("div.status-notice");
     expect(notice?.classList.contains("rdw-post-deleted-notice")).toBe(true);
@@ -961,6 +980,61 @@ describe("postActionsFeature", () => {
     expect(document.querySelector("a.rdw-post-panel-original")).toBeNull();
     expect(document.querySelector(".rdw-post-panel-download")).toBeNull();
     expect(actionsPanel()?.querySelector(`.${CLASS_ACTIONS}`)).not.toBeNull();
+  });
+
+  it("a deleted post: the hash is copied, related posts are opened, a favorite is taken out", async () => {
+    const { mediaWrap } = buildPostDom({});
+    mediaWrap?.querySelector("img")?.remove();
+    const notices = document.createElement("div");
+    notices.innerHTML =
+      '<div class="status-notice">This post was deleted. Reason: spam / MD5: e2922692f40a8766ab21420eb3c3ff7f</div>';
+    document.body.prepend(notices);
+    const tags = document.createElement("ul");
+    tags.id = "tag-sidebar";
+    tags.innerHTML =
+      '<li class="tag-type-general tag"><a href="index.php?page=post&amp;s=list&amp;tags=red_dress">red dress</a> <span class="tag-count">30000</span></li>';
+    document.body.append(tags);
+    addFav(POST_ID);
+    const writeText = vi.fn(() => Promise.resolve());
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.reject(new Error("offline"))),
+    );
+
+    await act(async () => {
+      postActionsFeature.mount(makeCtx());
+      await Promise.resolve();
+    });
+
+    const block = document.getElementById("rdw-post-deleted");
+    // A code that is not known is shown as the site gives it.
+    expect(block?.querySelector(".rdw-post-deleted-reason")?.textContent).toBe("Reason: spam");
+
+    const copy = block?.querySelector<HTMLButtonElement>(".rdw-post-deleted-copy");
+    await act(async () => {
+      copy?.click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(writeText).toHaveBeenCalledWith("e2922692f40a8766ab21420eb3c3ff7f");
+    expect(copy?.textContent).toBe("Copied");
+
+    // A post already in favorites can be taken out of them.
+    const fav = actionsPanel()?.querySelector<HTMLButtonElement>(`button.${CLASS_FAV}`);
+    expect(fav?.disabled).toBe(false);
+    expect(fav?.textContent).toContain(TEXT_IN_FAVORITES);
+
+    const related = block?.querySelector<HTMLButtonElement>(".rdw-post-deleted-related");
+    expect(related?.textContent).toBe("Show related posts");
+    const tab = document.getElementById(kitTabId("related"));
+    expect(tab?.getAttribute("aria-selected")).toBe("false");
+    await act(async () => {
+      related?.click();
+      await Promise.resolve();
+    });
+    expect(tab?.getAttribute("aria-selected")).toBe("true");
+    expect(document.getElementById(kitTabPanelId("related"))?.hidden).toBe(false);
   });
 
   it("leaves a post with a picture alone when a notice says something else", () => {

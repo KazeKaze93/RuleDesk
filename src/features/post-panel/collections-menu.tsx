@@ -27,7 +27,15 @@ const CLASS_TRIGGER = "rdw-post-panel-collections-btn";
 
 export type CollectionsMenuProps = {
   readonly postId: number;
+  /**
+   * The post was deleted on the site: one that no collection holds is not
+   * added to any (the designer, 19.11.2026). One that some hold keeps the
+   * list, to be taken out of them.
+   */
+  readonly deleted?: boolean;
 };
+
+const TITLE_DELETED = "The post was deleted";
 
 function readAttributeSrc(
   element: HTMLImageElement | HTMLSourceElement | HTMLVideoElement,
@@ -144,6 +152,8 @@ export function CollectionsMenu(
         size="m"
         className={CLASS_TRIGGER}
         pressed={held > 0}
+        disabled={props.deleted === true && held === 0 && !open}
+        {...(props.deleted === true && held === 0 ? { title: TITLE_DELETED } : {})}
         aria-label={held > 0 ? collectionsHeldLabel(held) : TEXT_COLLECTIONS}
         onClick={() => {
           if (open) {

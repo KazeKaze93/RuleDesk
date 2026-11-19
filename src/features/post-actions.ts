@@ -3,12 +3,26 @@ import { h, render } from "preact";
 
 import { log } from "../log";
 import { readPostIdFromSearch } from "../site/pages";
+import { readPostTags } from "../site/related";
+import { getFeatureEnabled } from "../storage/store";
+import { MORE_LIKE_THIS_FEATURE_ID } from "./more-like-this";
+import {
+  CLASS_DELETED_COPY,
+  CLASS_DELETED_ICON,
+  CLASS_DELETED_MD5,
+  CLASS_DELETED_MD5_ROW,
+  CLASS_DELETED_RELATED,
+  CLASS_DELETED_TITLE,
+  DeletedBlock,
+  POST_DELETED_ID,
+} from "./post-panel/deleted-block";
 import { PostPanel } from "./post-panel/post-panel";
 import {
   findDeletedNotice,
   findFlexi,
   findMediaWrapper,
   measureHeaderOffsetPx,
+  readPostSize,
 } from "./post-panel/site-reads";
 import {
   POST_ACTIONS_ID,
@@ -62,16 +76,14 @@ const CLASS_PANEL = "rdw-post-actions";
 const CLASS_MODE_WIDE = "rdw-post-actions--wide";
 const CLASS_MODE_NARROW = "rdw-post-actions--narrow";
 
-export const POST_DELETED_ID = "rdw-post-deleted";
-const CLASS_DELETED_TITLE = "rdw-post-deleted-title";
-const CLASS_DELETED_MD5 = "rdw-post-deleted-md5";
+export { POST_DELETED_ID };
 /** On the site's own notice once its words are shown in the block. */
 export const CLASS_DELETED_NOTICE = "rdw-post-deleted-notice";
-const TEXT_DELETED = "This post was deleted";
-const TEXT_DELETED_REASON = "Reason: ";
-const TEXT_DELETED_MD5 = "MD5 ";
 const DELETED_BLOCK_WIDTH_PX = 640;
-const DELETED_BLOCK_MIN_HEIGHT_PX = 360;
+const DELETED_BLOCK_MIN_HEIGHT_PX = 280;
+/** The shape of the block: that of the post, "1290 / 1018"; this one when its size is not known. */
+const DELETED_RATIO_VAR = "--rdw-post-deleted-ratio";
+const DELETED_RATIO_UNKNOWN = "4 / 3";
 
 const WARN_NO_FLEXI =
   "post-actions: div.flexi missing; panel not mounted";
@@ -253,34 +265,69 @@ ${BODY_SELECTOR} #${POST_ACTIONS_ID} .rdw-post-panel-tabpanel[hidden] {
   display: none;
 }
 ${BODY_SELECTOR} #${POST_DELETED_ID} {
+  position: relative;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 8px;
   width: ${String(DELETED_BLOCK_WIDTH_PX)}px;
   max-width: 100%;
+  aspect-ratio: var(${DELETED_RATIO_VAR}, ${DELETED_RATIO_UNKNOWN});
   min-height: ${String(DELETED_BLOCK_MIN_HEIGHT_PX)}px;
-  padding: 24px;
-  border: 1px dashed var(--rdw-border);
+  max-height: max(${String(DELETED_BLOCK_MIN_HEIGHT_PX)}px, calc(100vh - var(${STICKY_TOP_VAR}, ${String(PANEL_STICKY_GAP_PX)}px) - var(${MEDIA_HEAD_VAR}, 0px) - ${String(PANEL_STICKY_GAP_PX)}px));
+  padding: 24px 24px 56px;
+  border: 1px solid var(--rdw-border);
   border-radius: var(--rdw-radius-l);
   background: var(--rdw-surface);
   color: var(--rdw-muted);
-  font: 12px/1.4 var(--rdw-font);
+  font: ${String(PANEL_FONT_SIZE_PX)}px/1.4 var(--rdw-font);
   text-align: center;
 }
 ${BODY_SELECTOR} #${POST_DELETED_ID} p {
   margin: 0;
+}
+${BODY_SELECTOR} #${POST_DELETED_ID} .${CLASS_DELETED_ICON} {
+  color: var(--rdw-muted);
 }
 ${BODY_SELECTOR} #${POST_DELETED_ID} .${CLASS_DELETED_TITLE} {
   color: var(--rdw-text);
   font-size: 16px;
   font-weight: 600;
 }
+${BODY_SELECTOR} #${POST_DELETED_ID} .${CLASS_DELETED_RELATED} {
+  margin-top: 8px;
+}
+${BODY_SELECTOR} #${POST_DELETED_ID} .${CLASS_DELETED_MD5_ROW} {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+}
 ${BODY_SELECTOR} #${POST_DELETED_ID} .${CLASS_DELETED_MD5} {
-  max-width: 100%;
+  min-width: 0;
   overflow-wrap: anywhere;
+  color: var(--rdw-muted);
+  font: 11px/1.4 ui-monospace, "Cascadia Mono", Consolas, "Courier New", monospace;
+  opacity: 0.8;
+}
+${BODY_SELECTOR} #${POST_DELETED_ID} .${CLASS_DELETED_COPY} {
+  flex: 0 0 auto;
+  min-height: 24px;
+  padding: 0 6px;
+  color: var(--rdw-muted);
+  font-size: 11px;
+  font-weight: 400;
+}
+${BODY_SELECTOR} #${POST_DELETED_ID} .${CLASS_DELETED_COPY}:hover {
+  background: var(--rdw-surface-2);
+  color: var(--rdw-text);
 }
 ${BODY_SELECTOR} div.status-notice.${CLASS_DELETED_NOTICE} {
   display: none;
@@ -447,11 +494,16 @@ function bindLayout(panel: HTMLElement, flexi: HTMLElement): void {
 /**
  * On the page of a deleted post the site says so in a strip over an empty
  * page, and the panel stood beside nothing (Kaze, 19.11.2026). The words are
- * put where the picture was, as a block of its size, and the strip is hidden:
- * the page reads as a post that is gone, not as a page that broke.
+ * put where the picture was, as a block of its shape, and the strip is hidden:
+ * the page reads as a post that is gone, not as a page that broke. The frame
+ * is a whole line: a dashed one is the place to drop a file on Upload.
  */
 function mountDeletedBlock(flexi: HTMLElement): void {
-  document.getElementById(POST_DELETED_ID)?.remove();
+  const old = document.getElementById(POST_DELETED_ID);
+  if (old !== null) {
+    render(null, old);
+    old.remove();
+  }
   const notice = findDeletedNotice();
   if (notice === null || flexi.querySelector(`#${IMAGE_ID}, video`) !== null) {
     return;
@@ -459,21 +511,22 @@ function mountDeletedBlock(flexi: HTMLElement): void {
   const block = document.createElement("div");
   block.id = POST_DELETED_ID;
   block.setAttribute("role", "status");
-  const title = document.createElement("p");
-  title.className = CLASS_DELETED_TITLE;
-  title.textContent = TEXT_DELETED;
-  block.append(title);
-  if (notice.reason.length > 0) {
-    const reason = document.createElement("p");
-    reason.textContent = `${TEXT_DELETED_REASON}${notice.reason}`;
-    block.append(reason);
+  // Of the shape of the post (the designer, 19.11.2026): a block of another
+  // shape, 16:9 for a post of 1290x1018, read as a different thing.
+  const size = readPostSize();
+  if (size !== null) {
+    block.style.setProperty(DELETED_RATIO_VAR, `${String(size.width)} / ${String(size.height)}`);
   }
-  if (notice.md5.length > 0) {
-    const md5 = document.createElement("p");
-    md5.className = CLASS_DELETED_MD5;
-    md5.textContent = `${TEXT_DELETED_MD5}${notice.md5}`;
-    block.append(md5);
-  }
+  render(
+    h(DeletedBlock, {
+      reason: notice.reason,
+      md5: notice.md5,
+      // The same test as the panel's for its tab: the button opens that tab.
+      showRelated:
+        getFeatureEnabled(MORE_LIKE_THIS_FEATURE_ID, true) && readPostTags(document).length > 0,
+    }),
+    block,
+  );
   // In the block the picture would be in, under the site's "previous / next".
   let media: Element | null = null;
   for (const child of flexi.children) {
