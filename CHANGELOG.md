@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.64.2
+
+- The site is not asked for the kind of a tag you follow: the kind it is followed as is known already
+
 ## 0.64.1
 
 - The post page: only a picture the site shows larger than its usual copy, wider than 850 px, is made to fit the height of the window. An ordinary post is again in the size the site gives it; fitted in 0.64.0, it came out small

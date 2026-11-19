@@ -1,6 +1,7 @@
 import { useEffect, useState } from "preact/hooks";
 
 import { lookUpTagKinds, onTagKindsLearned } from "../site/tag-type-lookup";
+import { chipKindOfTag } from "./tag-chip-kind";
 
 const SEPARATOR = " ";
 
@@ -13,7 +14,12 @@ export function useTagKindLookup(tags: readonly string[]): void {
   const [, bump] = useState(0);
   const key = tags.join(SEPARATOR);
   useEffect(() => {
-    lookUpTagKinds(key.length === 0 ? [] : key.split(SEPARATOR));
+    // A followed tag has the kind it is followed as: the site is not asked about it.
+    lookUpTagKinds(
+      (key.length === 0 ? [] : key.split(SEPARATOR)).filter(
+        (tag) => chipKindOfTag(tag) === "default",
+      ),
+    );
   }, [key]);
   useEffect(
     () =>
