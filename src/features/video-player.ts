@@ -194,24 +194,38 @@ function pixels(value: string): number {
  * first it stayed as small as the site had drawn it (Kaze, 19.11.2026: a
  * player of 264 px on a wide window, after 0.72 made the start quicker). The
  * room is what the row has left beside the panel.
+ *
+ * That alone was too much (0.72.2: a player of 1210 px in a block of 1000,
+ * its right side under the panel): the block of the player does not grow past
+ * a width of its own, set by the site, which the script does not know. So the
+ * page is asked: the player is made as wide as the row could give, and the
+ * width its block then really has is the room.
  */
 export function measureMediaColumnWidthPx(wrapper: HTMLElement): number {
+  const parent = wrapper.parentElement;
   const row = wrapper.closest(POST_ROW_SELECTOR);
-  const panel = document.getElementById(POST_ACTIONS_ID);
-  if (row instanceof HTMLElement && panel !== null && panel.parentElement === row) {
-    const panelStyle = window.getComputedStyle(panel);
-    if (panelStyle.position === PANEL_BESIDE_POSITION && row.clientWidth > 0) {
-      const taken =
-        panel.offsetWidth +
-        pixels(panelStyle.marginLeft) +
-        pixels(window.getComputedStyle(row).columnGap);
-      const room = Math.floor(row.clientWidth - taken);
-      if (room > 0) {
-        return room;
+  if (parent !== null && row instanceof HTMLElement && row.clientWidth > 0) {
+    let offered = row.clientWidth;
+    const panel = document.getElementById(POST_ACTIONS_ID);
+    if (panel !== null && panel.parentElement === row) {
+      const panelStyle = window.getComputedStyle(panel);
+      if (panelStyle.position === PANEL_BESIDE_POSITION) {
+        offered -=
+          panel.offsetWidth +
+          pixels(panelStyle.marginLeft) +
+          pixels(window.getComputedStyle(row).columnGap);
       }
     }
+    offered = Math.floor(offered);
+    if (offered > 0) {
+      const before = wrapper.style.width;
+      wrapper.style.width = `${String(offered)}px`;
+      // Reading the width lays the page out with the player that wide.
+      const given = parent.clientWidth;
+      wrapper.style.width = before;
+      return given > 0 ? Math.min(offered, given) : offered;
+    }
   }
-  const parent = wrapper.parentElement;
   if (parent !== null && parent.clientWidth > 0) {
     return parent.clientWidth;
   }

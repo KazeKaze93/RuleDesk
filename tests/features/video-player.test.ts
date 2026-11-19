@@ -496,7 +496,7 @@ describe("the room of the player beside the panel", () => {
     Object.defineProperty(element, name, { value, configurable: true });
   }
 
-  it("is what the row has left beside the panel, not the width of the player's own block", () => {
+  it("is what the row has left beside the panel, and no more than the block of the player takes", () => {
     document.body.replaceChildren();
     const row = document.createElement("div");
     row.className = "flexi";
@@ -511,19 +511,34 @@ describe("the room of the player beside the panel", () => {
     row.append(media, panel);
     document.body.append(row);
     width(row, "clientWidth", 1640);
-    // The block of the player is as wide as the small player the site drew.
-    width(media, "clientWidth", 264);
     width(panel, "offsetWidth", 360);
+    // The block of the player is as wide as the player in it, up to a width
+    // of its own: 264 px with the small player the site draws first.
+    let blockLimit = 5000;
+    wrapper.style.width = "264px";
+    Object.defineProperty(media, "clientWidth", {
+      configurable: true,
+      get: () => Math.min(Number.parseFloat(wrapper.style.width), blockLimit),
+    });
 
+    // The block takes all it is given: the room is what the row has left.
     expect(measureMediaColumnWidthPx(wrapper)).toBe(1640 - 360 - 12 - 12);
+    // The measuring leaves the player as it was.
+    expect(wrapper.style.width).toBe("264px");
 
-    // On a narrow window the panel is under the player: the block's own width, as before.
+    // The site lets the block be no wider than 1000 px: a player of 1256
+    // would stand under the panel (0.72.2).
+    blockLimit = 1000;
+    expect(measureMediaColumnWidthPx(wrapper)).toBe(1000);
+
+    // On a narrow window the panel is under the player: the whole row, up to the limit.
+    blockLimit = 5000;
     panel.style.position = "static";
-    expect(measureMediaColumnWidthPx(wrapper)).toBe(264);
+    expect(measureMediaColumnWidthPx(wrapper)).toBe(1640);
 
     // With no panel on the page, the same.
     panel.remove();
-    expect(measureMediaColumnWidthPx(wrapper)).toBe(264);
+    expect(measureMediaColumnWidthPx(wrapper)).toBe(1640);
   });
 });
 
