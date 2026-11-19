@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.72.1
+
+- The built file is minified: 659 KB, from 1,277 KB, and the part of it run before the page is first drawn is 164 KB, from 306 KB. The file in the script manager is no longer readable; the readable code is `src/` at the commit of the release
+
 ## 0.72.0
 
 An audit of security, speed and the structure of the code. Nothing looks different.

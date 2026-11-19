@@ -18,7 +18,7 @@ export default defineConfig({
         namespace: "https://github.com/kazekaze93/ruledesk-web",
         description:
           "Collections, playlists, favorites, artist updates, and page tweaks for rule34.xxx",
-        version: "0.72.0",
+        version: "0.72.1",
         match: ["https://rule34.xxx/*"],
         "run-at": "document-start",
         grant: ["GM_getValue", "GM_setValue", "GM_download"],
@@ -32,6 +32,11 @@ export default defineConfig({
       },
     }),
   ],
+  // The built file is minified (Kaze, 19.11.2026): it is parsed on every page
+  // before the first paint. The readable code is src/, at the commit of the release.
+  build: {
+    minify: true,
+  },
   resolve: {
     dedupe: ["preact"],
     alias: {
