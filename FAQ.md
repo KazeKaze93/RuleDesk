@@ -78,6 +78,10 @@ Switch off "Zoom the picture on click" in RuleDesk → Post page.
 **There are no download buttons.**
 The download manager works only with your own API key. Generate it on the site's account options page and paste the whole line it shows into RuleDesk → Downloads.
 
+**Can the site or its ads read my API key?**
+
+Not since 0.73.0. The requests that carry the key are made by the script manager, outside the page, and only to `api.rule34.xxx`. Before 0.73.0 they were made by the page, and a script of the page could read the key from the address of the request while a download was running. If you downloaded with an earlier version and want to be sure, make a new key on the site's account options page and paste it into RuleDesk → Downloads.
+
 **The browser asked for a permission when I started a download.**
 Tampermonkey asks once for access to browser downloads. Without it files cannot be saved.
 

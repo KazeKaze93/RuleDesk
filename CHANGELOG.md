@@ -2,6 +2,12 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.73.0
+
+- Downloads: the API key is no longer seen by the page. The requests that find the files of a download carry the key in their address, and they were made by the page itself, where every script of the page, the site's own and its advertisers', can read the addresses of what the page has loaded. They are now made by the script manager, outside the page. The requests are the same, to the same address, at the same pace
+- For that the script asks for one more permission: `GM_xmlhttpRequest`, with `api.rule34.xxx` as the only address it may reach. The script manager shows this when the script is updated
+- If the key was used for downloads before this version, a script of the page may have read it. A new key can be made on the site's account options page; the old one stops working
+
 ## 0.72.5
 
 - Posts, while posts are being selected: the frame of a selected post is drawn over the thumbnail, and over the video that plays in its place under the pointer. It was an outline inside the cell, and that video stood over it: a selected video looked as if it had come out of its frame

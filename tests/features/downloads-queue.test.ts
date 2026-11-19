@@ -23,6 +23,20 @@ import {
 import { resetApiPace } from "../../src/site/api";
 import { clearStorageCache } from "../../src/storage/store";
 
+
+/** The API is asked through the script manager, never with `fetch` (the key is in the address). */
+function stubApiAnswer(body: () => string): void {
+  vi.stubGlobal(
+    "GM_xmlhttpRequest",
+    (details: { onload?: (response: { status: number; responseText: string }) => void }) => {
+      const text = body();
+      queueMicrotask(() => {
+        details.onload?.({ status: 200, responseText: text });
+      });
+    },
+  );
+}
+
 const memory = new Map<string, unknown>();
 const LONG_MS = 60_000;
 
@@ -44,9 +58,7 @@ function stubApi(ids: number[]): void {
     ),
     "",
   ];
-  vi.stubGlobal("fetch", () =>
-    Promise.resolve(new Response(answers.shift() ?? "", { status: 200 })),
-  );
+  stubApiAnswer(() => answers.shift() ?? "");
 }
 
 /** Records saved names; ids in `broken` fail every time. */
@@ -250,9 +262,7 @@ describe("download manager", () => {
   it("reports an API refusal instead of starting, and Cancel clears it", async () => {
     setApiCredentials("42", "wrong");
     stubDownload();
-    vi.stubGlobal("fetch", () =>
-      Promise.resolve(new Response('"Missing authentication."', { status: 200 })),
-    );
+    stubApiAnswer(() => '"Missing authentication."');
     vi.spyOn(console, "warn").mockImplementation(() => {});
 
     await startDownload("Pics", { kind: "query", tags: "cat" });

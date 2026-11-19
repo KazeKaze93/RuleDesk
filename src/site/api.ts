@@ -18,7 +18,6 @@ const API_URL = "https://api.rule34.xxx/index.php";
 const POSTS_PER_REQUEST = 1000;
 /** Pause between two API requests of one collection run. */
 export const API_REQUEST_INTERVAL_MS = 1000;
-const FETCH_NO_CREDENTIALS = "omit";
 const ERROR_TEXT_LIMIT = 120;
 const SORT_TOKEN_PREFIX = "sort:";
 const ID_BELOW_PREFIX = "id:<";
@@ -157,27 +156,71 @@ export function resetApiPace(): void {
   }
 }
 
+type ApiAnswer = { readonly status: number; readonly text: string };
+
+const ERROR_NO_REQUEST = "The script manager cannot ask the API (GM_xmlhttpRequest is missing)";
+const ERROR_NETWORK = "API request failed";
+const ERROR_TIMEOUT = "API request timed out";
+const HTTP_OK_FROM = 200;
+const HTTP_OK_BELOW = 300;
+/** A request with no answer for this long has failed. */
+const API_TIMEOUT_MS = 30_000;
+
+/** True when the script manager can make the request the API needs. */
+export function canAskApi(): boolean {
+  return typeof GM_xmlhttpRequest === "function";
+}
+
 /**
- * One API request. The API allows requests from any page
- * (`access-control-allow-origin: *`), so a plain `fetch` does it; no cookies
- * are sent, the key in the address is the whole authentication.
+ * The request itself, made by the script manager and not by the page. The key
+ * is in the address, and the address of a request made with `fetch` is seen
+ * by every script of the page, the site's and its advertisers', in the page's
+ * list of loaded resources (Kaze checked it during a download, 19.11.2026:
+ * the key was there). A request of the manager is not in that list. There is
+ * no falling back to `fetch`: that would show the key again without a word.
+ * `anonymous` sends no cookies; the key is the whole authentication.
  */
+function ask(url: string): Promise<ApiAnswer> {
+  return new Promise((resolve, reject) => {
+    if (!canAskApi()) {
+      reject(new Error(ERROR_NO_REQUEST));
+      return;
+    }
+    GM_xmlhttpRequest({
+      method: FETCH_METHOD_GET,
+      url,
+      anonymous: true,
+      timeout: API_TIMEOUT_MS,
+      onload: (response) => {
+        resolve({ status: response.status, text: response.responseText });
+      },
+      onerror: () => {
+        reject(new Error(ERROR_NETWORK));
+      },
+      onabort: () => {
+        reject(new Error(ERROR_NETWORK));
+      },
+      ontimeout: () => {
+        reject(new Error(ERROR_TIMEOUT));
+      },
+    });
+  });
+}
+
+/** One API request, in its turn, asked again a few times after "too many requests". */
 async function requestText(query: ApiQuery, credentials: ApiCredentials): Promise<string> {
   for (let attempt = 0; ; attempt += 1) {
     await takeTurn();
-    const response = await fetch(buildApiUrl(query, credentials), {
-      method: FETCH_METHOD_GET,
-      credentials: FETCH_NO_CREDENTIALS,
-    });
-    if (response.status === HTTP_TOO_MANY_REQUESTS && attempt < API_LIMIT_RETRIES) {
+    const answer = await ask(buildApiUrl(query, credentials));
+    if (answer.status === HTTP_TOO_MANY_REQUESTS && attempt < API_LIMIT_RETRIES) {
       // Something else is using the key (another browser, another tool): wait it out.
       await sleep(API_LIMIT_PAUSE_MS);
       continue;
     }
-    if (!response.ok) {
-      throw new Error(`API HTTP ${String(response.status)}`);
+    if (answer.status < HTTP_OK_FROM || answer.status >= HTTP_OK_BELOW) {
+      throw new Error(`API HTTP ${String(answer.status)}`);
     }
-    return response.text();
+    return answer.text;
   }
 }
 

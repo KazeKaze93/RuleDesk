@@ -18,11 +18,35 @@ function post(id: number): { id: number; file_url: string } {
   return { id, file_url: `https://wimg.rule34.xxx//images/1/${String(id)}.jpg` };
 }
 
+type ManagerRequest = {
+  readonly method?: string;
+  readonly url: string;
+  readonly anonymous?: boolean;
+  readonly onload?: (response: { status: number; responseText: string }) => void;
+  readonly onerror?: () => void;
+};
+
+/**
+ * The script manager's request, which the API is asked through. `fetch` is
+ * made to fail the test: a request of the page would show the key to the page.
+ */
+function stubManager(answer: (details: ManagerRequest) => { status: number; body: string }): void {
+  vi.stubGlobal("fetch", () => {
+    throw new Error("the API must not be asked with fetch");
+  });
+  vi.stubGlobal("GM_xmlhttpRequest", (details: ManagerRequest) => {
+    const { status, body } = answer(details);
+    queueMicrotask(() => {
+      details.onload?.({ status, responseText: body });
+    });
+  });
+}
+
 /** Answers API requests in order; records the `tags` (or `id=N`) of each. */
 function stubApi(answers: string[]): string[] {
   const seen: string[] = [];
-  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
-    const url = new URL(input);
+  stubManager((details) => {
+    const url = new URL(details.url);
     const id = url.searchParams.get("id");
     seen.push(id === null ? (url.searchParams.get("tags") ?? "") : `id=${id}`);
     expect(url.origin).toBe("https://api.rule34.xxx");
@@ -30,9 +54,10 @@ function stubApi(answers: string[]): string[] {
     expect(url.searchParams.get("api_key")).toBe("secret-key");
     expect(url.searchParams.get("json")).toBe("1");
     expect(url.searchParams.get("limit")).toBe("1000");
+    expect(details.method).toBe("GET");
     // No cookies go to the API: the key is the whole authentication.
-    expect(init?.credentials).toBe("omit");
-    return Promise.resolve(new Response(answers.shift() ?? "", { status: 200 }));
+    expect(details.anonymous).toBe(true);
+    return { status: 200, body: answers.shift() ?? "" };
   });
   return seen;
 }
@@ -76,7 +101,7 @@ describe("site API for downloads", () => {
   });
 
   it("reports a failed request by its status", async () => {
-    vi.stubGlobal("fetch", () => Promise.resolve(new Response("", { status: 500 })));
+    stubManager(() => ({ status: 500, body: "" }));
     const walk = collectPostFiles(
       { kind: "query", tags: "cat" },
       { credentials: CREDENTIALS, onProgress: () => {}, isCancelled: () => false },
@@ -88,13 +113,11 @@ describe("site API for downloads", () => {
 
   it("waits out too many requests and asks again, then gives up", async () => {
     let calls = 0;
-    vi.stubGlobal("fetch", () => {
+    stubManager(() => {
       calls += 1;
-      return Promise.resolve(
-        calls <= 2
-          ? new Response("", { status: 429 })
-          : new Response(JSON.stringify([post(5)]), { status: 200 }),
-      );
+      return calls <= 2
+        ? { status: 429, body: "" }
+        : { status: 200, body: JSON.stringify([post(5)]) };
     });
     const run = collectPostFiles({ kind: "ids", ids: [5] }, { credentials: CREDENTIALS, onProgress: () => {}, isCancelled: () => false });
     await vi.advanceTimersByTimeAsync((API_LIMIT_PAUSE_MS + API_MIN_INTERVAL_MS) * 3);
@@ -102,9 +125,9 @@ describe("site API for downloads", () => {
     expect(calls).toBe(3);
 
     calls = 0;
-    vi.stubGlobal("fetch", () => {
+    stubManager(() => {
       calls += 1;
-      return Promise.resolve(new Response("", { status: 429 }));
+      return { status: 429, body: "" };
     });
     const stuck = collectPostFiles({ kind: "ids", ids: [5] }, { credentials: CREDENTIALS, onProgress: () => {}, isCancelled: () => false });
     const failed = expect(stuck).rejects.toThrow("API HTTP 429");
@@ -115,9 +138,9 @@ describe("site API for downloads", () => {
 
   it("starts no request sooner than the pace allows, whoever asks", async () => {
     const starts: number[] = [];
-    vi.stubGlobal("fetch", () => {
+    stubManager(() => {
       starts.push(Date.now());
-      return Promise.resolve(new Response("[]", { status: 200 }));
+      return { status: 200, body: "[]" };
     });
     // Two runs at once, as two downloads would be.
     const both = Promise.all([
@@ -132,9 +155,9 @@ describe("site API for downloads", () => {
 
   it("keeps the pace across tabs through the shared time", async () => {
     const starts: number[] = [];
-    vi.stubGlobal("fetch", () => {
+    stubManager(() => {
       starts.push(Date.now());
-      return Promise.resolve(new Response("[]", { status: 200 }));
+      return { status: 200, body: "[]" };
     });
     // Another tab has just made a request.
     const before = Date.now();
@@ -143,6 +166,21 @@ describe("site API for downloads", () => {
     await vi.advanceTimersByTimeAsync(API_MIN_INTERVAL_MS * 2);
     await run;
     expect((starts[0] ?? 0) - before).toBeGreaterThanOrEqual(API_MIN_INTERVAL_MS);
+  });
+
+  it("does not ask at all, and says why, when the script manager cannot make the request", async () => {
+    const fetched = vi.fn();
+    vi.stubGlobal("fetch", fetched);
+    vi.stubGlobal("GM_xmlhttpRequest", undefined);
+    const run = collectPostFiles(
+      { kind: "ids", ids: [5] },
+      { credentials: CREDENTIALS, onProgress: () => {}, isCancelled: () => false },
+    );
+    const failed = expect(run).rejects.toThrow("GM_xmlhttpRequest is missing");
+    await vi.advanceTimersByTimeAsync(API_MIN_INTERVAL_MS);
+    await failed;
+    // The key is never put into a request the page can see.
+    expect(fetched).not.toHaveBeenCalled();
   });
 
   it("turns a refusal in words into an error with those words", () => {

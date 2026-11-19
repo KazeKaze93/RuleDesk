@@ -18,10 +18,14 @@ export default defineConfig({
         namespace: "https://github.com/kazekaze93/ruledesk-web",
         description:
           "Collections, playlists, favorites, artist updates, and page tweaks for rule34.xxx",
-        version: "0.72.5",
+        version: "0.73.0",
         match: ["https://rule34.xxx/*"],
         "run-at": "document-start",
-        grant: ["GM_getValue", "GM_setValue", "GM_download"],
+        // GM_xmlhttpRequest and the one host it may reach are for the site API
+        // of the download manager only (src/site/api.ts): its address carries
+        // the user's key, and a request made by the page would show it to the page.
+        grant: ["GM_getValue", "GM_setValue", "GM_download", "GM_xmlhttpRequest"],
+        connect: ["api.rule34.xxx"],
         updateURL: USERSCRIPT_RAW_URL,
         downloadURL: USERSCRIPT_RAW_URL,
       },
