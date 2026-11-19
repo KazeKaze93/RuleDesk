@@ -132,7 +132,60 @@ const SERVICE_TAGS: ReadonlySet<string> = new Set([
   "video",
   "1girls",
   "1boy",
+  // The rating and words of praise, written as tags: they are on any post.
+  "explicit",
+  "questionable",
+  "safe",
+  "nsfw",
+  "adult",
+  "mature",
+  "perfect_body",
+  "beautiful",
+  "sexy",
+  "hot",
+  "cute",
+  "pretty",
 ]);
+/**
+ * Copyrights that name where a picture was sold or posted, or that it is of
+ * no series at all: not what it is of. They are no source (Kaze, 19.11.2026:
+ * "patreon? seriously?").
+ */
+const SERVICE_COPYRIGHTS: ReadonlySet<string> = new Set([
+  "patreon",
+  "patreon_reward",
+  "fanbox",
+  "pixiv",
+  "pixiv_fanbox",
+  "fantia",
+  "twitter",
+  "x_(twitter)",
+  "subscribestar",
+  "gumroad",
+  "ko-fi",
+  "boosty",
+  "skeb",
+  "onlyfans",
+  "fansly",
+  "deviantart",
+  "newgrounds",
+  "tumblr",
+  "discord",
+  "itch.io",
+  "original",
+  "original_character",
+  "commission",
+]);
+/** Characters that are nobody in particular. */
+const SERVICE_CHARACTERS: ReadonlySet<string> = new Set(["original_character", "oc"]);
+/**
+ * A tag of a mix is an established one: on at least this many posts. The very
+ * rarest tags of a post were its oddities ("explicit", "perfect body"), not
+ * its scene.
+ */
+const SIMILAR_USUAL_COUNT = 1000;
+/** With fewer established tags than this, rarer ones are taken too. */
+const SIMILAR_ENOUGH_TAGS = 3;
 /** How many of them a favorite has to share to be like such a post. */
 const SHARED_FAVORITE_MIN = 2;
 /** The rarest tags a favorite is tried against when the post names nobody. */
@@ -292,16 +345,43 @@ function displayName(tag: string): string {
  * the picture, the rarest first.
  */
 export function similarTags(post: readonly PostTag[]): string[] {
-  return post
-    .filter(
-      (entry) =>
-        entry.kind === "general" &&
-        entry.count >= SIMILAR_MIN_COUNT &&
-        !SERVICE_TAGS.has(entry.tag),
-    )
+  const fit = post.filter(
+    (entry) =>
+      entry.kind === "general" &&
+      entry.count >= SIMILAR_MIN_COUNT &&
+      !SERVICE_TAGS.has(entry.tag),
+  );
+  const usual = fit.filter((entry) => entry.count >= SIMILAR_USUAL_COUNT);
+  return (usual.length >= SIMILAR_ENOUGH_TAGS ? usual : fit)
     .sort((a, b) => a.count - b.count)
     .slice(0, SIMILAR_POOL_TAGS)
     .map((entry) => entry.tag);
+}
+
+/** The same words in another order: "katsuragi shouko" and "shouko katsuragi" are one name. */
+function nameKey(tag: string): string {
+  return tag.split("_").sort().join("_");
+}
+
+/**
+ * The characters or the copyrights of a post that are sources: none that says
+ * nothing, and of two tags that are one name written both ways, the one with
+ * more posts.
+ */
+function namedTags(post: readonly PostTag[], kind: "character" | "copyright"): PostTag[] {
+  const skipped = kind === "copyright" ? SERVICE_COPYRIGHTS : SERVICE_CHARACTERS;
+  const kept = new Map<string, PostTag>();
+  for (const entry of post) {
+    if (entry.kind !== kind || skipped.has(entry.tag)) {
+      continue;
+    }
+    const key = nameKey(entry.tag);
+    const have = kept.get(key);
+    if (have === undefined || entry.count > have.count) {
+      kept.set(key, entry);
+    }
+  }
+  return [...kept.values()];
 }
 
 /**
@@ -411,16 +491,14 @@ export function relatedSources(post: readonly PostTag[]): RelatedSource[] {
     });
   }
   for (const kind of ["character", "copyright"] as const) {
-    for (const entry of post) {
-      if (entry.kind === kind) {
-        sources.push({
-          key: `${kind}:${entry.tag}`,
-          kind,
-          name: displayName(entry.tag),
-          tags: [entry.tag],
-          without,
-        });
-      }
+    for (const entry of namedTags(post, kind)) {
+      sources.push({
+        key: `${kind}:${entry.tag}`,
+        kind,
+        name: displayName(entry.tag),
+        tags: [entry.tag],
+        without,
+      });
     }
   }
   sources.push({

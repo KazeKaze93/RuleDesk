@@ -2,6 +2,12 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.68.2
+
+- Related Posts: a copyright that names where a picture was sold or posted is no source: patreon, fanbox, pixiv, twitter and the like, and "original"
+- Two tags that are one name written both ways, "katsuragi shouko" and "shouko katsuragi", are one source: the one with more posts
+- "Similar" is mixed from established tags, on a thousand posts or more, when the post has three of them; the very rarest tags of a post were its oddities. The rating and words of praise written as tags, "explicit", "adult", "perfect body", are not mixed from
+
 ## 0.68.1
 
 - Related Posts: "Favorites" is among the sources only when some of your favorites are like the post. "Favorites 0" was a button that led to nothing

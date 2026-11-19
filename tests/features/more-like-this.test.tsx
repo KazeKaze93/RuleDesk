@@ -162,6 +162,37 @@ describe("reading the post and its candidates", () => {
     expect(relatedQuery(sources[2]?.tags ?? [], sources[2]?.without ?? [])).toBe("disney -esqeazy");
   });
 
+  it("leaves out what says nothing: where a picture was sold, a name written twice, words of praise", () => {
+    const tag = (name: string, kind: PostTag["kind"], count: number): PostTag => ({
+      tag: name,
+      kind,
+      count,
+    });
+    const post = [
+      tag("katsuragi_shouko", "character", 40),
+      tag("shouko_katsuragi", "character", 300),
+      tag("original_character", "character", 900000),
+      tag("jitaku_keibiin", "copyright", 2000),
+      tag("patreon", "copyright", 500000),
+      tag("original", "copyright", 900000),
+      tag("explicit", "general", 60),
+      tag("adult", "general", 80),
+      tag("perfect_body", "general", 700),
+      tag("single_hair_bun", "general", 30000),
+      tag("off_shoulder", "general", 90000),
+      tag("office_lady", "general", 50000),
+      tag("odd_rare_tag", "general", 25),
+    ];
+    expect(relatedSources(post).map((source) => source.name)).toEqual([
+      "Similar",
+      "shouko katsuragi",
+      "jitaku keibiin",
+      "In your favorites",
+    ]);
+    // Established tags only, when there are enough of them.
+    expect(similarTags(post)).toEqual(["single_hair_bun", "office_lady", "off_shoulder"]);
+  });
+
   it("asks for a mix with one search for any of the tags, from a page taken by chance", () => {
     expect(mixQuery(["fairy", "red_dress", "size_difference"], ["esqeazy"])).toBe(
       "( fairy ~ red_dress ~ size_difference ) -esqeazy",
