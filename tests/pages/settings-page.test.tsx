@@ -250,7 +250,7 @@ describe("SettingsPage flat rows", () => {
           "Zoom the picture on click",
           "Play GIFs on the post page",
           "Load full-size image",
-          "Related Posts tab",
+          "Related posts tab",
         ],
       ],
       [

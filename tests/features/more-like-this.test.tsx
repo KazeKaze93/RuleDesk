@@ -9,9 +9,8 @@ import {
   fewTagsText,
   firstSource,
   mixedFromText,
-  SOURCE_ROWS_MAX,
+  layoutSwitch,
   moreLikeThisFeature,
-  rowsOf,
   sharedTagsText,
   shownTagSources,
   type MoreLikeThisProps,
@@ -341,8 +340,14 @@ describe("the tab of the panel", () => {
       { ...sources[1]!, key: "character:c", name: "c" },
       { ...sources[1]!, key: "character:d", name: "d" },
     ];
-    expect(rowsOf([0, 0, 28, 28, 56])).toBe(3);
-    expect(SOURCE_ROWS_MAX).toBe(2);
+    // One row when all fit; else two rows shared evenly, three and two of five.
+    expect(layoutSwitch([50, 50, 50], 60, 70, 300, 2)).toEqual({ shown: 3, rowOne: 4 });
+    expect(layoutSwitch([50, 50, 50, 50], 60, 70, 200, 2)).toEqual({ shown: 4, rowOne: 3 });
+    expect(layoutSwitch([90, 90, 90], 60, null, 200, 2)).toEqual({ shown: 3, rowOne: 2 });
+    // Only what does not fit two rows goes behind "N more".
+    expect(layoutSwitch([90, 90, 90, 90, 90], 60, 70, 200, 2)).toEqual({ shown: 2, rowOne: 2 });
+    // Not laid out yet: all of them, in one row.
+    expect(layoutSwitch([0, 0], 0, 0, 0, 2)).toEqual({ shown: 2, rowOne: 3 });
     expect(shownTagSources(five, null, null).map((source) => source.name)).toHaveLength(5);
     expect(shownTagSources(five, 3, null).map((source) => source.name)).toEqual([
       "Similar",
@@ -355,8 +360,9 @@ describe("the tab of the panel", () => {
       "jessica rabbit",
       "d",
     ]);
-    // As wide as their words, not shares of the row.
-    expect(moreLikeThisFeature.css).toMatch(/\.rdw-seg__btn \{[^}]*flex: 0 1 auto;/);
+    // Every row is as wide as the frame: the buttons grow to fill it.
+    expect(moreLikeThisFeature.css).toMatch(/\.rdw-mlt-sources \.rdw-seg__btn \{[^}]*flex: 1 1 auto;/);
+    expect(moreLikeThisFeature.css).toContain('[data-row-one="3"] .rdw-mlt-sources .rdw-seg__btn:nth-child(-n+3)');
   });
 
   it("opens on the kind of source picked last, where the post has one", async () => {
@@ -459,7 +465,7 @@ describe("the tab of the panel", () => {
   it("is a setting of the post page that is on unless turned off", () => {
     expect(moreLikeThisFeature.pages).toEqual(["post"]);
     expect(moreLikeThisFeature.defaultEnabled).toBe(true);
-    expect(moreLikeThisFeature.label).toBe("Related Posts tab");
+    expect(moreLikeThisFeature.label).toBe("Related posts tab");
     expect(moreLikeThisFeature.settingsCaption).toBe(
       "Loads posts when you open the tab: one request per source.",
     );

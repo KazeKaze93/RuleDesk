@@ -2,6 +2,12 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.68.3
+
+- Related posts: the switch of sources is one control again, not a scatter of names. Every row is as wide as the frame. When the sources do not fit one row they are shared evenly between two, three and two of five, never one alone in the second
+- A list of the rest appears only when two rows are not enough, and reads as any other source: "2 more ▾". It used to appear while there was still room
+- The tab reads "Related posts", in the case of "Info" and "Comments"; the setting reads "Related posts tab"
+
 ## 0.68.2
 
 - Related Posts: a copyright that names where a picture was sold or posted is no source: patreon, fanbox, pixiv, twitter and the like, and "original"

@@ -38,13 +38,13 @@ import { POST_ACTIONS_ID, featureBodyClass, type Feature } from "./types";
  */
 
 export const MORE_LIKE_THIS_FEATURE_ID = "more-like-this";
-const FEATURE_LABEL = "Related Posts tab";
+const FEATURE_LABEL = "Related posts tab";
 const FEATURE_CAPTION = "Loads posts when you open the tab: one request per source.";
 /** Under featureState: the kind of the source picked last. */
 export const MORE_LIKE_THIS_STATE_ID = "more-like-this-source";
 
 /** Kaze's name for it (19.11.2026); the designer's was "More like this". */
-export const MORE_LIKE_THIS_TAB_LABEL = "Related Posts";
+export const MORE_LIKE_THIS_TAB_LABEL = "Related posts";
 const NONE_IN_FAVORITES = "None of your favorites share tags with this post.";
 const OFFLINE_TEXT = "Couldn't load: no connection.";
 const LIMITED_TEXT = "The site asked to slow down. Try again in a minute.";
@@ -74,8 +74,18 @@ const CELL_HEIGHT_PX = 150;
  * grid (Kaze, 19.11.2026): here the switch is as tall as its rows.
  */
 const SOURCE_BUTTON_HEIGHT_PX = 24;
-/** The switch is two rows at most; what does not fit is behind "+N" (the designer, 19.11.2026). */
-export const SOURCE_ROWS_MAX = 2;
+/**
+ * The switch is one row, or two with the sources shared evenly between them;
+ * only what does not fit two rows is behind "N more" (the designer,
+ * 19.11.2026). Every row is as wide as the frame.
+ */
+const SWITCH_GAP_PX = 2;
+const SWITCH_PADDING_PX = 2;
+/** The longest first row the styles know how to break after. */
+const ROW_ONE_MAX = 8;
+const SWITCH_CLASS = "rdw-mlt-switch";
+const MEASURE_CLASS = "rdw-mlt-measure";
+const ROW_ONE_ATTR = "data-row-one";
 /** The value of the "+N" option: it opens the list of the rest, it is not a source. */
 const MORE_VALUE = "\u0000more";
 const MORE_MENU_LABEL = "More sources";
@@ -86,27 +96,72 @@ const BODY_SELECTOR = `body.${featureBodyClass(MORE_LIKE_THIS_FEATURE_ID)}`;
 const ROOT_CLASS = "rdw-mlt";
 const ROOT = `${BODY_SELECTOR} #${POST_ACTIONS_ID} .${ROOT_CLASS}`;
 
+/*
+ * The first row of a switch of two rows: its buttons keep their place, the
+ * rest go after an unseen line as wide as the frame, which breaks the row.
+ */
+const ROW_ONE_RULES = Array.from(
+  { length: ROW_ONE_MAX },
+  (_unused, index) =>
+    `${ROOT} .${SWITCH_CLASS}[${ROW_ONE_ATTR}="${String(index + 1)}"] .rdw-mlt-sources .rdw-seg__btn:nth-child(-n+${String(index + 1)}) {
+  order: 0;
+}`,
+).join("\n");
+
 const FEATURE_CSS = `
 ${ROOT} {
   display: grid;
   gap: 10px;
   min-width: 0;
 }
+${ROOT} .${SWITCH_CLASS} {
+  position: relative;
+}
 ${ROOT} .rdw-mlt-sources {
   display: flex;
   flex-wrap: wrap;
+  gap: ${String(SWITCH_GAP_PX)}px;
   width: 100%;
   height: auto;
 }
 ${ROOT} .rdw-mlt-sources .rdw-seg__btn {
   display: block;
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   min-width: 0;
   max-width: 100%;
   height: ${String(SOURCE_BUTTON_HEIGHT_PX)}px;
   overflow: hidden;
+  text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+${ROOT} .${SWITCH_CLASS}[${ROW_ONE_ATTR}] .rdw-mlt-sources::after {
+  content: "";
+  order: 1;
+  flex: 0 0 100%;
+  height: 0;
+  margin-top: -${String(SWITCH_GAP_PX)}px;
+}
+${ROOT} .${SWITCH_CLASS}[${ROW_ONE_ATTR}] .rdw-mlt-sources .rdw-seg__btn {
+  order: 2;
+}
+${ROW_ONE_RULES}
+${ROOT} .${MEASURE_CLASS} {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  visibility: hidden;
+  pointer-events: none;
+  height: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+${ROOT} .${MEASURE_CLASS} .rdw-seg__btn {
+  display: block;
+  flex: none;
+  height: auto;
+  font-weight: 600;
 }
 ${BODY_SELECTOR} .rdw-mlt-menu {
   padding: 4px;
@@ -267,9 +322,62 @@ export function mixedFromText(tags: readonly string[]): string {
   return `${MIXED_FROM}${tags.map((tag) => tag.replaceAll("_", " ")).join(", ")}`;
 }
 
-/** How many rows the buttons of the switch stand in, by their tops. */
-export function rowsOf(tops: readonly number[]): number {
-  return new Set(tops).size;
+export type SwitchLayout = {
+  /** How many of the sources by tag have a button; the rest are behind "N more". */
+  readonly shown: number;
+  /** How many buttons stand in the first row; all of them when there is one row. */
+  readonly rowOne: number;
+};
+
+function fitsRow(widths: readonly number[], room: number, gap: number): boolean {
+  return widths.reduce((sum, width) => sum + width, 0) + gap * (widths.length - 1) <= room;
+}
+
+/**
+ * How the switch is laid out in a frame with this much room. One row when
+ * all fit. Else two rows with the buttons shared evenly, three and two of
+ * five, never one alone in the second. Only when that does not fit either
+ * do sources go behind "N more", from the last, until it does.
+ */
+export function layoutSwitch(
+  tagWidths: readonly number[],
+  moreWidth: number,
+  favoritesWidth: number | null,
+  room: number,
+  gap: number,
+): SwitchLayout {
+  const total = tagWidths.length;
+  const tail = favoritesWidth === null ? [] : [favoritesWidth];
+  const buttons = (shown: number): number[] => [
+    ...tagWidths.slice(0, shown),
+    ...(shown < total ? [moreWidth] : []),
+    ...tail,
+  ];
+  if (room <= 0) {
+    // Not laid out yet: nothing to count by.
+    return { shown: total, rowOne: total + tail.length };
+  }
+  for (let shown = total; shown >= 1; shown -= 1) {
+    const widths = buttons(shown);
+    if (fitsRow(widths, room, gap)) {
+      return { shown, rowOne: widths.length };
+    }
+    const half = Math.ceil(widths.length / 2);
+    if (
+      widths.length > 1 &&
+      fitsRow(widths.slice(0, half), room, gap) &&
+      fitsRow(widths.slice(half), room, gap)
+    ) {
+      return { shown, rowOne: half };
+    }
+  }
+  const least = buttons(Math.min(1, total));
+  return { shown: Math.min(1, total), rowOne: Math.ceil(least.length / 2) };
+}
+
+/** "2 more ▾": the sources that have no button of their own. */
+function moreLabel(count: number): string {
+  return `${String(count)} more ${CHEVRON}`;
 }
 
 /**
@@ -337,8 +445,9 @@ export function MoreLikeThis(props: MoreLikeThisProps): JSX.Element {
   const [favorites, setFavorites] = useState<readonly RankedPost[] | null>(null);
   const [showAll, setShowAll] = useState<readonly string[]>([]);
   const [, tick] = useState(0);
-  // How many sources by tag fit the two rows of the switch; null until fewer than all do.
-  const [fit, setFit] = useState<number | null>(null);
+  // How the switch is laid out; null until it was measured.
+  const [layout, setLayout] = useState<SwitchLayout | null>(null);
+  const measureRef = useRef<HTMLDivElement | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
   const switchRef = useRef<HTMLDivElement | null>(null);
   const gridRef = useRef<HTMLDivElement | null>(null);
@@ -476,12 +585,12 @@ export function MoreLikeThis(props: MoreLikeThisProps): JSX.Element {
   // are counted, and stand last.
   const tagSources = sources.filter((source) => source.kind !== "favorites");
   const favoritesSource = sources.find((source) => source.kind === "favorites");
-  const shownTags = shownTagSources(tagSources, fit, picked);
+  const shownTags = shownTagSources(tagSources, layout?.shown ?? null, picked);
   const hiddenTags = tagSources.filter((source) => !shownTags.includes(source));
   const options = [
     ...shownTags.map((source) => ({ value: source.key, label: source.name })),
     ...(hiddenTags.length > 0
-      ? [{ value: MORE_VALUE, label: `+${String(hiddenTags.length)} ${CHEVRON}` }]
+      ? [{ value: MORE_VALUE, label: moreLabel(hiddenTags.length) }]
       : []),
     // The favorites are a source only when some of them are like the post
     // (Kaze, 19.11.2026): "Favorites 0" was a button that led to nothing.
@@ -494,18 +603,37 @@ export function MoreLikeThis(props: MoreLikeThisProps): JSX.Element {
           },
         ]),
   ];
-  const shownCount = shownTags.length;
-  // After each drawing: while the switch stands in more rows than it may, one
-  // more source goes behind "+N".
+  const favoritesLabel =
+    favoritesSource === undefined || favorites === null || favorites.length === 0
+      ? null
+      : `${FAVORITES_SHORT} ${String(favorites.length)}`;
+  // After each drawing the switch is laid out by the widths its buttons have
+  // in an unseen copy, so that what is measured does not depend on how it
+  // stands now.
   useLayoutEffect(() => {
-    const buttons = switchRef.current?.querySelectorAll(".rdw-seg__btn") ?? [];
-    const tops = [...buttons].map((button) =>
-      button instanceof HTMLElement ? button.offsetTop : 0,
-    );
-    if (rowsOf(tops) > SOURCE_ROWS_MAX && shownCount > 1) {
-      setFit(shownCount - 1);
+    const frame = switchRef.current?.querySelector(".rdw-mlt-sources");
+    const measure = measureRef.current;
+    if (!(frame instanceof HTMLElement) || measure === null) {
+      return;
     }
+    const widthOf = (selector: string): number[] =>
+      [...measure.querySelectorAll(selector)].map((node) =>
+        node instanceof HTMLElement ? node.offsetWidth : 0,
+      );
+    const next = layoutSwitch(
+      widthOf("[data-measure-tag]"),
+      widthOf("[data-measure-more]")[0] ?? 0,
+      widthOf("[data-measure-favorites]")[0] ?? null,
+      frame.clientWidth - SWITCH_PADDING_PX * 2,
+      SWITCH_GAP_PX,
+    );
+    setLayout((current) =>
+      current !== null && current.shown === next.shown && current.rowOne === next.rowOne
+        ? current
+        : next,
+    );
   });
+  const twoRows = layout !== null && layout.rowOne < options.length;
 
   const all = pickedSource !== undefined && showAll.includes(pickedSource.key);
   const posts = current?.state === "ready" ? current.posts : [];
@@ -513,7 +641,26 @@ export function MoreLikeThis(props: MoreLikeThisProps): JSX.Element {
 
   return (
     <div className={ROOT_CLASS}>
-      <div ref={switchRef}>
+      <div
+        ref={switchRef}
+        className={SWITCH_CLASS}
+        {...(twoRows ? { [ROW_ONE_ATTR]: String(layout.rowOne) } : {})}
+      >
+        <div className={MEASURE_CLASS} ref={measureRef} aria-hidden="true">
+          {tagSources.map((source) => (
+            <span key={source.key} className="rdw-seg__btn" data-measure-tag="">
+              {source.name}
+            </span>
+          ))}
+          <span className="rdw-seg__btn" data-measure-more="">
+            {moreLabel(tagSources.length)}
+          </span>
+          {favoritesLabel === null ? null : (
+            <span className="rdw-seg__btn" data-measure-favorites="">
+              {favoritesLabel}
+            </span>
+          )}
+        </div>
         <Segmented
           className="rdw-mlt-sources"
           label={SOURCES_LABEL}
