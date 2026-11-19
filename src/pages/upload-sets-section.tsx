@@ -10,6 +10,7 @@ import {
 } from "../site/upload-tag-sets";
 import { Button, IconButton, TextField } from "../ui/kit";
 import { IconPlus, IconX } from "../ui/kit/icons";
+import { QueryField } from "../ui/query-field";
 
 /**
  * The sets of tags of the Upload page, in the settings: a name and the tags
@@ -93,14 +94,15 @@ export function UploadSetsSection(): JSX.Element {
               change(index, { name });
             }}
           />
-          <TextField
+          {/* The tag being typed is completed from the site's list, as in every
+              other field of tags. */}
+          <QueryField
             className={TAGS_CLASS}
             {...(index === 0 ? { label: TAGS_LABEL } : { "aria-label": TAGS_LABEL })}
             value={set.tags}
             placeholder={TAGS_PLACEHOLDER}
-            inputAttrs={{ maxLength: TAG_SET_TAGS_MAX }}
             onChange={(tags) => {
-              change(index, { tags });
+              change(index, { tags: tags.slice(0, TAG_SET_TAGS_MAX) });
             }}
           />
           <IconButton

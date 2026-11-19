@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.62.1
+
+- RuleDesk → Upload: the Tags field of a set completes the tag being typed from the site's list, as the other fields of tags do
+
 ## 0.62.0
 
 - Upload: your own sets of tags. A set is a name and its tags, made in RuleDesk → Upload, as many as you like. On the Upload page and on Upload Video each set is a button under the Tags field: a press adds its tags to the field, and a tag that is there already is not added twice. "Edit sets" beside the buttons opens the section of the settings. The site's own "My Tags" is left as it is

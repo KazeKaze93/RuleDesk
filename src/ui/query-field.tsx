@@ -31,6 +31,9 @@ export type QueryFieldProps = {
   readonly label?: string;
   readonly placeholder?: string;
   readonly id?: string;
+  readonly className?: string;
+  /** The name of the field where no label is drawn. */
+  readonly "aria-label"?: string;
 };
 
 type LastToken = {
@@ -120,6 +123,8 @@ export function QueryField(props: QueryFieldProps): JSX.Element {
     ...(props.label === undefined ? {} : { label: props.label }),
     ...(props.placeholder === undefined ? {} : { placeholder: props.placeholder }),
     ...(props.id === undefined ? {} : { id: props.id }),
+    ...(props.className === undefined ? {} : { className: props.className }),
+    ...(props["aria-label"] === undefined ? {} : { "aria-label": props["aria-label"] }),
   };
 
   return (
