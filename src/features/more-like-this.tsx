@@ -295,13 +295,15 @@ export function shownTagSources(
 /**
  * The source the tab opens on: the one of the kind picked last, where the
  * post has such; else the first, which is "Similar" where the post has tags
- * to mix from.
+ * to mix from. Never the favorites: whether any of them is like the post is
+ * not known yet when the tab opens, and with none there is no such source.
  */
 export function firstSource(
   sources: readonly RelatedSource[],
   lastKind: RelatedSourceKind | null,
 ): RelatedSource | null {
-  return sources.find((source) => source.kind === lastKind) ?? sources[0] ?? null;
+  const byTag = sources.filter((source) => source.kind !== "favorites");
+  return byTag.find((source) => source.kind === lastKind) ?? byTag[0] ?? null;
 }
 
 export type MoreLikeThisProps = {
@@ -481,15 +483,14 @@ export function MoreLikeThis(props: MoreLikeThisProps): JSX.Element {
     ...(hiddenTags.length > 0
       ? [{ value: MORE_VALUE, label: `+${String(hiddenTags.length)} ${CHEVRON}` }]
       : []),
-    ...(favoritesSource === undefined
+    // The favorites are a source only when some of them are like the post
+    // (Kaze, 19.11.2026): "Favorites 0" was a button that led to nothing.
+    ...(favoritesSource === undefined || favorites === null || favorites.length === 0
       ? []
       : [
           {
             value: favoritesSource.key,
-            label:
-              favorites === null
-                ? FAVORITES_SHORT
-                : `${FAVORITES_SHORT} ${String(favorites.length)}`,
+            label: `${FAVORITES_SHORT} ${String(favorites.length)}`,
           },
         ]),
   ];
