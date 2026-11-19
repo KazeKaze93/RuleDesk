@@ -2,6 +2,14 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.68.0
+
+- Related Posts: "Similar" is a mix. One search for posts that have any of the three to five rarest tags of the post, without the posts of its artist, taken from one of the first pages of that search by chance, so that it is not always the newest uploads
+- The mix is shuffled with weight: the posts that have two or more of its tags come first, shuffled among themselves, then those with one
+- A line under the switch says what the mix is made from, "Mixed from: fairy, interspecies, size difference"; the tags in it are not to be pressed. "↻ Another mix" beside it asks for another: other rare tags of the post, another page
+- A copyright of the post is a source too, after the characters, also without the posts of the artist. The sources are: Similar, characters, copyrights, Favorites
+- The tags over the grid that could be taken out of the search are gone, with the search by fewer tags: a mix needs neither
+
 ## 0.67.0
 
 - Related Posts: the first source, the one the tab opens on, is "Similar": the same scene by other artists. It searches by the two or three rarest tags of the post that say what is in the picture, and leaves out the posts of the artist of the post

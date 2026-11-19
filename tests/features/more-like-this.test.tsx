@@ -7,8 +7,8 @@ import {
   LIMITED_WAIT_S,
   MoreLikeThis,
   fewTagsText,
-  fewerTagsText,
   firstSource,
+  mixedFromText,
   SOURCE_ROWS_MAX,
   moreLikeThisFeature,
   rowsOf,
@@ -23,7 +23,11 @@ import {
   rankCandidates,
   readCandidates,
   readPostTags,
-  loadByFewerTags,
+  mixOrder,
+  mixPageOffset,
+  mixQuery,
+  mixSize,
+  mixTags,
   relatedQuery,
   relatedSearchUrl,
   relatedSources,
@@ -83,6 +87,8 @@ async function mount(over: Partial<MoreLikeThisProps> = {}): Promise<MoreLikeThi
     readFavorites: () => Promise.resolve([ranked(7), ranked(8)]),
     load: vi.fn(() => Promise.resolve([ranked(11), ranked(12, 5, true)])),
     pause: () => Promise.resolve(),
+    // No chance in the tests: the first page, and the order the shuffle leaves.
+    random: () => 0,
     ...over,
   };
   document.body.append(host);
@@ -138,47 +144,61 @@ describe("reading the post and its candidates", () => {
     expect(moreLikeThisFeature.css).toMatch(/\.rdw-mlt-sources \{[^}]*flex-wrap: wrap;[^}]*height: auto;/);
   });
 
-  it("offers Similar first, then the characters, then the favorites, and no artist", () => {
+  it("offers Similar, then the characters, the copyrights and the favorites, and no artist", () => {
     const sources = relatedSources(postTags());
     expect(sources.map((source) => [source.kind, source.name])).toEqual([
       ["similar", "Similar"],
       ["character", "jessica rabbit"],
+      ["copyright", "disney"],
       ["favorites", "In your favorites"],
     ]);
-    // The rarest tags that say what is in the picture: no tag about the file,
+    // The rare tags that say what is in the picture: no tag about the file,
     // none so rare that it is one artist's own, none that is on every post.
     expect(similarTags(postTags())).toEqual(["fairy", "red_dress", "size_difference"]);
-    // The posts of the artist of the post are left out of both searches.
-    expect(relatedQuery(sources[0]?.tags ?? [], sources[0]?.without ?? [])).toBe(
-      "fairy red_dress size_difference -esqeazy",
-    );
+    // The posts of the artist of the post are left out of every search.
     expect(relatedQuery(sources[1]?.tags ?? [], sources[1]?.without ?? [])).toBe(
       "jessica_rabbit -esqeazy",
     );
-    expect(relatedSearchUrl("fairy -esqeazy")).toBe(
-      "https://rule34.xxx/index.php?page=post&s=list&tags=fairy+-esqeazy",
-    );
+    expect(relatedQuery(sources[2]?.tags ?? [], sources[2]?.without ?? [])).toBe("disney -esqeazy");
   });
 
-  it("searches by fewer tags when all of them find nothing, the rarest kept", async () => {
-    const asked: string[] = [];
-    const pause = vi.fn(() => Promise.resolve());
-    const result = await loadByFewerTags(
-      ["a", "b", "c"],
-      ["x"],
-      (query) => {
-        asked.push(query);
-        return Promise.resolve(query === "a -x" ? [ranked(5)] : []);
-      },
-      pause,
+  it("asks for a mix with one search for any of the tags, from a page taken by chance", () => {
+    expect(mixQuery(["fairy", "red_dress", "size_difference"], ["esqeazy"])).toBe(
+      "( fairy ~ red_dress ~ size_difference ) -esqeazy",
     );
-    expect(asked).toEqual(["a b c -x", "a b -x", "a -x"]);
-    expect(pause).toHaveBeenCalledTimes(2);
-    expect(result.used).toEqual(["a"]);
-    expect(result.posts.map((post) => post.id)).toEqual([5]);
-    expect(fewerTagsText(3, 1)).toBe(
-      "Few posts with all 3 tags \u2014 showing posts with 1 of them.",
+    expect(mixQuery(["fairy"], [])).toBe("fairy");
+    expect(relatedSearchUrl("( a ~ b ) -x", 84)).toBe(
+      "https://rule34.xxx/index.php?page=post&s=list&tags=%28+a+%7E+b+%29+-x&pid=84",
     );
+    expect(relatedSearchUrl("a")).not.toContain("pid=");
+    // A mix has at least as many posts as its most common tag.
+    expect(mixSize(postTags(), ["fairy", "red_dress"])).toBe(30000);
+    // One of the first twenty pages; the first when there is only one.
+    expect(mixPageOffset(30000, () => 0.5)).toBe(10 * 42);
+    expect(mixPageOffset(30000, () => 0)).toBe(0);
+    expect(mixPageOffset(60, () => 0.99)).toBe(0);
+    // The rarest tags the first time, others of the pool after.
+    const pool = ["a", "b", "c", "d", "e", "f", "g"];
+    expect(mixTags(pool, true, () => 0)).toEqual(["a", "b", "c", "d", "e"]);
+    expect(mixTags(pool, false, () => 0)).toHaveLength(5);
+    expect(mixTags(pool, false, () => 0)).not.toEqual(["a", "b", "c", "d", "e"]);
+  });
+
+  it("shuffles a mix with weight: the posts with two of its tags before those with one", () => {
+    const post = (id: number, tags: string[]): RankedPost => ({ ...ranked(id), tags });
+    const posts = [
+      post(1, ["a"]),
+      post(2, ["a", "b"]),
+      post(3, ["b"]),
+      post(4, ["a", "b", "c"]),
+      post(5, ["c", "zzz"]),
+    ];
+    for (const chance of [0, 0.3, 0.7, 0.999]) {
+      const order = mixOrder(posts, ["a", "b", "c"], () => chance).map((entry) => entry.id);
+      expect([...order.slice(0, 2)].sort()).toEqual([2, 4]);
+      expect([...order.slice(2)].sort()).toEqual([1, 3, 5]);
+    }
+    expect(mixedFromText(["fairy", "size_difference"])).toBe("Mixed from: fairy, size difference");
   });
 
   it("reads a page of a search and puts the most alike first, without the post itself", () => {
@@ -231,71 +251,59 @@ describe("reading the post and its candidates", () => {
 });
 
 describe("the tab of the panel", () => {
-  it("loads Similar as soon as it is opened, with nothing to press", async () => {
+  it("loads the mix of Similar as soon as it is opened, with nothing to press", async () => {
     const props = await mount();
     expect(props.load).toHaveBeenCalledTimes(1);
-    expect(props.load).toHaveBeenCalledWith("fairy red_dress size_difference -esqeazy");
+    expect(props.load).toHaveBeenCalledWith("( fairy ~ red_dress ~ size_difference ) -esqeazy", 0);
     // Opening is not a choice of a source: nothing is remembered for it.
     expect(props.onPick).not.toHaveBeenCalled();
     // No artist among the sources, no numbers on the tags; the favorites are counted and last.
     expect(tabs().map((tab) => tab.textContent)).toEqual([
       "Similar",
       "jessica rabbit",
+      "disney",
       "Favorites 2",
     ]);
+    // What the mix is made from is said, and is not to be pressed.
+    const line = host.querySelector(".rdw-mlt-mix");
+    expect(line?.querySelector("p")?.textContent).toBe(
+      "Mixed from: fairy, red dress, size difference",
+    );
+    expect(line?.querySelectorAll("button")).toHaveLength(1);
     const cells = [...host.querySelectorAll("a.rdw-mlt-cell")];
-    expect(cells.map((cell) => cell.getAttribute("href"))).toEqual([
-      "index.php?page=post&s=view&id=11",
-      "index.php?page=post&s=view&id=12",
-    ]);
-    expect(cells[1]?.getAttribute("title")).toBe("5 shared tags");
-    expect(cells[1]?.querySelector(".rdw-mlt-video")).not.toBeNull();
+    expect(cells).toHaveLength(2);
+    expect(cells.every((cell) => cell.getAttribute("title")?.endsWith("shared tags"))).toBe(true);
     expect(host.querySelector("a.rdw-mlt-link")?.textContent).toBe("Search these tags \u2192");
     expect(host.querySelector("a.rdw-mlt-link")?.getAttribute("href")).toContain(
-      "tags=fairy+red_dress+size_difference+-esqeazy",
+      "tags=%28+fairy+%7E+red_dress+%7E+size_difference+%29+-esqeazy",
     );
   });
 
-  it("shows the tags Similar searched by, and searches anew when one is taken out", async () => {
-    const props = await mount();
-    const chips = (): HTMLButtonElement[] => [
-      ...host.querySelectorAll<HTMLButtonElement>("button.rdw-mlt-tag"),
-    ];
-    expect(chips().map((chip) => chip.querySelector(".rdw-chip")?.textContent)).toEqual([
-      "fairy",
-      "red dress",
-      "size difference",
-    ]);
-    expect(chips().every((chip) => chip.getAttribute("aria-pressed") === "true")).toBe(true);
-    await press(chips()[1]);
-    expect(props.load).toHaveBeenLastCalledWith("fairy size_difference -esqeazy");
-    expect(chips()[1]?.getAttribute("aria-pressed")).toBe("false");
-    // Back in: what that search gave is still there, nothing is asked again.
-    await press(chips()[1]);
+  it("makes another mix when asked: a new search, in place of the one shown", async () => {
+    const props = await mount({ random: () => 0.5 });
+    // The mix is by tags of up to 70000 posts: a page by chance, here the tenth.
+    expect(props.load).toHaveBeenLastCalledWith(expect.stringContaining(" ~ "), 10 * 42);
+    const another = host.querySelector<HTMLButtonElement>(".rdw-mlt-mix button");
+    expect(another?.textContent).toBe("\u21bb Another mix");
+    await press(another ?? undefined);
     expect(props.load).toHaveBeenCalledTimes(2);
-    // A search needs a tag to be by: the last one cannot be taken out.
-    await press(chips()[0]);
-    await press(chips()[1]);
-    expect(chips()[2]?.disabled).toBe(true);
-    // The tags are of Similar only.
+    expect(host.querySelectorAll("a.rdw-mlt-cell")).toHaveLength(2);
+    // Another source has no such line.
     await press(tabs()[1]);
-    expect(chips()).toHaveLength(0);
+    expect(host.querySelector(".rdw-mlt-mix")).toBeNull();
   });
 
-  it("says so when the search was by fewer tags than it began with", async () => {
-    const load = vi.fn((query: string) =>
-      Promise.resolve(query === "fairy red_dress -esqeazy" ? [ranked(11)] : []),
+  it("asks for the first page when the page taken by chance is empty", async () => {
+    const load = vi.fn((_query: string, offset: number) =>
+      Promise.resolve(offset === 0 ? [ranked(11)] : []),
     );
-    await mount({ load });
-    expect(load).toHaveBeenCalledTimes(2);
-    expect(host.textContent).toContain(
-      "Few posts with all 3 tags \u2014 showing posts with 2 of them.",
-    );
+    await mount({ load, random: () => 0.5 });
+    expect(load.mock.calls.map((call) => call[1])).toEqual([420, 0]);
     expect(host.querySelectorAll("a.rdw-mlt-cell")).toHaveLength(1);
   });
 
   it("keeps the switch to two rows: the rest are behind +N, the picked one always in sight", () => {
-    const sources = relatedSources(postTags()).filter((source) => source.kind !== "favorites");
+    const sources = relatedSources(postTags()).filter((source) => source.kind !== "favorites").slice(0, 2);
     const five = [
       ...sources,
       { ...sources[1]!, key: "character:b", name: "b" },
@@ -325,7 +333,7 @@ describe("the tab of the panel", () => {
     expect(firstSource(sources, null)?.kind).toBe("similar");
     expect(firstSource(sources, "character")?.name).toBe("jessica rabbit");
     const props = await mount({ lastKind: "character" });
-    expect(props.load).toHaveBeenCalledWith("jessica_rabbit -esqeazy");
+    expect(props.load).toHaveBeenCalledWith("jessica_rabbit -esqeazy", 0);
     render(null, host);
     // The favorites need no request at all.
     const quiet = await mount({ lastKind: "favorites" });
@@ -337,12 +345,15 @@ describe("the tab of the panel", () => {
     const props = await mount();
     await press(tabs()[1]);
     expect(props.load).toHaveBeenCalledTimes(2);
-    expect(props.load).toHaveBeenLastCalledWith("jessica_rabbit -esqeazy");
+    expect(props.load).toHaveBeenLastCalledWith("jessica_rabbit -esqeazy", 0);
     expect(props.onPick).toHaveBeenLastCalledWith("character");
     await press(tabs()[2]);
+    expect(props.load).toHaveBeenLastCalledWith("disney -esqeazy", 0);
+    expect(props.onPick).toHaveBeenLastCalledWith("copyright");
+    await press(tabs()[3]);
     await press(tabs()[0]);
     await press(tabs()[1]);
-    expect(props.load).toHaveBeenCalledTimes(2);
+    expect(props.load).toHaveBeenCalledTimes(3);
   });
 
   it("shows six at first and the rest in place", async () => {
@@ -363,7 +374,7 @@ describe("the tab of the panel", () => {
     render(null, host);
 
     const load = vi
-      .fn<(query: string) => Promise<RankedPost[]>>()
+      .fn<(query: string, offset: number) => Promise<RankedPost[]>>()
       .mockRejectedValueOnce(new RelatedError("offline", "x"))
       .mockResolvedValueOnce([ranked(11)]);
     await mount({ load });
@@ -403,10 +414,10 @@ describe("the tab of the panel", () => {
 
   it("is honest about favorites that are not alike and about a post with few tags", async () => {
     await mount({ readFavorites: () => Promise.resolve([]) });
-    expect(tabs()[2]?.textContent).toBe("Favorites 0");
+    expect(tabs()[3]?.textContent).toBe("Favorites 0");
     // Nine tags on the post: the list is shown, with a line that says it is weak.
     expect(host.textContent).toContain("Few shared tags \u2014 this post has only 9 tags.");
-    await press(tabs()[2]);
+    await press(tabs()[3]);
     expect(host.textContent).toContain("None of your favorites share tags with this post.");
     expect(fewTagsText(1)).toBe("Few shared tags \u2014 this post has only 1 tag.");
     expect(sharedTagsText(1)).toBe("1 shared tag");

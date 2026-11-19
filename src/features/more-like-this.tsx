@@ -3,9 +3,13 @@ import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 
 import {
   RelatedError,
-  SIMILAR_RETRY_PAUSE_MS,
+  MIX_RETRY_PAUSE_MS,
   SOURCE_KEY_FAVORITES,
-  loadByFewerTags,
+  mixOrder,
+  mixPageOffset,
+  mixQuery,
+  mixSize,
+  mixTags,
   relatedPostUrl,
   relatedQuery,
   relatedSearchUrl,
@@ -16,7 +20,7 @@ import {
   type RelatedSource,
   type RelatedSourceKind,
 } from "../site/related";
-import { Chip, Popover, Segmented } from "../ui/kit";
+import { Popover, Segmented } from "../ui/kit";
 import { POST_ACTIONS_ID, featureBodyClass, type Feature } from "./types";
 
 /**
@@ -47,10 +51,9 @@ const LIMITED_TEXT = "The site asked to slow down. Try again in a minute.";
 const FAILED_TEXT = "Couldn't load: the site did not answer as expected.";
 const RETRY_LABEL = "Try again";
 const SOURCES_LABEL = "Where the posts come from";
-const SIMILAR_TAGS_LABEL = "Tags the similar posts are searched by";
-const SIMILAR_TAG_OUT = "Take this tag out of the search";
-const SIMILAR_TAG_BACK = "Search by this tag again";
-const SIMILAR_TAG_LAST = "The search needs at least one tag";
+const MIXED_FROM = "Mixed from: ";
+const ANOTHER_MIX_LABEL = "\u21bb Another mix";
+const ANOTHER_MIX_TITLE = "Other posts by these or other rare tags of this post";
 const SEARCH_TAGS_LABEL = "Search these tags";
 const FAVORITES_SHORT = "Favorites";
 const VIDEO_MARK = "▶";
@@ -129,20 +132,14 @@ ${BODY_SELECTOR} .rdw-mlt-menu button {
 ${BODY_SELECTOR} .rdw-mlt-menu button:hover {
   background: var(--rdw-surface-2);
 }
-${ROOT} .rdw-mlt-tags {
+${ROOT} .rdw-mlt-mix {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
 }
-${ROOT} .rdw-mlt-tag {
-  padding: 0;
-  border: 0;
-  border-radius: 12px;
-  background: transparent;
-  cursor: pointer;
-}
-${ROOT} .rdw-mlt-tag:disabled {
-  cursor: default;
+${ROOT} .rdw-mlt-mix .rdw-mlt-link {
+  flex: none;
 }
 ${ROOT} .rdw-mlt-line {
   margin: 0;
@@ -218,19 +215,22 @@ type Loaded =
   | {
       readonly state: "ready";
       readonly posts: readonly RankedPost[];
-      /** The tags the search that gave them was by; fewer than asked when that found nothing. */
-      readonly used: readonly string[];
-      readonly asked: number;
+      /** The search that gave them: where "Search … →" leads. */
+      readonly query: string;
+      /** The tags the mix was made from; empty for a source that is no mix. */
+      readonly mixed: readonly string[];
     }
   | { readonly state: "error"; readonly failure: RelatedFailure; readonly at: number };
 
 export function isRelatedSourceKind(value: unknown): value is RelatedSourceKind {
-  return value === "similar" || value === "character" || value === "favorites";
+  return (
+    value === "similar" || value === "character" || value === "copyright" || value === "favorites"
+  );
 }
 
 function loadingText(source: RelatedSource): string {
   if (source.kind === "similar") {
-    return `Loading similar posts${ELLIPSIS}`;
+    return `Mixing similar posts${ELLIPSIS}`;
   }
   if (source.kind === "favorites") {
     return `Looking through your favorites${ELLIPSIS}`;
@@ -248,11 +248,6 @@ function emptyText(source: RelatedSource): string {
   return `No posts with ${source.name} by other artists.`;
 }
 
-/** "Few posts with all 3 tags — showing posts with 2 of them." */
-export function fewerTagsText(asked: number, used: number): string {
-  return `Few posts with all ${String(asked)} tags \u2014 showing posts with ${String(used)} of them.`;
-}
-
 function errorText(failure: RelatedFailure): string {
   return failure === "offline" ? OFFLINE_TEXT : failure === "limited" ? LIMITED_TEXT : FAILED_TEXT;
 }
@@ -264,7 +259,12 @@ export function sharedTagsText(shared: number): string {
 
 /** "Few shared tags — this post has only 6 tags." */
 export function fewTagsText(count: number): string {
-  return `Few shared tags — this post has only ${String(count)} ${count === 1 ? "tag" : "tags"}.`;
+  return `Few shared tags \u2014 this post has only ${String(count)} ${count === 1 ? "tag" : "tags"}.`;
+}
+
+/** "Mixed from: fairy, interspecies, size difference" */
+export function mixedFromText(tags: readonly string[]): string {
+  return `${MIXED_FROM}${tags.map((tag) => tag.replaceAll("_", " ")).join(", ")}`;
 }
 
 /** How many rows the buttons of the switch stand in, by their tops. */
@@ -294,8 +294,8 @@ export function shownTagSources(
 
 /**
  * The source the tab opens on: the one of the kind picked last, where the
- * post has such; else the first, which is an artist, a character, or the
- * shared tags.
+ * post has such; else the first, which is "Similar" where the post has tags
+ * to mix from.
  */
 export function firstSource(
   sources: readonly RelatedSource[],
@@ -311,31 +311,20 @@ export type MoreLikeThisProps = {
   readonly onPick: (kind: RelatedSourceKind) => void;
   /** The favorites like this post, from the browser; null where there is no index. */
   readonly readFavorites: (() => Promise<RankedPost[]>) | null;
-  readonly load: (query: string) => Promise<RankedPost[]>;
+  /** One page of a search, from this offset, ranked by the tags shared with the post. */
+  readonly load: (query: string, offset: number) => Promise<RankedPost[]>;
   /** The clock, for the wait after "slow down". */
   readonly now?: () => number;
-  /** The pause before a search by fewer tags; the tests pass one that does not wait. */
+  /** Chance, for the page and the order of a mix; the tests pass their own. */
+  readonly random?: () => number;
+  /** The pause before the first page is asked for; the tests pass one that does not wait. */
   readonly pause?: () => Promise<void>;
 };
 
 function waitBeforeRetry(): Promise<void> {
   return new Promise((resolve) => {
-    window.setTimeout(resolve, SIMILAR_RETRY_PAUSE_MS);
+    window.setTimeout(resolve, MIX_RETRY_PAUSE_MS);
   });
-}
-
-const TAG_SEPARATOR = " ";
-
-/** The tags of a source that are searched by now: all of them but those turned off. */
-function activeTags(source: RelatedSource, off: readonly string[]): string[] {
-  return source.tags.filter((tag) => !off.includes(tag));
-}
-
-/** Under which what a source gave is kept: "Similar" by its tags, any other by itself. */
-function cacheKey(source: RelatedSource, off: readonly string[]): string {
-  return source.kind === "similar"
-    ? `${source.key}|${activeTags(source, off).join(TAG_SEPARATOR)}`
-    : source.key;
 }
 
 /** What is in the tab. It is mounted when the tab is first opened, and that opening loads the first source. */
@@ -349,39 +338,73 @@ export function MoreLikeThis(props: MoreLikeThisProps): JSX.Element {
   // How many sources by tag fit the two rows of the switch; null until fewer than all do.
   const [fit, setFit] = useState<number | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
-  // The tags of "Similar" the user took out of its search.
-  const [off, setOff] = useState<readonly string[]>([]);
   const switchRef = useRef<HTMLDivElement | null>(null);
   const gridRef = useRef<HTMLDivElement | null>(null);
   const now = props.now ?? Date.now;
+  const random = props.random ?? Math.random;
   const { readFavorites } = props;
 
-  const open = (
-    source: RelatedSource,
-    remember: boolean,
-    without: readonly string[] = off,
-  ): void => {
+  const fail = (key: string, error: unknown): void => {
+    const failure = error instanceof RelatedError ? error.failure : "failed";
+    setLoaded((all) => ({ ...all, [key]: { state: "error", failure, at: now() } }));
+  };
+
+  /**
+   * A mix of "Similar": one search for any of some rare tags of the post,
+   * from a page taken by chance. When that page has nothing (the search is
+   * shorter than its most common tag promised), the first page is asked for.
+   */
+  const mix = (source: RelatedSource, first: boolean): void => {
+    const tags = mixTags(source.tags, first, random);
+    const query = mixQuery(tags, source.without);
+    const offset = mixPageOffset(mixSize(props.tags, tags), random);
+    setLoaded((all) => ({ ...all, [source.key]: { state: "loading" } }));
+    setShowAll((keys) => keys.filter((key) => key !== source.key));
+    const ask = async (): Promise<RankedPost[]> => {
+      const posts = await props.load(query, offset);
+      if (posts.length > 0 || offset === 0) {
+        return posts;
+      }
+      await (props.pause ?? waitBeforeRetry)();
+      return props.load(query, 0);
+    };
+    ask()
+      .then((posts) => {
+        setLoaded((all) => ({
+          ...all,
+          [source.key]: { state: "ready", posts: mixOrder(posts, tags, random), query, mixed: tags },
+        }));
+      })
+      .catch((error: unknown) => {
+        fail(source.key, error);
+      });
+  };
+
+  const open = (source: RelatedSource, remember: boolean): void => {
     setPicked(source.key);
     if (remember) {
       props.onPick(source.kind);
     }
-    const key = cacheKey(source, without);
-    const have = loaded[key];
+    const have = loaded[source.key];
     if (source.kind === "favorites" || (have !== undefined && have.state !== "error")) {
       return;
     }
-    const tags = activeTags(source, without);
-    setLoaded((all) => ({ ...all, [key]: { state: "loading" } }));
-    loadByFewerTags(tags, source.without, props.load, props.pause ?? waitBeforeRetry)
-      .then((result) => {
+    if (source.kind === "similar") {
+      mix(source, true);
+      return;
+    }
+    const query = relatedQuery(source.tags, source.without);
+    setLoaded((all) => ({ ...all, [source.key]: { state: "loading" } }));
+    props
+      .load(query, 0)
+      .then((posts) => {
         setLoaded((all) => ({
           ...all,
-          [key]: { state: "ready", posts: result.posts, used: result.used, asked: tags.length },
+          [source.key]: { state: "ready", posts, query, mixed: [] },
         }));
       })
       .catch((error: unknown) => {
-        const failure = error instanceof RelatedError ? error.failure : "failed";
-        setLoaded((all) => ({ ...all, [key]: { state: "error", failure, at: now() } }));
+        fail(source.key, error);
       });
   };
 
@@ -424,8 +447,8 @@ export function MoreLikeThis(props: MoreLikeThisProps): JSX.Element {
       : pickedSource.kind === "favorites"
         ? favorites === null
           ? { state: "loading" }
-          : { state: "ready", posts: favorites, used: [], asked: 0 }
-        : loaded[cacheKey(pickedSource, off)];
+          : { state: "ready", posts: favorites, query: "", mixed: [] }
+        : loaded[pickedSource.key];
 
   const waitLeft =
     current?.state === "error" && current.failure === "limited"
@@ -446,21 +469,13 @@ export function MoreLikeThis(props: MoreLikeThisProps): JSX.Element {
   }, [waiting]);
 
   const busy = Object.values(loaded).some((entry) => entry.state === "loading");
-  const countOf = (source: RelatedSource): number | null => {
-    if (source.kind === "favorites") {
-      return favorites === null ? null : favorites.length;
-    }
-    const state = loaded[source.key];
-    return state?.state === "ready" ? state.posts.length : null;
-  };
-  // The names of the tags stand as they are, with no number: the number was of
-  // the posts a page of a search gave, 41 or 42 for no reason a reader could
-  // see. The favorites are counted, and stand last.
+
+  // The names of the tags stand as they are, with no number; the favorites
+  // are counted, and stand last.
   const tagSources = sources.filter((source) => source.kind !== "favorites");
   const favoritesSource = sources.find((source) => source.kind === "favorites");
   const shownTags = shownTagSources(tagSources, fit, picked);
   const hiddenTags = tagSources.filter((source) => !shownTags.includes(source));
-  const favoritesCount = favoritesSource === undefined ? null : countOf(favoritesSource);
   const options = [
     ...shownTags.map((source) => ({ value: source.key, label: source.name })),
     ...(hiddenTags.length > 0
@@ -472,9 +487,9 @@ export function MoreLikeThis(props: MoreLikeThisProps): JSX.Element {
           {
             value: favoritesSource.key,
             label:
-              favoritesCount === null
+              favorites === null
                 ? FAVORITES_SHORT
-                : `${FAVORITES_SHORT} ${String(favoritesCount)}`,
+                : `${FAVORITES_SHORT} ${String(favorites.length)}`,
           },
         ]),
   ];
@@ -543,31 +558,21 @@ export function MoreLikeThis(props: MoreLikeThisProps): JSX.Element {
           ))}
         </Popover>
       </div>
-      {pickedSource?.kind === "similar" ? (
-        // What "Similar" searches by, each tag a switch: out of the search and back.
-        <div className="rdw-mlt-tags" role="group" aria-label={SIMILAR_TAGS_LABEL}>
-          {pickedSource.tags.map((tag) => {
-            const out = off.includes(tag);
-            const last = !out && activeTags(pickedSource, off).length === 1;
-            return (
-              <button
-                key={tag}
-                type="button"
-                className="rdw-mlt-tag rdw-kit-focusable"
-                aria-pressed={!out}
-                title={out ? SIMILAR_TAG_BACK : last ? SIMILAR_TAG_LAST : SIMILAR_TAG_OUT}
-                // One request at a time, and a search needs a tag to be by.
-                disabled={busy || last}
-                onClick={() => {
-                  const next = out ? off.filter((entry) => entry !== tag) : [...off, tag];
-                  setOff(next);
-                  open(pickedSource, false, next);
-                }}
-              >
-                <Chip label={tag.replaceAll("_", " ")} variant={out ? "exclude" : "dot"} />
-              </button>
-            );
-          })}
+      {pickedSource?.kind === "similar" && current?.state === "ready" ? (
+        // What the mix is made from, said and not to be pressed; and a way to another.
+        <div className="rdw-mlt-mix">
+          <p className="rdw-mlt-line">{mixedFromText(current.mixed)}</p>
+          <button
+            type="button"
+            className="rdw-mlt-link"
+            title={ANOTHER_MIX_TITLE}
+            disabled={busy}
+            onClick={() => {
+              mix(pickedSource, false);
+            }}
+          >
+            {ANOTHER_MIX_LABEL}
+          </button>
         </div>
       ) : null}
       {pickedSource === undefined || current === undefined ? null : current.state === "loading" ? (
@@ -603,9 +608,6 @@ export function MoreLikeThis(props: MoreLikeThisProps): JSX.Element {
         <>
           {props.tags.length < FEW_TAGS ? (
             <p className="rdw-mlt-line">{fewTagsText(props.tags.length)}</p>
-          ) : null}
-          {current.used.length < current.asked ? (
-            <p className="rdw-mlt-line">{fewerTagsText(current.asked, current.used.length)}</p>
           ) : null}
           <div className="rdw-mlt-grid" ref={gridRef}>
             {visible.map((post) => (
@@ -651,10 +653,7 @@ export function MoreLikeThis(props: MoreLikeThisProps): JSX.Element {
             )}
             {pickedSource.kind === "favorites" ? null : (
               // The same search as gave the list, in the usual place for a search.
-              <a
-                className="rdw-mlt-link"
-                href={relatedSearchUrl(relatedQuery(current.used, pickedSource.without))}
-              >
+              <a className="rdw-mlt-link" href={relatedSearchUrl(current.query)}>
                 {`${pickedSource.kind === "similar" ? SEARCH_TAGS_LABEL : `Search ${pickedSource.name}`} ${ARROW}`}
               </a>
             )}

@@ -37,7 +37,7 @@ export type RankedPost = Candidate & {
   readonly score: number;
 };
 
-export type RelatedSourceKind = "similar" | "character" | "favorites";
+export type RelatedSourceKind = "similar" | "character" | "copyright" | "favorites";
 
 export type RelatedSource = {
   readonly key: string;
@@ -45,9 +45,9 @@ export type RelatedSource = {
   /** What the tab reads: the tag with spaces, or the name of the source. */
   readonly name: string;
   /**
-   * The tags the search is by, the rarest first; empty for the favorites.
-   * "Similar" may be asked by fewer of them: the user turns a tag off, and a
-   * search that found nothing is asked again by fewer.
+   * The tags the search is by; empty for the favorites. For "Similar" these
+   * are the rare tags a mix is made from, the rarest first: a mix takes some
+   * of them, any of which a post may have.
    */
   readonly tags: readonly string[];
   /** The artists of the post: their posts are left out of the search. */
@@ -77,12 +77,22 @@ const HTTP_TOO_MANY_REQUESTS = 429;
 const WEIGHT_BASE = 2;
 /** The weight of a tag whose count is not known: that of a tag of a thousand posts. */
 const UNKNOWN_COUNT = 1000;
-/** How many of the rarest tags of a post "Similar" searches by. */
-export const SIMILAR_QUERY_TAGS = 3;
+/** How many of the rare tags of a post one mix of "Similar" is made from. */
+export const SIMILAR_MIX_TAGS = 5;
+/** How many of the rarest tags a mix may be drawn from: "Another mix" takes others of them. */
+export const SIMILAR_POOL_TAGS = 8;
+/** A mix is taken from one of this many first pages of its search, not always the first. */
+export const MIX_PAGES_MAX = 20;
+/** A post that has this many of the tags of a mix stands before those with fewer. */
+const MIX_CLOSE_TAGS = 2;
+const OR_OPEN = "(";
+const OR_CLOSE = ")";
+const OR_JOIN = "~";
+const SEARCH_PARAM_PID = "pid";
 /** A tag on fewer posts than this is the mark of one artist or one set, not of a scene. */
 const SIMILAR_MIN_COUNT = 20;
-/** Between two searches of one "Similar", when the first found nothing. */
-export const SIMILAR_RETRY_PAUSE_MS = 1100;
+/** Before the first page is asked for, when the page taken at random was empty. */
+export const MIX_RETRY_PAUSE_MS = 1100;
 const EXCLUDE_MARK = "-";
 /**
  * Tags that say how a picture was made or signed, not what is in it. They are
@@ -290,8 +300,89 @@ export function similarTags(post: readonly PostTag[]): string[] {
         !SERVICE_TAGS.has(entry.tag),
     )
     .sort((a, b) => a.count - b.count)
-    .slice(0, SIMILAR_QUERY_TAGS)
+    .slice(0, SIMILAR_POOL_TAGS)
     .map((entry) => entry.tag);
+}
+
+/**
+ * The search for posts that have any of these tags, without the posts of
+ * these artists: "( a ~ b ~ c ) -artist". The site reads the brackets and the
+ * "~" only with spaces around them (docs/site.md).
+ */
+export function mixQuery(tags: readonly string[], without: readonly string[]): string {
+  const any =
+    tags.length > 1
+      ? [OR_OPEN, tags.join(` ${OR_JOIN} `), OR_CLOSE].join(TAG_SEPARATOR)
+      : (tags[0] ?? "");
+  return [any, ...without.map((tag) => `${EXCLUDE_MARK}${tag}`)].join(TAG_SEPARATOR);
+}
+
+/**
+ * How many posts a mix by these tags has at least: as many as its most common
+ * tag has. Known from the tag list beside the post, with no request.
+ */
+export function mixSize(post: readonly PostTag[], tags: readonly string[]): number {
+  let size = 0;
+  for (const entry of post) {
+    if (tags.includes(entry.tag) && entry.count > size) {
+      size = entry.count;
+    }
+  }
+  return size;
+}
+
+/**
+ * The offset of the page a mix is taken from: one of the first pages of its
+ * search, by chance, so that a mix is not always of the newest posts.
+ */
+export function mixPageOffset(size: number, random: () => number): number {
+  const pages = Math.min(MIX_PAGES_MAX, Math.floor(size / RELATED_PAGE_SIZE));
+  return pages > 1 ? Math.floor(random() * pages) * RELATED_PAGE_SIZE : 0;
+}
+
+function shuffled<T>(items: readonly T[], random: () => number): T[] {
+  const list = [...items];
+  for (let at = list.length - 1; at > 0; at -= 1) {
+    const other = Math.floor(random() * (at + 1));
+    const held = list[at];
+    const swapped = list[other];
+    if (held !== undefined && swapped !== undefined) {
+      list[at] = swapped;
+      list[other] = held;
+    }
+  }
+  return list;
+}
+
+/** The tags of one mix: the rarest first time, others of the pool by chance after. */
+export function mixTags(
+  pool: readonly string[],
+  first: boolean,
+  random: () => number,
+): string[] {
+  return (first ? [...pool] : shuffled(pool, random)).slice(0, SIMILAR_MIX_TAGS);
+}
+
+/**
+ * A mix in the order it is shown (the designer, 19.11.2026): shuffled, but
+ * with weight. A search for any of several tags gives mostly the newest posts
+ * of the most common of them; shuffled blindly, a post with one tag of the
+ * mix would stand first as often as one with three. So the posts with two or
+ * more of the tags come first, shuffled among themselves, then the rest,
+ * shuffled too.
+ */
+export function mixOrder(
+  posts: readonly RankedPost[],
+  tags: readonly string[],
+  random: () => number,
+): RankedPost[] {
+  const close: RankedPost[] = [];
+  const far: RankedPost[] = [];
+  for (const post of posts) {
+    const have = tags.filter((tag) => post.tags.includes(tag)).length;
+    (have >= MIX_CLOSE_TAGS ? close : far).push(post);
+  }
+  return [...shuffled(close, random), ...shuffled(far, random)];
 }
 
 /** The search by these tags that leaves out the posts of these artists. */
@@ -300,12 +391,11 @@ export function relatedQuery(tags: readonly string[], without: readonly string[]
 }
 
 /**
- * Where candidates can come from for this post (the designer, 19.11.2026,
- * after Kaze asked what the sense is of showing an artist's posts on a post
- * of that artist): "Similar", the same scene by other artists, a search by
- * the rarest tags of the post; then each character of the post, by other
- * artists too; and the favorites, last. The artist is no source: all of an
- * artist's posts are one press on the tag beside the post.
+ * Where candidates can come from for this post (the designer with Kaze,
+ * 19.11.2026): "Similar", a mix of posts by other artists that have any of
+ * the rare tags of the post; then each character and each copyright of the
+ * post, by other artists too; and the favorites, last. The artist is no
+ * source: all of an artist's posts are one press on the tag beside the post.
  */
 export function relatedSources(post: readonly PostTag[]): RelatedSource[] {
   const without = post.filter((entry) => entry.kind === "artist").map((entry) => entry.tag);
@@ -320,15 +410,17 @@ export function relatedSources(post: readonly PostTag[]): RelatedSource[] {
       without,
     });
   }
-  for (const entry of post) {
-    if (entry.kind === "character") {
-      sources.push({
-        key: `character:${entry.tag}`,
-        kind: "character",
-        name: displayName(entry.tag),
-        tags: [entry.tag],
-        without,
-      });
+  for (const kind of ["character", "copyright"] as const) {
+    for (const entry of post) {
+      if (entry.kind === kind) {
+        sources.push({
+          key: `${kind}:${entry.tag}`,
+          kind,
+          name: displayName(entry.tag),
+          tags: [entry.tag],
+          without,
+        });
+      }
     }
   }
   sources.push({
@@ -339,34 +431,6 @@ export function relatedSources(post: readonly PostTag[]): RelatedSource[] {
     without: [],
   });
   return sources;
-}
-
-export type SimilarResult = {
-  readonly posts: RankedPost[];
-  /** The tags of the search that gave them. */
-  readonly used: readonly string[];
-};
-
-/**
- * A search by all the tags given; when it finds nothing, by one tag fewer,
- * the rarest kept, down to one, with a pause before each. Every search is one
- * request; the first is the user's action, the rest follow from it.
- */
-export async function loadByFewerTags(
-  tags: readonly string[],
-  without: readonly string[],
-  load: (query: string) => Promise<RankedPost[]>,
-  pause: () => Promise<void>,
-): Promise<SimilarResult> {
-  for (let count = tags.length; count > 0; count -= 1) {
-    const used = tags.slice(0, count);
-    const posts = await load(relatedQuery(used, without));
-    if (posts.length > 0 || count === 1) {
-      return { posts, used };
-    }
-    await pause();
-  }
-  return { posts: [], used: [] };
 }
 
 /**
@@ -403,11 +467,14 @@ export function favoriteCandidates(
 }
 
 /** The address of the search a source asks for; also where "Search … →" leads. */
-export function relatedSearchUrl(query: string): string {
+export function relatedSearchUrl(query: string, offset: number = 0): string {
   const params = new URLSearchParams();
   params.set("page", "post");
   params.set("s", "list");
   params.set(SEARCH_PARAM_TAGS, query);
+  if (offset > 0) {
+    params.set(SEARCH_PARAM_PID, String(offset));
+  }
   return `${SITE_ORIGIN}/index.php?${params.toString()}`;
 }
 
@@ -420,10 +487,10 @@ export function relatedPostUrl(id: number): string {
  * One page of a search, read into candidates. One request, made when the user
  * picks the source. Throws a RelatedError that says why nothing came.
  */
-export async function fetchCandidates(query: string): Promise<Candidate[]> {
+export async function fetchCandidates(query: string, offset: number = 0): Promise<Candidate[]> {
   let response: Response;
   try {
-    response = await fetch(relatedSearchUrl(query), {
+    response = await fetch(relatedSearchUrl(query, offset), {
       method: FETCH_METHOD_GET,
       credentials: FETCH_CREDENTIALS,
     });

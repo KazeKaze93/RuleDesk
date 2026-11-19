@@ -224,8 +224,8 @@ export function PostPanel(props: PostPanelProps): JSX.Element {
       : null,
   );
   const loadRelated = useCallback(
-    async (query: string): Promise<RankedPost[]> =>
-      rankCandidates(relatedTags, await fetchCandidates(query), selfId),
+    async (query: string, offset: number): Promise<RankedPost[]> =>
+      rankCandidates(relatedTags, await fetchCandidates(query, offset), selfId),
     [relatedTags, selfId],
   );
   const hasTabs = hasComments || hasRelated;
