@@ -101,6 +101,18 @@ export async function fetchAutocomplete(
   query: string,
   signal?: AbortSignal,
 ): Promise<AutocompleteSuggestion[]> {
+  return (await fetchAutocompleteResult(query, signal)) ?? [];
+}
+
+/**
+ * The same request, with a failure told from an empty answer: null when the
+ * site did not answer (the network, 429, another status, not JSON), a list,
+ * empty or not, when it did.
+ */
+export async function fetchAutocompleteResult(
+  query: string,
+  signal?: AbortSignal,
+): Promise<AutocompleteSuggestion[] | null> {
   const trimmed = query.trim();
   if (trimmed.length < AUTOCOMPLETE_MIN_CHARS) {
     return [];
@@ -118,19 +130,19 @@ export async function fetchAutocomplete(
     response = await fetch(buildAutocompleteUrl(trimmed), init);
   } catch (error) {
     if (isAbortError(error) || signal?.aborted === true) {
-      return [];
+      return null;
     }
     log.error("autocomplete: fetch failed", error);
-    return [];
+    return null;
   }
 
   if (response.status === HTTP_TOO_MANY_REQUESTS) {
     log.warn("autocomplete: rate limited", response.status);
-    return [];
+    return null;
   }
   if (!response.ok) {
     log.warn("autocomplete: HTTP error", response.status);
-    return [];
+    return null;
   }
 
   let json: unknown;
@@ -138,16 +150,16 @@ export async function fetchAutocomplete(
     json = await response.json();
   } catch (error) {
     if (isAbortError(error) || signal?.aborted === true) {
-      return [];
+      return null;
     }
     log.error("autocomplete: invalid JSON", error);
-    return [];
+    return null;
   }
 
   const parsed = AutocompleteResponseSchema.safeParse(json);
   if (!parsed.success) {
     log.error("autocomplete: schema mismatch", parsed.error);
-    return [];
+    return null;
   }
   return normalizeItems(parsed.data);
 }

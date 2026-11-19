@@ -1,3 +1,4 @@
+import { useTagKindLookup } from "../ui/use-tag-kinds";
 import { chipKindOfTag } from "../ui/tag-chip-kind";
 import type { JSX } from "preact";
 import { render as preactRender } from "preact";
@@ -86,6 +87,8 @@ export function BlacklistSection(
     readonly AutocompleteSuggestion[]
   >([]);
   const querierRef = useRef(createAutocompleteQuerier());
+  // The dot of a tag not met on the site yet takes its colour once the site says its kind.
+  useTagKindLookup(tags);
 
   useEffect(() => {
     const querier = querierRef.current;

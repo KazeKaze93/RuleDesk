@@ -109,7 +109,7 @@ To get the untouched site back: Appearance → Site theme → **Site default**, 
 - Collections, followed tags, marks and settings live in the script manager's storage, in this browser only. Nothing is sent anywhere
 - **Data → Export** saves one JSON file; **Import** restores it (Merge adds to what you have, Replace overwrites). This is the only way to move to another browser
 - The blacklist and the site theme are the site's own cookies and are not in the export. Neither is the API key
-- The one request made without an action of yours is the counter beside Feed: the first page of the feed, at most once in 15 minutes. It has its own switch in the settings (RuleDesk)
+- Two requests are made without an action of yours, and each has its own switch in the settings (RuleDesk). The counter beside Feed asks for the first page of the feed, at most once in 15 minutes. The kind of a tag the script has not met yet is asked of the site's tag suggestions, once for a tag, to colour its chip
 - Otherwise the script reads the pages you open and makes a request only when you do something that needs one: favorite a post, sync favorites, start a download, type in a tag field, scroll for the next page, open a feed that spans several searches, press Refresh or Check for new, open Statistics (it reads your profile page, at most once in 15 minutes), click the "?" of a tag. Requests go one at a time with a pause
 
 ## What the script does not do

@@ -1,3 +1,4 @@
+import { TAG_KIND_LOOKUP_DEFAULT, TAG_KIND_LOOKUP_SETTING_ID } from "../site/tag-type-lookup";
 import {
   SETTINGS_SECTION_FAVORITES,
   settingsSectionFromHash,
@@ -89,6 +90,10 @@ const AI_EVERYWHERE_CAPTION =
 
 const TWEAKS_CAPTION =
   "Off: the site looks as without RuleDesk. The page features below need this on; Favorites sync, Blacklist and Data work without it.";
+const TAG_KIND_LOOKUP_SWITCH_ID = "rdw-tag-kind-lookup";
+const TAG_KIND_LOOKUP_LABEL = "Look up the kind of unknown tags";
+const TAG_KIND_LOOKUP_CAPTION =
+  "Colours the dot of a tag the script has not met on the site yet. Asks the site's tag suggestions once for each such tag, one request at a time.";
 const PART_SIZE_CAPTION =
   "Posts of a custom collection opened as one search. A longer collection is opened in parts.";
 const LOCAL_INDEX_TITLE = "Local index";
@@ -561,6 +566,9 @@ export function SettingsPage(): JSX.Element {
   );
 
   const [aiEverywhere, setAiEverywhere] = useState(() => aiHiddenEverywhere());
+  const [tagKindLookup, setTagKindLookup] = useState(() =>
+    getFeatureEnabled(TAG_KIND_LOOKUP_SETTING_ID, TAG_KIND_LOOKUP_DEFAULT),
+  );
   const [stickyHeader, setStickyHeader] = useState(() =>
     getFeatureEnabled(STICKY_HEADER_SETTING_ID, STICKY_HEADER_DEFAULT),
   );
@@ -696,6 +704,20 @@ export function SettingsPage(): JSX.Element {
           }}
         />
         <p className={PANEL_UI_CLASS.settingsCaption}>{AI_EVERYWHERE_CAPTION}</p>
+      </div>
+    ),
+    [SETTINGS_GROUP.search]: (
+      <div className={PANEL_UI_CLASS.settingsRow}>
+        <Switch
+          id={TAG_KIND_LOOKUP_SWITCH_ID}
+          label={TAG_KIND_LOOKUP_LABEL}
+          checked={tagKindLookup}
+          onChange={(checked) => {
+            setFeatureEnabled(TAG_KIND_LOOKUP_SETTING_ID, checked);
+            setTagKindLookup(checked);
+          }}
+        />
+        <p className={PANEL_UI_CLASS.settingsCaption}>{TAG_KIND_LOOKUP_CAPTION}</p>
       </div>
     ),
     [SETTINGS_GROUP.collections]: (

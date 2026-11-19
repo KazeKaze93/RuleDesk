@@ -1,3 +1,4 @@
+import { useTagKindLookup } from "../ui/use-tag-kinds";
 import { chipKindOfTag } from "../ui/tag-chip-kind";
 import { rememberTagKinds } from "../site/tag-types";
 import {
@@ -891,6 +892,13 @@ function SearchToolsPanel(props: SearchToolsPanelProps): JSX.Element {
     readPanelView(input.value, window.location.search),
   );
   const [scoreDraft, setScoreDraft] = useState<number | null>(view.minScore);
+  useTagKindLookup(
+    view.chips.flatMap((chip) =>
+      chip.kind === "tag" && !chip.excluded && chip.chipKind === "default" && !isMetaToken(chip.token)
+        ? [bareTag(chip.token)]
+        : [],
+    ),
+  );
   // Read at once when the site's checkbox is already in the page: the row is
   // then part of the first render, and the panel does not grow a moment later.
   const [aiPosts, setAiPosts] = useState<AiPostsMode | null>(() => {
@@ -1204,10 +1212,11 @@ function SearchToolsPanel(props: SearchToolsPanelProps): JSX.Element {
                   const variantClass = excluded
                     ? "rdw-chip--exclude"
                     : "rdw-chip--dot";
+                  // Read when drawn: the kind may have been learned since the chip was made.
+                  const chipKind =
+                    chip.chipKind === "default" ? chipKindOfTag(bareTag(chip.token)) : chip.chipKind;
                   const kindClass =
-                    !excluded && chip.chipKind !== "default"
-                      ? `rdw-chip--${chip.chipKind}`
-                      : "";
+                    !excluded && chipKind !== "default" ? `rdw-chip--${chipKind}` : "";
                   const toggleable = !isMetaToken(chip.token);
                   return (
                     <span

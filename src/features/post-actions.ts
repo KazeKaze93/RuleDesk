@@ -1,3 +1,4 @@
+import { IMAGE_ID } from "./post-panel/site-reads";
 import { h, render } from "preact";
 
 import { log } from "../log";
@@ -55,6 +56,14 @@ const CLASS_MODE_NARROW = "rdw-post-actions--narrow";
 const WARN_NO_FLEXI =
   "post-actions: div.flexi missing; panel not mounted";
 
+/*
+ * A picture the site shows in its own size (it makes no smaller copy of some
+ * posts) may be wider than the room beside the panel. The row then broke, the
+ * panel went under a picture two screens tall, and the page was as wide as
+ * the picture (Kaze, 19.11.2026, a post of 1528x1952). In the last block of
+ * the CSS the row is kept whole, the panel keeps its width, and the picture
+ * gives way: it is as wide as the room, with its height following.
+ */
 const BODY_CLASS = featureBodyClass(FEATURE_ID);
 const BODY_SELECTOR = `body.${BODY_CLASS}`;
 
@@ -226,6 +235,21 @@ ${BODY_SELECTOR} #${POST_ACTIONS_ID} .rdw-post-panel-comments-host {
   ${BODY_SELECTOR} #${POST_ACTIONS_ID}.${CLASS_MODE_WIDE} {
     margin-left: ${String(PANEL_GROUP_GAP_PX - PANEL_MEDIA_GAP_PX)}px;
     margin-right: auto;
+    flex-shrink: 0;
+  }
+  ${BODY_SELECTOR} div#post-view > div#right-col {
+    min-width: 0;
+  }
+  ${BODY_SELECTOR} div.flexi:has(> #${POST_ACTIONS_ID}.${CLASS_MODE_WIDE}) {
+    flex-wrap: nowrap;
+  }
+  ${BODY_SELECTOR} div.flexi > :has(+ #${POST_ACTIONS_ID}.${CLASS_MODE_WIDE}) {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+  ${BODY_SELECTOR} div.flexi > :has(+ #${POST_ACTIONS_ID}.${CLASS_MODE_WIDE}) img#${IMAGE_ID} {
+    max-width: 100%;
+    height: auto !important;
   }
 }
 `.trim();

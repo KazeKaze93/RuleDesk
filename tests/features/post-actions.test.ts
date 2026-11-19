@@ -910,7 +910,15 @@ describe("postActionsFeature", () => {
     expect(wide).toMatch(
       /#rdw-post-actions\.rdw-post-actions--wide \{\s*margin-left: 12px;\s*margin-right: auto;/,
     );
-    expect(postActionsFeature.css).not.toMatch(/img#image[^{]*\{[^}]*width/);
+    // The picture is never given a width: it stays in the size the site
+    // gives it. It may only be kept from being wider than its room.
+    expect(postActionsFeature.css).not.toMatch(/img#image[^{]*\{[^}]*(?<!max-)width/);
+    expect(wide).toMatch(/img#image \{\s*max-width: 100%;\s*height: auto !important;/);
+    // A picture wider than the room beside the panel does not break the row.
+    expect(wide).toMatch(
+      /div\.flexi:has\(> #rdw-post-actions\.rdw-post-actions--wide\) \{\s*flex-wrap: nowrap;/,
+    );
+    expect(wide).toMatch(/margin-right: auto;\s*flex-shrink: 0;/);
   });
 
   it("keeps a gap between the media and the panel", () => {

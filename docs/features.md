@@ -270,6 +270,8 @@ Header → the gear. On the left is the list of sections, held in place, with th
 | Blacklist | The site's tag blacklist for this browser, as chips |
 | Data | Export and Import (Merge or Replace) of everything the script stores; when the last backup was made |
 
+The dot of a tag's chip is in the colour of its kind. The kind is what the site said of the tag where the script met it; for a tag not met yet the site's tag suggestions are asked once ("Look up the kind of unknown tags" in Search and sidebar turns that off).
+
 A feature that only changes styles applies at once; any other reloads the page.
 
 ## What the script will not do

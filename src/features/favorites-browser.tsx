@@ -1,3 +1,4 @@
+import { useTagKindLookup } from "../ui/use-tag-kinds";
 import { chipKindOfTag } from "../ui/tag-chip-kind";
 import type { JSX } from "preact";
 import { createPortal } from "preact/compat";
@@ -1246,6 +1247,9 @@ export function FavoritesBrowser(props: FavoritesBrowserProps = {}): JSX.Element
   }, [actionsRef]);
 
   const chips = queryChips(text);
+  useTagKindLookup(
+    chips.filter((chip) => !chip.group && !chip.excluded).map((chip) => chip.label),
+  );
   const setQuery = (next: string): void => {
     setText(next);
     setApplied(next);

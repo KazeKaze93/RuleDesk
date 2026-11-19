@@ -2,6 +2,11 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.63.0
+
+- The post page: a picture wider than the room beside the panel no longer breaks the row. The site shows some posts in their own size, with no smaller copy; such a picture pushed the panel under itself, two screens down, and made the page wider than the window. Now the panel stays beside the picture and the picture is as wide as the room, its height following. A picture that fits is left in the size the site gives it
+- The kind of a tag the script has not met yet is asked of the site, so the dot of its chip is coloured in the Blacklist, in the search of Favorites and in the search panel without waiting for the tag to turn up on a page. It is the request a search field makes for its suggestions, with the whole tag in it: once for a tag, one at a time, 1.1 s apart, at most 30 on a page, and the answer is kept. This is the second request the script makes without an action of yours; RuleDesk → Search and sidebar → "Look up the kind of unknown tags" turns it off
+
 ## 0.62.2
 
 - The search panel on Posts: the dot of a tag's chip is in the colour of its kind again. The kind was read from the tag list beside the posts by the first link of a row, which on a list page is the "?" of the wiki, so every chip stayed grey. A tag that is not in that list takes the kind remembered of it, or the kind it is followed as

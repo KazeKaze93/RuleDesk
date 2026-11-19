@@ -12,6 +12,9 @@ import { getFeatureState, setFeatureState } from "../storage/store";
  */
 
 export type TagKind = "artist" | "character" | "copyright" | "metadata";
+/** What is kept of a tag: its kind, or that the site was asked and it is a general one. */
+type SeenKind = TagKind | "general";
+const GENERAL_CODE = "g";
 
 /** Under featureState: "a:tag", the first letter is the kind. */
 export const TAG_TYPES_STATE_ID = "tag-types";
@@ -26,7 +29,10 @@ const CODE_OF: Readonly<Record<TagKind, string>> = {
 };
 const CODE_SEPARATOR = ":";
 
-function kindOfCode(code: string): TagKind | null {
+function kindOfCode(code: string): SeenKind | null {
+  if (code === GENERAL_CODE) {
+    return "general";
+  }
   for (const kind of ["artist", "character", "copyright", "metadata"] as const) {
     if (CODE_OF[kind] === code) {
       return kind;
@@ -46,13 +52,13 @@ export function tagKey(tag: string): string {
   return tag.trim().toLowerCase().replaceAll(" ", "_");
 }
 
-let known: Map<string, TagKind> | null = null;
+let known: Map<string, SeenKind> | null = null;
 
-function load(): Map<string, TagKind> {
+function load(): Map<string, SeenKind> {
   if (known !== null) {
     return known;
   }
-  const map = new Map<string, TagKind>();
+  const map = new Map<string, SeenKind>();
   let kept: unknown = null;
   try {
     kept = getFeatureState(TAG_TYPES_STATE_ID);
@@ -82,18 +88,32 @@ export function resetTagTypesCache(): void {
 
 /** The kind of a tag when it was seen before, or null. */
 export function tagKindOf(tag: string): TagKind | null {
-  return load().get(tagKey(tag)) ?? null;
+  const kind = load().get(tagKey(tag));
+  return kind === undefined || kind === "general" ? null : kind;
+}
+
+/** Whether anything is kept of the tag, be it only that it is a general one. */
+export function tagSeen(tag: string): boolean {
+  return load().has(tagKey(tag));
 }
 
 /**
  * Remembers the kinds of the tags given, each as the site named it ("artist",
- * "general", …). Written to the storage only when something new came.
+ * "general", …). Written to the storage only when something new came. A
+ * general tag is kept only when asked for (`general`): that is for a tag the
+ * site was asked about, so that it is not asked twice; the lists the script
+ * reads in passing hold hundreds of general tags.
  */
-export function rememberTagKinds(entries: Iterable<readonly [string, string | undefined]>): void {
+export function rememberTagKinds(
+  entries: Iterable<readonly [string, string | undefined]>,
+  options: { readonly general?: boolean } = {},
+): void {
   const map = load();
   let changed = false;
   for (const [tag, name] of entries) {
-    const kind = name === undefined ? null : kindOfName(name);
+    const named = name === undefined ? null : kindOfName(name);
+    const kind: SeenKind | null =
+      named ?? (options.general === true && name !== undefined ? "general" : null);
     const key = tagKey(tag);
     if (kind === null || key.length === 0 || map.get(key) === kind) {
       continue;
@@ -116,7 +136,10 @@ export function rememberTagKinds(entries: Iterable<readonly [string, string | un
   try {
     setFeatureState(
       TAG_TYPES_STATE_ID,
-      [...map].map(([tag, kind]) => `${CODE_OF[kind]}${CODE_SEPARATOR}${tag}`),
+      [...map].map(
+        ([tag, kind]) =>
+          `${kind === "general" ? GENERAL_CODE : CODE_OF[kind]}${CODE_SEPARATOR}${tag}`,
+      ),
     );
   } catch {
     // Kept in memory all the same: see load().

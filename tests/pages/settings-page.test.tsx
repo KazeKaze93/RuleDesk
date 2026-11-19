@@ -270,6 +270,7 @@ describe("SettingsPage flat rows", () => {
           "Search tools",
           "Sidebar on the right",
           "Tag description on \u201c?\u201d",
+          "Look up the kind of unknown tags",
         ],
       ],
       ["Collections", ["Add to collection button", "Collection header", "Collection part size"]],
