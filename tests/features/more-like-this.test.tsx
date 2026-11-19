@@ -9,7 +9,9 @@ import {
   fewTagsText,
   firstSource,
   mixedFromText,
-  layoutSwitch,
+  CHIP_ROWS_MAX,
+  chipRows,
+  chipsShown,
   moreLikeThisFeature,
   sharedTagsText,
   shownTagSources,
@@ -139,8 +141,8 @@ describe("reading the post and its candidates", () => {
       '<ul id="tag-sidebar"><li class="tag-type-copyright tag"><a href="index.php?page=post&amp;s=list&amp;tags=shadowheart_%28baldur%26%23039%3Bs_gate%29">shadowheart</a> <span class="tag-count">41</span></li></ul>';
     expect(readPostTags(document)[0]?.tag).toBe("shadowheart_(baldur's_gate)");
     expect(decodeTagEntities("a&amp;b&#039;c")).toBe("a&b'c");
-    // The switch of sources is as tall as its rows: a second row is not behind the grid.
-    expect(moreLikeThisFeature.css).toMatch(/\.rdw-mlt-sources \{[^}]*flex-wrap: wrap;[^}]*height: auto;/);
+    // The sources wrap into a second row of their own height: it is not behind the grid.
+    expect(moreLikeThisFeature.css).toMatch(/\.rdw-mlt-sources \{[^}]*flex-wrap: wrap;/);
   });
 
   it("offers Similar, then the characters, the copyrights and the favorites, and no artist", () => {
@@ -332,7 +334,26 @@ describe("the tab of the panel", () => {
     expect(host.querySelectorAll("a.rdw-mlt-cell")).toHaveLength(1);
   });
 
-  it("keeps the switch to two rows: the rest are behind +N, the picked one always in sight", () => {
+  it("is a group of chips of which one is picked", async () => {
+    await mount();
+    const group = host.querySelector(".rdw-mlt-sources");
+    expect(group?.getAttribute("role")).toBe("radiogroup");
+    expect(tabs().map((chip) => [chip.getAttribute("role"), chip.getAttribute("aria-checked")])).toEqual([
+      ["radio", "true"],
+      ["radio", "false"],
+      ["radio", "false"],
+      ["radio", "false"],
+    ]);
+    await press(tabs()[1]);
+    expect(tabs().map((chip) => chip.getAttribute("aria-checked"))).toEqual([
+      "false",
+      "true",
+      "false",
+      "false",
+    ]);
+  });
+
+  it("keeps the chips to two rows: the rest are behind N more, the picked one always in sight", () => {
     const sources = relatedSources(postTags()).filter((source) => source.kind !== "favorites").slice(0, 2);
     const five = [
       ...sources,
@@ -340,14 +361,15 @@ describe("the tab of the panel", () => {
       { ...sources[1]!, key: "character:c", name: "c" },
       { ...sources[1]!, key: "character:d", name: "d" },
     ];
-    // One row when all fit; else two rows shared evenly, three and two of five.
-    expect(layoutSwitch([50, 50, 50], 60, 70, 300, 2)).toEqual({ shown: 3, rowOne: 4 });
-    expect(layoutSwitch([50, 50, 50, 50], 60, 70, 200, 2)).toEqual({ shown: 4, rowOne: 3 });
-    expect(layoutSwitch([90, 90, 90], 60, null, 200, 2)).toEqual({ shown: 3, rowOne: 2 });
-    // Only what does not fit two rows goes behind "N more".
-    expect(layoutSwitch([90, 90, 90, 90, 90], 60, 70, 200, 2)).toEqual({ shown: 2, rowOne: 2 });
-    // Not laid out yet: all of them, in one row.
-    expect(layoutSwitch([0, 0], 0, 0, 0, 2)).toEqual({ shown: 2, rowOne: 3 });
+    // Chips wrap as they will; only a third row sends sources behind "N more".
+    expect(chipRows([50, 50, 50], 200, 6)).toBe(1);
+    expect(chipRows([90, 90, 90], 200, 6)).toBe(2);
+    expect(chipRows([], 200, 6)).toBe(0);
+    expect(CHIP_ROWS_MAX).toBe(2);
+    expect(chipsShown([90, 90, 90], 60, 70, 200, 6)).toBe(3);
+    expect(chipsShown([90, 90, 90, 90, 90], 60, 70, 200, 6)).toBe(2);
+    // Not laid out yet: all of them.
+    expect(chipsShown([0, 0], 0, 0, 0, 6)).toBe(2);
     expect(shownTagSources(five, null, null).map((source) => source.name)).toHaveLength(5);
     expect(shownTagSources(five, 3, null).map((source) => source.name)).toEqual([
       "Similar",
@@ -360,9 +382,11 @@ describe("the tab of the panel", () => {
       "jessica rabbit",
       "d",
     ]);
-    // Every row is as wide as the frame: the buttons grow to fill it.
-    expect(moreLikeThisFeature.css).toMatch(/\.rdw-mlt-sources \.rdw-seg__btn \{[^}]*flex: 1 1 auto;/);
-    expect(moreLikeThisFeature.css).toContain('[data-row-one="3"] .rdw-mlt-sources .rdw-seg__btn:nth-child(-n+3)');
+    // Each chip has a frame of its own, and the picked one is in the accent.
+    expect(moreLikeThisFeature.css).toMatch(/\.rdw-mlt-chip \{[^}]*border: 1px solid var\(--rdw-border\);/);
+    expect(moreLikeThisFeature.css).toMatch(
+      /\.rdw-mlt-chip\[aria-checked="true"\] \{[^}]*border-color: var\(--rdw-accent\);[^}]*background: var\(--rdw-accent-soft\);/,
+    );
   });
 
   it("opens on the kind of source picked last, where the post has one", async () => {

@@ -2,6 +2,12 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.69.0
+
+- Related posts: the sources are chips, of which one is picked. Each has a frame of its own, and the picked one is in the accent colour: its frame, its name and a light ground. They wrap into a second row as they will. They were one switch on a grey ground with no borders between the names, heavy in the Light theme and lost in the Dark one
+- No more than two rows of chips: the rest are behind the chip "2 more ▾"
+- The number of "Favorites" is grey inside its chip
+
 ## 0.68.3
 
 - Related posts: the switch of sources is one control again, not a scatter of names. Every row is as wide as the frame. When the sources do not fit one row they are shared evenly between two, three and two of five, never one alone in the second

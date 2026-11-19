@@ -20,7 +20,7 @@ import {
   type RelatedSource,
   type RelatedSourceKind,
 } from "../site/related";
-import { Popover, Segmented } from "../ui/kit";
+import { Popover } from "../ui/kit";
 import { POST_ACTIONS_ID, featureBodyClass, type Feature } from "./types";
 
 /**
@@ -69,25 +69,23 @@ export const LIMITED_WAIT_S = 60;
 const SECOND_MS = 1000;
 const CELL_HEIGHT_PX = 150;
 /**
- * A source in the switch. The kit's switch is one row as tall as a field;
- * with long names of tags it takes a second row, which stood behind the
- * grid (Kaze, 19.11.2026): here the switch is as tall as its rows.
+ * The sources are chips, of which one is picked (the designer, 19.11.2026).
+ * They were the kit's switch, one ground with the picked option as an inlay:
+ * made for two or three short options in a row, with five long ones in two
+ * rows it was words on a grey ground with no borders between them. A chip
+ * has its own frame, so the rows wrap as they will and need not be filled.
  */
-const SOURCE_BUTTON_HEIGHT_PX = 24;
-/**
- * The switch is one row, or two with the sources shared evenly between them;
- * only what does not fit two rows is behind "N more" (the designer,
- * 19.11.2026). Every row is as wide as the frame.
- */
-const SWITCH_GAP_PX = 2;
-const SWITCH_PADDING_PX = 2;
-/** The longest first row the styles know how to break after. */
-const ROW_ONE_MAX = 8;
+const CHIP_HEIGHT_PX = 26;
+const CHIP_GAP_PX = 6;
+/** Chips stand in two rows at most; what does not fit is behind "N more". */
+export const CHIP_ROWS_MAX = 2;
 const SWITCH_CLASS = "rdw-mlt-switch";
 const MEASURE_CLASS = "rdw-mlt-measure";
-const ROW_ONE_ATTR = "data-row-one";
-/** The value of the "+N" option: it opens the list of the rest, it is not a source. */
-const MORE_VALUE = "\u0000more";
+const CHIP_CLASS = "rdw-mlt-chip";
+const CHIP_COUNT_CLASS = "rdw-mlt-chip-count";
+const CHIP_SELECTOR = '[role="radio"]:not(:disabled)';
+const KEY_PREVIOUS = "ArrowLeft";
+const KEY_NEXT = "ArrowRight";
 const MORE_MENU_LABEL = "More sources";
 const MORE_MENU_WIDTH_PX = 240;
 const CHEVRON = "\u25be";
@@ -95,18 +93,6 @@ const CHEVRON = "\u25be";
 const BODY_SELECTOR = `body.${featureBodyClass(MORE_LIKE_THIS_FEATURE_ID)}`;
 const ROOT_CLASS = "rdw-mlt";
 const ROOT = `${BODY_SELECTOR} #${POST_ACTIONS_ID} .${ROOT_CLASS}`;
-
-/*
- * The first row of a switch of two rows: its buttons keep their place, the
- * rest go after an unseen line as wide as the frame, which breaks the row.
- */
-const ROW_ONE_RULES = Array.from(
-  { length: ROW_ONE_MAX },
-  (_unused, index) =>
-    `${ROOT} .${SWITCH_CLASS}[${ROW_ONE_ATTR}="${String(index + 1)}"] .rdw-mlt-sources .rdw-seg__btn:nth-child(-n+${String(index + 1)}) {
-  order: 0;
-}`,
-).join("\n");
 
 const FEATURE_CSS = `
 ${ROOT} {
@@ -120,32 +106,42 @@ ${ROOT} .${SWITCH_CLASS} {
 ${ROOT} .rdw-mlt-sources {
   display: flex;
   flex-wrap: wrap;
-  gap: ${String(SWITCH_GAP_PX)}px;
-  width: 100%;
-  height: auto;
+  gap: ${String(CHIP_GAP_PX)}px;
 }
-${ROOT} .rdw-mlt-sources .rdw-seg__btn {
-  display: block;
-  flex: 1 1 auto;
-  min-width: 0;
+${ROOT} .${CHIP_CLASS} {
+  box-sizing: border-box;
   max-width: 100%;
-  height: ${String(SOURCE_BUTTON_HEIGHT_PX)}px;
+  height: ${String(CHIP_HEIGHT_PX)}px;
+  padding: 0 11px;
   overflow: hidden;
-  text-align: center;
+  border: 1px solid var(--rdw-border);
+  border-radius: ${String(CHIP_HEIGHT_PX / 2)}px;
+  background: transparent;
+  color: var(--rdw-text);
+  font: inherit;
+  font-size: 12px;
+  line-height: ${String(CHIP_HEIGHT_PX - 2)}px;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: pointer;
 }
-${ROOT} .${SWITCH_CLASS}[${ROW_ONE_ATTR}] .rdw-mlt-sources::after {
-  content: "";
-  order: 1;
-  flex: 0 0 100%;
-  height: 0;
-  margin-top: -${String(SWITCH_GAP_PX)}px;
+${ROOT} .${CHIP_CLASS}:hover:not(:disabled) {
+  border-color: var(--rdw-muted);
 }
-${ROOT} .${SWITCH_CLASS}[${ROW_ONE_ATTR}] .rdw-mlt-sources .rdw-seg__btn {
-  order: 2;
+${ROOT} .${CHIP_CLASS}[aria-checked="true"] {
+  border-color: var(--rdw-accent);
+  background: var(--rdw-accent-soft);
+  color: var(--rdw-accent);
+  font-weight: 600;
 }
-${ROW_ONE_RULES}
+${ROOT} .${CHIP_CLASS}:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+${ROOT} .${CHIP_COUNT_CLASS} {
+  color: var(--rdw-muted);
+  font-weight: 400;
+}
 ${ROOT} .${MEASURE_CLASS} {
   position: absolute;
   left: 0;
@@ -155,12 +151,10 @@ ${ROOT} .${MEASURE_CLASS} {
   pointer-events: none;
   height: 0;
   overflow: hidden;
-  white-space: nowrap;
 }
-${ROOT} .${MEASURE_CLASS} .rdw-seg__btn {
-  display: block;
+${ROOT} .${MEASURE_CLASS} .${CHIP_CLASS} {
   flex: none;
-  height: auto;
+  max-width: none;
   font-weight: 600;
 }
 ${BODY_SELECTOR} .rdw-mlt-menu {
@@ -322,60 +316,48 @@ export function mixedFromText(tags: readonly string[]): string {
   return `${MIXED_FROM}${tags.map((tag) => tag.replaceAll("_", " ")).join(", ")}`;
 }
 
-export type SwitchLayout = {
-  /** How many of the sources by tag have a button; the rest are behind "N more". */
-  readonly shown: number;
-  /** How many buttons stand in the first row; all of them when there is one row. */
-  readonly rowOne: number;
-};
-
-function fitsRow(widths: readonly number[], room: number, gap: number): boolean {
-  return widths.reduce((sum, width) => sum + width, 0) + gap * (widths.length - 1) <= room;
+/** How many rows chips of these widths take when they wrap in this much room. */
+export function chipRows(widths: readonly number[], room: number, gap: number): number {
+  let rows = 0;
+  let used = 0;
+  for (const width of widths) {
+    if (rows === 0 || used + gap + width > room) {
+      rows += 1;
+      used = width;
+    } else {
+      used += gap + width;
+    }
+  }
+  return rows;
 }
 
 /**
- * How the switch is laid out in a frame with this much room. One row when
- * all fit. Else two rows with the buttons shared evenly, three and two of
- * five, never one alone in the second. Only when that does not fit either
- * do sources go behind "N more", from the last, until it does.
+ * How many of the sources by tag have a chip: all of them while the chips
+ * stand in two rows; else as many as leave two rows with "N more" among them.
  */
-export function layoutSwitch(
+export function chipsShown(
   tagWidths: readonly number[],
   moreWidth: number,
   favoritesWidth: number | null,
   room: number,
   gap: number,
-): SwitchLayout {
+): number {
   const total = tagWidths.length;
-  const tail = favoritesWidth === null ? [] : [favoritesWidth];
-  const buttons = (shown: number): number[] => [
-    ...tagWidths.slice(0, shown),
-    ...(shown < total ? [moreWidth] : []),
-    ...tail,
-  ];
   if (room <= 0) {
     // Not laid out yet: nothing to count by.
-    return { shown: total, rowOne: total + tail.length };
+    return total;
   }
+  const tail = favoritesWidth === null ? [] : [favoritesWidth];
   for (let shown = total; shown >= 1; shown -= 1) {
-    const widths = buttons(shown);
-    if (fitsRow(widths, room, gap)) {
-      return { shown, rowOne: widths.length };
-    }
-    const half = Math.ceil(widths.length / 2);
-    if (
-      widths.length > 1 &&
-      fitsRow(widths.slice(0, half), room, gap) &&
-      fitsRow(widths.slice(half), room, gap)
-    ) {
-      return { shown, rowOne: half };
+    const widths = [...tagWidths.slice(0, shown), ...(shown < total ? [moreWidth] : []), ...tail];
+    if (chipRows(widths, room, gap) <= CHIP_ROWS_MAX) {
+      return shown;
     }
   }
-  const least = buttons(Math.min(1, total));
-  return { shown: Math.min(1, total), rowOne: Math.ceil(least.length / 2) };
+  return Math.min(1, total);
 }
 
-/** "2 more ▾": the sources that have no button of their own. */
+/** "2 more ▾": the sources that have no chip of their own. */
 function moreLabel(count: number): string {
   return `${String(count)} more ${CHEVRON}`;
 }
@@ -445,8 +427,8 @@ export function MoreLikeThis(props: MoreLikeThisProps): JSX.Element {
   const [favorites, setFavorites] = useState<readonly RankedPost[] | null>(null);
   const [showAll, setShowAll] = useState<readonly string[]>([]);
   const [, tick] = useState(0);
-  // How the switch is laid out; null until it was measured.
-  const [layout, setLayout] = useState<SwitchLayout | null>(null);
+  // How many sources by tag have a chip; null until the chips were measured.
+  const [fit, setFit] = useState<number | null>(null);
   const measureRef = useRef<HTMLDivElement | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
   const switchRef = useRef<HTMLDivElement | null>(null);
@@ -585,31 +567,16 @@ export function MoreLikeThis(props: MoreLikeThisProps): JSX.Element {
   // are counted, and stand last.
   const tagSources = sources.filter((source) => source.kind !== "favorites");
   const favoritesSource = sources.find((source) => source.kind === "favorites");
-  const shownTags = shownTagSources(tagSources, layout?.shown ?? null, picked);
+  const shownTags = shownTagSources(tagSources, fit, picked);
   const hiddenTags = tagSources.filter((source) => !shownTags.includes(source));
-  const options = [
-    ...shownTags.map((source) => ({ value: source.key, label: source.name })),
-    ...(hiddenTags.length > 0
-      ? [{ value: MORE_VALUE, label: moreLabel(hiddenTags.length) }]
-      : []),
-    // The favorites are a source only when some of them are like the post
-    // (Kaze, 19.11.2026): "Favorites 0" was a button that led to nothing.
-    ...(favoritesSource === undefined || favorites === null || favorites.length === 0
-      ? []
-      : [
-          {
-            value: favoritesSource.key,
-            label: `${FAVORITES_SHORT} ${String(favorites.length)}`,
-          },
-        ]),
-  ];
-  const favoritesLabel =
+  // The favorites are a source only when some of them are like the post
+  // (Kaze, 19.11.2026): "Favorites 0" was a button that led to nothing.
+  const favoritesCount =
     favoritesSource === undefined || favorites === null || favorites.length === 0
       ? null
-      : `${FAVORITES_SHORT} ${String(favorites.length)}`;
-  // After each drawing the switch is laid out by the widths its buttons have
-  // in an unseen copy, so that what is measured does not depend on how it
-  // stands now.
+      : favorites.length;
+  // After each drawing it is counted how many chips fit two rows, by the
+  // widths they have in an unseen copy, where each is as wide as when picked.
   useLayoutEffect(() => {
     const frame = switchRef.current?.querySelector(".rdw-mlt-sources");
     const measure = measureRef.current;
@@ -620,20 +587,49 @@ export function MoreLikeThis(props: MoreLikeThisProps): JSX.Element {
       [...measure.querySelectorAll(selector)].map((node) =>
         node instanceof HTMLElement ? node.offsetWidth : 0,
       );
-    const next = layoutSwitch(
+    const next = chipsShown(
       widthOf("[data-measure-tag]"),
       widthOf("[data-measure-more]")[0] ?? 0,
       widthOf("[data-measure-favorites]")[0] ?? null,
-      frame.clientWidth - SWITCH_PADDING_PX * 2,
-      SWITCH_GAP_PX,
+      frame.clientWidth,
+      CHIP_GAP_PX,
     );
-    setLayout((current) =>
-      current !== null && current.shown === next.shown && current.rowOne === next.rowOne
-        ? current
-        : next,
-    );
+    setFit((current) => (current === next ? current : next));
   });
-  const twoRows = layout !== null && layout.rowOne < options.length;
+
+  // The arrows go from chip to chip.
+  const stepChips = (event: KeyboardEvent): void => {
+    const step = event.key === KEY_NEXT ? 1 : event.key === KEY_PREVIOUS ? -1 : 0;
+    const from = event.target;
+    const group = event.currentTarget;
+    if (step === 0 || !(from instanceof HTMLElement) || !(group instanceof HTMLElement)) {
+      return;
+    }
+    const chips = [...group.querySelectorAll(CHIP_SELECTOR)];
+    const next = chips[chips.indexOf(from) + step];
+    if (next instanceof HTMLElement) {
+      event.preventDefault();
+      next.focus();
+    }
+  };
+
+  const chip = (source: RelatedSource, count: number | null): JSX.Element => (
+    <button
+      key={source.key}
+      type="button"
+      role="radio"
+      className={`${CHIP_CLASS} rdw-kit-focusable`}
+      aria-checked={picked === source.key}
+      // One request at a time.
+      disabled={busy && picked !== source.key}
+      onClick={() => {
+        open(source, true);
+      }}
+    >
+      {count === null ? source.name : `${FAVORITES_SHORT} `}
+      {count === null ? null : <span className={CHIP_COUNT_CLASS}>{String(count)}</span>}
+    </button>
+  );
 
   const all = pickedSource !== undefined && showAll.includes(pickedSource.key);
   const posts = current?.state === "ready" ? current.posts : [];
@@ -641,44 +637,48 @@ export function MoreLikeThis(props: MoreLikeThisProps): JSX.Element {
 
   return (
     <div className={ROOT_CLASS}>
-      <div
-        ref={switchRef}
-        className={SWITCH_CLASS}
-        {...(twoRows ? { [ROW_ONE_ATTR]: String(layout.rowOne) } : {})}
-      >
+      <div ref={switchRef} className={SWITCH_CLASS}>
         <div className={MEASURE_CLASS} ref={measureRef} aria-hidden="true">
           {tagSources.map((source) => (
-            <span key={source.key} className="rdw-seg__btn" data-measure-tag="">
+            <span key={source.key} className={CHIP_CLASS} data-measure-tag="">
               {source.name}
             </span>
           ))}
-          <span className="rdw-seg__btn" data-measure-more="">
+          <span className={CHIP_CLASS} data-measure-more="">
             {moreLabel(tagSources.length)}
           </span>
-          {favoritesLabel === null ? null : (
-            <span className="rdw-seg__btn" data-measure-favorites="">
-              {favoritesLabel}
+          {favoritesCount === null ? null : (
+            <span className={CHIP_CLASS} data-measure-favorites="">
+              {`${FAVORITES_SHORT} `}
+              <span className={CHIP_COUNT_CLASS}>{String(favoritesCount)}</span>
             </span>
           )}
         </div>
-        <Segmented
+        <div
           className="rdw-mlt-sources"
-          label={SOURCES_LABEL}
-          options={options}
-          value={picked ?? ""}
-          // One request at a time.
-          disabled={busy}
-          onChange={(key) => {
-            if (key === MORE_VALUE) {
-              setMoreOpen((value) => !value);
-              return;
-            }
-            const source = sources.find((entry) => entry.key === key);
-            if (source !== undefined) {
-              open(source, true);
-            }
-          }}
-        />
+          role="radiogroup"
+          aria-label={SOURCES_LABEL}
+          onKeyDown={stepChips}
+        >
+          {shownTags.map((source) => chip(source, null))}
+          {hiddenTags.length > 0 ? (
+            <button
+              type="button"
+              className={`${CHIP_CLASS} rdw-kit-focusable`}
+              aria-haspopup="menu"
+              aria-expanded={moreOpen}
+              disabled={busy}
+              onClick={() => {
+                setMoreOpen((value) => !value);
+              }}
+            >
+              {moreLabel(hiddenTags.length)}
+            </button>
+          ) : null}
+          {favoritesSource === undefined || favoritesCount === null
+            ? null
+            : chip(favoritesSource, favoritesCount)}
+        </div>
         <Popover
           open={moreOpen}
           onClose={() => {
