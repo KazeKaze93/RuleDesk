@@ -15,6 +15,7 @@ import {
   startGridSelect,
   stopGridSelect,
 } from "../../src/features/downloads/grid-select";
+import { videoPreviewFeature } from "../../src/features/video-preview";
 import { bulkCollectionSummary, bulkCollectionTitle } from "../../src/ui/bulk-collection-dialog";
 
 const memory = new Map<string, unknown>();
@@ -147,6 +148,14 @@ describe("selecting posts on a results page", () => {
     startGridSelect(() => {});
     const style = document.getElementById("rdw-grid-select-style");
     expect(style?.textContent).toContain(`.${GRID_SELECTED_CLASS}::after`);
+    // The frame of a marked post is a layer over the whole cell, not an
+    // outline inside it: a picture as tall as the cell stood over the outline.
+    expect(style?.textContent).toMatch(
+      /rdw-dl-selected::after \{[^}]*inset: 0;\s*z-index: 4;[^}]*border: 3px solid var\(--rdw-accent\);/,
+    );
+    expect(style?.textContent).not.toContain("outline:");
+    // Over the video that plays on a thumbnail under the pointer, which is at 3.
+    expect(videoPreviewFeature.css).toMatch(/z-index: 3;/);
     document.getElementById("p11")?.querySelector("img")?.click();
     expect(document.querySelectorAll(`.${GRID_SELECTED_CLASS}`)).toHaveLength(1);
     stopGridSelect();

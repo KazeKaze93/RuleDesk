@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.72.5
+
+- Posts, while posts are being selected: the frame of a selected post is drawn over the thumbnail, and over the video that plays in its place under the pointer. It was an outline inside the cell, and that video stood over it: a selected video looked as if it had come out of its frame
+
 ## 0.72.4
 
 - Feed: a new video has the NEW plate at the top and the play sign at the bottom. The two were one element, which took its top from one and its bottom from the other and stood as a blue bar as tall as the thumbnail
