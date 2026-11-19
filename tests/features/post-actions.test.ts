@@ -931,8 +931,10 @@ describe("postActionsFeature", () => {
     const strip = document.createElement("div");
     strip.innerHTML = '<a id="prev_search_link" href="#">&lt; previous</a>';
     mediaWrap?.append(strip);
+    // The notice is found by its own class and words: whether "status-notices"
+    // on its parent is an id or a class is not known.
     const notices = document.createElement("div");
-    notices.className = "status-notices";
+    notices.id = "status-notices";
     notices.innerHTML =
       '<div class="status-notice">This post was deleted. Reason: tos / MD5: e2922692f40a8766ab21420eb3c3ff7f</div>';
     document.body.prepend(notices);

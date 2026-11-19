@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.70.1
+
+- The page of a deleted post is recognised: in 0.70.0 the site's notice was looked for under a parent with a class it does not have, so nothing changed on such a page
+
 ## 0.70.0
 
 - The page of a deleted post: "This post was deleted", the reason and the hash of the file stand where the picture was, as a block of its place, with the panel beside it. The site said it in a strip over an empty page

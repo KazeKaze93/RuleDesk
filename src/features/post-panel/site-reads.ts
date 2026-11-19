@@ -88,10 +88,15 @@ function liPrefixLabel(li: HTMLElement): string | null {
 
 /**
  * The site's notice on the page of a deleted post (from Kaze, 19.11.2026):
- * `div.status-notices > div.status-notice`, "This post was deleted. Reason:
- * tos / MD5: <hash>". The page has no picture then.
+ * `div.status-notice` with the text "This post was deleted. Reason: tos /
+ * MD5: <hash>". The page has no picture then.
+ *
+ * Its parent was reported as "status-notices" by a line that gave the id or,
+ * failing that, the class: which of the two it is, is not known. Taken for a
+ * class, the notice was not found on the site (0.70.0). The notice is looked
+ * for by its own class and its words, wherever it stands.
  */
-const DELETED_NOTICE_SELECTOR = "div.status-notices > div.status-notice";
+const DELETED_NOTICE_SELECTOR = "div.status-notice";
 const DELETED_PREFIX = "This post was deleted";
 const DELETED_REASON = /Reason:\s*(.*?)\s*(?:\/\s*MD5:|$)/;
 const DELETED_MD5 = /MD5:\s*([0-9a-f]+)/i;
