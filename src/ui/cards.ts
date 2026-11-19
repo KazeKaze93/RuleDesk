@@ -2,7 +2,7 @@ import {
   CSS_CLASS,
   DOCUMENT_STYLE_ID,
 } from "../config/constants";
-import { onThumbsAdded } from "../site/thumbs-bus";
+import { onThumbsAdded, type ThumbRoot } from "../site/thumbs-bus";
 import { detectPageKind } from "../site/pages";
 import {
   SITE_SELECTORS,
@@ -186,7 +186,7 @@ export function setGridFavButtonsVisible(visible: boolean): void {
 }
 
 export function mountCards(
-  root: ParentNode = document,
+  root: ThumbRoot = document,
   search: string = window.location.search,
 ): void {
   ensureThumbsAddedSubscription();

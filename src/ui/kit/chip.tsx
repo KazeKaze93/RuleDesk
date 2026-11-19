@@ -2,6 +2,7 @@ import type { JSX } from "preact";
 
 import { IconX } from "./icons";
 import { KIT_CONTROL_FONT, KIT_CONTROL_HEIGHT, KIT_FOCUS_CSS } from "./shared";
+import { KitStyle } from "./kit-style";
 
 export type ChipKind = "artist" | "character" | "copyright" | "metadata" | "default";
 export type ChipVariant = "dot" | "exclude" | "group";
@@ -89,7 +90,7 @@ export function Chip(props: ChipProps): JSX.Element {
 
   return (
     <>
-      <style>{CHIP_CSS}</style>
+      <KitStyle css={CHIP_CSS} />
       <span className={className}>
         {variant === "dot" ? <i className="rdw-chip__dot" aria-hidden="true" /> : null}
         <span>{props.label}</span>

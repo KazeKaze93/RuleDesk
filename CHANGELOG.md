@@ -2,6 +2,18 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.74.0
+
+The rest of the audit. Nothing looks different.
+
+- The endless list, the merged feed and the grid of favorites: what a new page brings is worked on alone. Every part that marks thumbnails (seen, new, video, GIF, blacklist, the buttons on a thumbnail) went over all the thumbnails of the list again at every page, so each page cost more than the one before it
+- The pages of the script carry the styles of their buttons, switches and chips once. Each of them brought a copy: some 600 on Following with 300 artists
+- Favorites search: the list of suggestions is not sorted again at every key. It comes sorted
+- The theme is not written into the page a second time right after the first paint when nothing in it changed
+- Collections: the covers and counts kept in the page's storage are read out once per change, not parsed twice for every card at every key typed into the filter
+- A page of the script that fails to draw gives the site's page back. It left the site hidden under an empty page
+- Export: the file no longer holds the account id kept with the state of "Sync favorites", nor the figures read from the account's profile for Statistics
+
 ## 0.73.0
 
 - Downloads: the API key is no longer seen by the page. The requests that find the files of a download carry the key in their address, and they were made by the page itself, where every script of the page, the site's own and its advertisers', can read the addresses of what the page has loaded. They are now made by the script manager, outside the page. The requests are the same, to the same address, at the same pace

@@ -1,4 +1,5 @@
 import type { ComponentChildren, JSX } from "preact";
+import { KitStyle } from "./kit-style";
 
 export type CardProps = {
   readonly children?: ComponentChildren;
@@ -23,7 +24,7 @@ export function Card(props: CardProps): JSX.Element {
 
   return (
     <>
-      <style>{CARD_CSS}</style>
+      <KitStyle css={CARD_CSS} />
       <Tag className={className}>{props.children}</Tag>
     </>
   );

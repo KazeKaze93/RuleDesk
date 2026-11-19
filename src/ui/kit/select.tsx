@@ -5,6 +5,7 @@ import { useContext, useEffect, useId, useLayoutEffect, useRef, useState } from 
 import { IconCheck, IconChevronDown } from "./icons";
 import { OVERLAY_Z_INDEX, OverlayInPlace } from "./overlay";
 import { KIT_CONTROL_FONT, KIT_CONTROL_HEIGHT, KIT_FOCUS_CSS } from "./shared";
+import { KitStyle, KitStylesProvided } from "./kit-style";
 
 export type SelectOption = {
   readonly value: string;
@@ -236,7 +237,7 @@ export function Select(props: SelectProps): JSX.Element {
 
   return (
     <>
-      <style>{SELECT_CSS}</style>
+      <KitStyle css={SELECT_CSS} />
       <div className={className} ref={rootRef}>
         {props.label !== undefined ? (
           <span className="rdw-select__label" id={`${listId}-label`}>
@@ -263,7 +264,12 @@ export function Select(props: SelectProps): JSX.Element {
         </button>
         {floating ? null : list}
       </div>
-      {floating && list !== null ? createPortal(list, document.body) : null}
+      {floating && list !== null
+        ? createPortal(
+            <KitStylesProvided.Provider value={false}>{list}</KitStylesProvided.Provider>,
+            document.body,
+          )
+        : null}
     </>
   );
 }

@@ -1,4 +1,4 @@
-import { onThumbsAdded } from "./thumbs-bus";
+import { onThumbsAdded, type ThumbRoot } from "./thumbs-bus";
 import {
   FAVORITE_IMAGE_ANCHOR_NAME,
   FAVORITES_PAGE_CLASS,
@@ -48,7 +48,7 @@ export function titleSaysVideo(title: string): boolean {
  * Marks the video thumbs among the `thumbSelector` elements under `root`;
  * returns how many it marked.
  */
-export function markVideoThumbs(root: ParentNode, thumbSelector: string): number {
+export function markVideoThumbs(root: ThumbRoot, thumbSelector: string): number {
   let marked = 0;
   for (const thumb of root.querySelectorAll(thumbSelector)) {
     const img = thumb.querySelector(THUMB_IMAGE_SELECTOR);
@@ -126,7 +126,7 @@ export function titleSaysGif(title: string): boolean {
 }
 
 /** Marks the GIF thumbs among the `thumbSelector` elements under `root`. */
-export function markGifThumbs(root: ParentNode, thumbSelector: string): number {
+export function markGifThumbs(root: ThumbRoot, thumbSelector: string): number {
   let marked = 0;
   for (const thumb of root.querySelectorAll(thumbSelector)) {
     const img = thumb.querySelector(THUMB_IMAGE_SELECTOR);

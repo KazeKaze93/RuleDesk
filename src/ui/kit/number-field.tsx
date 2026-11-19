@@ -2,6 +2,7 @@ import type { JSX } from "preact";
 import { useId } from "preact/hooks";
 
 import { KIT_CONTROL_FONT, KIT_CONTROL_HEIGHT, KIT_FOCUS_CSS } from "./shared";
+import { KitStyle } from "./kit-style";
 
 export type NumberFieldProps = {
   readonly value: number | null;
@@ -74,7 +75,7 @@ export function NumberField(props: NumberFieldProps): JSX.Element {
 
   return (
     <>
-      <style>{NUMBER_FIELD_CSS}</style>
+      <KitStyle css={NUMBER_FIELD_CSS} />
       <div className={className}>
         {props.label !== undefined ? (
           <label className="rdw-num__label" htmlFor={inputId}>

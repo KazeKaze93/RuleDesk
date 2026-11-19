@@ -22,7 +22,7 @@ import {
   buildVideoUrlFromThumbUrl,
   ensureThumbAnchor,
 } from "../site/thumb";
-import { onThumbsAdded } from "../site/thumbs-bus";
+import { onThumbsAdded, type ThumbRoot } from "../site/thumbs-bus";
 import {
   THUMB_ANCHOR_NAME,
   featureBodyClass,
@@ -302,7 +302,7 @@ function bindThumb(thumb: HTMLElement): void {
   thumb.addEventListener("pointerleave", onThumbPointerLeave);
 }
 
-function bindThumbsInRoot(root: ParentNode): void {
+function bindThumbsInRoot(root: ThumbRoot): void {
   const thumbs = root.querySelectorAll(THUMBS_SELECTOR);
   for (const thumb of thumbs) {
     if (thumb instanceof HTMLElement) {

@@ -1,8 +1,10 @@
+import { h, render } from "preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { STORAGE_KEY } from "../src/config/constants";
 import { notifyThumbsAdded, onThumbsAdded, resetThumbsBus } from "../src/site/thumbs-bus";
 import { readCountMirror, readCoverMirror } from "../src/storage/cover-mirror";
+import { Button, KitStylesProvided } from "../src/ui/kit";
 import { clearFavsCache } from "../src/storage/favs";
 import {
   clearStorageCache,
@@ -59,6 +61,40 @@ describe("the event of added thumbs", () => {
       notifyThumbsAdded(document);
     }).not.toThrow();
     expect(heard).toEqual(["second"]);
+  });
+});
+
+describe("the thumbs a listener is shown", () => {
+  it("are the added ones only, when the caller names them", () => {
+    const list = document.createElement("div");
+    list.innerHTML =
+      '<span class="thumb" id="old"></span><span class="thumb" id="new"></span><div id="wrap"><span class="thumb" id="inner"></span></div>';
+    const fresh = list.querySelector("#new");
+    const wrap = list.querySelector("#wrap");
+    const seen: string[][] = [];
+    onThumbsAdded((root) => {
+      seen.push([...root.querySelectorAll("span.thumb")].map((thumb) => thumb.id));
+    });
+    // The whole list: every thumb, as before.
+    notifyThumbsAdded(list);
+    // The nodes put in: themselves when they match, and what is inside them.
+    notifyThumbsAdded(list, fresh === null || wrap === null ? [] : [fresh, wrap]);
+    expect(seen).toEqual([
+      ["old", "new", "inner"],
+      ["new", "inner"],
+    ]);
+  });
+});
+
+describe("the styles of the kit", () => {
+  it("come with each component, but not inside a tree that has them already", () => {
+    const alone = document.createElement("div");
+    const inside = document.createElement("div");
+    render(h(Button, null, "One"), alone);
+    render(h(KitStylesProvided.Provider, { value: true }, h(Button, null, "Two")), inside);
+    expect(alone.querySelectorAll("style")).toHaveLength(1);
+    expect(inside.querySelectorAll("style")).toHaveLength(0);
+    expect(inside.querySelector("button")?.className).toContain("rdw-btn");
   });
 });
 

@@ -51,10 +51,22 @@ export function ensureStyleElement(id: string): HTMLStyleElement {
   return style;
 }
 
+/**
+ * Writes the text of a stylesheet only when it differs. The same text written
+ * again is still a new sheet to the browser: the skin, some 70 KB, was read
+ * and the whole page restyled a second time right after the first paint (the
+ * audit of 19.11.2026).
+ */
+function setCssOnce(style: HTMLStyleElement, css: string): void {
+  if (style.textContent !== css) {
+    style.textContent = css;
+  }
+}
+
 /** Inject or replace the design-token stylesheet. */
 export function injectTokenStyles(palette: TokenPalette): HTMLStyleElement {
   const style = ensureStyleElement(TOKEN_STYLE_ID);
-  style.textContent = buildTokensCss(palette, ":root");
+  setCssOnce(style, buildTokensCss(palette, ":root"));
   return style;
 }
 
@@ -75,7 +87,7 @@ export function syncPageRootTokens(palette: TokenPalette): void {
  */
 export function injectSiteSkinHook(cssText = ""): HTMLStyleElement {
   const style = ensureStyleElement(SITE_SKIN_STYLE_ID);
-  style.textContent = cssText;
+  setCssOnce(style, cssText);
   return style;
 }
 

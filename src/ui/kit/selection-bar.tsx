@@ -3,6 +3,7 @@ import { useEffect, useRef } from "preact/hooks";
 
 import { Button } from "./button";
 import { KIT_CONTROL_FONT, KIT_CONTROL_HEIGHT } from "./shared";
+import { KitStyle } from "./kit-style";
 
 /**
  * The bar of a selection, one for the whole product (the designer's mock-up,
@@ -217,7 +218,7 @@ export function SelectionBar(props: SelectionBarProps): JSX.Element {
         aria-label={SELECTION_BAR_LABEL}
         aria-orientation="vertical"
       >
-        <style>{SELECTION_BAR_CSS}</style>
+        <KitStyle css={SELECTION_BAR_CSS} />
         <div className={CLASS_HEAD}>
           {count}
           {cancel}
@@ -235,7 +236,7 @@ export function SelectionBar(props: SelectionBarProps): JSX.Element {
 
   return (
     <div className={`${CLASS_ROOT} ${CLASS_ROW}`} role="toolbar" aria-label={SELECTION_BAR_LABEL}>
-      <style>{SELECTION_BAR_CSS}</style>
+      <KitStyle css={SELECTION_BAR_CSS} />
       {count}
       {selectAll}
       {clear}

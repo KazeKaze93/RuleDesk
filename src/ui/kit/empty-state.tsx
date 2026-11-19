@@ -1,4 +1,5 @@
 import type { ComponentChildren, JSX } from "preact";
+import { KitStyle } from "./kit-style";
 
 export type EmptyStateProps = {
   readonly title: string;
@@ -34,7 +35,7 @@ export function EmptyState(props: EmptyStateProps): JSX.Element {
 
   return (
     <>
-      <style>{EMPTY_STATE_CSS}</style>
+      <KitStyle css={EMPTY_STATE_CSS} />
       <div className={className} role="status">
         <p className="rdw-empty__title">{props.title}</p>
         {props.description !== undefined ? (

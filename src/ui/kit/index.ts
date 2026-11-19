@@ -51,6 +51,7 @@ export {
 export {
   SearchField,
   SEARCH_FIELD_CSS,
+  SEARCH_SUGGEST_CSS,
   type SearchFieldProps,
   type SearchHelp,
 } from "./search-field";
@@ -104,3 +105,4 @@ export {
   KIT_FOCUS_CSS,
   KIT_MIN_TARGET_PX,
 } from "./shared";
+export { KitStyle, KitStylesProvided } from "./kit-style";

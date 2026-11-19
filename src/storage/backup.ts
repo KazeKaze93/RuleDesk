@@ -220,6 +220,18 @@ function withoutSync(favs: FavsData): FavsData {
   return { version: favs.version, ids: favs.ids };
 }
 
+/** featureState key of what was read from the account's profile (site/profile.ts). */
+const PROFILE_STATE_KEY = "profile-stats";
+
+function withoutProfile(storage: StorageData): StorageData {
+  const state = storage.settings?.featureState;
+  if (storage.settings === undefined || state === undefined || !Object.hasOwn(state, PROFILE_STATE_KEY)) {
+    return storage;
+  }
+  const { [PROFILE_STATE_KEY]: _profile, ...kept } = state;
+  return { ...storage, settings: { ...storage.settings, featureState: kept } };
+}
+
 function mergeArtists(
   current: StorageData["artists"],
   incoming: StorageData["artists"],
@@ -336,13 +348,17 @@ export function buildBackupFilename(date: Date = new Date()): string {
 export async function buildBackupFile(
   options: BackupExportOptions,
 ): Promise<BackupFile> {
-  const storage = load();
+  // What says whose data this is stays out of a file that may be given to
+  // someone: the account id kept with the state of the sync (a file's word on
+  // the sync is not taken on import anyway), and the figures read from the
+  // account's profile for Statistics.
+  const storage = withoutProfile(load());
   const file: BackupFile = {
     format: BACKUP_FORMAT,
     version: BACKUP_VERSION,
     exportedAt: new Date().toISOString(),
     storage,
-    ...(options.includeFavorites ? { favs: readFavsForBackup() } : {}),
+    ...(options.includeFavorites ? { favs: withoutSync(readFavsForBackup()) } : {}),
   };
   if (options.includeBackground) {
     const background = await readBackgroundForBackup();

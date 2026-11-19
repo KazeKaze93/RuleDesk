@@ -3,7 +3,32 @@ import type { ComponentChild, JSX } from "preact";
 
 import { resolveAppearancePalette } from "../skin/theme";
 import { getAppearance } from "../storage/store";
-import { OverlayInPlace, KIT_CONTROL_FONT_VAR, KIT_CONTROL_HEIGHT_VAR } from "../ui/kit";
+import {
+  AUTOCOMPLETE_FIELD_CSS,
+  BUTTON_CSS,
+  CARD_CSS,
+  CHIP_CSS,
+  DIALOG_CSS,
+  EMPTY_STATE_CSS,
+  ICON_BUTTON_CSS,
+  KIT_CONTROL_FONT_VAR,
+  KIT_CONTROL_HEIGHT_VAR,
+  KitStylesProvided,
+  NUMBER_FIELD_CSS,
+  OverlayInPlace,
+  POPOVER_CSS,
+  PROGRESS_BAR_CSS,
+  SEARCH_FIELD_CSS,
+  SEARCH_SUGGEST_CSS,
+  SECTION_LABEL_CSS,
+  SEGMENTED_CSS,
+  SELECTION_BAR_CSS,
+  SELECT_CSS,
+  SWITCH_CSS,
+  TABS_CSS,
+  TEXT_FIELD_CSS,
+  TOAST_CSS,
+} from "../ui/kit";
 import { applyTokenProperties } from "../ui/tokens";
 import {
   isCollectionDetailPage,
@@ -109,6 +134,38 @@ ${PAGE_CONTENT_CSS}
 ${MOTION_PAGE_CSS}
 `;
 
+/**
+ * The styles of every kit component, once for a page of the script. The
+ * components inside the shell bring none of their own (KitStylesProvided):
+ * each used to carry a `<style>`, some 600 on Following with 300 artists.
+ * They stand after the page, as the components' own styles did, so that
+ * between a rule of the kit and a rule of a page of the same weight the kit's
+ * still wins.
+ */
+const NEW_LINE = String.fromCharCode(10);
+const ALL_KIT_CSS = [
+  AUTOCOMPLETE_FIELD_CSS,
+  BUTTON_CSS,
+  CARD_CSS,
+  CHIP_CSS,
+  DIALOG_CSS,
+  EMPTY_STATE_CSS,
+  ICON_BUTTON_CSS,
+  NUMBER_FIELD_CSS,
+  POPOVER_CSS,
+  PROGRESS_BAR_CSS,
+  SEARCH_FIELD_CSS,
+  SEARCH_SUGGEST_CSS,
+  SECTION_LABEL_CSS,
+  SEGMENTED_CSS,
+  SELECT_CSS,
+  SELECTION_BAR_CSS,
+  SWITCH_CSS,
+  TABS_CSS,
+  TEXT_FIELD_CSS,
+  TOAST_CSS,
+].join(NEW_LINE);
+
 type PageShellProps = {
   readonly title: string | null;
   /** Keep the title for screen readers only. */
@@ -136,8 +193,9 @@ function PageShell(props: PageShellProps): JSX.Element {
             {props.title}
           </h1>
         ) : null}
-        {props.children}
+        <KitStylesProvided.Provider value={true}>{props.children}</KitStylesProvided.Provider>
       </div>
+      <style>{ALL_KIT_CSS}</style>
     </>
   );
 }

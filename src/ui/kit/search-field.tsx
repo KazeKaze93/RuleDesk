@@ -5,6 +5,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from "preact/hook
 import { IconHelp, IconSearch, IconX } from "./icons";
 import { Popover } from "./popover";
 import { TextField } from "./text-field";
+import { KitStyle, KitStylesProvided } from "./kit-style";
 
 /**
  * A field to search or filter with: a magnifier at the left, a button that
@@ -308,7 +309,7 @@ export function suggestBox(
 export function SearchHelpList(props: { readonly help: SearchHelp }): JSX.Element {
   return (
     <>
-      <style>{SEARCH_FIELD_CSS}</style>
+      <KitStyle css={SEARCH_FIELD_CSS} />
       <dl className={SEARCH_HELP_CLASS}>
         {props.help.rows.map(([example, meaning]) => (
           <>
@@ -445,7 +446,7 @@ export function SearchField(props: SearchFieldProps): JSX.Element {
 
   const suggestions = open ? (
     <>
-      <style>{SEARCH_SUGGEST_CSS}</style>
+      <KitStyle css={SEARCH_SUGGEST_CSS} />
       <div
         className={SUGGEST_CLASS}
         ref={listRef}
@@ -535,7 +536,7 @@ export function SearchField(props: SearchFieldProps): JSX.Element {
 
   return (
     <div className={className} ref={rootRef}>
-      <style>{SEARCH_FIELD_CSS}</style>
+      <KitStyle css={SEARCH_FIELD_CSS} />
       <IconSearch className={ICON_CLASS} size={ICON_PX} />
       <TextField
         {...(props.id === undefined ? {} : { id: props.id })}
@@ -548,7 +549,10 @@ export function SearchField(props: SearchFieldProps): JSX.Element {
         onChange={change}
       />
       {suggestions !== null && document.body !== null
-        ? createPortal(suggestions, document.body)
+        ? createPortal(
+            <KitStylesProvided.Provider value={false}>{suggestions}</KitStylesProvided.Provider>,
+            document.body,
+          )
         : null}
       <span className={TOOLS_CLASS}>
         {props.value.length > 0 ? (

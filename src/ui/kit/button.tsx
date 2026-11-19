@@ -1,6 +1,7 @@
 import type { ComponentChildren, JSX, MouseEventHandler, RefObject } from "preact";
 
 import { KIT_CONTROL_FONT, KIT_CONTROL_HEIGHT, KIT_FOCUS_CSS } from "./shared";
+import { KitStyle } from "./kit-style";
 
 /**
  * "danger-quiet" is the dangerous action in a row of others: red words and a
@@ -129,7 +130,7 @@ export function Button(props: ButtonProps): JSX.Element {
 
   return (
     <>
-      <style>{BUTTON_CSS}</style>
+      <KitStyle css={BUTTON_CSS} />
       <button
         type={props.type ?? "button"}
         className={className}

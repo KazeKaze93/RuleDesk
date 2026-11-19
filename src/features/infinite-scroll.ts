@@ -309,6 +309,7 @@ function mountInfiniteScroll(_ctx: FeatureContext): void {
     alignSiteAiFilter(currentListScope() ?? AI_SCOPE_POSTS);
     const result = await fetchNextPage(requestUrl);
     let added = 0;
+    const addedNodes: Element[] = [];
     pageNumber += 1;
     imageList.append(createSeparator(pageNumber));
 
@@ -325,10 +326,11 @@ function mountInfiniteScroll(_ctx: FeatureContext): void {
       }
       applyBlacklist(node, blacklist);
       imageList.append(node);
+      addedNodes.push(node);
       added += 1;
     }
 
-    notifyThumbsAdded(imageList);
+    notifyThumbsAdded(imageList, addedNodes);
     return { nextUrl: result.nextUrl, added };
   };
 

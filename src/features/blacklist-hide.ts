@@ -4,7 +4,7 @@ import {
   readSiteBlacklist,
 } from "../site/blacklist";
 import { SITE_SELECTORS } from "../site/selectors";
-import { onThumbsAdded } from "../site/thumbs-bus";
+import { onThumbsAdded, type ThumbRoot } from "../site/thumbs-bus";
 import { featureBodyClass, type Feature, type FeatureContext } from "./types";
 
 const FEATURE_ID = "blacklist-hide";
@@ -74,7 +74,7 @@ function applyBlacklistToThumb(
 }
 
 function applyBlacklistToRoot(
-  root: ParentNode,
+  root: ThumbRoot,
   list: readonly string[] = readSiteBlacklist(),
 ): void {
   const thumbs = root.querySelectorAll(SITE_SELECTORS.thumb);

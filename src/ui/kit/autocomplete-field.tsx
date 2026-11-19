@@ -2,6 +2,7 @@ import type { JSX } from "preact";
 import { useEffect, useId, useRef, useState } from "preact/hooks";
 
 import { KIT_CONTROL_FONT, KIT_CONTROL_HEIGHT, KIT_FOCUS_CSS } from "./shared";
+import { KitStyle } from "./kit-style";
 
 export type AutocompleteOption = {
   readonly label: string;
@@ -179,7 +180,7 @@ export function AutocompleteField(props: AutocompleteFieldProps): JSX.Element {
 
   return (
     <>
-      <style>{AUTOCOMPLETE_FIELD_CSS}</style>
+      <KitStyle css={AUTOCOMPLETE_FIELD_CSS} />
       <div className={className} ref={rootRef}>
         {props.label !== undefined ? (
           <label className="rdw-ac__label" htmlFor={inputId}>

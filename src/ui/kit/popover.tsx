@@ -3,6 +3,7 @@ import { createPortal } from "preact/compat";
 import { useEffect, useLayoutEffect, useRef } from "preact/hooks";
 
 import { KIT_FOCUS_CSS } from "./shared";
+import { KitStyle, KitStylesProvided } from "./kit-style";
 
 export type PopoverProps = {
   readonly open: boolean;
@@ -188,7 +189,7 @@ export function Popover(props: PopoverProps): JSX.Element | null {
 
   const body = (
     <>
-      <style>{POPOVER_CSS}</style>
+      <KitStyle css={POPOVER_CSS} />
       <div
         ref={rootRef}
         className={className}
@@ -201,7 +202,10 @@ export function Popover(props: PopoverProps): JSX.Element | null {
   );
 
   if (anchored && document.body !== null) {
-    return createPortal(body, document.body);
+    return createPortal(
+      <KitStylesProvided.Provider value={false}>{body}</KitStylesProvided.Provider>,
+      document.body,
+    );
   }
   return body;
 }

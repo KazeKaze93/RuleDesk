@@ -369,7 +369,7 @@ describe("infiniteScrollFeature", () => {
     expect(separators[0]?.textContent).toBe("Page 2");
     expect(imageList.querySelector("#s200")).not.toBeNull();
     expect(imageList.querySelector("#s201")).not.toBeNull();
-    expect(notifyThumbsAddedMock).toHaveBeenCalledWith(imageList);
+    expect(notifyThumbsAddedMock).toHaveBeenCalledWith(imageList, expect.any(Array));
   });
 
   it("pauses after two pages in a row that add nothing to the screen", async () => {
@@ -609,6 +609,6 @@ describe("infiniteScrollFeature", () => {
     await triggerAndSettle(() => notifyThumbsAddedMock.mock.calls.length > 0);
 
     expect(notifyThumbsAddedMock).toHaveBeenCalledTimes(1);
-    expect(notifyThumbsAddedMock).toHaveBeenCalledWith(imageList);
+    expect(notifyThumbsAddedMock).toHaveBeenCalledWith(imageList, expect.any(Array));
   });
 });

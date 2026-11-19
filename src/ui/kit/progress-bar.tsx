@@ -1,5 +1,6 @@
 import type { JSX } from "preact";
 import { useEffect, useRef } from "preact/hooks";
+import { KitStyle } from "./kit-style";
 
 const PROGRESS_WIDTH_VAR = "--rdw-progress-width";
 
@@ -84,7 +85,7 @@ export function ProgressBar(props: ProgressBarProps): JSX.Element {
 
   return (
     <>
-      <style>{PROGRESS_BAR_CSS}</style>
+      <KitStyle css={PROGRESS_BAR_CSS} />
       <div className={className}>
         {props.label !== undefined ? (
           <div className="rdw-progress__label">{props.label}</div>

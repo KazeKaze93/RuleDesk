@@ -3,6 +3,7 @@ import { useLayoutEffect, useState } from "preact/hooks";
 
 import { Button } from "./button";
 import { KIT_FOCUS_CSS } from "./shared";
+import { KitStyle } from "./kit-style";
 
 /** How long a toast stays visible before it dismisses itself. */
 export const TOAST_AUTO_HIDE_MS = 6000;
@@ -140,7 +141,7 @@ export function Toast(props: ToastProps): JSX.Element | null {
 
   return (
     <>
-      <style>{TOAST_CSS}</style>
+      <KitStyle css={TOAST_CSS} />
       <div className="rdw-toast" role="status">
         <p className="rdw-toast__message">{props.message}</p>
         {props.action !== undefined ? (

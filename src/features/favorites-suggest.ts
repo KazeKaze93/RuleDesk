@@ -107,8 +107,21 @@ export function suggestFor(tags: readonly TagCount[], word: QueryWord | null): S
   }
   const byCount = (a: TagCount, b: TagCount): number =>
     b.count - a.count || a.tag.localeCompare(b.tag);
-  starts.sort(byCount);
-  inside.sort(byCount);
+  // The tags come sorted this very way (favorites-search.ts), and picking
+  // some of them keeps the order: sorting tens of thousands of them again at
+  // every key was most of the cost of a key. A list that is not in order,
+  // from wherever, is still put in order.
+  const inOrder = (list: readonly TagCount[]): boolean =>
+    list.every((item, index) => {
+      const before = list[index - 1];
+      return before === undefined || byCount(before, item) <= 0;
+    });
+  if (!inOrder(starts)) {
+    starts.sort(byCount);
+  }
+  if (!inOrder(inside)) {
+    inside.sort(byCount);
+  }
   const toSuggestion = (item: TagCount, group: SuggestGroup): Suggestion => ({
     insert: `${prefix}${item.tag}`,
     label: `${prefix}${item.tag}`,

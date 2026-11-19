@@ -8,7 +8,7 @@ import {
   rememberArtistLastPosts,
   rememberArtistSnapshot,
 } from "../storage/store";
-import { onThumbsAdded } from "../site/thumbs-bus";
+import { onThumbsAdded, type ThumbRoot } from "../site/thumbs-bus";
 
 /**
  * Keeps what the Following page shows about each followed artist (cover, post
@@ -33,7 +33,7 @@ export function resetArtistSnapshotsState(): void {
  * A thumb's tags come from its preview title, so any results page counts:
  * the feed, a search, pages appended while scrolling.
  */
-function rememberFromThumbs(root: ParentNode, followed: ReadonlySet<string>): void {
+function rememberFromThumbs(root: ThumbRoot, followed: ReadonlySet<string>): void {
   const newest = new Map<string, number>();
   for (const thumb of root.querySelectorAll(SITE_SELECTORS.thumb)) {
     const raw = extractPostIdFromThumb(thumb);

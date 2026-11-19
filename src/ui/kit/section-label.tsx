@@ -1,4 +1,5 @@
 import type { ComponentChildren, JSX } from "preact";
+import { KitStyle } from "./kit-style";
 
 export type SectionLabelProps = {
   readonly children: ComponentChildren;
@@ -25,7 +26,7 @@ export function SectionLabel(props: SectionLabelProps): JSX.Element {
   if (props.htmlFor !== undefined) {
     return (
       <>
-        <style>{SECTION_LABEL_CSS}</style>
+        <KitStyle css={SECTION_LABEL_CSS} />
         <label className={className} htmlFor={props.htmlFor}>
           {props.children}
         </label>
@@ -35,7 +36,7 @@ export function SectionLabel(props: SectionLabelProps): JSX.Element {
 
   return (
     <>
-      <style>{SECTION_LABEL_CSS}</style>
+      <KitStyle css={SECTION_LABEL_CSS} />
       <div className={className}>{props.children}</div>
     </>
   );

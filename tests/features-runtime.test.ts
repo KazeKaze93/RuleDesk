@@ -381,7 +381,7 @@ describe("features runtime", () => {
   });
 
   it("notifies thumbs-added subscribers and supports unsubscribe", () => {
-    const seen: ParentNode[] = [];
+    const seen: unknown[] = [];
     const stop = onThumbsAdded((root) => {
       seen.push(root);
     });

@@ -1,6 +1,7 @@
 import type { JSX } from "preact";
 
 import { KIT_CONTROL_FONT, KIT_CONTROL_HEIGHT, KIT_FOCUS_CSS } from "./shared";
+import { KitStyle } from "./kit-style";
 
 export type SegmentedOption = {
   readonly value: string;
@@ -71,7 +72,7 @@ export function Segmented(props: SegmentedProps): JSX.Element {
 
   return (
     <>
-      <style>{SEGMENTED_CSS}</style>
+      <KitStyle css={SEGMENTED_CSS} />
       <div
         className={className}
         role="radiogroup"

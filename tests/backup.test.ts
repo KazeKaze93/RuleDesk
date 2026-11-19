@@ -578,4 +578,33 @@ describe("backup export/import", () => {
     expect(refused.ok).toBe(false);
     expect(JSON.stringify(memory.get(STORAGE_KEY))).toBe(before);
   });
+
+  it("puts into the file neither the account id nor what was read from the profile", async () => {
+    const storage = createDefaultStorage();
+    save({
+      ...storage,
+      settings: {
+        ...storage.settings,
+        gridFavButtons: true,
+        featureState: { "profile-stats": { level: "Member", posts: 3 }, other: 1 },
+      },
+    });
+    memory.set(FAVS_STORAGE_KEY, {
+      version: createDefaultFavs().version,
+      ids: [5],
+      sync: { nextPid: 0, lastPid: 0, startedAt: "x", userId: 4242 },
+    });
+    clearFavsCache();
+    const text = serializeBackupFile(
+      await buildBackupFile({ includeBackground: false, includeFavorites: true }),
+    );
+    expect(text).not.toContain("4242");
+    expect(text).not.toContain("profile-stats");
+    expect(text).not.toContain("Member");
+    const file = JSON.parse(text) as { favs: { ids: number[] }; storage: { settings: { featureState: object } } };
+    expect(file.favs.ids).toEqual([5]);
+    expect(file.storage.settings.featureState).toEqual({ other: 1 });
+    // What is stored is left as it was.
+    expect(JSON.stringify(memory.get(FAVS_STORAGE_KEY))).toContain("4242");
+  });
 });

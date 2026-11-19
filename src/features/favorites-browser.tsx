@@ -653,13 +653,16 @@ let onRemoveFailed: (() => void) | null = null;
 
 function appendChunk(target: Grid): void {
   const next = target.results.slice(target.shown, target.shown + RESULTS_CHUNK);
+  const cells: Element[] = [];
   for (const entry of next) {
-    target.container.append(buildFavoriteCell(entry));
+    const cell = buildFavoriteCell(entry);
+    cells.push(cell);
+    target.container.append(cell);
   }
   target.shown += next.length;
   target.more.hidden = target.shown >= target.results.length;
   if (next.length > 0) {
-    notifyThumbsAdded(target.container);
+    notifyThumbsAdded(target.container, cells);
   }
 }
 

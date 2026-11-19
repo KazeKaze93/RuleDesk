@@ -41,7 +41,7 @@ Nothing heavy may be imported on the path of steps 1 and 2: `tests/boot-path.tes
 | `src/features/downloads` | The download queue, its corner panel, the buttons on a results page, picking posts in the grid |
 | `src/pages` | The script's own pages and the sections of settings; the hash router and the page host |
 | `src/search` | Building and recognising site search queries (feed groups, collection id lists, `sort:random`) |
-| `src/site` | Everything that knows the site: selectors, page readers, all network requests, and the additions to the site's list pages, forum and Upload |
+| `src/site` | Everything that knows the site: selectors, page readers, the network requests (all but one: the tag wiki tooltip asks from `features/tag-wiki.ts`), the event of added thumbs (`thumbs-bus.ts`), and the additions to the site's list pages, forum and Upload |
 | `src/skin` | The CSS that restyles the site in the script's themes; the theme palettes |
 | `src/storage` | Schema, the store, backup, the favorites list and index, history, `localStorage` mirrors |
 | `src/ui` | Shared interface parts; `src/ui/kit` is the component kit; `src/ui/tokens.ts` the colour tokens |
@@ -79,7 +79,7 @@ Nothing heavy may be imported on the path of steps 1 and 2: `tests/boot-path.tes
 
 A feature is an object of type `Feature` (`src/features/types.ts`): an id, a label for settings, the page kinds it runs on, a default state, a CSS text and a `mount` function. `src/features/registry.ts` lists them in mount order; `src/features/runtime.ts` adds the body class `rdw-f-<id>`, injects the CSS once and calls `mount` once per page load.
 
-- A feature's CSS is always scoped by its body class, so turning the feature off removes its effect
+- A feature's CSS that restyles the site's own elements is scoped by the feature's body class, so turning the feature off removes its effect. Rules for elements the feature itself creates (`rdw-...` classes in the downloads panel, the favorites browser, the selection bar, the zoom, the wiki tooltip) are not scoped: those elements are not on the page when the feature is off
 - `cssOnly: true` means the settings switch applies at once; any other feature reloads the page
 - A feature may keep a small state of its own through `ctx.getState` / `ctx.setState` (stored under `settings.featureState[id]`)
 - Features talk through one event: `notifyThumbsAdded` / `onThumbsAdded` in `src/site/thumbs-bus.ts` (a module with no imports but the log, so that listening to it draws nothing in; a listener that throws does not stop the others), fired when thumbnails are appended to the grid (infinite scroll, merged feed)
@@ -105,7 +105,7 @@ Own pages render inside the shadow root, where the site's CSS does not reach. Co
 - The skin excludes every element whose class contains `rdw-` from its rules for site buttons and inputs, and kit components carry explicit rules for the states the site styles (a focused text input, an autofilled one)
 - The site's stylesheet names a font for every `div`, `input` and `button`. A rule of the page beats `:host`, so the host of the own pages sets its font with `!important`, and a block in the light DOM that must look the same in every theme (the search panel) sets the font on itself and its descendants
 
-A dialog or a popover opened from a block must not be clipped or layered by it: no `mask-image` and no `overflow: hidden` on a container that things open from, and nothing that opens over the page is drawn inside a sticky block. A sticky element is a stacking context of its own, so a dialog inside it lies under whatever is painted after the block, whatever its `z-index`. The dialogs of the Favorites column are drawn in `<body>` for that reason (`InBody` in `favorites-bulk.tsx`).
+A dialog or a popover opened from a block must not be clipped or layered by it: no `mask-image` and no `overflow: hidden` on a container that things open from, and nothing that opens over the page is drawn inside a sticky block. A sticky element is a stacking context of its own, so a dialog inside it lies under whatever is painted after the block, whatever its `z-index`. The dialogs of the Favorites column are drawn in `<body>` for that reason (`createPortal` in `favorites-bulk.tsx`).
 
 ## Themes and tokens
 
@@ -115,7 +115,7 @@ AI posts by the part of the site: `src/features/ai-scope.ts` holds the choice of
 
 What opens over the page (`Dialog`, the list of `Select`, an anchored `Popover`, the suggestions of `SearchField`) is drawn in `<body>` on the site's pages, never inside the block it was opened from: the pinned blocks are layers of their own and clip. The own pages, which live in a shadow root, wrap themselves in `OverlayInPlace` (`src/ui/kit/overlay.ts`) and keep these things inside.
 
-`src/ui/tokens.ts` defines `TokenPalette`: background, surface, second surface, border, text, muted text, accent and its soft form, danger and its soft form, a warning's text and its plate, the four tag-type colours, three radii, two shadows, the font, and four values for a switch of options. They are written as CSS custom properties `--rdw-*` on `:root` and on the host of the own pages. **No component hard-codes a colour.**
+`src/ui/tokens.ts` defines `TokenPalette`: background, surface, second surface, border, text, muted text, accent and its soft form, danger and its soft form, a warning's text and its plate, the four tag-type colours, three radii, two shadows, the font, and four values for a switch of options. They are written as CSS custom properties `--rdw-*` on `:root` and on the host of the own pages. **Components take their colours from these.** The known exceptions are the buttons drawn over a picture (white plates with dark signs, in `ui/cards.ts`, `features/playlist-menu.ts`, `ui/document-chrome-css.ts`), which must read on any picture in any theme, and fallbacks written after a token (`var(--rdw-accent, #...)`).
 
 | Theme | Palette | Skin |
 |---|---|---|
@@ -146,6 +146,8 @@ Contrast is tested: `tests/features/favorites-panel.test.ts` and the skin tests 
 | `Chip` | A tag; can be removed or toggled |
 | `Card`, `SectionLabel`, `EmptyState` | Layout pieces |
 | `Tabs` | Info / Comments on the post panel |
+| `SelectionBar` | The bar of a selection on Posts, Favorites, Following, Collections and the page of a collection |
+| `KitStyle`, `KitStylesProvided` | A component's own `<style>`, left out inside a tree that has put the styles of the whole kit in once: the pages of the script do (`pages/host.tsx`). What a component draws into `document.body` is outside that tree and brings its styles |
 | `Dialog`, `Popover` | Modal and anchored surfaces |
 | `ProgressBar`, `Toast` | Progress and a short message |
 | `icons.tsx` | The icon set, one stroke style |
@@ -177,7 +179,7 @@ The height and the text size of controls come from two custom properties (`--rdw
 | `localStorage` | mirrors | Followed tags; covers and counts of dynamic collections; the Feed counter's last answer; the height of the search panel |
 | Site cookies | `tag_blacklist`, `theme` | The site's own blacklist and theme |
 
-`src/storage/schema.ts` is the single definition of the stored shape; `src/storage/store.ts` is the only module that writes it. Reading and validating the whole storage costs tens of milliseconds on a large library, so there are three ways to get it: `load()` returns the in-memory copy; `loadRecent()` returns it when it is under a second old and reads otherwise, and is what read-only code on a page uses; `reloadFromStorage()` always reads, and every write goes through it first so that a change made in another tab is not overwritten. The mirrors exist because a page restored by the Back button can get stale data from the script manager; pages that list data re-read it on `pageshow`.
+`src/storage/schema.ts` is the single definition of the stored shape; `src/storage/store.ts` writes it; `src/storage/favs.ts` also does, once, when it moves the old favorite marks out of it. Reading and validating the whole storage costs tens of milliseconds on a large library, so there are three ways to get it: `load()` returns the in-memory copy; `loadRecent()` returns it when it is under a second old and reads otherwise, and is what read-only code on a page uses; `reloadFromStorage()` always reads, and every write goes through it first so that a change made in another tab is not overwritten. The mirrors exist because a page restored by the Back button can get stale data from the script manager; pages that list data re-read it on `pageshow`.
 
 The storage keys and the userscript's name and namespace keep the old `ruledesk-web` spelling on purpose: they identify the script and its data to the manager.
 

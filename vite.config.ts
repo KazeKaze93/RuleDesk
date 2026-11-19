@@ -18,7 +18,7 @@ export default defineConfig({
         namespace: "https://github.com/kazekaze93/ruledesk-web",
         description:
           "Collections, playlists, favorites, artist updates, and page tweaks for rule34.xxx",
-        version: "0.73.0",
+        version: "0.74.0",
         match: ["https://rule34.xxx/*"],
         "run-at": "document-start",
         // GM_xmlhttpRequest and the one host it may reach are for the site API

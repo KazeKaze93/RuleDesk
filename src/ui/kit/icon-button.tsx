@@ -1,6 +1,7 @@
 import type { ComponentChildren, JSX, MouseEventHandler, RefObject } from "preact";
 
 import { KIT_CONTROL_HEIGHT, KIT_FOCUS_CSS } from "./shared";
+import { KitStyle } from "./kit-style";
 
 export type IconButtonProps = {
   readonly label: string;
@@ -49,7 +50,7 @@ export function IconButton(props: IconButtonProps): JSX.Element {
 
   return (
     <>
-      <style>{ICON_BUTTON_CSS}</style>
+      <KitStyle css={ICON_BUTTON_CSS} />
       <button
         type="button"
         className={className}

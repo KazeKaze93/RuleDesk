@@ -264,7 +264,7 @@ export function mountFeedMerge(options: FeedMergeOptions): boolean {
       imageList.append(thumb);
     }
     shown += thumbs.length;
-    notifyThumbsAdded(imageList);
+    notifyThumbsAdded(imageList, thumbs);
     options.onChange();
   };
 

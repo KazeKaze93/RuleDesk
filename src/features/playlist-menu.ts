@@ -17,7 +17,7 @@ import {
   type Feature,
   type FeatureContext,
 } from "./types";
-import { onThumbsAdded } from "../site/thumbs-bus";
+import { onThumbsAdded, type ThumbRoot } from "../site/thumbs-bus";
 
 const FEATURE_ID = "playlist-menu";
 const FEATURE_LABEL = "Add to collection button";
@@ -432,7 +432,7 @@ function attachAddButton(thumb: HTMLElement, postId: string): void {
   link.after(button);
 }
 
-function stampPlaylistButtons(root: ParentNode = document): void {
+function stampPlaylistButtons(root: ThumbRoot = document): void {
   const thumbs = root.querySelectorAll(SITE_SELECTORS.thumb);
   for (const thumb of thumbs) {
     if (!(thumb instanceof HTMLElement)) {

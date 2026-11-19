@@ -1,6 +1,7 @@
 import type { JSX } from "preact";
 
 import { KIT_CONTROL_HEIGHT, KIT_FOCUS_CSS } from "./shared";
+import { KitStyle } from "./kit-style";
 
 export type TabItem = {
   readonly id: string;
@@ -63,7 +64,7 @@ export function Tabs(props: TabsProps): JSX.Element {
 
   return (
     <>
-      <style>{TABS_CSS}</style>
+      <KitStyle css={TABS_CSS} />
       <div
         className={className}
         role="tablist"

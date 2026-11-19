@@ -1,3 +1,4 @@
+import { log } from "../log";
 import { ensureStyleElement } from "../boot/appearance-dom";
 import {
   HEADER_SELECTOR,
@@ -64,9 +65,15 @@ async function syncFromHash(): Promise<void> {
     leaveRoute();
     return;
   }
-  await enterRoute(route);
-  if (generation !== syncGeneration) {
-    return;
+  try {
+    await enterRoute(route);
+  } catch (error) {
+    // A page of the script that failed to draw must not leave the site hidden
+    // under an empty page: the site's own page is shown again.
+    log.error("router: the page could not be shown", error);
+    if (generation === syncGeneration) {
+      leaveRoute();
+    }
   }
 }
 

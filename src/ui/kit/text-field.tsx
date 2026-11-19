@@ -2,6 +2,7 @@ import type { InputHTMLAttributes, JSX, Ref } from "preact";
 import { useId } from "preact/hooks";
 
 import { KIT_CONTROL_FONT, KIT_CONTROL_HEIGHT, KIT_FOCUS_CSS } from "./shared";
+import { KitStyle } from "./kit-style";
 
 export type TextFieldProps = {
   readonly value: string;
@@ -83,7 +84,7 @@ export function TextField(props: TextFieldProps): JSX.Element {
 
   return (
     <>
-      <style>{TEXT_FIELD_CSS}</style>
+      <KitStyle css={TEXT_FIELD_CSS} />
       <div className={className}>
         {props.label !== undefined ? (
           <label className="rdw-field__label" htmlFor={inputId}>

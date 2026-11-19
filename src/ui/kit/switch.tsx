@@ -15,6 +15,7 @@ import {
   resolveSwitchThumbOn,
 } from "../tokens";
 import { KIT_CONTROL_HEIGHT, KIT_FOCUS_CSS } from "./shared";
+import { KitStyle } from "./kit-style";
 
 export type SwitchProps = {
   readonly checked: boolean;
@@ -136,7 +137,7 @@ export function Switch(props: SwitchProps): JSX.Element {
 
   return (
     <>
-      <style>{SWITCH_CSS}</style>
+      <KitStyle css={SWITCH_CSS} />
       <div className={className}>
         <button
           type="button"

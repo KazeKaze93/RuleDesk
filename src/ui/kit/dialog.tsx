@@ -6,6 +6,7 @@ import { Button } from "./button";
 import { OverlayInPlace } from "./overlay";
 import { KIT_FOCUS_CSS } from "./shared";
 import { TextField } from "./text-field";
+import { KitStyle, KitStylesProvided } from "./kit-style";
 
 const DIALOG_VARIANT_CONTENT = "content";
 const DIALOG_VARIANT_CONFIRM = "confirm";
@@ -375,7 +376,7 @@ export function Dialog(props: DialogProps): JSX.Element | null {
 
   const body = (
     <>
-      <style>{DIALOG_CSS}</style>
+      <KitStyle css={DIALOG_CSS} />
       <div className="rdw-dialog-backdrop">
         <div
           ref={panelRef}
@@ -396,5 +397,10 @@ export function Dialog(props: DialogProps): JSX.Element | null {
       </div>
     </>
   );
-  return inPlace ? body : createPortal(body, document.body);
+  return inPlace
+    ? body
+    : createPortal(
+        <KitStylesProvided.Provider value={false}>{body}</KitStylesProvided.Provider>,
+        document.body,
+      );
 }

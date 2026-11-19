@@ -5,7 +5,7 @@ import {
   SITE_SELECTORS,
   extractPostIdFromThumb,
 } from "../site/selectors";
-import { onThumbsAdded } from "../site/thumbs-bus";
+import { onThumbsAdded, type ThumbRoot } from "../site/thumbs-bus";
 import {
   featureBodyClass,
   type Feature,
@@ -22,7 +22,7 @@ const EVENT_PAGESHOW = "pageshow";
 let unsubscribeThumbsAdded: (() => void) | undefined;
 let pageshowBound = false;
 
-function stampSeenOnThumbs(root: ParentNode = document): void {
+function stampSeenOnThumbs(root: ThumbRoot = document): void {
   const marks = load().marks;
   const thumbs = root.querySelectorAll(SITE_SELECTORS.thumb);
   for (const thumb of thumbs) {

@@ -29,7 +29,7 @@ import { ensureDocumentStyles } from "../ui/cards";
 import { mountUpdatesBar } from "../ui/updates-bar";
 import { rememberArtistsFromPage } from "./artist-snapshots";
 import { FEED_MERGE_CSS, isMergedFeedPage, mountFeedMerge } from "./feed-merge";
-import { onThumbsAdded } from "../site/thumbs-bus";
+import { onThumbsAdded, type ThumbRoot } from "../site/thumbs-bus";
 import {
   THUMB_ANCHOR_NAME,
   THUMB_CLASS,
@@ -280,7 +280,7 @@ function applyCurrentPageHighlight(
   }
 }
 
-function markNewThumbs(root: ParentNode, seenPostId: number): void {
+function markNewThumbs(root: ThumbRoot, seenPostId: number): void {
   if (seenPostId === 0) {
     return;
   }

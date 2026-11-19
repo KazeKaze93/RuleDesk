@@ -15,14 +15,31 @@ type CoverMirror = Record<string, string[]>;
  * where the userscript storage can still hold the old value; localStorage is
  * shared and current, so the card reads the cover from here first.
  */
+/*
+ * The text last read from the page's storage and what it parsed to. Every
+ * card of the Collections page asks for its cover and its count at every
+ * redraw, a redraw at every key typed into the filter: the same text was
+ * parsed and checked twice for each card. The text itself is still read each
+ * time, so a change made by another page is seen at once.
+ */
+let coverText: string | null = null;
+let coverParsed: CoverMirror = {};
+let countText: string | null = null;
+let countParsed: CountMirror = {};
+
 function readAll(): CoverMirror {
   try {
     const raw = localStorage.getItem(COVER_MIRROR_KEY);
     if (raw === null) {
       return {};
     }
+    if (raw === coverText) {
+      return coverParsed;
+    }
     const parsed = CoverMirrorSchema.safeParse(JSON.parse(raw));
-    return parsed.success ? parsed.data : {};
+    coverText = raw;
+    coverParsed = parsed.success ? parsed.data : {};
+    return coverParsed;
   } catch (error) {
     log.error("cover-mirror: read failed", error);
     return {};
@@ -102,8 +119,13 @@ function readAllCounts(): CountMirror {
     if (raw === null) {
       return {};
     }
+    if (raw === countText) {
+      return countParsed;
+    }
     const parsed = CountMirrorSchema.safeParse(JSON.parse(raw));
-    return parsed.success ? parsed.data : {};
+    countText = raw;
+    countParsed = parsed.success ? parsed.data : {};
+    return countParsed;
   } catch (error) {
     log.error("count-mirror: read failed", error);
     return {};
