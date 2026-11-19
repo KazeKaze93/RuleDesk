@@ -62,7 +62,7 @@ const WARN_NO_FLEXI =
  * panel went under a picture two screens tall, and the page was as wide as
  * the picture (Kaze, 19.11.2026, a post of 1528x1952). In the last block of
  * the CSS the row is kept whole, the panel keeps its width, and the picture
- * gives way: it is as wide as the room, with its height following.
+ * gives way: it is as wide as the room and no taller than the window.
  */
 const BODY_CLASS = featureBodyClass(FEATURE_ID);
 const BODY_SELECTOR = `body.${BODY_CLASS}`;
@@ -249,6 +249,11 @@ ${BODY_SELECTOR} #${POST_ACTIONS_ID} .rdw-post-panel-comments-host {
   }
   ${BODY_SELECTOR} div.flexi > :has(+ #${POST_ACTIONS_ID}.${CLASS_MODE_WIDE}) img#${IMAGE_ID} {
     max-width: 100%;
+    /* And no taller than the window under the header (Kaze, 19.11.2026): the
+       whole picture is seen at once; a click opens it in full. Both sizes are
+       left to the picture, so it keeps its shape and is never made larger. */
+    max-height: calc(100vh - var(${STICKY_TOP_VAR}, ${String(PANEL_STICKY_GAP_PX)}px) - ${String(PANEL_STICKY_GAP_PX)}px);
+    width: auto !important;
     height: auto !important;
   }
 }
@@ -291,6 +296,8 @@ function placePanel(panel: HTMLElement, flexi: HTMLElement): void {
   panel.classList.toggle(CLASS_MODE_WIDE, !narrow);
   panel.classList.toggle(CLASS_MODE_NARROW, narrow);
   applyStickyTop(panel);
+  // The picture is measured against the same line under the header as the panel.
+  flexi.style.setProperty(STICKY_TOP_VAR, panel.style.getPropertyValue(STICKY_TOP_VAR));
 
   const media = findMediaWrapper(flexi, POST_ACTIONS_ID);
   if (media !== null) {

@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.64.0
+
+- The post page, on a wide window: the picture is no taller than the window under the header, so the whole of it is seen at once, with the panel beside it. A tall picture used to run a screen or two down. The picture keeps its shape and is never made larger than the site gives it; a click still opens it in full
+
 ## 0.63.0
 
 - The post page: a picture wider than the room beside the panel no longer breaks the row. The site shows some posts in their own size, with no smaller copy; such a picture pushed the panel under itself, two screens down, and made the page wider than the window. Now the panel stays beside the picture and the picture is as wide as the room, its height following. A picture that fits is left in the size the site gives it

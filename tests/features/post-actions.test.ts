@@ -912,8 +912,8 @@ describe("postActionsFeature", () => {
     );
     // The picture is never given a width: it stays in the size the site
     // gives it. It may only be kept from being wider than its room.
-    expect(postActionsFeature.css).not.toMatch(/img#image[^{]*\{[^}]*(?<!max-)width/);
-    expect(wide).toMatch(/img#image \{\s*max-width: 100%;\s*height: auto !important;/);
+    expect(postActionsFeature.css).not.toMatch(/img#image[^{]*\{[^}]*(?<!max-)width:(?!\s*auto)/);
+    expect(wide).toMatch(/img#image \{\s*max-width: 100%;[^}]*max-height: calc\(100vh - var\(--rdw-post-panel-sticky-top, 12px\) - 12px\);\s*width: auto !important;\s*height: auto !important;/);
     // A picture wider than the room beside the panel does not break the row.
     expect(wide).toMatch(
       /div\.flexi:has\(> #rdw-post-actions\.rdw-post-actions--wide\) \{\s*flex-wrap: nowrap;/,
