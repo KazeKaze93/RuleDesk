@@ -75,11 +75,12 @@ Forum: marks for new and updated topics, "New for me", "Mark all as read". Artis
 ## Install
 
 1. Install [Tampermonkey](https://www.tampermonkey.net/).
-2. Open this link and confirm the installation:
+2. In Chrome, Edge or another Chromium browser: right-click the Tampermonkey icon → Manage extension → turn on "Allow User Scripts". On browsers older than Chrome 138 turn on Developer mode at chrome://extensions instead. Without this, Tampermonkey runs no scripts at all.
+3. Open this link and confirm the installation:
    https://raw.githubusercontent.com/KazeKaze93/RuleDesk/main/dist/ruledesk-web.user.js
-3. In Tampermonkey open Dashboard → Settings → Security → Content Script API and choose **UserScripts API Dynamic**. Without it the site's original look flashes on every page load and pages open slower.
+4. In Tampermonkey open Dashboard → Settings → Security → Content Script API and choose **UserScripts API Dynamic**. Without it the site's original look flashes on every page load and pages open slower.
 
-**What it was tried on.** Desktop Chrome (158 on Windows) with Tampermonkey, in the UserScripts API Dynamic mode of step 3: that is the only setup the script is made and checked on. Not tried: Violentmonkey and other script managers, Firefox and other browsers, phones and tablets. It may work there; if it does not, a report with the browser and the manager named is welcome (see "Found a bug?" below).
+**What it was tried on.** Desktop Chrome (158 on Windows) with Tampermonkey, in the UserScripts API Dynamic mode of step 4: that is the only setup the script is made and checked on. Not tried: Violentmonkey and other script managers, Firefox and other browsers, phones and tablets. It may work there; if it does not, a report with the browser and the manager named is welcome (see "Found a bug?" below).
 
 Updates arrive through the script manager from the same link. After an update reload the site's page: an open page keeps running the old version.
 
