@@ -1,0 +1,91 @@
+name: Bug report
+description: Something in RuleDesk does not work, or looks wrong
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. A few things before you write:
+
+        - **Do not paste your API key or your account id.** Nobody needs them to find a bug.
+        - **Issues are public, and the site is for adults.** Crop a screenshot to the part of the page that is wrong, or cover the pictures.
+        - Something that the site itself does, with the script turned off, is not a bug of the script. "Known limits" in the README lists what comes from the site.
+  - type: input
+    id: version
+    attributes:
+      label: Script version
+      description: 'RuleDesk (the gear in the header): the line under the name at the top left, "Settings · 0.74.2". The Tampermonkey dashboard shows it too.'
+      placeholder: "0.74.2"
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser
+      description: Name and version.
+      placeholder: "Chrome 142, Firefox 145, Edge 142…"
+    validations:
+      required: true
+  - type: input
+    id: manager
+    attributes:
+      label: Script manager
+      description: Name and version.
+      placeholder: "Tampermonkey 5.4, Violentmonkey 2.31…"
+    validations:
+      required: true
+  - type: dropdown
+    id: theme
+    attributes:
+      label: Theme
+      description: RuleDesk → Appearance → Site theme.
+      options:
+        - Dark
+        - Light
+        - Custom
+        - Site default
+        - Site dark
+    validations:
+      required: true
+  - type: input
+    id: page
+    attributes:
+      label: Where
+      description: Which page it happens on. An address is best; leave out anything you would rather not show.
+      placeholder: "Posts, a post page, Favorites, RuleDesk → Collections…"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: What you did
+      description: Step by step, from opening the page.
+      placeholder: |
+        1. Opened Posts with the search "…"
+        2. Pressed Select
+        3. …
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: What happened, and what you expected
+    validations:
+      required: true
+  - type: textarea
+    id: console
+    attributes:
+      label: Errors in the console
+      description: "Optional. Press F12, open Console, and copy the red lines that begin with [ruledesk-web]. Check that they hold no key before pasting."
+      render: text
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checked
+      options:
+        - label: It does not happen with "Enable page tweaks" turned off at the top of the RuleDesk settings
+          required: false
+        - label: No other userscript or extension for this site is on
+          required: false

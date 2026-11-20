@@ -160,6 +160,7 @@ type ApiAnswer = { readonly status: number; readonly text: string };
 
 const ERROR_NO_REQUEST = "The script manager cannot ask the API (GM_xmlhttpRequest is missing)";
 const ERROR_NETWORK = "API request failed";
+const ERROR_NO_BODY = "The script manager gave the API answer without its text";
 const ERROR_TIMEOUT = "API request timed out";
 const HTTP_OK_FROM = 200;
 const HTTP_OK_BELOW = 300;
@@ -192,7 +193,15 @@ function ask(url: string): Promise<ApiAnswer> {
       anonymous: true,
       timeout: API_TIMEOUT_MS,
       onload: (response) => {
-        resolve({ status: response.status, text: response.responseText });
+        // A script manager has been seen to give an answer with no text in
+        // it (Tampermonkey 5.5.1, 15.11.2026). That is said in words: taken
+        // as an empty answer it would read as "the site has no such posts".
+        const body: unknown = response.responseText ?? response.response;
+        if (typeof body !== "string") {
+          reject(new Error(ERROR_NO_BODY));
+          return;
+        }
+        resolve({ status: response.status, text: body });
       },
       onerror: () => {
         reject(new Error(ERROR_NETWORK));

@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Questions and answers
+    url: https://github.com/KazeKaze93/RuleDesk/blob/main/FAQ.md
+    about: Installing, updating, what a button does, where the data is kept. Read this first.

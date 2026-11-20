@@ -183,6 +183,24 @@ describe("site API for downloads", () => {
     expect(fetched).not.toHaveBeenCalled();
   });
 
+  it("says so when the script manager gives an answer with no text", async () => {
+    vi.stubGlobal(
+      "GM_xmlhttpRequest",
+      (details: { onload?: (response: { status: number }) => void }) => {
+        queueMicrotask(() => {
+          details.onload?.({ status: 200 });
+        });
+      },
+    );
+    const run = collectPostFiles(
+      { kind: "ids", ids: [5] },
+      { credentials: CREDENTIALS, onProgress: () => {}, isCancelled: () => false },
+    );
+    const failed = expect(run).rejects.toThrow("without its text");
+    await vi.advanceTimersByTimeAsync(API_MIN_INTERVAL_MS);
+    await failed;
+  });
+
   it("turns a refusal in words into an error with those words", () => {
     expect(() => parseApiPosts("Missing authentication. Go to the account page.")).toThrow(
       "API: Missing authentication.",

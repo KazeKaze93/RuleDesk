@@ -2,6 +2,11 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.74.3
+
+- Bugs are reported in one place, Issues on GitHub: a form there asks for the version, the browser, the script manager, the theme, the page and the steps. README and FAQ say so
+- Downloads: when the script manager gives an answer of the API with no text in it, the download says so. It would have stopped on an unreadable error
+
 ## 0.74.2
 
 - The licence is named: GPL-3.0-or-later, in `LICENSE`, in `package.json` and in the header of the script as `@license`

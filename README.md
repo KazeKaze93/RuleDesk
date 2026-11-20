@@ -130,6 +130,10 @@ These come from the site, or from what a userscript is, and are not bugs.
 
 The full list is in [docs/features.md](docs/features.md#what-the-script-will-not-do); the technical one, with numbers, in [docs/site.md](docs/site.md#limits-that-come-from-the-site).
 
+## Found a bug?
+
+Report it in one place: [Issues on GitHub](https://github.com/KazeKaze93/RuleDesk/issues/new/choose). The form asks for what is needed to find it: the version of the script (RuleDesk, the gear in the header: "Settings · 0.74.3" under the name), your browser, your script manager and the theme, the page, and what you did. Do not paste your API key. Issues are public: crop a screenshot to the part that is wrong.
+
 ## Licence
 
 RuleDesk is free software under the [GNU General Public License, version 3 or later](LICENSE). The built file also contains Preact, Zod and SystemJS, each under the MIT licence; their notices are at the end of the built file and in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).

@@ -121,3 +121,14 @@ A feature that only changes styles applies at once; one that adds controls needs
 
 **Does the script send my data anywhere?**
 No. Everything is kept in the script manager's storage on your computer. Requests go only to the site and its API address, and only when you do something that needs one. Two exceptions have a switch each in the settings: the counter beside Feed, and the kind of a tag the script has not met yet.
+
+## Bugs
+
+**Where do I report a bug?**
+In [Issues on GitHub](https://github.com/KazeKaze93/RuleDesk/issues/new/choose), and only there: a report left in a chat or on a forum gets lost. The form asks for the version of the script, the browser, the script manager, the theme, the page and what you did.
+
+**What should I check first?**
+Turn off "Enable page tweaks" at the top of the RuleDesk settings and look again. If the trouble is still there, it comes from the site or from another script or extension, not from RuleDesk. "What the script does not do" in the README lists what the site itself does.
+
+**What must not go into a report?**
+Your API key and your account id. Issues are public, and the site is for adults: crop a screenshot to the part of the page that is wrong.
