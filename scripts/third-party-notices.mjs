@@ -1,7 +1,8 @@
 /**
  * The built userscript carries the code of other people's packages, and their
  * licences (MIT) ask that their copyright notice and the licence text go with
- * every copy. The minifier drops the comments that held them, so they are put
+ * every copy. The bundler drops the comments that held them, minified or not
+ * (seen on 0.74.3 built without minification), so they are put
  * back here, after the build:
  *
  * - into THIRD_PARTY_LICENSES.md at the root of the repository;

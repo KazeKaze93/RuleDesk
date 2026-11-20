@@ -1,6 +1,6 @@
 {
   "name": "ruledesk-web",
-  "version": "0.74.3",
+  "version": "0.75.0",
   "private": true,
   "license": "GPL-3.0-or-later",
   "type": "module",

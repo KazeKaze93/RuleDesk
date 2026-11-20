@@ -2,9 +2,6 @@ import preact from "@preact/preset-vite";
 import { defineConfig } from "vitest/config";
 import monkey from "vite-plugin-monkey";
 
-const USERSCRIPT_RAW_URL =
-  "https://raw.githubusercontent.com/KazeKaze93/RuleDesk/main/dist/ruledesk-web.user.js";
-
 export default defineConfig({
   plugins: [
     preact(),
@@ -18,7 +15,7 @@ export default defineConfig({
         namespace: "https://github.com/kazekaze93/ruledesk-web",
         description:
           "Collections, playlists, favorites, artist updates, and page tweaks for rule34.xxx",
-        version: "0.74.3",
+        version: "0.75.0",
         license: "GPL-3.0-or-later",
         match: ["https://rule34.xxx/*"],
         "run-at": "document-start",
@@ -27,8 +24,9 @@ export default defineConfig({
         // the user's key, and a request made by the page would show it to the page.
         grant: ["GM_getValue", "GM_setValue", "GM_download", "GM_xmlhttpRequest"],
         connect: ["api.rule34.xxx"],
-        updateURL: USERSCRIPT_RAW_URL,
-        downloadURL: USERSCRIPT_RAW_URL,
+        // No updateURL and no downloadURL (0.75.0): the catalogue the script is
+        // published in does not allow a header that sends updates past it. A
+        // script manager then asks the address the script was installed from.
       },
       build: {
         fileName: "ruledesk-web.user.js",
@@ -37,10 +35,12 @@ export default defineConfig({
       },
     }),
   ],
-  // The built file is minified (Kaze, 19.11.2026): it is parsed on every page
-  // before the first paint. The readable code is src/, at the commit of the release.
+  // The built file is not minified (0.75.0): the catalogue the script is
+  // published in asks for code that can be read, with its spaces and names.
+  // It was minified from 0.72.1 to 0.74.3. Measured on 0.74.3: first paint
+  // 4 ms later on a mock page, about 12 ms on the site (docs/development.md).
   build: {
-    minify: true,
+    minify: false,
   },
   resolve: {
     dedupe: ["preact"],
