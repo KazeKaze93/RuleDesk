@@ -1,8 +1,9 @@
 // ==UserScript==
 // @name         RuleDesk Web
 // @namespace    https://github.com/kazekaze93/ruledesk-web
-// @version      0.74.1
+// @version      0.74.2
 // @description  Collections, playlists, favorites, artist updates, and page tweaks for rule34.xxx
+// @license      GPL-3.0-or-later
 // @downloadURL  https://raw.githubusercontent.com/KazeKaze93/RuleDesk/main/dist/ruledesk-web.user.js
 // @updateURL    https://raw.githubusercontent.com/KazeKaze93/RuleDesk/main/dist/ruledesk-web.user.js
 // @match        https://rule34.xxx/*
@@ -7940,3 +7941,67 @@ System.register("./collection-detail-page-CGdO2mnK-BMth3fAb.js", ['./app-D1L-QAr
 }
 `.trim();function He(e){return `${String(e)} ${e===T?Ae:je}`}function Ue(e){return `${Me}${String(e)} ${e===T?Ae:je}`}function We(e){return `${Q}${String(e)}`}function Ge(e,t){let n=e[String(t)];return n===void 0||n.length===0?null:n}function Ke(e){let t=_c(e);if(t===null)return null;let n=Zs().find(t=>t.id===e);return n===void 0?null:{name:n.name,order:t,thumbs:n.thumbs??{},shuffled:n.shuffledOrder!==null&&n.shuffledOrder!==void 0}}function qe(e,t){let n=new URLSearchParams;return n.set(ce,ae),n.set(`s`,se),n.set(`id`,String(t)),`${ie}?${n.toString()}${Mt(e)}`}function Je(e){return e.button!==E||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey}function Ye(e){let[t,n]=z$1(null),i=e.thumbUrl,o=i!==null&&t===i,s=V$1(i);s.current=i;let c=Re$1(()=>{n(s.current);},[]),ee=Re$1(e=>{e!==null&&e.addEventListener(`error`,c);},[c]),d=i!==null&&!o,f=e.drag,p=[J,e.selected?j:``,f?.draggingId===e.postId?X:``,f!==null&&f.overId===e.postId&&f.draggingId!==e.postId?Z:``].filter(e=>e.length>0).join(` `);return K$1(`a`,{className:p,href:qe(e.collectionId,e.postId),"aria-label":`${ke}${String(e.postId)}`,...e.selecting?{"aria-pressed":e.selected}:{},draggable:f!==null,onDragStart:t=>{f!==null&&(t.dataTransfer!==null&&(t.dataTransfer.effectAllowed=D),f.onStart(e.postId));},onDragOver:t=>{f!==null&&f.draggingId!==null&&(t.preventDefault(),f.onOver(e.postId));},onDrop:t=>{f!==null&&f.draggingId!==null&&(t.preventDefault(),f.onDrop(e.postId));},onDragEnd:()=>{f?.onEnd();},onClick:t=>{e.selecting&&!Je(t)&&(t.preventDefault(),e.onToggle(e.postId));},children:[d?K$1(`img`,{src:i,alt:``,loading:A,ref:ee}):K$1(`span`,{className:Y,children:We(e.postId)}),e.selected?K$1(`span`,{className:M,"aria-hidden":`true`,children:N}):null]})}function $(){return K$1(`a`,{className:H,href:Ke$1,children:ye})}function Xe(d){let[p,h]=z$1(0),[g,_]=z$1(false);tm(g,H);let[v,y]=z$1(()=>new Set),[re,b]=z$1(false),[x,S]=z$1(``),[C,w]=z$1(false),[E,D]=z$1(null),O=V$1(null),k=V$1(0),[A,j]=z$1(null),[M,N]=z$1(null),P=Le$1(()=>Ke(d.collectionId),[d.collectionId,p]),F=Re$1(()=>{h(e=>e+1);},[]),I=Re$1(()=>{O.current=null,D(null);},[]),L=Re$1(()=>{let e=O.current;e!==null&&(pc(e.snapshot),O.current=null,D(null),h(e=>e+1));},[]);function he(e){if(e.posts.length===0)return;k.current+=1;let t={id:k.current,message:Ue(e.posts.length),snapshot:e};O.current=t,D(t);}let R={draggingId:A,overId:M,onStart:j,onOver:N,onDrop:e=>{A!==null&&gc(d.collectionId,A,e),j(null),N(null),F();},onEnd:()=>{j(null),N(null);}};function z(e,t){t.length===0||$t()||en(e,{kind:`ids`,ids:t});}let B=tt();function H(){_(false),y(new Set);}function J(e){y(t=>{let n=new Set(t);return n.has(e)?n.delete(e):n.add(e),n});}function Y(){P!==null&&(S(P.name),b(true));}function ye(e){e.preventDefault();let t=x.trim();t.length<me||(Js(d.collectionId,t),b(false),F());}function X(){w(false),Ys(d.collectionId)?kI(Re$2):F();}function Z(){if(v.size===0)return;let e=dc(d.collectionId,[...v]);H(),F(),e!==null&&he(e);}let Q=E===null?null:{label:De,onClick:L};return K$1(`div`,{className:V,"data-collection-id":d.collectionId,children:[K$1(`style`,{children:Ve}),P===null?K$1(A$1,{children:[K$1(`p`,{className:ge,children:Ne}),K$1($,{})]}):K$1(A$1,{children:[K$1($,{}),K$1(`div`,{className:U,children:[K$1(`h1`,{className:W,children:P.name}),K$1(`p`,{className:G,children:He(P.order.length)})]}),g?K$1(Yr,{count:v.size,onSelectAll:()=>{y(new Set(P.order));},onClear:()=>{y(new Set);},onCancel:H,danger:K$1(J$1,{variant:`danger-quiet`,disabled:v.size===0,onClick:Z,children:Oe}),children:B?K$1(J$1,{variant:`secondary`,disabled:v.size===0,onClick:()=>{z(P.name,P.order.filter(e=>v.has(e))),H();},children:we}):null}):K$1(`div`,{className:K,children:K$1(A$1,{children:[P.order.length>0?K$1(J$1,{variant:`secondary`,size:`s`,onClick:()=>{mc(d.collectionId),F();},children:be}):null,P.shuffled?K$1(J$1,{variant:`secondary`,size:`s`,onClick:()=>{hc(d.collectionId),F();},children:xe}):null,P.order.length>0?K$1(J$1,{variant:`secondary`,size:`s`,onClick:()=>{y(new Set),_(true);},children:Se}):null,B&&P.order.length>0?K$1(J$1,{variant:`secondary`,size:`s`,onClick:()=>{z(P.name,P.order);},children:Ce}):null,K$1(J$1,{variant:`secondary`,size:`s`,onClick:Y,children:Fe$1.rename}),K$1(J$1,{variant:`danger-quiet`,size:`s`,onClick:()=>{w(true);},children:Fe$1.delete})]})}),!g&&P.order.length>T?K$1(`p`,{className:Ee,children:Te}):null,P.order.length===0?K$1(wn,{title:Pe,description:Fe}):K$1(`div`,{className:q,"aria-label":Be,children:P.order.map(e=>K$1(Ye,{postId:e,collectionId:d.collectionId,thumbUrl:Ge(P.thumbs,e),selecting:g,selected:v.has(e),onToggle:J,drag:g?null:R},e))}),K$1(Sn,{open:re,onClose:()=>{b(false);},title:Fe$1.rename,"aria-label":Le,children:K$1(`form`,{className:_e,onSubmit:ye,children:[K$1(qt,{id:Ie,label:Fe$1.nameLabel,value:x,onChange:S}),K$1(`div`,{className:ve,children:[K$1(J$1,{type:`button`,variant:`secondary`,size:`s`,onClick:()=>{b(false);},children:Fe$1.cancel}),K$1(J$1,{type:`submit`,variant:`primary`,size:`s`,children:Fe$1.save})]})]})}),K$1(Sn,{variant:`confirm`,open:C,onClose:()=>{w(false);},title:Fe$1.delete,"aria-label":Re,message:ze(P===null?``:P.name),confirmLabel:Fe$1.delete,cancelLabel:Fe$1.cancel,confirmTone:`danger`,onConfirm:X})]}),K$1(Pi,{open:E!==null,message:E===null?``:E.message,onClose:I,...Q===null?{}:{action:Q}},E?.id)]})}})}}));
 System.import("./___monkey.entry.js", "./");
+
+/*! Third-party notices: RuleDesk Web includes the following packages.
+
+preact 11.2.0 (MIT)
+
+The MIT License (MIT)
+
+Copyright (c) 2015-present Jason Miller
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+zod 4.6.7 (MIT)
+
+MIT License
+
+Copyright (c) 2025 Colin McDonnell
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+systemjs 6.15.1 (MIT)
+
+MIT License
+-----------
+
+Copyright (C) 2013-2022 Guy Bedford
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/

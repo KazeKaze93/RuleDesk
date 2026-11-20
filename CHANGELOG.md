@@ -2,6 +2,11 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.74.2
+
+- The licence is named: GPL-3.0-or-later, in `LICENSE`, in `package.json` and in the header of the script as `@license`
+- The built file carries the copyright notices and licence texts of what is inside it, Preact, Zod and SystemJS, all MIT, as a comment at its end. The minifier had dropped them. The same texts are in `THIRD_PARTY_LICENSES.md`
+
 ## 0.74.1
 
 - The script writes to the browser's console only what went wrong. The lines of a favorites sync that went well, and the hidden storage key that showed them, were for the making of the script and are gone
