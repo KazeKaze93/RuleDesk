@@ -12,16 +12,19 @@
 
 ## Release
 
-The repository is `KazeKaze93/RuleDesk` (called `ruledesk-web` until 0.24.0). There is one branch, `main`. Users install and update from the built file in it, so the build is committed.
+The repository is `KazeKaze93/RuleDesk` (called `ruledesk-web` until 0.24.0). Users install and update from the built file in `main`, so the build is committed, and what is in `main` is what every user gets at the next update.
+
+Since 20.11.2026 nothing is pushed to `main` directly: the branch is protected, for the owner too. Work is done on a branch (`dev/<what-it-is>`), pushed, and brought in by a pull request. Only the owner of the repository can merge; nobody else has write access.
 
 1. Bump the version in `package.json` and in `vite.config.ts` (the userscript header). Run `npm install --package-lock-only` so `package-lock.json` follows.
 2. Add an entry at the top of `CHANGELOG.md`: what changed for the user, not how.
 3. `npm run build`, `npm test`.
-4. Commit as `Release X.Y.Z: <summary>` with `dist/ruledesk-web.user.js` added by `git add -f` (the `dist` folder is ignored otherwise). Push `main`.
+4. On the branch, commit as `Release X.Y.Z: <summary>` with `dist/ruledesk-web.user.js` added by `git add -f` (the `dist` folder is ignored otherwise). Push the branch and open a pull request into `main`.
+5. Merge the pull request. For a minor version, tag the merge commit `vX.Y.0` and make the GitHub release from the changelog entry.
 
 Script managers pick the new version up from `@updateURL`. Every change a user should receive needs a version bump; without it the manager does not update.
 
-A change counts as done when it is pushed, the types and tests pass, the build is committed, and the behaviour was checked on the live site.
+A change counts as done when its pull request is merged, the types and tests pass, the build is committed, and the behaviour was checked on the live site. A branch can be tried before the merge: the raw address of the built file at the branch's commit installs that build.
 
 ## Checking behaviour
 
