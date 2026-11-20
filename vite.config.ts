@@ -1,6 +1,6 @@
 import preact from "@preact/preset-vite";
 import { defineConfig } from "vitest/config";
-import monkey from "vite-plugin-monkey";
+import monkey, { cdn } from "vite-plugin-monkey";
 
 export default defineConfig({
   plugins: [
@@ -30,8 +30,14 @@ export default defineConfig({
       },
       build: {
         fileName: "ruledesk-web.user.js",
-        // Dynamic import("./boot/app") stays one userscript file (SystemJS inlined).
-        systemjs: "inline",
+        // The parts of the script (dynamic import("./boot/app")) are loaded by
+        // SystemJS. It is not put inside the file (0.75.0): the plugin has only
+        // its minified build to put there, and the catalogue the script is
+        // published in takes minified code from a recognised CDN only, by
+        // @require (sleazyfork.org/en/help/external-scripts, /help/cdns: jsDelivr
+        // with the version of the package in the address). The script manager
+        // fetches it when the script is installed or updated and keeps it.
+        systemjs: cdn.jsdelivr()[1],
       },
     }),
   ],

@@ -18,14 +18,14 @@ import { fileURLToPath } from "node:url";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 /**
- * What is inside the built file. preact and zod are imported by src/; SystemJS
- * is put in by vite-plugin-monkey (`systemjs: "inline"` in vite.config.ts) to
- * load the parts of the script. A package added to the bundle is added here.
+ * What is inside the built file: preact and zod, imported by src/. SystemJS,
+ * which loads the parts of the script, is not inside it since 0.75.0: the
+ * header names it by @require and the script manager fetches it, so no copy
+ * of it is given out with this file. A package added to the bundle is added here.
  */
 const BUNDLED = [
   { name: "preact", why: "the interface of the script" },
   { name: "zod", why: "checking of stored and imported data" },
-  { name: "systemjs", why: "the loader of the parts of the script, put in by vite-plugin-monkey" },
 ];
 
 const DIST_FILE = resolve(root, "dist", "ruledesk-web.user.js");

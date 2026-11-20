@@ -6,6 +6,7 @@ What changed for the user in each version, newest first. Versions before 0.12.0 
 
 - The built file is no longer minified: it keeps the names and the spaces of the source and can be read. It is twice as large (1.29 MB); measured, the first paint comes about 4 ms later on a mock page and about 12 ms later on the site
 - The header no longer names an address for updates (`@updateURL`, `@downloadURL`). A script manager checks the address the script was installed from
+- SystemJS, the loader of the parts of the script, is no longer inside the file: the script manager fetches it from jsDelivr when the script is installed or updated (`@require` in the header)
 
 ## 0.74.3
 
