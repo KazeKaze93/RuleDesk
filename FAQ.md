@@ -4,6 +4,12 @@ Short answers to what comes up most often. What the script does is in the [READM
 
 ## Installing and updating
 
+**Does it work in my browser, or with my script manager?**
+It is made and checked on one setup: desktop Chrome with Tampermonkey. Violentmonkey and other managers, Firefox and other browsers, phones and tablets were not tried. It may work; nobody has looked.
+
+**The site's old look flashes before the script's on every page.**
+In Tampermonkey open Dashboard → Settings → Security → Content Script API and choose **UserScripts API Dynamic**. With the plain "UserScripts API" the flash was there on every load, and pages opened slower.
+
 **How do I get a new version?**
 Tampermonkey checks for updates on its own schedule, once a day by default. To check now: Tampermonkey icon → Utilities → "Check for userscript updates". The interval is in Tampermonkey's settings, under "Userscript Update".
 
