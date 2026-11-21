@@ -19,7 +19,13 @@ import {
   RDW_HASH_STATS,
   STATS_MENU_SETTING_ID,
 } from "../pages/constants";
-import { resolveFeatureEnabled, type BootLayoutSettings } from "./cheap-appearance";
+import {
+  peekSeenPostId,
+  resolveFeatureEnabled,
+  type BootLayoutSettings,
+} from "./cheap-appearance";
+import { readFavoritesUser } from "./favorites-user";
+import { readFeedCountCache, sameSearch, showFeedCount } from "./feed-count";
 import { applyHeaderLayout } from "./header-layout";
 import {
   STICKY_HEADER_DEFAULT,
@@ -41,6 +47,7 @@ import {
  */
 
 const FEED_FEATURE_ID = "feed";
+const FEED_COUNTER_FEATURE_ID = "feed-counter";
 const FEED_LABEL = "Feed";
 const MY_FAVORITES_LINK_SELECTOR = `li#${MY_FAVORITES_CONTAINER_ID} a[href*="page=favorites"]`;
 const POSITIVE_INT = /^[1-9]\d*$/;
@@ -65,20 +72,28 @@ function makeItem(id: string, label: string, href: string): HTMLLIElement {
   return item;
 }
 
-/** The address of the user's favorites, from the site's own menu link. */
-function favoritesHref(): string | null {
+/** The id in the site's own menu link, or null when the page has no such link. */
+function userIdFromSiteLink(): string | null {
   const link = document.querySelector(MY_FAVORITES_LINK_SELECTOR);
   const href = link?.getAttribute("href");
   if (href === null || href === undefined) {
     return null;
   }
-  let userId: string | null;
   try {
-    userId = new URL(href, window.location.href).searchParams.get(SEARCH_PARAM_ID);
+    const userId = new URL(href, window.location.href).searchParams.get(SEARCH_PARAM_ID);
+    return userId !== null && POSITIVE_INT.test(userId) ? userId : null;
   } catch {
     return null;
   }
-  if (userId === null || !POSITIVE_INT.test(userId)) {
+}
+
+/**
+ * The address of the user's favorites: from the site's own menu link, and on a
+ * page that has none (Comments) from the id kept by the menu code.
+ */
+function favoritesHref(): string | null {
+  const userId = userIdFromSiteLink() ?? readFavoritesUser();
+  if (userId === null) {
     return null;
   }
   const params = new URLSearchParams();
@@ -86,6 +101,26 @@ function favoritesHref(): string | null {
   params.set(SEARCH_PARAM_SECTION, FAVORITES_SECTION_VIEW);
   params.set(SEARCH_PARAM_ID, userId);
   return `${SEARCH_PATH}?${params.toString()}`;
+}
+
+/**
+ * The number beside "Feed", from the answer the feed counter kept on an earlier
+ * page. Put in here so that it is there at the first paint: put in by the
+ * feature, after the paint, it pushed every item after "Feed" to the right.
+ * Only an answer for the present "seen" mark is shown; the feature checks its
+ * age afterwards and changes the number in place.
+ */
+function showKeptFeedCount(): void {
+  const link = document.getElementById(FEED_MENU_ITEM_ID)?.querySelector("a");
+  const kept = readFeedCountCache();
+  if (!(link instanceof HTMLAnchorElement) || kept === null) {
+    return;
+  }
+  // On the feed itself the counter shows nothing: the page shows its new posts.
+  if (kept.seen !== peekSeenPostId() || sameSearch(kept.href, window.location.href)) {
+    return;
+  }
+  showFeedCount(link, kept);
 }
 
 /**
@@ -117,6 +152,9 @@ export function installMenuSkeleton(layout: BootLayoutSettings): boolean {
   // The Feed feature sets the real address when it mounts.
   if (resolveFeatureEnabled(layout, FEED_FEATURE_ID, true)) {
     place(FEED_MENU_ITEM_ID, FEED_LABEL, RDW_HASH_FOLLOWING);
+    if (resolveFeatureEnabled(layout, FEED_COUNTER_FEATURE_ID, true)) {
+      showKeptFeedCount();
+    }
   }
   place(MENU_ITEM_ID.collections, MENU_LABEL.collections, RDW_HASH_COLLECTIONS);
   place(MENU_ITEM_ID.following, MENU_LABEL.following, RDW_HASH_FOLLOWING);

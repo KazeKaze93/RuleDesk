@@ -63,9 +63,13 @@ export const CARD_CSS = `
   color: #a12828;
 }
 
-.${CSS_CLASS.cardFav}.${CSS_CLASS.cardFavPending},
-.${CSS_CLASS.cardFav}:disabled {
-  cursor: wait;
+/* While the star's request is on its way the cursor stays the pointer (see
+   kit/button.tsx). The star is an icon button of the kit as well, and that
+   one gives a disabled button the "not allowed" cursor: "button" in front
+   makes this rule the stronger of the two wherever it stands. */
+button.${CSS_CLASS.cardFav}.${CSS_CLASS.cardFavPending},
+button.${CSS_CLASS.cardFav}:disabled {
+  cursor: pointer;
 }
 
 .${CSS_CLASS.thumb}:has(> a[style*="display: none"]) .${CSS_CLASS.cardFav},

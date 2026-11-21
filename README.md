@@ -135,7 +135,7 @@ The full list is in [docs/features.md](docs/features.md#what-the-script-will-not
 
 ## Found a bug?
 
-Report it in one place: [Issues on GitHub](https://github.com/KazeKaze93/RuleDesk/issues/new/choose). The form asks for what is needed to find it: the version of the script (RuleDesk, the gear in the header: "Settings · 0.75.0" under the name), your browser, your script manager and the theme, the page, and what you did. Do not paste your API key. Issues are public: crop a screenshot to the part that is wrong.
+Report it in one place: [Issues on GitHub](https://github.com/KazeKaze93/RuleDesk/issues/new/choose). The form asks for what is needed to find it: the version of the script (RuleDesk, the gear in the header: "Settings · 0.75.1" under the name), your browser, your script manager and the theme, the page, and what you did. Do not paste your API key. Issues are public: crop a screenshot to the part that is wrong.
 
 ## Licence
 

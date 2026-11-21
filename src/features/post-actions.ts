@@ -211,8 +211,8 @@ ${BODY_SELECTOR} #${POST_ACTIONS_ID} button.rdw-post-panel-download {
   cursor: pointer;
 }
 ${BODY_SELECTOR} #${POST_ACTIONS_ID} button.rdw-post-panel-download:disabled {
+  /* Dimmed while the file is saved; the cursor stays as it is (see kit/button.tsx). */
   opacity: 0.55;
-  cursor: progress;
 }
 ${BODY_SELECTOR} #${POST_ACTIONS_ID} button.rdw-post-panel-download[data-phase="done"] {
   border-color: var(--rdw-accent);

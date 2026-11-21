@@ -1,3 +1,4 @@
+import { rememberFavoritesUser } from "../boot/favorites-user";
 import { NAV_DUE_CLASS, applyHeaderLayout, markFavoritesCurrent } from "../boot/header-layout";
 import { currentBackupStatus } from "../storage/history";
 import {
@@ -87,6 +88,8 @@ export function persistFavoritesUserId(userId: number): void {
     return;
   }
   const normalized = Math.trunc(userId);
+  // For the menu built before the first paint on a page without the site's link.
+  rememberFavoritesUser(normalized);
   const existing = getSyncState();
   if (existing?.userId === normalized) {
     return;
