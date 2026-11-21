@@ -7,7 +7,7 @@
   "description": "Userscript for rule34.xxx: collections, playlists, favorites, artist updates, page tweaks",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build && node scripts/third-party-notices.mjs",
+    "build": "tsc --noEmit && vite build && node scripts/readable-systemjs.mjs && node scripts/third-party-notices.mjs && node scripts/check-built-file.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

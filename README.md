@@ -139,4 +139,4 @@ Report it in one place: [Issues on GitHub](https://github.com/KazeKaze93/RuleDes
 
 ## Licence
 
-RuleDesk is free software under the [GNU General Public License, version 3 or later](LICENSE). The built file also contains Preact and Zod, each under the MIT licence; their notices are at the end of the built file and in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
+RuleDesk is free software under the [GNU General Public License, version 3 or later](LICENSE). The built file also contains Preact, Zod and SystemJS, each under the MIT licence; their notices are at the end of the built file and in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
