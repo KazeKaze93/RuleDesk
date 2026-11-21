@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.75.1
+
+- Header: the menu no longer moves a moment after a page opens. The number beside "Feed" and, on pages where the site has no "My Favorites" link of its own (Comments), the item "Favorites" came in after the first paint and pushed the items after them to the right; both are there from the start now
+
 ## 0.75.0
 
 - The built file is no longer minified: it keeps the names and the spaces of the source and can be read. It is twice as large (1.29 MB); measured, the first paint comes about 4 ms later on a mock page and about 12 ms later on the site

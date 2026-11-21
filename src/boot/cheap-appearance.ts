@@ -177,6 +177,19 @@ export function peekLayoutSettings(): BootLayoutSettings {
   return { tweaksEnabled, features, featureChoice };
 }
 
+/**
+ * The newest post id marked as seen in the feed, from the same cached GM blob.
+ * 0 when nothing is marked.
+ */
+export function peekSeenPostId(): number {
+  const raw = readRawStorageOnce();
+  if (!isRecord(raw) || !isRecord(raw.updates)) {
+    return 0;
+  }
+  const seen = raw.updates.seenPostId;
+  return typeof seen === "number" && Number.isFinite(seen) && seen > 0 ? Math.floor(seen) : 0;
+}
+
 export function resolveFeatureEnabled(
   layout: BootLayoutSettings,
   id: string,

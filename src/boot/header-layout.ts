@@ -1,4 +1,5 @@
 import { CURRENT_PAGE_CLASS, MENU_ITEM_ID, MY_FAVORITES_CONTAINER_ID } from "../pages/constants";
+import { FEED_COUNT_CSS } from "./feed-count";
 import { STICKY_HEADER_CSS } from "./sticky-header";
 
 /**
@@ -313,6 +314,7 @@ ${iconRule(`${SUBNAV_SELECTOR} > li.${SUBNAV_ICON_CLASS_PREFIX}random > a`, ICON
 ${iconRule(`${SUBNAV_SELECTOR} > li.${SUBNAV_ICON_CLASS_PREFIX}help > a`, ICON.help, SUBNAV_ICON_PX)}
 ${iconRule(`${SUBNAV_SELECTOR} > li.${SUBNAV_ICON_CLASS_PREFIX}upload > a`, ICON.upload, SUBNAV_ICON_PX)}
 ${iconRule(`${SUBNAV_SELECTOR} > li.${SUBNAV_ICON_CLASS_PREFIX}upload-video > a`, ICON.uploadVideo, SUBNAV_ICON_PX)}
+${FEED_COUNT_CSS}
 ${STICKY_HEADER_CSS}
 `.trim();
 
