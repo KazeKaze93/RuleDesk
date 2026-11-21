@@ -18,14 +18,31 @@ import { fileURLToPath } from "node:url";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 /**
- * What is inside the built file: preact and zod, imported by src/. SystemJS,
- * which loads the parts of the script, is not inside it since 0.75.0: the
- * header names it by @require and the script manager fetches it, so no copy
- * of it is given out with this file. A package added to the bundle is added here.
+ * What is inside the built file, and where each comes from. preact and zod are
+ * imported by src/; preact is built from the sources the package carries
+ * (vite.config.ts, resolve.alias). SystemJS loads the parts of the script: the
+ * plugin puts it in and scripts/readable-systemjs.mjs swaps in its readable
+ * build. A package added to the bundle is added here.
  */
 const BUNDLED = [
-  { name: "preact", why: "the interface of the script" },
-  { name: "zod", why: "checking of stored and imported data" },
+  {
+    name: "preact",
+    why: "the interface of the script",
+    form: "built from the sources in the package (src, hooks/src, compat/src, jsx-runtime/src)",
+    source: "https://github.com/preactjs/preact",
+  },
+  {
+    name: "zod",
+    why: "checking of stored and imported data",
+    form: "the modules of the package, as published",
+    source: "https://github.com/colinhacks/zod",
+  },
+  {
+    name: "systemjs",
+    why: "the loader of the parts of the script",
+    form: "dist/system.js and dist/extras/named-register.js of the package, as published",
+    source: "https://github.com/systemjs/systemjs",
+  },
 ];
 
 const DIST_FILE = resolve(root, "dist", "ruledesk-web.user.js");
@@ -61,6 +78,8 @@ const markdown = [
     "",
     `Licence: ${entry.license}. Used for: ${entry.why}.`,
     "",
+    `Source: ${entry.source} (npm package \`${entry.name}@${entry.version}\`). In the built file: ${entry.form}.`,
+    "",
     "```",
     entry.text,
     "```",
@@ -74,6 +93,8 @@ const block = [
   ...packages.flatMap((entry) => [
     "",
     `${entry.name} ${entry.version} (${entry.license})`,
+    `Source: ${entry.source} (npm package ${entry.name}@${entry.version})`,
+    `In this file: ${entry.form}`,
     "",
     entry.text,
   ]),

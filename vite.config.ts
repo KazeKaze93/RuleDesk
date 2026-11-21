@@ -1,6 +1,18 @@
 import preact from "@preact/preset-vite";
 import { defineConfig } from "vitest/config";
-import monkey, { cdn } from "vite-plugin-monkey";
+import { fileURLToPath } from "node:url";
+import monkey from "vite-plugin-monkey";
+
+/**
+ * Preact is built from its sources, which the package carries beside its
+ * published build (0.75.0). The published build is minified: its names are one
+ * letter long, and the catalogue the script is published in takes no minified
+ * code inside a script. Every way the code and the tests name Preact is turned
+ * to the sources here, so that there is one Preact in the file and not two.
+ */
+function preactSource(path: string): string {
+  return fileURLToPath(new URL(`./node_modules/preact/${path}`, import.meta.url));
+}
 
 export default defineConfig({
   plugins: [
@@ -31,13 +43,13 @@ export default defineConfig({
       build: {
         fileName: "ruledesk-web.user.js",
         // The parts of the script (dynamic import("./boot/app")) are loaded by
-        // SystemJS. It is not put inside the file (0.75.0): the plugin has only
-        // its minified build to put there, and the catalogue the script is
-        // published in takes minified code from a recognised CDN only, by
-        // @require (sleazyfork.org/en/help/external-scripts, /help/cdns: jsDelivr
-        // with the version of the package in the address). The script manager
-        // fetches it when the script is installed or updated and keeps it.
-        systemjs: cdn.jsdelivr()[1],
+        // SystemJS, put inside the file: one file, nothing fetched from
+        // elsewhere, no @require in the header. The plugin puts the minified
+        // build of SystemJS in; scripts/readable-systemjs.mjs, run by
+        // `npm run build`, puts the readable build of the same package in its
+        // place (the catalogue the script is published in takes no minified
+        // code inside a script: sleazyfork.org/en/help/code-rules).
+        systemjs: "inline",
       },
     }),
   ],
@@ -50,11 +62,19 @@ export default defineConfig({
   },
   resolve: {
     dedupe: ["preact"],
-    alias: {
-      react: "preact/compat",
-      "react-dom": "preact/compat",
-      "react/jsx-runtime": "preact/jsx-runtime",
-    },
+    alias: [
+      { find: /^preact$/, replacement: preactSource("src/index.js") },
+      { find: /^preact\/hooks$/, replacement: preactSource("hooks/src/index.js") },
+      {
+        find: /^(?:preact\/compat|react|react-dom)$/,
+        replacement: preactSource("compat/src/index.js"),
+      },
+      {
+        find: /^(?:preact|react)\/jsx-(?:dev-)?runtime$/,
+        replacement: preactSource("jsx-runtime/src/index.js"),
+      },
+      { find: /^preact\/test-utils$/, replacement: preactSource("test-utils/src/index.js") },
+    ],
   },
   test: {
     environment: "jsdom",

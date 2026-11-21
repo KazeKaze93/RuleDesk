@@ -5,9 +5,6 @@
 // @description  Collections, playlists, favorites, artist updates, and page tweaks for rule34.xxx
 // @license      GPL-3.0-or-later
 // @match        https://rule34.xxx/*
-// @require      https://cdn.jsdelivr.net/npm/systemjs@6.15.1/dist/system.min.js
-// @require      https://cdn.jsdelivr.net/npm/systemjs@6.15.1/dist/extras/named-register.min.js
-// @require      data:application/javascript,%3B(typeof%20System!%3D'undefined')%26%26(System%3Dnew%20System.constructor())%3B
 // @connect      api.rule34.xxx
 // @grant        GM_download
 // @grant        GM_getValue
@@ -17,6 +14,1136 @@
 // @run-at       document-start
 // ==/UserScript==
 
+// systemjs 6.15.1, dist/system.js (MIT), https://github.com/systemjs/systemjs
+/*!
+ * SystemJS 6.15.1
+ */
+(function () {
+
+  function errMsg(errCode, msg) {
+    return (msg || "") + " (SystemJS Error#" + errCode + " " + "https://github.com/systemjs/systemjs/blob/main/docs/errors.md#" + errCode + ")";
+  }
+
+  var hasSymbol = typeof Symbol !== 'undefined';
+  var hasSelf = typeof self !== 'undefined';
+  var hasDocument = typeof document !== 'undefined';
+
+  var envGlobal = hasSelf ? self : global;
+
+  var baseUrl;
+
+  if (hasDocument) {
+    var baseEl = document.querySelector('base[href]');
+    if (baseEl)
+      baseUrl = baseEl.href;
+  }
+
+  if (!baseUrl && typeof location !== 'undefined') {
+    baseUrl = location.href.split('#')[0].split('?')[0];
+    var lastSepIndex = baseUrl.lastIndexOf('/');
+    if (lastSepIndex !== -1)
+      baseUrl = baseUrl.slice(0, lastSepIndex + 1);
+  }
+
+  var backslashRegEx = /\\/g;
+  function resolveIfNotPlainOrUrl (relUrl, parentUrl) {
+    if (relUrl.indexOf('\\') !== -1)
+      relUrl = relUrl.replace(backslashRegEx, '/');
+    // protocol-relative
+    if (relUrl[0] === '/' && relUrl[1] === '/') {
+      return parentUrl.slice(0, parentUrl.indexOf(':') + 1) + relUrl;
+    }
+    // relative-url
+    else if (relUrl[0] === '.' && (relUrl[1] === '/' || relUrl[1] === '.' && (relUrl[2] === '/' || relUrl.length === 2 && (relUrl += '/')) ||
+        relUrl.length === 1  && (relUrl += '/')) ||
+        relUrl[0] === '/') {
+      var parentProtocol = parentUrl.slice(0, parentUrl.indexOf(':') + 1);
+      // Disabled, but these cases will give inconsistent results for deep backtracking
+      //if (parentUrl[parentProtocol.length] !== '/')
+      //  throw Error('Cannot resolve');
+      // read pathname from parent URL
+      // pathname taken to be part after leading "/"
+      var pathname;
+      if (parentUrl[parentProtocol.length + 1] === '/') {
+        // resolving to a :// so we need to read out the auth and host
+        if (parentProtocol !== 'file:') {
+          pathname = parentUrl.slice(parentProtocol.length + 2);
+          pathname = pathname.slice(pathname.indexOf('/') + 1);
+        }
+        else {
+          pathname = parentUrl.slice(8);
+        }
+      }
+      else {
+        // resolving to :/ so pathname is the /... part
+        pathname = parentUrl.slice(parentProtocol.length + (parentUrl[parentProtocol.length] === '/'));
+      }
+
+      if (relUrl[0] === '/')
+        return parentUrl.slice(0, parentUrl.length - pathname.length - 1) + relUrl;
+
+      // join together and split for removal of .. and . segments
+      // looping the string instead of anything fancy for perf reasons
+      // '../../../../../z' resolved to 'x/y' is just 'z'
+      var segmented = pathname.slice(0, pathname.lastIndexOf('/') + 1) + relUrl;
+
+      var output = [];
+      var segmentIndex = -1;
+      for (var i = 0; i < segmented.length; i++) {
+        // busy reading a segment - only terminate on '/'
+        if (segmentIndex !== -1) {
+          if (segmented[i] === '/') {
+            output.push(segmented.slice(segmentIndex, i + 1));
+            segmentIndex = -1;
+          }
+        }
+
+        // new segment - check if it is relative
+        else if (segmented[i] === '.') {
+          // ../ segment
+          if (segmented[i + 1] === '.' && (segmented[i + 2] === '/' || i + 2 === segmented.length)) {
+            output.pop();
+            i += 2;
+          }
+          // ./ segment
+          else if (segmented[i + 1] === '/' || i + 1 === segmented.length) {
+            i += 1;
+          }
+          else {
+            // the start of a new segment as below
+            segmentIndex = i;
+          }
+        }
+        // it is the start of a new segment
+        else {
+          segmentIndex = i;
+        }
+      }
+      // finish reading out the last segment
+      if (segmentIndex !== -1)
+        output.push(segmented.slice(segmentIndex));
+      return parentUrl.slice(0, parentUrl.length - pathname.length) + output.join('');
+    }
+  }
+
+  /*
+   * Import maps implementation
+   *
+   * To make lookups fast we pre-resolve the entire import map
+   * and then match based on backtracked hash lookups
+   *
+   */
+
+  function resolveUrl (relUrl, parentUrl) {
+    return resolveIfNotPlainOrUrl(relUrl, parentUrl) || (relUrl.indexOf(':') !== -1 ? relUrl : resolveIfNotPlainOrUrl('./' + relUrl, parentUrl));
+  }
+
+  function resolveAndComposePackages (packages, outPackages, baseUrl, parentMap, parentUrl) {
+    for (var p in packages) {
+      var resolvedLhs = resolveIfNotPlainOrUrl(p, baseUrl) || p;
+      var rhs = packages[p];
+      // package fallbacks not currently supported
+      if (typeof rhs !== 'string')
+        continue;
+      var mapped = resolveImportMap(parentMap, resolveIfNotPlainOrUrl(rhs, baseUrl) || rhs, parentUrl);
+      if (!mapped) {
+        targetWarning('W1', p, rhs, 'bare specifier did not resolve');
+      }
+      else
+        outPackages[resolvedLhs] = mapped;
+    }
+  }
+
+  function resolveAndComposeImportMap (json, baseUrl, outMap) {
+    if (json.imports)
+      resolveAndComposePackages(json.imports, outMap.imports, baseUrl, outMap, null);
+
+    var u;
+    for (u in json.scopes || {}) {
+      var resolvedScope = resolveUrl(u, baseUrl);
+      resolveAndComposePackages(json.scopes[u], outMap.scopes[resolvedScope] || (outMap.scopes[resolvedScope] = {}), baseUrl, outMap, resolvedScope);
+    }
+
+    for (u in json.depcache || {})
+      outMap.depcache[resolveUrl(u, baseUrl)] = json.depcache[u];
+    
+    for (u in json.integrity || {})
+      outMap.integrity[resolveUrl(u, baseUrl)] = json.integrity[u];
+  }
+
+  function getMatch (path, matchObj) {
+    if (matchObj[path])
+      return path;
+    var sepIndex = path.length;
+    do {
+      var segment = path.slice(0, sepIndex + 1);
+      if (segment in matchObj)
+        return segment;
+    } while ((sepIndex = path.lastIndexOf('/', sepIndex - 1)) !== -1)
+  }
+
+  function applyPackages (id, packages) {
+    var pkgName = getMatch(id, packages);
+    if (pkgName) {
+      var pkg = packages[pkgName];
+      if (pkg === null) return;
+      if (id.length > pkgName.length && pkg[pkg.length - 1] !== '/') {
+        targetWarning('W2', pkgName, pkg, "should have a trailing '/'");
+      }
+      else
+        return pkg + id.slice(pkgName.length);
+    }
+  }
+
+  function targetWarning (code, match, target, msg) {
+    console.warn(errMsg(code, "Package target " + msg + ", resolving target '" + target + "' for " + match));
+  }
+
+  function resolveImportMap (importMap, resolvedOrPlain, parentUrl) {
+    var scopes = importMap.scopes;
+    var scopeUrl = parentUrl && getMatch(parentUrl, scopes);
+    while (scopeUrl) {
+      var packageResolution = applyPackages(resolvedOrPlain, scopes[scopeUrl]);
+      if (packageResolution)
+        return packageResolution;
+      scopeUrl = getMatch(scopeUrl.slice(0, scopeUrl.lastIndexOf('/')), scopes);
+    }
+    return applyPackages(resolvedOrPlain, importMap.imports) || resolvedOrPlain.indexOf(':') !== -1 && resolvedOrPlain;
+  }
+
+  /*
+   * SystemJS Core
+   *
+   * Provides
+   * - System.import
+   * - System.register support for
+   *     live bindings, function hoisting through circular references,
+   *     reexports, dynamic import, import.meta.url, top-level await
+   * - System.getRegister to get the registration
+   * - Symbol.toStringTag support in Module objects
+   * - Hookable System.createContext to customize import.meta
+   * - System.onload(err, id, deps) handler for tracing / hot-reloading
+   *
+   * Core comes with no System.prototype.resolve or
+   * System.prototype.instantiate implementations
+   */
+
+  var toStringTag$1 = hasSymbol && Symbol.toStringTag;
+  var REGISTRY = hasSymbol ? Symbol() : '@';
+
+  function SystemJS () {
+    this[REGISTRY] = {};
+  }
+
+  var systemJSPrototype = SystemJS.prototype;
+
+  systemJSPrototype.import = function (id, parentUrl, meta) {
+    var loader = this;
+    (parentUrl && typeof parentUrl === 'object') && (meta = parentUrl, parentUrl = undefined);
+    return Promise.resolve(loader.prepareImport())
+    .then(function() {
+      return loader.resolve(id, parentUrl, meta);
+    })
+    .then(function (id) {
+      var load = getOrCreateLoad(loader, id, undefined, meta);
+      return load.C || topLevelLoad(loader, load);
+    });
+  };
+
+  // Hookable createContext function -> allowing eg custom import meta
+  systemJSPrototype.createContext = function (parentId) {
+    var loader = this;
+    return {
+      url: parentId,
+      resolve: function (id, parentUrl) {
+        return Promise.resolve(loader.resolve(id, parentUrl || parentId));
+      }
+    };
+  };
+
+  // onLoad(err, id, deps) provided for tracing / hot-reloading
+  systemJSPrototype.onload = function () {};
+  function loadToId (load) {
+    return load.id;
+  }
+  function triggerOnload (loader, load, err, isErrSource) {
+    loader.onload(err, load.id, load.d && load.d.map(loadToId), !!isErrSource);
+    if (err)
+      throw err;
+  }
+
+  var lastRegister;
+  systemJSPrototype.register = function (deps, declare, metas) {
+    lastRegister = [deps, declare, metas];
+  };
+
+  /*
+   * getRegister provides the last anonymous System.register call
+   */
+  systemJSPrototype.getRegister = function () {
+    var _lastRegister = lastRegister;
+    lastRegister = undefined;
+    return _lastRegister;
+  };
+
+  function getOrCreateLoad (loader, id, firstParentUrl, meta) {
+    var load = loader[REGISTRY][id];
+    if (load)
+      return load;
+
+    var importerSetters = [];
+    var ns = Object.create(null);
+    if (toStringTag$1)
+      Object.defineProperty(ns, toStringTag$1, { value: 'Module' });
+
+    var instantiatePromise = Promise.resolve()
+    .then(function () {
+      return loader.instantiate(id, firstParentUrl, meta);
+    })
+    .then(function (registration) {
+      if (!registration)
+        throw Error(errMsg(2, 'Module ' + id + ' did not instantiate'));
+      function _export (name, value) {
+        // note if we have hoisted exports (including reexports)
+        load.h = true;
+        var changed = false;
+        if (typeof name === 'string') {
+          if (!(name in ns) || ns[name] !== value) {
+            ns[name] = value;
+            changed = true;
+          }
+        }
+        else {
+          for (var p in name) {
+            var value = name[p];
+            if (!(p in ns) || ns[p] !== value) {
+              ns[p] = value;
+              changed = true;
+            }
+          }
+
+          if (name && name.__esModule) {
+            ns.__esModule = name.__esModule;
+          }
+        }
+        if (changed)
+          for (var i = 0; i < importerSetters.length; i++) {
+            var setter = importerSetters[i];
+            if (setter) setter(ns);
+          }
+        return value;
+      }
+      var declared = registration[1](_export, registration[1].length === 2 ? {
+        import: function (importId, meta) {
+          return loader.import(importId, id, meta);
+        },
+        meta: loader.createContext(id)
+      } : undefined);
+      load.e = declared.execute || function () {};
+      return [registration[0], declared.setters || [], registration[2] || []];
+    }, function (err) {
+      load.e = null;
+      load.er = err;
+      triggerOnload(loader, load, err, true);
+      throw err;
+    });
+
+    var linkPromise = instantiatePromise
+    .then(function (instantiation) {
+      return Promise.all(instantiation[0].map(function (dep, i) {
+        var setter = instantiation[1][i];
+        var meta = instantiation[2][i];
+        return Promise.resolve(loader.resolve(dep, id))
+        .then(function (depId) {
+          var depLoad = getOrCreateLoad(loader, depId, id, meta);
+          // depLoad.I may be undefined for already-evaluated
+          return Promise.resolve(depLoad.I)
+          .then(function () {
+            if (setter) {
+              depLoad.i.push(setter);
+              // only run early setters when there are hoisted exports of that module
+              // the timing works here as pending hoisted export calls will trigger through importerSetters
+              if (depLoad.h || !depLoad.I)
+                setter(depLoad.n);
+            }
+            return depLoad;
+          });
+        });
+      }))
+      .then(function (depLoads) {
+        load.d = depLoads;
+      });
+    });
+
+    // Capital letter = a promise function
+    return load = loader[REGISTRY][id] = {
+      id: id,
+      // importerSetters, the setters functions registered to this dependency
+      // we retain this to add more later
+      i: importerSetters,
+      // module namespace object
+      n: ns,
+      // extra module information for import assertion
+      // shape like: { assert: { type: 'xyz' } }
+      m: meta,
+
+      // instantiate
+      I: instantiatePromise,
+      // link
+      L: linkPromise,
+      // whether it has hoisted exports
+      h: false,
+
+      // On instantiate completion we have populated:
+      // dependency load records
+      d: undefined,
+      // execution function
+      e: undefined,
+
+      // On execution we have populated:
+      // the execution error if any
+      er: undefined,
+      // in the case of TLA, the execution promise
+      E: undefined,
+
+      // On execution, L, I, E cleared
+
+      // Promise for top-level completion
+      C: undefined,
+
+      // parent instantiator / executor
+      p: undefined
+    };
+  }
+
+  function instantiateAll (loader, load, parent, loaded) {
+    if (!loaded[load.id]) {
+      loaded[load.id] = true;
+      // load.L may be undefined for already-instantiated
+      return Promise.resolve(load.L)
+      .then(function () {
+        if (!load.p || load.p.e === null)
+          load.p = parent;
+        return Promise.all(load.d.map(function (dep) {
+          return instantiateAll(loader, dep, parent, loaded);
+        }));
+      })
+      .catch(function (err) {
+        if (load.er)
+          throw err;
+        load.e = null;
+        triggerOnload(loader, load, err, false);
+        throw err;
+      });
+    }
+  }
+
+  function topLevelLoad (loader, load) {
+    return load.C = instantiateAll(loader, load, load, {})
+    .then(function () {
+      return postOrderExec(loader, load, {});
+    })
+    .then(function () {
+      return load.n;
+    });
+  }
+
+  // the closest we can get to call(undefined)
+  var nullContext = Object.freeze(Object.create(null));
+
+  // returns a promise if and only if a top-level await subgraph
+  // throws on sync errors
+  function postOrderExec (loader, load, seen) {
+    if (seen[load.id])
+      return;
+    seen[load.id] = true;
+
+    if (!load.e) {
+      if (load.er)
+        throw load.er;
+      if (load.E)
+        return load.E;
+      return;
+    }
+
+    // From here we're about to execute the load.
+    // Because the execution may be async, we pop the `load.e` first.
+    // So `load.e === null` always means the load has been executed or is executing.
+    // To inspect the state:
+    // - If `load.er` is truthy, the execution has threw or has been rejected;
+    // - otherwise, either the `load.E` is a promise, means it's under async execution, or
+    // - the `load.E` is null, means the load has completed the execution or has been async resolved.
+    var exec = load.e;
+    load.e = null;
+
+    // deps execute first, unless circular
+    var depLoadPromises;
+    load.d.forEach(function (depLoad) {
+      try {
+        var depLoadPromise = postOrderExec(loader, depLoad, seen);
+        if (depLoadPromise)
+          (depLoadPromises = depLoadPromises || []).push(depLoadPromise);
+      }
+      catch (err) {
+        load.er = err;
+        triggerOnload(loader, load, err, false);
+        throw err;
+      }
+    });
+    if (depLoadPromises)
+      return Promise.all(depLoadPromises).then(doExec);
+
+    return doExec();
+
+    function doExec () {
+      try {
+        var execPromise = exec.call(nullContext);
+        if (execPromise) {
+          execPromise = execPromise.then(function () {
+            load.C = load.n;
+            load.E = null; // indicates completion
+            if (!false) triggerOnload(loader, load, null, true);
+          }, function (err) {
+            load.er = err;
+            load.E = null;
+            if (!false) triggerOnload(loader, load, err, true);
+            throw err;
+          });
+          return load.E = execPromise;
+        }
+        // (should be a promise, but a minify optimization to leave out Promise.resolve)
+        load.C = load.n;
+        load.L = load.I = undefined;
+      }
+      catch (err) {
+        load.er = err;
+        throw err;
+      }
+      finally {
+        triggerOnload(loader, load, load.er, true);
+      }
+    }
+  }
+
+  envGlobal.System = new SystemJS();
+
+  /*
+   * SystemJS browser attachments for script and import map processing
+   */
+
+  var importMapPromise = Promise.resolve();
+  var importMap = { imports: {}, scopes: {}, depcache: {}, integrity: {} };
+
+  // Scripts are processed immediately, on the first System.import, and on DOMReady.
+  // Import map scripts are processed only once (by being marked) and in order for each phase.
+  // This is to avoid using DOM mutation observers in core, although that would be an alternative.
+  var processFirst = hasDocument;
+  systemJSPrototype.prepareImport = function (doProcessScripts) {
+    if (processFirst || doProcessScripts) {
+      processScripts();
+      processFirst = false;
+    }
+    return importMapPromise;
+  };
+
+  systemJSPrototype.getImportMap = function () {
+    return JSON.parse(JSON.stringify(importMap));
+  };
+
+  if (hasDocument) {
+    processScripts();
+    window.addEventListener('DOMContentLoaded', processScripts);
+  }
+  systemJSPrototype.addImportMap = function (newMap, mapBase) {
+    resolveAndComposeImportMap(newMap, mapBase || baseUrl, importMap);
+  };
+
+  function processScripts () {
+    [].forEach.call(document.querySelectorAll('script'), function (script) {
+      if (script.sp) // sp marker = systemjs processed
+        return;
+      // TODO: deprecate systemjs-module in next major now that we have auto import
+      if (script.type === 'systemjs-module') {
+        script.sp = true;
+        if (!script.src)
+          return;
+        System.import(script.src.slice(0, 7) === 'import:' ? script.src.slice(7) : resolveUrl(script.src, baseUrl)).catch(function (e) {
+          // if there is a script load error, dispatch an "error" event
+          // on the script tag.
+          if (e.message.indexOf('https://github.com/systemjs/systemjs/blob/main/docs/errors.md#3') > -1) {
+            var event = document.createEvent('Event');
+            event.initEvent('error', false, false);
+            script.dispatchEvent(event);
+          }
+          return Promise.reject(e);
+        });
+      }
+      else if (script.type === 'systemjs-importmap') {
+        script.sp = true;
+        // The passThrough property is for letting the module types fetch implementation know that this is not a SystemJS module.
+        var fetchPromise = script.src ? (System.fetch || fetch)(script.src, { integrity: script.integrity, priority: script.fetchPriority, passThrough: true }).then(function (res) {
+          if (!res.ok)
+            throw Error('Invalid status code: ' + res.status);
+          return res.text();
+        }).catch(function (err) {
+          err.message = errMsg('W4', 'Error fetching systemjs-import map ' + script.src) + '\n' + err.message;
+          console.warn(err);
+          if (typeof script.onerror === 'function') {
+              script.onerror();
+          }
+          return '{}';
+        }) : script.innerHTML;
+        importMapPromise = importMapPromise.then(function () {
+          return fetchPromise;
+        }).then(function (text) {
+          extendImportMap(importMap, text, script.src || baseUrl);
+        });
+      }
+    });
+  }
+
+  function extendImportMap (importMap, newMapText, newMapUrl) {
+    var newMap = {};
+    try {
+      newMap = JSON.parse(newMapText);
+    } catch (err) {
+      console.warn(Error((errMsg('W5', "systemjs-importmap contains invalid JSON") + '\n\n' + newMapText + '\n' )));
+    }
+    resolveAndComposeImportMap(newMap, newMapUrl, importMap);
+  }
+
+  /*
+   * Script instantiation loading
+   */
+
+  if (hasDocument) {
+    window.addEventListener('error', function (evt) {
+      lastWindowErrorUrl = evt.filename;
+      lastWindowError = evt.error;
+    });
+    var baseOrigin = location.origin;
+  }
+
+  systemJSPrototype.createScript = function (url) {
+    var script = document.createElement('script');
+    script.async = true;
+    // Only add cross origin for actual cross origin
+    // this is because Safari triggers for all
+    // - https://bugs.webkit.org/show_bug.cgi?id=171566
+    if (url.indexOf(baseOrigin + '/'))
+      script.crossOrigin = 'anonymous';
+    var integrity = importMap.integrity[url];
+    if (integrity)
+      script.integrity = integrity;
+    script.src = url;
+    return script;
+  };
+
+  // Auto imports -> script tags can be inlined directly for load phase
+  var lastAutoImportDeps, lastAutoImportTimeout;
+  var autoImportCandidates = {};
+  var systemRegister = systemJSPrototype.register;
+  systemJSPrototype.register = function (deps, declare) {
+    if (hasDocument && document.readyState === 'loading' && typeof deps !== 'string') {
+      var scripts = document.querySelectorAll('script[src]');
+      var lastScript = scripts[scripts.length - 1];
+      if (lastScript) {
+        lastScript.src;
+        lastAutoImportDeps = deps;
+        // if this is already a System load, then the instantiate has already begun
+        // so this re-import has no consequence
+        var loader = this;
+        lastAutoImportTimeout = setTimeout(function () {
+          autoImportCandidates[lastScript.src] = [deps, declare];
+          loader.import(lastScript.src);
+        });
+      }
+    }
+    else {
+      lastAutoImportDeps = undefined;
+    }
+    return systemRegister.call(this, deps, declare);
+  };
+
+  var lastWindowErrorUrl, lastWindowError;
+  systemJSPrototype.instantiate = function (url, firstParentUrl) {
+    var autoImportRegistration = autoImportCandidates[url];
+    if (autoImportRegistration) {
+      delete autoImportCandidates[url];
+      return autoImportRegistration;
+    }
+    var loader = this;
+    return Promise.resolve(systemJSPrototype.createScript(url)).then(function (script) {
+      return new Promise(function (resolve, reject) {
+        script.addEventListener('error', function () {
+          reject(Error(errMsg(3, 'Error loading ' + url + (firstParentUrl ? ' from ' + firstParentUrl : ''))));
+        });
+        script.addEventListener('load', function () {
+          document.head.removeChild(script);
+          // Note that if an error occurs that isn't caught by this if statement,
+          // that getRegister will return null and a "did not instantiate" error will be thrown.
+          if (lastWindowErrorUrl === url) {
+            reject(lastWindowError);
+          }
+          else {
+            var register = loader.getRegister(url);
+            // Clear any auto import registration for dynamic import scripts during load
+            if (register && register[0] === lastAutoImportDeps)
+              clearTimeout(lastAutoImportTimeout);
+            resolve(register);
+          }
+        });
+        document.head.appendChild(script);
+      });
+    });
+  };
+
+  /*
+   * Fetch loader, sets up shouldFetch and fetch hooks
+   */
+  systemJSPrototype.shouldFetch = function () {
+    return false;
+  };
+  if (typeof fetch !== 'undefined')
+    systemJSPrototype.fetch = fetch;
+
+  var instantiate = systemJSPrototype.instantiate;
+  var jsContentTypeRegEx = /^(text|application)\/(x-)?javascript(;|$)/;
+  systemJSPrototype.instantiate = function (url, parent, meta) {
+    var loader = this;
+    if (!this.shouldFetch(url, parent, meta))
+      return instantiate.apply(this, arguments);
+    return this.fetch(url, {
+      credentials: 'same-origin',
+      integrity: importMap.integrity[url],
+      meta: meta,
+    })
+    .then(function (res) {
+      if (!res.ok)
+        throw Error(errMsg(7, res.status + ' ' + res.statusText + ', loading ' + url + (parent ? ' from ' + parent : '')));
+      var contentType = res.headers.get('content-type');
+      if (!contentType || !jsContentTypeRegEx.test(contentType))
+        throw Error(errMsg(4, 'Unknown Content-Type "' + contentType + '", loading ' + url + (parent ? ' from ' + parent : '')));
+      return res.text().then(function (source) {
+        if (source.indexOf('//# sourceURL=') < 0)
+          source += '\n//# sourceURL=' + url;
+        (0, eval)(source);
+        return loader.getRegister(url);
+      });
+    });
+  };
+
+  systemJSPrototype.resolve = function (id, parentUrl) {
+    parentUrl = parentUrl || !true  || baseUrl;
+    return resolveImportMap((importMap), resolveIfNotPlainOrUrl(id, parentUrl) || id, parentUrl) || throwUnresolved(id, parentUrl);
+  };
+
+  function throwUnresolved (id, parentUrl) {
+    throw Error(errMsg(8, "Unable to resolve bare specifier '" + id + (parentUrl ? "' from " + parentUrl : "'")));
+  }
+
+  var systemInstantiate = systemJSPrototype.instantiate;
+  systemJSPrototype.instantiate = function (url, firstParentUrl, meta) {
+    var preloads = (importMap).depcache[url];
+    if (preloads) {
+      for (var i = 0; i < preloads.length; i++)
+        getOrCreateLoad(this, this.resolve(preloads[i], url), url);
+    }
+    return systemInstantiate.call(this, url, firstParentUrl, meta);
+  };
+
+  /*
+   * Supports loading System.register in workers
+   */
+
+  if (hasSelf && typeof importScripts === 'function')
+    systemJSPrototype.instantiate = function (url) {
+      var loader = this;
+      return Promise.resolve().then(function () {
+        importScripts(url);
+        return loader.getRegister(url);
+      });
+    };
+
+  /*
+   * SystemJS global script loading support
+   * Extra for the s.js build only
+   * (Included by default in system.js build)
+   */
+  (function (global) {
+    var systemJSPrototype = global.System.constructor.prototype;
+
+    // safari unpredictably lists some new globals first or second in object order
+    var firstGlobalProp, secondGlobalProp, lastGlobalProp;
+    function getGlobalProp (useFirstGlobalProp) {
+      var cnt = 0;
+      var foundLastProp, result;
+      for (var p in global) {
+        // do not check frames cause it could be removed during import
+        if (shouldSkipProperty(p))
+          continue;
+        if (cnt === 0 && p !== firstGlobalProp || cnt === 1 && p !== secondGlobalProp)
+          return p;
+        if (foundLastProp) {
+          lastGlobalProp = p;
+          result = useFirstGlobalProp && result || p;
+        }
+        else {
+          foundLastProp = p === lastGlobalProp;
+        }
+        cnt++;
+      }
+      return result;
+    }
+
+    function noteGlobalProps () {
+      // alternatively Object.keys(global).pop()
+      // but this may be faster (pending benchmarks)
+      firstGlobalProp = secondGlobalProp = undefined;
+      for (var p in global) {
+        // do not check frames cause it could be removed during import
+        if (shouldSkipProperty(p))
+          continue;
+        if (!firstGlobalProp)
+          firstGlobalProp = p;
+        else if (!secondGlobalProp)
+          secondGlobalProp = p;
+        lastGlobalProp = p;
+      }
+      return lastGlobalProp;
+    }
+
+    var impt = systemJSPrototype.import;
+    systemJSPrototype.import = function (id, parentUrl, meta) {
+      noteGlobalProps();
+      return impt.call(this, id, parentUrl, meta);
+    };
+
+    var emptyInstantiation = [[], function () { return {} }];
+
+    var getRegister = systemJSPrototype.getRegister;
+    systemJSPrototype.getRegister = function () {
+      var lastRegister = getRegister.call(this);
+      if (lastRegister)
+        return lastRegister;
+
+      // no registration -> attempt a global detection as difference from snapshot
+      // when multiple globals, we take the global value to be the last defined new global object property
+      // for performance, this will not support multi-version / global collisions as previous SystemJS versions did
+      // note in Edge, deleting and re-adding a global does not change its ordering
+      var globalProp = getGlobalProp(this.firstGlobalProp);
+      if (!globalProp)
+        return emptyInstantiation;
+
+      var globalExport;
+      try {
+        globalExport = global[globalProp];
+      }
+      catch (e) {
+        return emptyInstantiation;
+      }
+
+      return [[], function (_export) {
+        return {
+          execute: function () {
+            _export(globalExport);
+            _export({ default: globalExport, __useDefault: true });
+          }
+        };
+      }];
+    };
+
+    var isIE11 = typeof navigator !== 'undefined' && navigator.userAgent.indexOf('Trident') !== -1;
+
+    function shouldSkipProperty(p) {
+      return !global.hasOwnProperty(p)
+        || !isNaN(p) && p < global.length
+        || isIE11 && global[p] && typeof window !== 'undefined' && global[p].parent === window;
+    }
+  })(typeof self !== 'undefined' ? self : global);
+
+  /*
+   * Loads JSON, CSS, Wasm module types based on file extension
+   * filters and content type verifications
+   */
+  (function(global) {
+    var systemJSPrototype = global.System.constructor.prototype;
+
+    var moduleTypesRegEx = /^[^#?]+\.(css|html|json|wasm)([?#].*)?$/;
+    var _shouldFetch = systemJSPrototype.shouldFetch.bind(systemJSPrototype);
+    systemJSPrototype.shouldFetch = function (url) {
+      return _shouldFetch(url) || moduleTypesRegEx.test(url);
+    };
+
+    var jsonContentType = /^application\/json(;|$)/;
+    var cssContentType = /^text\/css(;|$)/;
+    var wasmContentType = /^application\/wasm(;|$)/;
+
+    var fetch = systemJSPrototype.fetch;
+    systemJSPrototype.fetch = function (url, options) {
+      return fetch(url, options)
+      .then(function (res) {
+        if (options.passThrough)
+          return res;
+
+        if (!res.ok)
+          return res;
+        var contentType = res.headers.get('content-type');
+        if (jsonContentType.test(contentType))
+          return res.json()
+          .then(function (json) {
+            return new Response(new Blob([
+              'System.register([],function(e){return{execute:function(){e("default",' + JSON.stringify(json) + ')}}})'
+            ], {
+              type: 'application/javascript'
+            }));
+          });
+        if (cssContentType.test(contentType))
+          return res.text()
+          .then(function (source) {
+            source = source.replace(/url\(\s*(?:(["'])((?:\\.|[^\n\\"'])+)\1|((?:\\.|[^\s,"'()\\])+))\s*\)/g, function (match, quotes, relUrl1, relUrl2) {
+              return ['url(', quotes, resolveUrl(relUrl1 || relUrl2, url), quotes, ')'].join('');
+            });
+            return new Response(new Blob([
+              'System.register([],function(e){return{execute:function(){var s=new CSSStyleSheet();s.replaceSync(' + JSON.stringify(source) + ');e("default",s)}}})'
+            ], {
+              type: 'application/javascript'
+            }));
+          });
+        if (wasmContentType.test(contentType))
+          return (WebAssembly.compileStreaming ? WebAssembly.compileStreaming(res) : res.arrayBuffer().then(WebAssembly.compile))
+          .then(function (module) {
+            if (!global.System.wasmModules)
+              global.System.wasmModules = Object.create(null);
+            global.System.wasmModules[url] = module;
+            // we can only set imports if supported (eg early Safari doesnt support)
+            var deps = [];
+            var setterSources = [];
+            if (WebAssembly.Module.imports)
+              WebAssembly.Module.imports(module).forEach(function (impt) {
+                var key = JSON.stringify(impt.module);
+                if (deps.indexOf(key) === -1) {
+                  deps.push(key);
+                  setterSources.push('function(m){i[' + key + ']=m}');
+                }
+              });
+            return new Response(new Blob([
+              'System.register([' + deps.join(',') + '],function(e){var i={};return{setters:[' + setterSources.join(',') +
+              '],execute:function(){return WebAssembly.instantiate(System.wasmModules[' + JSON.stringify(url) +
+              '],i).then(function(m){e(m.exports)})}}})'
+            ], {
+              type: 'application/javascript'
+            }));
+          });
+        return res;
+      });
+    };
+  })(typeof self !== 'undefined' ? self : global);
+
+  var toStringTag = typeof Symbol !== 'undefined' && Symbol.toStringTag;
+
+  systemJSPrototype.get = function (id) {
+    var load = this[REGISTRY][id];
+    if (load && load.e === null && !load.E) {
+      if (load.er)
+        return null;
+      return load.n;
+    }
+  };
+
+  systemJSPrototype.set = function (id, module) {
+    {
+      try {
+        // No page-relative URLs allowed
+        new URL(id);
+      } catch (err) {
+        console.warn(Error(errMsg('W3', '"' + id + '" is not a valid URL to set in the module registry')));
+      }
+    }
+    var ns;
+    if (toStringTag && module[toStringTag] === 'Module') {
+      ns = module;
+    }
+    else {
+      ns = Object.assign(Object.create(null), module);
+      if (toStringTag)
+        Object.defineProperty(ns, toStringTag, { value: 'Module' });
+    }
+
+    var done = Promise.resolve(ns);
+
+    var load = this[REGISTRY][id] || (this[REGISTRY][id] = {
+      id: id,
+      i: [],
+      h: false,
+      d: [],
+      e: null,
+      er: undefined,
+      E: undefined
+    });
+
+    if (load.e || load.E)
+      return false;
+    
+    Object.assign(load, {
+      n: ns,
+      I: undefined,
+      L: undefined,
+      C: done
+    });
+    return ns;
+  };
+
+  systemJSPrototype.has = function (id) {
+    var load = this[REGISTRY][id];
+    return !!load;
+  };
+
+  // Delete function provided for hot-reloading use cases
+  systemJSPrototype.delete = function (id) {
+    var registry = this[REGISTRY];
+    var load = registry[id];
+    // in future we can support load.E case by failing load first
+    // but that will require TLA callbacks to be implemented
+    if (!load || (load.p && load.p.e !== null) || load.E)
+      return false;
+
+    var importerSetters = load.i;
+    // remove from importerSetters
+    // (release for gc)
+    if (load.d)
+      load.d.forEach(function (depLoad) {
+        var importerIndex = depLoad.i.indexOf(load);
+        if (importerIndex !== -1)
+          depLoad.i.splice(importerIndex, 1);
+      });
+    delete registry[id];
+    return function () {
+      var load = registry[id];
+      if (!load || !importerSetters || load.e !== null || load.E)
+        return false;
+      // add back the old setters
+      importerSetters.forEach(function (setter) {
+        load.i.push(setter);
+        setter(load.n);
+      });
+      importerSetters = null;
+    };
+  };
+
+  var iterator = typeof Symbol !== 'undefined' && Symbol.iterator;
+
+  systemJSPrototype.entries = function () {
+    var loader = this, keys = Object.keys(loader[REGISTRY]);
+    var index = 0, ns, key;
+    var result = {
+      next: function () {
+        while (
+          (key = keys[index++]) !== undefined && 
+          (ns = loader.get(key)) === undefined
+        );
+        return {
+          done: key === undefined,
+          value: key !== undefined && [key, ns]
+        };
+      }
+    };
+
+    result[iterator] = function() { return this };
+
+    return result;
+  };
+
+})();
+
+// systemjs 6.15.1, dist/extras/named-register.js (MIT), https://github.com/systemjs/systemjs
+(function () {
+
+  /*
+   * SystemJS named register extension
+   * Supports System.register('name', [..deps..], function (_export, _context) { ... })
+   *
+   * Names are written to the registry as-is
+   * System.register('x', ...) can be imported as System.import('x')
+   */
+  (function (global) {
+    var System = global.System;
+    setRegisterRegistry(System);
+    var systemJSPrototype = System.constructor.prototype;
+    var constructor = System.constructor;
+    var SystemJS = function () {
+      constructor.call(this);
+      setRegisterRegistry(this);
+    };
+    SystemJS.prototype = systemJSPrototype;
+    System.constructor = SystemJS;
+
+    var firstNamedDefine, firstName;
+
+    function setRegisterRegistry(systemInstance) {
+      systemInstance.registerRegistry = Object.create(null);
+      systemInstance.namedRegisterAliases = Object.create(null);
+    }
+
+    var register = systemJSPrototype.register;
+    systemJSPrototype.register = function (name, deps, declare, metas) {
+      if (typeof name !== 'string')
+        return register.apply(this, arguments);
+      var define = [deps, declare, metas];
+      this.registerRegistry[name] = define;
+      if (!firstNamedDefine) {
+        firstNamedDefine = define;
+        firstName = name;
+      }
+      Promise.resolve().then(function () {
+        firstNamedDefine = null;
+        firstName = null;
+      });
+      return register.apply(this, [deps, declare, metas]);
+    };
+
+    var resolve = systemJSPrototype.resolve;
+    systemJSPrototype.resolve = function (id, parentURL) {
+      try {
+        // Prefer import map (or other existing) resolution over the registerRegistry
+        return resolve.call(this, id, parentURL);
+      } catch (err) {
+        if (id in this.registerRegistry) {
+          return this.namedRegisterAliases[id] || id;
+        }
+        throw err;
+      }
+    };
+
+    var instantiate = systemJSPrototype.instantiate;
+    systemJSPrototype.instantiate = function (url, firstParentUrl, meta) {
+      var result = this.registerRegistry[url];
+      if (result) {
+        this.registerRegistry[url] = null;
+        return result;
+      } else {
+        return instantiate.call(this, url, firstParentUrl, meta);
+      }
+    };
+
+    var getRegister = systemJSPrototype.getRegister;
+    systemJSPrototype.getRegister = function (url) {
+      // Calling getRegister() because other extras need to know it was called so they can perform side effects
+      var register = getRegister.call(this, url);
+
+      if (firstName && url) {
+        this.namedRegisterAliases[firstName] = url;
+      }
+      var result = firstNamedDefine || register;
+      firstNamedDefine = null;
+      firstName = null;
+      return result;
+    };
+  })(typeof self !== 'undefined' ? self : global);
+
+})();
+
+;(typeof System!='undefined')&&(System=new System.constructor());
 System.register("./___monkey.entry.js", [],(function(exports,module){'use strict';return{execute:(function(){exports({$:getTweaksEnabled,B:getSyncState,J:addFavs,O:rememberFavoritesUser,P:setSyncState,W:extractPostIdFromFavoritesDeleteOnclick,X:isSiteUrl,Y:detectPageKind,_:_minLength,a4:readDynamicCollectionMark,a5:isFullUpdatesQuery,a6:isPartialUpdatesQuery,a7:findFeedGroupIndex,a8:normalizeArtistTag,a9:loadRecent,aB:getAppearance,aC:applyAppearanceTheme,aD:getGridFavButtonsEnabled,aE:isFav,aI:markVideoThumbs,aJ:applyFeatureChrome,aK:getSeenPostId,aL:featureBodyClass,aO:readPostIdFromSearch,aP:setPostSeenMark,aQ:parsePlaylistQuery,aT:scheduleAfterFirstPaint,aW:listArtistTags,aX:sameSearch,aY:showFeedCount,aZ:readFeedCountCache,a_:writeFeedCountCache,ab:serialize,ac:getUpdatesGroupSize,ad:withoutSortRandom,af:extractPostIdFromThumb,ai:nullable,aj:yieldToMain,ak:parseRdwHash,al:isCollectionDetailPage,am:mountGifMarks,an:mountVideoMarks,ao:mountFavoriteVideoMarks,b3:onThumbsAdded,b6:ensureThumbAnchor,b7:removeFav,b8:isFeatureMounted,b9:readArtistsMirror,bA:setDynamicPostCount,bB:setDynamicNewest,bC:notifyThumbsAdded,bD:parseVideoPlayerState,bF:rdwPageHash,bH:addFav,bI:save,bJ:dynamicCollectionMarkHash,bK:deleteCollection,bL:renameCollection,bM:updateDynamicQuery,bN:withSortRandom,bQ:playlistsContaining,bR:buildSearchUrl,bS:parseTags,bV:featureChoiceBodyClass,bW:resolveVideoSize,bY:applyTokenProperties,bZ:resolveAppearancePalette,ba:writeArtistsMirror,bb:queryHasSortRandom,bc:rememberArtistSnapshot,bd:feedGroupQueries,be:buildUpdatesSearchUrl,bf:rememberSearchToolsHeight,bg:extractPostIdFromThumbLink,bh:getPlaylistChunkSize,bi:listPlaylists,bj:buildPlaylistQueries,bk:ensureStyleElement,bm:buildOwnPageCss,bp:createDynamicCollection,bq:buildFeedUrl,br:rememberArtistLastPosts,bt:stripUpdatesIdFilter,bu:setSeenPostId,bv:reloadFromStorage,bw:isPlaylist,bx:isUnfilteredQuery,by:queriesMatchIgnoringSortRandom,bz:setDynamicCover,c0:extractPostIdFromCommentThumb,c1:buildVideoUrlFromThumbUrl,cB:activePage,cD:setActivePage,cF:setTweaksEnabled,cH:setGridFavButtonsEnabled,cJ:setPlaylistChunkSize,cK:setFeatureEnabled,cM:setUpdatesGroupSize,cR:applyStickyHeader,cX:clampBackgroundDim,cY:featurePanelLabel,c_:clearFeatureState,ca:removePostFromPlaylist,cb:createPlaylist,cc:addPostToCollection,cd:menuRouteForPage,ce:getSiteSkinCss,cg:deriveThumbUrlFromMedia,ci:followKindOf,cm:getCollectionOrder,cn:collectionDetailHash,cr:titleSaysVideo,cs:addPostsToCollection,cu:clearChoiceBodyClasses,cv:ensureFeatureCss,cw:mountFeatureOnce,cx:getFeatureChoiceValue,d0:setFeatureChoiceValue,d1:createDefaultCustomTheme,d3:prepareBackgroundImageFile,d4:createDefaultStorage,d5:clearStorageCache,d6:clearFavsCache,d7:setAppearance,dB:deleteFollowGroup,dC:renameFollowGroup,dD:setFollowGroup,dE:createFollowGroup,dF:removeArtist,dG:removeArtists,dH:addArtists,dI:shuffleCollection,dJ:resetCollectionOrder,dK:removePostsFromCollection,dL:movePostInCollection,dN:restorePosts,dO:collectionQueueHash,da:literal,dc:stripLegacyPanelWindowSize,dd:migrateMarksFavToFavs,df:createDefaultFavs,dg:parseFavsStrict,di:extractFavIdsFromMarks,dl:getScreenPixelSize,dm:listCollectionGroups,dn:deleteCollectionGroup,dp:renameCollectionGroup,dq:setCollectionGroup,dr:createCollectionGroup,ds:resolveCollectionKind,dt:dynamicHasNew,du:readCoverMirror,dv:readCountMirror,dw:listFollowGroups,g:optional,h:boolean,i:int,j:load,k:setFeatureState,m:loadFavSet,n:number,o:object,p:getFeatureEnabled,q:applyHeaderLayout,r:resolveSwitchThumbOn,s:string,t:getFeatureState,u:unknown,v:array,w:markFavoritesCurrent});var STORAGE_KEY = "ruledesk-web.storage";
 var STORAGE_BACKUP_KEY = exports("dh","ruledesk-web.storage.backup");
 var FAVS_STORAGE_KEY = exports("de","ruledesk-web.favs");
@@ -9523,498 +10650,1374 @@ startEarlyLayout();
 whenDomReady(() => {
 	applyLayoutBeforePaint();
 	scheduleAfterFirstPaint(() => {
-		module.import('./app-BAhFOWQS-Bb4GaPqX.js').then(function(n){return n.aW}).then(({ startApp }) => startApp()).catch((error) => {
+		module.import('./app-CKeztBau-BuKlS5Dy.js').then(function(n){return n.aW}).then(({ startApp }) => startApp()).catch((error) => {
 			log.error("start failed", error);
 		});
 	});
 });})}}));
-System.register("./app-BAhFOWQS-Bb4GaPqX.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var resolveSwitchThumbOn,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,SITE_DEFAULT_SWITCH_ON,APPEARANCE_THEME_SITE_DARK,SITE_DARK_C_ACCENT,SITE_DARK_C_BORDER,SITE_LIGHT_C_BG_ALT,SITE_DEFAULT_SWITCH_THUMB_ON,SITE_DARK_C_BG,log,object,optional,boolean,int,number,string,_minLength,unknown,load$1,setFeatureState,loadFavSet,MENU_ITEM_ID,getFeatureEnabled,applyHeaderLayout,getFeatureState,array,markFavoritesCurrent,HEADER_SELECTOR$1,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,getSyncState,RDW_HASH_STATS,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,NAV_DUE_CLASS,FAVS_SYNC_MODE_FULL,addFavs,FAVS_SYNC_MODE_INCREMENTAL,CURRENT_PAGE_CLASS$1,rememberFavoritesUser,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,extractPostIdFromFavoritesDeleteOnclick,isSiteUrl,detectPageKind,FETCH_CREDENTIALS,getTweaksEnabled,AI_STATE_ID,AI_SCOPE_FAVORITES,SITE_AI_FILTER_COOKIE_NAME,AI_STATE_HIDE,readDynamicCollectionMark,isFullUpdatesQuery,isPartialUpdatesQuery,findFeedGroupIndex,normalizeArtistTag,loadRecent,COLLECTION_KIND_SEARCH,serialize,getUpdatesGroupSize,withoutSortRandom,SITE_SELECTORS,extractPostIdFromThumb,SEARCH_PARAM_TAGS,SITE_ORIGIN,nullable,yieldToMain,parseRdwHash,isCollectionDetailPage,mountGifMarks,mountVideoMarks,mountFavoriteVideoMarks,THUMB_CLASS,THUMB_ANCHOR_NAME,menuCleanupFeature,FAVORITE_IMAGE_ANCHOR_NAME,gridDensityFeature,DEFAULT_VIDEO_SIZE,VIDEO_SIZE_FIT_HEIGHT,VIDEO_SIZE_FIT_WIDTH,VIDEO_SIZE_ORIGINAL,VIDEO_PLAYER_FEATURE_ID,sidebarRightFeature,motionFeature,getAppearance,applyAppearanceTheme,getGridFavButtonsEnabled,isFav,FOLLOW_KIND_ARTIST,FOLLOW_KIND_CHARACTER,FOLLOW_KIND_COPYRIGHT,markVideoThumbs,applyFeatureChrome,getSeenPostId,featureBodyClass,RDW_SKIN_CLASS,SEARCH_TOOLS_MOUNTED_CLASS,readPostIdFromSearch,setPostSeenMark,parsePlaylistQuery,POST_ACTIONS_ID,STICKY_TOP,scheduleAfterFirstPaint,BASE_GRID_CSS,RDW_DOWNLOADS_PANEL_ID,listArtistTags,sameSearch,showFeedCount,readFeedCountCache,writeFeedCountCache,FEED_COUNT_CLASS,VIDEO_THUMB_CLASS$1,THUMB_LABEL_RULES,FAVORITES_PAGE_CLASS,onThumbsAdded,DOCUMENT_STYLE_ID,CSS_CLASS,ensureThumbAnchor,removeFav,isFeatureMounted,readArtistsMirror,writeArtistsMirror,queryHasSortRandom,rememberArtistSnapshot,feedGroupQueries,buildUpdatesSearchUrl,rememberSearchToolsHeight,extractPostIdFromThumbLink,getPlaylistChunkSize,listPlaylists,buildPlaylistQueries,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,RDW_OWN_PAGE_CLASS,UI_TEXT,createDynamicCollection,buildFeedUrl,rememberArtistLastPosts,UPDATES_BAR_ID,stripUpdatesIdFilter,setSeenPostId,reloadFromStorage,isPlaylist,isUnfilteredQuery,queriesMatchIgnoringSortRandom,setDynamicCover,setDynamicPostCount,setDynamicNewest,notifyThumbsAdded,parseVideoPlayerState,RDW_PAGE_ROOT_ID,rdwPageHash,APPEARANCE_BACKGROUND_KEY,addFav,save,dynamicCollectionMarkHash,deleteCollection,renameCollection,updateDynamicQuery,withSortRandom,SITE_BLACKLIST_COOKIE_NAME,UPDATES_ID_PREFIX,playlistsContaining,buildSearchUrl,parseTags,FAVORITES_SECTION_DELETE,FAVORITES_PARAM_RETURN_PID,featureChoiceBodyClass,resolveVideoSize,THUMB_IMAGE_SELECTOR,applyTokenProperties,resolveAppearancePalette,MOTION_PAGE_CSS,ADDFAV_PATH,extractPostIdFromCommentThumb,buildVideoUrlFromThumbUrl,PANEL_UI_CLASS,TOKEN_VAR,SITE_LIGHT_C_BG,VOTE_PARAM_PAGE,VOTE_PAGE,VOTE_SECTION,VOTE_PARAM_TYPE,VOTE_PATH,removePostFromPlaylist,createPlaylist,addPostToCollection,menuRouteForPage,getSiteSkinCss,FAVORITES_BROWSING_BODY_CLASS,deriveThumbUrlFromMedia,SEARCH_TOOLS_AI_ROW_BODY_CLASS,followKindOf,FAVORITES_VIEW_SCROLL,FAVORITES_VIEW_STATE_ID,FAVORITES_RESULTS_CLASS,getCollectionOrder,collectionDetailHash,SEARCH_SECTION,TAG_TYPE_INCLUDE,COLLECTION_KIND_POSTS,titleSaysVideo,addPostsToCollection,RDW_COLLECTION_QUEUE_HASH_PREFIX,clearChoiceBodyClasses,ensureFeatureCss,mountFeatureOnce,getFeatureChoiceValue,SEARCH_PAGE,SEARCH_SECTION_VIEW,APPEARANCE_BACKGROUND_TOO_LARGE,activePage,APPEARANCE_BACKGROUND_MAX_BYTES,setActivePage;return{setters:[function(module){resolveSwitchThumbOn=module.r;RDW_THEME_ATTR=module.R;APPEARANCE_THEME_SITE=module.A;SITE_DEFAULT_SWITCH_ON=module.S;APPEARANCE_THEME_SITE_DARK=module.a;SITE_DARK_C_ACCENT=module.b;SITE_DARK_C_BORDER=module.c;SITE_LIGHT_C_BG_ALT=module.d;SITE_DEFAULT_SWITCH_THUMB_ON=module.e;SITE_DARK_C_BG=module.f;log=module.l;object=module.o;optional=module.g;boolean=module.h;int=module.i;number=module.n;string=module.s;_minLength=module._;unknown=module.u;load$1=module.j;setFeatureState=module.k;loadFavSet=module.m;MENU_ITEM_ID=module.M;getFeatureEnabled=module.p;applyHeaderLayout=module.q;getFeatureState=module.t;array=module.v;markFavoritesCurrent=module.w;HEADER_SELECTOR$1=module.H;NAVBAR_SELECTOR=module.N;FEED_MENU_ITEM_ID=module.F;RDW_HASH_COLLECTIONS=module.x;MENU_LABEL=module.y;RDW_HASH_FOLLOWING=module.z;getSyncState=module.B;RDW_HASH_STATS=module.C;MY_FAVORITES_CONTAINER_ID=module.D;RDW_HASH_SETTINGS=module.E;NAV_DUE_CLASS=module.G;FAVS_SYNC_MODE_FULL=module.I;addFavs=module.J;FAVS_SYNC_MODE_INCREMENTAL=module.K;CURRENT_PAGE_CLASS$1=module.L;rememberFavoritesUser=module.O;setSyncState=module.P;SEARCH_PARAM_PAGE=module.Q;FAVORITES_PAGE=module.T;FAVORITES_SECTION_VIEW=module.U;SEARCH_PATH=module.V;extractPostIdFromFavoritesDeleteOnclick=module.W;isSiteUrl=module.X;detectPageKind=module.Y;FETCH_CREDENTIALS=module.Z;getTweaksEnabled=module.$;AI_STATE_ID=module.a0;AI_SCOPE_FAVORITES=module.a1;SITE_AI_FILTER_COOKIE_NAME=module.a2;AI_STATE_HIDE=module.a3;readDynamicCollectionMark=module.a4;isFullUpdatesQuery=module.a5;isPartialUpdatesQuery=module.a6;findFeedGroupIndex=module.a7;normalizeArtistTag=module.a8;loadRecent=module.a9;COLLECTION_KIND_SEARCH=module.aa;serialize=module.ab;getUpdatesGroupSize=module.ac;withoutSortRandom=module.ad;SITE_SELECTORS=module.ae;extractPostIdFromThumb=module.af;SEARCH_PARAM_TAGS=module.ag;SITE_ORIGIN=module.ah;nullable=module.ai;yieldToMain=module.aj;parseRdwHash=module.ak;isCollectionDetailPage=module.al;mountGifMarks=module.am;mountVideoMarks=module.an;mountFavoriteVideoMarks=module.ao;THUMB_CLASS=module.ap;THUMB_ANCHOR_NAME=module.aq;menuCleanupFeature=module.ar;FAVORITE_IMAGE_ANCHOR_NAME=module.as;gridDensityFeature=module.at;DEFAULT_VIDEO_SIZE=module.au;VIDEO_SIZE_FIT_HEIGHT=module.av;VIDEO_SIZE_FIT_WIDTH=module.aw;VIDEO_SIZE_ORIGINAL=module.ax;VIDEO_PLAYER_FEATURE_ID=module.ay;sidebarRightFeature=module.az;motionFeature=module.aA;getAppearance=module.aB;applyAppearanceTheme=module.aC;getGridFavButtonsEnabled=module.aD;isFav=module.aE;FOLLOW_KIND_ARTIST=module.aF;FOLLOW_KIND_CHARACTER=module.aG;FOLLOW_KIND_COPYRIGHT=module.aH;markVideoThumbs=module.aI;applyFeatureChrome=module.aJ;getSeenPostId=module.aK;featureBodyClass=module.aL;RDW_SKIN_CLASS=module.aM;SEARCH_TOOLS_MOUNTED_CLASS=module.aN;readPostIdFromSearch=module.aO;setPostSeenMark=module.aP;parsePlaylistQuery=module.aQ;POST_ACTIONS_ID=module.aR;STICKY_TOP=module.aS;scheduleAfterFirstPaint=module.aT;BASE_GRID_CSS=module.aU;RDW_DOWNLOADS_PANEL_ID=module.aV;listArtistTags=module.aW;sameSearch=module.aX;showFeedCount=module.aY;readFeedCountCache=module.aZ;writeFeedCountCache=module.a_;FEED_COUNT_CLASS=module.a$;VIDEO_THUMB_CLASS$1=module.b0;THUMB_LABEL_RULES=module.b1;FAVORITES_PAGE_CLASS=module.b2;onThumbsAdded=module.b3;DOCUMENT_STYLE_ID=module.b4;CSS_CLASS=module.b5;ensureThumbAnchor=module.b6;removeFav=module.b7;isFeatureMounted=module.b8;readArtistsMirror=module.b9;writeArtistsMirror=module.ba;queryHasSortRandom=module.bb;rememberArtistSnapshot=module.bc;feedGroupQueries=module.bd;buildUpdatesSearchUrl=module.be;rememberSearchToolsHeight=module.bf;extractPostIdFromThumbLink=module.bg;getPlaylistChunkSize=module.bh;listPlaylists=module.bi;buildPlaylistQueries=module.bj;ensureStyleElement=module.bk;RDW_OWN_PAGE_STYLE_ID=module.bl;buildOwnPageCss=module.bm;RDW_OWN_PAGE_CLASS=module.bn;UI_TEXT=module.bo;createDynamicCollection=module.bp;buildFeedUrl=module.bq;rememberArtistLastPosts=module.br;UPDATES_BAR_ID=module.bs;stripUpdatesIdFilter=module.bt;setSeenPostId=module.bu;reloadFromStorage=module.bv;isPlaylist=module.bw;isUnfilteredQuery=module.bx;queriesMatchIgnoringSortRandom=module.by;setDynamicCover=module.bz;setDynamicPostCount=module.bA;setDynamicNewest=module.bB;notifyThumbsAdded=module.bC;parseVideoPlayerState=module.bD;RDW_PAGE_ROOT_ID=module.bE;rdwPageHash=module.bF;APPEARANCE_BACKGROUND_KEY=module.bG;addFav=module.bH;save=module.bI;dynamicCollectionMarkHash=module.bJ;deleteCollection=module.bK;renameCollection=module.bL;updateDynamicQuery=module.bM;withSortRandom=module.bN;SITE_BLACKLIST_COOKIE_NAME=module.bO;UPDATES_ID_PREFIX=module.bP;playlistsContaining=module.bQ;buildSearchUrl=module.bR;parseTags=module.bS;FAVORITES_SECTION_DELETE=module.bT;FAVORITES_PARAM_RETURN_PID=module.bU;featureChoiceBodyClass=module.bV;resolveVideoSize=module.bW;THUMB_IMAGE_SELECTOR=module.bX;applyTokenProperties=module.bY;resolveAppearancePalette=module.bZ;MOTION_PAGE_CSS=module.b_;ADDFAV_PATH=module.b$;extractPostIdFromCommentThumb=module.c0;buildVideoUrlFromThumbUrl=module.c1;PANEL_UI_CLASS=module.c2;TOKEN_VAR=module.c3;SITE_LIGHT_C_BG=module.c4;VOTE_PARAM_PAGE=module.c5;VOTE_PAGE=module.c6;VOTE_SECTION=module.c7;VOTE_PARAM_TYPE=module.c8;VOTE_PATH=module.c9;removePostFromPlaylist=module.ca;createPlaylist=module.cb;addPostToCollection=module.cc;menuRouteForPage=module.cd;getSiteSkinCss=module.ce;FAVORITES_BROWSING_BODY_CLASS=module.cf;deriveThumbUrlFromMedia=module.cg;SEARCH_TOOLS_AI_ROW_BODY_CLASS=module.ch;followKindOf=module.ci;FAVORITES_VIEW_SCROLL=module.cj;FAVORITES_VIEW_STATE_ID=module.ck;FAVORITES_RESULTS_CLASS=module.cl;getCollectionOrder=module.cm;collectionDetailHash=module.cn;SEARCH_SECTION=module.co;TAG_TYPE_INCLUDE=module.cp;COLLECTION_KIND_POSTS=module.cq;titleSaysVideo=module.cr;addPostsToCollection=module.cs;RDW_COLLECTION_QUEUE_HASH_PREFIX=module.ct;clearChoiceBodyClasses=module.cu;ensureFeatureCss=module.cv;mountFeatureOnce=module.cw;getFeatureChoiceValue=module.cx;SEARCH_PAGE=module.cy;SEARCH_SECTION_VIEW=module.cz;APPEARANCE_BACKGROUND_TOO_LARGE=module.cA;activePage=module.cB;APPEARANCE_BACKGROUND_MAX_BYTES=module.cC;setActivePage=module.cD;}],execute:(function(){exports({$:$$1,A:A,B:Button,C:Card,D:Dialog,E:EmptyState,F:F,G:IconPlus,H:createAutocompleteQuerier,I:IconButton,J:useTagKindLookup,L:b,M:readSiteBlacklist,N:NumberField,O:AutocompleteField,P:P$1,Q:QueryField,R:Chip,T:T,U:chipKindOfTag,V:clearBackground,W:saveBackground,X:runFavoritesSync,Y:clearApiCredentials,Z:parseApiCredentials,_:setApiCredentials,a2:toggleMaskToken,a3:maskHasToken,a4:writeTagSets,a5:writeSiteBlacklist,a6:writeFileMask,a7:readFileMask,a8:buildFileName,a9:currentBackupStatus,aA:IconCheck,aC:readViewMode,aF:completeLastQueryToken,aG:readLastQueryToken,aH:fetchArtistSnapshot,aJ:j,aL:IconChevronDown,aM:Popover,aN:IconDots,aO:readFavoriteIndex,aP:topFavoriteTags,aQ:w$1,aR:downloadsAvailable,aS:Toast,aT:isDownloadBusy,aU:startDownload,aV:navigateToRdwRoute,aa:readLastBackup,ab:markBackupDue,ac:backgroundTooLarge,ad:readFavoritesSyncMode,af:rememberBackup,aj:hasApiCredentials,ak:readTagSets,al:aiHiddenEverywhere,am:takeSettingsSection,an:useEscape,ao:SelectionBar,ap:AiPostsToggle,at:isViewMode,au:writeViewMode,aw:alignSiteAiFilter,ax:fetchNextPage,ay:readFirstThumbUrls,az:readResultCount,c:a,d:d,e:SearchField,f:Switch,g:settingsSectionHash,h:setGridFavButtonsVisible,i:isFeatureEnabled,k:featureSettingsGroup,m:setAiHiddenEverywhere,n:installSiteMenu,o:loadBackground,p:SectionLabel,q:Select,r:Segmented,s:settingsSectionFromHash,t:TextField,u:applyCssOnlyFeatureEnabled,v:applyCssOnlyFeatureChoice,w:getFeatureChoice,x:ProgressBar,z:IconX});var n;
-var t$1;
-var u$2;
-var i$1;
-var f$2;
-var o$2;
-var e$1;
-var l$1;
-var c$1;
-var a$2;
-var s$1;
-var h$1 = Symbol.for("pv");
-var p$1 = {};
-var y$1 = [];
-var v$1 = /^m(i|n|o|s|text|space)$/;
-var w$2 = Array.isArray;
-var d$1 = y$1.slice;
-var _$1 = Object.assign;
-function g$1(n) {
-	n && n.parentNode && n.remove();
+System.register("./app-CKeztBau-BuKlS5Dy.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var resolveSwitchThumbOn,RDW_THEME_ATTR,APPEARANCE_THEME_SITE,SITE_DEFAULT_SWITCH_ON,APPEARANCE_THEME_SITE_DARK,SITE_DARK_C_ACCENT,SITE_DARK_C_BORDER,SITE_LIGHT_C_BG_ALT,SITE_DEFAULT_SWITCH_THUMB_ON,SITE_DARK_C_BG,log,object,optional,boolean,int,number,string,_minLength,unknown,load$1,setFeatureState,loadFavSet,MENU_ITEM_ID,getFeatureEnabled,applyHeaderLayout,getFeatureState,array,markFavoritesCurrent,HEADER_SELECTOR$1,NAVBAR_SELECTOR,FEED_MENU_ITEM_ID,RDW_HASH_COLLECTIONS,MENU_LABEL,RDW_HASH_FOLLOWING,getSyncState,RDW_HASH_STATS,MY_FAVORITES_CONTAINER_ID,RDW_HASH_SETTINGS,NAV_DUE_CLASS,FAVS_SYNC_MODE_FULL,addFavs,FAVS_SYNC_MODE_INCREMENTAL,CURRENT_PAGE_CLASS$1,rememberFavoritesUser,setSyncState,SEARCH_PARAM_PAGE,FAVORITES_PAGE,FAVORITES_SECTION_VIEW,SEARCH_PATH,extractPostIdFromFavoritesDeleteOnclick,isSiteUrl,detectPageKind,FETCH_CREDENTIALS,getTweaksEnabled,AI_STATE_ID,AI_SCOPE_FAVORITES,SITE_AI_FILTER_COOKIE_NAME,AI_STATE_HIDE,readDynamicCollectionMark,isFullUpdatesQuery,isPartialUpdatesQuery,findFeedGroupIndex,normalizeArtistTag,loadRecent,COLLECTION_KIND_SEARCH,serialize,getUpdatesGroupSize,withoutSortRandom,SITE_SELECTORS,extractPostIdFromThumb,SEARCH_PARAM_TAGS,SITE_ORIGIN,nullable,yieldToMain,parseRdwHash,isCollectionDetailPage,mountGifMarks,mountVideoMarks,mountFavoriteVideoMarks,THUMB_CLASS,THUMB_ANCHOR_NAME,menuCleanupFeature,FAVORITE_IMAGE_ANCHOR_NAME,gridDensityFeature,DEFAULT_VIDEO_SIZE,VIDEO_SIZE_FIT_HEIGHT,VIDEO_SIZE_FIT_WIDTH,VIDEO_SIZE_ORIGINAL,VIDEO_PLAYER_FEATURE_ID,sidebarRightFeature,motionFeature,getAppearance,applyAppearanceTheme,getGridFavButtonsEnabled,isFav,FOLLOW_KIND_ARTIST,FOLLOW_KIND_CHARACTER,FOLLOW_KIND_COPYRIGHT,markVideoThumbs,applyFeatureChrome,getSeenPostId,featureBodyClass,RDW_SKIN_CLASS,SEARCH_TOOLS_MOUNTED_CLASS,readPostIdFromSearch,setPostSeenMark,parsePlaylistQuery,POST_ACTIONS_ID,STICKY_TOP,scheduleAfterFirstPaint,BASE_GRID_CSS,RDW_DOWNLOADS_PANEL_ID,listArtistTags,sameSearch,showFeedCount,readFeedCountCache,writeFeedCountCache,FEED_COUNT_CLASS,VIDEO_THUMB_CLASS$1,THUMB_LABEL_RULES,FAVORITES_PAGE_CLASS,onThumbsAdded,DOCUMENT_STYLE_ID,CSS_CLASS,ensureThumbAnchor,removeFav,isFeatureMounted,readArtistsMirror,writeArtistsMirror,queryHasSortRandom,rememberArtistSnapshot,feedGroupQueries,buildUpdatesSearchUrl,rememberSearchToolsHeight,extractPostIdFromThumbLink,getPlaylistChunkSize,listPlaylists,buildPlaylistQueries,ensureStyleElement,RDW_OWN_PAGE_STYLE_ID,buildOwnPageCss,RDW_OWN_PAGE_CLASS,UI_TEXT,createDynamicCollection,buildFeedUrl,rememberArtistLastPosts,UPDATES_BAR_ID,stripUpdatesIdFilter,setSeenPostId,reloadFromStorage,isPlaylist,isUnfilteredQuery,queriesMatchIgnoringSortRandom,setDynamicCover,setDynamicPostCount,setDynamicNewest,notifyThumbsAdded,parseVideoPlayerState,RDW_PAGE_ROOT_ID,rdwPageHash,APPEARANCE_BACKGROUND_KEY,addFav,save,dynamicCollectionMarkHash,deleteCollection,renameCollection,updateDynamicQuery,withSortRandom,SITE_BLACKLIST_COOKIE_NAME,UPDATES_ID_PREFIX,playlistsContaining,buildSearchUrl,parseTags,FAVORITES_SECTION_DELETE,FAVORITES_PARAM_RETURN_PID,featureChoiceBodyClass,resolveVideoSize,THUMB_IMAGE_SELECTOR,applyTokenProperties,resolveAppearancePalette,MOTION_PAGE_CSS,ADDFAV_PATH,extractPostIdFromCommentThumb,buildVideoUrlFromThumbUrl,PANEL_UI_CLASS,TOKEN_VAR,SITE_LIGHT_C_BG,VOTE_PARAM_PAGE,VOTE_PAGE,VOTE_SECTION,VOTE_PARAM_TYPE,VOTE_PATH,removePostFromPlaylist,createPlaylist,addPostToCollection,menuRouteForPage,getSiteSkinCss,FAVORITES_BROWSING_BODY_CLASS,deriveThumbUrlFromMedia,SEARCH_TOOLS_AI_ROW_BODY_CLASS,followKindOf,FAVORITES_VIEW_SCROLL,FAVORITES_VIEW_STATE_ID,FAVORITES_RESULTS_CLASS,getCollectionOrder,collectionDetailHash,SEARCH_SECTION,TAG_TYPE_INCLUDE,COLLECTION_KIND_POSTS,titleSaysVideo,addPostsToCollection,RDW_COLLECTION_QUEUE_HASH_PREFIX,clearChoiceBodyClasses,ensureFeatureCss,mountFeatureOnce,getFeatureChoiceValue,SEARCH_PAGE,SEARCH_SECTION_VIEW,APPEARANCE_BACKGROUND_TOO_LARGE,activePage,APPEARANCE_BACKGROUND_MAX_BYTES,setActivePage;return{setters:[function(module){resolveSwitchThumbOn=module.r;RDW_THEME_ATTR=module.R;APPEARANCE_THEME_SITE=module.A;SITE_DEFAULT_SWITCH_ON=module.S;APPEARANCE_THEME_SITE_DARK=module.a;SITE_DARK_C_ACCENT=module.b;SITE_DARK_C_BORDER=module.c;SITE_LIGHT_C_BG_ALT=module.d;SITE_DEFAULT_SWITCH_THUMB_ON=module.e;SITE_DARK_C_BG=module.f;log=module.l;object=module.o;optional=module.g;boolean=module.h;int=module.i;number=module.n;string=module.s;_minLength=module._;unknown=module.u;load$1=module.j;setFeatureState=module.k;loadFavSet=module.m;MENU_ITEM_ID=module.M;getFeatureEnabled=module.p;applyHeaderLayout=module.q;getFeatureState=module.t;array=module.v;markFavoritesCurrent=module.w;HEADER_SELECTOR$1=module.H;NAVBAR_SELECTOR=module.N;FEED_MENU_ITEM_ID=module.F;RDW_HASH_COLLECTIONS=module.x;MENU_LABEL=module.y;RDW_HASH_FOLLOWING=module.z;getSyncState=module.B;RDW_HASH_STATS=module.C;MY_FAVORITES_CONTAINER_ID=module.D;RDW_HASH_SETTINGS=module.E;NAV_DUE_CLASS=module.G;FAVS_SYNC_MODE_FULL=module.I;addFavs=module.J;FAVS_SYNC_MODE_INCREMENTAL=module.K;CURRENT_PAGE_CLASS$1=module.L;rememberFavoritesUser=module.O;setSyncState=module.P;SEARCH_PARAM_PAGE=module.Q;FAVORITES_PAGE=module.T;FAVORITES_SECTION_VIEW=module.U;SEARCH_PATH=module.V;extractPostIdFromFavoritesDeleteOnclick=module.W;isSiteUrl=module.X;detectPageKind=module.Y;FETCH_CREDENTIALS=module.Z;getTweaksEnabled=module.$;AI_STATE_ID=module.a0;AI_SCOPE_FAVORITES=module.a1;SITE_AI_FILTER_COOKIE_NAME=module.a2;AI_STATE_HIDE=module.a3;readDynamicCollectionMark=module.a4;isFullUpdatesQuery=module.a5;isPartialUpdatesQuery=module.a6;findFeedGroupIndex=module.a7;normalizeArtistTag=module.a8;loadRecent=module.a9;COLLECTION_KIND_SEARCH=module.aa;serialize=module.ab;getUpdatesGroupSize=module.ac;withoutSortRandom=module.ad;SITE_SELECTORS=module.ae;extractPostIdFromThumb=module.af;SEARCH_PARAM_TAGS=module.ag;SITE_ORIGIN=module.ah;nullable=module.ai;yieldToMain=module.aj;parseRdwHash=module.ak;isCollectionDetailPage=module.al;mountGifMarks=module.am;mountVideoMarks=module.an;mountFavoriteVideoMarks=module.ao;THUMB_CLASS=module.ap;THUMB_ANCHOR_NAME=module.aq;menuCleanupFeature=module.ar;FAVORITE_IMAGE_ANCHOR_NAME=module.as;gridDensityFeature=module.at;DEFAULT_VIDEO_SIZE=module.au;VIDEO_SIZE_FIT_HEIGHT=module.av;VIDEO_SIZE_FIT_WIDTH=module.aw;VIDEO_SIZE_ORIGINAL=module.ax;VIDEO_PLAYER_FEATURE_ID=module.ay;sidebarRightFeature=module.az;motionFeature=module.aA;getAppearance=module.aB;applyAppearanceTheme=module.aC;getGridFavButtonsEnabled=module.aD;isFav=module.aE;FOLLOW_KIND_ARTIST=module.aF;FOLLOW_KIND_CHARACTER=module.aG;FOLLOW_KIND_COPYRIGHT=module.aH;markVideoThumbs=module.aI;applyFeatureChrome=module.aJ;getSeenPostId=module.aK;featureBodyClass=module.aL;RDW_SKIN_CLASS=module.aM;SEARCH_TOOLS_MOUNTED_CLASS=module.aN;readPostIdFromSearch=module.aO;setPostSeenMark=module.aP;parsePlaylistQuery=module.aQ;POST_ACTIONS_ID=module.aR;STICKY_TOP=module.aS;scheduleAfterFirstPaint=module.aT;BASE_GRID_CSS=module.aU;RDW_DOWNLOADS_PANEL_ID=module.aV;listArtistTags=module.aW;sameSearch=module.aX;showFeedCount=module.aY;readFeedCountCache=module.aZ;writeFeedCountCache=module.a_;FEED_COUNT_CLASS=module.a$;VIDEO_THUMB_CLASS$1=module.b0;THUMB_LABEL_RULES=module.b1;FAVORITES_PAGE_CLASS=module.b2;onThumbsAdded=module.b3;DOCUMENT_STYLE_ID=module.b4;CSS_CLASS=module.b5;ensureThumbAnchor=module.b6;removeFav=module.b7;isFeatureMounted=module.b8;readArtistsMirror=module.b9;writeArtistsMirror=module.ba;queryHasSortRandom=module.bb;rememberArtistSnapshot=module.bc;feedGroupQueries=module.bd;buildUpdatesSearchUrl=module.be;rememberSearchToolsHeight=module.bf;extractPostIdFromThumbLink=module.bg;getPlaylistChunkSize=module.bh;listPlaylists=module.bi;buildPlaylistQueries=module.bj;ensureStyleElement=module.bk;RDW_OWN_PAGE_STYLE_ID=module.bl;buildOwnPageCss=module.bm;RDW_OWN_PAGE_CLASS=module.bn;UI_TEXT=module.bo;createDynamicCollection=module.bp;buildFeedUrl=module.bq;rememberArtistLastPosts=module.br;UPDATES_BAR_ID=module.bs;stripUpdatesIdFilter=module.bt;setSeenPostId=module.bu;reloadFromStorage=module.bv;isPlaylist=module.bw;isUnfilteredQuery=module.bx;queriesMatchIgnoringSortRandom=module.by;setDynamicCover=module.bz;setDynamicPostCount=module.bA;setDynamicNewest=module.bB;notifyThumbsAdded=module.bC;parseVideoPlayerState=module.bD;RDW_PAGE_ROOT_ID=module.bE;rdwPageHash=module.bF;APPEARANCE_BACKGROUND_KEY=module.bG;addFav=module.bH;save=module.bI;dynamicCollectionMarkHash=module.bJ;deleteCollection=module.bK;renameCollection=module.bL;updateDynamicQuery=module.bM;withSortRandom=module.bN;SITE_BLACKLIST_COOKIE_NAME=module.bO;UPDATES_ID_PREFIX=module.bP;playlistsContaining=module.bQ;buildSearchUrl=module.bR;parseTags=module.bS;FAVORITES_SECTION_DELETE=module.bT;FAVORITES_PARAM_RETURN_PID=module.bU;featureChoiceBodyClass=module.bV;resolveVideoSize=module.bW;THUMB_IMAGE_SELECTOR=module.bX;applyTokenProperties=module.bY;resolveAppearancePalette=module.bZ;MOTION_PAGE_CSS=module.b_;ADDFAV_PATH=module.b$;extractPostIdFromCommentThumb=module.c0;buildVideoUrlFromThumbUrl=module.c1;PANEL_UI_CLASS=module.c2;TOKEN_VAR=module.c3;SITE_LIGHT_C_BG=module.c4;VOTE_PARAM_PAGE=module.c5;VOTE_PAGE=module.c6;VOTE_SECTION=module.c7;VOTE_PARAM_TYPE=module.c8;VOTE_PATH=module.c9;removePostFromPlaylist=module.ca;createPlaylist=module.cb;addPostToCollection=module.cc;menuRouteForPage=module.cd;getSiteSkinCss=module.ce;FAVORITES_BROWSING_BODY_CLASS=module.cf;deriveThumbUrlFromMedia=module.cg;SEARCH_TOOLS_AI_ROW_BODY_CLASS=module.ch;followKindOf=module.ci;FAVORITES_VIEW_SCROLL=module.cj;FAVORITES_VIEW_STATE_ID=module.ck;FAVORITES_RESULTS_CLASS=module.cl;getCollectionOrder=module.cm;collectionDetailHash=module.cn;SEARCH_SECTION=module.co;TAG_TYPE_INCLUDE=module.cp;COLLECTION_KIND_POSTS=module.cq;titleSaysVideo=module.cr;addPostsToCollection=module.cs;RDW_COLLECTION_QUEUE_HASH_PREFIX=module.ct;clearChoiceBodyClasses=module.cu;ensureFeatureCss=module.cv;mountFeatureOnce=module.cw;getFeatureChoiceValue=module.cx;SEARCH_PAGE=module.cy;SEARCH_SECTION_VIEW=module.cz;APPEARANCE_BACKGROUND_TOO_LARGE=module.cA;activePage=module.cB;APPEARANCE_BACKGROUND_MAX_BYTES=module.cC;setActivePage=module.cD;}],execute:(function(){exports({$:setApiCredentials,B:Button,C:Card,D:Dialog,E:EmptyState,G:IconX,H:IconPlus,I:IconButton,J:createAutocompleteQuerier,L:useTagKindLookup,M:useCallback,N:NumberField,O:readSiteBlacklist,P:ProgressBar,Q:QueryField,R:AutocompleteField,T:TextField,U:Chip,V:chipKindOfTag,W:clearBackground,X:saveBackground,Y:runFavoritesSync,Z:clearApiCredentials,_:parseApiCredentials,a:useRef,a2:toggleMaskToken,a3:maskHasToken,a4:writeTagSets,a5:writeSiteBlacklist,a6:writeFileMask,a7:readFileMask,a8:buildFileName,a9:currentBackupStatus,aA:IconCheck,aC:readViewMode,aF:completeLastQueryToken,aG:readLastQueryToken,aH:fetchArtistSnapshot,aJ:useContext,aL:IconChevronDown,aM:Popover,aN:IconDots,aO:readFavoriteIndex,aP:topFavoriteTags,aQ:useMemo,aR:downloadsAvailable,aS:Toast,aT:isDownloadBusy,aU:startDownload,aV:navigateToRdwRoute,aa:readLastBackup,ab:markBackupDue,ac:backgroundTooLarge,ad:readFavoritesSyncMode,af:rememberBackup,aj:hasApiCredentials,ak:readTagSets,al:aiHiddenEverywhere,am:takeSettingsSection,an:useEscape,ao:SelectionBar,ap:AiPostsToggle,at:isViewMode,au:writeViewMode,aw:alignSiteAiFilter,ax:fetchNextPage,ay:readFirstThumbUrls,az:readResultCount,b:useEffect,c:useLayoutEffect,f:createVNode,g:SearchField,h:Switch,i:settingsSectionHash,j:setGridFavButtonsVisible,k:isFeatureEnabled,l:featureSettingsGroup,n:setAiHiddenEverywhere,o:installSiteMenu,p:Fragment,q:useId,r:loadBackground,s:settingsSectionFromHash,t:SectionLabel,u:useState,v:Select,w:Segmented,x:applyCssOnlyFeatureEnabled,y:applyCssOnlyFeatureChoice,z:getFeatureChoice});/** Reset all mode flags */
+var RESET_MODE = -161;
+var SVG_NAMESPACE = "http://www.w3.org/2000/svg";
+var XHTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
+var MATH_NAMESPACE = "http://www.w3.org/1998/Math/MathML";
+var VNODE_MARKER = Symbol.for("pv");
+var EMPTY_OBJ = {};
+var EMPTY_ARR = [];
+var MATHML_TOKEN_ELEMENTS = /^m(i|n|o|s|text|space)$/;
+var isArray$1 = Array.isArray;
+var slice = EMPTY_ARR.slice;
+var assign$1 = Object.assign;
+/**
+* Remove a child node from its parent if attached.
+* @param {import('./internal').PreactElement | null} node The node to remove
+*/
+function removeNode(node) {
+	if (node && node.parentNode) node.remove();
 }
-function k$1(n, t, r) {
-	var u, i, f, o = {}, e = arguments.length;
-	for (f in t) "key" == f ? u = t[f] : "ref" == f && "function" != typeof n ? i = t[f] : o[f] = t[f];
-	return e > 2 && (o.children = e > 3 ? d$1.call(arguments, 2) : r), m$1(n, o, u, i, null);
-}
-function m$1(r, u, i, f, o) {
-	var e = {
-		type: r,
-		props: u,
-		key: i,
-		ref: f,
-		__k: null,
-		__: null,
-		__b: 0,
-		__e: null,
-		__c: null,
-		constructor: h$1,
-		__v: o || ++t$1,
-		__i: -1,
-		__u: 0
-	};
-	return !o && n.vnode && n.vnode(e), e;
-}
-function $$1(n) {
-	return n.children;
-}
-function x$1(n, t) {
-	this.props = n, this.context = t, this.__g = 0;
-}
-function S(n, t) {
-	if (null == t) return n.__ && S(n.__, n.__i + 1);
-	for (var r; t < n.__k.length; t++) if ((r = n.__k[t]) && r.__e) return r.__e;
-	return "function" != typeof n.type || n.props.__P ? null : S(n);
-}
-function C$1(t) {
-	var r, u = t.__v, i = u.__e, f = [], o = [], e = t.__P;
-	e && ((r = _$1({ constructor: h$1 }, u)).__v = u.__v + 1, n.vnode && n.vnode(r), z$2(e, r, u, t.__n, e.namespaceURI, 32 & u.__u ? [i] : null, f, i || S(u), 32 & u.__u, o), r.__v = u.__v, r.__.__k[r.__i] = r, E$1(f, r, o), u.__ = u.__e = null, r.__e != i && j$1(r));
-}
-function j$1(n) {
-	if ((n = n.__) && n.__c && !n.props.__P) return n.__e = null, n.__k.some(function(t) {
-		return t && (n.__e = t.__e);
-	}), j$1(n);
-}
-function L(t) {
-	(8 & t.__g || (t.__g |= 8, u$2.push(t), f$2++)) && i$1 == n.debounceRendering || ((i$1 = n.debounceRendering) || queueMicrotask)(H$1);
-}
-function H$1() {
-	try {
-		for (var n, t = 1; u$2.length;) u$2.length > t && u$2.sort(o$2), n = u$2.shift(), t = u$2.length, 8 & n.__g && C$1(n);
-	} finally {
-		(f$2 = u$2.length) && (i$1 || queueMicrotask)(H$1);
-	}
-}
-function I(n, t, r, u, i, f, o, e, l, c, a) {
-	var s, h, v, w, d, _, g = u.__k || y$1, k = t.length;
-	for (l = q(r, t, g, l, k), s = 0; s < k; s++) null != (v = r.__k[s]) && (h = ~v.__i && g[v.__i] || p$1, v.__i = s, _ = z$2(n, v, h, i, f, o, e, l, c, a), w = v.__e, (h.ref != v.ref || 8 & h.__u) && (h.ref && G$1(h.ref, null, v, h), v.ref && a.push(v.ref, v.__c || w, v)), d = d || w, 4 & v.__u ? (l = A$1(v, l, n, !h.__v), h.__e && (h.__e = null)) : "function" == typeof v.type && void 0 !== _ ? l = _ : w && (l = w.nextSibling), v.__u &= -21);
-	return r.__e = d, l;
-}
-function q(n, t, r, u, i) {
-	var f, o, e, l, c, a, s, p, y, v = r.length, d = v, _ = 0, g = 0, k = n.__k = Array(i);
-	for (f = 0; f < i; f++) null != (o = t[f]) && "boolean" != typeof o && "function" != typeof o ? ("object" != typeof o || o.constructor === String ? o = k[f] = m$1(null, o) : w$2(o) ? o = k[f] = m$1($$1, { children: o }) : o.constructor === h$1 && o.__b ? o = k[f] = m$1(o.type, o.props, o.key, o.ref, o.__v) : k[f] = o, l = f + _, o.__ = n, o.__b = n.__b + 1, e = null, ~(c = o.__i = P$2(o, r, l, d)) && (d--, (e = r[c]) && (e.__u |= 2)), e && e.__v ? (o.__u |= 16, c == l - 1 ? _-- : c == l + 1 ? _++ : c != l && (c > l ? _-- : _++, g = 1)) : (~c || (i > v ? _-- : i < v && _++), "function" != typeof o.type && (o.__u |= 4))) : k[f] = null;
-	if (g) {
-		for (a = [], s = [], f = 0; f < i; f++) if ((o = k[f]) && 16 & o.__u) {
-			for (_ = 0, p = a.length; _ < p;) a[y = _ + p >> 1] < o.__i ? _ = y + 1 : p = y;
-			a[_] = o.__i, s[f] = _ + 1;
+/**
+* Find the closest error boundary to a thrown error and call it
+* @param {object} error The thrown value
+* @param {import('../internal').VNode} vnode The vnode that threw the error that was caught (except
+* for unmounting when this parameter is the highest parent that was being
+* unmounted)
+* @param {import('../internal').VNode} [oldVNode]
+* @param {import('../internal').ErrorInfo} [errorInfo]
+*/
+function _catchError(error, vnode, oldVNode, errorInfo) {
+	/** @type {import('../internal').Component} */
+	let component, ctor, handled;
+	for (; vnode = vnode._parent;) if ((component = vnode._component) && !(component._bits & 1)) {
+		component._bits |= 4;
+		try {
+			ctor = component.constructor;
+			if (handled = ctor && ctor.getDerivedStateFromError) component.setState(ctor.getDerivedStateFromError(error));
+			if (component.componentDidCatch) {
+				component.componentDidCatch(error, errorInfo || {});
+				handled = 1;
+			}
+			if (handled && component._bits & 8) {
+				component._bits |= 2;
+				return;
+			}
+		} catch (e) {
+			error = e;
 		}
-		for (_ = a.length; f--;) s[f] && (s[f] == _ ? _-- : k[f].__u |= 4);
 	}
-	if (d) for (f = 0; f < v; f++) !(e = r[f]) || 2 & e.__u || (e.__e == u && (u = S(e)), J$1(e, e));
-	return u;
+	resetRenderCount();
+	throw error;
 }
-function A$1(n, t, r, u) {
-	var i, f, o, e;
-	if ("function" == typeof n.type) {
-		if (n.props.__P) return t;
-		if (i = n.__k) for (f = 0; f < i.length; f++) i[f] && (i[f].__ = n, t = A$1(i[f], t, r, false));
-		return t;
+/**
+* The `option` object can potentially contain callback functions
+* that are called during various stages of our renderer. This is the
+* foundation on which all our addons like `preact/debug`, `preact/compat`,
+* and `preact/hooks` are based on. See the `Options` type in `internal.d.ts`
+* for a full list of available option hooks (most editors/IDEs allow you to
+* ctrl+click or cmd+click on mac the type definition below).
+* @type {import('./internal').Options}
+*/
+var options$1 = { _catchError };
+var vnodeId$1 = 0;
+/**
+* Create an virtual node (used for JSX)
+* @param {import('./internal').VNode["type"]} type The node name or Component constructor for this
+* virtual node
+* @param {object | null | undefined} [props] The properties of the virtual node
+* @param {Array<import('.').ComponentChildren>} [children] The children of the
+* virtual node
+* @returns {import('./internal').VNode}
+*/
+function createElement(type, props, children) {
+	let normalizedProps = {}, key, ref, i, length = arguments.length;
+	for (i in props) if (i == "key") key = props[i];
+	else if (i == "ref" && typeof type != "function") ref = props[i];
+	else normalizedProps[i] = props[i];
+	if (length > 2) normalizedProps.children = length > 3 ? slice.call(arguments, 2) : children;
+	return createVNode$1(type, normalizedProps, key, ref, null);
+}
+/**
+* Create a VNode (used internally by Preact)
+* @param {import('./internal').VNode["type"]} type The node name or Component
+* Constructor for this virtual node
+* @param {object | string | number | null} props The properties of this virtual node.
+* If this virtual node represents a text node, this is the text of the node (string or number).
+* @param {string | number | null} key The key for this virtual node, used when
+* diffing it against its children
+* @param {import('./internal').VNode["ref"]} ref The ref property that will
+* receive a reference to its created child
+* @returns {import('./internal').VNode}
+*/
+function createVNode$1(type, props, key, ref, original) {
+	/** @type {import('./internal').VNode} */
+	const vnode = {
+		type,
+		props,
+		key,
+		ref,
+		_children: null,
+		_parent: null,
+		_depth: 0,
+		_dom: null,
+		_component: null,
+		constructor: VNODE_MARKER,
+		_original: original || ++vnodeId$1,
+		_index: -1,
+		_flags: 0
+	};
+	if (!original && options$1.vnode) options$1.vnode(vnode);
+	return vnode;
+}
+function Fragment(props) {
+	return props.children;
+}
+/**
+* Base Component class. Provides `setState()` and `forceUpdate()`, which
+* trigger rendering
+* @param {object} props The initial component props
+* @param {object} context The initial context from parent components'
+* getChildContext
+*/
+function BaseComponent(props, context) {
+	this.props = props;
+	this.context = context;
+	this._bits = 0;
+}
+/**
+* Update component state and schedule a re-render.
+* @this {import('./internal').Component}
+* @param {object | ((s: object, p: object) => object)} update A hash of state
+* properties to update with new values or a function that given the current
+* state and props returns a new partial state
+* @param {() => void} [callback] A function to be called once component state is
+* updated
+*/
+BaseComponent.prototype.setState = function(update, callback) {
+	let s = this._nextState;
+	if (!s || s == this.state) s = this._nextState = assign$1({}, this.state);
+	if (typeof update == "function") update = update(assign$1({}, s), this.props);
+	if (update) assign$1(s, update);
+	else return;
+	if (this._vnode) {
+		if (callback) this._stateCallbacks.push(callback);
+		enqueueRender(this);
 	}
-	for (t && !t.parentNode && (t = S(n)) && !t.parentNode && (t = null), o = n.__e, e = t; e && 8 == e.nodeType;) e = e.nextSibling;
-	for (o != e && (!u && r.moveBefore && o.parentNode ? r.moveBefore(o, t) : r.insertBefore(o, t || null)), t = o; (t = t && t.nextSibling) && 8 == t.nodeType && !t.data.startsWith("$s"););
-	return t;
+};
+/**
+* Immediately perform a synchronous re-render of the component
+* @this {import('./internal').Component}
+* @param {() => void} [callback] A function to be called after component is
+* re-rendered
+*/
+BaseComponent.prototype.forceUpdate = function(callback) {
+	if (this._vnode) {
+		this._bits |= 4;
+		if (callback) this._renderCallbacks.push(callback);
+		enqueueRender(this);
+	}
+};
+/**
+* Accepts `props` and `state`, and returns a new Virtual DOM tree to build.
+* Virtual DOM is generally constructed via [JSX](https://jasonformat.com/wtf-is-jsx).
+* @param {object} props Props (eg: JSX attributes) received from parent
+* element/component
+* @param {object} state The component's current state
+* @param {object} context Context object, as returned by the nearest
+* ancestor's `getChildContext()`
+* @returns {ComponentChildren | void}
+*/
+BaseComponent.prototype.render = Fragment;
+/**
+* @param {import('./internal').VNode} vnode
+* @param {number | null} [childIndex]
+*/
+function getDomSibling(vnode, childIndex) {
+	if (childIndex == null) return vnode._parent && getDomSibling(vnode._parent, vnode._index + 1);
+	let sibling;
+	for (; childIndex < vnode._children.length; childIndex++) {
+		sibling = vnode._children[childIndex];
+		if (sibling && sibling._dom) return sibling._dom;
+	}
+	return typeof vnode.type == "function" && !vnode.props._parentDom ? getDomSibling(vnode) : null;
 }
-function O(n, t) {
-	return t = t || [], null != n && "boolean" != typeof n && (w$2(n) ? n.some(function(n) {
-		O(n, t);
-	}) : t.push(n)), t;
+/**
+* Trigger in-place re-rendering of a component.
+* @param {import('./internal').Component} component The component to rerender
+*/
+function renderComponent(component) {
+	const oldVNode = component._vnode, oldDom = oldVNode._dom, commitQueue = [], refQueue = [];
+	const parentDom = component._parentDom;
+	if (parentDom) {
+		const newVNode = assign$1({ constructor: VNODE_MARKER }, oldVNode);
+		newVNode._original = oldVNode._original + 1;
+		if (options$1.vnode) options$1.vnode(newVNode);
+		diff(parentDom, newVNode, oldVNode, component._globalContext, parentDom.namespaceURI, oldVNode._flags & 32 ? [oldDom] : null, commitQueue, oldDom || getDomSibling(oldVNode), oldVNode._flags & 32, refQueue);
+		newVNode._original = oldVNode._original;
+		newVNode._parent._children[newVNode._index] = newVNode;
+		commitRoot(commitQueue, newVNode, refQueue);
+		oldVNode._parent = oldVNode._dom = null;
+		if (newVNode._dom != oldDom) updateParentDomPointers(newVNode);
+	}
 }
-function P$2(n, t, r, u) {
-	var i, f = n.key, o = n.type, e = t[r], l = e && !(2 & e.__u);
-	if (null === e && null == f || l && f == e.key && o == e.type) return r;
-	if (u > (l ? 1 : 0)) {
-		for (i = r - 1; i >= 0; i--) if ((e = t[i]) && !(2 & e.__u) && f == e.key && o == e.type) return i;
-		for (i = r + 1; i < t.length; i++) if ((e = t[i]) && !(2 & e.__u) && f == e.key && o == e.type) return i;
+/**
+* @param {import('./internal').VNode} vnode
+*/
+function updateParentDomPointers(vnode) {
+	if ((vnode = vnode._parent) && vnode._component && !vnode.props._parentDom) {
+		vnode._dom = null;
+		vnode._children.some((child) => child && (vnode._dom = child._dom));
+		return updateParentDomPointers(vnode);
+	}
+}
+/**
+* The render queue
+* @type {Array<import('./internal').Component>}
+*/
+var rerenderQueue = [];
+var prevDebounce;
+var rerenderCount = 0;
+function resetRenderCount() {
+	rerenderCount = 0;
+}
+/**
+* Enqueue a rerender of a component
+* @param {import('./internal').Component} c The component to rerender
+*/
+function enqueueRender(c) {
+	if (!(c._bits & 8) && (c._bits |= 8, rerenderQueue.push(c), !rerenderCount++) || prevDebounce != options$1.debounceRendering) {
+		prevDebounce = options$1.debounceRendering;
+		(prevDebounce || queueMicrotask)(process);
+	}
+}
+/**
+* @param {import('./internal').Component} a
+* @param {import('./internal').Component} b
+*/
+var depthSort = (a, b) => a._vnode._depth - b._vnode._depth;
+/** Flush the render queue by rerendering all queued components */
+function process() {
+	try {
+		let c, l = 1;
+		while (rerenderQueue.length) {
+			if (rerenderQueue.length > l) rerenderQueue.sort(depthSort);
+			c = rerenderQueue.shift();
+			l = rerenderQueue.length;
+			if (c._bits & 8) renderComponent(c);
+		}
+	} finally {
+		if (rerenderCount = rerenderQueue.length) (prevDebounce || queueMicrotask)(process);
+	}
+}
+/**
+* @typedef {import('../internal').ComponentChildren} ComponentChildren
+* @typedef {import('../internal').Component} Component
+* @typedef {import('../internal').PreactElement} PreactElement
+* @typedef {import('../internal').VNode} VNode
+*/
+/**
+* Diff the children of a virtual node
+* @param {PreactElement} parentDom The DOM element whose children are being
+* diffed
+* @param {ComponentChildren[]} renderResult
+* @param {VNode} newParentVNode The new virtual node whose children should be
+* diff'ed against oldParentVNode
+* @param {VNode} oldParentVNode The old virtual node whose children should be
+* diff'ed against newParentVNode
+* @param {object} globalContext The current context object - modified by
+* getChildContext
+* @param {string} namespace Current namespace of the DOM node (HTML, SVG, or MathML)
+* @param {Array<PreactElement>} excessDomChildren
+* @param {Array<Component>} commitQueue List of components which have callbacks
+* to invoke in commitRoot
+* @param {PreactElement} oldDom The current attached DOM element any new dom
+* elements should be placed around. Likely `null` on first render (except when
+* hydrating). Can be a sibling DOM element when diffing Fragments that have
+* siblings. In most cases, it starts out as `oldChildren[0]._dom`.
+* @param {boolean} isHydrating Whether or not we are in hydration
+* @param {any[]} refQueue an array of elements needed to invoke refs
+* @returns {PreactElement} The next sibling DOM element to insert new elements
+*/
+function diffChildren(parentDom, renderResult, newParentVNode, oldParentVNode, globalContext, namespace, excessDomChildren, commitQueue, oldDom, isHydrating, refQueue) {
+	let i, oldVNode, childVNode, newDom, firstChildDom;
+	/** @type {VNode[]} */
+	let oldChildren = oldParentVNode._children || EMPTY_ARR;
+	let newChildrenLength = renderResult.length;
+	oldDom = constructNewChildrenArray(newParentVNode, renderResult, oldChildren, oldDom, newChildrenLength);
+	for (i = 0; i < newChildrenLength; i++) {
+		childVNode = newParentVNode._children[i];
+		if (childVNode == null) continue;
+		oldVNode = ~childVNode._index && oldChildren[childVNode._index] || EMPTY_OBJ;
+		childVNode._index = i;
+		let result = diff(parentDom, childVNode, oldVNode, globalContext, namespace, excessDomChildren, commitQueue, oldDom, isHydrating, refQueue);
+		newDom = childVNode._dom;
+		if (oldVNode.ref != childVNode.ref || oldVNode._flags & 8) {
+			if (oldVNode.ref) applyRef(oldVNode.ref, null, childVNode, oldVNode);
+			if (childVNode.ref) refQueue.push(childVNode.ref, childVNode._component || newDom, childVNode);
+		}
+		firstChildDom = firstChildDom || newDom;
+		if (childVNode._flags & 4) {
+			oldDom = insert(childVNode, oldDom, parentDom, !oldVNode._original);
+			if (oldVNode._dom) oldVNode._dom = null;
+		} else if (typeof childVNode.type == "function" && result !== void 0) oldDom = result;
+		else if (newDom) oldDom = newDom.nextSibling;
+		childVNode._flags &= -21;
+	}
+	newParentVNode._dom = firstChildDom;
+	return oldDom;
+}
+/**
+* @param {VNode} newParentVNode
+* @param {ComponentChildren[]} renderResult
+* @param {VNode[]} oldChildren
+*/
+function constructNewChildrenArray(newParentVNode, renderResult, oldChildren, oldDom, newChildrenLength) {
+	/** @type {number} */
+	let i;
+	/** @type {VNode} */
+	let childVNode;
+	/** @type {VNode} */
+	let oldVNode;
+	let oldChildrenLength = oldChildren.length, remainingOldChildren = oldChildrenLength;
+	let skew = 0;
+	/** Whether any matched child was found far from its skewed index, i.e. a
+	* real reorder happened and we need to compute the minimal set of moves. */
+	let moved = 0;
+	/** @type {VNode[]} */
+	let newChildren = newParentVNode._children = Array(newChildrenLength);
+	for (i = 0; i < newChildrenLength; i++) {
+		childVNode = renderResult[i];
+		if (childVNode == null || typeof childVNode == "boolean" || typeof childVNode == "function") {
+			newChildren[i] = null;
+			continue;
+		} else if (typeof childVNode != "object" || childVNode.constructor === String) childVNode = newChildren[i] = createVNode$1(null, childVNode);
+		else if (isArray$1(childVNode)) childVNode = newChildren[i] = createVNode$1(Fragment, { children: childVNode });
+		else if (childVNode.constructor === VNODE_MARKER && childVNode._depth) childVNode = newChildren[i] = createVNode$1(childVNode.type, childVNode.props, childVNode.key, childVNode.ref, childVNode._original);
+		else newChildren[i] = childVNode;
+		const skewedIndex = i + skew;
+		childVNode._parent = newParentVNode;
+		childVNode._depth = newParentVNode._depth + 1;
+		const matchingIndex = childVNode._index = findMatchingIndex(childVNode, oldChildren, skewedIndex, remainingOldChildren);
+		oldVNode = null;
+		if (~matchingIndex) {
+			oldVNode = oldChildren[matchingIndex];
+			remainingOldChildren--;
+			if (oldVNode) oldVNode._flags |= 2;
+		}
+		if (!oldVNode || !oldVNode._original) {
+			if (!~matchingIndex) {
+				if (newChildrenLength > oldChildrenLength) skew--;
+				else if (newChildrenLength < oldChildrenLength) skew++;
+			}
+			if (typeof childVNode.type != "function") childVNode._flags |= 4;
+		} else {
+			childVNode._flags |= 16;
+			if (matchingIndex == skewedIndex - 1) skew--;
+			else if (matchingIndex == skewedIndex + 1) skew++;
+			else if (matchingIndex != skewedIndex) {
+				if (matchingIndex > skewedIndex) skew--;
+				else skew++;
+				moved = 1;
+			}
+		}
+	}
+	if (moved) {
+		/** @type {number[]} tails[x] is the smallest old index ending an increasing subsequence of length x+1 */
+		let tails = [];
+		/** @type {number[]} length of the longest increasing subsequence ending at child i */
+		let lisLengths = [];
+		for (i = 0; i < newChildrenLength; i++) {
+			childVNode = newChildren[i];
+			if (childVNode && childVNode._flags & 16) {
+				skew = 0;
+				let hi = tails.length;
+				while (skew < hi) {
+					const mid = skew + hi >> 1;
+					if (tails[mid] < childVNode._index) skew = mid + 1;
+					else hi = mid;
+				}
+				tails[skew] = childVNode._index;
+				lisLengths[i] = skew + 1;
+			}
+		}
+		skew = tails.length;
+		while (i--) if (lisLengths[i]) {
+			if (lisLengths[i] == skew) skew--;
+			else newChildren[i]._flags |= 4;
+		}
+	}
+	if (remainingOldChildren) for (i = 0; i < oldChildrenLength; i++) {
+		oldVNode = oldChildren[i];
+		if (oldVNode && !(oldVNode._flags & 2)) {
+			if (oldVNode._dom == oldDom) oldDom = getDomSibling(oldVNode);
+			unmount(oldVNode, oldVNode);
+		}
+	}
+	return oldDom;
+}
+/**
+* @param {VNode} parentVNode
+* @param {PreactElement} oldDom
+* @param {PreactElement} parentDom
+* @param {boolean} isMounting
+* @returns {PreactElement}
+*/
+function insert(parentVNode, oldDom, parentDom, isMounting) {
+	if (typeof parentVNode.type == "function") {
+		if (parentVNode.props._parentDom) return oldDom;
+		let children = parentVNode._children;
+		if (children) {
+			for (let i = 0; i < children.length; i++) if (children[i]) {
+				children[i]._parent = parentVNode;
+				oldDom = insert(children[i], oldDom, parentDom, false);
+			}
+		}
+		return oldDom;
+	} else {
+		if (oldDom && !oldDom.parentNode) {
+			oldDom = getDomSibling(parentVNode);
+			if (oldDom && !oldDom.parentNode) oldDom = null;
+		}
+		let dom = parentVNode._dom;
+		let next = oldDom;
+		while (next && next.nodeType == 8) next = next.nextSibling;
+		if (dom != next) {
+			if (!isMounting && parentDom.moveBefore && dom.parentNode) parentDom.moveBefore(dom, oldDom);
+			else parentDom.insertBefore(dom, oldDom || null);
+		}
+		oldDom = dom;
+	}
+	while ((oldDom = oldDom && oldDom.nextSibling) && oldDom.nodeType == 8 && !oldDom.data.startsWith("$s"));
+	return oldDom;
+}
+/**
+* Flatten and loop through the children of a virtual node
+* @param {ComponentChildren} children The unflattened children of a virtual
+* node
+* @returns {VNode[]}
+*/
+function toChildArray(children, out) {
+	out = out || [];
+	if (children != null && typeof children != "boolean") {
+		if (isArray$1(children)) children.some((child) => {
+			toChildArray(child, out);
+		});
+		else out.push(children);
+	}
+	return out;
+}
+/**
+* @param {VNode} childVNode
+* @param {VNode[]} oldChildren
+* @param {number} skewedIndex
+* @param {number} remainingOldChildren
+* @returns {number}
+*/
+function findMatchingIndex(childVNode, oldChildren, skewedIndex, remainingOldChildren) {
+	const key = childVNode.key;
+	const type = childVNode.type;
+	let oldVNode = oldChildren[skewedIndex];
+	const matched = oldVNode && !(oldVNode._flags & 2);
+	let shouldSearch = remainingOldChildren > (matched ? 1 : 0);
+	if (oldVNode === null && key == null || matched && key == oldVNode.key && type == oldVNode.type) return skewedIndex;
+	else if (shouldSearch) {
+		let x;
+		for (x = skewedIndex - 1; x >= 0; x--) {
+			oldVNode = oldChildren[x];
+			if (oldVNode && !(oldVNode._flags & 2) && key == oldVNode.key && type == oldVNode.type) return x;
+		}
+		for (x = skewedIndex + 1; x < oldChildren.length; x++) {
+			oldVNode = oldChildren[x];
+			if (oldVNode && !(oldVNode._flags & 2) && key == oldVNode.key && type == oldVNode.type) return x;
+		}
 	}
 	return -1;
 }
-function T$1(n, t, r) {
-	r ??= "", "-" == t[0] ? n.setProperty(t, r) : n[t] = r;
+var EVENT_DISPATCHED = Symbol();
+function setStyle(style, key, value) {
+	if (value == null) value = "";
+	if (key[0] == "-") style.setProperty(key, value);
+	else style[key] = value;
 }
-function N(n, t, r, u, i) {
-	var f, o;
-	if ("style" == t) if ("string" == typeof r) n.style.cssText = r;
-	else {
-		if ("string" == typeof u && (n.style.cssText = u = ""), u) for (t in u) r && t in r || T$1(n.style, t);
-		if (r) for (t in r) u && r[t] == u[t] || T$1(n.style, t, r[t]);
-	}
-	else if ("o" == t[0] && "n" == t[1]) "function" != typeof r && (r = null), "function" != typeof u && (u = null), (n.__e || (n.__e = {}))[t] = r, r && u || (o = a$2[t] || (a$2[t] = V(t)), (n.__a || (n.__a = {}))[t] = c$1, f = t != (t = t.replace(l$1, "$1")), (t = t.slice(2))[0] < "a" && (t = t.toLowerCase()), r ? n.addEventListener(t, o, f) : n.removeEventListener(t, o, f));
-	else {
-		if ("http://www.w3.org/2000/svg" == i) t = t.replace(/xlink(H|:h)/, "h").replace(/sName$/, "s");
-		else if ("width" != t && "height" != t && "href" != t && "list" != t && "form" != t && "tabIndex" != t && "download" != t && "rowSpan" != t && "colSpan" != t && "role" != t && "popover" != t && t in n) try {
-			n[t] = null == r ? "" : r;
+var CAPTURE_REGEX = /(PointerCapture)$|Capture$/i;
+var eventClock = 0;
+/**
+* Set a property value on a DOM node
+* @param {import('../internal').PreactElement} dom The DOM node to modify
+* @param {string} name The name of the property to set
+* @param {*} value The value to set the property to
+* @param {*} oldValue The old value the property had
+* @param {string} namespace Whether or not this DOM node is an SVG node or not
+*/
+function setProperty(dom, name, value, oldValue, namespace) {
+	let useCapture;
+	if (name == "style") {
+		if (typeof value == "string") dom.style.cssText = value;
+		else {
+			if (typeof oldValue == "string") dom.style.cssText = oldValue = "";
+			if (oldValue) {
+				for (name in oldValue) if (!(value && name in value)) setStyle(dom.style, name);
+			}
+			if (value) {
+				for (name in value) if (!oldValue || value[name] != oldValue[name]) setStyle(dom.style, name, value[name]);
+			}
+		}
+	} else if (name[0] == "o" && name[1] == "n") {
+		if (typeof value != "function") value = null;
+		if (typeof oldValue != "function") oldValue = null;
+		(dom._listeners || (dom._listeners = {}))[name] = value;
+		if (!value || !oldValue) {
+			const proxy = eventProxies[name] || (eventProxies[name] = createEventProxy(name));
+			(dom._attached || (dom._attached = {}))[name] = eventClock;
+			useCapture = name != (name = name.replace(CAPTURE_REGEX, "$1"));
+			name = name.slice(2);
+			if (name[0] < "a") name = name.toLowerCase();
+			if (value) dom.addEventListener(name, proxy, useCapture);
+			else dom.removeEventListener(name, proxy, useCapture);
+		}
+	} else {
+		if (namespace == "http://www.w3.org/2000/svg") name = name.replace(/xlink(H|:h)/, "h").replace(/sName$/, "s");
+		else if (name != "width" && name != "height" && name != "href" && name != "list" && name != "form" && name != "tabIndex" && name != "download" && name != "rowSpan" && name != "colSpan" && name != "role" && name != "popover" && name in dom) try {
+			dom[name] = value == null ? "" : value;
 			return;
-		} catch (n) {}
-		if ("function" == typeof r) return;
-		null == r || false === r && "-" != t[4] ? n.removeAttribute(t) : n.setAttribute(t, "popover" == t && 1 == r ? "" : r);
+		} catch (e) {}
+		if (typeof value == "function") return;
+		if (value != null && (value !== false || name[4] == "-")) dom.setAttribute(name, name == "popover" && value == true ? "" : value);
+		else dom.removeAttribute(name);
 	}
 }
-function V(t) {
-	return function(r) {
-		var u = this.__e;
-		if (u) {
-			if (u = u[t], null == r[e$1]) r[e$1] = c$1++;
-			else if (r[e$1] < this.__a[t]) return;
-			return u(n.event ? n.event(r) : r);
+/**
+* Create an event proxy function.
+* @param {string} name The prop name the handler is stored under.
+* @private
+*/
+function createEventProxy(name) {
+	/**
+	* Proxy an event to hooked event handlers
+	* @param {import('../internal').PreactEvent} e The event object from the browser
+	* @private
+	*/
+	return function(e) {
+		let eventHandler = this._listeners;
+		if (eventHandler) {
+			eventHandler = eventHandler[name];
+			if (e[EVENT_DISPATCHED] == null) e[EVENT_DISPATCHED] = eventClock++;
+			else if (e[EVENT_DISPATCHED] < this._attached[name]) return;
+			return eventHandler(options$1.event ? options$1.event(e) : e);
 		}
 	};
 }
-function z$2(t, r, u, i, f, o, e, l, c, a) {
-	var s, p, v, d, k, b, m, M, C, j, L, H, q, A, O, P, T, N, V = r.type;
-	if (r.constructor !== h$1) return null;
-	128 & u.__u && (c = 32 & u.__u, s = u.__c.__z) && (r.__u |= c, p = o = [], 8 == s.nodeType ? l = B$1(s, o) : o.push(s), l = o[0] || l), (s = n.__b) && s(r);
-	n: if ("function" == typeof V) {
-		v = e.length;
+/** @type {Record<string, (e: Event) => any>} */
+var eventProxies = {};
+/**
+* @typedef {import('../internal').ComponentType} ComponentType
+* @typedef {import('../internal').ComponentChildren} ComponentChildren
+* @typedef {import('../internal').Component} Component
+* @typedef {import('../internal').PreactElement} PreactElement
+* @typedef {import('../internal').VNode} VNode
+*/
+/**
+* @template {any} T
+* @typedef {import('../internal').Ref<T>} Ref<T>
+*/
+/**
+* Diff two virtual nodes and apply proper changes to the DOM
+* @param {PreactElement} parentDom The parent of the DOM element
+* @param {VNode} newVNode The new virtual node
+* @param {VNode} oldVNode The old virtual node
+* @param {object} globalContext The current context object. Modified by
+* getChildContext
+* @param {string} namespace Current namespace of the DOM node (HTML, SVG, or MathML)
+* @param {Array<PreactElement>} excessDomChildren
+* @param {Array<Component>} commitQueue List of components which have callbacks
+* to invoke in commitRoot
+* @param {PreactElement} oldDom The current attached DOM element any new dom
+* elements should be placed around. Likely `null` on first render (except when
+* hydrating). Can be a sibling DOM element when diffing Fragments that have
+* siblings. In most cases, it starts out as `oldChildren[0]._dom`.
+* @param {boolean} isHydrating Whether or not we are in hydration
+* @param {any[]} refQueue an array of elements needed to invoke refs
+*/
+function diff(parentDom, newVNode, oldVNode, globalContext, namespace, excessDomChildren, commitQueue, oldDom, isHydrating, refQueue) {
+	/** @type {any} */
+	let tmp, resumed, newType = newVNode.type;
+	if (newVNode.constructor !== VNODE_MARKER) return null;
+	if (oldVNode._flags & 128 && (isHydrating = oldVNode._flags & 32, tmp = oldVNode._component._excess)) {
+		newVNode._flags |= isHydrating;
+		resumed = excessDomChildren = [];
+		if (tmp.nodeType == 8) oldDom = rangeEnd(tmp, excessDomChildren);
+		else excessDomChildren.push(tmp);
+		oldDom = excessDomChildren[0] || oldDom;
+	}
+	if (tmp = options$1._diff) tmp(newVNode);
+	outer: if (typeof newType == "function") {
+		let oldCommitQueueLength = commitQueue.length;
 		try {
-			if (M = r.props, C = (s = V.prototype) && s.render, j = (s = V.contextType) && i[s.__c], L = s ? j ? j.props.value : s.__ : i, (d = u.__c) ? (r.__c = d, 2 & d.__g && (d.__g |= 1)) : (C ? r.__c = d = new V(M, L) : (r.__c = d = new x$1(M, L), d.constructor = V, d.render = K$1), j && j.sub(d), d.state || (d.state = {}), d.__n = i, d.__g |= 8, d.__h = [], d.__k = []), C && (d.__s || (d.__s = d.state), V.getDerivedStateFromProps && (d.__s == d.state && (d.__s = _$1({}, d.__s)), _$1(d.__s, V.getDerivedStateFromProps(M, d.__s)))), k = d.props, b = d.state, d.__v = r, u.__c) {
-				if (M !== k && C && !V.getDerivedStateFromProps && d.componentWillReceiveProps && d.componentWillReceiveProps(M, L), r.__v == u.__v && !(8 & d.__g) || !(4 & d.__g) && d.shouldComponentUpdate && !1 === d.shouldComponentUpdate(M, d.__s, L)) {
-					r.__v != u.__v && (d.props = M, d.state = d.__s, d.__g &= -9), r.__e = u.__e, r.__k = u.__k, r.__k.some(function(n) {
-						n && (n.__ = r);
-					}), y$1.push.apply(d.__h, d.__k), d.__k = [], d.__h.length && e.push(d), l = S(u);
-					break n;
+			let c, oldProps, oldState, snapshot, newProps = newVNode.props;
+			const isClassComponent = (tmp = newType.prototype) && tmp.render;
+			tmp = newType.contextType;
+			const provider = tmp && globalContext[tmp._id];
+			const componentContext = tmp ? provider ? provider.props.value : tmp._defaultValue : globalContext;
+			if (c = oldVNode._component) {
+				newVNode._component = c;
+				if (c._bits & 2) c._bits |= 1;
+			} else {
+				if (isClassComponent) newVNode._component = c = new newType(newProps, componentContext);
+				else {
+					newVNode._component = c = new BaseComponent(newProps, componentContext);
+					c.constructor = newType;
+					c.render = doRender;
 				}
-				d.componentWillUpdate && d.componentWillUpdate(M, d.__s, L), C && d.componentDidUpdate && d.__h.push(function() {
-					d.componentDidUpdate(k, b, m);
-				});
-			} else C && !V.getDerivedStateFromProps && d.componentWillMount && d.componentWillMount(), C && d.componentDidMount && d.__h.push(d.componentDidMount);
-			d.context = L, d.props = M, d.__P = t, d.__g &= -5, H = n.__r, q = C ? 25 : 0;
-			do
-				d.__g &= -9, H && H(r), s = d.render(d.props, d.state = d.__s, d.context);
-			while (8 & d.__g && ++q < 25);
-			C && (y$1.push.apply(d.__h, d.__k), d.__k = []), d.state = d.__s, d.getChildContext && (i = _$1({}, i, d.getChildContext())), C && u.__c && d.getSnapshotBeforeUpdate && (m = d.getSnapshotBeforeUpdate(k, b)), A = s && s.type === $$1 && null == s.key ? s.props.children : s, M.__P && (s = l, f = (t = M.__P).namespaceURI, c = o = null, u.props && u.props.__P != t && (u.__k.some(function(n) {
-				n && J$1(n, n);
-			}), u.__k = null), l = u.__k ? S(u, 0) : null), l = I(t, w$2(A) ? A : [A], r, u, i, f, o, e, l, c, a), M.__P && (r.__e = null, l = s), r.__u &= -161, p && p.some(g$1), d.__h.length && e.push(d), 1 & d.__g && (d.__g &= -4);
-		} catch (t) {
-			if (e.length = v, r.__v = null, c || o) if (t && t.then) {
-				if (r.__u |= 128 | c, o) {
-					for (~(T = o.indexOf(l || void 0)) || (T = o.length); (N = o[T - 1]) && 8 == N.nodeType;) T--;
-					for (; T < o.length; T++) if (N = o[T]) if (o[T] = null, O) {
-						if (N == P) break;
-					} else {
-						if (8 != N.nodeType) break;
-						N.data.startsWith("$s") && (P = B$1(O = N));
+				if (provider) provider.sub(c);
+				if (!c.state) c.state = {};
+				c._globalContext = globalContext;
+				c._bits |= 8;
+				c._renderCallbacks = [];
+				c._stateCallbacks = [];
+			}
+			if (isClassComponent) {
+				if (!c._nextState) c._nextState = c.state;
+				if (newType.getDerivedStateFromProps) {
+					if (c._nextState == c.state) c._nextState = assign$1({}, c._nextState);
+					assign$1(c._nextState, newType.getDerivedStateFromProps(newProps, c._nextState));
+				}
+			}
+			oldProps = c.props;
+			oldState = c.state;
+			c._vnode = newVNode;
+			if (!oldVNode._component) {
+				if (isClassComponent && !newType.getDerivedStateFromProps && c.componentWillMount) c.componentWillMount();
+				if (isClassComponent && c.componentDidMount) c._renderCallbacks.push(c.componentDidMount);
+			} else {
+				if (newProps !== oldProps && isClassComponent && !newType.getDerivedStateFromProps && c.componentWillReceiveProps) c.componentWillReceiveProps(newProps, componentContext);
+				if (newVNode._original == oldVNode._original && !(c._bits & 8) || !(c._bits & 4) && c.shouldComponentUpdate && c.shouldComponentUpdate(newProps, c._nextState, componentContext) === false) {
+					if (newVNode._original != oldVNode._original) {
+						c.props = newProps;
+						c.state = c._nextState;
+						c._bits &= -9;
 					}
+					newVNode._dom = oldVNode._dom;
+					newVNode._children = oldVNode._children;
+					newVNode._children.some((vnode) => {
+						if (vnode) vnode._parent = newVNode;
+					});
+					EMPTY_ARR.push.apply(c._renderCallbacks, c._stateCallbacks);
+					c._stateCallbacks = [];
+					if (c._renderCallbacks.length) commitQueue.push(c);
+					oldDom = getDomSibling(oldVNode);
+					break outer;
 				}
-				if (!O) {
-					for (; l && 8 == l.nodeType && l.nextSibling;) l = l.nextSibling;
-					O = l;
+				if (c.componentWillUpdate) c.componentWillUpdate(newProps, c._nextState, componentContext);
+				if (isClassComponent && c.componentDidUpdate) c._renderCallbacks.push(() => {
+					c.componentDidUpdate(oldProps, oldState, snapshot);
+				});
+			}
+			c.context = componentContext;
+			c.props = newProps;
+			c._parentDom = parentDom;
+			c._bits &= -5;
+			let renderHook = options$1._render, count = isClassComponent ? 25 : 0;
+			do {
+				c._bits &= -9;
+				if (renderHook) renderHook(newVNode);
+				tmp = c.render(c.props, c.state = c._nextState, c.context);
+			} while (c._bits & 8 && ++count < 25);
+			if (isClassComponent) {
+				EMPTY_ARR.push.apply(c._renderCallbacks, c._stateCallbacks);
+				c._stateCallbacks = [];
+			}
+			c.state = c._nextState;
+			if (c.getChildContext) globalContext = assign$1({}, globalContext, c.getChildContext());
+			if (isClassComponent && oldVNode._component && c.getSnapshotBeforeUpdate) snapshot = c.getSnapshotBeforeUpdate(oldProps, oldState);
+			const renderResult = tmp && tmp.type === Fragment && tmp.key == null ? tmp.props.children : tmp;
+			if (newProps._parentDom) {
+				tmp = oldDom;
+				parentDom = newProps._parentDom;
+				namespace = parentDom.namespaceURI;
+				isHydrating = excessDomChildren = null;
+				if (oldVNode.props && oldVNode.props._parentDom != parentDom) {
+					/** @type {VNode[]} */ oldVNode._children.some((child) => {
+						if (child) unmount(child, child);
+					});
+					oldVNode._children = null;
 				}
-				(s = B$1(O = r.__c.__z || (r.__c.__z = O))) ? (r.__e = O, l = s) : r.__e = l, l = l && l.nextSibling;
-			} else o && o.some(g$1);
-			else r.__e = u.__e;
-			r.__k || (r.__k = u.__k || []), t && t.then || D$1(r), n.__e(t, r, u);
+				oldDom = oldVNode._children ? getDomSibling(oldVNode, 0) : null;
+			}
+			oldDom = diffChildren(parentDom, isArray$1(renderResult) ? renderResult : [renderResult], newVNode, oldVNode, globalContext, namespace, excessDomChildren, commitQueue, oldDom, isHydrating, refQueue);
+			if (newProps._parentDom) {
+				newVNode._dom = null;
+				oldDom = tmp;
+			}
+			newVNode._flags &= RESET_MODE;
+			if (resumed) resumed.some(removeNode);
+			if (c._renderCallbacks.length) commitQueue.push(c);
+			if (c._bits & 1) c._bits &= -4;
+		} catch (e) {
+			commitQueue.length = oldCommitQueueLength;
+			newVNode._original = null;
+			if (isHydrating || excessDomChildren) {
+				if (e && e.then) {
+					let startMarker, end;
+					newVNode._flags |= 128 | isHydrating;
+					if (excessDomChildren) {
+						let i = excessDomChildren.indexOf(oldDom || void 0), child;
+						if (!~i) i = excessDomChildren.length;
+						while ((child = excessDomChildren[i - 1]) && child.nodeType == 8) i--;
+						for (; i < excessDomChildren.length; i++) if (child = excessDomChildren[i]) {
+							excessDomChildren[i] = null;
+							if (startMarker) {
+								if (child == end) break;
+							} else if (child.nodeType != 8) break;
+							else if (child.data.startsWith("$s")) end = rangeEnd(startMarker = child);
+						}
+					}
+					if (!startMarker) {
+						while (oldDom && oldDom.nodeType == 8 && oldDom.nextSibling) oldDom = oldDom.nextSibling;
+						startMarker = oldDom;
+					}
+					startMarker = newVNode._component._excess || (newVNode._component._excess = startMarker);
+					if (tmp = rangeEnd(startMarker)) {
+						newVNode._dom = startMarker;
+						oldDom = tmp;
+					} else newVNode._dom = oldDom;
+					oldDom = oldDom && oldDom.nextSibling;
+				} else if (excessDomChildren) excessDomChildren.some(removeNode);
+			} else newVNode._dom = oldVNode._dom;
+			if (!newVNode._children) newVNode._children = oldVNode._children || [];
+			if (!(e && e.then)) markAsForce(newVNode);
+			options$1._catchError(e, newVNode, oldVNode);
 		}
-	} else l = r.__e = F$1(u.__e, r, u, i, f, o, e, c, a, t);
-	return (s = n.diffed) && s(r), l;
+	} else oldDom = newVNode._dom = diffElementNodes(oldVNode._dom, newVNode, oldVNode, globalContext, namespace, excessDomChildren, commitQueue, isHydrating, refQueue, parentDom);
+	if (tmp = options$1.diffed) tmp(newVNode);
+	return oldDom;
 }
-function B$1(n, t) {
-	if (n && 8 == n.nodeType && n.data.startsWith("$s")) for (var r = 1; n = n.nextSibling;) {
-		if (8 == n.nodeType) {
-			if (n.data.startsWith("$s")) r++;
-			else if (n.data.startsWith("/$s") && !--r) return n;
+/**
+* Find the closing marker of a streamed range.
+* @param {PreactElement} start A `$s` marker opening a range
+* @param {PreactElement[]} [nodes] Collects the nodes inside the range
+* @returns {PreactElement} The closing marker, or undefined when `start` doesn't
+* open a range or the range is unclosed
+*/
+function rangeEnd(start, nodes) {
+	if (start && start.nodeType == 8 && start.data.startsWith("$s")) for (let depth = 1; start = start.nextSibling;) {
+		if (start.nodeType == 8) {
+			if (start.data.startsWith("$s")) depth++;
+			else if (start.data.startsWith("/$s") && !--depth) return start;
 		}
-		t && t.push(n);
+		if (nodes) nodes.push(start);
 	}
 }
-function D$1(n) {
-	n && (n.__c && (n.__c.__g |= 4), n.__k && n.__k.some(D$1));
+function markAsForce(vnode) {
+	if (vnode) {
+		if (vnode._component) vnode._component._bits |= 4;
+		if (vnode._children) vnode._children.some(markAsForce);
+	}
 }
-function E$1(t, r, u) {
-	for (var i = 0; i < u.length;) G$1(u[i++], u[i++], u[i++]);
-	n.__c && n.__c(r, t), t.some(function(r) {
+/**
+* @param {Array<Component>} commitQueue List of components
+* which have callbacks to invoke in commitRoot
+* @param {VNode} root
+*/
+function commitRoot(commitQueue, root, refQueue) {
+	for (let i = 0; i < refQueue.length;) applyRef(refQueue[i++], refQueue[i++], refQueue[i++]);
+	if (options$1._commit) options$1._commit(root, commitQueue);
+	commitQueue.some((c) => {
 		try {
-			t = r.__h, r.__h = [], t.some(function(n) {
-				n.call(r);
+			commitQueue = c._renderCallbacks;
+			c._renderCallbacks = [];
+			commitQueue.some((cb) => {
+				cb.call(c);
 			});
-		} catch (t) {
-			n.__e(t, r.__v);
+		} catch (e) {
+			options$1._catchError(e, c._vnode);
 		}
 	});
 }
-function F$1(t, r, u, i, f, o, e, l, c, a) {
-	var s, h, y, _, k, b, m, M, $ = u.props || p$1, x = r.props, C = r.type;
-	if ("svg" == C ? f = "http://www.w3.org/2000/svg" : "math" == C ? f = "http://www.w3.org/1998/Math/MathML" : f || (f = "http://www.w3.org/1999/xhtml"), o) {
-		for (s = 0; s < o.length; s++) if ((k = o[s]) && (C ? k.localName == C : 3 == k.nodeType)) {
-			t = k, o[s] = null;
+/**
+* Diff two virtual nodes representing DOM element
+* @param {PreactElement} dom The DOM element representing the virtual nodes
+* being diffed
+* @param {VNode} newVNode The new virtual node
+* @param {VNode} oldVNode The old virtual node
+* @param {object} globalContext The current context object
+* @param {string} namespace Current namespace of the DOM node (HTML, SVG, or MathML)
+* @param {Array<PreactElement>} excessDomChildren
+* @param {Array<Component>} commitQueue List of components which have callbacks
+* to invoke in commitRoot
+* @param {boolean} isHydrating Whether or not we are in hydration
+* @param {any[]} refQueue an array of elements needed to invoke refs
+* @param {PreactElement} parentDom The parent this element will be inserted
+* into; new nodes are created from its ownerDocument (e.g. iframes), or from
+* the global document for containers that don't have one
+* @returns {PreactElement}
+*/
+function diffElementNodes(dom, newVNode, oldVNode, globalContext, namespace, excessDomChildren, commitQueue, isHydrating, refQueue, parentDom) {
+	let oldProps = oldVNode.props || EMPTY_OBJ;
+	const newProps = newVNode.props;
+	const nodeType = newVNode.type;
+	/** @type {any} */
+	let i;
+	/** @type {{ __html?: string }} */
+	let newHtml;
+	/** @type {{ __html?: string }} */
+	let oldHtml;
+	/** @type {ComponentChildren} */
+	let newChildren;
+	let value;
+	let inputValue;
+	let checked;
+	if (nodeType == "svg") namespace = SVG_NAMESPACE;
+	else if (nodeType == "math") namespace = MATH_NAMESPACE;
+	else if (!namespace) namespace = XHTML_NAMESPACE;
+	if (excessDomChildren) for (i = 0; i < excessDomChildren.length; i++) {
+		value = excessDomChildren[i];
+		if (value && (nodeType ? value.localName == nodeType : value.nodeType == 3)) {
+			dom = value;
+			excessDomChildren[i] = null;
 			break;
 		}
 	}
-	if (!t) {
-		if (M = a.ownerDocument || document, !C) return M.createTextNode(x);
-		t = M.createElementNS(f, C, x.is ? x : a), l && (n.__m && n.__m(r, o), l = false), o = null;
+	if (!dom) {
+		const doc = parentDom.ownerDocument || document;
+		if (!nodeType) return doc.createTextNode(newProps);
+		dom = doc.createElementNS(namespace, nodeType, newProps.is ? newProps : parentDom);
+		if (isHydrating) {
+			if (options$1._hydrationMismatch) options$1._hydrationMismatch(newVNode, excessDomChildren);
+			isHydrating = false;
+		}
+		excessDomChildren = null;
 	}
-	if (C) {
-		if (a = "template" == C && t.content || t, o = "textarea" == C && null != x.defaultValue ? null : o && d$1.call(a.childNodes), !l && o) for ($ = {}, s = 0; s < t.attributes.length; s++) $[(k = t.attributes[s]).name] = k.value;
-		for (s in $) k = $[s], "dangerouslySetInnerHTML" == s ? y = k : "children" == s || s in x || "value" == s && "defaultValue" in x || "checked" == s && "defaultChecked" in x || N(t, s, null, k, f);
-		for (s in x) k = x[s], "children" == s ? _ = k : "dangerouslySetInnerHTML" == s ? h = k : "value" == s ? b = k : "checked" == s ? m = k : l && "function" != typeof k || $[s] === k || N(t, s, k, $[s], f);
-		h ? (l || y && (h.__html == y.__html || h.__html == t.innerHTML) || (t.innerHTML = h.__html), r.__k = []) : (y && (t.textContent = ""), ("foreignObject" == C || "http://www.w3.org/1998/Math/MathML" == f && v$1.test(C)) && (f = "http://www.w3.org/1999/xhtml"), I(a, w$2(_) ? _ : [_], r, u, i, f, o, e, o ? o[0] : u.__k && S(u, 0), l, c), o && o.some(g$1)), l && "textarea" != C || (s = "value", "progress" == C && null == b ? t.removeAttribute(s) : null == b || b === t[s] && ("progress" != C || b) || N(t, s, b, $[s], f), s = "checked", null != m && m != t[s] && N(t, s, m, $[s], f));
-	} else $ === x || l && t.data == x || (t.data = x);
-	return t;
+	if (!nodeType) {
+		if (oldProps !== newProps && (!isHydrating || dom.data != newProps)) dom.data = newProps;
+	} else {
+		parentDom = nodeType == "template" && dom.content || dom;
+		excessDomChildren = nodeType == "textarea" && newProps.defaultValue != null ? null : excessDomChildren && slice.call(parentDom.childNodes);
+		if (!isHydrating && excessDomChildren) {
+			oldProps = {};
+			for (i = 0; i < dom.attributes.length; i++) {
+				value = dom.attributes[i];
+				oldProps[value.name] = value.value;
+			}
+		}
+		for (i in oldProps) {
+			value = oldProps[i];
+			if (i == "dangerouslySetInnerHTML") oldHtml = value;
+			else if (i != "children" && !(i in newProps) && !(i == "value" && "defaultValue" in newProps) && !(i == "checked" && "defaultChecked" in newProps)) setProperty(dom, i, null, value, namespace);
+		}
+		for (i in newProps) {
+			value = newProps[i];
+			if (i == "children") newChildren = value;
+			else if (i == "dangerouslySetInnerHTML") newHtml = value;
+			else if (i == "value") inputValue = value;
+			else if (i == "checked") checked = value;
+			else if ((!isHydrating || typeof value == "function") && oldProps[i] !== value) setProperty(dom, i, value, oldProps[i], namespace);
+		}
+		if (newHtml) {
+			if (!isHydrating && (!oldHtml || newHtml.__html != oldHtml.__html && newHtml.__html != dom.innerHTML)) dom.innerHTML = newHtml.__html;
+			newVNode._children = [];
+		} else {
+			if (oldHtml) dom.textContent = "";
+			if (nodeType == "foreignObject" || namespace == "http://www.w3.org/1998/Math/MathML" && MATHML_TOKEN_ELEMENTS.test(nodeType)) namespace = XHTML_NAMESPACE;
+			diffChildren(parentDom, isArray$1(newChildren) ? newChildren : [newChildren], newVNode, oldVNode, globalContext, namespace, excessDomChildren, commitQueue, excessDomChildren ? excessDomChildren[0] : oldVNode._children && getDomSibling(oldVNode, 0), isHydrating, refQueue);
+			if (excessDomChildren) excessDomChildren.some(removeNode);
+		}
+		if (!isHydrating || nodeType == "textarea") {
+			i = "value";
+			if (nodeType == "progress" && inputValue == null) dom.removeAttribute(i);
+			else if (inputValue != void 0 && (inputValue !== dom[i] || nodeType == "progress" && !inputValue)) setProperty(dom, i, inputValue, oldProps[i], namespace);
+			i = "checked";
+			if (checked != void 0 && checked != dom[i]) setProperty(dom, i, checked, oldProps[i], namespace);
+		}
+	}
+	return dom;
 }
-function G$1(t, r, u, i) {
+/**
+* Invoke or update a ref, depending on whether it is a function or object ref.
+* @param {Ref<any>} ref
+* @param {any} value The element or component to attach, or `null` to detach
+* @param {VNode} vnode
+* @param {any} [owner] The vnode the ref is detached from
+*/
+function applyRef(ref, value, vnode, owner) {
 	try {
-		"function" == typeof t ? r ? r.__x = t(r) || 1 : i && (i = i.__c || i.__e) && (r = i.__x) && (i.__x = null, "function" == typeof r ? r() : t(null)) : t.current = r;
-	} catch (t) {
-		n.__e(t, u);
+		if (typeof ref == "function") {
+			if (value) value._refCleanup = ref(value) || 1;
+			else if (owner && (owner = owner._component || owner._dom) && (value = owner._refCleanup)) {
+				owner._refCleanup = null;
+				if (typeof value == "function") value();
+				else ref(null);
+			}
+		} else ref.current = value;
+	} catch (e) {
+		options$1._catchError(e, vnode);
 	}
 }
-function J$1(t, r, u) {
-	var i, f, o, e;
-	if (n.unmount && n.unmount(t), !(i = t.ref) || i.current && i.current != t.__e || G$1(i, null, r, t), i = t.__c) {
-		if (i.componentWillUnmount) try {
-			i.componentWillUnmount();
-		} catch (t) {
-			n.__e(t, r);
+/**
+* Unmount a virtual node from the tree and apply DOM changes
+* @param {VNode} vnode The virtual node to unmount
+* @param {VNode} parentVNode The parent of the VNode that initiated the unmount
+* @param {boolean} [skipRemove] Flag that indicates that a parent node of the
+* current element is already detached from the DOM.
+*/
+function unmount(vnode, parentVNode, skipRemove) {
+	let r, end, nodes;
+	if (options$1.unmount) options$1.unmount(vnode);
+	if ((r = vnode.ref) && (!r.current || r.current == vnode._dom)) applyRef(r, null, parentVNode, vnode);
+	if (r = vnode._component) {
+		if (r.componentWillUnmount) try {
+			r.componentWillUnmount();
+		} catch (e) {
+			options$1._catchError(e, parentVNode);
 		}
-		i.__P = i.__n = null;
+		r._parentDom = r._globalContext = null;
 	}
-	if (i = t.__k) for (e = 0; e < i.length; e++) i[e] && J$1(i[e], r, "function" != typeof t.type || u && !t.props.__P);
-	!u && (i = t.__c) && (i = i.__z) && (f = B$1(i, o = [])) && (i == t.__e && o.some(g$1), g$1(f), g$1(i)), u || g$1(t.__e), t.__e = t.__c = t.__ = null;
+	if (r = vnode._children) {
+		for (let i = 0; i < r.length; i++) if (r[i]) unmount(r[i], parentVNode, typeof vnode.type == "function" ? skipRemove && !vnode.props._parentDom : true);
+	}
+	if (!skipRemove && (r = vnode._component) && (r = r._excess) && (end = rangeEnd(r, nodes = []))) {
+		if (r == vnode._dom) nodes.some(removeNode);
+		removeNode(end);
+		removeNode(r);
+	}
+	if (!skipRemove) removeNode(vnode._dom);
+	vnode._dom = vnode._component = vnode._parent = null;
 }
-function K$1(n, t, r) {
-	return this.constructor(n, r);
+/** The `.render()` method for a PFC backing instance. */
+function doRender(props, state, context) {
+	return this.constructor(props, context);
 }
-function Q$1(t, r) {
-	var u, i, f, o;
-	n.__ && n.__(t, r), 9 == r.nodeType && (r = r.documentElement), i = (u = t && 32 & t.__u) ? null : r.__k, r.__k = m$1($$1, { children: [t] }), f = [], o = [], z$2(r, r.__k, i || p$1, p$1, r.namespaceURI, i ? null : r.firstChild ? d$1.call(r.childNodes) : null, f, i ? i.__e : r.firstChild, u, o), E$1(f, r.__k, o), r.__k.props.children = null;
+/**
+* Render a Preact virtual node into a DOM element
+* @param {import('./internal').ComponentChild} vnode The virtual node to render
+* @param {import('./internal').PreactElement} parentDom The DOM element to render into
+*/
+function render$1(vnode, parentDom) {
+	if (options$1._root) options$1._root(vnode, parentDom);
+	if (parentDom.nodeType == 9) parentDom = parentDom.documentElement;
+	let isHydrating = vnode && vnode._flags & 32;
+	let oldVNode = isHydrating ? null : parentDom._children;
+	parentDom._children = createVNode$1(Fragment, { children: [vnode] });
+	let commitQueue = [], refQueue = [];
+	diff(parentDom, parentDom._children, oldVNode || EMPTY_OBJ, EMPTY_OBJ, parentDom.namespaceURI, oldVNode ? null : parentDom.firstChild ? slice.call(parentDom.childNodes) : null, commitQueue, oldVNode ? oldVNode._dom : parentDom.firstChild, isHydrating, refQueue);
+	commitRoot(commitQueue, parentDom._children, refQueue);
+	parentDom._children.props.children = null;
 }
-function U$1(n) {
-	function t(n) {
-		var r, u;
-		return this.getChildContext || (r = /* @__PURE__ */ new Set(), (u = {})[t.__c] = this, this.getChildContext = function() {
-			return u;
-		}, this.shouldComponentUpdate = function(n) {
-			this.props.value != n.value && r.forEach(function(n) {
-				n.__g |= 4, L(n);
-			});
-		}, this.sub = function(n) {
-			r.add(n);
-			var t = n.componentWillUnmount;
-			n.componentWillUnmount = function() {
-				r.delete(n), t && t.call(n);
+var i = 0;
+function createContext(defaultValue) {
+	function Context(props) {
+		if (!this.getChildContext) {
+			/** @type {Set<import('./internal').Component> | null} */
+			let subs = /* @__PURE__ */ new Set();
+			let ctx = {};
+			ctx[Context._id] = this;
+			this.getChildContext = () => ctx;
+			this.shouldComponentUpdate = function(_props) {
+				if (this.props.value != _props.value) subs.forEach((c) => {
+					c._bits |= 4;
+					enqueueRender(c);
+				});
 			};
-		}), n.children;
+			this.sub = (c) => {
+				subs.add(c);
+				let old = c.componentWillUnmount;
+				c.componentWillUnmount = () => {
+					subs.delete(c);
+					if (old) old.call(c);
+				};
+			};
+		}
+		return props.children;
 	}
-	return t.__c = "__cC" + s$1++, t.__ = n, t.Provider = (t.Consumer = function(n, t) {
-		return n.children(t);
-	}).contextType = t, t;
+	Context._id = "__cC" + i++;
+	Context._defaultValue = defaultValue;
+	/** @type {import('./internal').FunctionComponent} */
+	Context.Consumer = (props, contextValue) => {
+		return props.children(contextValue);
+	};
+	Context.Provider = Context.Consumer.contextType = Context;
+	return Context;
 }
-function W(n) {
-	return n.children;
+/**
+* Portal component. A unique type is used instead of Fragment so that a
+* portal returned directly from a component isn't collapsed into the
+* component's children array by the Fragment unwrapping in `diff()`.
+* @param {object} props
+*/
+function Portal(props) {
+	return props.children;
 }
-function X(n, t) {
-	return m$1(W, {
-		__P: t,
-		children: n
+/**
+* Create a `Portal` to continue rendering the vnode tree at a different DOM node
+* @param {import('./internal').ComponentChildren} vnode The vnode to render
+* @param {import('./internal').PreactElement} container The DOM node to continue rendering in to
+*/
+function createPortal$1(vnode, container) {
+	return createVNode$1(Portal, {
+		_parentDom: container,
+		children: vnode
 	});
 }
-n = { __e: function(n, t, r, u) {
-	for (var i, o, e; t = t.__;) if ((i = t.__c) && !(1 & i.__g)) {
-		i.__g |= 4;
+var ObjectIs = Object.is;
+/** @type {number} */
+var currentIndex;
+/** @type {import('./internal').Component} */
+var currentComponent;
+/** @type {import('./internal').Component} */
+var previousComponent;
+/** @type {number} */
+var currentHook = 0;
+/** @type {Array<import('./internal').Component>} */
+var afterPaintEffects = [];
+/**
+* Passive (useEffect) hook states of unmounted components whose cleanup is
+* still pending. Deferred to the after-paint flush to match React, which runs
+* passive destroys after the commit has painted. Each state's `_passive` holds
+* the surviving component its errors should be routed to.
+* @type {Array<import('./internal').EffectHookState>}
+*/
+var unmountCleanups = [];
+var options = options$1;
+var oldBeforeDiff = options._diff;
+var oldBeforeRender = options._render;
+var oldAfterDiff = options.diffed;
+var oldCommit = options._commit;
+var oldBeforeUnmount = options.unmount;
+var oldRoot = options._root;
+var RAF_TIMEOUT = 35;
+var prevRaf;
+/** @type {(vnode: import('./internal').VNode) => void} */
+options._diff = (vnode) => {
+	currentComponent = null;
+	if (oldBeforeDiff) oldBeforeDiff(vnode);
+};
+options._root = (vnode, parentDom) => {
+	if (vnode && parentDom._children && parentDom._children._mask) vnode._mask = parentDom._children._mask;
+	if (oldRoot) oldRoot(vnode, parentDom);
+};
+/** @type {(vnode: import('./internal').VNode) => void} */
+options._render = (vnode) => {
+	if (oldBeforeRender) oldBeforeRender(vnode);
+	currentComponent = vnode._component;
+	currentIndex = 0;
+	const hooks = currentComponent.__hooks;
+	if (hooks) {
+		if (previousComponent == currentComponent) currentComponent._renderCallbacks = [];
+		else {
+			hooks._pendingEffects.some(invokeCleanup);
+			hooks._pendingEffects.some(invokeEffect);
+			currentIndex = 0;
+		}
+		hooks._pendingEffects = [];
+		hooks._list.some((hookItem) => {
+			if (hookItem._nextValue) hookItem._value = hookItem._nextValue;
+			hookItem._pendingArgs = hookItem._nextValue = void 0;
+		});
+	}
+	previousComponent = currentComponent;
+};
+/** @type {(vnode: import('./internal').VNode) => void} */
+options.diffed = (vnode) => {
+	if (oldAfterDiff) oldAfterDiff(vnode);
+	const c = vnode._component;
+	if (c && c.__hooks) {
+		if (c.__hooks._pendingEffects.length) afterPaint(afterPaintEffects.push(c));
+		c.__hooks._list.some((hookItem) => {
+			if (hookItem._pendingArgs) hookItem._args = hookItem._pendingArgs;
+		});
+	}
+	previousComponent = currentComponent = null;
+};
+/** @type {(vnode: import('./internal').VNode, commitQueue: any) => void} */
+options._commit = (vnode, commitQueue) => {
+	commitQueue.some((component) => {
 		try {
-			if ((e = (o = i.constructor) && o.getDerivedStateFromError) && i.setState(o.getDerivedStateFromError(n)), i.componentDidCatch && (i.componentDidCatch(n, u || {}), e = 1), e && 8 & i.__g) return void (i.__g |= 2);
-		} catch (t) {
-			n = t;
-		}
-	}
-	throw f$2 = 0, n;
-} }, t$1 = 0, x$1.prototype.setState = function(n, t) {
-	var r = this.__s;
-	r && r != this.state || (r = this.__s = _$1({}, this.state)), "function" == typeof n && (n = n(_$1({}, r), this.props)), n && (_$1(r, n), this.__v && (t && this.__k.push(t), L(this)));
-}, x$1.prototype.forceUpdate = function(n) {
-	this.__v && (this.__g |= 4, n && this.__h.push(n), L(this));
-}, x$1.prototype.render = $$1, u$2 = [], f$2 = 0, o$2 = function(n, t) {
-	return n.__v.__b - t.__v.__b;
-}, e$1 = Symbol(), l$1 = /(PointerCapture)$|Capture$/i, c$1 = 0, a$2 = {}, s$1 = 0;
-var t;
-var r;
-var u$1;
-var i;
-var o$1 = Object.is;
-var f$1 = 0;
-var c = [];
-var e = [];
-var a$1 = n;
-var v = a$1.__b;
-var l = a$1.__r;
-var m = a$1.diffed;
-var h = a$1.__c;
-var s = a$1.unmount;
-var p = a$1.__;
-function y(n, t) {
-	a$1.__h && a$1.__h(r, n, f$1 || t), f$1 = 0;
-	var u = r.__H || (r.__H = {
-		__: [],
-		__h: []
-	});
-	return n >= u.__.length && u.__.push({}), u.__[n];
-}
-function d(n) {
-	return f$1 = 1, _(G, n);
-}
-function _(n, u, i) {
-	var f = y(t++, 2);
-	if (f.t = n, !f.__c && (f.__ = [G(void 0, u), function(n) {
-		var t = (f.__N || f.__)[0], r = f.t(t, n);
-		o$1(t, r) || (f.__N = [r, f.__[1]], f.__c.setState({}));
-	}], f.__c = r, !r.__f)) {
-		r.__f = true;
-		var c = r.shouldComponentUpdate;
-		r.shouldComponentUpdate = function(n, t, r) {
-			var u = this.__H;
-			if (!u) return true;
-			var i = false, f = this.props != n;
-			if (u.__.some(function(n) {
-				n.__N && (i = true, o$1(n.__[0], n.__N[0]) || (f = true));
-			}), c) {
-				var e = c.call(this, n, t, r);
-				return i ? e || f : e;
-			}
-			return !i || f;
-		};
-	}
-	return f.__;
-}
-function A(n, u) {
-	var i = y(t++, 3);
-	!a$1.__s && E(i.__H, u) && (i.__P = true, i.__ = n, i.u = u, r.__H.__h.push(i));
-}
-function F(n, u) {
-	var i = y(t++, 4);
-	!a$1.__s && E(i.__H, u) && (i.__P = false, i.__ = n, i.u = u, r.__h.push(i));
-}
-function T(n) {
-	return f$1 = 5, w$1(function() {
-		return { current: n };
-	}, []);
-}
-function w$1(n, r) {
-	var u = y(t++, 7);
-	return E(u.__H, r) && (u.__ = n(), u.__H = r), u.__;
-}
-function b(n, t) {
-	return f$1 = 8, w$1(function() {
-		return n;
-	}, t);
-}
-function j(n) {
-	var u = r.context[n.__c], i = y(t++, 9);
-	return i.c = n, u ? (i.__ ?? (i.__ = true, u.sub(r)), u.props.value) : n.__;
-}
-function P$1() {
-	var n = y(t++, 11);
-	if (!n.__) {
-		for (var u = r.__v; !u.__m && u.__;) u = u.__;
-		var i = u.__m || (u.__m = [0, 0]);
-		n.__ = "P" + i[0] + "-" + i[1]++;
-	}
-	return n.__;
-}
-function g() {
-	var n;
-	do {
-		for (; n = e.shift();) try {
-			C(n);
-		} catch (t) {
-			a$1.__e(t, { __: (n = n.__P) && n.__v });
-		}
-		for (; n = c.shift();) {
-			var t = n.__H;
-			if (n.__P && t) try {
-				t.__h.some(C), t.__h.some(D), t.__h = [];
-			} catch (r) {
-				t.__h = [], a$1.__e(r, n.__v);
-			}
-		}
-	} while (e.length);
-}
-a$1.__b = function(n) {
-	r = null, v && v(n);
-}, a$1.__ = function(n, t) {
-	n && t.__k && t.__k.__m && (n.__m = t.__k.__m), p && p(n, t);
-}, a$1.__r = function(n) {
-	l && l(n), t = 0;
-	var i = (r = n.__c).__H;
-	i && (u$1 == r ? r.__h = [] : (i.__h.some(C), i.__h.some(D), t = 0), i.__h = [], i.__.some(function(n) {
-		n.__N && (n.__ = n.__N), n.u = n.__N = void 0;
-	})), u$1 = r;
-}, a$1.diffed = function(n) {
-	m && m(n);
-	var t = n.__c;
-	t && t.__H && (t.__H.__h.length && B(c.push(t)), t.__H.__.some(function(n) {
-		n.u && (n.__H = n.u);
-	})), u$1 = r = null;
-}, a$1.__c = function(n, t) {
-	t.some(function(n) {
-		try {
-			n.__h.some(C), n.__h = n.__h.filter(function(n) {
-				return !n.__ || D(n);
-			});
-		} catch (t) {
-			n.__h = [function() {
-				throw t;
+			component._renderCallbacks.some(invokeCleanup);
+			component._renderCallbacks = component._renderCallbacks.filter((cb) => cb._value ? invokeEffect(cb) : true);
+		} catch (e) {
+			component._renderCallbacks = [() => {
+				throw e;
 			}];
 		}
-	}), h && h(n, t);
-}, a$1.unmount = function(n) {
-	s && s(n);
-	var t, r, u = n.__c;
-	u && u.__H && (u.__H.__.some(function(u) {
-		try {
-			if (u.__P && u.__c) {
-				if (void 0 === r) {
-					for (r = n.__; r && (!r.__c || !r.__c.__P);) r = r.__;
-					r = r && r.__c;
-				}
-				u.__P = r, B(e.push(u));
-			} else C(u);
-		} catch (n) {
-			t = n;
-		}
-	}), u.__H = void 0, t && a$1.__e(t, u.__v));
-};
-var k = "function" == typeof requestAnimationFrame;
-function z$1(n) {
-	var t, r = function() {
-		clearTimeout(u), k && cancelAnimationFrame(t), setTimeout(n);
-	}, u = setTimeout(r, 35);
-	k && (t = requestAnimationFrame(r));
-}
-function B(n) {
-	1 != n && i == a$1.requestAnimationFrame || ((i = a$1.requestAnimationFrame) || z$1)(g);
-}
-function C(n) {
-	var t = r, u = n.__c;
-	"function" == typeof u && (n.__c = void 0, u()), r = t;
-}
-function D(n) {
-	var t = r;
-	n.__c = n.__(), r = t;
-}
-function E(n, t) {
-	return !n || n.length != t.length || t.some(function(t, r) {
-		return !o$1(t, n[r]);
 	});
+	if (oldCommit) oldCommit(vnode, commitQueue);
+};
+/** @type {(vnode: import('./internal').VNode) => void} */
+options.unmount = (vnode) => {
+	if (oldBeforeUnmount) oldBeforeUnmount(vnode);
+	const c = vnode._component;
+	if (c && c.__hooks) {
+		let hasErrored, errorParent;
+		c.__hooks._list.some((s) => {
+			try {
+				if (s._passive && s._cleanup) {
+					if (errorParent === void 0) {
+						errorParent = vnode._parent;
+						while (errorParent && !(errorParent._component && errorParent._component._parentDom)) errorParent = errorParent._parent;
+						errorParent = errorParent && errorParent._component;
+					}
+					s._passive = errorParent;
+					afterPaint(unmountCleanups.push(s));
+				} else invokeCleanup(s);
+			} catch (e) {
+				hasErrored = e;
+			}
+		});
+		c.__hooks = void 0;
+		if (hasErrored) options._catchError(hasErrored, c._vnode);
+	}
+};
+/**
+* Get a hook's state from the currentComponent
+* @param {number} index The index of the hook to get
+* @param {number} type The type of the hook to get
+* @returns {any}
+*/
+function getHookState(index, type) {
+	if (options._hook) options._hook(currentComponent, index, currentHook || type);
+	currentHook = 0;
+	const hooks = currentComponent.__hooks || (currentComponent.__hooks = {
+		_list: [],
+		_pendingEffects: []
+	});
+	if (index >= hooks._list.length) hooks._list.push({});
+	return hooks._list[index];
 }
-function G(n, t) {
-	return "function" == typeof t ? t(n) : t;
+/**
+* @template {unknown} S
+* @param {import('./index').Dispatch<import('./index').StateUpdater<S>>} [initialState]
+* @returns {[S, (state: S) => void]}
+*/
+function useState(initialState) {
+	currentHook = 1;
+	return useReducer(invokeOrReturn, initialState);
+}
+/**
+* @template {unknown} S
+* @template {unknown} A
+* @param {import('./index').Reducer<S, A>} reducer
+* @param {import('./index').Dispatch<import('./index').StateUpdater<S>>} initialState
+* @param {(initialState: any) => void} [init]
+* @returns {[ S, (state: S) => void ]}
+*/
+function useReducer(reducer, initialState, init) {
+	/** @type {import('./internal').ReducerHookState} */
+	const hookState = getHookState(currentIndex++, 2);
+	hookState._reducer = reducer;
+	if (!hookState._component) {
+		hookState._value = [invokeOrReturn(void 0, initialState) , (action) => {
+			const currentValue = (hookState._nextValue || hookState._value)[0];
+			const nextValue = hookState._reducer(currentValue, action);
+			if (!ObjectIs(currentValue, nextValue)) {
+				hookState._nextValue = [nextValue, hookState._value[1]];
+				hookState._component.setState({});
+			}
+		}];
+		hookState._component = currentComponent;
+		if (!currentComponent._hasScuFromHooks) {
+			currentComponent._hasScuFromHooks = true;
+			const prevScu = currentComponent.shouldComponentUpdate;
+			currentComponent.shouldComponentUpdate = function(p, s, c) {
+				const hooks = this.__hooks;
+				if (!hooks) return true;
+				let updatedHook = false;
+				let shouldUpdate = this.props != p;
+				hooks._list.some((hookItem) => {
+					if (hookItem._nextValue) {
+						updatedHook = true;
+						if (!ObjectIs(hookItem._value[0], hookItem._nextValue[0])) shouldUpdate = true;
+					}
+				});
+				if (prevScu) {
+					const result = prevScu.call(this, p, s, c);
+					return updatedHook ? result || shouldUpdate : result;
+				}
+				return !updatedHook || shouldUpdate;
+			};
+		}
+	}
+	return hookState._value;
+}
+/**
+* @param {import('./internal').Effect} callback
+* @param {unknown[]} args
+* @returns {void}
+*/
+function useEffect(callback, args) {
+	/** @type {import('./internal').EffectHookState} */
+	const state = getHookState(currentIndex++, 3);
+	if (!options._skipEffects && argsChanged(state._args, args)) {
+		state._passive = true;
+		state._value = callback;
+		state._pendingArgs = args;
+		currentComponent.__hooks._pendingEffects.push(state);
+	}
+}
+/**
+* @param {import('./internal').Effect} callback
+* @param {unknown[]} args
+* @returns {void}
+*/
+function useLayoutEffect(callback, args) {
+	/** @type {import('./internal').EffectHookState} */
+	const state = getHookState(currentIndex++, 4);
+	if (!options._skipEffects && argsChanged(state._args, args)) {
+		state._passive = false;
+		state._value = callback;
+		state._pendingArgs = args;
+		currentComponent._renderCallbacks.push(state);
+	}
+}
+/** @type {(initialValue: unknown) => unknown} */
+function useRef(initialValue) {
+	currentHook = 5;
+	return useMemo(() => ({ current: initialValue }), []);
+}
+/**
+* @template {unknown} T
+* @param {() => T} factory
+* @param {unknown[]} args
+* @returns {T}
+*/
+function useMemo(factory, args) {
+	/** @type {import('./internal').MemoHookState<T>} */
+	const state = getHookState(currentIndex++, 7);
+	if (argsChanged(state._args, args)) {
+		state._value = factory();
+		state._args = args;
+	}
+	return state._value;
+}
+/**
+* @param {() => void} callback
+* @param {unknown[]} args
+* @returns {() => void}
+*/
+function useCallback(callback, args) {
+	currentHook = 8;
+	return useMemo(() => callback, args);
+}
+/**
+* @param {import('./internal').PreactContext} context
+*/
+function useContext(context) {
+	const provider = currentComponent.context[context._id];
+	/** @type {import('./internal').ContextHookState} */
+	const state = getHookState(currentIndex++, 9);
+	state._context = context;
+	if (!provider) return context._defaultValue;
+	if (state._value == null) {
+		state._value = true;
+		provider.sub(currentComponent);
+	}
+	return provider.props.value;
+}
+/** @type {() => string} */
+function useId() {
+	/** @type {import('./internal').IdHookState} */
+	const state = getHookState(currentIndex++, 11);
+	if (!state._value) {
+		/** @type {import('./internal').VNode} */
+		let root = currentComponent._vnode;
+		while (!root._mask && root._parent) root = root._parent;
+		let mask = root._mask || (root._mask = [0, 0]);
+		state._value = "P" + mask[0] + "-" + mask[1]++;
+	}
+	return state._value;
+}
+/**
+* After paint effects consumer.
+*/
+function flushAfterPaintEffects() {
+	let component;
+	do {
+		while (component = unmountCleanups.shift()) try {
+			invokeCleanup(component);
+		} catch (e) {
+			component = component._passive;
+			options._catchError(e, { _parent: component && component._vnode });
+		}
+		while (component = afterPaintEffects.shift()) {
+			const hooks = component.__hooks;
+			if (!component._parentDom || !hooks) continue;
+			try {
+				hooks._pendingEffects.some(invokeCleanup);
+				hooks._pendingEffects.some(invokeEffect);
+				hooks._pendingEffects = [];
+			} catch (e) {
+				hooks._pendingEffects = [];
+				options._catchError(e, component._vnode);
+			}
+		}
+	} while (unmountCleanups.length);
+}
+var HAS_RAF = typeof requestAnimationFrame == "function";
+/**
+* Schedule a callback to be invoked after the browser has a chance to paint a new frame.
+* Do this by combining requestAnimationFrame (rAF) + setTimeout to invoke a callback after
+* the next browser frame.
+*
+* Also, schedule a timeout in parallel to the the rAF to ensure the callback is invoked
+* even if RAF doesn't fire (for example if the browser tab is not visible)
+*
+* @param {() => void} callback
+*/
+function afterNextFrame(callback) {
+	const done = () => {
+		clearTimeout(timeout);
+		if (HAS_RAF) cancelAnimationFrame(raf);
+		setTimeout(callback);
+	};
+	const timeout = setTimeout(done, RAF_TIMEOUT);
+	let raf;
+	if (HAS_RAF) raf = requestAnimationFrame(done);
+}
+/**
+* Schedule afterPaintEffects flush after the browser paints
+* @param {number} newQueueLength
+* @returns {void}
+*/
+function afterPaint(newQueueLength) {
+	if (newQueueLength == 1 || prevRaf != options.requestAnimationFrame) {
+		prevRaf = options.requestAnimationFrame;
+		(prevRaf || afterNextFrame)(flushAfterPaintEffects);
+	}
+}
+/**
+* @param {import('./internal').HookState} hook
+* @returns {void}
+*/
+function invokeCleanup(hook) {
+	const comp = currentComponent;
+	let cleanup = hook._cleanup;
+	if (typeof cleanup == "function") {
+		hook._cleanup = void 0;
+		cleanup();
+	}
+	currentComponent = comp;
+}
+/**
+* Invoke a Hook's effect
+* @param {import('./internal').EffectHookState} hook
+* @returns {void}
+*/
+function invokeEffect(hook) {
+	const comp = currentComponent;
+	hook._cleanup = hook._value();
+	currentComponent = comp;
+}
+/**
+* @param {unknown[]} oldArgs
+* @param {unknown[]} newArgs
+* @returns {boolean}
+*/
+function argsChanged(oldArgs, newArgs) {
+	return !oldArgs || oldArgs.length != newArgs.length || newArgs.some((arg, index) => !ObjectIs(arg, oldArgs[index]));
+}
+/**
+* @template Arg
+* @param {Arg} arg
+* @param {(arg: Arg) => any} f
+* @returns {any}
+*/
+function invokeOrReturn(arg, f) {
+	return typeof f == "function" ? f(arg) : f;
 }
 /** A page may make the kit's controls larger by setting these on its root. */
 var KIT_CONTROL_HEIGHT_VAR = "--rdw-control-h";
@@ -10030,28 +12033,52 @@ var KIT_FOCUS_CSS = exports("K",`
   outline-offset: 2px;
 }
 `);
-var f = Symbol.for("pv");
-var o = 0;
-function a(t, e, n$6, u, a, i) {
-	e || (e = {});
-	var c, l, p = e;
-	if ("ref" in p && "function" != typeof t) for (l in p = {}, e) "ref" == l ? c = e[l] : p[l] = e[l];
-	var s = {
-		type: t,
-		props: p,
-		key: n$6,
-		ref: c,
-		__k: null,
-		__: null,
-		__b: 0,
-		__e: null,
-		__c: null,
-		constructor: f,
-		__v: --o,
-		__i: -1,
-		__u: 0
+var vnodeId = 0;
+/**
+* @fileoverview
+* This file exports various methods that implement Babel's "automatic" JSX runtime API:
+* - jsx(type, props, key)
+* - jsxs(type, props, key)
+* - jsxDEV(type, props, key, __source, __self)
+*
+* The implementation of createVNode here is optimized for performance.
+* Benchmarks: https://esbench.com/bench/5f6b54a0b4632100a7dcd2b3
+*/
+/**
+* JSX.Element factory used by Babel's {runtime:"automatic"} JSX transform
+* @param {import('../../src/internal').VNode['type']} type
+* @param {import('preact').VNode['props']} props
+* @param {import('preact').VNode['key']} [key]
+* @param {unknown} [isStaticChildren]
+* @param {unknown} [__source]
+* @param {unknown} [__self]
+*/
+function createVNode(type, props, key, isStaticChildren, __source, __self) {
+	if (!props) props = {};
+	let normalizedProps = props, ref, i;
+	if ("ref" in normalizedProps && typeof type != "function") {
+		normalizedProps = {};
+		for (i in props) if (i == "ref") ref = props[i];
+		else normalizedProps[i] = props[i];
+	}
+	/** @type {import('../../src/internal').VNode & { __source?: any; __self?: any }} */
+	const vnode = {
+		type,
+		props: normalizedProps,
+		key,
+		ref,
+		_children: null,
+		_parent: null,
+		_depth: 0,
+		_dom: null,
+		_component: null,
+		constructor: VNODE_MARKER,
+		_original: --vnodeId,
+		_index: -1,
+		_flags: 0
 	};
-	return n.vnode && n.vnode(s), s;
+	if (options$1.vnode) options$1.vnode(vnode);
+	return vnode;
 }
 /**
 * True inside a tree whose root has put the styles of the whole kit in once
@@ -10063,10 +12090,10 @@ function a(t, e, n$6, u, a, i) {
 * it stood: some 600 of them on the Following page with 300 artists (the
 * audit of 19.11.2026).
 */
-var KitStylesProvided = U$1(false);
+var KitStylesProvided = createContext(false);
 /** The styles of a kit component, unless the tree around it has them already. */
 function KitStyle(props) {
-	return j(KitStylesProvided) ? null : /* @__PURE__ */ a("style", { children: props.css });
+	return useContext(KitStylesProvided) ? null : /* @__PURE__ */ createVNode("style", { children: props.css });
 }
 var KEY_ARROW_DOWN = "ArrowDown";
 var KEY_ARROW_UP = "ArrowUp";
@@ -10157,21 +12184,21 @@ input.rdw-ac__input.rdw-kit-focusable:focus {
 }
 `;
 function AutocompleteField(props) {
-	const autoId = P$1();
-	const listId = P$1();
+	const autoId = useId();
+	const listId = useId();
 	const inputId = props.id ?? autoId;
-	const rootRef = T(null);
-	const [open, setOpen] = d(false);
-	const [activeIndex, setActiveIndex] = d(NO_ACTIVE_INDEX);
+	const rootRef = useRef(null);
+	const [open, setOpen] = useState(false);
+	const [activeIndex, setActiveIndex] = useState(NO_ACTIVE_INDEX);
 	const suggestions = props.suggestions;
 	const hasSuggestions = suggestions.length > 0;
 	const listOpen = open && hasSuggestions && props.disabled !== true;
-	A(() => {
+	useEffect(() => {
 		setActiveIndex(NO_ACTIVE_INDEX);
 		if (hasSuggestions) setOpen(true);
 		else setOpen(false);
 	}, [suggestions, hasSuggestions]);
-	A(() => {
+	useEffect(() => {
 		if (!listOpen) return;
 		const onPointerDown = (event) => {
 			const root = rootRef.current;
@@ -10194,16 +12221,16 @@ function AutocompleteField(props) {
 	};
 	const className = ["rdw-ac", props.className].filter((part) => part !== void 0 && part.length > 0).join(" ");
 	const activeOption = activeIndex >= 0 && activeIndex < suggestions.length ? suggestions[activeIndex] : void 0;
-	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a(KitStyle, { css: AUTOCOMPLETE_FIELD_CSS }), /* @__PURE__ */ a("div", {
+	return /* @__PURE__ */ createVNode(Fragment, { children: [/* @__PURE__ */ createVNode(KitStyle, { css: AUTOCOMPLETE_FIELD_CSS }), /* @__PURE__ */ createVNode("div", {
 		className,
 		ref: rootRef,
 		children: [
-			props.label !== void 0 ? /* @__PURE__ */ a("label", {
+			props.label !== void 0 ? /* @__PURE__ */ createVNode("label", {
 				className: "rdw-ac__label",
 				htmlFor: inputId,
 				children: props.label
 			}) : null,
-			/* @__PURE__ */ a("input", {
+			/* @__PURE__ */ createVNode("input", {
 				id: inputId,
 				className: "rdw-ac__input rdw-kit-focusable",
 				type: "text",
@@ -10259,12 +12286,12 @@ function AutocompleteField(props) {
 					}
 				}
 			}),
-			listOpen ? /* @__PURE__ */ a("ul", {
+			listOpen ? /* @__PURE__ */ createVNode("ul", {
 				className: "rdw-ac__list",
 				role: "listbox",
 				id: listId,
 				tabIndex: -1,
-				children: suggestions.map((option, index) => /* @__PURE__ */ a("li", {
+				children: suggestions.map((option, index) => /* @__PURE__ */ createVNode("li", {
 					id: `${listId}-opt-${String(index)}`,
 					role: "option",
 					className: "rdw-ac__option rdw-kit-focusable",
@@ -10275,7 +12302,7 @@ function AutocompleteField(props) {
 					onClick: () => {
 						selectOption(option);
 					},
-					children: [option.type === "artist" || option.type === "character" || option.type === "copyright" || option.type === "metadata" ? /* @__PURE__ */ a("span", {
+					children: [option.type === "artist" || option.type === "character" || option.type === "copyright" || option.type === "metadata" ? /* @__PURE__ */ createVNode("span", {
 						className: "rdw-ac__dot",
 						"data-kind": option.type,
 						"aria-hidden": "true"
@@ -10382,7 +12409,7 @@ function Button(props) {
 		`rdw-btn--${size}`,
 		props.className
 	].filter((part) => part !== void 0 && part.length > 0).join(" ");
-	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a(KitStyle, { css: BUTTON_CSS }), /* @__PURE__ */ a("button", {
+	return /* @__PURE__ */ createVNode(Fragment, { children: [/* @__PURE__ */ createVNode(KitStyle, { css: BUTTON_CSS }), /* @__PURE__ */ createVNode("button", {
 		type: props.type ?? "button",
 		className,
 		disabled,
@@ -10392,7 +12419,7 @@ function Button(props) {
 		"aria-pressed": props.pressed,
 		...props.buttonRef === void 0 ? {} : { ref: props.buttonRef },
 		onClick: props.onClick,
-		children: [loading ? /* @__PURE__ */ a("span", {
+		children: [loading ? /* @__PURE__ */ createVNode("span", {
 			className: "rdw-btn__spinner",
 			"aria-hidden": "true"
 		}) : null, props.children]
@@ -10409,7 +12436,7 @@ var CARD_CSS$1 = `
 function Card(props) {
 	const Tag = props.as ?? "div";
 	const className = ["rdw-card", props.className].filter((part) => part !== void 0 && part.length > 0).join(" ");
-	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a(KitStyle, { css: CARD_CSS$1 }), /* @__PURE__ */ a(Tag, {
+	return /* @__PURE__ */ createVNode(Fragment, { children: [/* @__PURE__ */ createVNode(KitStyle, { css: CARD_CSS$1 }), /* @__PURE__ */ createVNode(Tag, {
 		className,
 		children: props.children
 	})] });
@@ -10433,31 +12460,31 @@ function baseProps(size, className, title) {
 	return props;
 }
 function IconStar(props) {
-	return /* @__PURE__ */ a("svg", {
+	return /* @__PURE__ */ createVNode("svg", {
 		...baseProps(props.size ?? DEFAULT_SIZE, props.className, props.title),
-		children: [props.title !== void 0 ? /* @__PURE__ */ a("title", { children: props.title }) : null, /* @__PURE__ */ a("polygon", { points: "12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" })]
+		children: [props.title !== void 0 ? /* @__PURE__ */ createVNode("title", { children: props.title }) : null, /* @__PURE__ */ createVNode("polygon", { points: "12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" })]
 	});
 }
 function IconStarFilled(props) {
-	return /* @__PURE__ */ a("svg", {
+	return /* @__PURE__ */ createVNode("svg", {
 		...baseProps(props.size ?? DEFAULT_SIZE, props.className, props.title),
 		fill: "currentColor",
 		stroke: "none",
-		children: [props.title !== void 0 ? /* @__PURE__ */ a("title", { children: props.title }) : null, /* @__PURE__ */ a("polygon", { points: "12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" })]
+		children: [props.title !== void 0 ? /* @__PURE__ */ createVNode("title", { children: props.title }) : null, /* @__PURE__ */ createVNode("polygon", { points: "12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" })]
 	});
 }
 function IconPlus(props) {
-	return /* @__PURE__ */ a("svg", {
+	return /* @__PURE__ */ createVNode("svg", {
 		...baseProps(props.size ?? DEFAULT_SIZE, props.className, props.title),
 		children: [
-			props.title !== void 0 ? /* @__PURE__ */ a("title", { children: props.title }) : null,
-			/* @__PURE__ */ a("line", {
+			props.title !== void 0 ? /* @__PURE__ */ createVNode("title", { children: props.title }) : null,
+			/* @__PURE__ */ createVNode("line", {
 				x1: "12",
 				y1: "5",
 				x2: "12",
 				y2: "19"
 			}),
-			/* @__PURE__ */ a("line", {
+			/* @__PURE__ */ createVNode("line", {
 				x1: "5",
 				y1: "12",
 				x2: "19",
@@ -10467,23 +12494,23 @@ function IconPlus(props) {
 	});
 }
 function IconCheck(props) {
-	return /* @__PURE__ */ a("svg", {
+	return /* @__PURE__ */ createVNode("svg", {
 		...baseProps(props.size ?? DEFAULT_SIZE, props.className, props.title),
-		children: [props.title !== void 0 ? /* @__PURE__ */ a("title", { children: props.title }) : null, /* @__PURE__ */ a("polyline", { points: "20 6 9 17 4 12" })]
+		children: [props.title !== void 0 ? /* @__PURE__ */ createVNode("title", { children: props.title }) : null, /* @__PURE__ */ createVNode("polyline", { points: "20 6 9 17 4 12" })]
 	});
 }
 function IconX(props) {
-	return /* @__PURE__ */ a("svg", {
+	return /* @__PURE__ */ createVNode("svg", {
 		...baseProps(props.size ?? DEFAULT_SIZE, props.className, props.title),
 		children: [
-			props.title !== void 0 ? /* @__PURE__ */ a("title", { children: props.title }) : null,
-			/* @__PURE__ */ a("line", {
+			props.title !== void 0 ? /* @__PURE__ */ createVNode("title", { children: props.title }) : null,
+			/* @__PURE__ */ createVNode("line", {
 				x1: "18",
 				y1: "6",
 				x2: "6",
 				y2: "18"
 			}),
-			/* @__PURE__ */ a("line", {
+			/* @__PURE__ */ createVNode("line", {
 				x1: "6",
 				y1: "6",
 				x2: "18",
@@ -10493,34 +12520,34 @@ function IconX(props) {
 	});
 }
 function IconChevronDown(props) {
-	return /* @__PURE__ */ a("svg", {
+	return /* @__PURE__ */ createVNode("svg", {
 		...baseProps(props.size ?? DEFAULT_SIZE, props.className, props.title),
-		children: [props.title !== void 0 ? /* @__PURE__ */ a("title", { children: props.title }) : null, /* @__PURE__ */ a("polyline", { points: "6 9 12 15 18 9" })]
+		children: [props.title !== void 0 ? /* @__PURE__ */ createVNode("title", { children: props.title }) : null, /* @__PURE__ */ createVNode("polyline", { points: "6 9 12 15 18 9" })]
 	});
 }
 function IconArrowUp(props) {
-	return /* @__PURE__ */ a("svg", {
+	return /* @__PURE__ */ createVNode("svg", {
 		...baseProps(props.size ?? DEFAULT_SIZE, props.className, props.title),
 		children: [
-			props.title !== void 0 ? /* @__PURE__ */ a("title", { children: props.title }) : null,
-			/* @__PURE__ */ a("line", {
+			props.title !== void 0 ? /* @__PURE__ */ createVNode("title", { children: props.title }) : null,
+			/* @__PURE__ */ createVNode("line", {
 				x1: "12",
 				y1: "19",
 				x2: "12",
 				y2: "5"
 			}),
-			/* @__PURE__ */ a("polyline", { points: "5 12 12 5 19 12" })
+			/* @__PURE__ */ createVNode("polyline", { points: "5 12 12 5 19 12" })
 		]
 	});
 }
 function IconExternalLink(props) {
-	return /* @__PURE__ */ a("svg", {
+	return /* @__PURE__ */ createVNode("svg", {
 		...baseProps(props.size ?? DEFAULT_SIZE, props.className, props.title),
 		children: [
-			props.title !== void 0 ? /* @__PURE__ */ a("title", { children: props.title }) : null,
-			/* @__PURE__ */ a("path", { d: "M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" }),
-			/* @__PURE__ */ a("polyline", { points: "15 3 21 3 21 9" }),
-			/* @__PURE__ */ a("line", {
+			props.title !== void 0 ? /* @__PURE__ */ createVNode("title", { children: props.title }) : null,
+			/* @__PURE__ */ createVNode("path", { d: "M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" }),
+			/* @__PURE__ */ createVNode("polyline", { points: "15 3 21 3 21 9" }),
+			/* @__PURE__ */ createVNode("line", {
 				x1: "10",
 				y1: "14",
 				x2: "21",
@@ -10530,28 +12557,28 @@ function IconExternalLink(props) {
 	});
 }
 function IconDroplet(props) {
-	return /* @__PURE__ */ a("svg", {
+	return /* @__PURE__ */ createVNode("svg", {
 		...baseProps(props.size ?? DEFAULT_SIZE, props.className, props.title),
-		children: [props.title !== void 0 ? /* @__PURE__ */ a("title", { children: props.title }) : null, /* @__PURE__ */ a("path", { d: "M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" })]
+		children: [props.title !== void 0 ? /* @__PURE__ */ createVNode("title", { children: props.title }) : null, /* @__PURE__ */ createVNode("path", { d: "M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" })]
 	});
 }
 function IconPencil(props) {
-	return /* @__PURE__ */ a("svg", {
+	return /* @__PURE__ */ createVNode("svg", {
 		...baseProps(props.size ?? DEFAULT_SIZE, props.className, props.title),
 		children: [
-			props.title !== void 0 ? /* @__PURE__ */ a("title", { children: props.title }) : null,
-			/* @__PURE__ */ a("path", { d: "M12 20h9" }),
-			/* @__PURE__ */ a("path", { d: "M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" })
+			props.title !== void 0 ? /* @__PURE__ */ createVNode("title", { children: props.title }) : null,
+			/* @__PURE__ */ createVNode("path", { d: "M12 20h9" }),
+			/* @__PURE__ */ createVNode("path", { d: "M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" })
 		]
 	});
 }
 function IconFlag(props) {
-	return /* @__PURE__ */ a("svg", {
+	return /* @__PURE__ */ createVNode("svg", {
 		...baseProps(props.size ?? DEFAULT_SIZE, props.className, props.title),
 		children: [
-			props.title !== void 0 ? /* @__PURE__ */ a("title", { children: props.title }) : null,
-			/* @__PURE__ */ a("path", { d: "M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" }),
-			/* @__PURE__ */ a("line", {
+			props.title !== void 0 ? /* @__PURE__ */ createVNode("title", { children: props.title }) : null,
+			/* @__PURE__ */ createVNode("path", { d: "M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" }),
+			/* @__PURE__ */ createVNode("line", {
 				x1: "4",
 				y1: "22",
 				x2: "4",
@@ -10561,19 +12588,19 @@ function IconFlag(props) {
 	});
 }
 function IconNote(props) {
-	return /* @__PURE__ */ a("svg", {
+	return /* @__PURE__ */ createVNode("svg", {
 		...baseProps(props.size ?? DEFAULT_SIZE, props.className, props.title),
 		children: [
-			props.title !== void 0 ? /* @__PURE__ */ a("title", { children: props.title }) : null,
-			/* @__PURE__ */ a("path", { d: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" }),
-			/* @__PURE__ */ a("polyline", { points: "14 2 14 8 20 8" }),
-			/* @__PURE__ */ a("line", {
+			props.title !== void 0 ? /* @__PURE__ */ createVNode("title", { children: props.title }) : null,
+			/* @__PURE__ */ createVNode("path", { d: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" }),
+			/* @__PURE__ */ createVNode("polyline", { points: "14 2 14 8 20 8" }),
+			/* @__PURE__ */ createVNode("line", {
 				x1: "8",
 				y1: "13",
 				x2: "16",
 				y2: "13"
 			}),
-			/* @__PURE__ */ a("line", {
+			/* @__PURE__ */ createVNode("line", {
 				x1: "8",
 				y1: "17",
 				x2: "12",
@@ -10583,16 +12610,16 @@ function IconNote(props) {
 	});
 }
 function IconSearch(props) {
-	return /* @__PURE__ */ a("svg", {
+	return /* @__PURE__ */ createVNode("svg", {
 		...baseProps(props.size ?? DEFAULT_SIZE, props.className, props.title),
 		children: [
-			props.title !== void 0 ? /* @__PURE__ */ a("title", { children: props.title }) : null,
-			/* @__PURE__ */ a("circle", {
+			props.title !== void 0 ? /* @__PURE__ */ createVNode("title", { children: props.title }) : null,
+			/* @__PURE__ */ createVNode("circle", {
 				cx: "11",
 				cy: "11",
 				r: "8"
 			}),
-			/* @__PURE__ */ a("line", {
+			/* @__PURE__ */ createVNode("line", {
 				x1: "21",
 				y1: "21",
 				x2: "16.65",
@@ -10602,21 +12629,21 @@ function IconSearch(props) {
 	});
 }
 function IconTrash(props) {
-	return /* @__PURE__ */ a("svg", {
+	return /* @__PURE__ */ createVNode("svg", {
 		...baseProps(props.size ?? DEFAULT_SIZE, props.className, props.title),
 		children: [
-			props.title !== void 0 ? /* @__PURE__ */ a("title", { children: props.title }) : null,
-			/* @__PURE__ */ a("polyline", { points: "3 6 5 6 21 6" }),
-			/* @__PURE__ */ a("path", { d: "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" })
+			props.title !== void 0 ? /* @__PURE__ */ createVNode("title", { children: props.title }) : null,
+			/* @__PURE__ */ createVNode("polyline", { points: "3 6 5 6 21 6" }),
+			/* @__PURE__ */ createVNode("path", { d: "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" })
 		]
 	});
 }
 function IconImage(props) {
-	return /* @__PURE__ */ a("svg", {
+	return /* @__PURE__ */ createVNode("svg", {
 		...baseProps(props.size ?? DEFAULT_SIZE, props.className, props.title),
 		children: [
-			props.title !== void 0 ? /* @__PURE__ */ a("title", { children: props.title }) : null,
-			/* @__PURE__ */ a("rect", {
+			props.title !== void 0 ? /* @__PURE__ */ createVNode("title", { children: props.title }) : null,
+			/* @__PURE__ */ createVNode("rect", {
 				x: "3",
 				y: "3",
 				width: "18",
@@ -10624,51 +12651,51 @@ function IconImage(props) {
 				rx: "2",
 				ry: "2"
 			}),
-			/* @__PURE__ */ a("circle", {
+			/* @__PURE__ */ createVNode("circle", {
 				cx: "8.5",
 				cy: "8.5",
 				r: "1.5"
 			}),
-			/* @__PURE__ */ a("polyline", { points: "21 15 16 10 5 21" })
+			/* @__PURE__ */ createVNode("polyline", { points: "21 15 16 10 5 21" })
 		]
 	});
 }
 /** A picture that is not there: the place of a deleted post. */
 function IconImageOff(props) {
-	return /* @__PURE__ */ a("svg", {
+	return /* @__PURE__ */ createVNode("svg", {
 		...baseProps(props.size ?? DEFAULT_SIZE, props.className, props.title),
 		children: [
-			props.title !== void 0 ? /* @__PURE__ */ a("title", { children: props.title }) : null,
-			/* @__PURE__ */ a("line", {
+			props.title !== void 0 ? /* @__PURE__ */ createVNode("title", { children: props.title }) : null,
+			/* @__PURE__ */ createVNode("line", {
 				x1: "2",
 				y1: "2",
 				x2: "22",
 				y2: "22"
 			}),
-			/* @__PURE__ */ a("path", { d: "M10.41 10.41a2 2 0 1 1-2.83-2.83" }),
-			/* @__PURE__ */ a("line", {
+			/* @__PURE__ */ createVNode("path", { d: "M10.41 10.41a2 2 0 1 1-2.83-2.83" }),
+			/* @__PURE__ */ createVNode("line", {
 				x1: "13.5",
 				y1: "13.5",
 				x2: "6",
 				y2: "21"
 			}),
-			/* @__PURE__ */ a("line", {
+			/* @__PURE__ */ createVNode("line", {
 				x1: "18",
 				y1: "12",
 				x2: "21",
 				y2: "15"
 			}),
-			/* @__PURE__ */ a("path", { d: "M3.59 3.59A1.99 1.99 0 0 0 3 5v14a2 2 0 0 0 2 2h14c.55 0 1.052-.22 1.41-.59" }),
-			/* @__PURE__ */ a("path", { d: "M21 15V5a2 2 0 0 0-2-2H9" })
+			/* @__PURE__ */ createVNode("path", { d: "M3.59 3.59A1.99 1.99 0 0 0 3 5v14a2 2 0 0 0 2 2h14c.55 0 1.052-.22 1.41-.59" }),
+			/* @__PURE__ */ createVNode("path", { d: "M21 15V5a2 2 0 0 0-2-2H9" })
 		]
 	});
 }
 function IconCopy(props) {
-	return /* @__PURE__ */ a("svg", {
+	return /* @__PURE__ */ createVNode("svg", {
 		...baseProps(props.size ?? DEFAULT_SIZE, props.className, props.title),
 		children: [
-			props.title !== void 0 ? /* @__PURE__ */ a("title", { children: props.title }) : null,
-			/* @__PURE__ */ a("rect", {
+			props.title !== void 0 ? /* @__PURE__ */ createVNode("title", { children: props.title }) : null,
+			/* @__PURE__ */ createVNode("rect", {
 				x: "9",
 				y: "9",
 				width: "13",
@@ -10676,16 +12703,16 @@ function IconCopy(props) {
 				rx: "2",
 				ry: "2"
 			}),
-			/* @__PURE__ */ a("path", { d: "M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" })
+			/* @__PURE__ */ createVNode("path", { d: "M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" })
 		]
 	});
 }
 function IconDice(props) {
-	return /* @__PURE__ */ a("svg", {
+	return /* @__PURE__ */ createVNode("svg", {
 		...baseProps(props.size ?? DEFAULT_SIZE, props.className, props.title),
 		children: [
-			props.title !== void 0 ? /* @__PURE__ */ a("title", { children: props.title }) : null,
-			/* @__PURE__ */ a("rect", {
+			props.title !== void 0 ? /* @__PURE__ */ createVNode("title", { children: props.title }) : null,
+			/* @__PURE__ */ createVNode("rect", {
 				x: "3",
 				y: "3",
 				width: "18",
@@ -10693,28 +12720,28 @@ function IconDice(props) {
 				rx: "2",
 				ry: "2"
 			}),
-			/* @__PURE__ */ a("path", { d: "M16 8h.01" }),
-			/* @__PURE__ */ a("path", { d: "M12 12h.01" }),
-			/* @__PURE__ */ a("path", { d: "M8 16h.01" })
+			/* @__PURE__ */ createVNode("path", { d: "M16 8h.01" }),
+			/* @__PURE__ */ createVNode("path", { d: "M12 12h.01" }),
+			/* @__PURE__ */ createVNode("path", { d: "M8 16h.01" })
 		]
 	});
 }
 function IconDots(props) {
-	return /* @__PURE__ */ a("svg", {
+	return /* @__PURE__ */ createVNode("svg", {
 		...baseProps(props.size ?? DEFAULT_SIZE, props.className, props.title),
 		children: [
-			props.title !== void 0 ? /* @__PURE__ */ a("title", { children: props.title }) : null,
-			/* @__PURE__ */ a("circle", {
+			props.title !== void 0 ? /* @__PURE__ */ createVNode("title", { children: props.title }) : null,
+			/* @__PURE__ */ createVNode("circle", {
 				cx: "12",
 				cy: "12",
 				r: "1"
 			}),
-			/* @__PURE__ */ a("circle", {
+			/* @__PURE__ */ createVNode("circle", {
 				cx: "19",
 				cy: "12",
 				r: "1"
 			}),
-			/* @__PURE__ */ a("circle", {
+			/* @__PURE__ */ createVNode("circle", {
 				cx: "5",
 				cy: "12",
 				r: "1"
@@ -10723,28 +12750,28 @@ function IconDots(props) {
 	});
 }
 function IconHelp(props) {
-	return /* @__PURE__ */ a("svg", {
+	return /* @__PURE__ */ createVNode("svg", {
 		...baseProps(props.size ?? DEFAULT_SIZE, props.className, props.title),
 		children: [
-			props.title !== void 0 ? /* @__PURE__ */ a("title", { children: props.title }) : null,
-			/* @__PURE__ */ a("circle", {
+			props.title !== void 0 ? /* @__PURE__ */ createVNode("title", { children: props.title }) : null,
+			/* @__PURE__ */ createVNode("circle", {
 				cx: "12",
 				cy: "12",
 				r: "10"
 			}),
-			/* @__PURE__ */ a("path", { d: "M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" }),
-			/* @__PURE__ */ a("path", { d: "M12 17h.01" })
+			/* @__PURE__ */ createVNode("path", { d: "M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" }),
+			/* @__PURE__ */ createVNode("path", { d: "M12 17h.01" })
 		]
 	});
 }
 function IconDownload(props) {
-	return /* @__PURE__ */ a("svg", {
+	return /* @__PURE__ */ createVNode("svg", {
 		...baseProps(props.size ?? DEFAULT_SIZE, props.className, props.title),
 		children: [
-			props.title !== void 0 ? /* @__PURE__ */ a("title", { children: props.title }) : null,
-			/* @__PURE__ */ a("path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" }),
-			/* @__PURE__ */ a("polyline", { points: "7 10 12 15 17 10" }),
-			/* @__PURE__ */ a("line", {
+			props.title !== void 0 ? /* @__PURE__ */ createVNode("title", { children: props.title }) : null,
+			/* @__PURE__ */ createVNode("path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" }),
+			/* @__PURE__ */ createVNode("polyline", { points: "7 10 12 15 17 10" }),
+			/* @__PURE__ */ createVNode("line", {
 				x1: "12",
 				y1: "15",
 				x2: "12",
@@ -10754,14 +12781,14 @@ function IconDownload(props) {
 	});
 }
 function IconRefresh(props) {
-	return /* @__PURE__ */ a("svg", {
+	return /* @__PURE__ */ createVNode("svg", {
 		...baseProps(props.size ?? DEFAULT_SIZE, props.className, props.title),
 		children: [
-			props.title !== void 0 ? /* @__PURE__ */ a("title", { children: props.title }) : null,
-			/* @__PURE__ */ a("path", { d: "M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" }),
-			/* @__PURE__ */ a("path", { d: "M21 3v5h-5" }),
-			/* @__PURE__ */ a("path", { d: "M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" }),
-			/* @__PURE__ */ a("path", { d: "M8 16H3v5" })
+			props.title !== void 0 ? /* @__PURE__ */ createVNode("title", { children: props.title }) : null,
+			/* @__PURE__ */ createVNode("path", { d: "M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" }),
+			/* @__PURE__ */ createVNode("path", { d: "M21 3v5h-5" }),
+			/* @__PURE__ */ createVNode("path", { d: "M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" }),
+			/* @__PURE__ */ createVNode("path", { d: "M8 16H3v5" })
 		]
 	});
 }
@@ -10834,108 +12861,141 @@ function Chip(props) {
 		kind !== "default" ? `rdw-chip--${kind}` : void 0,
 		props.className
 	].filter((part) => part !== void 0 && part.length > 0).join(" ");
-	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a(KitStyle, { css: CHIP_CSS }), /* @__PURE__ */ a("span", {
+	return /* @__PURE__ */ createVNode(Fragment, { children: [/* @__PURE__ */ createVNode(KitStyle, { css: CHIP_CSS }), /* @__PURE__ */ createVNode("span", {
 		className,
 		children: [
-			variant === "dot" ? /* @__PURE__ */ a("i", {
+			variant === "dot" ? /* @__PURE__ */ createVNode("i", {
 				className: "rdw-chip__dot",
 				"aria-hidden": "true"
 			}) : null,
-			/* @__PURE__ */ a("span", { children: props.label }),
-			props.onRemove !== void 0 ? /* @__PURE__ */ a("button", {
+			/* @__PURE__ */ createVNode("span", { children: props.label }),
+			props.onRemove !== void 0 ? /* @__PURE__ */ createVNode("button", {
 				type: "button",
 				className: "rdw-chip__remove rdw-kit-focusable",
 				"aria-label": `Remove ${props.label}`,
 				onClick: props.onRemove,
-				children: /* @__PURE__ */ a(IconX, { size: 12 })
+				children: /* @__PURE__ */ createVNode(IconX, { size: 12 })
 			}) : null
 		]
 	})] });
 }
-var w = Object.assign;
-var x = /^(-|f[lo].*[^se]$|g.{5,}[^ps]$|z|o[pr]|(W.{5})?[lL]i.*(t|mp)$|an|(bo|s).{4}Im|sca|m.{6}[ds]|ta|c.*[st]$|wido|ini|asp|fill|st)/;
-function U(n, t) {
-	var e = X(n, t);
-	return e.containerInfo = t, e;
+var assign = Object.assign;
+var IS_NON_DIMENSIONAL = /^(-|f[lo].*[^se]$|g.{5,}[^ps]$|z|o[pr]|(W.{5})?[lL]i.*(t|mp)$|an|(bo|s).{4}Im|sca|m.{6}[ds]|ta|c.*[st]$|wido|ini|asp|fill|st)/;
+/**
+* Create a `Portal` to continue rendering the vnode tree at a different DOM node
+* @param {import('./internal').VNode} vnode The vnode to render
+* @param {import('./internal').PreactElement} container The DOM node to continue rendering in to.
+*/
+function createPortal(vnode, container) {
+	const el = createPortal$1(vnode, container);
+	el.containerInfo = container;
+	return el;
 }
-var P = Symbol.for("react.element");
-var $ = /^(?:accent|alignment|arabic|baseline|cap|clip(?!PathU)|color|dominant|fill|flood|font|glyph(?!R)|horiz|image(?!S)|letter|lighting|marker(?!H|W|U)|overline|paint|pointer|shape|stop|strikethrough|stroke|text(?!L)|transform|underline|unicode|units|v|vector|vert|word|writing|x(?!C))[A-Z]/;
-var z = /[A-Z0-9]/g;
-var H = typeof document < "u";
-var Y = function(n) {
-	return /fil|che|rad/.test(n);
-};
-x$1.prototype.isReactComponent = true, [
+var REACT_ELEMENT_TYPE = Symbol.for("react.element");
+var CAMEL_PROPS = /^(?:accent|alignment|arabic|baseline|cap|clip(?!PathU)|color|dominant|fill|flood|font|glyph(?!R)|horiz|image(?!S)|letter|lighting|marker(?!H|W|U)|overline|paint|pointer|shape|stop|strikethrough|stroke|text(?!L)|transform|underline|unicode|units|v|vector|vert|word|writing|x(?!C))[A-Z]/;
+var CAMEL_REPLACE = /[A-Z0-9]/g;
+var IS_DOM = typeof document < "u";
+var onChangeInputType = (type) => /fil|che|rad/.test(type);
+BaseComponent.prototype.isReactComponent = true;
+[
 	"componentWillMount",
 	"componentWillReceiveProps",
 	"componentWillUpdate"
-].forEach(function(n) {
-	Object.defineProperty(x$1.prototype, n, {
+].forEach((key) => {
+	Object.defineProperty(BaseComponent.prototype, key, {
 		configurable: true,
-		get: function() {
-			return this["UNSAFE_" + n];
+		get() {
+			return this["UNSAFE_" + key];
 		},
-		set: function(t) {
-			Object.defineProperty(this, n, {
+		set(v) {
+			Object.defineProperty(this, key, {
 				configurable: true,
 				writable: true,
-				value: t
+				value: v
 			});
 		}
 	});
 });
-var J = n.event;
-n.event = function(n) {
-	return J && (n = J(n)), n.persist = function() {}, n.isPropagationStopped = function() {
+var oldEventHook = options$1.event;
+options$1.event = (e) => {
+	if (oldEventHook) e = oldEventHook(e);
+	e.persist = () => {};
+	e.isPropagationStopped = function isPropagationStopped() {
 		return this.cancelBubble;
-	}, n.isDefaultPrevented = function() {
+	};
+	e.isDefaultPrevented = function isDefaultPrevented() {
 		return this.defaultPrevented;
-	}, n.nativeEvent = n;
+	};
+	return e.nativeEvent = e;
 };
-var K = {
+var classNameDescriptorNonEnumberable = {
 	configurable: true,
-	get: function() {
+	get() {
 		return this.class;
 	}
 };
-var Q = n.vnode;
-n.vnode = function(t) {
-	if ("string" == typeof t.type) (function(t) {
-		var e = t.props, r = t.type, u = {}, i = -1 == r.indexOf("-");
-		for (var o in e) {
-			var f = e[o];
-			if (!("value" == o && "defaultValue" in e && null == f || H && "children" == o && "noscript" == r || "class" == o || "className" == o)) {
-				if ("style" == o && f && f.constructor == Object) {
-					var l = void 0;
-					for (var a in f) "number" != typeof f[a] || x.test(a) || (l || (l = f = w({}, f)), f[a] += "px");
-				} else if ("defaultValue" == o && "value" in e && null == e.value) o = "value";
-				else if ("download" == o && true === f) f = "";
-				else if ("translate" == o && "no" === f) f = false;
-				else if ("o" == o[0] && "n" == o[1]) {
-					var c = o.toLowerCase();
-					"ondoubleclick" == c ? o = "ondblclick" : "onchange" != c || "input" != r && "textarea" != r || Y(e.type) ? "onfocus" == c ? o = "onfocusin" : "onblur" == c && (o = "onfocusout") : c = o = "oninput", "oninput" == c && u[o = c] && (o = "oninputCapture");
-				} else i && $.test(o) ? o = o.replace(z, "-$&").toLowerCase() : null === f && (f = void 0);
-				u[o] = f;
+function handleDomVNode(vnode) {
+	let props = vnode.props, type = vnode.type, normalizedProps = {}, isNonDashedType = type.indexOf("-") == -1;
+	for (let i in props) {
+		let value = props[i];
+		if (i == "value" && "defaultValue" in props && value == null || IS_DOM && i == "children" && type == "noscript" || i == "class" || i == "className") continue;
+		if (i == "style" && value && value.constructor == Object) {
+			let cloned;
+			for (let key in value) if (typeof value[key] == "number" && !IS_NON_DIMENSIONAL.test(key)) {
+				if (!cloned) cloned = value = assign({}, value);
+				value[key] += "px";
 			}
-		}
-		if ("select" == r) {
-			var s = null != u.defaultValue ? u.defaultValue : u.multiple && Array.isArray(u.value) ? u.value : null;
-			null != s && (u.value = O(e.children).forEach(function(n) {
-				n.props.selected = u.multiple ? -1 != s.indexOf(n.props.value) : s == n.props.value;
-			}));
-		}
-		e.class && !e.className ? (u.class = e.class, Object.defineProperty(u, "className", K)) : e.className && (u.class = u.className = e.className), t.props = u;
-	})(t);
-	else if ("function" == typeof t.type && ("ref" in t.props && "prototype" in t.type && t.type.prototype.render && (t.ref = t.props.ref, delete t.props.ref), t.type.defaultProps)) {
-		var e = w({}, t.props);
-		for (var r in t.type.defaultProps) void 0 === e[r] && (e[r] = t.type.defaultProps[r]);
-		t.props = e;
+		} else if (i == "defaultValue" && "value" in props && props.value == null) i = "value";
+		else if (i == "download" && value === true) value = "";
+		else if (i == "translate" && value === "no") value = false;
+		else if (i[0] == "o" && i[1] == "n") {
+			let lowerCased = i.toLowerCase();
+			if (lowerCased == "ondoubleclick") i = "ondblclick";
+			else if (lowerCased == "onchange" && (type == "input" || type == "textarea") && !onChangeInputType(props.type)) lowerCased = i = "oninput";
+			else if (lowerCased == "onfocus") i = "onfocusin";
+			else if (lowerCased == "onblur") i = "onfocusout";
+			if (lowerCased == "oninput") {
+				i = lowerCased;
+				if (normalizedProps[i]) i = "oninputCapture";
+			}
+		} else if (isNonDashedType && CAMEL_PROPS.test(i)) i = i.replace(CAMEL_REPLACE, "-$&").toLowerCase();
+		else if (value === null) value = void 0;
+		normalizedProps[i] = value;
 	}
-	t.ref && !("ref" in t.props) && Object.defineProperty(t.props, "ref", {
-		value: t.ref,
+	if (type == "select") {
+		let selected = normalizedProps.defaultValue != null ? normalizedProps.defaultValue : normalizedProps.multiple && Array.isArray(normalizedProps.value) ? normalizedProps.value : null;
+		if (selected != null) normalizedProps.value = toChildArray(props.children).forEach((child) => {
+			child.props.selected = normalizedProps.multiple ? selected.indexOf(child.props.value) != -1 : selected == child.props.value;
+		});
+	}
+	if (props.class && !props.className) {
+		normalizedProps.class = props.class;
+		Object.defineProperty(normalizedProps, "className", classNameDescriptorNonEnumberable);
+	} else if (props.className) normalizedProps.class = normalizedProps.className = props.className;
+	vnode.props = normalizedProps;
+}
+var oldVNodeHook = options$1.vnode;
+options$1.vnode = (vnode) => {
+	if (typeof vnode.type == "string") handleDomVNode(vnode);
+	else if (typeof vnode.type == "function") {
+		const shouldApplyRef = "prototype" in vnode.type && vnode.type.prototype.render;
+		if ("ref" in vnode.props && shouldApplyRef) {
+			vnode.ref = vnode.props.ref;
+			delete vnode.props.ref;
+		}
+		if (vnode.type.defaultProps) {
+			let normalizedProps = assign({}, vnode.props);
+			for (let i in vnode.type.defaultProps) if (normalizedProps[i] === void 0) normalizedProps[i] = vnode.type.defaultProps[i];
+			vnode.props = normalizedProps;
+		}
+	}
+	if (vnode.ref && !("ref" in vnode.props)) Object.defineProperty(vnode.props, "ref", {
+		value: vnode.ref,
 		configurable: true,
 		writable: true
-	}), t.$$typeof = P, Q && Q(t);
+	});
+	vnode.$$typeof = REACT_ELEMENT_TYPE;
+	if (oldVNodeHook) oldVNodeHook(vnode);
 };
 /**
 * Where the things that open over the page are drawn: a dialog, the list of a
@@ -10948,7 +13008,7 @@ n.vnode = function(t) {
 * shadow root with their own styles, and say so with this context: there
 * everything stays where it stands.
 */
-var OverlayInPlace = exports("aK",U$1(false));
+var OverlayInPlace = exports("aK",createContext(false));
 var TEXT_FIELD_CSS = `
 ${KIT_FOCUS_CSS}
 .rdw-field {
@@ -11003,16 +13063,16 @@ input.rdw-field__input.rdw-kit-focusable:focus {
 }
 `;
 function TextField(props) {
-	const autoId = P$1();
+	const autoId = useId();
 	const inputId = props.id ?? autoId;
 	const className = ["rdw-field", props.className].filter((part) => part !== void 0 && part.length > 0).join(" ");
-	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a(KitStyle, { css: TEXT_FIELD_CSS }), /* @__PURE__ */ a("div", {
+	return /* @__PURE__ */ createVNode(Fragment, { children: [/* @__PURE__ */ createVNode(KitStyle, { css: TEXT_FIELD_CSS }), /* @__PURE__ */ createVNode("div", {
 		className,
-		children: [props.label !== void 0 ? /* @__PURE__ */ a("label", {
+		children: [props.label !== void 0 ? /* @__PURE__ */ createVNode("label", {
 			className: "rdw-field__label",
 			htmlFor: inputId,
 			children: props.label
-		}) : null, props.type === "password" ? /* @__PURE__ */ a("input", {
+		}) : null, props.type === "password" ? /* @__PURE__ */ createVNode("input", {
 			id: inputId,
 			className: "rdw-field__input rdw-kit-focusable",
 			type: "password",
@@ -11023,7 +13083,7 @@ function TextField(props) {
 			onInput: (event) => {
 				props.onChange(event.currentTarget.value);
 			}
-		}) : /* @__PURE__ */ a("input", {
+		}) : /* @__PURE__ */ createVNode("input", {
 			id: inputId,
 			className: "rdw-field__input rdw-kit-focusable",
 			type: "text",
@@ -11133,17 +13193,17 @@ function pathIncludesNode$1(path, node) {
 function renderDialogBody(props) {
 	if (props.variant === DIALOG_VARIANT_CONFIRM$1) {
 		const tone = props.confirmTone ?? DEFAULT_CONFIRM_TONE;
-		return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("p", {
+		return /* @__PURE__ */ createVNode(Fragment, { children: [/* @__PURE__ */ createVNode("p", {
 			className: "rdw-dialog__message",
 			children: props.message
-		}), /* @__PURE__ */ a("div", {
+		}), /* @__PURE__ */ createVNode("div", {
 			className: "rdw-dialog__actions",
-			children: [/* @__PURE__ */ a(Button, {
+			children: [/* @__PURE__ */ createVNode(Button, {
 				variant: "secondary",
 				size: "s",
 				onClick: props.onClose,
 				children: props.cancelLabel
-			}), /* @__PURE__ */ a(Button, {
+			}), /* @__PURE__ */ createVNode(Button, {
 				variant: tone,
 				size: "s",
 				onClick: props.onConfirm,
@@ -11160,14 +13220,14 @@ function renderDialogBody(props) {
 				query
 			});
 		};
-		return /* @__PURE__ */ a("form", {
+		return /* @__PURE__ */ createVNode("form", {
 			className: "rdw-dialog__fields",
 			onSubmit: (event) => {
 				event.preventDefault();
 				props.onSubmit();
 			},
 			children: [
-				props.only !== DIALOG_FIELD_QUERY ? /* @__PURE__ */ a(TextField, {
+				props.only !== DIALOG_FIELD_QUERY ? /* @__PURE__ */ createVNode(TextField, {
 					label: nameLabel,
 					value: props.fields.name,
 					onChange: (name) => {
@@ -11181,20 +13241,20 @@ function renderDialogBody(props) {
 					label: queryLabel,
 					value: props.fields.query,
 					onChange: onQueryChange
-				}) : /* @__PURE__ */ a(TextField, {
+				}) : /* @__PURE__ */ createVNode(TextField, {
 					label: queryLabel,
 					value: props.fields.query,
 					onChange: onQueryChange
 				}),
-				/* @__PURE__ */ a("div", {
+				/* @__PURE__ */ createVNode("div", {
 					className: "rdw-dialog__actions",
-					children: [/* @__PURE__ */ a(Button, {
+					children: [/* @__PURE__ */ createVNode(Button, {
 						variant: "secondary",
 						size: "s",
 						type: "button",
 						onClick: props.onClose,
 						children: props.cancelLabel
-					}), /* @__PURE__ */ a(Button, {
+					}), /* @__PURE__ */ createVNode(Button, {
 						variant: "primary",
 						size: "s",
 						type: "submit",
@@ -11204,20 +13264,20 @@ function renderDialogBody(props) {
 			]
 		});
 	}
-	return /* @__PURE__ */ a($$1, { children: props.children });
+	return /* @__PURE__ */ createVNode(Fragment, { children: props.children });
 }
 function isOpenCombobox(event) {
 	const origin = event.composedPath()[0];
 	return origin instanceof Element && origin.getAttribute("role") === ROLE_COMBOBOX && origin.getAttribute("aria-expanded") === ARIA_TRUE$1;
 }
 function Dialog(props) {
-	const panelRef = T(null);
-	const wasOpenRef = T(false);
-	const restoreFocusRef = T(null);
-	const titleId = P$1();
+	const panelRef = useRef(null);
+	const wasOpenRef = useRef(false);
+	const restoreFocusRef = useRef(null);
+	const titleId = useId();
 	const hasTitle = props.title !== void 0 && props.title.length > 0;
-	const inPlace = j(OverlayInPlace);
-	A(() => {
+	const inPlace = useContext(OverlayInPlace);
+	useEffect(() => {
 		if (!props.open) {
 			if (wasOpenRef.current) {
 				wasOpenRef.current = false;
@@ -11294,9 +13354,9 @@ function Dialog(props) {
 	]);
 	if (!props.open) return null;
 	const className = ["rdw-dialog", props.className].filter((part) => part !== void 0 && part.length > 0).join(" ");
-	const body = /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a(KitStyle, { css: DIALOG_CSS }), /* @__PURE__ */ a("div", {
+	const body = /* @__PURE__ */ createVNode(Fragment, { children: [/* @__PURE__ */ createVNode(KitStyle, { css: DIALOG_CSS }), /* @__PURE__ */ createVNode("div", {
 		className: "rdw-dialog-backdrop",
-		children: /* @__PURE__ */ a("div", {
+		children: /* @__PURE__ */ createVNode("div", {
 			ref: panelRef,
 			className,
 			role: "dialog",
@@ -11304,14 +13364,14 @@ function Dialog(props) {
 			"aria-label": hasTitle ? void 0 : props["aria-label"],
 			"aria-labelledby": hasTitle ? titleId : void 0,
 			tabIndex: -1,
-			children: [hasTitle ? /* @__PURE__ */ a("h2", {
+			children: [hasTitle ? /* @__PURE__ */ createVNode("h2", {
 				id: titleId,
 				className: "rdw-dialog__title",
 				children: props.title
 			}) : null, renderDialogBody(props)]
 		})
 	})] });
-	return inPlace ? body : U(/* @__PURE__ */ a(KitStylesProvided.Provider, {
+	return inPlace ? body : createPortal(/* @__PURE__ */ createVNode(KitStylesProvided.Provider, {
 		value: false,
 		children: body
 	}), document.body);
@@ -11337,15 +13397,15 @@ var EMPTY_STATE_CSS = `
 `;
 function EmptyState(props) {
 	const className = ["rdw-empty", props.className].filter((part) => part !== void 0 && part.length > 0).join(" ");
-	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a(KitStyle, { css: EMPTY_STATE_CSS }), /* @__PURE__ */ a("div", {
+	return /* @__PURE__ */ createVNode(Fragment, { children: [/* @__PURE__ */ createVNode(KitStyle, { css: EMPTY_STATE_CSS }), /* @__PURE__ */ createVNode("div", {
 		className,
 		role: "status",
 		children: [
-			/* @__PURE__ */ a("p", {
+			/* @__PURE__ */ createVNode("p", {
 				className: "rdw-empty__title",
 				children: props.title
 			}),
-			props.description !== void 0 ? /* @__PURE__ */ a("p", {
+			props.description !== void 0 ? /* @__PURE__ */ createVNode("p", {
 				className: "rdw-empty__desc",
 				children: props.description
 			}) : null,
@@ -11386,7 +13446,7 @@ function IconButton(props) {
 		"rdw-kit-focusable",
 		props.className
 	].filter((part) => part !== void 0 && part.length > 0).join(" ");
-	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a(KitStyle, { css: ICON_BUTTON_CSS }), /* @__PURE__ */ a("button", {
+	return /* @__PURE__ */ createVNode(Fragment, { children: [/* @__PURE__ */ createVNode(KitStyle, { css: ICON_BUTTON_CSS }), /* @__PURE__ */ createVNode("button", {
 		type: "button",
 		className,
 		"aria-label": props.label,
@@ -11449,16 +13509,16 @@ ${KIT_FOCUS_CSS}
 }
 `;
 function NumberField(props) {
-	const autoId = P$1();
+	const autoId = useId();
 	const inputId = props.id ?? autoId;
 	const className = ["rdw-num", props.className].filter((part) => part !== void 0 && part.length > 0).join(" ");
-	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a(KitStyle, { css: NUMBER_FIELD_CSS }), /* @__PURE__ */ a("div", {
+	return /* @__PURE__ */ createVNode(Fragment, { children: [/* @__PURE__ */ createVNode(KitStyle, { css: NUMBER_FIELD_CSS }), /* @__PURE__ */ createVNode("div", {
 		className,
-		children: [props.label !== void 0 ? /* @__PURE__ */ a("label", {
+		children: [props.label !== void 0 ? /* @__PURE__ */ createVNode("label", {
 			className: "rdw-num__label",
 			htmlFor: inputId,
 			children: props.label
-		}) : null, /* @__PURE__ */ a("input", {
+		}) : null, /* @__PURE__ */ createVNode("input", {
 			id: inputId,
 			className: "rdw-num__input rdw-kit-focusable",
 			type: "number",
@@ -11528,9 +13588,9 @@ function pathIncludesNode(path, node) {
 	return false;
 }
 function Popover(props) {
-	const rootRef = T(null);
-	const wasOpenRef = T(false);
-	A(() => {
+	const rootRef = useRef(null);
+	const wasOpenRef = useRef(false);
+	useEffect(() => {
 		if (!props.open) {
 			if (wasOpenRef.current) {
 				wasOpenRef.current = false;
@@ -11567,7 +13627,7 @@ function Popover(props) {
 	]);
 	const widthPx = props.widthPx;
 	const anchored = widthPx !== void 0;
-	F(() => {
+	useLayoutEffect(() => {
 		if (!props.open || widthPx === void 0) return;
 		const apply = () => {
 			const anchor = props.anchorRef?.current ?? null;
@@ -11602,14 +13662,14 @@ function Popover(props) {
 		anchored ? POPOVER_FIXED_CLASS : void 0,
 		props.className
 	].filter((part) => part !== void 0 && part.length > 0).join(" ");
-	const body = /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a(KitStyle, { css: POPOVER_CSS }), /* @__PURE__ */ a("div", {
+	const body = /* @__PURE__ */ createVNode(Fragment, { children: [/* @__PURE__ */ createVNode(KitStyle, { css: POPOVER_CSS }), /* @__PURE__ */ createVNode("div", {
 		ref: rootRef,
 		className,
 		role: props.role ?? "dialog",
 		"aria-label": props["aria-label"],
 		children: props.children
 	})] });
-	if (anchored && document.body !== null) return U(/* @__PURE__ */ a(KitStylesProvided.Provider, {
+	if (anchored && document.body !== null) return createPortal(/* @__PURE__ */ createVNode(KitStylesProvided.Provider, {
 		value: false,
 		children: body
 	}), document.body);
@@ -11658,12 +13718,12 @@ function clampUnit(value) {
 	return value;
 }
 function ProgressBar(props) {
-	const fillRef = T(null);
+	const fillRef = useRef(null);
 	const waiting = props.waiting === true;
 	const hasValue = props.value !== void 0 && props.value !== null;
 	const ratio = hasValue ? clampUnit(props.value) : 0;
 	const className = ["rdw-progress", props.className].filter((part) => part !== void 0 && part.length > 0).join(" ");
-	A(() => {
+	useEffect(() => {
 		const fill = fillRef.current;
 		if (fill === null) return;
 		if (waiting || !hasValue) {
@@ -11676,19 +13736,19 @@ function ProgressBar(props) {
 		hasValue,
 		ratio
 	]);
-	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a(KitStyle, { css: PROGRESS_BAR_CSS }), /* @__PURE__ */ a("div", {
+	return /* @__PURE__ */ createVNode(Fragment, { children: [/* @__PURE__ */ createVNode(KitStyle, { css: PROGRESS_BAR_CSS }), /* @__PURE__ */ createVNode("div", {
 		className,
-		children: [props.label !== void 0 ? /* @__PURE__ */ a("div", {
+		children: [props.label !== void 0 ? /* @__PURE__ */ createVNode("div", {
 			className: "rdw-progress__label",
 			children: props.label
-		}) : null, /* @__PURE__ */ a("div", {
+		}) : null, /* @__PURE__ */ createVNode("div", {
 			className: "rdw-progress__track",
 			role: "progressbar",
 			"aria-label": props.label,
 			"aria-valuemin": 0,
 			"aria-valuemax": 100,
 			"aria-valuenow": hasValue && !waiting ? Math.round(ratio * 100) : void 0,
-			children: /* @__PURE__ */ a("div", {
+			children: /* @__PURE__ */ createVNode("div", {
 				ref: fillRef,
 				className: waiting ? "rdw-progress__fill rdw-progress__fill--indeterminate" : "rdw-progress__fill"
 			})
@@ -11904,30 +13964,30 @@ function suggestBox(fieldLeft, fieldBottom, fieldWidth, viewportWidth) {
 }
 /** The list a "?" opens; also used by the help of the site's own search field. */
 function SearchHelpList(props) {
-	return /* @__PURE__ */ a($$1, { children: [
-		/* @__PURE__ */ a(KitStyle, { css: SEARCH_FIELD_CSS }),
-		/* @__PURE__ */ a("dl", {
+	return /* @__PURE__ */ createVNode(Fragment, { children: [
+		/* @__PURE__ */ createVNode(KitStyle, { css: SEARCH_FIELD_CSS }),
+		/* @__PURE__ */ createVNode("dl", {
 			className: SEARCH_HELP_CLASS,
-			children: props.help.rows.map(([example, meaning]) => /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("dt", { children: example }), /* @__PURE__ */ a("dd", { children: meaning })] }))
+			children: props.help.rows.map(([example, meaning]) => /* @__PURE__ */ createVNode(Fragment, { children: [/* @__PURE__ */ createVNode("dt", { children: example }), /* @__PURE__ */ createVNode("dd", { children: meaning })] }))
 		}),
-		props.help.note === void 0 ? null : /* @__PURE__ */ a("p", {
+		props.help.note === void 0 ? null : /* @__PURE__ */ createVNode("p", {
 			className: NOTE_CLASS$2,
 			children: props.help.note
 		})
 	] });
 }
 function SearchField(props) {
-	const [helpOpen, setHelpOpen] = d(false);
-	const helpButtonRef = T(null);
-	const rootRef = T(null);
-	const inputRef = T(null);
-	const listRef = T(null);
-	const listId = P$1();
-	const [caret, setCaret] = d(0);
-	const [focused, setFocused] = d(false);
-	const [dismissed, setDismissed] = d(false);
-	const [active, setActive] = d(0);
-	const caretAfterPick = T(null);
+	const [helpOpen, setHelpOpen] = useState(false);
+	const helpButtonRef = useRef(null);
+	const rootRef = useRef(null);
+	const inputRef = useRef(null);
+	const listRef = useRef(null);
+	const listId = useId();
+	const [caret, setCaret] = useState(0);
+	const [focused, setFocused] = useState(false);
+	const [dismissed, setDismissed] = useState(false);
+	const [active, setActive] = useState(0);
+	const caretAfterPick = useRef(null);
 	const { help, suggest, onCommit } = props;
 	const clearLabel = props.clearLabel ?? DEFAULT_CLEAR_LABEL;
 	const className = [SEARCH_FIELD_CLASS, props.className].filter((part) => part !== void 0 && part.length > 0).join(" ");
@@ -11954,7 +14014,7 @@ function SearchField(props) {
 		setActive(0);
 		onCommit?.(done.text);
 	};
-	F(() => {
+	useLayoutEffect(() => {
 		const at = caretAfterPick.current;
 		const input = inputRef.current;
 		if (at !== null && input !== null) {
@@ -11962,7 +14022,7 @@ function SearchField(props) {
 			input.setSelectionRange(at, at);
 		}
 	});
-	F(() => {
+	useLayoutEffect(() => {
 		if (!open) return;
 		const place = () => {
 			const root = rootRef.current;
@@ -11982,7 +14042,7 @@ function SearchField(props) {
 			window.removeEventListener("resize", place);
 		};
 	}, [open]);
-	A(() => {
+	useEffect(() => {
 		if (activeIndex < 0) return;
 		const row = listRef.current?.querySelector(`#${CSS.escape(`${listId}-${String(activeIndex)}`)}`);
 		if (row instanceof HTMLElement && typeof row.scrollIntoView === "function") row.scrollIntoView({ block: "nearest" });
@@ -12006,22 +14066,22 @@ function SearchField(props) {
 			onCommit?.(props.value);
 		}
 	};
-	const suggestions = open ? /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a(KitStyle, { css: SEARCH_SUGGEST_CSS }), /* @__PURE__ */ a("div", {
+	const suggestions = open ? /* @__PURE__ */ createVNode(Fragment, { children: [/* @__PURE__ */ createVNode(KitStyle, { css: SEARCH_SUGGEST_CSS }), /* @__PURE__ */ createVNode("div", {
 		className: SUGGEST_CLASS,
 		ref: listRef,
 		onMouseDown: (event) => {
 			event.preventDefault();
 		},
-		children: [list?.heading === null || list?.heading === void 0 ? null : /* @__PURE__ */ a("div", {
+		children: [list?.heading === null || list?.heading === void 0 ? null : /* @__PURE__ */ createVNode("div", {
 			className: SUGGEST_HEADING_CLASS,
 			"aria-hidden": "true",
 			children: list.heading
-		}), /* @__PURE__ */ a("ul", {
+		}), /* @__PURE__ */ createVNode("ul", {
 			className: SUGGEST_LIST_CLASS,
 			id: listId,
 			role: "listbox",
 			"aria-label": list?.heading === null || list?.heading === void 0 ? suggest?.label : `${suggest?.label ?? ""}: ${list.heading}`,
-			children: items.map((item, index) => /* @__PURE__ */ a("li", {
+			children: items.map((item, index) => /* @__PURE__ */ createVNode("li", {
 				id: `${listId}-${String(index)}`,
 				role: "option",
 				"aria-selected": index === activeIndex,
@@ -12034,14 +14094,14 @@ function SearchField(props) {
 				onClick: () => {
 					pick(index);
 				},
-				children: [/* @__PURE__ */ a("span", {
+				children: [/* @__PURE__ */ createVNode("span", {
 					className: SUGGEST_LABEL_CLASS,
 					children: [
 						item.label.slice(0, item.matchStart),
-						/* @__PURE__ */ a("b", { children: item.label.slice(item.matchStart, item.matchStart + item.matchLength) }),
+						/* @__PURE__ */ createVNode("b", { children: item.label.slice(item.matchStart, item.matchStart + item.matchLength) }),
 						item.label.slice(item.matchStart + item.matchLength)
 					]
-				}), item.trailing === null ? null : /* @__PURE__ */ a("span", {
+				}), item.trailing === null ? null : /* @__PURE__ */ createVNode("span", {
 					className: SUGGEST_TRAILING_CLASS,
 					children: item.trailing
 				})]
@@ -12073,16 +14133,16 @@ function SearchField(props) {
 			onCommit?.(props.value);
 		}
 	};
-	return /* @__PURE__ */ a("div", {
+	return /* @__PURE__ */ createVNode("div", {
 		className,
 		ref: rootRef,
 		children: [
-			/* @__PURE__ */ a(KitStyle, { css: SEARCH_FIELD_CSS }),
-			/* @__PURE__ */ a(IconSearch, {
+			/* @__PURE__ */ createVNode(KitStyle, { css: SEARCH_FIELD_CSS }),
+			/* @__PURE__ */ createVNode(IconSearch, {
 				className: ICON_CLASS,
 				size: ICON_PX$1
 			}),
-			/* @__PURE__ */ a(TextField, {
+			/* @__PURE__ */ createVNode(TextField, {
 				...props.id === void 0 ? {} : { id: props.id },
 				className: INPUT_CLASS,
 				value: props.value,
@@ -12092,13 +14152,13 @@ function SearchField(props) {
 				inputAttrs: comboAttrs,
 				onChange: change
 			}),
-			suggestions !== null && document.body !== null ? U(/* @__PURE__ */ a(KitStylesProvided.Provider, {
+			suggestions !== null && document.body !== null ? createPortal(/* @__PURE__ */ createVNode(KitStylesProvided.Provider, {
 				value: false,
 				children: suggestions
 			}), document.body) : null,
-			/* @__PURE__ */ a("span", {
+			/* @__PURE__ */ createVNode("span", {
 				className: TOOLS_CLASS,
-				children: [props.value.length > 0 ? /* @__PURE__ */ a("button", {
+				children: [props.value.length > 0 ? /* @__PURE__ */ createVNode("button", {
 					type: "button",
 					className: `${TOOL_CLASS} rdw-kit-focusable`,
 					"aria-label": clearLabel,
@@ -12108,8 +14168,8 @@ function SearchField(props) {
 						onCommit?.("");
 						rootRef.current?.querySelector("input")?.focus();
 					},
-					children: /* @__PURE__ */ a(IconX, { size: ICON_PX$1 })
-				}) : null, help === void 0 ? null : /* @__PURE__ */ a("button", {
+					children: /* @__PURE__ */ createVNode(IconX, { size: ICON_PX$1 })
+				}) : null, help === void 0 ? null : /* @__PURE__ */ createVNode("button", {
 					type: "button",
 					ref: helpButtonRef,
 					className: `${TOOL_CLASS} rdw-kit-focusable`,
@@ -12119,10 +14179,10 @@ function SearchField(props) {
 					onClick: () => {
 						setHelpOpen(!helpOpen);
 					},
-					children: /* @__PURE__ */ a(IconHelp, { size: ICON_PX$1 })
+					children: /* @__PURE__ */ createVNode(IconHelp, { size: ICON_PX$1 })
 				})]
 			}),
-			help === void 0 ? null : /* @__PURE__ */ a(Popover, {
+			help === void 0 ? null : /* @__PURE__ */ createVNode(Popover, {
 				open: helpOpen,
 				onClose: () => {
 					setHelpOpen(false);
@@ -12131,7 +14191,7 @@ function SearchField(props) {
 				widthPx: help.widthPx ?? DEFAULT_HELP_WIDTH_PX,
 				alignEnd: true,
 				"aria-label": help.label,
-				children: /* @__PURE__ */ a(SearchHelpList, { help })
+				children: /* @__PURE__ */ createVNode(SearchHelpList, { help })
 			})
 		]
 	});
@@ -12148,12 +14208,12 @@ var SECTION_LABEL_CSS = `
 `;
 function SectionLabel(props) {
 	const className = ["rdw-section-label", props.className].filter((part) => part !== void 0 && part.length > 0).join(" ");
-	if (props.htmlFor !== void 0) return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a(KitStyle, { css: SECTION_LABEL_CSS }), /* @__PURE__ */ a("label", {
+	if (props.htmlFor !== void 0) return /* @__PURE__ */ createVNode(Fragment, { children: [/* @__PURE__ */ createVNode(KitStyle, { css: SECTION_LABEL_CSS }), /* @__PURE__ */ createVNode("label", {
 		className,
 		htmlFor: props.htmlFor,
 		children: props.children
 	})] });
-	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a(KitStyle, { css: SECTION_LABEL_CSS }), /* @__PURE__ */ a("div", {
+	return /* @__PURE__ */ createVNode(Fragment, { children: [/* @__PURE__ */ createVNode(KitStyle, { css: SECTION_LABEL_CSS }), /* @__PURE__ */ createVNode("div", {
 		className,
 		children: props.children
 	})] });
@@ -12206,14 +14266,14 @@ ${KIT_FOCUS_CSS}
 function Segmented(props) {
 	const className = ["rdw-seg", props.className].filter((part) => part !== void 0 && part.length > 0).join(" ");
 	const disabled = props.disabled === true;
-	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a(KitStyle, { css: SEGMENTED_CSS }), /* @__PURE__ */ a("div", {
+	return /* @__PURE__ */ createVNode(Fragment, { children: [/* @__PURE__ */ createVNode(KitStyle, { css: SEGMENTED_CSS }), /* @__PURE__ */ createVNode("div", {
 		className,
 		role: "radiogroup",
 		"aria-label": props.label,
 		"aria-disabled": disabled ? true : void 0,
 		children: props.options.map((option) => {
 			const selected = option.value === props.value;
-			return /* @__PURE__ */ a("button", {
+			return /* @__PURE__ */ createVNode("button", {
 				type: "button",
 				role: "radio",
 				className: "rdw-seg__btn rdw-kit-focusable",
@@ -12341,9 +14401,9 @@ function ownSelectAll(event) {
 function SelectionBar(props) {
 	const layout = props.layout ?? "row";
 	const none = props.count === 0;
-	const latestSelectAll = T(props.onSelectAll);
+	const latestSelectAll = useRef(props.onSelectAll);
 	latestSelectAll.current = props.onSelectAll;
-	A(() => {
+	useEffect(() => {
 		const onKeyDown = (event) => {
 			if (event.code !== SELECT_ALL_KEY_CODE || !(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey || event.defaultPrevented || ownSelectAll(event)) return;
 			event.preventDefault();
@@ -12354,80 +14414,80 @@ function SelectionBar(props) {
 			document.removeEventListener(EVENT_KEYDOWN$3, onKeyDown);
 		};
 	}, []);
-	const count = /* @__PURE__ */ a("span", {
+	const count = /* @__PURE__ */ createVNode("span", {
 		className: CLASS_COUNT,
 		"aria-live": "polite",
 		children: `${String(props.count)}${SELECTED_SUFFIX}`
 	});
 	const selectAllLabel = props.selectAllLabel ?? "Select all";
-	const selectAll = props.selectAll ?? /* @__PURE__ */ a(Button, {
+	const selectAll = props.selectAll ?? /* @__PURE__ */ createVNode(Button, {
 		variant: "ghost",
 		title: `${selectAllLabel}${SELECT_ALL_KEY_HINT}`,
 		onClick: props.onSelectAll,
 		children: selectAllLabel
 	});
-	const clear = /* @__PURE__ */ a(Button, {
+	const clear = /* @__PURE__ */ createVNode(Button, {
 		variant: "ghost",
 		disabled: none,
 		onClick: props.onClear,
 		children: SELECTION_CLEAR
 	});
-	const cancel = /* @__PURE__ */ a(Button, {
+	const cancel = /* @__PURE__ */ createVNode(Button, {
 		variant: "secondary",
 		onClick: props.onCancel,
 		children: SELECTION_CANCEL
 	});
 	const hasActions = props.children !== void 0 && props.children !== null;
 	const hasDanger = props.danger !== void 0 && props.danger !== null;
-	const rule = hasActions && hasDanger ? /* @__PURE__ */ a("span", {
+	const rule = hasActions && hasDanger ? /* @__PURE__ */ createVNode("span", {
 		className: CLASS_RULE,
 		"aria-hidden": "true"
 	}) : null;
-	if (layout === "stack") return /* @__PURE__ */ a("div", {
+	if (layout === "stack") return /* @__PURE__ */ createVNode("div", {
 		className: `${CLASS_ROOT$1} ${CLASS_STACK}`,
 		role: "toolbar",
 		"aria-label": SELECTION_BAR_LABEL,
 		"aria-orientation": "vertical",
 		children: [
-			/* @__PURE__ */ a(KitStyle, { css: SELECTION_BAR_CSS }),
-			/* @__PURE__ */ a("div", {
+			/* @__PURE__ */ createVNode(KitStyle, { css: SELECTION_BAR_CSS }),
+			/* @__PURE__ */ createVNode("div", {
 				className: CLASS_HEAD,
 				children: [count, cancel]
 			}),
-			/* @__PURE__ */ a("div", {
+			/* @__PURE__ */ createVNode("div", {
 				className: CLASS_PICK,
 				children: [selectAll, clear]
 			}),
-			hasActions ? /* @__PURE__ */ a("div", {
+			hasActions ? /* @__PURE__ */ createVNode("div", {
 				className: CLASS_ACTIONS$2,
 				children: props.children
 			}) : null,
 			rule,
-			hasDanger ? /* @__PURE__ */ a("div", {
+			hasDanger ? /* @__PURE__ */ createVNode("div", {
 				className: CLASS_ACTIONS$2,
 				children: props.danger
 			}) : null
 		]
 	});
-	return /* @__PURE__ */ a("div", {
+	return /* @__PURE__ */ createVNode("div", {
 		className: `${CLASS_ROOT$1} ${CLASS_ROW}`,
 		role: "toolbar",
 		"aria-label": SELECTION_BAR_LABEL,
 		children: [
-			/* @__PURE__ */ a(KitStyle, { css: SELECTION_BAR_CSS }),
+			/* @__PURE__ */ createVNode(KitStyle, { css: SELECTION_BAR_CSS }),
 			count,
 			selectAll,
 			clear,
-			/* @__PURE__ */ a("span", {
+			/* @__PURE__ */ createVNode("span", {
 				className: CLASS_SPACER,
 				"aria-hidden": "true"
 			}),
-			hasActions ? /* @__PURE__ */ a("div", {
+			hasActions ? /* @__PURE__ */ createVNode("div", {
 				className: CLASS_ACTIONS$2,
 				children: props.children
 			}) : null,
 			rule,
-			hasDanger ? /* @__PURE__ */ a("div", {
+			hasDanger ? /* @__PURE__ */ createVNode("div", {
 				className: CLASS_ACTIONS$2,
 				children: props.danger
 			}) : null,
@@ -12537,15 +14597,15 @@ ${KIT_FOCUS_CSS}
 }
 `;
 function Select(props) {
-	const listId = P$1();
-	const rootRef = T(null);
-	const triggerRef = T(null);
-	const listRef = T(null);
-	const [open, setOpen] = d(false);
-	const floating = !j(OverlayInPlace) && !(rootRef.current?.getRootNode() instanceof ShadowRoot);
+	const listId = useId();
+	const rootRef = useRef(null);
+	const triggerRef = useRef(null);
+	const listRef = useRef(null);
+	const [open, setOpen] = useState(false);
+	const floating = !useContext(OverlayInPlace) && !(rootRef.current?.getRootNode() instanceof ShadowRoot);
 	const selected = props.options.find((option) => option.value === props.value) ?? props.options[0];
 	const className = ["rdw-select", props.className].filter((part) => part !== void 0 && part.length > 0).join(" ");
-	A(() => {
+	useEffect(() => {
 		if (!open) return;
 		const onKeyDown = (event) => {
 			if (event.key === "Escape") setOpen(false);
@@ -12564,7 +14624,7 @@ function Select(props) {
 			document.removeEventListener("mousedown", onPointerDown);
 		};
 	}, [open]);
-	F(() => {
+	useLayoutEffect(() => {
 		if (!open || !floating) return;
 		const place = () => {
 			const trigger = triggerRef.current;
@@ -12587,13 +14647,13 @@ function Select(props) {
 			window.removeEventListener(EVENT_RESIZE, place);
 		};
 	}, [open, floating]);
-	const list = open ? /* @__PURE__ */ a("ul", {
+	const list = open ? /* @__PURE__ */ createVNode("ul", {
 		className: floating ? `${LIST_CLASS$1} ${LIST_FLOATING_CLASS}` : LIST_CLASS$1,
 		role: "listbox",
 		id: listId,
 		tabIndex: -1,
 		ref: listRef,
-		children: props.options.map((option) => /* @__PURE__ */ a("li", {
+		children: props.options.map((option) => /* @__PURE__ */ createVNode("li", {
 			role: "option",
 			className: "rdw-select__option rdw-kit-focusable",
 			"aria-selected": option.value === props.value,
@@ -12610,24 +14670,24 @@ function Select(props) {
 					triggerRef.current?.focus();
 				}
 			},
-			children: [/* @__PURE__ */ a("span", { children: option.label }), option.value === props.value ? /* @__PURE__ */ a(IconCheck, {
+			children: [/* @__PURE__ */ createVNode("span", { children: option.label }), option.value === props.value ? /* @__PURE__ */ createVNode(IconCheck, {
 				size: TICK_ICON_PX,
 				className: "rdw-select__tick"
 			}) : null]
 		}, option.value))
 	}) : null;
-	return /* @__PURE__ */ a($$1, { children: [
-		/* @__PURE__ */ a(KitStyle, { css: SELECT_CSS }),
-		/* @__PURE__ */ a("div", {
+	return /* @__PURE__ */ createVNode(Fragment, { children: [
+		/* @__PURE__ */ createVNode(KitStyle, { css: SELECT_CSS }),
+		/* @__PURE__ */ createVNode("div", {
 			className,
 			ref: rootRef,
 			children: [
-				props.label !== void 0 ? /* @__PURE__ */ a("span", {
+				props.label !== void 0 ? /* @__PURE__ */ createVNode("span", {
 					className: "rdw-select__label",
 					id: `${listId}-label`,
 					children: props.label
 				}) : null,
-				/* @__PURE__ */ a("button", {
+				/* @__PURE__ */ createVNode("button", {
 					type: "button",
 					className: "rdw-select__trigger rdw-kit-focusable",
 					"aria-haspopup": "listbox",
@@ -12639,12 +14699,12 @@ function Select(props) {
 					onClick: () => {
 						setOpen((prev) => !prev);
 					},
-					children: [/* @__PURE__ */ a("span", { children: selected?.label ?? props.value }), /* @__PURE__ */ a(IconChevronDown, { size: 14 })]
+					children: [/* @__PURE__ */ createVNode("span", { children: selected?.label ?? props.value }), /* @__PURE__ */ createVNode(IconChevronDown, { size: 14 })]
 				}),
 				floating ? null : list
 			]
 		}),
-		floating && list !== null ? U(/* @__PURE__ */ a(KitStylesProvided.Provider, {
+		floating && list !== null ? createPortal(/* @__PURE__ */ createVNode(KitStylesProvided.Provider, {
 			value: false,
 			children: list
 		}), document.body) : null
@@ -12744,9 +14804,9 @@ html${SITE_DARK_THEME_SELECTOR$1} .rdw-switch:not([aria-checked="true"]) .rdw-sw
 `;
 function Switch(props) {
 	const className = ["rdw-switch-row", props.className].filter((part) => part !== void 0 && part.length > 0).join(" ");
-	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a(KitStyle, { css: SWITCH_CSS }), /* @__PURE__ */ a("div", {
+	return /* @__PURE__ */ createVNode(Fragment, { children: [/* @__PURE__ */ createVNode(KitStyle, { css: SWITCH_CSS }), /* @__PURE__ */ createVNode("div", {
 		className,
-		children: [/* @__PURE__ */ a("button", {
+		children: [/* @__PURE__ */ createVNode("button", {
 			type: "button",
 			id: props.id,
 			className: "rdw-switch rdw-kit-focusable",
@@ -12757,11 +14817,11 @@ function Switch(props) {
 			onClick: () => {
 				props.onChange(!props.checked);
 			},
-			children: /* @__PURE__ */ a("span", {
+			children: /* @__PURE__ */ createVNode("span", {
 				className: "rdw-switch__track",
-				children: /* @__PURE__ */ a("span", { className: "rdw-switch__thumb" })
+				children: /* @__PURE__ */ createVNode("span", { className: "rdw-switch__thumb" })
 			})
-		}), props.label !== void 0 ? /* @__PURE__ */ a("span", {
+		}), props.label !== void 0 ? /* @__PURE__ */ createVNode("span", {
 			className: "rdw-switch__label",
 			children: props.label
 		}) : null]
@@ -12806,13 +14866,13 @@ ${KIT_FOCUS_CSS}
 `;
 function Tabs(props) {
 	const className = ["rdw-tabs", props.className].filter((part) => part !== void 0 && part.length > 0).join(" ");
-	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a(KitStyle, { css: TABS_CSS }), /* @__PURE__ */ a("div", {
+	return /* @__PURE__ */ createVNode(Fragment, { children: [/* @__PURE__ */ createVNode(KitStyle, { css: TABS_CSS }), /* @__PURE__ */ createVNode("div", {
 		className,
 		role: "tablist",
 		"aria-label": props["aria-label"],
 		children: props.items.map((item) => {
 			const selected = item.id === props.value;
-			return /* @__PURE__ */ a("button", {
+			return /* @__PURE__ */ createVNode("button", {
 				type: "button",
 				role: "tab",
 				id: kitTabId(item.id),
@@ -12907,8 +14967,8 @@ ${KIT_FOCUS_CSS}
 }
 `;
 function Toast(props) {
-	const [slotId, setSlotId] = d(null);
-	F(() => {
+	const [slotId, setSlotId] = useState(null);
+	useLayoutEffect(() => {
 		if (!props.open) {
 			setSlotId(null);
 			return;
@@ -12934,13 +14994,13 @@ function Toast(props) {
 	]);
 	if (!props.open || slotId === null) return null;
 	if (activeToastSlot === null || activeToastSlot.id !== slotId) return null;
-	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a(KitStyle, { css: TOAST_CSS }), /* @__PURE__ */ a("div", {
+	return /* @__PURE__ */ createVNode(Fragment, { children: [/* @__PURE__ */ createVNode(KitStyle, { css: TOAST_CSS }), /* @__PURE__ */ createVNode("div", {
 		className: "rdw-toast",
 		role: "status",
-		children: [/* @__PURE__ */ a("p", {
+		children: [/* @__PURE__ */ createVNode("p", {
 			className: "rdw-toast__message",
 			children: props.message
-		}), props.action !== void 0 ? /* @__PURE__ */ a(Button, {
+		}), props.action !== void 0 ? /* @__PURE__ */ createVNode(Button, {
 			variant: "secondary",
 			size: "s",
 			onClick: props.action.onClick,
@@ -14569,7 +16629,7 @@ function clearOwnPageCurrentHighlight() {
 */
 var FOCUS_KEY = "ruledesk-web.settings-focus";
 /** The id of the Favorites block of the settings page. */
-var SETTINGS_SECTION_FAVORITES = exports("a","favorites");
+var SETTINGS_SECTION_FAVORITES = exports("d","favorites");
 /** "#rdw/settings/video" */
 function settingsSectionHash(id) {
 	return `${RDW_HASH_SETTINGS}/${encodeURIComponent(id)}`;
@@ -15106,13 +17166,13 @@ var AI_CONTROL_CSS = `
 * user to where it can: the Page block of the settings.
 */
 function AiEverywhereNote(props) {
-	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("style", { children: AI_CONTROL_CSS }), /* @__PURE__ */ a("p", {
+	return /* @__PURE__ */ createVNode(Fragment, { children: [/* @__PURE__ */ createVNode("style", { children: AI_CONTROL_CSS }), /* @__PURE__ */ createVNode("p", {
 		className: NOTE_CLASS$1,
 		"data-inline": props.inline === true ? "true" : void 0,
 		children: [
 			NOTE_TEXT,
 			" ",
-			/* @__PURE__ */ a("button", {
+			/* @__PURE__ */ createVNode("button", {
 				type: "button",
 				className: `${NOTE_LINK_CLASS} rdw-kit-focusable`,
 				onClick: () => {
@@ -15131,16 +17191,16 @@ function AiEverywhereNote(props) {
 */
 function AiPostsToggle(props) {
 	const everywhere = aiHiddenEverywhere();
-	const [mode, setMode] = d(() => aiModeIn(props.scope));
-	return /* @__PURE__ */ a($$1, { children: [
-		/* @__PURE__ */ a("style", { children: AI_CONTROL_CSS }),
-		/* @__PURE__ */ a("span", {
+	const [mode, setMode] = useState(() => aiModeIn(props.scope));
+	return /* @__PURE__ */ createVNode(Fragment, { children: [
+		/* @__PURE__ */ createVNode("style", { children: AI_CONTROL_CSS }),
+		/* @__PURE__ */ createVNode("span", {
 			className: TOGGLE_CLASS$1,
-			children: [/* @__PURE__ */ a("span", {
+			children: [/* @__PURE__ */ createVNode("span", {
 				className: TOGGLE_LABEL_CLASS,
 				"aria-hidden": "true",
 				children: TOGGLE_PREFIX
-			}), /* @__PURE__ */ a(Segmented, {
+			}), /* @__PURE__ */ createVNode(Segmented, {
 				label: TOGGLE_ARIA,
 				options: AI_MODE_OPTIONS,
 				value: everywhere ? AI_MODE_HIDE : mode,
@@ -15153,7 +17213,7 @@ function AiPostsToggle(props) {
 				}
 			})]
 		}),
-		everywhere ? /* @__PURE__ */ a(AiEverywhereNote, { inline: true }) : null
+		everywhere ? /* @__PURE__ */ createVNode(AiEverywhereNote, { inline: true }) : null
 	] });
 }
 /**
@@ -15329,9 +17389,9 @@ function completeLastQueryToken(query, tag) {
 * (see {@link createAutocompleteQuerier}).
 */
 function QueryField(props) {
-	const querierRef = T(createAutocompleteQuerier());
-	const [suggestions, setSuggestions] = d([]);
-	A(() => {
+	const querierRef = useRef(createAutocompleteQuerier());
+	const [suggestions, setSuggestions] = useState([]);
+	useEffect(() => {
 		const querier = querierRef.current;
 		return () => {
 			querier.cancel();
@@ -15361,7 +17421,7 @@ function QueryField(props) {
 		...props.className === void 0 ? {} : { className: props.className },
 		...props["aria-label"] === void 0 ? {} : { "aria-label": props["aria-label"] }
 	};
-	return /* @__PURE__ */ a(AutocompleteField, {
+	return /* @__PURE__ */ createVNode(AutocompleteField, {
 		...optional,
 		value: props.value,
 		suggestions,
@@ -15979,15 +18039,15 @@ function downloadChipText(state) {
 }
 function DownloadsPanel(props) {
 	const { host } = props;
-	const [state, setState] = d(() => getDownloadState());
-	const [minimised, setMinimised] = d(readMinimised);
-	A(() => {
+	const [state, setState] = useState(() => getDownloadState());
+	const [minimised, setMinimised] = useState(readMinimised);
+	useEffect(() => {
 		const unsubscribe = subscribeDownloads(setState);
 		setState(getDownloadState());
 		return unsubscribe;
 	}, []);
 	const idle = state.phase === "idle";
-	A(() => {
+	useEffect(() => {
 		host.classList.toggle(DOWNLOADS_MINIMISED_CLASS, minimised && !idle);
 	}, [
 		host,
@@ -16001,7 +18061,7 @@ function DownloadsPanel(props) {
 	if (idle) return null;
 	const title = downloadTitle(state);
 	const status = downloadStatusText(state);
-	if (minimised) return /* @__PURE__ */ a(Button, {
+	if (minimised) return /* @__PURE__ */ createVNode(Button, {
 		variant: "secondary",
 		size: "s",
 		className: CHIP_CLASS$2,
@@ -16012,51 +18072,51 @@ function DownloadsPanel(props) {
 		children: downloadChipText(state)
 	});
 	const finished = state.phase === "done" || state.phase === "error";
-	return /* @__PURE__ */ a($$1, { children: [
-		/* @__PURE__ */ a("div", {
+	return /* @__PURE__ */ createVNode(Fragment, { children: [
+		/* @__PURE__ */ createVNode("div", {
 			className: HEAD_CLASS,
-			children: [/* @__PURE__ */ a("p", {
+			children: [/* @__PURE__ */ createVNode("p", {
 				className: TITLE_CLASS$4,
 				title,
 				children: title
-			}), /* @__PURE__ */ a(IconButton, {
+			}), /* @__PURE__ */ createVNode(IconButton, {
 				label: LABEL_MINIMISE,
 				onClick: () => {
 					changeMinimised(true);
 				},
-				children: /* @__PURE__ */ a(IconChevronDown, { size: MINIMISE_ICON_PX })
+				children: /* @__PURE__ */ createVNode(IconChevronDown, { size: MINIMISE_ICON_PX })
 			})]
 		}),
-		state.phase === "collecting" ? state.expected === null ? /* @__PURE__ */ a(ProgressBar, {
+		state.phase === "collecting" ? state.expected === null ? /* @__PURE__ */ createVNode(ProgressBar, {
 			waiting: true,
 			label: status
-		}) : /* @__PURE__ */ a(ProgressBar, {
+		}) : /* @__PURE__ */ createVNode(ProgressBar, {
 			value: state.expected === 0 ? 0 : state.total / state.expected,
 			label: status
-		}) : state.phase === "error" ? /* @__PURE__ */ a("p", {
+		}) : state.phase === "error" ? /* @__PURE__ */ createVNode("p", {
 			className: TEXT_CLASS$1,
 			role: "alert",
 			children: status
-		}) : /* @__PURE__ */ a(ProgressBar, {
+		}) : /* @__PURE__ */ createVNode(ProgressBar, {
 			value: savedShare(state),
 			label: status
 		}),
-		/* @__PURE__ */ a("div", {
+		/* @__PURE__ */ createVNode("div", {
 			className: ACTIONS_CLASS$2,
 			children: [
-				state.phase === "running" ? /* @__PURE__ */ a(Button, {
+				state.phase === "running" ? /* @__PURE__ */ createVNode(Button, {
 					variant: "secondary",
 					size: "s",
 					onClick: pauseDownload,
 					children: LABEL_PAUSE
 				}) : null,
-				state.phase === "paused" ? /* @__PURE__ */ a(Button, {
+				state.phase === "paused" ? /* @__PURE__ */ createVNode(Button, {
 					variant: "primary",
 					size: "s",
 					onClick: resumeDownload,
 					children: LABEL_RESUME
 				}) : null,
-				/* @__PURE__ */ a(Button, {
+				/* @__PURE__ */ createVNode(Button, {
 					variant: "secondary",
 					size: "s",
 					onClick: cancelDownload,
@@ -16071,7 +18131,7 @@ function mountDownloads(_ctx) {
 	const host = document.createElement("div");
 	host.id = DOWNLOADS_PANEL_ID;
 	document.body.append(host);
-	Q$1(/* @__PURE__ */ a(DownloadsPanel, { host }), host);
+	render$1(/* @__PURE__ */ createVNode(DownloadsPanel, { host }), host);
 	restoreDownloads();
 }
 var downloadsFeature = {
@@ -16177,12 +18237,12 @@ var SEPARATOR = " ";
 * grey dot takes its colour without the page being opened anew.
 */
 function useTagKindLookup(tags) {
-	const [, bump] = d(0);
+	const [, bump] = useState(0);
 	const key = tags.join(SEPARATOR);
-	A(() => {
+	useEffect(() => {
 		lookUpTagKinds((key.length === 0 ? [] : key.split(SEPARATOR)).filter((tag) => chipKindOfTag(tag) === "default"));
 	}, [key]);
-	A(() => onTagKindsLearned(() => {
+	useEffect(() => onTagKindsLearned(() => {
 		bump((value) => value + 1);
 	}), []);
 }
@@ -17613,23 +19673,23 @@ function favoritesFilterSummary(text, media, collection = "") {
 	return parts.join(" · ");
 }
 function FavoritesBrowser(props = {}) {
-	const [text, setText] = d("");
-	const [applied, setApplied] = d("");
-	const [media, setMedia] = d("all");
-	const [view, setView] = d(() => readView());
-	const [index, setIndex] = d(null);
-	const [status, setStatus] = d("");
-	const [found, setFound] = d(null);
-	const loadingRef = T(false);
-	const rowRef = T(null);
-	const actionsSlotRef = T(null);
-	const [shuffleSeed, setShuffleSeed] = d(null);
-	const [order, setOrder] = d(ORDER_NEWEST);
-	const [collection, setCollection] = d("any");
-	const [aiHidden, setAiHidden] = d(() => aiHiddenIn(AI_SCOPE_FAVORITES));
-	const [indexPartial, setIndexPartial] = d(false);
-	const [synced, setSynced] = d(() => favoritesSynced());
-	A(() => {
+	const [text, setText] = useState("");
+	const [applied, setApplied] = useState("");
+	const [media, setMedia] = useState("all");
+	const [view, setView] = useState(() => readView());
+	const [index, setIndex] = useState(null);
+	const [status, setStatus] = useState("");
+	const [found, setFound] = useState(null);
+	const loadingRef = useRef(false);
+	const rowRef = useRef(null);
+	const actionsSlotRef = useRef(null);
+	const [shuffleSeed, setShuffleSeed] = useState(null);
+	const [order, setOrder] = useState(ORDER_NEWEST);
+	const [collection, setCollection] = useState("any");
+	const [aiHidden, setAiHidden] = useState(() => aiHiddenIn(AI_SCOPE_FAVORITES));
+	const [indexPartial, setIndexPartial] = useState(false);
+	const [synced, setSynced] = useState(() => favoritesSynced());
+	useEffect(() => {
 		const check = () => {
 			setSynced(favoritesSynced());
 		};
@@ -17639,7 +19699,7 @@ function FavoritesBrowser(props = {}) {
 		};
 	}, []);
 	const aiEverywhere = aiHiddenEverywhere();
-	const [followedAll, setFollowedAll] = d(false);
+	const [followedAll, setFollowedAll] = useState(false);
 	const { sideHost } = props;
 	const stacked = sideHost !== null && sideHost !== void 0;
 	const column = stacked ? sideHost.closest(`.rdw-fav-side`) ?? sideHost : null;
@@ -17647,7 +19707,7 @@ function FavoritesBrowser(props = {}) {
 	const query = parseFavoritesQuery(applied);
 	const active = view === VIEW_SCROLL || media !== "all" || shuffleSeed !== null || order !== "newest" || collection !== "any" || aiHidden || !isEmptyFavoritesQuery(query);
 	const { onSummary } = props;
-	A(() => {
+	useEffect(() => {
 		const parts = [(collection === "any" ? void 0 : collectionChoices(load$1().collections).find((option) => option.value === collection))?.label ?? "", aiHidden ? NO_AI_SUMMARY : ""].filter((part) => part.length > 0);
 		onSummary?.(favoritesFilterSummary(applied, media, parts.join(" · ")));
 	}, [
@@ -17667,19 +19727,19 @@ function FavoritesBrowser(props = {}) {
 			setIndex([]);
 		});
 	};
-	A(() => {
+	useEffect(() => {
 		if (text.length > 0 && index === null) loadIndex();
 	}, [text, index]);
-	A(() => {
+	useEffect(() => {
 		if (!stacked || load$1().artists.length === 0) return;
 		const timer = window.setTimeout(loadIndex, 0);
 		return () => {
 			window.clearTimeout(timer);
 		};
 	}, [stacked]);
-	const tagCounts = w$1(() => index === null ? [] : favoriteTagCounts(index, loadFavSet()), [index]);
-	const followed = w$1(() => tagCounts.length === 0 ? [] : followedInFavorites(load$1().artists, tagCounts), [tagCounts]);
-	const suggest = w$1(() => ({
+	const tagCounts = useMemo(() => index === null ? [] : favoriteTagCounts(index, loadFavSet()), [index]);
+	const followed = useMemo(() => tagCounts.length === 0 ? [] : followedInFavorites(load$1().artists, tagCounts), [tagCounts]);
+	const suggest = useMemo(() => ({
 		label: SUGGEST_LABEL,
 		list: (value, caret) => toSuggestList(suggestFor(tagCounts, wordAtCaret(value, caret))),
 		pick: (value, caret, at) => {
@@ -17688,7 +19748,7 @@ function FavoritesBrowser(props = {}) {
 			return word === null || item === void 0 ? null : completeWord(value, word, item.insert);
 		}
 	}), [tagCounts]);
-	A(() => {
+	useEffect(() => {
 		if (column === null) return;
 		const sync = () => {
 			const hidden = column.scrollHeight - column.scrollTop - column.clientHeight;
@@ -17706,10 +19766,10 @@ function FavoritesBrowser(props = {}) {
 		};
 	}, [column]);
 	const locked = props.locked === true;
-	A(() => {
+	useEffect(() => {
 		column?.classList.toggle(SIDE_LOCKED_CLASS, locked);
 	}, [column, locked]);
-	A(() => {
+	useEffect(() => {
 		onRemoveFailed = () => {
 			setStatus(REMOVE_FAILED_STATUS);
 		};
@@ -17717,7 +19777,7 @@ function FavoritesBrowser(props = {}) {
 			onRemoveFailed = null;
 		};
 	}, []);
-	A(() => {
+	useEffect(() => {
 		if (!active || unsynced) {
 			hideFavoriteResults();
 			setStatus("");
@@ -17783,7 +19843,7 @@ function FavoritesBrowser(props = {}) {
 	const total = loadFavSet().size;
 	const count = found !== null ? postsLabel(found) : total > 0 ? postsLabel(total) : "";
 	const { actionsRef } = props;
-	A(() => {
+	useEffect(() => {
 		actionsRef?.(actionsSlotRef.current);
 		return () => {
 			actionsRef?.(null);
@@ -17799,7 +19859,7 @@ function FavoritesBrowser(props = {}) {
 	const collectionOptions = collectionChoices(load$1().collections);
 	const collectionValue = collectionOptions.some((option) => option.value === collection) ? collection : "any";
 	const followedShown = followedAll ? followed : followed.slice(0, 12);
-	const viewSwitch = /* @__PURE__ */ a(Segmented, {
+	const viewSwitch = /* @__PURE__ */ createVNode(Segmented, {
 		label: VIEW_LABEL$1,
 		options: VIEW_OPTIONS$1,
 		value: view,
@@ -17810,42 +19870,42 @@ function FavoritesBrowser(props = {}) {
 			}
 		}
 	});
-	const filters = /* @__PURE__ */ a($$1, { children: [
-		locked && props.onUnlock !== void 0 ? /* @__PURE__ */ a("div", {
+	const filters = /* @__PURE__ */ createVNode(Fragment, { children: [
+		locked && props.onUnlock !== void 0 ? /* @__PURE__ */ createVNode("div", {
 			className: SIDE_LOCK_CLASS,
 			role: "status",
-			children: [/* @__PURE__ */ a("span", { children: LOCKED_NOTICE }), /* @__PURE__ */ a(Button, {
+			children: [/* @__PURE__ */ createVNode("span", { children: LOCKED_NOTICE }), /* @__PURE__ */ createVNode(Button, {
 				variant: "ghost",
 				size: "s",
 				onClick: () => props.onUnlock?.(),
 				children: UI_TEXT.cancel
 			})]
 		}) : null,
-		/* @__PURE__ */ a("div", {
+		/* @__PURE__ */ createVNode("div", {
 			className: SIDE_BODY_CLASS,
 			...locked ? { inert: true } : {},
 			children: [
-				/* @__PURE__ */ a("div", {
+				/* @__PURE__ */ createVNode("div", {
 					className: SIDE_HEAD_CLASS,
-					children: [/* @__PURE__ */ a(SectionLabel, { children: SIDE_TITLE }), stacked && !unsynced && count.length > 0 ? /* @__PURE__ */ a("span", {
+					children: [/* @__PURE__ */ createVNode(SectionLabel, { children: SIDE_TITLE }), stacked && !unsynced && count.length > 0 ? /* @__PURE__ */ createVNode("span", {
 						className: COUNT_CLASS$2,
 						role: "status",
 						children: count
 					}) : null]
 				}),
-				unsynced ? /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("p", {
+				unsynced ? /* @__PURE__ */ createVNode(Fragment, { children: [/* @__PURE__ */ createVNode("p", {
 					className: WARNING_CLASS,
 					role: "status",
 					children: UNSYNCED_NOTE
-				}), /* @__PURE__ */ a(Button, {
+				}), /* @__PURE__ */ createVNode(Button, {
 					variant: "secondary",
 					size: "s",
 					onClick: () => {
 						openSettingsAt(SETTINGS_SECTION_FAVORITES);
 					},
 					children: UNSYNCED_BUTTON
-				})] }) : /* @__PURE__ */ a($$1, { children: [
-					/* @__PURE__ */ a(SearchField, {
+				})] }) : /* @__PURE__ */ createVNode(Fragment, { children: [
+					/* @__PURE__ */ createVNode(SearchField, {
 						id: SEARCH_FIELD_ID,
 						className: SEARCH_BOX_CLASS,
 						value: text,
@@ -17858,15 +19918,15 @@ function FavoritesBrowser(props = {}) {
 						onChange: setText,
 						onCommit: setApplied
 					}),
-					warning.length > 0 ? /* @__PURE__ */ a("p", {
+					warning.length > 0 ? /* @__PURE__ */ createVNode("p", {
 						className: WARNING_CLASS,
 						role: "status",
 						children: warning
 					}) : null,
-					notices.length > 0 ? /* @__PURE__ */ a("span", {
+					notices.length > 0 ? /* @__PURE__ */ createVNode("span", {
 						className: STATUS_CLASS$2,
 						role: "status",
-						children: [notices.join(" "), indexPartial ? /* @__PURE__ */ a($$1, { children: [" ", /* @__PURE__ */ a("button", {
+						children: [notices.join(" "), indexPartial ? /* @__PURE__ */ createVNode(Fragment, { children: [" ", /* @__PURE__ */ createVNode("button", {
 							type: "button",
 							className: `${SYNC_LINK_CLASS} rdw-kit-focusable`,
 							onClick: () => {
@@ -17875,11 +19935,11 @@ function FavoritesBrowser(props = {}) {
 							children: SYNC_NOW
 						})] }) : null]
 					}) : null,
-					chips.length > 0 ? /* @__PURE__ */ a("div", {
+					chips.length > 0 ? /* @__PURE__ */ createVNode("div", {
 						className: CHIPS_CLASS$1,
 						role: "group",
 						"aria-label": CHIPS_LABEL,
-						children: chips.map((chip) => /* @__PURE__ */ a("button", {
+						children: chips.map((chip) => /* @__PURE__ */ createVNode("button", {
 							type: "button",
 							className: `${CHIP_BUTTON_CLASS} rdw-kit-focusable`,
 							title: chip.group ? void 0 : CHIP_EXCLUDE_TITLE,
@@ -17889,7 +19949,7 @@ function FavoritesBrowser(props = {}) {
 								if (target instanceof Element && target.closest("button") !== event.currentTarget) return;
 								setQuery(toggleChip(text, chip));
 							},
-							children: /* @__PURE__ */ a(Chip, {
+							children: /* @__PURE__ */ createVNode(Chip, {
 								label: chip.label,
 								variant: chip.group ? "group" : chip.excluded ? "exclude" : "dot",
 								kind: chip.group || chip.excluded ? "default" : chipKindOfTag(chip.label),
@@ -17899,9 +19959,9 @@ function FavoritesBrowser(props = {}) {
 							})
 						}, `${String(chip.start)}:${chip.label}`))
 					}) : null,
-					/* @__PURE__ */ a("div", {
+					/* @__PURE__ */ createVNode("div", {
 						className: SIDE_GROUP_CLASS,
-						children: [/* @__PURE__ */ a(SectionLabel, { children: MEDIA_LABEL }), /* @__PURE__ */ a(Segmented, {
+						children: [/* @__PURE__ */ createVNode(SectionLabel, { children: MEDIA_LABEL }), /* @__PURE__ */ createVNode(Segmented, {
 							label: MEDIA_LABEL,
 							options: MEDIA_OPTIONS$1,
 							value: media,
@@ -17910,11 +19970,11 @@ function FavoritesBrowser(props = {}) {
 							}
 						})]
 					}),
-					/* @__PURE__ */ a("div", {
+					/* @__PURE__ */ createVNode("div", {
 						className: SIDE_GROUP_CLASS,
 						children: [
-							/* @__PURE__ */ a(SectionLabel, { children: AI_LABEL }),
-							/* @__PURE__ */ a(Segmented, {
+							/* @__PURE__ */ createVNode(SectionLabel, { children: AI_LABEL }),
+							/* @__PURE__ */ createVNode(Segmented, {
 								label: AI_LABEL,
 								options: AI_MODE_OPTIONS,
 								value: aiHidden ? AI_MODE_HIDE : AI_MODE_SHOW,
@@ -17926,22 +19986,22 @@ function FavoritesBrowser(props = {}) {
 									setAiHidden(hide);
 								}
 							}),
-							aiEverywhere ? /* @__PURE__ */ a(AiEverywhereNote, {}) : null
+							aiEverywhere ? /* @__PURE__ */ createVNode(AiEverywhereNote, {}) : null
 						]
 					}),
-					/* @__PURE__ */ a("div", {
+					/* @__PURE__ */ createVNode("div", {
 						className: SIDE_GROUP_CLASS,
-						children: [/* @__PURE__ */ a(SectionLabel, { children: COLLECTION_LABEL }), /* @__PURE__ */ a(Select, {
+						children: [/* @__PURE__ */ createVNode(SectionLabel, { children: COLLECTION_LABEL }), /* @__PURE__ */ createVNode(Select, {
 							options: collectionOptions,
 							value: collectionValue,
 							onChange: setCollection
 						})]
 					}),
-					/* @__PURE__ */ a("div", {
+					/* @__PURE__ */ createVNode("div", {
 						className: SIDE_GROUP_CLASS,
 						children: [
-							/* @__PURE__ */ a(SectionLabel, { children: SORT_LABEL }),
-							/* @__PURE__ */ a(Segmented, {
+							/* @__PURE__ */ createVNode(SectionLabel, { children: SORT_LABEL }),
+							/* @__PURE__ */ createVNode(Segmented, {
 								label: SORT_LABEL,
 								options: SORT_OPTIONS$1,
 								value: sortValue,
@@ -17955,17 +20015,17 @@ function FavoritesBrowser(props = {}) {
 									}
 								}
 							}),
-							shuffleSeed !== null ? /* @__PURE__ */ a("p", {
+							shuffleSeed !== null ? /* @__PURE__ */ createVNode("p", {
 								className: SIDE_HINT_CLASS,
 								children: RESHUFFLE_HINT
 							}) : null
 						]
 					}),
-					stacked ? /* @__PURE__ */ a("div", {
+					stacked ? /* @__PURE__ */ createVNode("div", {
 						className: SIDE_GROUP_CLASS,
-						children: [/* @__PURE__ */ a(SectionLabel, { children: VIEW_LABEL$1 }), viewSwitch]
+						children: [/* @__PURE__ */ createVNode(SectionLabel, { children: VIEW_LABEL$1 }), viewSwitch]
 					}) : null,
-					text.trim().length > 0 || media !== "all" || collection !== "any" ? /* @__PURE__ */ a("div", { children: /* @__PURE__ */ a(Button, {
+					text.trim().length > 0 || media !== "all" || collection !== "any" ? /* @__PURE__ */ createVNode("div", { children: /* @__PURE__ */ createVNode(Button, {
 						variant: "ghost",
 						size: "s",
 						onClick: () => {
@@ -17976,20 +20036,20 @@ function FavoritesBrowser(props = {}) {
 						children: RESET_LABEL$1
 					}) }) : null
 				] }),
-				stacked ? /* @__PURE__ */ a("div", {
+				stacked ? /* @__PURE__ */ createVNode("div", {
 					className: `${ACTIONS_CLASS$1} ${SIDE_ACTIONS_CLASS}`,
 					ref: actionsSlotRef
 				}) : null
 			]
 		}),
-		stacked && !unsynced && followed.length > 0 ? /* @__PURE__ */ a("div", {
+		stacked && !unsynced && followed.length > 0 ? /* @__PURE__ */ createVNode("div", {
 			className: `${SIDE_BODY_CLASS} ${FOLLOWED_CARD_CLASS}`,
 			...locked ? { inert: true } : {},
 			children: [
-				/* @__PURE__ */ a(SectionLabel, { children: FOLLOWED_TITLE }),
-				/* @__PURE__ */ a("ul", {
+				/* @__PURE__ */ createVNode(SectionLabel, { children: FOLLOWED_TITLE }),
+				/* @__PURE__ */ createVNode("ul", {
 					className: FOLLOWED_LIST_CLASS,
-					children: followedShown.map((item) => /* @__PURE__ */ a("li", { children: /* @__PURE__ */ a("button", {
+					children: followedShown.map((item) => /* @__PURE__ */ createVNode("li", { children: /* @__PURE__ */ createVNode("button", {
 						type: "button",
 						className: `${FOLLOWED_ROW_CLASS} rdw-kit-focusable`,
 						"aria-pressed": queryHasTag(text, item.tag),
@@ -17998,22 +20058,22 @@ function FavoritesBrowser(props = {}) {
 							setQuery(toggleQueryTag(text, item.tag));
 						},
 						children: [
-							/* @__PURE__ */ a("span", {
+							/* @__PURE__ */ createVNode("span", {
 								className: FOLLOWED_DOT_CLASS,
 								"aria-hidden": "true"
 							}),
-							/* @__PURE__ */ a("span", {
+							/* @__PURE__ */ createVNode("span", {
 								className: FOLLOWED_NAME_CLASS,
 								children: item.tag
 							}),
-							/* @__PURE__ */ a("span", {
+							/* @__PURE__ */ createVNode("span", {
 								className: FOLLOWED_COUNT_CLASS,
 								children: item.count.toLocaleString(LOCALE$2)
 							})
 						]
 					}) }, item.tag))
 				}),
-				followed.length > 12 ? /* @__PURE__ */ a("div", { children: /* @__PURE__ */ a(Button, {
+				followed.length > 12 ? /* @__PURE__ */ createVNode("div", { children: /* @__PURE__ */ createVNode(Button, {
 					variant: "ghost",
 					size: "s",
 					onClick: () => {
@@ -18024,26 +20084,26 @@ function FavoritesBrowser(props = {}) {
 			]
 		}) : null
 	] });
-	if (stacked) return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("style", { children: FAVORITES_BROWSER_CSS }), U(filters, sideHost)] });
-	return /* @__PURE__ */ a($$1, { children: [
-		/* @__PURE__ */ a("style", { children: FAVORITES_BROWSER_CSS }),
+	if (stacked) return /* @__PURE__ */ createVNode(Fragment, { children: [/* @__PURE__ */ createVNode("style", { children: FAVORITES_BROWSER_CSS }), createPortal(filters, sideHost)] });
+	return /* @__PURE__ */ createVNode(Fragment, { children: [
+		/* @__PURE__ */ createVNode("style", { children: FAVORITES_BROWSER_CSS }),
 		filters,
-		/* @__PURE__ */ a("div", {
+		/* @__PURE__ */ createVNode("div", {
 			className: CONTROLS_CLASS,
 			ref: rowRef,
 			children: [
-				count.length > 0 ? /* @__PURE__ */ a("span", {
+				count.length > 0 ? /* @__PURE__ */ createVNode("span", {
 					className: COUNT_CLASS$2,
 					role: "status",
 					children: count
 				}) : null,
-				/* @__PURE__ */ a("span", {
+				/* @__PURE__ */ createVNode("span", {
 					className: GROUP_LABEL_CLASS,
 					"aria-hidden": "true",
 					children: VIEW_LABEL$1
 				}),
 				viewSwitch,
-				/* @__PURE__ */ a("div", {
+				/* @__PURE__ */ createVNode("div", {
 					className: ACTIONS_CLASS$1,
 					ref: actionsSlotRef
 				})
@@ -18192,10 +20252,10 @@ function addPost(collectionId, postId, readThumbUrl) {
 * case) is refused, as on the Collections page.
 */
 function CollectionPicker(props) {
-	const [filter, setFilter] = d("");
-	const [newName, setNewName] = d("");
-	const [error, setError] = d("");
-	const [, setRevision] = d(0);
+	const [filter, setFilter] = useState("");
+	const [newName, setNewName] = useState("");
+	const [error, setError] = useState("");
+	const [, setRevision] = useState(0);
 	const collections = listPlaylists();
 	const memberIds = new Set(playlistsContaining(props.postId).map((item) => item.id));
 	const filterShown = collections.length > 8;
@@ -18221,24 +20281,24 @@ function CollectionPicker(props) {
 		changed();
 	};
 	const emptyText = collections.length === 0 ? COLLECTION_PICKER_TEXT.empty : COLLECTION_PICKER_TEXT.noMatch;
-	return /* @__PURE__ */ a("div", {
+	return /* @__PURE__ */ createVNode("div", {
 		className: COLLECTION_PICKER_CLASS,
 		children: [
-			/* @__PURE__ */ a("style", { children: COLLECTION_PICKER_CSS }),
-			filterShown ? /* @__PURE__ */ a(TextField, {
+			/* @__PURE__ */ createVNode("style", { children: COLLECTION_PICKER_CSS }),
+			filterShown ? /* @__PURE__ */ createVNode(TextField, {
 				value: filter,
 				onChange: setFilter,
 				placeholder: COLLECTION_PICKER_TEXT.filter,
 				"aria-label": COLLECTION_PICKER_TEXT.filter
 			}) : null,
-			visible.length === 0 ? /* @__PURE__ */ a("p", {
+			visible.length === 0 ? /* @__PURE__ */ createVNode("p", {
 				className: CLASS_EMPTY,
 				children: emptyText
-			}) : /* @__PURE__ */ a("div", {
+			}) : /* @__PURE__ */ createVNode("div", {
 				className: CLASS_LIST,
 				role: "group",
 				"aria-label": COLLECTION_PICKER_TEXT.list,
-				children: visible.map((collection) => /* @__PURE__ */ a("button", {
+				children: visible.map((collection) => /* @__PURE__ */ createVNode("button", {
 					type: "button",
 					className: COLLECTION_PICKER_ITEM_CLASS,
 					role: MEMBER_ROLE,
@@ -18250,30 +20310,30 @@ function CollectionPicker(props) {
 						toggle(collection.id);
 					},
 					children: [
-						/* @__PURE__ */ a("span", {
+						/* @__PURE__ */ createVNode("span", {
 							className: CLASS_CHECK,
 							"aria-hidden": "true",
-							children: memberIds.has(collection.id) ? /* @__PURE__ */ a(IconCheck, { size: CHECK_ICON_PX }) : null
+							children: memberIds.has(collection.id) ? /* @__PURE__ */ createVNode(IconCheck, { size: CHECK_ICON_PX }) : null
 						}),
-						/* @__PURE__ */ a("span", {
+						/* @__PURE__ */ createVNode("span", {
 							className: CLASS_NAME$1,
 							children: collection.name
 						}),
-						/* @__PURE__ */ a("span", {
+						/* @__PURE__ */ createVNode("span", {
 							className: COLLECTION_PICKER_COUNT_CLASS,
 							children: String(collection.postIds?.length ?? 0)
 						})
 					]
 				}, collection.id))
 			}),
-			/* @__PURE__ */ a("form", {
+			/* @__PURE__ */ createVNode("form", {
 				className: COLLECTION_PICKER_NEW_CLASS,
 				onSubmit: (event) => {
 					event.preventDefault();
 					event.stopPropagation();
 					createFromName();
 				},
-				children: [/* @__PURE__ */ a(TextField, {
+				children: [/* @__PURE__ */ createVNode(TextField, {
 					className: CLASS_NEW_FIELD,
 					value: newName,
 					onChange: (value) => {
@@ -18282,7 +20342,7 @@ function CollectionPicker(props) {
 					},
 					placeholder: COLLECTION_PICKER_TEXT.newName,
 					"aria-label": COLLECTION_PICKER_TEXT.newName
-				}), /* @__PURE__ */ a(Button, {
+				}), /* @__PURE__ */ createVNode(Button, {
 					type: "submit",
 					variant: "primary",
 					size: "s",
@@ -18290,7 +20350,7 @@ function CollectionPicker(props) {
 					children: COLLECTION_PICKER_TEXT.create
 				})]
 			}),
-			error.length > 0 ? /* @__PURE__ */ a("p", {
+			error.length > 0 ? /* @__PURE__ */ createVNode("p", {
 				className: CLASS_ERROR$1,
 				role: "alert",
 				children: error
@@ -18614,7 +20674,7 @@ function findThumbLink$2(thumb, postId) {
 }
 function closeOpenMenu() {
 	if (openPopup === null) return;
-	Q$1(null, openPopup.menu);
+	render$1(null, openPopup.menu);
 	openPopup.menu.remove();
 	openPopup.trigger.setAttribute("aria-expanded", "false");
 	openPopup = null;
@@ -18700,7 +20760,7 @@ function createPlaylistMenu(postId, options) {
 	root.setAttribute("role", "menu");
 	root.setAttribute(ATTR_POST_ID, String(postId));
 	const onChange = options?.onChange;
-	Q$1(k$1(CollectionPicker, {
+	render$1(createElement(CollectionPicker, {
 		postId,
 		readThumbUrl: options?.readThumbUrl ?? NO_THUMB_URL,
 		...onChange === void 0 ? {} : { onChange }
@@ -18911,9 +20971,9 @@ function bulkCollectionSummary(result) {
 	return `Added ${result.added.toLocaleString(LOCALE$1)} of ${postsWord(result.total)} to “${result.name}”; the rest were already there.`;
 }
 function BulkCollectionDialog(props) {
-	const [filter, setFilter] = d("");
-	const [newName, setNewName] = d("");
-	const [error, setError] = d("");
+	const [filter, setFilter] = useState("");
+	const [newName, setNewName] = useState("");
+	const [error, setError] = useState("");
 	const collections = props.open ? listPlaylists() : [];
 	const filterShown = collections.length > FILTER_MIN;
 	const needle = foldName(filter);
@@ -18944,51 +21004,51 @@ function BulkCollectionDialog(props) {
 		}
 		addTo(createPlaylist(name).id);
 	};
-	return /* @__PURE__ */ a(Dialog, {
+	return /* @__PURE__ */ createVNode(Dialog, {
 		open: props.open,
 		onClose: close,
 		"aria-label": TEXT.aria,
 		className: BULK_COLLECTION_CLASS,
 		children: [
-			/* @__PURE__ */ a("style", { children: BULK_COLLECTION_CSS }),
-			/* @__PURE__ */ a("h3", {
+			/* @__PURE__ */ createVNode("style", { children: BULK_COLLECTION_CSS }),
+			/* @__PURE__ */ createVNode("h3", {
 				className: TITLE_CLASS$3,
 				children: bulkCollectionTitle(props.posts.length)
 			}),
-			filterShown ? /* @__PURE__ */ a(TextField, {
+			filterShown ? /* @__PURE__ */ createVNode(TextField, {
 				value: filter,
 				onChange: setFilter,
 				placeholder: TEXT.filter,
 				"aria-label": TEXT.filter
 			}) : null,
-			visible.length === 0 ? /* @__PURE__ */ a("p", {
+			visible.length === 0 ? /* @__PURE__ */ createVNode("p", {
 				className: NOTE_CLASS,
 				children: collections.length === 0 ? TEXT.empty : TEXT.noMatch
-			}) : /* @__PURE__ */ a("div", {
+			}) : /* @__PURE__ */ createVNode("div", {
 				className: LIST_CLASS,
-				children: visible.map((collection) => /* @__PURE__ */ a("button", {
+				children: visible.map((collection) => /* @__PURE__ */ createVNode("button", {
 					type: "button",
 					className: ITEM_CLASS,
 					onClick: () => {
 						addTo(collection.id);
 					},
-					children: [/* @__PURE__ */ a("span", {
+					children: [/* @__PURE__ */ createVNode("span", {
 						className: NAME_CLASS$1,
 						children: collection.name
-					}), /* @__PURE__ */ a("span", {
+					}), /* @__PURE__ */ createVNode("span", {
 						className: COUNT_CLASS$1,
 						children: String(collection.postIds?.length ?? 0)
 					})]
 				}, collection.id))
 			}),
-			/* @__PURE__ */ a("form", {
+			/* @__PURE__ */ createVNode("form", {
 				className: NEW_CLASS,
 				onSubmit: (event) => {
 					event.preventDefault();
 					event.stopPropagation();
 					createAndAdd();
 				},
-				children: [/* @__PURE__ */ a(TextField, {
+				children: [/* @__PURE__ */ createVNode(TextField, {
 					className: NEW_FIELD_CLASS,
 					value: newName,
 					onChange: (value) => {
@@ -18997,7 +21057,7 @@ function BulkCollectionDialog(props) {
 					},
 					placeholder: TEXT.newName,
 					"aria-label": TEXT.newName
-				}), /* @__PURE__ */ a(Button, {
+				}), /* @__PURE__ */ createVNode(Button, {
 					type: "submit",
 					variant: "primary",
 					size: "s",
@@ -19005,14 +21065,14 @@ function BulkCollectionDialog(props) {
 					children: TEXT.create
 				})]
 			}),
-			error.length > 0 ? /* @__PURE__ */ a("p", {
+			error.length > 0 ? /* @__PURE__ */ createVNode("p", {
 				className: ERROR_CLASS,
 				role: "alert",
 				children: error
 			}) : null,
-			/* @__PURE__ */ a("div", {
+			/* @__PURE__ */ createVNode("div", {
 				className: FOOT_CLASS$2,
-				children: /* @__PURE__ */ a(Button, {
+				children: /* @__PURE__ */ createVNode(Button, {
 					variant: "secondary",
 					size: "s",
 					onClick: close,
@@ -19172,9 +21232,9 @@ function takenElsewhere(event) {
 * gets here; a field, an open list or a menu keep it too.
 */
 function useEscape(active, onEscape) {
-	const latest = T(onEscape);
+	const latest = useRef(onEscape);
 	latest.current = onEscape;
-	A(() => {
+	useEffect(() => {
 		if (!active) return;
 		const onKeyDown = (event) => {
 			if (event.key !== KEY_ESCAPE || takenElsewhere(event)) return;
@@ -19654,10 +21714,10 @@ function openSyncSettings() {
 }
 /** The buttons at the right end of the row: a random post, selecting, and the menu of rare actions. */
 function IdleActions(props) {
-	const [menuOpen, setMenuOpen] = d(false);
-	const [downloadOpen, setDownloadOpen] = d(false);
-	const menuButtonRef = T(null);
-	const [shownIds, setShownIds] = d(null);
+	const [menuOpen, setMenuOpen] = useState(false);
+	const [downloadOpen, setDownloadOpen] = useState(false);
+	const menuButtonRef = useRef(null);
+	const [shownIds, setShownIds] = useState(null);
 	const narrowed = props.summary.length > 0;
 	const total = loadFavSet().size;
 	const count = narrowed && shownIds !== null ? shownIds.length : total;
@@ -19674,41 +21734,41 @@ function IdleActions(props) {
 	const closeDownload = () => {
 		setDownloadOpen(false);
 	};
-	return /* @__PURE__ */ a($$1, { children: [
-		synced || !props.stacked ? /* @__PURE__ */ a(Button, {
+	return /* @__PURE__ */ createVNode(Fragment, { children: [
+		synced || !props.stacked ? /* @__PURE__ */ createVNode(Button, {
 			variant: "secondary",
 			size: "s",
 			title: TEXT_RANDOM_TITLE,
 			onClick: openRandomFavorite,
-			children: [/* @__PURE__ */ a(IconDice, { size: 14 }), TEXT_RANDOM]
+			children: [/* @__PURE__ */ createVNode(IconDice, { size: 14 }), TEXT_RANDOM]
 		}) : null,
-		/* @__PURE__ */ a(Button, {
+		/* @__PURE__ */ createVNode(Button, {
 			variant: "secondary",
 			size: "s",
 			onClick: props.onSelect,
 			children: TEXT_SELECT
 		}),
-		props.stacked && !synced ? null : props.stacked ? /* @__PURE__ */ a($$1, { children: [downloadsAvailable() ? /* @__PURE__ */ a(Button, {
+		props.stacked && !synced ? null : props.stacked ? /* @__PURE__ */ createVNode(Fragment, { children: [downloadsAvailable() ? /* @__PURE__ */ createVNode(Button, {
 			variant: "ghost",
 			size: "s",
 			disabled: total === 0,
 			onClick: openDownload,
-			children: [/* @__PURE__ */ a(IconDownload, { size: 14 }), downloadLabel]
-		}) : null, /* @__PURE__ */ a(Button, {
+			children: [/* @__PURE__ */ createVNode(IconDownload, { size: 14 }), downloadLabel]
+		}) : null, /* @__PURE__ */ createVNode(Button, {
 			variant: "ghost",
 			size: "s",
 			onClick: openSyncSettings,
-			children: [/* @__PURE__ */ a(IconRefresh, { size: 14 }), TEXT_SYNC]
-		})] }) : /* @__PURE__ */ a(IconButton, {
+			children: [/* @__PURE__ */ createVNode(IconRefresh, { size: 14 }), TEXT_SYNC]
+		})] }) : /* @__PURE__ */ createVNode(IconButton, {
 			label: TEXT_MORE_ACTIONS,
 			menuOpen,
 			buttonRef: menuButtonRef,
 			onClick: () => {
 				setMenuOpen(!menuOpen);
 			},
-			children: /* @__PURE__ */ a(IconDots, { size: 16 })
+			children: /* @__PURE__ */ createVNode(IconDots, { size: 16 })
 		}),
-		/* @__PURE__ */ a(Popover, {
+		/* @__PURE__ */ createVNode(Popover, {
 			open: menuOpen && !props.stacked,
 			onClose: closeMenu,
 			anchorRef: menuButtonRef,
@@ -19717,7 +21777,7 @@ function IdleActions(props) {
 			role: "menu",
 			"aria-label": TEXT_MORE_ACTIONS,
 			className: MENU_CLASS,
-			children: [downloadsAvailable() ? /* @__PURE__ */ a("button", {
+			children: [downloadsAvailable() ? /* @__PURE__ */ createVNode("button", {
 				type: "button",
 				role: "menuitem",
 				className: `${MENU_ITEM_CLASS} rdw-kit-focusable`,
@@ -19726,8 +21786,8 @@ function IdleActions(props) {
 					closeMenu();
 					openDownload();
 				},
-				children: [/* @__PURE__ */ a(IconDownload, { size: 16 }), downloadLabel]
-			}) : null, /* @__PURE__ */ a("button", {
+				children: [/* @__PURE__ */ createVNode(IconDownload, { size: 16 }), downloadLabel]
+			}) : null, /* @__PURE__ */ createVNode("button", {
 				type: "button",
 				role: "menuitem",
 				className: `${MENU_ITEM_CLASS} rdw-kit-focusable`,
@@ -19735,29 +21795,29 @@ function IdleActions(props) {
 					closeMenu();
 					openSyncSettings();
 				},
-				children: [/* @__PURE__ */ a(IconRefresh, { size: 16 }), TEXT_SYNC]
+				children: [/* @__PURE__ */ createVNode(IconRefresh, { size: 16 }), TEXT_SYNC]
 			})]
 		}),
-		/* @__PURE__ */ a(Dialog, {
+		/* @__PURE__ */ createVNode(Dialog, {
 			open: downloadOpen,
 			onClose: closeDownload,
 			"aria-label": narrowed ? TEXT_DOWNLOAD_RESULTS_ARIA : TEXT_DOWNLOAD_ARIA,
 			className: DOWNLOAD_CLASS,
 			children: [
-				/* @__PURE__ */ a("h3", {
+				/* @__PURE__ */ createVNode("h3", {
 					className: DOWNLOAD_TITLE_CLASS,
 					children: narrowed ? TEXT_DOWNLOAD_RESULTS_TITLE : TEXT_DOWNLOAD_TITLE
 				}),
-				/* @__PURE__ */ a("p", {
+				/* @__PURE__ */ createVNode("p", {
 					className: DOWNLOAD_NOTE_CLASS,
 					children: [narrowed ? downloadResultsNote(count, props.summary) : downloadNote(count), age.stale ? null : ` ${age.text}`]
 				}),
-				age.stale ? /* @__PURE__ */ a("p", {
+				age.stale ? /* @__PURE__ */ createVNode("p", {
 					className: DOWNLOAD_STALE_CLASS,
 					children: [
 						age.text,
 						" ",
-						/* @__PURE__ */ a("button", {
+						/* @__PURE__ */ createVNode("button", {
 							type: "button",
 							className: `${LINK_BUTTON_CLASS} rdw-kit-focusable`,
 							onClick: () => {
@@ -19768,14 +21828,14 @@ function IdleActions(props) {
 						})
 					]
 				}) : null,
-				/* @__PURE__ */ a("div", {
+				/* @__PURE__ */ createVNode("div", {
 					className: CONFIRM_ROW_CLASS,
-					children: [/* @__PURE__ */ a(Button, {
+					children: [/* @__PURE__ */ createVNode(Button, {
 						variant: "secondary",
 						size: "s",
 						onClick: closeDownload,
 						children: TEXT_CANCEL
-					}), /* @__PURE__ */ a(Button, {
+					}), /* @__PURE__ */ createVNode(Button, {
 						variant: "primary",
 						size: "s",
 						disabled: count === 0,
@@ -19804,36 +21864,36 @@ function selectedPostsOnPage(selected) {
 	return posts;
 }
 function FavoritesBulkBar(props) {
-	const [phase, setPhase] = d({ kind: "idle" });
-	const [selected, setSelected] = d(() => /* @__PURE__ */ new Set());
-	const abortRef = T(null);
-	const selectedRef = T(selected);
+	const [phase, setPhase] = useState({ kind: "idle" });
+	const [selected, setSelected] = useState(() => /* @__PURE__ */ new Set());
+	const abortRef = useRef(null);
+	const selectedRef = useRef(selected);
 	selectedRef.current = selected;
-	const [collectionPosts, setCollectionPosts] = d(null);
-	const [note, setNote] = d("");
+	const [collectionPosts, setCollectionPosts] = useState(null);
+	const [note, setNote] = useState("");
 	const selectionActive = phase.kind === "selecting" || phase.kind === "confirm" || phase.kind === "removing";
 	const { onSelectionModeChange, onBusyChange } = props;
-	A(() => {
+	useEffect(() => {
 		onSelectionModeChange(selectionActive);
 	}, [onSelectionModeChange, selectionActive]);
 	const busy = phase.kind !== "idle";
-	A(() => {
+	useEffect(() => {
 		onBusyChange(busy);
 	}, [onBusyChange, busy]);
-	A(() => {
+	useEffect(() => {
 		if (!selectionActive) {
 			clearThumbSelectionChrome();
 			return;
 		}
 		applySelectionChrome(listFavoriteThumbEntries(favoritesGridRoot()), selected);
 	}, [selectionActive, selected]);
-	A(() => {
+	useEffect(() => {
 		return () => {
 			abortRef.current?.abort();
 			clearThumbSelectionChrome();
 		};
 	}, []);
-	A(() => {
+	useEffect(() => {
 		if (phase.kind !== "selecting" && phase.kind !== "confirm") return;
 		return bindPressSelect((target) => {
 			if (target.closest(".rdw-dialog-backdrop") !== null) return null;
@@ -19965,28 +22025,28 @@ function FavoritesBulkBar(props) {
 	const stopRemoval = () => {
 		abortRef.current?.abort();
 	};
-	if (phase.kind === "idle") return props.headSlot === null ? null : U(/* @__PURE__ */ a(IdleActions, {
+	if (phase.kind === "idle") return props.headSlot === null ? null : createPortal(/* @__PURE__ */ createVNode(IdleActions, {
 		onSelect: enterSelecting,
 		stacked: props.headSlot.classList.contains(FAVORITES_SIDE_ACTIONS_CLASS),
 		summary: props.summary
 	}), props.headSlot);
 	if (phase.kind === "removing") {
 		const ratio = phase.total === 0 ? 0 : phase.done / phase.total;
-		return /* @__PURE__ */ a("div", {
+		return /* @__PURE__ */ createVNode("div", {
 			className: BAR_CLASS$1,
 			children: [
-				/* @__PURE__ */ a("div", {
+				/* @__PURE__ */ createVNode("div", {
 					className: PROGRESS_WRAP_CLASS,
-					children: /* @__PURE__ */ a(ProgressBar, {
+					children: /* @__PURE__ */ createVNode(ProgressBar, {
 						value: ratio,
 						label: progressLabel(phase.done, phase.total)
 					})
 				}),
-				/* @__PURE__ */ a("span", {
+				/* @__PURE__ */ createVNode("span", {
 					className: STATUS_CLASS$1,
 					children: progressLabel(phase.done, phase.total)
 				}),
-				/* @__PURE__ */ a(Button, {
+				/* @__PURE__ */ createVNode(Button, {
 					variant: "secondary",
 					size: "s",
 					onClick: stopRemoval,
@@ -19995,12 +22055,12 @@ function FavoritesBulkBar(props) {
 			]
 		});
 	}
-	if (phase.kind === "error" || phase.kind === "stopped") return /* @__PURE__ */ a("div", {
+	if (phase.kind === "error" || phase.kind === "stopped") return /* @__PURE__ */ createVNode("div", {
 		className: BAR_CLASS$1,
-		children: [/* @__PURE__ */ a("span", {
+		children: [/* @__PURE__ */ createVNode("span", {
 			className: STATUS_CLASS$1,
 			children: phase.message
-		}), /* @__PURE__ */ a(Button, {
+		}), /* @__PURE__ */ createVNode(Button, {
 			variant: "secondary",
 			size: "s",
 			onClick: resetToIdle,
@@ -20010,30 +22070,30 @@ function FavoritesBulkBar(props) {
 	const count = selected.size;
 	const confirmOpen = phase.kind === "confirm";
 	const browsing = document.body.classList.contains(FAVORITES_BROWSING_BODY_CLASS);
-	return /* @__PURE__ */ a($$1, { children: [
-		/* @__PURE__ */ a("div", {
+	return /* @__PURE__ */ createVNode(Fragment, { children: [
+		/* @__PURE__ */ createVNode("div", {
 			className: SELECT_WRAP_CLASS,
-			children: [/* @__PURE__ */ a(SelectionBar, {
+			children: [/* @__PURE__ */ createVNode(SelectionBar, {
 				layout: props.inColumn ? "stack" : "row",
 				count,
 				selectAllLabel: browsing ? TEXT_SELECT_LOADED : TEXT_SELECT_PAGE,
 				onSelectAll: selectPage,
 				onClear: clearSelection,
 				onCancel: resetToIdle,
-				danger: /* @__PURE__ */ a(Button, {
+				danger: /* @__PURE__ */ createVNode(Button, {
 					variant: "danger-quiet",
 					disabled: count === 0 || confirmOpen,
 					onClick: beginConfirm,
-					children: [/* @__PURE__ */ a(IconTrash, { size: 14 }), TEXT_REMOVE_SELECTED]
+					children: [/* @__PURE__ */ createVNode(IconTrash, { size: 14 }), TEXT_REMOVE_SELECTED]
 				}),
-				children: [/* @__PURE__ */ a(Button, {
+				children: [/* @__PURE__ */ createVNode(Button, {
 					variant: "secondary",
 					disabled: count === 0 || confirmOpen,
 					onClick: () => {
 						setCollectionPosts(selectedPostsOnPage(selectedRef.current));
 					},
 					children: TEXT_ADD_TO_COLLECTION
-				}), downloadsAvailable() ? /* @__PURE__ */ a(Button, {
+				}), downloadsAvailable() ? /* @__PURE__ */ createVNode(Button, {
 					variant: "secondary",
 					disabled: count === 0 || confirmOpen,
 					onClick: () => {
@@ -20046,13 +22106,13 @@ function FavoritesBulkBar(props) {
 					},
 					children: TEXT_DOWNLOAD_SELECTED
 				}) : null]
-			}), note.length > 0 || props.summary.length > 0 ? /* @__PURE__ */ a("span", {
+			}), note.length > 0 || props.summary.length > 0 ? /* @__PURE__ */ createVNode("span", {
 				className: SUMMARY_CLASS,
 				role: note.length > 0 ? "status" : void 0,
 				children: note.length > 0 ? note : props.summary
 			}) : null]
 		}),
-		/* @__PURE__ */ a(BulkCollectionDialog, {
+		/* @__PURE__ */ createVNode(BulkCollectionDialog, {
 			open: collectionPosts !== null,
 			posts: collectionPosts ?? [],
 			onClose: () => {
@@ -20063,24 +22123,24 @@ function FavoritesBulkBar(props) {
 				setNote(bulkCollectionSummary(result));
 			}
 		}),
-		/* @__PURE__ */ a(Dialog, {
+		/* @__PURE__ */ createVNode(Dialog, {
 			open: confirmOpen,
 			onClose: closeConfirm,
 			"aria-label": TEXT_CONFIRM_ARIA,
 			className: CONFIRM_CLASS,
-			children: [/* @__PURE__ */ a("p", {
+			children: [/* @__PURE__ */ createVNode("p", {
 				className: STATUS_CLASS$1,
 				children: confirmMessage(count)
-			}), /* @__PURE__ */ a("div", {
+			}), /* @__PURE__ */ createVNode("div", {
 				className: CONFIRM_ROW_CLASS,
-				children: [/* @__PURE__ */ a(Button, {
+				children: [/* @__PURE__ */ createVNode(Button, {
 					variant: "danger",
 					size: "s",
 					onClick: () => {
 						runRemoval();
 					},
 					children: `${TEXT_CONFIRM_PREFIX}${String(selected.size)}`
-				}), /* @__PURE__ */ a(Button, {
+				}), /* @__PURE__ */ createVNode(Button, {
 					variant: "secondary",
 					size: "s",
 					onClick: closeConfirm,
@@ -20097,22 +22157,22 @@ function FavoritesBulkBar(props) {
 * be a child of the same block the grid is in.
 */
 function FavoritesPanel(props) {
-	const [headActions, setHeadActions] = d(null);
-	const [busy, setBusy] = d(false);
-	const [summary, setSummary] = d("");
-	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("h1", {
+	const [headActions, setHeadActions] = useState(null);
+	const [busy, setBusy] = useState(false);
+	const [summary, setSummary] = useState("");
+	return /* @__PURE__ */ createVNode(Fragment, { children: [/* @__PURE__ */ createVNode("h1", {
 		className: TITLE_CLASS$2,
 		children: TITLE_TEXT
-	}), U(/* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("div", {
+	}), createPortal(/* @__PURE__ */ createVNode(Fragment, { children: [/* @__PURE__ */ createVNode("div", {
 		className: FILTERS_CLASS,
 		hidden: busy && props.side === null,
-		children: /* @__PURE__ */ a(FavoritesBrowser, {
+		children: /* @__PURE__ */ createVNode(FavoritesBrowser, {
 			actionsRef: setHeadActions,
 			onSummary: setSummary,
 			sideHost: props.side,
 			locked: busy
 		})
-	}), /* @__PURE__ */ a(FavoritesBulkBar, {
+	}), /* @__PURE__ */ createVNode(FavoritesBulkBar, {
 		onSelectionModeChange: props.onSelectionModeChange,
 		headSlot: headActions,
 		summary,
@@ -20152,14 +22212,14 @@ function mountFavoritesBulk(_ctx) {
 		host.parent.insertBefore(slot, root);
 		host.parent.classList.add(FAVORITES_LAYOUT_CLASS);
 		pin.remove();
-		Q$1(/* @__PURE__ */ a(FavoritesPanel, {
+		render$1(/* @__PURE__ */ createVNode(FavoritesPanel, {
 			pin: barHost,
 			side,
 			onSelectionModeChange
 		}), root);
 		return;
 	}
-	Q$1(/* @__PURE__ */ a(FavoritesPanel, {
+	render$1(/* @__PURE__ */ createVNode(FavoritesPanel, {
 		pin,
 		side,
 		onSelectionModeChange
@@ -22623,16 +24683,16 @@ function waitBeforeRetry() {
 /** What is in the tab. It is mounted when the tab is first opened, and that opening loads the first source. */
 function MoreLikeThis(props) {
 	const sources = relatedSources(props.tags);
-	const [picked, setPicked] = d(null);
-	const [loaded, setLoaded] = d({});
-	const [favorites, setFavorites] = d(null);
-	const [showAll, setShowAll] = d([]);
-	const [, tick] = d(0);
-	const [fit, setFit] = d(null);
-	const measureRef = T(null);
-	const [moreOpen, setMoreOpen] = d(false);
-	const switchRef = T(null);
-	const gridRef = T(null);
+	const [picked, setPicked] = useState(null);
+	const [loaded, setLoaded] = useState({});
+	const [favorites, setFavorites] = useState(null);
+	const [showAll, setShowAll] = useState([]);
+	const [, tick] = useState(0);
+	const [fit, setFit] = useState(null);
+	const measureRef = useRef(null);
+	const [moreOpen, setMoreOpen] = useState(false);
+	const switchRef = useRef(null);
+	const gridRef = useRef(null);
 	const now = props.now ?? Date.now;
 	const random = props.random ?? Math.random;
 	const { readFavorites } = props;
@@ -22709,11 +24769,11 @@ function MoreLikeThis(props) {
 			fail(source.key, error);
 		});
 	};
-	A(() => {
+	useEffect(() => {
 		const first = firstSource(sources, props.lastKind);
 		if (first !== null) open(first, false);
 	}, []);
-	A(() => {
+	useEffect(() => {
 		if (readFavorites === null) {
 			setFavorites([]);
 			return;
@@ -22737,7 +24797,7 @@ function MoreLikeThis(props) {
 	} : loaded[pickedSource.key];
 	const waitLeft = current?.state === "error" && current.failure === "limited" ? Math.max(0, 60 - Math.floor((now() - current.at) / SECOND_MS)) : 0;
 	const waiting = waitLeft > 0;
-	A(() => {
+	useEffect(() => {
 		if (!waiting) return;
 		const timer = window.setInterval(() => {
 			tick((value) => value + 1);
@@ -22752,7 +24812,7 @@ function MoreLikeThis(props) {
 	const shownTags = shownTagSources(tagSources, fit, picked);
 	const hiddenTags = tagSources.filter((source) => !shownTags.includes(source));
 	const favoritesCount = favoritesSource === void 0 || favorites === null || favorites.length === 0 ? null : favorites.length;
-	F(() => {
+	useLayoutEffect(() => {
 		const frame = switchRef.current?.querySelector(".rdw-mlt-sources");
 		const measure = measureRef.current;
 		if (!(frame instanceof HTMLElement) || measure === null) return;
@@ -22772,7 +24832,7 @@ function MoreLikeThis(props) {
 			next.focus();
 		}
 	};
-	const chip = (source, count) => /* @__PURE__ */ a("button", {
+	const chip = (source, count) => /* @__PURE__ */ createVNode("button", {
 		type: "button",
 		role: "radio",
 		className: `${CHIP_CLASS$1} rdw-kit-focusable`,
@@ -22781,7 +24841,7 @@ function MoreLikeThis(props) {
 		onClick: () => {
 			open(source, true);
 		},
-		children: [count === null ? source.name : `${FAVORITES_SHORT} `, count === null ? null : /* @__PURE__ */ a("span", {
+		children: [count === null ? source.name : `${FAVORITES_SHORT} `, count === null ? null : /* @__PURE__ */ createVNode("span", {
 			className: CHIP_COUNT_CLASS,
 			children: String(count)
 		})]
@@ -22789,46 +24849,46 @@ function MoreLikeThis(props) {
 	const all = pickedSource !== void 0 && showAll.includes(pickedSource.key);
 	const posts = current?.state === "ready" ? current.posts : [];
 	const visible = all ? posts : posts.slice(0, 6);
-	return /* @__PURE__ */ a("div", {
+	return /* @__PURE__ */ createVNode("div", {
 		className: ROOT_CLASS$2,
 		children: [
-			/* @__PURE__ */ a("div", {
+			/* @__PURE__ */ createVNode("div", {
 				ref: switchRef,
 				className: SWITCH_CLASS,
 				children: [
-					/* @__PURE__ */ a("div", {
+					/* @__PURE__ */ createVNode("div", {
 						className: MEASURE_CLASS,
 						ref: measureRef,
 						"aria-hidden": "true",
 						children: [
-							tagSources.map((source) => /* @__PURE__ */ a("span", {
+							tagSources.map((source) => /* @__PURE__ */ createVNode("span", {
 								className: CHIP_CLASS$1,
 								"data-measure-tag": "",
 								children: source.name
 							}, source.key)),
-							/* @__PURE__ */ a("span", {
+							/* @__PURE__ */ createVNode("span", {
 								className: CHIP_CLASS$1,
 								"data-measure-more": "",
 								children: moreLabel(tagSources.length)
 							}),
-							favoritesCount === null ? null : /* @__PURE__ */ a("span", {
+							favoritesCount === null ? null : /* @__PURE__ */ createVNode("span", {
 								className: CHIP_CLASS$1,
 								"data-measure-favorites": "",
-								children: [`${FAVORITES_SHORT} `, /* @__PURE__ */ a("span", {
+								children: [`${FAVORITES_SHORT} `, /* @__PURE__ */ createVNode("span", {
 									className: CHIP_COUNT_CLASS,
 									children: String(favoritesCount)
 								})]
 							})
 						]
 					}),
-					/* @__PURE__ */ a("div", {
+					/* @__PURE__ */ createVNode("div", {
 						className: "rdw-mlt-sources",
 						role: "radiogroup",
 						"aria-label": SOURCES_LABEL,
 						onKeyDown: stepChips,
 						children: [
 							shownTags.map((source) => chip(source, null)),
-							hiddenTags.length > 0 ? /* @__PURE__ */ a("button", {
+							hiddenTags.length > 0 ? /* @__PURE__ */ createVNode("button", {
 								type: "button",
 								className: `${CHIP_CLASS$1} rdw-kit-focusable`,
 								"aria-haspopup": "menu",
@@ -22842,7 +24902,7 @@ function MoreLikeThis(props) {
 							favoritesSource === void 0 || favoritesCount === null ? null : chip(favoritesSource, favoritesCount)
 						]
 					}),
-					/* @__PURE__ */ a(Popover, {
+					/* @__PURE__ */ createVNode(Popover, {
 						open: moreOpen,
 						onClose: () => {
 							setMoreOpen(false);
@@ -22852,7 +24912,7 @@ function MoreLikeThis(props) {
 						role: "menu",
 						"aria-label": MORE_MENU_LABEL,
 						className: "rdw-mlt-menu",
-						children: hiddenTags.map((source) => /* @__PURE__ */ a("button", {
+						children: hiddenTags.map((source) => /* @__PURE__ */ createVNode("button", {
 							type: "button",
 							role: "menuitem",
 							className: "rdw-kit-focusable",
@@ -22865,12 +24925,12 @@ function MoreLikeThis(props) {
 					})
 				]
 			}),
-			pickedSource?.kind === "similar" && current?.state === "ready" ? /* @__PURE__ */ a("div", {
+			pickedSource?.kind === "similar" && current?.state === "ready" ? /* @__PURE__ */ createVNode("div", {
 				className: "rdw-mlt-mix",
-				children: [/* @__PURE__ */ a("p", {
+				children: [/* @__PURE__ */ createVNode("p", {
 					className: "rdw-mlt-line",
 					children: mixedFromText(current.mixed)
-				}), /* @__PURE__ */ a("button", {
+				}), /* @__PURE__ */ createVNode("button", {
 					type: "button",
 					className: "rdw-mlt-link",
 					title: ANOTHER_MIX_TITLE,
@@ -22881,24 +24941,24 @@ function MoreLikeThis(props) {
 					children: ANOTHER_MIX_LABEL
 				})]
 			}) : null,
-			pickedSource === void 0 || current === void 0 ? null : current.state === "loading" ? /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("p", {
+			pickedSource === void 0 || current === void 0 ? null : current.state === "loading" ? /* @__PURE__ */ createVNode(Fragment, { children: [/* @__PURE__ */ createVNode("p", {
 				className: "rdw-mlt-line",
 				role: "status",
 				children: loadingText(pickedSource)
-			}), /* @__PURE__ */ a("div", {
+			}), /* @__PURE__ */ createVNode("div", {
 				className: "rdw-mlt-grid",
 				"aria-hidden": "true",
-				children: Array.from({ length: 6 }, (_unused, index) => /* @__PURE__ */ a("span", {
+				children: Array.from({ length: 6 }, (_unused, index) => /* @__PURE__ */ createVNode("span", {
 					className: "rdw-mlt-cell",
 					"data-waiting": ""
 				}, index))
-			})] }) : current.state === "error" ? /* @__PURE__ */ a("p", {
+			})] }) : current.state === "error" ? /* @__PURE__ */ createVNode("p", {
 				className: "rdw-mlt-line",
 				role: "alert",
 				children: [
 					errorText(current.failure),
 					" ",
-					/* @__PURE__ */ a("button", {
+					/* @__PURE__ */ createVNode("button", {
 						type: "button",
 						className: "rdw-mlt-link",
 						disabled: waiting,
@@ -22908,36 +24968,36 @@ function MoreLikeThis(props) {
 						children: waiting ? `${RETRY_LABEL} (${String(waitLeft)})` : RETRY_LABEL
 					})
 				]
-			}) : posts.length === 0 ? /* @__PURE__ */ a("p", {
+			}) : posts.length === 0 ? /* @__PURE__ */ createVNode("p", {
 				className: "rdw-mlt-line",
 				role: "status",
 				children: emptyText(pickedSource)
-			}) : /* @__PURE__ */ a($$1, { children: [
-				props.tags.length < FEW_TAGS ? /* @__PURE__ */ a("p", {
+			}) : /* @__PURE__ */ createVNode(Fragment, { children: [
+				props.tags.length < FEW_TAGS ? /* @__PURE__ */ createVNode("p", {
 					className: "rdw-mlt-line",
 					children: fewTagsText(props.tags.length)
 				}) : null,
-				/* @__PURE__ */ a("div", {
+				/* @__PURE__ */ createVNode("div", {
 					className: "rdw-mlt-grid",
 					ref: gridRef,
-					children: visible.map((post) => /* @__PURE__ */ a("a", {
+					children: visible.map((post) => /* @__PURE__ */ createVNode("a", {
 						className: "rdw-mlt-cell",
 						href: relatedPostUrl(post.id),
 						title: sharedTagsText(post.shared),
-						children: [/* @__PURE__ */ a("img", {
+						children: [/* @__PURE__ */ createVNode("img", {
 							src: post.thumb,
 							alt: `${pickedSource.name} #${String(post.id)}`,
 							loading: "lazy"
-						}), post.video ? /* @__PURE__ */ a("span", {
+						}), post.video ? /* @__PURE__ */ createVNode("span", {
 							className: "rdw-mlt-video",
 							"aria-hidden": "true",
 							children: VIDEO_MARK
 						}) : null]
 					}, post.id))
 				}),
-				/* @__PURE__ */ a("div", {
+				/* @__PURE__ */ createVNode("div", {
 					className: "rdw-mlt-foot",
-					children: [!all && posts.length > 6 ? /* @__PURE__ */ a("button", {
+					children: [!all && posts.length > 6 ? /* @__PURE__ */ createVNode("button", {
 						type: "button",
 						className: "rdw-mlt-link",
 						onClick: () => {
@@ -22948,7 +25008,7 @@ function MoreLikeThis(props) {
 							}, 0);
 						},
 						children: `Show all ${String(posts.length)}`
-					}) : /* @__PURE__ */ a("span", {}), pickedSource.kind === "favorites" ? null : /* @__PURE__ */ a("a", {
+					}) : /* @__PURE__ */ createVNode("span", {}), pickedSource.kind === "favorites" ? null : /* @__PURE__ */ createVNode("a", {
 						className: "rdw-mlt-link",
 						href: relatedSearchUrl(current.query),
 						children: `${pickedSource.kind === "similar" ? SEARCH_TAGS_LABEL : `Search ${pickedSource.name}`} ${ARROW}`
@@ -24065,7 +26125,7 @@ function keepMarkOnPager(collectionId) {
 function removeDynamicBar(root) {
 	const existing = root instanceof Document ? root.getElementById(DYNAMIC_ROOT_ID) : root.querySelector(`#${DYNAMIC_ROOT_ID}`);
 	if (!(existing instanceof HTMLElement)) return;
-	Q$1(null, existing);
+	render$1(null, existing);
 	existing.remove();
 }
 function deleteConfirmMessage(collectionName) {
@@ -24076,10 +26136,10 @@ function navigateToQuery(query, collectionId) {
 	window.location.assign(`${buildSearchUrl(parseTags(query))}${dynamicCollectionMarkHash(collectionId)}`);
 }
 function DynamicCollectionBar(props) {
-	const [name, setName] = d(props.initialName);
-	const [query, setQuery] = d(props.storedQuery);
-	const [dialog, setDialog] = d(DIALOG_NONE);
-	const [fields, setFields] = d({
+	const [name, setName] = useState(props.initialName);
+	const [query, setQuery] = useState(props.storedQuery);
+	const [dialog, setDialog] = useState(DIALOG_NONE);
+	const [fields, setFields] = useState({
 		name: props.initialName,
 		query: props.storedQuery
 	});
@@ -24128,41 +26188,41 @@ function DynamicCollectionBar(props) {
 		const root = document.getElementById(DYNAMIC_ROOT_ID);
 		if (!(root instanceof HTMLElement)) return;
 		root.remove();
-		Q$1(null, root);
+		render$1(null, root);
 	}
 	const fieldsOpen = dialog === DIALOG_EDIT_QUERY || dialog === DIALOG_RENAME;
 	const fieldsTitle = dialog === DIALOG_RENAME ? UI_TEXT.rename : TEXT_EDIT_QUERY;
 	const onFieldsSubmit = dialog === DIALOG_RENAME ? onRenameSubmit : onEditSubmit;
-	return k$1($$1, null, k$1("div", { className: TITLE_CLASS$1 }, k$1("a", {
+	return createElement(Fragment, null, createElement("div", { className: TITLE_CLASS$1 }, createElement("a", {
 		className: BACK_CLASS,
 		href: RDW_HASH_COLLECTIONS
-	}, TEXT_BACK), k$1("span", { className: NAME_CLASS }, name), k$1("span", { className: KIND_CLASS }, TEXT_KIND)), k$1("div", { className: ACTIONS_CLASS }, k$1(Button, {
+	}, TEXT_BACK), createElement("span", { className: NAME_CLASS }, name), createElement("span", { className: KIND_CLASS }, TEXT_KIND)), createElement("div", { className: ACTIONS_CLASS }, createElement(Button, {
 		variant: BAR_BUTTON_VARIANT,
 		size: BAR_BUTTON_SIZE,
 		onClick: onShuffle
-	}, TEXT_SHUFFLE), shuffled ? k$1(Button, {
+	}, TEXT_SHUFFLE), shuffled ? createElement(Button, {
 		variant: BAR_BUTTON_VARIANT,
 		size: BAR_BUTTON_SIZE,
 		onClick: onOriginalOrder
-	}, TEXT_ORIGINAL_ORDER) : null, k$1(Button, {
+	}, TEXT_ORIGINAL_ORDER) : null, createElement(Button, {
 		variant: BAR_BUTTON_VARIANT,
 		size: BAR_BUTTON_SIZE,
 		onClick: () => {
 			openFields(DIALOG_EDIT_QUERY);
 		}
-	}, TEXT_EDIT_QUERY), k$1(Button, {
+	}, TEXT_EDIT_QUERY), createElement(Button, {
 		variant: BAR_BUTTON_VARIANT,
 		size: BAR_BUTTON_SIZE,
 		onClick: () => {
 			openFields(DIALOG_RENAME);
 		}
-	}, UI_TEXT.rename), k$1(Button, {
+	}, UI_TEXT.rename), createElement(Button, {
 		variant: BAR_DELETE_VARIANT,
 		size: BAR_BUTTON_SIZE,
 		onClick: () => {
 			setDialog(DIALOG_DELETE);
 		}
-	}, UI_TEXT.delete)), fieldsOpen ? k$1(Dialog, {
+	}, UI_TEXT.delete)), fieldsOpen ? createElement(Dialog, {
 		variant: DIALOG_VARIANT_FIELDS,
 		open: true,
 		title: fieldsTitle,
@@ -24175,8 +26235,8 @@ function DynamicCollectionBar(props) {
 		nameLabel: UI_TEXT.nameLabel,
 		queryLabel: TEXT_QUERY_LABEL,
 		only: dialog === DIALOG_RENAME ? DIALOG_ONLY_NAME : DIALOG_ONLY_QUERY,
-		renderQueryField: (field) => k$1(QueryField, field)
-	}) : null, dialog === DIALOG_DELETE ? k$1(Dialog, {
+		renderQueryField: (field) => createElement(QueryField, field)
+	}) : null, dialog === DIALOG_DELETE ? createElement(Dialog, {
 		variant: DIALOG_VARIANT_CONFIRM,
 		open: true,
 		title: UI_TEXT.delete,
@@ -24215,7 +26275,7 @@ function mountDynamicBar(tagsParam, search) {
 	bar.id = DYNAMIC_ROOT_ID;
 	bar.className = ROOT_CLASS$1;
 	if (!placeBar(bar)) return;
-	Q$1(k$1(DynamicCollectionBar, {
+	render$1(createElement(DynamicCollectionBar, {
 		collectionId: collection.id,
 		initialName: collection.name,
 		storedQuery: storedDynamicQuery(collection),
@@ -24317,8 +26377,8 @@ function deletedReasonText(reason) {
 * it, and the hash of the file, small, for one who looks for a repost.
 */
 function DeletedBlock(props) {
-	const [copied, setCopied] = d(false);
-	A(() => {
+	const [copied, setCopied] = useState(false);
+	useEffect(() => {
 		if (!copied) return;
 		const timer = window.setTimeout(() => {
 			setCopied(false);
@@ -24339,20 +26399,20 @@ function DeletedBlock(props) {
 			log.warn("post-actions: no clipboard", error);
 		}
 	};
-	return /* @__PURE__ */ a($$1, { children: [
-		/* @__PURE__ */ a(IconImageOff, {
+	return /* @__PURE__ */ createVNode(Fragment, { children: [
+		/* @__PURE__ */ createVNode(IconImageOff, {
 			size: ICON_SIZE$3,
 			className: CLASS_DELETED_ICON
 		}),
-		/* @__PURE__ */ a("p", {
+		/* @__PURE__ */ createVNode("p", {
 			className: CLASS_DELETED_TITLE,
 			children: TEXT_DELETED
 		}),
-		reason.length > 0 ? /* @__PURE__ */ a("p", {
+		reason.length > 0 ? /* @__PURE__ */ createVNode("p", {
 			className: CLASS_DELETED_REASON,
 			children: reason
 		}) : null,
-		props.showRelated ? /* @__PURE__ */ a(Button, {
+		props.showRelated ? /* @__PURE__ */ createVNode(Button, {
 			variant: "primary",
 			size: "m",
 			className: CLASS_DELETED_RELATED,
@@ -24361,18 +26421,18 @@ function DeletedBlock(props) {
 			},
 			children: TEXT_SHOW_RELATED
 		}) : null,
-		props.md5.length > 0 ? /* @__PURE__ */ a("div", {
+		props.md5.length > 0 ? /* @__PURE__ */ createVNode("div", {
 			className: CLASS_DELETED_MD5_ROW,
-			children: [/* @__PURE__ */ a("span", {
+			children: [/* @__PURE__ */ createVNode("span", {
 				className: CLASS_DELETED_MD5,
 				children: `${TEXT_MD5_PREFIX}${props.md5}`
-			}), /* @__PURE__ */ a(Button, {
+			}), /* @__PURE__ */ createVNode(Button, {
 				variant: "ghost",
 				size: "s",
 				className: CLASS_DELETED_COPY,
 				"aria-label": ARIA_COPY,
 				onClick: onCopy,
-				children: [copied ? /* @__PURE__ */ a(IconCheck, { size: COPY_ICON_SIZE }) : /* @__PURE__ */ a(IconCopy, { size: COPY_ICON_SIZE }), copied ? TEXT_COPIED : TEXT_COPY]
+				children: [copied ? /* @__PURE__ */ createVNode(IconCheck, { size: COPY_ICON_SIZE }) : /* @__PURE__ */ createVNode(IconCopy, { size: COPY_ICON_SIZE }), copied ? TEXT_COPIED : TEXT_COPY]
 			})]
 		}) : null
 	] });
@@ -24410,9 +26470,9 @@ function notForThePage(event) {
 * Russian layout, where it types another letter.
 */
 function useHotkey(code, active, run) {
-	const latest = T(run);
+	const latest = useRef(run);
 	latest.current = run;
-	A(() => {
+	useEffect(() => {
 		if (!active) return;
 		const onKeyDown = (event) => {
 			if (event.code !== code || notForThePage(event)) return;
@@ -24550,7 +26610,7 @@ function goToQueuePost(href) {
 }
 function QueueStep(props) {
 	const className = `${CLASS_NAV} ${CLASS_FOCUSABLE}`;
-	if (props.href === null) return /* @__PURE__ */ a("button", {
+	if (props.href === null) return /* @__PURE__ */ createVNode("button", {
 		type: "button",
 		className,
 		disabled: true,
@@ -24559,7 +26619,7 @@ function QueueStep(props) {
 		children: props.glyph
 	});
 	const href = props.href;
-	return /* @__PURE__ */ a("a", {
+	return /* @__PURE__ */ createVNode("a", {
 		className,
 		href,
 		"aria-label": props.label,
@@ -24588,7 +26648,7 @@ function clickedSiteStep(event, steps) {
 * the collection the click does nothing. The links themselves are not changed.
 */
 function useSiteStepLinks(previousHref, nextHref, active) {
-	A(() => {
+	useEffect(() => {
 		if (!active) return;
 		const steps = [{
 			selector: SITE_SELECTORS.postPrevSearchLink,
@@ -24616,8 +26676,8 @@ function useSiteStepLinks(previousHref, nextHref, active) {
 	]);
 }
 function CollectionQueue(props) {
-	const [hash, setHash] = d(readLocationHash);
-	A(() => {
+	const [hash, setHash] = useState(readLocationHash);
+	useEffect(() => {
 		const onHashChange = () => {
 			setHash(readLocationHash());
 		};
@@ -24629,26 +26689,26 @@ function CollectionQueue(props) {
 	const queue = readQueue(props.postId, hash);
 	useSiteStepLinks(queue === null ? null : queue.previousHref, queue === null ? null : queue.nextHref, queue !== null);
 	if (queue === null) return null;
-	return /* @__PURE__ */ a("nav", {
+	return /* @__PURE__ */ createVNode("nav", {
 		className: CLASS_STRIP,
 		"aria-label": ARIA_QUEUE,
 		children: [
-			/* @__PURE__ */ a("style", { children: QUEUE_CSS }),
-			/* @__PURE__ */ a("a", {
+			/* @__PURE__ */ createVNode("style", { children: QUEUE_CSS }),
+			/* @__PURE__ */ createVNode("a", {
 				className: `${CLASS_NAME} ${CLASS_FOCUSABLE}`,
 				href: queue.collectionHref,
 				children: queue.name
 			}),
-			/* @__PURE__ */ a("span", {
+			/* @__PURE__ */ createVNode("span", {
 				className: CLASS_POSITION,
 				children: queue.positionLabel
 			}),
-			/* @__PURE__ */ a(QueueStep, {
+			/* @__PURE__ */ createVNode(QueueStep, {
 				label: LABEL_PREVIOUS,
 				glyph: GLYPH_PREVIOUS,
 				href: queue.previousHref
 			}),
-			/* @__PURE__ */ a(QueueStep, {
+			/* @__PURE__ */ createVNode(QueueStep, {
 				label: LABEL_NEXT,
 				glyph: GLYPH_NEXT,
 				href: queue.nextHref
@@ -25023,23 +27083,23 @@ function readPostPageThumbUrl(postId) {
 	return thumbFromMedia(readVideoMediaUrl(postId), postId);
 }
 function CollectionsMenu(props) {
-	const [open, setOpen] = d(false);
-	const triggerRef = T(null);
-	const [held, setHeld] = d(() => playlistsContaining(props.postId).length);
-	const close = b(() => {
+	const [open, setOpen] = useState(false);
+	const triggerRef = useRef(null);
+	const [held, setHeld] = useState(() => playlistsContaining(props.postId).length);
+	const close = useCallback(() => {
 		setOpen(false);
 		setHeld(playlistsContaining(props.postId).length);
 	}, [props.postId]);
-	const bindTrigger = b((node) => {
+	const bindTrigger = useCallback((node) => {
 		const button = node?.querySelector("button");
 		triggerRef.current = button instanceof HTMLButtonElement ? button : null;
 	}, []);
 	const postId = props.postId;
-	const readThumbUrl = b(() => readPostPageThumbUrl(postId), [postId]);
-	return /* @__PURE__ */ a("div", {
+	const readThumbUrl = useCallback(() => readPostPageThumbUrl(postId), [postId]);
+	return /* @__PURE__ */ createVNode("div", {
 		className: CLASS_WRAP$1,
 		ref: bindTrigger,
-		children: [/* @__PURE__ */ a(Button, {
+		children: [/* @__PURE__ */ createVNode(Button, {
 			variant: "secondary",
 			size: "m",
 			className: CLASS_TRIGGER,
@@ -25051,14 +27111,14 @@ function CollectionsMenu(props) {
 				if (open) close();
 				else setOpen(true);
 			},
-			children: [held > 0 ? /* @__PURE__ */ a(IconCheck, { size: TRIGGER_ICON_PX }) : /* @__PURE__ */ a(IconPlus, { size: TRIGGER_ICON_PX }), held > 0 ? collectionsHeldLabel(held) : TEXT_COLLECTIONS]
-		}), /* @__PURE__ */ a(Popover, {
+			children: [held > 0 ? /* @__PURE__ */ createVNode(IconCheck, { size: TRIGGER_ICON_PX }) : /* @__PURE__ */ createVNode(IconPlus, { size: TRIGGER_ICON_PX }), held > 0 ? collectionsHeldLabel(held) : TEXT_COLLECTIONS]
+		}), /* @__PURE__ */ createVNode(Popover, {
 			open,
 			onClose: close,
 			anchorRef: triggerRef,
 			widthPx: 260,
 			"aria-label": ARIA_COLLECTIONS,
-			children: /* @__PURE__ */ a(CollectionPicker, {
+			children: /* @__PURE__ */ createVNode(CollectionPicker, {
 				postId,
 				readThumbUrl
 			})
@@ -25105,10 +27165,10 @@ function resolvePostFileUrl(originalHref, root = document) {
 	].find((url) => url.length > 0 && isMediaFileUrl(url) && isSiteUrl(url)) ?? null;
 }
 function DownloadOne(props) {
-	const [phase, setPhase] = d("idle");
+	const [phase, setPhase] = useState("idle");
 	if (!canDownload() || resolvePostFileUrl(props.originalHref) === null) return null;
 	const label = LABELS[phase];
-	return /* @__PURE__ */ a("button", {
+	return /* @__PURE__ */ createVNode("button", {
 		type: "button",
 		className: `${props.className} ${DOWNLOAD_ONE_CLASS} rdw-kit-focusable`,
 		"aria-label": label,
@@ -25133,7 +27193,7 @@ function DownloadOne(props) {
 				setPhase("failed");
 			});
 		},
-		children: phase === "done" ? /* @__PURE__ */ a(IconCheck, { size: ICON_SIZE$2 }) : /* @__PURE__ */ a(IconDownload, { size: ICON_SIZE$2 })
+		children: phase === "done" ? /* @__PURE__ */ createVNode(IconCheck, { size: ICON_SIZE$2 }) : /* @__PURE__ */ createVNode(IconDownload, { size: ICON_SIZE$2 })
 	});
 }
 var DISPLAY_EDIT = "Edit";
@@ -25152,10 +27212,10 @@ function buttonLabel(text) {
 	return DISPLAY_ADD_NOTE;
 }
 function actionIcon(text) {
-	if (text === "Edit") return /* @__PURE__ */ a(IconPencil, { size: ICON_SIZE$1 });
-	if (text === "Resize image") return /* @__PURE__ */ a(IconImage, { size: ICON_SIZE$1 });
-	if (text === "Report to moderation") return /* @__PURE__ */ a(IconFlag, { size: ICON_SIZE$1 });
-	return /* @__PURE__ */ a(IconNote, { size: ICON_SIZE$1 });
+	if (text === "Edit") return /* @__PURE__ */ createVNode(IconPencil, { size: ICON_SIZE$1 });
+	if (text === "Resize image") return /* @__PURE__ */ createVNode(IconImage, { size: ICON_SIZE$1 });
+	if (text === "Report to moderation") return /* @__PURE__ */ createVNode(IconFlag, { size: ICON_SIZE$1 });
+	return /* @__PURE__ */ createVNode(IconNote, { size: ICON_SIZE$1 });
 }
 /**
 * The site's own actions with a post, rare ones: quiet buttons with no frames,
@@ -25165,9 +27225,9 @@ function actionIcon(text) {
 */
 function PostActionsList(props) {
 	if (props.links.length === 0) return null;
-	return /* @__PURE__ */ a("div", {
+	return /* @__PURE__ */ createVNode("div", {
 		className: CLASS_WRAP,
-		children: props.links.map((link) => /* @__PURE__ */ a(Button, {
+		children: props.links.map((link) => /* @__PURE__ */ createVNode(Button, {
 			variant: "ghost",
 			size: "m",
 			className: CLASS_ITEM,
@@ -25258,44 +27318,44 @@ function commentsTabLabel(count) {
 }
 function PostPanel(props) {
 	const numericId = parseNumericPostId(props.postId);
-	const [favorited, setFavorited] = d(() => props.postId !== null ? isFav(props.postId) : false);
-	const [favPending, setFavPending] = d(false);
-	const [scoreText, setScoreText] = d(() => {
+	const [favorited, setFavorited] = useState(() => props.postId !== null ? isFav(props.postId) : false);
+	const [favPending, setFavPending] = useState(false);
+	const [scoreText, setScoreText] = useState(() => {
 		if (props.postId === null) return "—";
 		return readScoreText(props.postId) ?? "—";
 	});
-	const [votePending, setVotePending] = d(false);
-	const [voted, setVoted] = d(false);
-	const [cameDone, setCameDone] = d(false);
-	const [stats] = d(() => readStatRows());
-	const [moreLinks] = d(() => collectMoreLinks());
-	const [originalHref] = d(() => {
+	const [votePending, setVotePending] = useState(false);
+	const [voted, setVoted] = useState(false);
+	const [cameDone, setCameDone] = useState(false);
+	const [stats] = useState(() => readStatRows());
+	const [moreLinks] = useState(() => collectMoreLinks());
+	const [originalHref] = useState(() => {
 		if (findDeletedNotice() !== null) return null;
 		return findOriginalAnchor()?.href ?? null;
 	});
-	const [deleted] = d(() => findDeletedNotice() !== null);
-	const [iCame] = d(() => findICameTarget());
-	const [hasComments] = d(() => findPostComments() !== null);
-	const [commentCount] = d(() => hasComments ? readCommentCount() : null);
-	const [activeTab, setActiveTab] = d(() => hasComments && takeCommentsReturn() ? POST_PANEL_TAB_COMMENTS : POST_PANEL_TAB_INFO);
-	const [relatedTags] = d(() => props.postId !== null && getFeatureEnabled("more-like-this", true) ? readPostTags(document) : []);
+	const [deleted] = useState(() => findDeletedNotice() !== null);
+	const [iCame] = useState(() => findICameTarget());
+	const [hasComments] = useState(() => findPostComments() !== null);
+	const [commentCount] = useState(() => hasComments ? readCommentCount() : null);
+	const [activeTab, setActiveTab] = useState(() => hasComments && takeCommentsReturn() ? POST_PANEL_TAB_COMMENTS : POST_PANEL_TAB_INFO);
+	const [relatedTags] = useState(() => props.postId !== null && getFeatureEnabled("more-like-this", true) ? readPostTags(document) : []);
 	const hasRelated = relatedTags.length > 0;
-	const [relatedOpened, setRelatedOpened] = d(false);
-	const [relatedLast] = d(() => {
+	const [relatedOpened, setRelatedOpened] = useState(false);
+	const [relatedLast] = useState(() => {
 		const kept = getFeatureState(MORE_LIKE_THIS_STATE_ID);
 		return isRelatedSourceKind(kept) ? kept : null;
 	});
 	const selfId = props.postId === null ? NaN : Number(props.postId);
-	const [readRelatedFavorites] = d(() => favoritesIndexAvailable() ? async () => favoriteCandidates(await readFavoriteIndex(), relatedTags, selfId) : null);
-	const loadRelated = b(async (query, offset) => rankCandidates(relatedTags, await fetchCandidates(query, offset), selfId), [relatedTags, selfId]);
+	const [readRelatedFavorites] = useState(() => favoritesIndexAvailable() ? async () => favoriteCandidates(await readFavoriteIndex(), relatedTags, selfId) : null);
+	const loadRelated = useCallback(async (query, offset) => rankCandidates(relatedTags, await fetchCandidates(query, offset), selfId), [relatedTags, selfId]);
 	const hasTabs = hasComments || hasRelated;
-	A(() => {
+	useEffect(() => {
 		if (props.postId === null) return;
 		return observeScoreSpan(props.postId, (text) => {
 			setScoreText(text.length > 0 ? text : "—");
 		});
 	}, [props.postId]);
-	A(() => {
+	useEffect(() => {
 		if (!hasRelated) return;
 		const open = () => {
 			setActiveTab(POST_PANEL_TAB_RELATED);
@@ -25308,7 +27368,7 @@ function PostPanel(props) {
 		};
 	}, [hasRelated]);
 	const favBlocked = deleted && !favorited;
-	const onFavClick = b(async () => {
+	const onFavClick = useCallback(async () => {
 		if (props.postId === null || favPending || favBlocked) return;
 		setFavPending(true);
 		try {
@@ -25350,7 +27410,7 @@ function PostPanel(props) {
 	useHotkey(FAVORITE_KEY_CODE, props.postId !== null && !favBlocked, () => {
 		onFavClick();
 	});
-	const onVoteClick = b(async () => {
+	const onVoteClick = useCallback(async () => {
 		if (props.postId === null || votePending || deleted) return;
 		setVotePending(true);
 		try {
@@ -25368,15 +27428,15 @@ function PostPanel(props) {
 		props.postId,
 		votePending
 	]);
-	const onICameClick = b(() => {
+	const onICameClick = useCallback(() => {
 		iCame?.anchor.click();
 		setCameDone(true);
 	}, [iCame]);
-	const onTabChange = b((id) => {
+	const onTabChange = useCallback((id) => {
 		setActiveTab(id);
 		if (id === "related") setRelatedOpened(true);
 	}, []);
-	const tabItems = w$1(() => {
+	const tabItems = useMemo(() => {
 		const items = [{
 			id: POST_PANEL_TAB_INFO,
 			label: TEXT_INFO
@@ -25397,15 +27457,15 @@ function PostPanel(props) {
 	]);
 	const showInfoCard = stats.length > 0 || moreLinks.length > 0 || hasTabs;
 	const showActionsRow2 = props.postId !== null || iCame !== null || originalHref !== null;
-	return /* @__PURE__ */ a("div", {
+	return /* @__PURE__ */ createVNode("div", {
 		className: CLASS_ROOT,
 		children: [
-			/* @__PURE__ */ a(CollectionQueue, { postId: numericId }),
-			/* @__PURE__ */ a("div", {
+			/* @__PURE__ */ createVNode(CollectionQueue, { postId: numericId }),
+			/* @__PURE__ */ createVNode("div", {
 				className: CLASS_ACTIONS$1,
-				children: [props.postId !== null || numericId !== null ? /* @__PURE__ */ a("div", {
+				children: [props.postId !== null || numericId !== null ? /* @__PURE__ */ createVNode("div", {
 					className: CLASS_ACTIONS_ROW,
-					children: [props.postId !== null ? /* @__PURE__ */ a(Button, {
+					children: [props.postId !== null ? /* @__PURE__ */ createVNode(Button, {
 						variant: favorited ? "secondary" : "primary",
 						size: "m",
 						className: CLASS_FAV,
@@ -25417,15 +27477,15 @@ function PostPanel(props) {
 						onClick: () => {
 							onFavClick();
 						},
-						children: [favorited ? /* @__PURE__ */ a(IconStarFilled, { size: ICON_SIZE }) : /* @__PURE__ */ a(IconStar, { size: ICON_SIZE }), favorited ? TEXT_IN_FAVORITES : TEXT_FAVORITE]
-					}) : null, numericId !== null ? /* @__PURE__ */ a(CollectionsMenu, {
+						children: [favorited ? /* @__PURE__ */ createVNode(IconStarFilled, { size: ICON_SIZE }) : /* @__PURE__ */ createVNode(IconStar, { size: ICON_SIZE }), favorited ? TEXT_IN_FAVORITES : TEXT_FAVORITE]
+					}) : null, numericId !== null ? /* @__PURE__ */ createVNode(CollectionsMenu, {
 						postId: numericId,
 						deleted
 					}) : null]
-				}) : null, showActionsRow2 ? /* @__PURE__ */ a("div", {
+				}) : null, showActionsRow2 ? /* @__PURE__ */ createVNode("div", {
 					className: CLASS_ACTIONS_ROW,
 					children: [
-						props.postId !== null ? /* @__PURE__ */ a(Button, {
+						props.postId !== null ? /* @__PURE__ */ createVNode(Button, {
 							variant: "secondary",
 							size: "m",
 							className: CLASS_VOTE,
@@ -25437,9 +27497,9 @@ function PostPanel(props) {
 							onClick: () => {
 								onVoteClick();
 							},
-							children: [/* @__PURE__ */ a(IconArrowUp, { size: ICON_SIZE }), voteLabel(scoreText)]
+							children: [/* @__PURE__ */ createVNode(IconArrowUp, { size: ICON_SIZE }), voteLabel(scoreText)]
 						}) : null,
-						iCame !== null ? /* @__PURE__ */ a(Button, {
+						iCame !== null ? /* @__PURE__ */ createVNode(Button, {
 							variant: "secondary",
 							size: "m",
 							className: CLASS_ICAME,
@@ -25448,18 +27508,18 @@ function PostPanel(props) {
 							pressed: cameDone,
 							"aria-label": LABEL_ICAME,
 							onClick: onICameClick,
-							children: [/* @__PURE__ */ a(IconDroplet, { size: ICON_SIZE }), TEXT_ICAME]
+							children: [/* @__PURE__ */ createVNode(IconDroplet, { size: ICON_SIZE }), TEXT_ICAME]
 						}) : null,
-						originalHref !== null ? /* @__PURE__ */ a("a", {
+						originalHref !== null ? /* @__PURE__ */ createVNode("a", {
 							className: CLASS_ORIGINAL,
 							href: originalHref,
 							target: "_blank",
 							rel: "noopener",
 							"aria-label": LABEL_ORIGINAL,
 							title: LABEL_ORIGINAL,
-							children: /* @__PURE__ */ a(IconExternalLink, { size: ORIGINAL_ICON_SIZE })
+							children: /* @__PURE__ */ createVNode(IconExternalLink, { size: ORIGINAL_ICON_SIZE })
 						}) : null,
-						numericId !== null && !deleted ? /* @__PURE__ */ a(DownloadOne, {
+						numericId !== null && !deleted ? /* @__PURE__ */ createVNode(DownloadOne, {
 							originalHref,
 							info: fileNameInfo(numericId, stats, scoreText),
 							className: CLASS_ORIGINAL
@@ -25467,43 +27527,43 @@ function PostPanel(props) {
 					]
 				}) : null]
 			}),
-			showInfoCard ? /* @__PURE__ */ a(Card, {
+			showInfoCard ? /* @__PURE__ */ createVNode(Card, {
 				className: CLASS_CARD,
 				as: "section",
 				children: [
-					hasTabs ? /* @__PURE__ */ a(Tabs, {
+					hasTabs ? /* @__PURE__ */ createVNode(Tabs, {
 						className: CLASS_TABS,
 						"aria-label": ARIA_PANEL_TABS,
 						items: tabItems,
 						value: activeTab,
 						onChange: onTabChange
 					}) : null,
-					/* @__PURE__ */ a("div", {
+					/* @__PURE__ */ createVNode("div", {
 						className: CLASS_TAB_PANEL,
 						role: "tabpanel",
 						id: kitTabPanelId(POST_PANEL_TAB_INFO),
 						"aria-labelledby": kitTabId(POST_PANEL_TAB_INFO),
 						hidden: hasTabs && activeTab !== "info",
-						children: /* @__PURE__ */ a(InfoPanel, {
+						children: /* @__PURE__ */ createVNode(InfoPanel, {
 							stats,
 							moreLinks
 						})
 					}),
-					hasComments ? /* @__PURE__ */ a("div", {
+					hasComments ? /* @__PURE__ */ createVNode("div", {
 						className: `${CLASS_TAB_PANEL} ${CLASS_COMMENTS}`,
 						role: "tabpanel",
 						id: kitTabPanelId(POST_PANEL_TAB_COMMENTS),
 						"aria-labelledby": kitTabId(POST_PANEL_TAB_COMMENTS),
 						hidden: activeTab !== POST_PANEL_TAB_COMMENTS,
-						children: /* @__PURE__ */ a(CommentsHost, {})
+						children: /* @__PURE__ */ createVNode(CommentsHost, {})
 					}) : null,
-					hasRelated ? /* @__PURE__ */ a("div", {
+					hasRelated ? /* @__PURE__ */ createVNode("div", {
 						className: CLASS_TAB_PANEL,
 						role: "tabpanel",
 						id: kitTabPanelId(POST_PANEL_TAB_RELATED),
 						"aria-labelledby": kitTabId(POST_PANEL_TAB_RELATED),
 						hidden: activeTab !== POST_PANEL_TAB_RELATED,
-						children: relatedOpened ? /* @__PURE__ */ a(MoreLikeThis, {
+						children: relatedOpened ? /* @__PURE__ */ createVNode(MoreLikeThis, {
 							tags: relatedTags,
 							lastKind: relatedLast,
 							onPick: (kind) => {
@@ -25519,12 +27579,12 @@ function PostPanel(props) {
 	});
 }
 function InfoPanel(props) {
-	return /* @__PURE__ */ a("div", {
+	return /* @__PURE__ */ createVNode("div", {
 		className: CLASS_INFO,
-		children: [props.stats.length > 0 ? /* @__PURE__ */ a("div", {
+		children: [props.stats.length > 0 ? /* @__PURE__ */ createVNode("div", {
 			className: CLASS_STATS,
-			children: props.stats.map((row) => /* @__PURE__ */ a(StatRowView, { row }, row.label))
-		}) : null, props.moreLinks.length > 0 ? /* @__PURE__ */ a(PostActionsList, { links: props.moreLinks }) : null]
+			children: props.stats.map((row) => /* @__PURE__ */ createVNode(StatRowView, { row }, row.label))
+		}) : null, props.moreLinks.length > 0 ? /* @__PURE__ */ createVNode(PostActionsList, { links: props.moreLinks }) : null]
 	});
 }
 /** A comment in the site's list: `div#c{id}` (docs/site.md). */
@@ -25565,19 +27625,19 @@ function findRespondLink() {
 /** The site's form for a comment: `form#comment_form` in `div#right-col` (docs/site.md). */
 var COMMENT_FORM_ID = "comment_form";
 function CommentsHost() {
-	const hostRef = T(null);
-	const formOriginRef = T(null);
-	A(() => () => {
+	const hostRef = useRef(null);
+	const formOriginRef = useRef(null);
+	useEffect(() => () => {
 		const origin = formOriginRef.current;
 		const form = document.getElementById(COMMENT_FORM_ID);
 		if (origin !== null && origin.parent !== null && form !== null) origin.parent.insertBefore(form, origin.next);
 	}, []);
-	const [empty] = d(() => {
+	const [empty] = useState(() => {
 		const comments = findPostComments();
 		return comments !== null && comments.querySelector(COMMENT_SELECTOR) === null;
 	});
-	const [respond] = d(() => findRespondLink());
-	F(() => {
+	const [respond] = useState(() => findRespondLink());
+	useLayoutEffect(() => {
 		const comments = findPostComments();
 		const hidden = comments?.querySelector(HIDDEN_LINK_SELECTOR);
 		if (hidden instanceof HTMLElement && hidden.textContent.trim() === NO_HIDDEN_TEXT) hidden.hidden = true;
@@ -25589,7 +27649,7 @@ function CommentsHost() {
 			change?.removeEventListener("click", rememberCommentsReturn);
 		};
 	}, [respond]);
-	F(() => {
+	useLayoutEffect(() => {
 		const host = hostRef.current;
 		const comments = findPostComments();
 		if (host === null || comments === null) return;
@@ -25621,35 +27681,35 @@ function CommentsHost() {
 		}
 		form.querySelector("textarea")?.focus();
 	};
-	return /* @__PURE__ */ a($$1, { children: [empty || respond !== null ? /* @__PURE__ */ a("div", {
+	return /* @__PURE__ */ createVNode(Fragment, { children: [empty || respond !== null ? /* @__PURE__ */ createVNode("div", {
 		className: CLASS_COMMENTS_EMPTY,
-		children: [/* @__PURE__ */ a("span", { children: empty ? TEXT_NO_COMMENTS : "" }), respond !== null ? /* @__PURE__ */ a(Button, {
+		children: [/* @__PURE__ */ createVNode("span", { children: empty ? TEXT_NO_COMMENTS : "" }), respond !== null ? /* @__PURE__ */ createVNode(Button, {
 			variant: "secondary",
 			size: "s",
 			onClick: writeComment,
 			children: TEXT_WRITE_COMMENT
 		}) : null]
-	}) : null, /* @__PURE__ */ a("div", {
+	}) : null, /* @__PURE__ */ createVNode("div", {
 		className: CLASS_COMMENTS_HOST,
 		ref: hostRef
 	})] });
 }
 function StatRowView(props) {
 	const { row } = props;
-	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("span", {
+	return /* @__PURE__ */ createVNode(Fragment, { children: [/* @__PURE__ */ createVNode("span", {
 		className: CLASS_STAT_LABEL,
 		children: row.label
-	}), row.label === "Source" && row.href !== null ? /* @__PURE__ */ a("a", {
+	}), row.label === "Source" && row.href !== null ? /* @__PURE__ */ createVNode("a", {
 		className: `${CLASS_STAT_VALUE} ${CLASS_SOURCE}`,
 		href: row.href,
 		title: row.href,
 		rel: SOURCE_LINK_REL,
 		children: row.value
-	}) : row.href !== null ? /* @__PURE__ */ a("a", {
+	}) : row.href !== null ? /* @__PURE__ */ createVNode("a", {
 		className: CLASS_STAT_VALUE,
 		href: row.href,
 		children: row.value
-	}) : /* @__PURE__ */ a("div", {
+	}) : /* @__PURE__ */ createVNode("div", {
 		className: CLASS_STAT_VALUE,
 		children: row.value
 	})] });
@@ -25963,7 +28023,7 @@ function removeExistingPanel() {
 		layoutCleanup = null;
 	}
 	if (panelHost !== null) {
-		Q$1(null, panelHost);
+		render$1(null, panelHost);
 		panelHost.remove();
 		panelHost = null;
 	}
@@ -26049,7 +28109,7 @@ function bindLayout(panel, flexi) {
 function mountDeletedBlock(flexi) {
 	const old = document.getElementById(POST_DELETED_ID);
 	if (old !== null) {
-		Q$1(null, old);
+		render$1(null, old);
 		old.remove();
 	}
 	const notice = findDeletedNotice();
@@ -26059,7 +28119,7 @@ function mountDeletedBlock(flexi) {
 	block.setAttribute("role", "status");
 	const size = readPostSize();
 	if (size !== null) block.style.setProperty(DELETED_RATIO_VAR, `${String(size.width)} / ${String(size.height)}`);
-	Q$1(k$1(DeletedBlock, {
+	render$1(createElement(DeletedBlock, {
 		reason: notice.reason,
 		md5: notice.md5,
 		showRelated: getFeatureEnabled("more-like-this", true) && readPostTags(document).length > 0
@@ -26096,7 +28156,7 @@ function mountPostActions(ctx) {
 	placePanel(host, flexi);
 	bindLayout(host, flexi);
 	mountDeletedBlock(flexi);
-	Q$1(k$1(PostPanel, { postId }), host);
+	render$1(createElement(PostPanel, { postId }), host);
 }
 var postActionsFeature = {
 	id: FEATURE_ID$5,
@@ -26148,16 +28208,16 @@ function jobLabel(query) {
 	return query;
 }
 function DownloadControls(props = {}) {
-	const [selecting, setSelecting] = d(false);
-	const [count, setCount] = d(0);
-	const [confirmOpen, setConfirmOpen] = d(false);
-	const [collectionPosts, setCollectionPosts] = d(null);
-	const [note, setNote] = d("");
-	A(() => () => {
+	const [selecting, setSelecting] = useState(false);
+	const [count, setCount] = useState(0);
+	const [confirmOpen, setConfirmOpen] = useState(false);
+	const [collectionPosts, setCollectionPosts] = useState(null);
+	const [note, setNote] = useState("");
+	useEffect(() => () => {
 		stopGridSelect();
 	}, []);
 	const { onSelectingChange } = props;
-	A(() => {
+	useEffect(() => {
 		onSelectingChange?.(selecting);
 	}, [onSelectingChange, selecting]);
 	useEscape(selecting, () => {
@@ -26176,21 +28236,21 @@ function DownloadControls(props = {}) {
 		setCount(0);
 	};
 	if (selecting) {
-		const bar = /* @__PURE__ */ a(SelectionBar, {
+		const bar = /* @__PURE__ */ createVNode(SelectionBar, {
 			layout: "stack",
 			count,
 			selectAllLabel: LABEL_SELECT_PAGE,
 			onSelectAll: selectGridPage,
 			onClear: clearGridSelection,
 			onCancel: leaveSelect,
-			children: [/* @__PURE__ */ a(Button, {
+			children: [/* @__PURE__ */ createVNode(Button, {
 				variant: "secondary",
 				disabled: count === 0,
 				onClick: () => {
 					setCollectionPosts(readSelectedPosts(readPreviewThumbUrl));
 				},
 				children: LABEL_ADD_SELECTED
-			}), canDownload ? /* @__PURE__ */ a(Button, {
+			}), canDownload ? /* @__PURE__ */ createVNode(Button, {
 				variant: "secondary",
 				disabled: count === 0,
 				onClick: () => {
@@ -26205,7 +28265,7 @@ function DownloadControls(props = {}) {
 			}) : null]
 		});
 		const host = props.barHost ?? null;
-		return /* @__PURE__ */ a($$1, { children: [host === null ? bar : U(bar, host), /* @__PURE__ */ a(BulkCollectionDialog, {
+		return /* @__PURE__ */ createVNode(Fragment, { children: [host === null ? bar : createPortal(bar, host), /* @__PURE__ */ createVNode(BulkCollectionDialog, {
 			open: collectionPosts !== null,
 			posts: collectionPosts ?? [],
 			onClose: () => {
@@ -26218,8 +28278,8 @@ function DownloadControls(props = {}) {
 			}
 		})] });
 	}
-	return /* @__PURE__ */ a($$1, { children: [
-		!canDownload || isUnfilteredQuery(query) ? null : /* @__PURE__ */ a(Button, {
+	return /* @__PURE__ */ createVNode(Fragment, { children: [
+		!canDownload || isUnfilteredQuery(query) ? null : /* @__PURE__ */ createVNode(Button, {
 			variant: "secondary",
 			size: "s",
 			title: TITLE_DOWNLOAD_RESULTS,
@@ -26228,7 +28288,7 @@ function DownloadControls(props = {}) {
 			},
 			children: LABEL_DOWNLOAD_RESULTS
 		}),
-		/* @__PURE__ */ a(Button, {
+		/* @__PURE__ */ createVNode(Button, {
 			variant: "secondary",
 			size: "s",
 			title: canDownload ? TITLE_SELECT_WITH_DOWNLOADS : TITLE_SELECT,
@@ -26239,12 +28299,12 @@ function DownloadControls(props = {}) {
 			},
 			children: LABEL_SELECT
 		}),
-		note.length > 0 ? /* @__PURE__ */ a("span", {
+		note.length > 0 ? /* @__PURE__ */ createVNode("span", {
 			className: SELECT_NOTE_CLASS,
 			role: "status",
 			children: note
 		}) : null,
-		/* @__PURE__ */ a(Dialog, {
+		/* @__PURE__ */ createVNode(Dialog, {
 			variant: "confirm",
 			open: confirmOpen,
 			title: DIALOG_TITLE,
@@ -26343,15 +28403,15 @@ function pageShowsQuery(search, query) {
 * The collection's bar shows only when it is opened from Collections.
 */
 function SaveSearchButton(props) {
-	const [open, setOpen] = d(false);
-	const [name, setName] = d("");
-	const [queryDraft, setQueryDraft] = d("");
-	const [error, setError] = d("");
-	const [saved, setSaved] = d(false);
+	const [open, setOpen] = useState(false);
+	const [name, setName] = useState("");
+	const [queryDraft, setQueryDraft] = useState("");
+	const [error, setError] = useState("");
+	const [saved, setSaved] = useState(false);
 	const savable = readSavableQuery(props.tags);
 	if (savable === null && !open) {
 		if (!saved) return null;
-		return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("style", { children: SAVE_SEARCH_CSS }), /* @__PURE__ */ a("span", {
+		return /* @__PURE__ */ createVNode(Fragment, { children: [/* @__PURE__ */ createVNode("style", { children: SAVE_SEARCH_CSS }), /* @__PURE__ */ createVNode("span", {
 			className: CLASS_SAVED,
 			role: "status",
 			children: SAVED_NOTE
@@ -26384,9 +28444,9 @@ function SaveSearchButton(props) {
 		close();
 		window.location.assign(buildSearchUrl(parseTags(query)));
 	};
-	return /* @__PURE__ */ a($$1, { children: [
-		/* @__PURE__ */ a("style", { children: SAVE_SEARCH_CSS }),
-		/* @__PURE__ */ a(Button, {
+	return /* @__PURE__ */ createVNode(Fragment, { children: [
+		/* @__PURE__ */ createVNode("style", { children: SAVE_SEARCH_CSS }),
+		/* @__PURE__ */ createVNode(Button, {
 			variant: "secondary",
 			size: "s",
 			className: SAVE_SEARCH_CLASS,
@@ -26398,11 +28458,11 @@ function SaveSearchButton(props) {
 			},
 			children: SAVE_SEARCH_LABEL
 		}),
-		/* @__PURE__ */ a(Dialog, {
+		/* @__PURE__ */ createVNode(Dialog, {
 			open,
 			onClose: close,
 			title: SAVE_SEARCH_DIALOG_TITLE,
-			children: /* @__PURE__ */ a("form", {
+			children: /* @__PURE__ */ createVNode("form", {
 				className: CLASS_FORM,
 				onSubmit: (event) => {
 					event.preventDefault();
@@ -26410,7 +28470,7 @@ function SaveSearchButton(props) {
 					submit();
 				},
 				children: [
-					/* @__PURE__ */ a(TextField, {
+					/* @__PURE__ */ createVNode(TextField, {
 						label: UI_TEXT.nameLabel,
 						value: name,
 						onChange: (value) => {
@@ -26418,7 +28478,7 @@ function SaveSearchButton(props) {
 							setError("");
 						}
 					}),
-					/* @__PURE__ */ a(QueryField, {
+					/* @__PURE__ */ createVNode(QueryField, {
 						label: QUERY_LABEL,
 						value: queryDraft,
 						onChange: (value) => {
@@ -26426,20 +28486,20 @@ function SaveSearchButton(props) {
 							setError("");
 						}
 					}),
-					error.length > 0 ? /* @__PURE__ */ a("p", {
+					error.length > 0 ? /* @__PURE__ */ createVNode("p", {
 						className: CLASS_ERROR,
 						role: "alert",
 						children: error
 					}) : null,
-					/* @__PURE__ */ a("div", {
+					/* @__PURE__ */ createVNode("div", {
 						className: CLASS_ACTIONS,
-						children: [/* @__PURE__ */ a(Button, {
+						children: [/* @__PURE__ */ createVNode(Button, {
 							type: "button",
 							variant: "secondary",
 							size: "s",
 							onClick: close,
 							children: UI_TEXT.cancel
-						}), /* @__PURE__ */ a(Button, {
+						}), /* @__PURE__ */ createVNode(Button, {
 							type: "submit",
 							variant: "primary",
 							size: "s",
@@ -26504,10 +28564,10 @@ var SITE_SEARCH_HELP = {
 };
 function SiteSearchTools(props) {
 	const { input } = props;
-	const [filled, setFilled] = d(input.value.length > 0);
-	const [helpOpen, setHelpOpen] = d(false);
-	const helpRef = T(null);
-	A(() => {
+	const [filled, setFilled] = useState(input.value.length > 0);
+	const [helpOpen, setHelpOpen] = useState(false);
+	const helpRef = useRef(null);
+	useEffect(() => {
 		const sync = () => {
 			setFilled(input.value.length > 0);
 		};
@@ -26520,8 +28580,8 @@ function SiteSearchTools(props) {
 			input.removeEventListener("change", sync);
 		};
 	}, [input]);
-	return /* @__PURE__ */ a($$1, { children: [
-		filled ? /* @__PURE__ */ a("button", {
+	return /* @__PURE__ */ createVNode(Fragment, { children: [
+		filled ? /* @__PURE__ */ createVNode("button", {
 			type: "button",
 			className: `${SITE_SEARCH_TOOL_CLASS} rdw-kit-focusable`,
 			"aria-label": CLEAR_LABEL,
@@ -26532,9 +28592,9 @@ function SiteSearchTools(props) {
 				setFilled(false);
 				input.focus();
 			},
-			children: /* @__PURE__ */ a(IconX, { size: ICON_PX })
+			children: /* @__PURE__ */ createVNode(IconX, { size: ICON_PX })
 		}) : null,
-		/* @__PURE__ */ a("button", {
+		/* @__PURE__ */ createVNode("button", {
 			type: "button",
 			ref: helpRef,
 			className: `${SITE_SEARCH_TOOL_CLASS} rdw-kit-focusable`,
@@ -26544,9 +28604,9 @@ function SiteSearchTools(props) {
 			onClick: () => {
 				setHelpOpen(!helpOpen);
 			},
-			children: /* @__PURE__ */ a(IconHelp, { size: ICON_PX })
+			children: /* @__PURE__ */ createVNode(IconHelp, { size: ICON_PX })
 		}),
-		/* @__PURE__ */ a(Popover, {
+		/* @__PURE__ */ createVNode(Popover, {
 			open: helpOpen,
 			onClose: () => {
 				setHelpOpen(false);
@@ -26554,7 +28614,7 @@ function SiteSearchTools(props) {
 			anchorRef: helpRef,
 			widthPx: HELP_WIDTH_PX,
 			"aria-label": HELP_LABEL,
-			children: /* @__PURE__ */ a(SearchHelpList, { help: SITE_SEARCH_HELP })
+			children: /* @__PURE__ */ createVNode(SearchHelpList, { help: SITE_SEARCH_HELP })
 		})
 	] });
 }
@@ -26567,7 +28627,7 @@ function mountSiteSearchTools(input) {
 	const tools = document.createElement("span");
 	tools.className = SITE_SEARCH_TOOLS_CLASS;
 	box.append(tools);
-	Q$1(/* @__PURE__ */ a(SiteSearchTools, { input }), tools);
+	render$1(/* @__PURE__ */ createVNode(SiteSearchTools, { input }), tools);
 }
 var FEATURE_ID$4 = "search-tools";
 var FEATURE_LABEL$5 = "Search tools";
@@ -27160,16 +29220,16 @@ function setInputValueOnly(input, tokens) {
 }
 function SearchToolsPanel(props) {
 	const { input } = props;
-	const [view, setView] = d(() => readPanelView(input.value));
-	const [scoreDraft, setScoreDraft] = d(view.minScore);
+	const [view, setView] = useState(() => readPanelView(input.value));
+	const [scoreDraft, setScoreDraft] = useState(view.minScore);
 	useTagKindLookup(view.chips.flatMap((chip) => chip.kind === "tag" && !chip.excluded && chip.chipKind === "default" && !isMetaToken(chip.token) ? [bareTag(chip.token)] : []));
-	const [aiPosts, setAiPosts] = d(() => {
+	const [aiPosts, setAiPosts] = useState(() => {
 		const checkbox = findFilterAiCheckbox();
 		return checkbox === null ? null : readAiPostsMode();
 	});
-	const scoreFocusedRef = T(false);
-	const navTimerRef = T(null);
-	const lastPolledValueRef = T(input.value);
+	const scoreFocusedRef = useRef(false);
+	const navTimerRef = useRef(null);
+	const lastPolledValueRef = useRef(input.value);
 	const clearNavTimer = () => {
 		if (navTimerRef.current !== null) {
 			window.clearTimeout(navTimerRef.current);
@@ -27211,9 +29271,9 @@ function SearchToolsPanel(props) {
 		if (!scoreFocusedRef.current) setScoreDraft(next.minScore);
 		if (options.navigate) scheduleNavigate(tokens);
 	};
-	const applyViewRef = T(applyViewFromInput);
+	const applyViewRef = useRef(applyViewFromInput);
 	applyViewRef.current = applyViewFromInput;
-	A(() => {
+	useEffect(() => {
 		const onSiteInput = () => {
 			applyViewRef.current({ navigate: false });
 		};
@@ -27241,7 +29301,7 @@ function SearchToolsPanel(props) {
 			window.clearInterval(pollId);
 		};
 	}, [input]);
-	A(() => {
+	useEffect(() => {
 		let checkbox = null;
 		const onCheckboxChange = () => {
 			if (checkbox === null) return;
@@ -27332,8 +29392,8 @@ function SearchToolsPanel(props) {
 	};
 	const aiScopeName = AI_SCOPE_NAMES[pageAiScope()];
 	const aiLabel = aiScopeName === void 0 ? AI_POSTS_SECTION_LABEL : `${AI_POSTS_SECTION_LABEL} in ${aiScopeName}`;
-	const [barHost, setBarHost] = d(null);
-	const [selecting, setSelecting] = d(false);
+	const [barHost, setBarHost] = useState(null);
+	const [selecting, setSelecting] = useState(false);
 	const onReset = () => {
 		clearNavTimer();
 		setInputValueOnly(input, []);
@@ -27342,23 +29402,23 @@ function SearchToolsPanel(props) {
 		setScoreDraft(null);
 		window.location.assign(buildSearchUrl([]));
 	};
-	return /* @__PURE__ */ a($$1, { children: [
-		/* @__PURE__ */ a("style", { children: CHIP_CSS }),
-		/* @__PURE__ */ a("div", {
+	return /* @__PURE__ */ createVNode(Fragment, { children: [
+		/* @__PURE__ */ createVNode("style", { children: CHIP_CSS }),
+		/* @__PURE__ */ createVNode("div", {
 			className: BAR_HOST_CLASS,
 			ref: setBarHost
 		}),
-		/* @__PURE__ */ a("div", {
+		/* @__PURE__ */ createVNode("div", {
 			...selecting ? {
 				className: LOCKED_CLASS,
 				inert: true
 			} : {},
-			children: /* @__PURE__ */ a(Card, {
+			children: /* @__PURE__ */ createVNode(Card, {
 				className: CARD_CLASS,
 				children: [
-					view.chips.length > 0 ? /* @__PURE__ */ a("div", {
+					view.chips.length > 0 ? /* @__PURE__ */ createVNode("div", {
 						className: FIELD_CLASS,
-						children: [/* @__PURE__ */ a(SectionLabel, { children: "Tags" }), /* @__PURE__ */ a("div", {
+						children: [/* @__PURE__ */ createVNode(SectionLabel, { children: "Tags" }), /* @__PURE__ */ createVNode("div", {
 							className: CHIPS_CLASS,
 							onClick: onChipsClick,
 							role: "list",
@@ -27370,7 +29430,7 @@ function SearchToolsPanel(props) {
 									const chipKind = chip.chipKind === "default" ? chipKindOfTag(bareTag(chip.token)) : chip.chipKind;
 									const kindClass = !excluded && chipKind !== "default" ? `rdw-chip--${chipKind}` : "";
 									const toggleable = !isMetaToken(chip.token);
-									return /* @__PURE__ */ a("span", {
+									return /* @__PURE__ */ createVNode("span", {
 										className: [
 											"rdw-chip",
 											variantClass,
@@ -27383,42 +29443,42 @@ function SearchToolsPanel(props) {
 										"data-chip-end": String(chip.end),
 										"data-chip-toggle": toggleable ? "1" : "0",
 										children: [
-											!excluded ? /* @__PURE__ */ a("i", {
+											!excluded ? /* @__PURE__ */ createVNode("i", {
 												className: "rdw-chip__dot",
 												"aria-hidden": "true"
 											}) : null,
-											/* @__PURE__ */ a("span", { children: chip.label }),
-											/* @__PURE__ */ a("button", {
+											/* @__PURE__ */ createVNode("span", { children: chip.label }),
+											/* @__PURE__ */ createVNode("button", {
 												type: "button",
 												className: "rdw-chip__remove rdw-kit-focusable",
 												"aria-label": `Remove ${chip.label}`,
 												"data-chip-remove": "1",
-												children: /* @__PURE__ */ a(IconX, { size: 12 })
+												children: /* @__PURE__ */ createVNode(IconX, { size: 12 })
 											})
 										]
 									}, `t-${String(chip.start)}-${chip.token}`);
 								}
-								return /* @__PURE__ */ a("span", {
+								return /* @__PURE__ */ createVNode("span", {
 									className: `rdw-chip rdw-chip--group ${CHIP_CLASS}`,
 									role: "listitem",
 									title: chip.title,
 									"data-chip-start": String(chip.start),
 									"data-chip-end": String(chip.end),
 									"data-chip-toggle": "0",
-									children: [/* @__PURE__ */ a("span", { children: chip.label }), /* @__PURE__ */ a("button", {
+									children: [/* @__PURE__ */ createVNode("span", { children: chip.label }), /* @__PURE__ */ createVNode("button", {
 										type: "button",
 										className: "rdw-chip__remove rdw-kit-focusable",
 										"aria-label": `Remove ${chip.label}`,
 										"data-chip-remove": "1",
-										children: /* @__PURE__ */ a(IconX, { size: 12 })
+										children: /* @__PURE__ */ createVNode(IconX, { size: 12 })
 									})]
 								}, `g-${String(chip.start)}-${String(chip.end)}-${chip.label}`);
 							})
 						})]
 					}) : null,
-					/* @__PURE__ */ a("div", {
+					/* @__PURE__ */ createVNode("div", {
 						className: FIELD_CLASS,
-						children: [/* @__PURE__ */ a(SectionLabel, { children: "Media" }), /* @__PURE__ */ a(Segmented, {
+						children: [/* @__PURE__ */ createVNode(SectionLabel, { children: "Media" }), /* @__PURE__ */ createVNode(Segmented, {
 							label: "Media",
 							options: MEDIA_OPTIONS.map((entry) => ({
 								value: entry.value,
@@ -27428,10 +29488,10 @@ function SearchToolsPanel(props) {
 							onChange: onMediaChange
 						})]
 					}),
-					/* @__PURE__ */ a("div", {
+					/* @__PURE__ */ createVNode("div", {
 						className: ROW_SORT_CLASS,
 						title: SORT_HINT,
-						children: [/* @__PURE__ */ a(Select, {
+						children: [/* @__PURE__ */ createVNode(Select, {
 							label: "Sort",
 							options: SORT_OPTIONS.map((entry) => ({
 								value: entry.value,
@@ -27439,7 +29499,7 @@ function SearchToolsPanel(props) {
 							})),
 							value: view.sort,
 							onChange: onSortChange
-						}), /* @__PURE__ */ a("div", {
+						}), /* @__PURE__ */ createVNode("div", {
 							onFocusIn: () => {
 								scoreFocusedRef.current = true;
 							},
@@ -27454,7 +29514,7 @@ function SearchToolsPanel(props) {
 								event.preventDefault();
 								commitScore();
 							},
-							children: /* @__PURE__ */ a(NumberField, {
+							children: /* @__PURE__ */ createVNode(NumberField, {
 								label: "Min score",
 								placeholder: "Any",
 								value: scoreDraft,
@@ -27464,11 +29524,11 @@ function SearchToolsPanel(props) {
 							})
 						})]
 					}),
-					aiPosts !== null ? /* @__PURE__ */ a("div", {
+					aiPosts !== null ? /* @__PURE__ */ createVNode("div", {
 						className: FIELD_CLASS,
 						children: [
-							/* @__PURE__ */ a(SectionLabel, { children: aiLabel }),
-							/* @__PURE__ */ a(Segmented, {
+							/* @__PURE__ */ createVNode(SectionLabel, { children: aiLabel }),
+							/* @__PURE__ */ createVNode(Segmented, {
 								label: aiLabel,
 								options: AI_POSTS_OPTIONS.map((entry) => ({
 									value: entry.value,
@@ -27478,13 +29538,13 @@ function SearchToolsPanel(props) {
 								disabled: aiHiddenEverywhere(),
 								onChange: onAiPostsChange
 							}),
-							aiHiddenEverywhere() ? /* @__PURE__ */ a(AiEverywhereNote, {}) : null
+							aiHiddenEverywhere() ? /* @__PURE__ */ createVNode(AiEverywhereNote, {}) : null
 						]
 					}) : null,
-					/* @__PURE__ */ a("div", {
+					/* @__PURE__ */ createVNode("div", {
 						className: FOOT_CLASS$1,
 						children: [
-							/* @__PURE__ */ a(Button, {
+							/* @__PURE__ */ createVNode(Button, {
 								variant: "secondary",
 								size: "s",
 								className: RESET_CLASS,
@@ -27492,8 +29552,8 @@ function SearchToolsPanel(props) {
 								onClick: onReset,
 								children: RESET_LABEL
 							}),
-							/* @__PURE__ */ a(SaveSearchButton, { tags: input.value }),
-							/* @__PURE__ */ a(DownloadControls, {
+							/* @__PURE__ */ createVNode(SaveSearchButton, { tags: input.value }),
+							/* @__PURE__ */ createVNode(DownloadControls, {
 								barHost,
 								onSelectingChange: setSelecting
 							})
@@ -27517,7 +29577,7 @@ function mountSearchTools(_ctx) {
 	}
 	mountSiteSearchTools(input);
 	const root = ensureRoot(form);
-	Q$1(/* @__PURE__ */ a(SearchToolsPanel, { input }), root);
+	render$1(/* @__PURE__ */ createVNode(SearchToolsPanel, { input }), root);
 	root.classList.add(SEARCH_TOOLS_MOUNTED_CLASS);
 	const remember = () => {
 		if (isGridSelecting()) return;
@@ -28349,7 +30409,7 @@ var videoPreviewFeature = {
 	css: FEATURE_CSS,
 	mount: mountVideoPreview
 };
-var FEATURES = exports("j",[
+var FEATURES = exports("F",[
 	feedFeature,
 	menuCleanupFeature,
 	tagGroupsFeature,
@@ -28382,7 +30442,7 @@ var FEATURES = exports("j",[
 * site a tweak changes. Kept here, beside the list of the features, so that a
 * new feature is given its group where it is added to the list.
 */
-var SETTINGS_GROUP = exports("l",{
+var SETTINGS_GROUP = exports("m",{
 	header: "header",
 	grid: "grid",
 	post: "post",
@@ -28976,19 +31036,19 @@ var ALL_KIT_CSS = [
 	TOAST_CSS
 ].join(NEW_LINE);
 function PageShell(props) {
-	return /* @__PURE__ */ a($$1, { children: [
-		/* @__PURE__ */ a("style", { children: PAGE_HOST_CSS }),
-		/* @__PURE__ */ a("div", {
+	return /* @__PURE__ */ createVNode(Fragment, { children: [
+		/* @__PURE__ */ createVNode("style", { children: PAGE_HOST_CSS }),
+		/* @__PURE__ */ createVNode("div", {
 			className: props.titleHidden ? `${PAGE_SHELL_CLASS} ${PAGE_SHELL_BARE_CLASS}` : PAGE_SHELL_CLASS,
-			children: [props.title !== null ? /* @__PURE__ */ a("h1", {
+			children: [props.title !== null ? /* @__PURE__ */ createVNode("h1", {
 				className: props.titleHidden ? `${PAGE_TITLE_CLASS} ${PAGE_TITLE_HIDDEN_CLASS}` : PAGE_TITLE_CLASS,
 				children: props.title
-			}) : null, /* @__PURE__ */ a(KitStylesProvided.Provider, {
+			}) : null, /* @__PURE__ */ createVNode(KitStylesProvided.Provider, {
 				value: true,
 				children: props.children
 			})]
 		}),
-		/* @__PURE__ */ a("style", { children: ALL_KIT_CSS })
+		/* @__PURE__ */ createVNode("style", { children: ALL_KIT_CSS })
 	] });
 }
 function titleForRoute(route) {
@@ -29011,36 +31071,36 @@ var followingFactory = null;
 var statsFactory = null;
 function getSettingsFactory() {
 	if (settingsFactory === null) settingsFactory = async () => {
-		const mod = await module.import('./settings-page-DoC-DyO_-Q0AQoLAn.js');
-		return /* @__PURE__ */ a(mod.SettingsPage, {});
+		const mod = await module.import('./settings-page-DfsktIwJ-BI-sAVtR.js');
+		return /* @__PURE__ */ createVNode(mod.SettingsPage, {});
 	};
 	return settingsFactory;
 }
 function getCollectionsFactory() {
 	if (collectionsFactory === null) collectionsFactory = async () => {
-		const mod = await module.import('./collections-page-Cn1QQrRF-vie4Hlu9.js');
-		return /* @__PURE__ */ a(mod.CollectionsPage, {});
+		const mod = await module.import('./collections-page-DGwrxWjM-CVgcb39r.js');
+		return /* @__PURE__ */ createVNode(mod.CollectionsPage, {});
 	};
 	return collectionsFactory;
 }
 function getFollowingFactory() {
 	if (followingFactory === null) followingFactory = async () => {
-		const mod = await module.import('./following-page-Bfglt0zt-VwFMxRWT.js');
-		return /* @__PURE__ */ a(mod.FollowingPage, {});
+		const mod = await module.import('./following-page-CN1OwAXG-DOoWyTey.js');
+		return /* @__PURE__ */ createVNode(mod.FollowingPage, {});
 	};
 	return followingFactory;
 }
 function getStatsFactory() {
 	if (statsFactory === null) statsFactory = async () => {
-		const mod = await module.import('./stats-section-17quqR8j-8daMwjSQ.js');
-		return /* @__PURE__ */ a(mod.StatsPage, {});
+		const mod = await module.import('./stats-section-DnJYZdec-CrWDMK7h.js');
+		return /* @__PURE__ */ createVNode(mod.StatsPage, {});
 	};
 	return statsFactory;
 }
 function collectionDetailFactory(collectionId) {
 	return async () => {
-		const mod = await module.import('./collection-detail-page-DDOOECBF-DdktMp2m.js');
-		return /* @__PURE__ */ a(mod.CollectionDetailPage, { collectionId }, collectionId);
+		const mod = await module.import('./collection-detail-page-qa-2qVPe-oD72uaud.js');
+		return /* @__PURE__ */ createVNode(mod.CollectionDetailPage, { collectionId }, collectionId);
 	};
 }
 function pageFactoryForRoute(route) {
@@ -29099,9 +31159,9 @@ async function showRdwPage(route, header) {
 	if (generation !== renderGeneration || mountPoint !== mount) return;
 	shownRoute = route;
 	syncRdwPageLayout();
-	Q$1(/* @__PURE__ */ a(OverlayInPlace.Provider, {
+	render$1(/* @__PURE__ */ createVNode(OverlayInPlace.Provider, {
 		value: true,
-		children: /* @__PURE__ */ a(PageShell, {
+		children: /* @__PURE__ */ createVNode(PageShell, {
 			title: titleForRoute(route),
 			titleHidden: titleHiddenForRoute(route),
 			children: page
@@ -29111,7 +31171,7 @@ async function showRdwPage(route, header) {
 /** Unmount own page and remove #rdw-page-root. */
 function hideRdwPage() {
 	renderGeneration += 1;
-	if (mountPoint !== null) Q$1(null, mountPoint);
+	if (mountPoint !== null) render$1(null, mountPoint);
 	if (hostElement !== null) hostElement.remove();
 	hostElement = null;
 	mountPoint = null;
@@ -29882,7 +31942,7 @@ function mountSiteNotice() {
 /** Under featureState: the sets, in the order they were made. */
 var UPLOAD_TAG_SETS_STATE_ID = "upload-tag-sets";
 /** A set is a handful of tags, not a text: longer is cut. */
-var TAG_SET_TAGS_MAX = exports("y",2e3);
+var TAG_SET_TAGS_MAX = exports("A",2e3);
 var TAG_SPLIT$1 = /\s+/;
 function cleanSet(value) {
 	if (typeof value !== "object" || value === null || !("name" in value) || !("tags" in value)) return null;
@@ -29970,7 +32030,7 @@ var UPLOAD_SET_CLASS = "rdw-upload-set";
 var UPLOAD_SETS_LABEL_CLASS = "rdw-upload-sets-label";
 var UPLOAD_SETS_EDIT_CLASS = "rdw-upload-sets-edit";
 /** The section of the settings where the sets are made. */
-var SETTINGS_SECTION_UPLOAD = exports("b","upload");
+var SETTINGS_SECTION_UPLOAD = exports("e","upload");
 var SETS_LABEL = "Tag sets:";
 var SETS_EDIT_LABEL = "Edit sets";
 var SETS_ADD_LABEL = "Add tag sets";
@@ -30690,8 +32750,8 @@ async function startApp() {
 	await yieldToMain();
 	step("favorites sync resume", maybeResumeFavoritesSync);
 	step("stats point", recordStatsPoint);
-}var appBAhFOWQS=/*#__PURE__*/Object.freeze({__proto__:null,A:useEscape,C:FEATURES,D:fetchNextPage,E:featureSettingsGroup,F:readSiteBlacklist,I:writeSiteBlacklist,M:useTagKindLookup,N:chipKindOfTag,O:fetchArtistSnapshot,P:TAG_KIND_LOOKUP_SETTING_ID,S:isFeatureEnabled,T:SETTINGS_GROUPS,_:readViewMode,a:SETTINGS_SECTION_UPLOAD,b:applyCssOnlyFeatureEnabled,c:writeTagSets,d:FOLLOWING_VIEW_STATE_ID,f:PAGE_CENTRE_PADDING,g:isViewMode,h:VIEW_OPTIONS,i:saveBackground,j:topFavoriteTags,k:setGridFavButtonsVisible,l:navigateToRdwRoute,m:VIEW_LIST,n:clearBackground,o:TAG_SET_TAGS_MAX,p:VIEW_LABEL,r:loadBackground,s:readTagSets,startApp:startApp,t:backgroundTooLarge,u:COLLECTIONS_VIEW_STATE_ID,v:writeViewMode,w:SETTINGS_GROUP,x:getFeatureChoice,y:applyCssOnlyFeatureChoice});exports("aW",appBAhFOWQS);})}}));
-System.register("./settings-page-DoC-DyO_-Q0AQoLAn.js", ['./app-BAhFOWQS-Bb4GaPqX.js','./___monkey.entry.js','./format-date-BzlgeVEi-Bc3e-WAe.js'],(function(exports){'use strict';var d,T,A,settingsSectionFromHash,F,SETTINGS_GROUPS,SETTINGS_SECTION_FAVORITES,SETTINGS_SECTION_UPLOAD,a,SearchField,Card,Switch,EmptyState,Button,settingsSectionHash,setGridFavButtonsVisible,isFeatureEnabled,FEATURES,featureSettingsGroup,SETTINGS_GROUP,NumberField,setAiHiddenEverywhere,installSiteMenu,$$1,P$1,loadBackground,KIT_FOCUS_CSS,SectionLabel,Select,Segmented,TextField,Dialog,applyCssOnlyFeatureEnabled,applyCssOnlyFeatureChoice,getFeatureChoice,ProgressBar,QueryField,TAG_SET_TAGS_MAX,IconButton,IconX,IconPlus,createAutocompleteQuerier,useTagKindLookup,b,readSiteBlacklist,AutocompleteField,Chip,chipKindOfTag,clearBackground,saveBackground,runFavoritesSync,clearApiCredentials,parseApiCredentials,setApiCredentials,DEFAULT_FILE_MASK,FILE_MASK_TOKENS,toggleMaskToken,maskHasToken,writeTagSets,writeSiteBlacklist,writeFileMask,readFileMask,buildFileName,currentBackupStatus,readLastBackup,markBackupDue,backgroundTooLarge,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,rememberBackup,FAVORITES_SYNC_MODE_INCREMENTAL,TAG_KIND_LOOKUP_SETTING_ID,FAVORITES_SYNC_PAGE_PAUSE_MS,hasApiCredentials,readTagSets,aiHiddenEverywhere,takeSettingsSection,PANEL_UI_CLASS,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,STICKY_TOP,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,setFeatureEnabled,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,STATS_MENU_SETTING_LABEL,STATS_MENU_SWITCH_ID,STICKY_HEADER_SETTING_LABEL,STICKY_HEADER_SWITCH_ID,applyStickyHeader,getAppearance,applyAppearanceTheme,getSiteSkinCss,APPEARANCE_THEME_CUSTOM,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,clampBackgroundDim,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,clearFeatureState,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,createDefaultCustomTheme,AppearanceThemeSchema,prepareBackgroundImageFile,log,getSyncState,APPEARANCE_BACKGROUND_TOO_LARGE,load,createDefaultStorage,clearStorageCache,clearFavsCache,setAppearance,loadFavSet,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,isSiteUrl,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,gridDensityFeature,STATS_MENU_SETTING_ID,STICKY_HEADER_SETTING_ID,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureEnabled,getFeatureChoiceValue,getScreenPixelSize,formatDayTime;return{setters:[function(module){d=module.d;T=module.T;A=module.A;settingsSectionFromHash=module.s;F=module.F;SETTINGS_GROUPS=module.S;SETTINGS_SECTION_FAVORITES=module.a;SETTINGS_SECTION_UPLOAD=module.b;a=module.c;SearchField=module.e;Card=module.C;Switch=module.f;EmptyState=module.E;Button=module.B;settingsSectionHash=module.g;setGridFavButtonsVisible=module.h;isFeatureEnabled=module.i;FEATURES=module.j;featureSettingsGroup=module.k;SETTINGS_GROUP=module.l;NumberField=module.N;setAiHiddenEverywhere=module.m;installSiteMenu=module.n;$$1=module.$;P$1=module.P;loadBackground=module.o;KIT_FOCUS_CSS=module.K;SectionLabel=module.p;Select=module.q;Segmented=module.r;TextField=module.t;Dialog=module.D;applyCssOnlyFeatureEnabled=module.u;applyCssOnlyFeatureChoice=module.v;getFeatureChoice=module.w;ProgressBar=module.x;QueryField=module.Q;TAG_SET_TAGS_MAX=module.y;IconButton=module.I;IconX=module.z;IconPlus=module.G;createAutocompleteQuerier=module.H;useTagKindLookup=module.J;b=module.L;readSiteBlacklist=module.M;AutocompleteField=module.O;Chip=module.R;chipKindOfTag=module.U;clearBackground=module.V;saveBackground=module.W;runFavoritesSync=module.X;clearApiCredentials=module.Y;parseApiCredentials=module.Z;setApiCredentials=module._;DEFAULT_FILE_MASK=module.a0;FILE_MASK_TOKENS=module.a1;toggleMaskToken=module.a2;maskHasToken=module.a3;writeTagSets=module.a4;writeSiteBlacklist=module.a5;writeFileMask=module.a6;readFileMask=module.a7;buildFileName=module.a8;currentBackupStatus=module.a9;readLastBackup=module.aa;markBackupDue=module.ab;backgroundTooLarge=module.ac;readFavoritesSyncMode=module.ad;FAVORITES_SYNC_MODE_FULL=module.ae;rememberBackup=module.af;FAVORITES_SYNC_MODE_INCREMENTAL=module.ag;TAG_KIND_LOOKUP_SETTING_ID=module.ah;FAVORITES_SYNC_PAGE_PAUSE_MS=module.ai;hasApiCredentials=module.aj;readTagSets=module.ak;aiHiddenEverywhere=module.al;takeSettingsSection=module.am;},function(module){PANEL_UI_CLASS=module.c2;UI_TEXT=module.bo;TWEAKS_SWITCH_ID=module.cE;setTweaksEnabled=module.cF;STICKY_TOP=module.aS;GRID_FAV_CHECKBOX_ID=module.cG;setGridFavButtonsEnabled=module.cH;PLAYLIST_CHUNK_SIZE_ID=module.cI;setPlaylistChunkSize=module.cJ;getPlaylistChunkSize=module.bh;setFeatureEnabled=module.cK;UPDATES_GROUP_SIZE_ID=module.cL;setUpdatesGroupSize=module.cM;getUpdatesGroupSize=module.ac;STATS_MENU_SETTING_LABEL=module.cN;STATS_MENU_SWITCH_ID=module.cO;STICKY_HEADER_SETTING_LABEL=module.cP;STICKY_HEADER_SWITCH_ID=module.cQ;applyStickyHeader=module.cR;getAppearance=module.aB;applyAppearanceTheme=module.aC;getSiteSkinCss=module.ce;APPEARANCE_THEME_CUSTOM=module.cS;APPEARANCE_THEME_SITE=module.A;APPEARANCE_THEME_SITE_DARK=module.a;APPEARANCE_THEME_LIGHT=module.cT;APPEARANCE_THEME_DARK=module.cU;APPEARANCE_CUSTOM_BASE_LIGHT=module.cV;APPEARANCE_CUSTOM_BASE_DARK=module.cW;clampBackgroundDim=module.cX;featurePanelLabel=module.cY;FEATURE_CHECKBOX_ID_PREFIX=module.cZ;clearFeatureState=module.c_;FEATURE_CHOICE_ID_PREFIX=module.c$;setFeatureChoiceValue=module.d0;createDefaultCustomTheme=module.d1;AppearanceThemeSchema=module.d2;prepareBackgroundImageFile=module.d3;log=module.l;getSyncState=module.B;APPEARANCE_BACKGROUND_TOO_LARGE=module.cA;load=module.j;createDefaultStorage=module.d4;clearStorageCache=module.d5;clearFavsCache=module.d6;setAppearance=module.d7;loadFavSet=module.m;object=module.o;StorageSchema=module.d8;optional=module.g;string=module.s;FavsSchema=module.d9;literal=module.da;IMPORT_SCHEMA_ERROR_PREFIX=module.db;isSiteUrl=module.X;stripLegacyPanelWindowSize=module.dc;save=module.bI;migrateMarksFavToFavs=module.dd;FAVS_STORAGE_KEY=module.de;createDefaultFavs=module.df;parseFavsStrict=module.dg;STORAGE_BACKUP_KEY=module.dh;extractFavIdsFromMarks=module.di;gridDensityFeature=module.at;STATS_MENU_SETTING_ID=module.dj;STICKY_HEADER_SETTING_ID=module.dk;getTweaksEnabled=module.$;getGridFavButtonsEnabled=module.aD;getFeatureEnabled=module.p;getFeatureChoiceValue=module.cx;getScreenPixelSize=module.dl;},function(module){formatDayTime=module.f;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
+}var appCKeztBau=/*#__PURE__*/Object.freeze({__proto__:null,A:useEscape,C:FEATURES,D:fetchNextPage,E:featureSettingsGroup,F:readSiteBlacklist,I:writeSiteBlacklist,M:useTagKindLookup,N:chipKindOfTag,O:fetchArtistSnapshot,P:TAG_KIND_LOOKUP_SETTING_ID,S:isFeatureEnabled,T:SETTINGS_GROUPS,_:readViewMode,a:SETTINGS_SECTION_UPLOAD,b:applyCssOnlyFeatureEnabled,c:writeTagSets,d:FOLLOWING_VIEW_STATE_ID,f:PAGE_CENTRE_PADDING,g:isViewMode,h:VIEW_OPTIONS,i:saveBackground,j:topFavoriteTags,k:setGridFavButtonsVisible,l:navigateToRdwRoute,m:VIEW_LIST,n:clearBackground,o:TAG_SET_TAGS_MAX,p:VIEW_LABEL,r:loadBackground,s:readTagSets,startApp:startApp,t:backgroundTooLarge,u:COLLECTIONS_VIEW_STATE_ID,v:writeViewMode,w:SETTINGS_GROUP,x:getFeatureChoice,y:applyCssOnlyFeatureChoice});exports("aW",appCKeztBau);})}}));
+System.register("./settings-page-DfsktIwJ-BI-sAVtR.js", ['./app-CKeztBau-BuKlS5Dy.js','./___monkey.entry.js','./format-date-BzlgeVEi-Bc3e-WAe.js'],(function(exports){'use strict';var useState,useRef,useEffect,settingsSectionFromHash,useLayoutEffect,SETTINGS_GROUPS,SETTINGS_SECTION_FAVORITES,SETTINGS_SECTION_UPLOAD,createVNode,SearchField,Card,Switch,EmptyState,Button,settingsSectionHash,setGridFavButtonsVisible,isFeatureEnabled,FEATURES,featureSettingsGroup,SETTINGS_GROUP,NumberField,setAiHiddenEverywhere,installSiteMenu,Fragment,useId,loadBackground,KIT_FOCUS_CSS,SectionLabel,Select,Segmented,TextField,Dialog,applyCssOnlyFeatureEnabled,applyCssOnlyFeatureChoice,getFeatureChoice,ProgressBar,QueryField,TAG_SET_TAGS_MAX,IconButton,IconX,IconPlus,createAutocompleteQuerier,useTagKindLookup,useCallback,readSiteBlacklist,AutocompleteField,Chip,chipKindOfTag,clearBackground,saveBackground,runFavoritesSync,clearApiCredentials,parseApiCredentials,setApiCredentials,DEFAULT_FILE_MASK,FILE_MASK_TOKENS,toggleMaskToken,maskHasToken,writeTagSets,writeSiteBlacklist,writeFileMask,readFileMask,buildFileName,currentBackupStatus,readLastBackup,markBackupDue,backgroundTooLarge,readFavoritesSyncMode,FAVORITES_SYNC_MODE_FULL,rememberBackup,FAVORITES_SYNC_MODE_INCREMENTAL,TAG_KIND_LOOKUP_SETTING_ID,FAVORITES_SYNC_PAGE_PAUSE_MS,hasApiCredentials,readTagSets,aiHiddenEverywhere,takeSettingsSection,PANEL_UI_CLASS,UI_TEXT,TWEAKS_SWITCH_ID,setTweaksEnabled,STICKY_TOP,GRID_FAV_CHECKBOX_ID,setGridFavButtonsEnabled,PLAYLIST_CHUNK_SIZE_ID,setPlaylistChunkSize,getPlaylistChunkSize,setFeatureEnabled,UPDATES_GROUP_SIZE_ID,setUpdatesGroupSize,getUpdatesGroupSize,STATS_MENU_SETTING_LABEL,STATS_MENU_SWITCH_ID,STICKY_HEADER_SETTING_LABEL,STICKY_HEADER_SWITCH_ID,applyStickyHeader,getAppearance,applyAppearanceTheme,getSiteSkinCss,APPEARANCE_THEME_CUSTOM,APPEARANCE_THEME_SITE,APPEARANCE_THEME_SITE_DARK,APPEARANCE_THEME_LIGHT,APPEARANCE_THEME_DARK,APPEARANCE_CUSTOM_BASE_LIGHT,APPEARANCE_CUSTOM_BASE_DARK,clampBackgroundDim,featurePanelLabel,FEATURE_CHECKBOX_ID_PREFIX,clearFeatureState,FEATURE_CHOICE_ID_PREFIX,setFeatureChoiceValue,createDefaultCustomTheme,AppearanceThemeSchema,prepareBackgroundImageFile,log,getSyncState,APPEARANCE_BACKGROUND_TOO_LARGE,load,createDefaultStorage,clearStorageCache,clearFavsCache,setAppearance,loadFavSet,object,StorageSchema,optional,string,FavsSchema,literal,IMPORT_SCHEMA_ERROR_PREFIX,isSiteUrl,stripLegacyPanelWindowSize,save,migrateMarksFavToFavs,FAVS_STORAGE_KEY,createDefaultFavs,parseFavsStrict,STORAGE_BACKUP_KEY,extractFavIdsFromMarks,gridDensityFeature,STATS_MENU_SETTING_ID,STICKY_HEADER_SETTING_ID,getTweaksEnabled,getGridFavButtonsEnabled,getFeatureEnabled,getFeatureChoiceValue,getScreenPixelSize,formatDayTime;return{setters:[function(module){useState=module.u;useRef=module.a;useEffect=module.b;settingsSectionFromHash=module.s;useLayoutEffect=module.c;SETTINGS_GROUPS=module.S;SETTINGS_SECTION_FAVORITES=module.d;SETTINGS_SECTION_UPLOAD=module.e;createVNode=module.f;SearchField=module.g;Card=module.C;Switch=module.h;EmptyState=module.E;Button=module.B;settingsSectionHash=module.i;setGridFavButtonsVisible=module.j;isFeatureEnabled=module.k;FEATURES=module.F;featureSettingsGroup=module.l;SETTINGS_GROUP=module.m;NumberField=module.N;setAiHiddenEverywhere=module.n;installSiteMenu=module.o;Fragment=module.p;useId=module.q;loadBackground=module.r;KIT_FOCUS_CSS=module.K;SectionLabel=module.t;Select=module.v;Segmented=module.w;TextField=module.T;Dialog=module.D;applyCssOnlyFeatureEnabled=module.x;applyCssOnlyFeatureChoice=module.y;getFeatureChoice=module.z;ProgressBar=module.P;QueryField=module.Q;TAG_SET_TAGS_MAX=module.A;IconButton=module.I;IconX=module.G;IconPlus=module.H;createAutocompleteQuerier=module.J;useTagKindLookup=module.L;useCallback=module.M;readSiteBlacklist=module.O;AutocompleteField=module.R;Chip=module.U;chipKindOfTag=module.V;clearBackground=module.W;saveBackground=module.X;runFavoritesSync=module.Y;clearApiCredentials=module.Z;parseApiCredentials=module._;setApiCredentials=module.$;DEFAULT_FILE_MASK=module.a0;FILE_MASK_TOKENS=module.a1;toggleMaskToken=module.a2;maskHasToken=module.a3;writeTagSets=module.a4;writeSiteBlacklist=module.a5;writeFileMask=module.a6;readFileMask=module.a7;buildFileName=module.a8;currentBackupStatus=module.a9;readLastBackup=module.aa;markBackupDue=module.ab;backgroundTooLarge=module.ac;readFavoritesSyncMode=module.ad;FAVORITES_SYNC_MODE_FULL=module.ae;rememberBackup=module.af;FAVORITES_SYNC_MODE_INCREMENTAL=module.ag;TAG_KIND_LOOKUP_SETTING_ID=module.ah;FAVORITES_SYNC_PAGE_PAUSE_MS=module.ai;hasApiCredentials=module.aj;readTagSets=module.ak;aiHiddenEverywhere=module.al;takeSettingsSection=module.am;},function(module){PANEL_UI_CLASS=module.c2;UI_TEXT=module.bo;TWEAKS_SWITCH_ID=module.cE;setTweaksEnabled=module.cF;STICKY_TOP=module.aS;GRID_FAV_CHECKBOX_ID=module.cG;setGridFavButtonsEnabled=module.cH;PLAYLIST_CHUNK_SIZE_ID=module.cI;setPlaylistChunkSize=module.cJ;getPlaylistChunkSize=module.bh;setFeatureEnabled=module.cK;UPDATES_GROUP_SIZE_ID=module.cL;setUpdatesGroupSize=module.cM;getUpdatesGroupSize=module.ac;STATS_MENU_SETTING_LABEL=module.cN;STATS_MENU_SWITCH_ID=module.cO;STICKY_HEADER_SETTING_LABEL=module.cP;STICKY_HEADER_SWITCH_ID=module.cQ;applyStickyHeader=module.cR;getAppearance=module.aB;applyAppearanceTheme=module.aC;getSiteSkinCss=module.ce;APPEARANCE_THEME_CUSTOM=module.cS;APPEARANCE_THEME_SITE=module.A;APPEARANCE_THEME_SITE_DARK=module.a;APPEARANCE_THEME_LIGHT=module.cT;APPEARANCE_THEME_DARK=module.cU;APPEARANCE_CUSTOM_BASE_LIGHT=module.cV;APPEARANCE_CUSTOM_BASE_DARK=module.cW;clampBackgroundDim=module.cX;featurePanelLabel=module.cY;FEATURE_CHECKBOX_ID_PREFIX=module.cZ;clearFeatureState=module.c_;FEATURE_CHOICE_ID_PREFIX=module.c$;setFeatureChoiceValue=module.d0;createDefaultCustomTheme=module.d1;AppearanceThemeSchema=module.d2;prepareBackgroundImageFile=module.d3;log=module.l;getSyncState=module.B;APPEARANCE_BACKGROUND_TOO_LARGE=module.cA;load=module.j;createDefaultStorage=module.d4;clearStorageCache=module.d5;clearFavsCache=module.d6;setAppearance=module.d7;loadFavSet=module.m;object=module.o;StorageSchema=module.d8;optional=module.g;string=module.s;FavsSchema=module.d9;literal=module.da;IMPORT_SCHEMA_ERROR_PREFIX=module.db;isSiteUrl=module.X;stripLegacyPanelWindowSize=module.dc;save=module.bI;migrateMarksFavToFavs=module.dd;FAVS_STORAGE_KEY=module.de;createDefaultFavs=module.df;parseFavsStrict=module.dg;STORAGE_BACKUP_KEY=module.dh;extractFavIdsFromMarks=module.di;gridDensityFeature=module.at;STATS_MENU_SETTING_ID=module.dj;STICKY_HEADER_SETTING_ID=module.dk;getTweaksEnabled=module.$;getGridFavButtonsEnabled=module.aD;getFeatureEnabled=module.p;getFeatureChoiceValue=module.cx;getScreenPixelSize=module.dl;},function(module){formatDayTime=module.f;}],execute:(function(){exports("SettingsPage",SettingsPage);var GRID_FEATURE_ID = gridDensityFeature.id;
 var THEME_OPTIONS = [
 	{
 		value: APPEARANCE_THEME_SITE,
@@ -30914,19 +32974,19 @@ function formatScreenHint() {
 	return `${SCREEN_HINT_PREFIX}${String(screen.width)}x${String(screen.height)}`;
 }
 function AppearanceSection(props) {
-	const fileInputId = P$1();
-	const fileRef = T(null);
-	const [appearance, setAppearanceState] = d(() => getAppearance());
-	const [gridValue, setGridValue] = d(() => resolveGridChoice());
-	const [bgUrlDraft, setBgUrlDraft] = d(() => {
+	const fileInputId = useId();
+	const fileRef = useRef(null);
+	const [appearance, setAppearanceState] = useState(() => getAppearance());
+	const [gridValue, setGridValue] = useState(() => resolveGridChoice());
+	const [bgUrlDraft, setBgUrlDraft] = useState(() => {
 		return getAppearance().custom?.backgroundImage ?? "";
 	});
-	const [storedBackgroundUrl, setStoredBackgroundUrl] = d(null);
-	const [fileError, setFileError] = d("");
-	const [imageMeta, setImageMeta] = d(null);
-	const [screenHint] = d(() => formatScreenHint());
-	const [resetAsked, setResetAsked] = d(false);
-	A(() => {
+	const [storedBackgroundUrl, setStoredBackgroundUrl] = useState(null);
+	const [fileError, setFileError] = useState("");
+	const [imageMeta, setImageMeta] = useState(null);
+	const [screenHint] = useState(() => formatScreenHint());
+	const [resetAsked, setResetAsked] = useState(false);
+	useEffect(() => {
 		let cancelled = false;
 		loadBackground().then((dataUrl) => {
 			if (cancelled || dataUrl === null) return;
@@ -31069,35 +33129,35 @@ function AppearanceSection(props) {
 		applyCssOnlyFeatureChoice(GRID_FEATURE_ID, value);
 	}
 	const className = ["rdw-appearance", props.className].filter((part) => part !== void 0 && part.length > 0).join(" ");
-	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("style", { children: APPEARANCE_SECTION_CSS }), /* @__PURE__ */ a("section", {
+	return /* @__PURE__ */ createVNode(Fragment, { children: [/* @__PURE__ */ createVNode("style", { children: APPEARANCE_SECTION_CSS }), /* @__PURE__ */ createVNode("section", {
 		className,
 		"aria-label": SECTION_TITLE,
 		children: [
-			props.includeHeading === false ? null : /* @__PURE__ */ a(SectionLabel, { children: SECTION_TITLE }),
-			/* @__PURE__ */ a("div", {
+			props.includeHeading === false ? null : /* @__PURE__ */ createVNode(SectionLabel, { children: SECTION_TITLE }),
+			/* @__PURE__ */ createVNode("div", {
 				className: "rdw-appearance__row",
-				children: [/* @__PURE__ */ a("div", {
+				children: [/* @__PURE__ */ createVNode("div", {
 					className: "rdw-appearance__row-text",
-					children: [/* @__PURE__ */ a("span", { children: THEME_ROW_LABEL }), /* @__PURE__ */ a("small", { children: THEME_ROW_HINT })]
-				}), /* @__PURE__ */ a(Select, {
+					children: [/* @__PURE__ */ createVNode("span", { children: THEME_ROW_LABEL }), /* @__PURE__ */ createVNode("small", { children: THEME_ROW_HINT })]
+				}), /* @__PURE__ */ createVNode(Select, {
 					className: "rdw-appearance__select",
 					options: THEME_OPTIONS,
 					value: appearance.theme,
 					onChange: onThemeChange
 				})]
 			}),
-			isSiteTheme ? /* @__PURE__ */ a("p", {
+			isSiteTheme ? /* @__PURE__ */ createVNode("p", {
 				className: "rdw-appearance__note",
 				role: "note",
 				children: SITE_THEME_NOTE
 			}) : null,
-			isCustom ? /* @__PURE__ */ a($$1, { children: [
-				/* @__PURE__ */ a("div", {
+			isCustom ? /* @__PURE__ */ createVNode(Fragment, { children: [
+				/* @__PURE__ */ createVNode("div", {
 					className: "rdw-appearance__row",
-					children: [/* @__PURE__ */ a("div", {
+					children: [/* @__PURE__ */ createVNode("div", {
 						className: "rdw-appearance__row-text",
-						children: /* @__PURE__ */ a("span", { children: BASE_ROW_LABEL })
-					}), /* @__PURE__ */ a(Segmented, {
+						children: /* @__PURE__ */ createVNode("span", { children: BASE_ROW_LABEL })
+					}), /* @__PURE__ */ createVNode(Segmented, {
 						className: "rdw-appearance__base",
 						options: BASE_OPTIONS,
 						value: custom.base,
@@ -31105,12 +33165,12 @@ function AppearanceSection(props) {
 						onChange: onBaseChange
 					})]
 				}),
-				/* @__PURE__ */ a("div", {
+				/* @__PURE__ */ createVNode("div", {
 					className: "rdw-appearance__row rdw-appearance__row--stack",
-					children: [/* @__PURE__ */ a("div", {
+					children: [/* @__PURE__ */ createVNode("div", {
 						className: "rdw-appearance__row-text rdw-appearance__row-text--line",
-						children: [/* @__PURE__ */ a("span", { children: BG_IMAGE_LABEL }), /* @__PURE__ */ a("small", { children: BG_IMAGE_HINT })]
-					}), /* @__PURE__ */ a("div", {
+						children: [/* @__PURE__ */ createVNode("span", { children: BG_IMAGE_LABEL }), /* @__PURE__ */ createVNode("small", { children: BG_IMAGE_HINT })]
+					}), /* @__PURE__ */ createVNode("div", {
 						className: "rdw-appearance__bg",
 						onFocusOut: (event) => {
 							const root = event.currentTarget;
@@ -31119,25 +33179,25 @@ function AppearanceSection(props) {
 							onBgUrlCommit(bgUrlDraft);
 						},
 						children: [
-							/* @__PURE__ */ a("div", {
+							/* @__PURE__ */ createVNode("div", {
 								className: "rdw-appearance__bg-field",
-								children: [/* @__PURE__ */ a(TextField, {
+								children: [/* @__PURE__ */ createVNode(TextField, {
 									value: bgUrlDraft,
 									placeholder: BG_URL_PLACEHOLDER,
 									"aria-label": BG_IMAGE_LABEL,
 									onChange: (value) => {
 										setBgUrlDraft(value);
 									}
-								}), backgroundPreviewUrl.length > 0 ? /* @__PURE__ */ a("img", {
+								}), backgroundPreviewUrl.length > 0 ? /* @__PURE__ */ createVNode("img", {
 									className: BG_THUMB_CLASS,
 									src: backgroundPreviewUrl,
 									alt: ""
 								}) : null]
 							}),
-							/* @__PURE__ */ a("div", {
+							/* @__PURE__ */ createVNode("div", {
 								className: "rdw-appearance__bg-actions",
 								children: [
-									/* @__PURE__ */ a(Button, {
+									/* @__PURE__ */ createVNode(Button, {
 										variant: "secondary",
 										size: "s",
 										onClick: () => {
@@ -31145,13 +33205,13 @@ function AppearanceSection(props) {
 										},
 										children: CHOOSE_LABEL
 									}),
-									hasBackground ? /* @__PURE__ */ a(Button, {
+									hasBackground ? /* @__PURE__ */ createVNode(Button, {
 										variant: "ghost",
 										size: "s",
 										onClick: onRemoveBackground,
 										children: REMOVE_LABEL$1
 									}) : null,
-									/* @__PURE__ */ a("input", {
+									/* @__PURE__ */ createVNode("input", {
 										ref: fileRef,
 										id: fileInputId,
 										className: "rdw-appearance__file",
@@ -31167,11 +33227,11 @@ function AppearanceSection(props) {
 									})
 								]
 							}),
-							/* @__PURE__ */ a("p", {
+							/* @__PURE__ */ createVNode("p", {
 								className: "rdw-appearance__hint",
 								children: screenHint
 							}),
-							imageMeta !== null ? /* @__PURE__ */ a("p", {
+							imageMeta !== null ? /* @__PURE__ */ createVNode("p", {
 								className: "rdw-appearance__hint",
 								children: [
 									IMAGE_SIZE_PREFIX,
@@ -31180,16 +33240,16 @@ function AppearanceSection(props) {
 									String(imageMeta.height)
 								]
 							}) : null,
-							imageMeta?.belowScreen === true ? /* @__PURE__ */ a("div", {
+							imageMeta?.belowScreen === true ? /* @__PURE__ */ createVNode("div", {
 								className: "rdw-appearance__warn",
 								role: "status",
 								children: IMAGE_TOO_SMALL_WARN
 							}) : null,
-							hasBackground ? /* @__PURE__ */ a("label", {
+							hasBackground ? /* @__PURE__ */ createVNode("label", {
 								className: "rdw-appearance__dim",
 								children: [
-									/* @__PURE__ */ a("span", { children: BG_DIM_LABEL }),
-									/* @__PURE__ */ a("input", {
+									/* @__PURE__ */ createVNode("span", { children: BG_DIM_LABEL }),
+									/* @__PURE__ */ createVNode("input", {
 										type: "range",
 										min: 0,
 										max: .8,
@@ -31200,10 +33260,10 @@ function AppearanceSection(props) {
 											onDimChange(Number(event.currentTarget.value));
 										}
 									}),
-									/* @__PURE__ */ a("span", { children: String(clampBackgroundDim(custom.backgroundDim ?? 0)) })
+									/* @__PURE__ */ createVNode("span", { children: String(clampBackgroundDim(custom.backgroundDim ?? 0)) })
 								]
 							}) : null,
-							fileError.length > 0 ? /* @__PURE__ */ a("div", {
+							fileError.length > 0 ? /* @__PURE__ */ createVNode("div", {
 								className: "rdw-appearance__warn",
 								role: "status",
 								children: fileError
@@ -31211,9 +33271,9 @@ function AppearanceSection(props) {
 						]
 					})]
 				}),
-				/* @__PURE__ */ a("div", {
+				/* @__PURE__ */ createVNode("div", {
 					className: "rdw-appearance__footer",
-					children: /* @__PURE__ */ a(Button, {
+					children: /* @__PURE__ */ createVNode(Button, {
 						variant: "secondary",
 						size: "s",
 						onClick: () => {
@@ -31222,7 +33282,7 @@ function AppearanceSection(props) {
 						children: RESET_LABEL
 					})
 				}),
-				/* @__PURE__ */ a(Dialog, {
+				/* @__PURE__ */ createVNode(Dialog, {
 					variant: "confirm",
 					open: resetAsked,
 					title: RESET_TITLE,
@@ -31239,12 +33299,12 @@ function AppearanceSection(props) {
 					}
 				})
 			] }) : null,
-			/* @__PURE__ */ a("div", {
+			/* @__PURE__ */ createVNode("div", {
 				className: "rdw-appearance__row",
-				children: [/* @__PURE__ */ a("div", {
+				children: [/* @__PURE__ */ createVNode("div", {
 					className: "rdw-appearance__row-text",
-					children: /* @__PURE__ */ a("span", { children: GRID_ROW_LABEL })
-				}), /* @__PURE__ */ a(Select, {
+					children: /* @__PURE__ */ createVNode("span", { children: GRID_ROW_LABEL })
+				}), /* @__PURE__ */ createVNode(Select, {
 					className: "rdw-appearance__select",
 					options: GRID_OPTIONS,
 					value: gridValue,
@@ -31310,18 +33370,18 @@ function persistTags(tags) {
 }
 function BlacklistSection(props = {}) {
 	const includeHeading = props.includeHeading !== false;
-	const [tags, setTags] = d(() => readSiteBlacklist());
-	const [draft, setDraft] = d("");
-	const [suggestions, setSuggestions] = d([]);
-	const querierRef = T(createAutocompleteQuerier());
+	const [tags, setTags] = useState(() => readSiteBlacklist());
+	const [draft, setDraft] = useState("");
+	const [suggestions, setSuggestions] = useState([]);
+	const querierRef = useRef(createAutocompleteQuerier());
 	useTagKindLookup(tags);
-	A(() => {
+	useEffect(() => {
 		const querier = querierRef.current;
 		return () => {
 			querier.cancel();
 		};
 	}, []);
-	const addTokens = b(() => {
+	const addTokens = useCallback(() => {
 		const tokens = parseAddTokens(draft);
 		if (tokens.length === 0) return;
 		setTags(persistTags([...readSiteBlacklist(), ...tokens]));
@@ -31329,17 +33389,17 @@ function BlacklistSection(props = {}) {
 		setSuggestions([]);
 		querierRef.current.cancel();
 	}, [draft]);
-	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("style", { children: BLACKLIST_SECTION_CSS }), /* @__PURE__ */ a("section", {
+	return /* @__PURE__ */ createVNode(Fragment, { children: [/* @__PURE__ */ createVNode("style", { children: BLACKLIST_SECTION_CSS }), /* @__PURE__ */ createVNode("section", {
 		className: `rdw-section ${SECTION_CLASS$5}`,
 		children: [
-			includeHeading ? /* @__PURE__ */ a(SectionLabel, { children: "Blacklist" }) : null,
-			/* @__PURE__ */ a("form", {
+			includeHeading ? /* @__PURE__ */ createVNode(SectionLabel, { children: "Blacklist" }) : null,
+			/* @__PURE__ */ createVNode("form", {
 				className: ADD_ROW_CLASS,
 				onSubmit: (event) => {
 					event.preventDefault();
 					addTokens();
 				},
-				children: [/* @__PURE__ */ a(AutocompleteField, {
+				children: [/* @__PURE__ */ createVNode(AutocompleteField, {
 					id: ADD_INPUT_ID,
 					label: ADD_LABEL$1,
 					value: draft,
@@ -31352,15 +33412,15 @@ function BlacklistSection(props = {}) {
 						querierRef.current.cancel();
 						setSuggestions([]);
 					}
-				}), /* @__PURE__ */ a(Button, {
+				}), /* @__PURE__ */ createVNode(Button, {
 					type: "submit",
 					variant: "primary",
 					children: ADD_BUTTON
 				})]
 			}),
-			/* @__PURE__ */ a("ul", {
+			/* @__PURE__ */ createVNode("ul", {
 				className: CHIPS_CLASS,
-				children: tags.map((tag) => /* @__PURE__ */ a("li", { children: /* @__PURE__ */ a(Chip, {
+				children: tags.map((tag) => /* @__PURE__ */ createVNode("li", { children: /* @__PURE__ */ createVNode(Chip, {
 					label: tag,
 					variant: "dot",
 					kind: chipKindOfTag(tag),
@@ -31370,7 +33430,7 @@ function BlacklistSection(props = {}) {
 					}
 				}) }, tag))
 			}),
-			/* @__PURE__ */ a("p", {
+			/* @__PURE__ */ createVNode("p", {
 				className: HINT_CLASS$3,
 				children: PERMANENT_HINT
 			})
@@ -31814,15 +33874,15 @@ function formatSummary(summary) {
 }
 function DataSection(props = {}) {
 	const includeHeading = props.includeHeading !== false;
-	const fileRef = T(null);
-	const [includeBackground, setIncludeBackground] = d(false);
-	const [includeFavorites, setIncludeFavorites] = d(false);
-	const [error, setError] = d("");
-	const [summary, setSummary] = d("");
-	const [backup, setBackup] = d(() => currentBackupStatus());
-	const [neverExported, setNeverExported] = d(() => readLastBackup() === null);
-	const [pendingImport, setPendingImport] = d(null);
-	const [pendingReplace, setPendingReplace] = d(null);
+	const fileRef = useRef(null);
+	const [includeBackground, setIncludeBackground] = useState(false);
+	const [includeFavorites, setIncludeFavorites] = useState(false);
+	const [error, setError] = useState("");
+	const [summary, setSummary] = useState("");
+	const [backup, setBackup] = useState(() => currentBackupStatus());
+	const [neverExported, setNeverExported] = useState(() => readLastBackup() === null);
+	const [pendingImport, setPendingImport] = useState(null);
+	const [pendingReplace, setPendingReplace] = useState(null);
 	const runImport = (text, importMode) => {
 		importBackupJson(text, importMode).then((result) => {
 			if (!result.ok) {
@@ -31850,70 +33910,70 @@ function DataSection(props = {}) {
 			setError(`${EXPORT_ERROR_PREFIX} ${message}`);
 		});
 	};
-	const exportButton = /* @__PURE__ */ a(Button, {
+	const exportButton = /* @__PURE__ */ createVNode(Button, {
 		variant: "primary",
 		onClick: exportNow,
 		children: EXPORT_LABEL
 	});
 	const warned = neverExported || backup.due;
-	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("style", { children: DATA_SECTION_CSS }), /* @__PURE__ */ a("section", {
+	return /* @__PURE__ */ createVNode(Fragment, { children: [/* @__PURE__ */ createVNode("style", { children: DATA_SECTION_CSS }), /* @__PURE__ */ createVNode("section", {
 		className: `rdw-section ${SECTION_CLASS$4}`,
 		children: [
-			includeHeading ? /* @__PURE__ */ a(SectionLabel, { children: HEADING$1 }) : null,
-			warned ? /* @__PURE__ */ a("div", {
+			includeHeading ? /* @__PURE__ */ createVNode(SectionLabel, { children: HEADING$1 }) : null,
+			warned ? /* @__PURE__ */ createVNode("div", {
 				className: BACKUP_PLATE_CLASS,
 				role: "status",
 				children: [
-					/* @__PURE__ */ a("span", {
+					/* @__PURE__ */ createVNode("span", {
 						className: BACKUP_MARK_CLASS,
 						"aria-hidden": "true",
 						children: BACKUP_MARK
 					}),
-					/* @__PURE__ */ a("p", {
+					/* @__PURE__ */ createVNode("p", {
 						className: BACKUP_PLATE_TEXT_CLASS,
 						children: backup.due ? `${backup.text} ${BACKUP_DUE_SUFFIX}` : backup.text
 					}),
 					exportButton
 				]
-			}) : /* @__PURE__ */ a("p", {
+			}) : /* @__PURE__ */ createVNode("p", {
 				className: HINT_CLASS$2,
 				children: backup.text
 			}),
-			/* @__PURE__ */ a("div", {
+			/* @__PURE__ */ createVNode("div", {
 				className: PANEL_UI_CLASS.settingsGroup,
-				children: [/* @__PURE__ */ a("div", {
+				children: [/* @__PURE__ */ createVNode("div", {
 					className: PANEL_UI_CLASS.settingsRow,
-					children: /* @__PURE__ */ a(Switch, {
+					children: /* @__PURE__ */ createVNode(Switch, {
 						id: INCLUDE_BACKGROUND_ID,
 						label: INCLUDE_BACKGROUND_LABEL,
 						checked: includeBackground,
 						onChange: setIncludeBackground
 					})
-				}), /* @__PURE__ */ a("div", {
+				}), /* @__PURE__ */ createVNode("div", {
 					className: PANEL_UI_CLASS.settingsRow,
-					children: [/* @__PURE__ */ a(Switch, {
+					children: [/* @__PURE__ */ createVNode(Switch, {
 						id: INCLUDE_FAVORITES_ID,
 						label: INCLUDE_FAVORITES_LABEL,
 						checked: includeFavorites,
 						onChange: setIncludeFavorites
-					}), /* @__PURE__ */ a("p", {
+					}), /* @__PURE__ */ createVNode("p", {
 						className: PANEL_UI_CLASS.settingsCaption,
 						children: FAVORITES_EXPORT_HINT
 					})]
 				})]
 			}),
-			/* @__PURE__ */ a("div", {
+			/* @__PURE__ */ createVNode("div", {
 				className: ACTIONS_CLASS$3,
 				children: [
 					warned ? null : exportButton,
-					/* @__PURE__ */ a(Button, {
+					/* @__PURE__ */ createVNode(Button, {
 						variant: "secondary",
 						onClick: () => {
 							fileRef.current?.click();
 						},
 						children: IMPORT_LABEL
 					}),
-					/* @__PURE__ */ a("input", {
+					/* @__PURE__ */ createVNode("input", {
 						ref: fileRef,
 						className: FILE_CLASS,
 						type: "file",
@@ -31936,29 +33996,29 @@ function DataSection(props = {}) {
 					})
 				]
 			}),
-			error.length > 0 ? /* @__PURE__ */ a("p", {
+			error.length > 0 ? /* @__PURE__ */ createVNode("p", {
 				className: "rdw-error",
 				children: error
 			}) : null,
-			summary.length > 0 ? /* @__PURE__ */ a("p", {
+			summary.length > 0 ? /* @__PURE__ */ createVNode("p", {
 				className: "rdw-hint",
 				children: summary
 			}) : null,
-			/* @__PURE__ */ a("p", {
+			/* @__PURE__ */ createVNode("p", {
 				className: HINT_CLASS$2,
 				children: STORAGE_HINT
 			}),
-			/* @__PURE__ */ a(Dialog, {
+			/* @__PURE__ */ createVNode(Dialog, {
 				open: pendingImport !== null,
 				title: IMPORT_TITLE,
 				onClose: () => {
 					setPendingImport(null);
 				},
-				children: /* @__PURE__ */ a("div", {
+				children: /* @__PURE__ */ createVNode("div", {
 					className: IMPORT_CHOICE_CLASS,
 					children: [
-						/* @__PURE__ */ a("p", { children: IMPORT_MESSAGE }),
-						/* @__PURE__ */ a(Button, {
+						/* @__PURE__ */ createVNode("p", { children: IMPORT_MESSAGE }),
+						/* @__PURE__ */ createVNode(Button, {
 							variant: "primary",
 							onClick: () => {
 								const text = pendingImport;
@@ -31967,7 +34027,7 @@ function DataSection(props = {}) {
 							},
 							children: IMPORT_MERGE_LABEL
 						}),
-						/* @__PURE__ */ a(Button, {
+						/* @__PURE__ */ createVNode(Button, {
 							variant: "danger-quiet",
 							onClick: () => {
 								setPendingReplace(pendingImport);
@@ -31975,7 +34035,7 @@ function DataSection(props = {}) {
 							},
 							children: IMPORT_REPLACE_LABEL
 						}),
-						/* @__PURE__ */ a(Button, {
+						/* @__PURE__ */ createVNode(Button, {
 							variant: "secondary",
 							onClick: () => {
 								setPendingImport(null);
@@ -31985,7 +34045,7 @@ function DataSection(props = {}) {
 					]
 				})
 			}),
-			/* @__PURE__ */ a(Dialog, {
+			/* @__PURE__ */ createVNode(Dialog, {
 				variant: "confirm",
 				open: pendingReplace !== null,
 				title: REPLACE_TITLE,
@@ -32154,9 +34214,9 @@ function presetLabel(name, mask) {
 * opens a field, where a click on a token adds it to the name.
 */
 function FileNameSetting(props) {
-	const [mask, setMask] = d(() => readFileMask());
-	const [custom, setCustom] = d(() => !MASK_PRESETS.includes(readFileMask()));
-	const [saved, setSaved] = d(false);
+	const [mask, setMask] = useState(() => readFileMask());
+	const [custom, setCustom] = useState(() => !MASK_PRESETS.includes(readFileMask()));
+	const [saved, setSaved] = useState(false);
 	const store = (value) => {
 		writeFileMask(value);
 		setMask(readFileMask());
@@ -32169,14 +34229,14 @@ function FileNameSetting(props) {
 		value: preset.mask,
 		label: presetLabel(preset.name, preset.mask)
 	}))];
-	return /* @__PURE__ */ a("form", {
+	return /* @__PURE__ */ createVNode("form", {
 		className: SECTION_CLASS$3,
 		onSubmit: (event) => {
 			event.preventDefault();
 			store(mask);
 		},
 		children: [
-			/* @__PURE__ */ a(Select, {
+			/* @__PURE__ */ createVNode(Select, {
 				label: MASK_FIELD_LABEL,
 				disabled: props.disabled,
 				options,
@@ -32191,8 +34251,8 @@ function FileNameSetting(props) {
 					store(value);
 				}
 			}),
-			custom ? /* @__PURE__ */ a($$1, { children: [
-				/* @__PURE__ */ a(TextField, {
+			custom ? /* @__PURE__ */ createVNode(Fragment, { children: [
+				/* @__PURE__ */ createVNode(TextField, {
 					id: MASK_FIELD_ID,
 					value: mask,
 					placeholder: DEFAULT_FILE_MASK,
@@ -32203,12 +34263,12 @@ function FileNameSetting(props) {
 						setSaved(false);
 					}
 				}),
-				/* @__PURE__ */ a("div", {
+				/* @__PURE__ */ createVNode("div", {
 					className: MASK_TOKENS_CLASS,
-					children: [/* @__PURE__ */ a("span", {
+					children: [/* @__PURE__ */ createVNode("span", {
 						className: HINT_CLASS$1,
 						children: MASK_TOKENS_LABEL
-					}), FILE_MASK_TOKENS.map((token) => /* @__PURE__ */ a("button", {
+					}), FILE_MASK_TOKENS.map((token) => /* @__PURE__ */ createVNode("button", {
 						type: "button",
 						className: `${MASK_TOKEN_CLASS} rdw-kit-focusable`,
 						"aria-pressed": maskHasToken(mask, token),
@@ -32220,9 +34280,9 @@ function FileNameSetting(props) {
 						children: token
 					}, token))]
 				}),
-				/* @__PURE__ */ a("div", {
+				/* @__PURE__ */ createVNode("div", {
 					className: ACTIONS_CLASS$2,
-					children: /* @__PURE__ */ a(Button, {
+					children: /* @__PURE__ */ createVNode(Button, {
 						type: "submit",
 						variant: "primary",
 						size: "s",
@@ -32230,17 +34290,17 @@ function FileNameSetting(props) {
 						children: UI_TEXT.save
 					})
 				}),
-				/* @__PURE__ */ a("p", {
+				/* @__PURE__ */ createVNode("p", {
 					className: HINT_CLASS$1,
 					children: MASK_HINT
 				})
 			] }) : null,
-			custom || saved ? /* @__PURE__ */ a("p", {
+			custom || saved ? /* @__PURE__ */ createVNode("p", {
 				className: HINT_CLASS$1,
 				role: "status",
 				children: [custom ? `${MASK_PREVIEW_PREFIX}${sample(mask)}` : "", saved ? MASK_SAVED : ""].filter((part) => part.length > 0).join(" ")
 			}) : null,
-			/* @__PURE__ */ a("p", {
+			/* @__PURE__ */ createVNode("p", {
 				className: HINT_CLASS$1,
 				children: FOLDER_HINT
 			})
@@ -32249,9 +34309,9 @@ function FileNameSetting(props) {
 }
 function DownloadsSection(props) {
 	const disabled = props.disabled === true;
-	const [stored, setStored] = d(() => hasApiCredentials());
-	const [draft, setDraft] = d("");
-	const [status, setStatus] = d("");
+	const [stored, setStored] = useState(() => hasApiCredentials());
+	const [draft, setDraft] = useState("");
+	const [status, setStatus] = useState("");
 	const save = () => {
 		const parsed = parseApiCredentials(draft);
 		if (parsed === null || !setApiCredentials(parsed.userId, parsed.apiKey)) {
@@ -32268,20 +34328,20 @@ function DownloadsSection(props) {
 		setStored(false);
 		setStatus(STATUS_REMOVED);
 	};
-	return /* @__PURE__ */ a("section", {
+	return /* @__PURE__ */ createVNode("section", {
 		className: `rdw-section ${SECTION_CLASS$3}`,
 		children: [
-			/* @__PURE__ */ a("style", { children: DOWNLOADS_SECTION_CSS }),
-			/* @__PURE__ */ a("form", {
+			/* @__PURE__ */ createVNode("style", { children: DOWNLOADS_SECTION_CSS }),
+			/* @__PURE__ */ createVNode("form", {
 				className: SECTION_CLASS$3,
 				onSubmit: (event) => {
 					event.preventDefault();
 					save();
 				},
-				children: [/* @__PURE__ */ a("div", {
+				children: [/* @__PURE__ */ createVNode("div", {
 					className: KEY_ROW_CLASS,
 					children: [
-						/* @__PURE__ */ a(TextField, {
+						/* @__PURE__ */ createVNode(TextField, {
 							id: API_FIELD_ID,
 							label: API_FIELD_LABEL,
 							type: "password",
@@ -32293,13 +34353,13 @@ function DownloadsSection(props) {
 								setStatus("");
 							}
 						}),
-						/* @__PURE__ */ a(Button, {
+						/* @__PURE__ */ createVNode(Button, {
 							type: "submit",
 							variant: "primary",
 							disabled: disabled || draft.trim().length === 0,
 							children: UI_TEXT.save
 						}),
-						stored ? /* @__PURE__ */ a(Button, {
+						stored ? /* @__PURE__ */ createVNode(Button, {
 							type: "button",
 							variant: "secondary",
 							disabled,
@@ -32307,11 +34367,11 @@ function DownloadsSection(props) {
 							children: REMOVE_LABEL
 						}) : null
 					]
-				}), /* @__PURE__ */ a("p", {
+				}), /* @__PURE__ */ createVNode("p", {
 					className: HINT_CLASS$1,
 					children: [
 						HINT_BEFORE,
-						/* @__PURE__ */ a("a", {
+						/* @__PURE__ */ createVNode("a", {
 							href: OPTIONS_URL,
 							target: "_blank",
 							rel: "noopener",
@@ -32321,12 +34381,12 @@ function DownloadsSection(props) {
 					]
 				})]
 			}),
-			status.length > 0 ? /* @__PURE__ */ a("p", {
+			status.length > 0 ? /* @__PURE__ */ createVNode("p", {
 				className: HINT_CLASS$1,
 				role: "status",
 				children: status
 			}) : null,
-			/* @__PURE__ */ a(FileNameSetting, { disabled })
+			/* @__PURE__ */ createVNode(FileNameSetting, { disabled })
 		]
 	});
 }
@@ -32380,7 +34440,7 @@ var UPLOAD_SETS_SECTION_CSS = `
 }
 `.trim();
 function UploadSetsSection() {
-	const [sets, setSets] = d(() => readTagSets());
+	const [sets, setSets] = useState(() => readTagSets());
 	const keep = (next) => {
 		writeTagSets(next);
 		setSets(next);
@@ -32391,18 +34451,18 @@ function UploadSetsSection() {
 			...patch
 		} : set));
 	};
-	return /* @__PURE__ */ a("section", {
+	return /* @__PURE__ */ createVNode("section", {
 		className: `rdw-section ${SECTION_CLASS$2}`,
 		children: [
-			/* @__PURE__ */ a("style", { children: UPLOAD_SETS_SECTION_CSS }),
-			sets.length === 0 ? /* @__PURE__ */ a("p", {
+			/* @__PURE__ */ createVNode("style", { children: UPLOAD_SETS_SECTION_CSS }),
+			sets.length === 0 ? /* @__PURE__ */ createVNode("p", {
 				className: HINT_CLASS,
 				children: EMPTY_HINT
 			}) : null,
-			sets.map((set, index) => /* @__PURE__ */ a("div", {
+			sets.map((set, index) => /* @__PURE__ */ createVNode("div", {
 				className: ROW_CLASS,
 				children: [
-					/* @__PURE__ */ a(TextField, {
+					/* @__PURE__ */ createVNode(TextField, {
 						className: NAME_CLASS,
 						...index === 0 ? { label: NAME_LABEL } : { "aria-label": NAME_LABEL },
 						value: set.name,
@@ -32412,7 +34472,7 @@ function UploadSetsSection() {
 							change(index, { name });
 						}
 					}),
-					/* @__PURE__ */ a(QueryField, {
+					/* @__PURE__ */ createVNode(QueryField, {
 						className: TAGS_CLASS,
 						...index === 0 ? { label: TAGS_LABEL } : { "aria-label": TAGS_LABEL },
 						value: set.tags,
@@ -32421,18 +34481,18 @@ function UploadSetsSection() {
 							change(index, { tags: tags.slice(0, TAG_SET_TAGS_MAX) });
 						}
 					}),
-					/* @__PURE__ */ a(IconButton, {
+					/* @__PURE__ */ createVNode(IconButton, {
 						label: set.name.trim().length > 0 ? `${REMOVE_PREFIX}${set.name.trim()}` : REMOVE_UNNAMED,
 						onClick: () => {
 							keep(sets.filter((_set, at) => at !== index));
 						},
-						children: /* @__PURE__ */ a(IconX, { size: ICON_PX })
+						children: /* @__PURE__ */ createVNode(IconX, { size: ICON_PX })
 					})
 				]
 			}, index)),
-			/* @__PURE__ */ a("div", {
+			/* @__PURE__ */ createVNode("div", {
 				className: ACTIONS_CLASS$1,
-				children: /* @__PURE__ */ a(Button, {
+				children: /* @__PURE__ */ createVNode(Button, {
 					variant: "secondary",
 					onClick: () => {
 						keep([...sets, {
@@ -32440,10 +34500,10 @@ function UploadSetsSection() {
 							tags: ""
 						}]);
 					},
-					children: [/* @__PURE__ */ a(IconPlus, { size: ICON_PX }), ADD_LABEL]
+					children: [/* @__PURE__ */ createVNode(IconPlus, { size: ICON_PX }), ADD_LABEL]
 				})
 			}),
-			/* @__PURE__ */ a("p", {
+			/* @__PURE__ */ createVNode("p", {
 				className: HINT_CLASS,
 				children: HINT
 			})
@@ -32626,8 +34686,8 @@ async function startSync(setUi, mode) {
 }
 function FavoritesSyncSection(props = {}) {
 	const includeHeading = props.includeHeading !== false;
-	const [ui, setUi] = d(() => idleUi());
-	A(() => {
+	const [ui, setUi] = useState(() => idleUi());
+	useEffect(() => {
 		if (activeSync === null) return;
 		const listener = (progress) => {
 			setUi(progressUi(progress));
@@ -32645,40 +34705,40 @@ function FavoritesSyncSection(props = {}) {
 			activeSync?.listeners.delete(listener);
 		};
 	}, []);
-	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("style", { children: FAVORITES_SYNC_SECTION_CSS }), /* @__PURE__ */ a("section", {
+	return /* @__PURE__ */ createVNode(Fragment, { children: [/* @__PURE__ */ createVNode("style", { children: FAVORITES_SYNC_SECTION_CSS }), /* @__PURE__ */ createVNode("section", {
 		className: `rdw-section ${SECTION_CLASS$1}`,
 		children: [
-			includeHeading ? /* @__PURE__ */ a(SectionLabel, { children: HEADING }) : null,
-			/* @__PURE__ */ a("p", {
+			includeHeading ? /* @__PURE__ */ createVNode(SectionLabel, { children: HEADING }) : null,
+			/* @__PURE__ */ createVNode("p", {
 				className: STATUS_CLASS,
 				children: ui.status
 			}),
-			ui.busy ? /* @__PURE__ */ a(ProgressBar, {
+			ui.busy ? /* @__PURE__ */ createVNode(ProgressBar, {
 				value: ui.progress,
 				waiting: ui.waiting,
 				label: PROGRESS_LABEL
 			}) : null,
-			/* @__PURE__ */ a("div", {
+			/* @__PURE__ */ createVNode("div", {
 				className: ACTIONS_CLASS,
-				children: ui.busy ? /* @__PURE__ */ a(Button, {
+				children: ui.busy ? /* @__PURE__ */ createVNode(Button, {
 					variant: "secondary",
 					onClick: () => {
 						activeSync?.controller.abort();
 					},
 					children: TEXT_STOP
-				}) : ui.unfinished ? /* @__PURE__ */ a(Button, {
+				}) : ui.unfinished ? /* @__PURE__ */ createVNode(Button, {
 					variant: "primary",
 					onClick: () => {
 						startSync(setUi);
 					},
 					children: TEXT_RESUME
-				}) : /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a(Button, {
+				}) : /* @__PURE__ */ createVNode(Fragment, { children: [/* @__PURE__ */ createVNode(Button, {
 					variant: "primary",
 					onClick: () => {
 						startSync(setUi, FAVORITES_SYNC_MODE_INCREMENTAL);
 					},
 					children: TEXT_SYNC
-				}), /* @__PURE__ */ a(Button, {
+				}), /* @__PURE__ */ createVNode(Button, {
 					variant: "secondary",
 					onClick: () => {
 						startSync(setUi, FAVORITES_SYNC_MODE_FULL);
@@ -32686,11 +34746,11 @@ function FavoritesSyncSection(props = {}) {
 					children: TEXT_FULL
 				})] })
 			}),
-			ui.error.length > 0 ? /* @__PURE__ */ a("p", {
+			ui.error.length > 0 ? /* @__PURE__ */ createVNode("p", {
 				className: "rdw-error",
 				children: ui.error
 			}) : null,
-			/* @__PURE__ */ a("p", {
+			/* @__PURE__ */ createVNode("p", {
 				className: NOTE_CLASS,
 				children: buildNoteText()
 			})
@@ -33034,13 +35094,13 @@ function highlightMatches(content, query) {
 }
 /** One section: its name and what is under it. */
 function SettingsSection(props) {
-	return /* @__PURE__ */ a("section", {
+	return /* @__PURE__ */ createVNode("section", {
 		id: `${SECTION_ID_PREFIX}${props.id}`,
 		className: SECTION_CLASS,
 		"aria-labelledby": `${SECTION_ID_PREFIX}${props.id}-title`,
 		[SECTION_ID_ATTR]: props.id,
 		...props.rows === true ? { [SECTION_ROWS_ATTR]: "" } : {},
-		children: [/* @__PURE__ */ a("h2", {
+		children: [/* @__PURE__ */ createVNode("h2", {
 			id: `${SECTION_ID_PREFIX}${props.id}-title`,
 			className: SECTION_TITLE_CLASS,
 			children: props.title
@@ -33049,16 +35109,16 @@ function SettingsSection(props) {
 }
 /** The switches of the features of one group, each with its list of options. */
 function FeatureRows(props) {
-	const [, bump] = d(0);
+	const [, bump] = useState(0);
 	const refresh = () => {
 		bump((value) => value + 1);
 	};
-	return /* @__PURE__ */ a($$1, { children: props.features.map((feature) => {
+	return /* @__PURE__ */ createVNode(Fragment, { children: props.features.map((feature) => {
 		const label = featurePanelLabel(feature.id, feature.label);
 		const choice = feature.choice;
-		return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("div", {
+		return /* @__PURE__ */ createVNode(Fragment, { children: [/* @__PURE__ */ createVNode("div", {
 			className: PANEL_UI_CLASS.settingsRow,
-			children: [/* @__PURE__ */ a(Switch, {
+			children: [/* @__PURE__ */ createVNode(Switch, {
 				id: `${FEATURE_CHECKBOX_ID_PREFIX}${feature.id}`,
 				label,
 				checked: isFeatureEnabled(feature.id),
@@ -33073,14 +35133,14 @@ function FeatureRows(props) {
 					}
 					window.location.reload();
 				}
-			}), feature.settingsCaption !== void 0 && choice === void 0 ? /* @__PURE__ */ a("p", {
+			}), feature.settingsCaption !== void 0 && choice === void 0 ? /* @__PURE__ */ createVNode("p", {
 				className: PANEL_UI_CLASS.settingsCaption,
 				children: feature.settingsCaption
 			}) : null]
-		}), choice !== void 0 ? /* @__PURE__ */ a("div", {
+		}), choice !== void 0 ? /* @__PURE__ */ createVNode("div", {
 			className: `${PANEL_UI_CLASS.settingsRow} ${PANEL_UI_CLASS.settingsRowSub}`,
 			id: `${FEATURE_CHOICE_ID_PREFIX}${feature.id}`,
-			children: [/* @__PURE__ */ a(Select, {
+			children: [/* @__PURE__ */ createVNode(Select, {
 				label: choice.label ?? label,
 				disabled: props.disabled || !isFeatureEnabled(feature.id),
 				options: choice.options.map((option) => ({
@@ -33097,7 +35157,7 @@ function FeatureRows(props) {
 					}
 					window.location.reload();
 				}
-			}), feature.settingsCaption !== void 0 ? /* @__PURE__ */ a("p", {
+			}), feature.settingsCaption !== void 0 ? /* @__PURE__ */ createVNode("p", {
 				className: PANEL_UI_CLASS.settingsCaption,
 				children: feature.settingsCaption
 			}) : null]
@@ -33105,21 +35165,21 @@ function FeatureRows(props) {
 	}) });
 }
 function SettingsPage() {
-	const [tweaks, setTweaks] = d(() => getTweaksEnabled());
-	const [updatesGroup, setUpdatesGroup] = d(() => getUpdatesGroupSize());
-	const [playlistChunk, setPlaylistChunk] = d(() => getPlaylistChunkSize());
-	const [gridFavEnabled, setGridFavEnabled] = d(() => getGridFavButtonsEnabled());
-	const [statsMenu, setStatsMenu] = d(() => getFeatureEnabled(STATS_MENU_SETTING_ID, true));
-	const [aiEverywhere, setAiEverywhere] = d(() => aiHiddenEverywhere());
-	const [tagKindLookup, setTagKindLookup] = d(() => getFeatureEnabled(TAG_KIND_LOOKUP_SETTING_ID, true));
-	const [stickyHeader, setStickyHeader] = d(() => getFeatureEnabled(STICKY_HEADER_SETTING_ID, true));
-	const rootRef = T(null);
-	const contentRef = T(null);
-	const [query, setQuery] = d("");
-	const [noMatch, setNoMatch] = d(false);
-	const [active, setActive] = d(SECTION_APPEARANCE);
-	const [asked] = d(() => takeSettingsSection());
-	A(() => {
+	const [tweaks, setTweaks] = useState(() => getTweaksEnabled());
+	const [updatesGroup, setUpdatesGroup] = useState(() => getUpdatesGroupSize());
+	const [playlistChunk, setPlaylistChunk] = useState(() => getPlaylistChunkSize());
+	const [gridFavEnabled, setGridFavEnabled] = useState(() => getGridFavButtonsEnabled());
+	const [statsMenu, setStatsMenu] = useState(() => getFeatureEnabled(STATS_MENU_SETTING_ID, true));
+	const [aiEverywhere, setAiEverywhere] = useState(() => aiHiddenEverywhere());
+	const [tagKindLookup, setTagKindLookup] = useState(() => getFeatureEnabled(TAG_KIND_LOOKUP_SETTING_ID, true));
+	const [stickyHeader, setStickyHeader] = useState(() => getFeatureEnabled(STICKY_HEADER_SETTING_ID, true));
+	const rootRef = useRef(null);
+	const contentRef = useRef(null);
+	const [query, setQuery] = useState("");
+	const [noMatch, setNoMatch] = useState(false);
+	const [active, setActive] = useState(SECTION_APPEARANCE);
+	const [asked] = useState(() => takeSettingsSection());
+	useEffect(() => {
 		const scrollTo = (id) => {
 			if (id === null) return;
 			const target = rootRef.current?.querySelector(`[${SECTION_ID_ATTR}="${CSS.escape(id)}"]`);
@@ -33137,7 +35197,7 @@ function SettingsPage() {
 			window.removeEventListener(EVENT_HASHCHANGE, onHash);
 		};
 	}, [asked]);
-	A(() => {
+	useEffect(() => {
 		const mark = () => {
 			const sections = [...contentRef.current?.querySelectorAll(`[${SECTION_ID_ATTR}]:not([${HIDDEN_ATTR}])`) ?? []];
 			let current = sections[0];
@@ -33152,16 +35212,16 @@ function SettingsPage() {
 			window.removeEventListener(EVENT_SCROLL, mark);
 		};
 	}, []);
-	F(() => {
+	useLayoutEffect(() => {
 		const content = contentRef.current;
 		if (content === null) return;
 		setNoMatch(filterSettings(content, query) === 0);
 		highlightMatches(content, query);
 	});
 	const extraRows = {
-		[SETTINGS_GROUP.header]: /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("div", {
+		[SETTINGS_GROUP.header]: /* @__PURE__ */ createVNode(Fragment, { children: [/* @__PURE__ */ createVNode("div", {
 			className: PANEL_UI_CLASS.settingsRow,
-			children: /* @__PURE__ */ a(Switch, {
+			children: /* @__PURE__ */ createVNode(Switch, {
 				id: STATS_MENU_SWITCH_ID,
 				label: STATS_MENU_SETTING_LABEL,
 				checked: statsMenu,
@@ -33171,9 +35231,9 @@ function SettingsPage() {
 					installSiteMenu();
 				}
 			})
-		}), /* @__PURE__ */ a("div", {
+		}), /* @__PURE__ */ createVNode("div", {
 			className: PANEL_UI_CLASS.settingsRow,
-			children: /* @__PURE__ */ a(Switch, {
+			children: /* @__PURE__ */ createVNode(Switch, {
 				id: STICKY_HEADER_SWITCH_ID,
 				label: STICKY_HEADER_SETTING_LABEL,
 				checked: stickyHeader,
@@ -33184,9 +35244,9 @@ function SettingsPage() {
 				}
 			})
 		})] }),
-		[SETTINGS_GROUP.feed]: /* @__PURE__ */ a("div", {
+		[SETTINGS_GROUP.feed]: /* @__PURE__ */ createVNode("div", {
 			className: PANEL_UI_CLASS.settingsRow,
-			children: [/* @__PURE__ */ a(NumberField, {
+			children: [/* @__PURE__ */ createVNode(NumberField, {
 				id: UPDATES_GROUP_SIZE_ID,
 				label: UPDATES_GROUP_SIZE_LABEL,
 				value: updatesGroup,
@@ -33196,14 +35256,14 @@ function SettingsPage() {
 					setUpdatesGroupSize(value ?? 0);
 					setUpdatesGroup(getUpdatesGroupSize());
 				}
-			}), /* @__PURE__ */ a("p", {
+			}), /* @__PURE__ */ createVNode("p", {
 				className: PANEL_UI_CLASS.settingsCaption,
 				children: UPDATES_GROUP_SIZE_HINT
 			})]
 		}),
-		[SETTINGS_GROUP.ai]: /* @__PURE__ */ a("div", {
+		[SETTINGS_GROUP.ai]: /* @__PURE__ */ createVNode("div", {
 			className: PANEL_UI_CLASS.settingsRow,
-			children: [/* @__PURE__ */ a(Switch, {
+			children: [/* @__PURE__ */ createVNode(Switch, {
 				id: AI_EVERYWHERE_SWITCH_ID,
 				label: AI_EVERYWHERE_LABEL,
 				checked: aiEverywhere,
@@ -33211,14 +35271,14 @@ function SettingsPage() {
 					setAiHiddenEverywhere(checked);
 					setAiEverywhere(checked);
 				}
-			}), /* @__PURE__ */ a("p", {
+			}), /* @__PURE__ */ createVNode("p", {
 				className: PANEL_UI_CLASS.settingsCaption,
 				children: AI_EVERYWHERE_CAPTION
 			})]
 		}),
-		[SETTINGS_GROUP.search]: /* @__PURE__ */ a("div", {
+		[SETTINGS_GROUP.search]: /* @__PURE__ */ createVNode("div", {
 			className: PANEL_UI_CLASS.settingsRow,
-			children: [/* @__PURE__ */ a(Switch, {
+			children: [/* @__PURE__ */ createVNode(Switch, {
 				id: TAG_KIND_LOOKUP_SWITCH_ID,
 				label: TAG_KIND_LOOKUP_LABEL,
 				checked: tagKindLookup,
@@ -33226,14 +35286,14 @@ function SettingsPage() {
 					setFeatureEnabled(TAG_KIND_LOOKUP_SETTING_ID, checked);
 					setTagKindLookup(checked);
 				}
-			}), /* @__PURE__ */ a("p", {
+			}), /* @__PURE__ */ createVNode("p", {
 				className: PANEL_UI_CLASS.settingsCaption,
 				children: TAG_KIND_LOOKUP_CAPTION
 			})]
 		}),
-		[SETTINGS_GROUP.collections]: /* @__PURE__ */ a("div", {
+		[SETTINGS_GROUP.collections]: /* @__PURE__ */ createVNode("div", {
 			className: PANEL_UI_CLASS.settingsRow,
-			children: [/* @__PURE__ */ a(NumberField, {
+			children: [/* @__PURE__ */ createVNode(NumberField, {
 				id: PLAYLIST_CHUNK_SIZE_ID,
 				label: UI_TEXT.playlistChunkSizeLabel,
 				value: playlistChunk,
@@ -33243,7 +35303,7 @@ function SettingsPage() {
 					setPlaylistChunkSize(value ?? 0);
 					setPlaylistChunk(getPlaylistChunkSize());
 				}
-			}), /* @__PURE__ */ a("p", {
+			}), /* @__PURE__ */ createVNode("p", {
 				className: PANEL_UI_CLASS.settingsCaption,
 				children: PART_SIZE_CAPTION
 			})]
@@ -33255,27 +35315,27 @@ function SettingsPage() {
 	const isEmptyGroup = (id) => SETTINGS_GROUPS.some((group) => group.id === id && featuresOf(group.id).length === 0 && extraRows[group.id] === void 0);
 	const sections = SECTIONS.filter((entry) => !isEmptyGroup(entry.id));
 	const body = (id) => {
-		if (id === SECTION_APPEARANCE) return /* @__PURE__ */ a(Card, {
+		if (id === SECTION_APPEARANCE) return /* @__PURE__ */ createVNode(Card, {
 			className: PANEL_UI_CLASS.pageCard,
 			children: [
-				/* @__PURE__ */ a(AppearanceSection, { includeHeading: false }),
-				/* @__PURE__ */ a("style", { children: APPEARANCE_FLAT_ROWS_CSS }),
-				/* @__PURE__ */ a("div", {
+				/* @__PURE__ */ createVNode(AppearanceSection, { includeHeading: false }),
+				/* @__PURE__ */ createVNode("style", { children: APPEARANCE_FLAT_ROWS_CSS }),
+				/* @__PURE__ */ createVNode("div", {
 					className: PANEL_UI_CLASS.settingsGroup,
-					children: /* @__PURE__ */ a(FeatureRows, {
+					children: /* @__PURE__ */ createVNode(FeatureRows, {
 						features: featuresOf(SETTINGS_GROUP.appearance),
 						disabled: !tweaks
 					})
 				})
 			]
 		});
-		if (id === SECTION_FAVORITES) return /* @__PURE__ */ a(Card, {
+		if (id === SECTION_FAVORITES) return /* @__PURE__ */ createVNode(Card, {
 			className: PANEL_UI_CLASS.pageCard,
-			children: [/* @__PURE__ */ a("div", {
+			children: [/* @__PURE__ */ createVNode("div", {
 				className: PANEL_UI_CLASS.settingsGroup,
-				children: [/* @__PURE__ */ a("div", {
+				children: [/* @__PURE__ */ createVNode("div", {
 					className: PANEL_UI_CLASS.settingsRow,
-					children: /* @__PURE__ */ a(Switch, {
+					children: /* @__PURE__ */ createVNode(Switch, {
 						id: GRID_FAV_CHECKBOX_ID,
 						label: UI_TEXT.gridFavButtonsLabel,
 						checked: gridFavEnabled,
@@ -33285,85 +35345,85 @@ function SettingsPage() {
 							setGridFavEnabled(checked);
 						}
 					})
-				}), /* @__PURE__ */ a(FeatureRows, {
+				}), /* @__PURE__ */ createVNode(FeatureRows, {
 					features: featuresOf(SETTINGS_GROUP.favorites),
 					disabled: !tweaks
 				})]
-			}), /* @__PURE__ */ a("div", {
+			}), /* @__PURE__ */ createVNode("div", {
 				className: BLOCK_CLASS,
-				children: [/* @__PURE__ */ a("p", {
+				children: [/* @__PURE__ */ createVNode("p", {
 					className: BLOCK_TITLE_CLASS,
 					children: LOCAL_INDEX_TITLE
-				}), /* @__PURE__ */ a(FavoritesSyncSection, { includeHeading: false })]
+				}), /* @__PURE__ */ createVNode(FavoritesSyncSection, { includeHeading: false })]
 			})]
 		});
-		if (id === SECTION_DOWNLOADS) return /* @__PURE__ */ a(Card, {
+		if (id === SECTION_DOWNLOADS) return /* @__PURE__ */ createVNode(Card, {
 			className: PANEL_UI_CLASS.pageCard,
-			children: [/* @__PURE__ */ a("div", {
+			children: [/* @__PURE__ */ createVNode("div", {
 				className: PANEL_UI_CLASS.settingsGroup,
-				children: /* @__PURE__ */ a(FeatureRows, {
+				children: /* @__PURE__ */ createVNode(FeatureRows, {
 					features: featuresOf(SETTINGS_GROUP.downloads),
 					disabled: !tweaks
 				})
-			}), /* @__PURE__ */ a(DownloadsSection, { disabled: !tweaks || !isFeatureEnabled("downloads") })]
+			}), /* @__PURE__ */ createVNode(DownloadsSection, { disabled: !tweaks || !isFeatureEnabled("downloads") })]
 		});
-		if (id === SECTION_UPLOAD) return /* @__PURE__ */ a(Card, {
+		if (id === SECTION_UPLOAD) return /* @__PURE__ */ createVNode(Card, {
 			className: PANEL_UI_CLASS.pageCard,
-			children: /* @__PURE__ */ a(UploadSetsSection, {})
+			children: /* @__PURE__ */ createVNode(UploadSetsSection, {})
 		});
-		if (id === SECTION_BLACKLIST) return /* @__PURE__ */ a(Card, {
+		if (id === SECTION_BLACKLIST) return /* @__PURE__ */ createVNode(Card, {
 			className: PANEL_UI_CLASS.pageCard,
-			children: /* @__PURE__ */ a(BlacklistSection, { includeHeading: false })
+			children: /* @__PURE__ */ createVNode(BlacklistSection, { includeHeading: false })
 		});
-		if (id === SECTION_DATA) return /* @__PURE__ */ a(Card, {
+		if (id === SECTION_DATA) return /* @__PURE__ */ createVNode(Card, {
 			className: PANEL_UI_CLASS.pageCard,
-			children: /* @__PURE__ */ a(DataSection, { includeHeading: false })
+			children: /* @__PURE__ */ createVNode(DataSection, { includeHeading: false })
 		});
 		const group = SETTINGS_GROUPS.find((entry) => entry.id === id);
 		if (group === void 0) return null;
-		return /* @__PURE__ */ a(Card, {
+		return /* @__PURE__ */ createVNode(Card, {
 			className: rowsCard,
-			children: [/* @__PURE__ */ a(FeatureRows, {
+			children: [/* @__PURE__ */ createVNode(FeatureRows, {
 				features: featuresOf(group.id),
 				disabled: !tweaks
 			}), extraRows[group.id]]
 		});
 	};
-	const navItem = (entry) => /* @__PURE__ */ a("li", { children: /* @__PURE__ */ a("a", {
+	const navItem = (entry) => /* @__PURE__ */ createVNode("li", { children: /* @__PURE__ */ createVNode("a", {
 		className: `${NAV_LINK_CLASS} rdw-kit-focusable`,
 		href: settingsSectionHash(entry.id),
 		...active === entry.id ? { "aria-current": "true" } : {},
 		children: entry.title
 	}) }, entry.id);
-	return /* @__PURE__ */ a("div", {
+	return /* @__PURE__ */ createVNode("div", {
 		className: LAYOUT_CLASS,
 		ref: rootRef,
 		children: [
-			/* @__PURE__ */ a("style", { children: SETTINGS_SECTION_CSS }),
-			/* @__PURE__ */ a("nav", {
+			/* @__PURE__ */ createVNode("style", { children: SETTINGS_SECTION_CSS }),
+			/* @__PURE__ */ createVNode("nav", {
 				className: NAV_CLASS,
 				"aria-label": NAV_LABEL,
 				children: [
-					/* @__PURE__ */ a("p", {
+					/* @__PURE__ */ createVNode("p", {
 						className: NAV_TITLE_CLASS,
 						children: PRODUCT_NAME
 					}),
-					/* @__PURE__ */ a("p", {
+					/* @__PURE__ */ createVNode("p", {
 						className: NAV_SUB_CLASS,
 						children: settingsSubtitle()
 					}),
-					/* @__PURE__ */ a(SearchField, {
+					/* @__PURE__ */ createVNode(SearchField, {
 						className: NAV_SEARCH_CLASS,
 						value: query,
 						placeholder: SEARCH_LABEL,
 						"aria-label": SEARCH_LABEL,
 						onChange: setQuery
 					}),
-					/* @__PURE__ */ a("ul", {
+					/* @__PURE__ */ createVNode("ul", {
 						className: NAV_LIST_CLASS,
 						children: [
 							sections.filter((entry) => !entry.service).map(navItem),
-							/* @__PURE__ */ a("li", {
+							/* @__PURE__ */ createVNode("li", {
 								className: NAV_RULE_CLASS,
 								role: "separator"
 							}),
@@ -33372,15 +35432,15 @@ function SettingsPage() {
 					})
 				]
 			}),
-			/* @__PURE__ */ a("div", {
+			/* @__PURE__ */ createVNode("div", {
 				className: `${CONTENT_CLASS} ${PANEL_UI_CLASS.scrollRegion}`,
 				ref: contentRef,
 				children: [
-					query.trim().length === 0 ? /* @__PURE__ */ a(Card, {
+					query.trim().length === 0 ? /* @__PURE__ */ createVNode(Card, {
 						className: `${rowsCard} ${MASTER_CARD_CLASS}`,
-						children: /* @__PURE__ */ a("div", {
+						children: /* @__PURE__ */ createVNode("div", {
 							className: `${PANEL_UI_CLASS.settingsRow} ${MASTER_ROW_CLASS}`,
-							children: [/* @__PURE__ */ a(Switch, {
+							children: [/* @__PURE__ */ createVNode(Switch, {
 								id: TWEAKS_SWITCH_ID,
 								label: UI_TEXT.enablePageTweaksLabel,
 								checked: tweaks,
@@ -33389,21 +35449,21 @@ function SettingsPage() {
 									setTweaks(checked);
 									window.location.reload();
 								}
-							}), /* @__PURE__ */ a("p", {
+							}), /* @__PURE__ */ createVNode("p", {
 								className: PANEL_UI_CLASS.settingsCaption,
 								children: TWEAKS_CAPTION
 							})]
 						})
 					}) : null,
-					sections.map((entry) => /* @__PURE__ */ a(SettingsSection, {
+					sections.map((entry) => /* @__PURE__ */ createVNode(SettingsSection, {
 						id: entry.id,
 						title: entry.title,
 						rows: groupIds.has(entry.id),
 						children: body(entry.id)
 					}, entry.id)),
-					noMatch ? /* @__PURE__ */ a(EmptyState, {
+					noMatch ? /* @__PURE__ */ createVNode(EmptyState, {
 						title: noSettingsMatch(query),
-						action: /* @__PURE__ */ a(Button, {
+						action: /* @__PURE__ */ createVNode(Button, {
 							variant: "secondary",
 							onClick: () => {
 								setQuery("");
@@ -33416,7 +35476,7 @@ function SettingsPage() {
 		]
 	});
 }})}}));
-System.register("./collections-page-Cn1QQrRF-vie4Hlu9.js", ['./___monkey.entry.js','./app-BAhFOWQS-Bb4GaPqX.js','./filter-terms-BiuAY8Ot-DM43JHtI.js'],(function(exports){'use strict';var reloadFromStorage,load,listCollectionGroups,UI_TEXT,setFeatureState,deleteCollection,deleteCollectionGroup,renameCollectionGroup,setCollectionGroup,createCollectionGroup,resolveCollectionKind,STICKY_TOP,RDW_THEME_ATTR,APPEARANCE_THEME_CUSTOM,isUnfilteredQuery,dynamicHasNew,createDynamicCollection,createPlaylist,buildSearchUrl,setDynamicCover,setDynamicPostCount,setDynamicNewest,COLLECTION_KIND_POSTS,collectionDetailHash,readCoverMirror,COLLECTION_KIND_SEARCH,extractPostIdFromThumb,readCountMirror,dynamicCollectionMarkHash,serialize,getFeatureState,d,T,A,b,useEscape,a,SelectionBar,Button,Segmented,SearchField,Select,AiPostsToggle,AI_SCOPE_COLLECTIONS,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,$$1,IconPlus,EmptyState,IconButton,IconX,Dialog,PAGE_CENTRE_PADDING,TextField,QueryField,alignSiteAiFilter,fetchNextPage,readFirstThumbUrls,readResultCount,IconCheck,COLLECTIONS_VIEW_STATE_ID,readViewMode,inGroupTab,MoveToGroupMenu,GroupTabs,countGroups,GroupDialogs,matchesAnyTerm,filterTerms,COLLECTION_TERM_SEPARATOR;return{setters:[function(module){reloadFromStorage=module.bv;load=module.j;listCollectionGroups=module.dm;UI_TEXT=module.bo;setFeatureState=module.k;deleteCollection=module.bK;deleteCollectionGroup=module.dn;renameCollectionGroup=module.dp;setCollectionGroup=module.dq;createCollectionGroup=module.dr;resolveCollectionKind=module.ds;STICKY_TOP=module.aS;RDW_THEME_ATTR=module.R;APPEARANCE_THEME_CUSTOM=module.cS;isUnfilteredQuery=module.bx;dynamicHasNew=module.dt;createDynamicCollection=module.bp;createPlaylist=module.cb;buildSearchUrl=module.bR;setDynamicCover=module.bz;setDynamicPostCount=module.bA;setDynamicNewest=module.bB;COLLECTION_KIND_POSTS=module.cq;collectionDetailHash=module.cn;readCoverMirror=module.du;COLLECTION_KIND_SEARCH=module.aa;extractPostIdFromThumb=module.af;readCountMirror=module.dv;dynamicCollectionMarkHash=module.bJ;serialize=module.ab;getFeatureState=module.t;},function(module){d=module.d;T=module.T;A=module.A;b=module.L;useEscape=module.an;a=module.c;SelectionBar=module.ao;Button=module.B;Segmented=module.r;SearchField=module.e;Select=module.q;AiPostsToggle=module.ap;AI_SCOPE_COLLECTIONS=module.aq;VIEW_OPTIONS=module.ar;VIEW_LABEL=module.as;isViewMode=module.at;writeViewMode=module.au;$$1=module.$;IconPlus=module.G;EmptyState=module.E;IconButton=module.I;IconX=module.z;Dialog=module.D;PAGE_CENTRE_PADDING=module.av;TextField=module.t;QueryField=module.Q;alignSiteAiFilter=module.aw;fetchNextPage=module.ax;readFirstThumbUrls=module.ay;readResultCount=module.az;IconCheck=module.aA;COLLECTIONS_VIEW_STATE_ID=module.aB;readViewMode=module.aC;},function(module){inGroupTab=module.i;MoveToGroupMenu=module.M;GroupTabs=module.G;countGroups=module.c;GroupDialogs=module.a;matchesAnyTerm=module.m;filterTerms=module.f;COLLECTION_TERM_SEPARATOR=module.C;}],execute:(function(){exports("CollectionsPage",CollectionsPage);/**
+System.register("./collections-page-DGwrxWjM-CVgcb39r.js", ['./___monkey.entry.js','./app-CKeztBau-BuKlS5Dy.js','./filter-terms-BWre_1_y-Bbz1ZpzH.js'],(function(exports){'use strict';var reloadFromStorage,load,listCollectionGroups,UI_TEXT,setFeatureState,deleteCollection,deleteCollectionGroup,renameCollectionGroup,setCollectionGroup,createCollectionGroup,resolveCollectionKind,STICKY_TOP,RDW_THEME_ATTR,APPEARANCE_THEME_CUSTOM,isUnfilteredQuery,dynamicHasNew,createDynamicCollection,createPlaylist,buildSearchUrl,setDynamicCover,setDynamicPostCount,setDynamicNewest,COLLECTION_KIND_POSTS,collectionDetailHash,readCoverMirror,COLLECTION_KIND_SEARCH,extractPostIdFromThumb,readCountMirror,dynamicCollectionMarkHash,serialize,getFeatureState,useState,useRef,useEffect,useCallback,useEscape,createVNode,SelectionBar,Button,Segmented,SearchField,Select,AiPostsToggle,AI_SCOPE_COLLECTIONS,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,Fragment,IconPlus,EmptyState,IconButton,IconX,Dialog,PAGE_CENTRE_PADDING,TextField,QueryField,alignSiteAiFilter,fetchNextPage,readFirstThumbUrls,readResultCount,IconCheck,COLLECTIONS_VIEW_STATE_ID,readViewMode,inGroupTab,MoveToGroupMenu,GroupTabs,countGroups,GroupDialogs,matchesAnyTerm,filterTerms,COLLECTION_TERM_SEPARATOR;return{setters:[function(module){reloadFromStorage=module.bv;load=module.j;listCollectionGroups=module.dm;UI_TEXT=module.bo;setFeatureState=module.k;deleteCollection=module.bK;deleteCollectionGroup=module.dn;renameCollectionGroup=module.dp;setCollectionGroup=module.dq;createCollectionGroup=module.dr;resolveCollectionKind=module.ds;STICKY_TOP=module.aS;RDW_THEME_ATTR=module.R;APPEARANCE_THEME_CUSTOM=module.cS;isUnfilteredQuery=module.bx;dynamicHasNew=module.dt;createDynamicCollection=module.bp;createPlaylist=module.cb;buildSearchUrl=module.bR;setDynamicCover=module.bz;setDynamicPostCount=module.bA;setDynamicNewest=module.bB;COLLECTION_KIND_POSTS=module.cq;collectionDetailHash=module.cn;readCoverMirror=module.du;COLLECTION_KIND_SEARCH=module.aa;extractPostIdFromThumb=module.af;readCountMirror=module.dv;dynamicCollectionMarkHash=module.bJ;serialize=module.ab;getFeatureState=module.t;},function(module){useState=module.u;useRef=module.a;useEffect=module.b;useCallback=module.M;useEscape=module.an;createVNode=module.f;SelectionBar=module.ao;Button=module.B;Segmented=module.w;SearchField=module.g;Select=module.v;AiPostsToggle=module.ap;AI_SCOPE_COLLECTIONS=module.aq;VIEW_OPTIONS=module.ar;VIEW_LABEL=module.as;isViewMode=module.at;writeViewMode=module.au;Fragment=module.p;IconPlus=module.H;EmptyState=module.E;IconButton=module.I;IconX=module.G;Dialog=module.D;PAGE_CENTRE_PADDING=module.av;TextField=module.T;QueryField=module.Q;alignSiteAiFilter=module.aw;fetchNextPage=module.ax;readFirstThumbUrls=module.ay;readResultCount=module.az;IconCheck=module.aA;COLLECTIONS_VIEW_STATE_ID=module.aB;readViewMode=module.aC;},function(module){inGroupTab=module.i;MoveToGroupMenu=module.M;GroupTabs=module.G;countGroups=module.c;GroupDialogs=module.a;matchesAnyTerm=module.m;filterTerms=module.f;COLLECTION_TERM_SEPARATOR=module.C;}],execute:(function(){exports("CollectionsPage",CollectionsPage);/**
 * "Check for new" on the Collections page: reads the first results page of
 * every saved search. From it the card gets its cover and post count (as on a
 * visit to the search), and the newest post is remembered, so a card can say
@@ -34118,7 +36178,7 @@ function cardAriaLabel(name, badge, meta) {
 function CardLink(props) {
 	const select = props.select;
 	const label = cardAriaLabel(props.collection.name, props.badge, props.meta);
-	if (select !== null) return /* @__PURE__ */ a("a", {
+	if (select !== null) return /* @__PURE__ */ createVNode("a", {
 		className: select.selected ? `${CARD_CLASS} ${CARD_SELECTED_CLASS}` : CARD_CLASS,
 		href: props.href,
 		role: ROLE_CHECKBOX,
@@ -34131,29 +36191,29 @@ function CardLink(props) {
 			select.onToggle();
 		},
 		children: [
-			/* @__PURE__ */ a("span", {
+			/* @__PURE__ */ createVNode("span", {
 				className: CARD_MARK_CLASS,
 				"aria-hidden": "true",
-				children: select.selected ? /* @__PURE__ */ a(IconCheck, { size: MARK_ICON_PX }) : null
+				children: select.selected ? /* @__PURE__ */ createVNode(IconCheck, { size: MARK_ICON_PX }) : null
 			}),
 			props.children,
-			/* @__PURE__ */ a("span", {
+			/* @__PURE__ */ createVNode("span", {
 				className: META_ROW_CLASS,
-				children: [/* @__PURE__ */ a("span", {
+				children: [/* @__PURE__ */ createVNode("span", {
 					className: NAME_CLASS,
 					children: props.collection.name
-				}), props.hasNew ? /* @__PURE__ */ a("span", {
+				}), props.hasNew ? /* @__PURE__ */ createVNode("span", {
 					className: NEW_BADGE_CLASS,
 					children: NEW_BADGE
 				}) : null]
 			}),
-			/* @__PURE__ */ a("span", {
+			/* @__PURE__ */ createVNode("span", {
 				className: CAPTION_CLASS,
 				children: cardCaptionWithGroup(props.badge, props.meta, props.group)
 			})
 		]
 	});
-	return /* @__PURE__ */ a("a", {
+	return /* @__PURE__ */ createVNode("a", {
 		className: CARD_CLASS,
 		href: props.href,
 		draggable: false,
@@ -34162,17 +36222,17 @@ function CardLink(props) {
 		"data-collection-kind": props.kind,
 		children: [
 			props.children,
-			/* @__PURE__ */ a("span", {
+			/* @__PURE__ */ createVNode("span", {
 				className: META_ROW_CLASS,
-				children: [/* @__PURE__ */ a("span", {
+				children: [/* @__PURE__ */ createVNode("span", {
 					className: NAME_CLASS,
 					children: props.collection.name
-				}), props.hasNew ? /* @__PURE__ */ a("span", {
+				}), props.hasNew ? /* @__PURE__ */ createVNode("span", {
 					className: NEW_BADGE_CLASS,
 					children: NEW_BADGE
 				}) : null]
 			}),
-			/* @__PURE__ */ a("span", {
+			/* @__PURE__ */ createVNode("span", {
 				className: CAPTION_CLASS,
 				children: cardCaptionWithGroup(props.badge, props.meta, props.group)
 			})
@@ -34181,9 +36241,9 @@ function CardLink(props) {
 }
 /** Cover thumb. A thumb that fails to load leaves the empty cell. */
 function CoverThumb(props) {
-	const [failedUrl, setFailedUrl] = d(null);
-	if (failedUrl === props.url) return /* @__PURE__ */ a("span", { className: COVER_EMPTY_CLASS });
-	return /* @__PURE__ */ a("img", {
+	const [failedUrl, setFailedUrl] = useState(null);
+	if (failedUrl === props.url) return /* @__PURE__ */ createVNode("span", { className: COVER_EMPTY_CLASS });
+	return /* @__PURE__ */ createVNode("img", {
 		className: COVER_IMAGE_CLASS,
 		src: props.url,
 		alt: "",
@@ -34195,17 +36255,17 @@ function CoverThumb(props) {
 /** 2x2 card cover. A slot without a thumb stays an empty cell. */
 function Cover(props) {
 	const filled = props.urls.filter((url) => url !== null).length;
-	return /* @__PURE__ */ a("span", {
+	return /* @__PURE__ */ createVNode("span", {
 		className: COVER_CLASS,
 		"data-filled": String(filled),
 		children: props.urls.map((url, index) => {
 			const postId = props.postIds?.[index] ?? null;
-			return /* @__PURE__ */ a("span", {
+			return /* @__PURE__ */ createVNode("span", {
 				className: COVER_CELL_CLASS,
 				"data-empty": url === null ? "true" : void 0,
 				"data-cover-index": String(index),
 				"data-post-id": postId === null ? "" : String(postId),
-				children: url !== null ? /* @__PURE__ */ a(CoverThumb, { url }) : /* @__PURE__ */ a("span", { className: COVER_EMPTY_CLASS })
+				children: url !== null ? /* @__PURE__ */ createVNode(CoverThumb, { url }) : /* @__PURE__ */ createVNode("span", { className: COVER_EMPTY_CLASS })
 			}, `${props.collectionId}-${String(index)}`);
 		})
 	});
@@ -34214,7 +36274,7 @@ function CustomCard(props) {
 	const meta = postsLabel(props.collection.postIds?.length ?? 0);
 	const slots = coverPostIds(props.collection);
 	const urls = slots.map((postId) => postId === null ? null : thumbUrl(props.collection, postId));
-	return /* @__PURE__ */ a(CardLink, {
+	return /* @__PURE__ */ createVNode(CardLink, {
 		collection: props.collection,
 		href: collectionDetailHash(props.collection.id),
 		kind: COLLECTION_KIND_POSTS,
@@ -34222,7 +36282,7 @@ function CustomCard(props) {
 		meta,
 		select: props.select,
 		group: props.group,
-		children: /* @__PURE__ */ a(Cover, {
+		children: /* @__PURE__ */ createVNode(Cover, {
 			collectionId: props.collection.id,
 			urls,
 			postIds: slots
@@ -34252,7 +36312,7 @@ function DynamicCard(props) {
 	const cover = readCoverMirror(props.collection.id) ?? props.collection.cover ?? [];
 	const slots = [];
 	for (let index = 0; index < COVER_SLOT_COUNT; index += 1) slots.push(cover[index] ?? null);
-	return /* @__PURE__ */ a(CardLink, {
+	return /* @__PURE__ */ createVNode(CardLink, {
 		collection: props.collection,
 		href: dynamicHref(props.collection),
 		kind: COLLECTION_KIND_SEARCH,
@@ -34261,19 +36321,19 @@ function DynamicCard(props) {
 		meta: dynamicMeta(props.collection),
 		select: props.select,
 		group: props.group,
-		children: /* @__PURE__ */ a(Cover, {
+		children: /* @__PURE__ */ createVNode(Cover, {
 			collectionId: props.collection.id,
 			urls: slots
 		})
 	});
 }
 function CollectionCard(props) {
-	if (resolveCollectionKind(props.collection) === "posts") return /* @__PURE__ */ a(CustomCard, {
+	if (resolveCollectionKind(props.collection) === "posts") return /* @__PURE__ */ createVNode(CustomCard, {
 		collection: props.collection,
 		select: props.select,
 		group: props.group
 	});
-	return /* @__PURE__ */ a(DynamicCard, {
+	return /* @__PURE__ */ createVNode(DynamicCard, {
 		collection: props.collection,
 		select: props.select,
 		group: props.group
@@ -34283,19 +36343,19 @@ function NewCollectionDialog(props) {
 	const failed = props.error.length > 0;
 	const nameFailed = failed && props.errorField === FIELD_NAME;
 	const queryFailed = failed && props.errorField === FIELD_QUERY;
-	const error = /* @__PURE__ */ a("p", {
+	const error = /* @__PURE__ */ createVNode("p", {
 		id: FORM_ERROR_ID,
 		className: FORM_ERROR_CLASS,
 		role: "alert",
 		children: props.error
 	});
-	return /* @__PURE__ */ a(Dialog, {
+	return /* @__PURE__ */ createVNode(Dialog, {
 		variant: "content",
 		open: props.open,
 		onClose: props.onClose,
 		title: NEW_DIALOG_TITLE,
 		children: [
-			/* @__PURE__ */ a(Segmented, {
+			/* @__PURE__ */ createVNode(Segmented, {
 				label: KIND_SEGMENTED_LABEL,
 				options: NEW_KIND_OPTIONS,
 				value: props.kind,
@@ -34303,43 +36363,43 @@ function NewCollectionDialog(props) {
 					if (isNewKind(value)) props.onKindChange(value);
 				}
 			}),
-			/* @__PURE__ */ a("p", {
+			/* @__PURE__ */ createVNode("p", {
 				className: FORM_HINT_CLASS,
 				children: props.kind === KIND_DYNAMIC ? KIND_HINT_DYNAMIC : KIND_HINT_CUSTOM
 			}),
-			/* @__PURE__ */ a("form", {
+			/* @__PURE__ */ createVNode("form", {
 				className: "rdw-dialog__fields",
 				onSubmit: (event) => {
 					event.preventDefault();
 					props.onSubmit();
 				},
 				children: [
-					/* @__PURE__ */ a(TextField, {
+					/* @__PURE__ */ createVNode(TextField, {
 						id: NAME_FIELD_ID,
 						label: UI_TEXT.nameLabel,
 						value: props.name,
 						onChange: props.onNameChange
 					}),
 					nameFailed ? error : null,
-					props.kind === KIND_DYNAMIC ? /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a(QueryField, {
+					props.kind === KIND_DYNAMIC ? /* @__PURE__ */ createVNode(Fragment, { children: [/* @__PURE__ */ createVNode(QueryField, {
 						id: QUERY_FIELD_ID,
 						label: QUERY_FIELD_LABEL,
 						placeholder: QUERY_PLACEHOLDER,
 						value: props.query,
 						onChange: props.onQueryChange
-					}), queryFailed ? error : /* @__PURE__ */ a("p", {
+					}), queryFailed ? error : /* @__PURE__ */ createVNode("p", {
 						className: FORM_HINT_CLASS,
 						children: QUERY_HINT
 					})] }) : null,
-					/* @__PURE__ */ a("div", {
+					/* @__PURE__ */ createVNode("div", {
 						className: "rdw-dialog__actions",
-						children: [/* @__PURE__ */ a(Button, {
+						children: [/* @__PURE__ */ createVNode(Button, {
 							type: "button",
 							variant: "secondary",
 							size: "s",
 							onClick: props.onClose,
 							children: UI_TEXT.cancel
-						}), /* @__PURE__ */ a(Button, {
+						}), /* @__PURE__ */ createVNode(Button, {
 							type: "submit",
 							variant: "primary",
 							size: "s",
@@ -34353,29 +36413,29 @@ function NewCollectionDialog(props) {
 	});
 }
 function CollectionsPage() {
-	const [filter, setFilter] = d(FILTER_ALL);
-	const [nameQuery, setNameQuery] = d("");
-	const [view, setView] = d(() => readViewMode(COLLECTIONS_VIEW_STATE_ID));
-	const [sort, setSort] = d(() => readCollectionSort());
-	const [dialogOpen, setDialogOpen] = d(false);
-	const [newKind, setNewKind] = d(KIND_CUSTOM);
-	const [nameDraft, setNameDraft] = d("");
-	const [queryDraft, setQueryDraft] = d("");
-	const [formError, setFormError] = d("");
-	const [formErrorField, setFormErrorField] = d(FIELD_NAME);
-	const [, setRevision] = d(0);
-	const [selecting, setSelecting] = d(false);
-	const [selectedIds, setSelectedIds] = d([]);
-	const [confirmOpen, setConfirmOpen] = d(false);
-	const [groupTab, setGroupTab] = d("");
-	const [groupRequest, setGroupRequest] = d(null);
-	const [dragId, setDragId] = d(null);
-	const [deleteOne, setDeleteOne] = d(null);
-	const [checkStatus, setCheckStatus] = d("");
-	const [checkFailed, setCheckFailed] = d(false);
-	const [checking, setChecking] = d(false);
-	const checkCancelledRef = T(false);
-	A(() => () => {
+	const [filter, setFilter] = useState(FILTER_ALL);
+	const [nameQuery, setNameQuery] = useState("");
+	const [view, setView] = useState(() => readViewMode(COLLECTIONS_VIEW_STATE_ID));
+	const [sort, setSort] = useState(() => readCollectionSort());
+	const [dialogOpen, setDialogOpen] = useState(false);
+	const [newKind, setNewKind] = useState(KIND_CUSTOM);
+	const [nameDraft, setNameDraft] = useState("");
+	const [queryDraft, setQueryDraft] = useState("");
+	const [formError, setFormError] = useState("");
+	const [formErrorField, setFormErrorField] = useState(FIELD_NAME);
+	const [, setRevision] = useState(0);
+	const [selecting, setSelecting] = useState(false);
+	const [selectedIds, setSelectedIds] = useState([]);
+	const [confirmOpen, setConfirmOpen] = useState(false);
+	const [groupTab, setGroupTab] = useState("");
+	const [groupRequest, setGroupRequest] = useState(null);
+	const [dragId, setDragId] = useState(null);
+	const [deleteOne, setDeleteOne] = useState(null);
+	const [checkStatus, setCheckStatus] = useState("");
+	const [checkFailed, setCheckFailed] = useState(false);
+	const [checking, setChecking] = useState(false);
+	const checkCancelledRef = useRef(false);
+	useEffect(() => () => {
 		checkCancelledRef.current = true;
 	}, []);
 	const runCheck = () => {
@@ -34397,13 +36457,13 @@ function CollectionsPage() {
 			setRevision((value) => value + 1);
 		});
 	};
-	const closeDialog = b(() => {
+	const closeDialog = useCallback(() => {
 		setDialogOpen(false);
 		setFormError("");
 		setNameDraft("");
 		setQueryDraft("");
 	}, []);
-	A(() => {
+	useEffect(() => {
 		const onPageShow = () => {
 			reloadFromStorage();
 			setRevision((value) => value + 1);
@@ -34471,13 +36531,13 @@ function CollectionsPage() {
 		closeDialog();
 		setRevision((value) => value + 1);
 	};
-	return /* @__PURE__ */ a("div", {
+	return /* @__PURE__ */ createVNode("div", {
 		className: PAGE_CLASS,
 		children: [
-			/* @__PURE__ */ a("style", { children: COLLECTIONS_PAGE_CSS }),
-			/* @__PURE__ */ a("header", {
+			/* @__PURE__ */ createVNode("style", { children: COLLECTIONS_PAGE_CSS }),
+			/* @__PURE__ */ createVNode("header", {
 				className: HEADER_CLASS,
-				children: [selecting ? /* @__PURE__ */ a(SelectionBar, {
+				children: [selecting ? /* @__PURE__ */ createVNode(SelectionBar, {
 					count: selectedVisible.length,
 					onSelectAll: () => {
 						setSelectedIds(visible.map((collection) => collection.id));
@@ -34486,7 +36546,7 @@ function CollectionsPage() {
 						setSelectedIds([]);
 					},
 					onCancel: stopSelecting,
-					danger: /* @__PURE__ */ a(Button, {
+					danger: /* @__PURE__ */ createVNode(Button, {
 						type: "button",
 						variant: "danger-quiet",
 						disabled: selectedVisible.length === 0,
@@ -34495,7 +36555,7 @@ function CollectionsPage() {
 						},
 						children: DELETE_SELECTED_LABEL
 					}),
-					children: /* @__PURE__ */ a(MoveToGroupMenu, {
+					children: /* @__PURE__ */ createVNode(MoveToGroupMenu, {
 						groups,
 						disabled: selectedVisible.length === 0,
 						onMove: (name) => {
@@ -34508,10 +36568,10 @@ function CollectionsPage() {
 							});
 						}
 					})
-				}) : /* @__PURE__ */ a("div", {
+				}) : /* @__PURE__ */ createVNode("div", {
 					className: TOOLBAR_CLASS,
 					children: [
-						/* @__PURE__ */ a(Segmented, {
+						/* @__PURE__ */ createVNode(Segmented, {
 							label: TYPE_SEGMENTED_LABEL,
 							options: FILTER_OPTIONS,
 							value: filter,
@@ -34519,7 +36579,7 @@ function CollectionsPage() {
 								if (isListFilter(value)) setFilter(value);
 							}
 						}),
-						/* @__PURE__ */ a(SearchField, {
+						/* @__PURE__ */ createVNode(SearchField, {
 							id: FILTER_FIELD_ID,
 							className: FILTER_FIELD_CLASS,
 							value: nameQuery,
@@ -34527,7 +36587,7 @@ function CollectionsPage() {
 							"aria-label": FILTER_ARIA_LABEL,
 							onChange: setNameQuery
 						}),
-						/* @__PURE__ */ a(Select, {
+						/* @__PURE__ */ createVNode(Select, {
 							label: SORT_LABEL,
 							options: SORT_OPTIONS,
 							value: sort,
@@ -34538,8 +36598,8 @@ function CollectionsPage() {
 								}
 							}
 						}),
-						/* @__PURE__ */ a(AiPostsToggle, { scope: AI_SCOPE_COLLECTIONS }),
-						/* @__PURE__ */ a(Segmented, {
+						/* @__PURE__ */ createVNode(AiPostsToggle, { scope: AI_SCOPE_COLLECTIONS }),
+						/* @__PURE__ */ createVNode(Segmented, {
 							label: VIEW_LABEL,
 							options: VIEW_OPTIONS,
 							value: view,
@@ -34550,16 +36610,16 @@ function CollectionsPage() {
 								}
 							}
 						}),
-						/* @__PURE__ */ a("span", {
+						/* @__PURE__ */ createVNode("span", {
 							className: SELECTED_COUNT_CLASS,
 							children: collectionsShownLabel(visible.length, collections.length)
 						}),
-						/* @__PURE__ */ a("span", {
+						/* @__PURE__ */ createVNode("span", {
 							className: TOOLBAR_SPACER_CLASS,
 							"aria-hidden": "true"
 						}),
-						/* @__PURE__ */ a($$1, { children: [
-							collections.length > 0 ? /* @__PURE__ */ a(Button, {
+						/* @__PURE__ */ createVNode(Fragment, { children: [
+							collections.length > 0 ? /* @__PURE__ */ createVNode(Button, {
 								type: "button",
 								variant: "secondary",
 								title: SELECT_BUTTON_TITLE,
@@ -34568,7 +36628,7 @@ function CollectionsPage() {
 								},
 								children: SELECT_BUTTON_LABEL
 							}) : null,
-							checkableCollections(collections).length > 0 ? /* @__PURE__ */ a(Button, {
+							checkableCollections(collections).length > 0 ? /* @__PURE__ */ createVNode(Button, {
 								type: "button",
 								variant: "secondary",
 								title: CHECK_TITLE,
@@ -34576,16 +36636,16 @@ function CollectionsPage() {
 								onClick: runCheck,
 								children: CHECK_LABEL
 							}) : null,
-							/* @__PURE__ */ a(Button, {
+							/* @__PURE__ */ createVNode(Button, {
 								type: "button",
 								variant: "primary",
 								onClick: openDialog,
-								children: [/* @__PURE__ */ a(IconPlus, { size: ICON_PX }), NEW_BUTTON_LABEL]
+								children: [/* @__PURE__ */ createVNode(IconPlus, { size: ICON_PX }), NEW_BUTTON_LABEL]
 							}),
-							checkStatus.length > 0 ? /* @__PURE__ */ a("span", {
+							checkStatus.length > 0 ? /* @__PURE__ */ createVNode("span", {
 								className: checkFailed ? `${CHECK_STATUS_CLASS} ${CHECK_FAILED_CLASS}` : CHECK_STATUS_CLASS,
 								role: "status",
-								children: [checkStatus, checkFailed ? /* @__PURE__ */ a($$1, { children: [" ", /* @__PURE__ */ a(Button, {
+								children: [checkStatus, checkFailed ? /* @__PURE__ */ createVNode(Fragment, { children: [" ", /* @__PURE__ */ createVNode(Button, {
 									type: "button",
 									variant: "secondary",
 									size: "s",
@@ -34595,7 +36655,7 @@ function CollectionsPage() {
 							}) : null
 						] })
 					]
-				}), collections.length > 0 ? /* @__PURE__ */ a(GroupTabs, {
+				}), collections.length > 0 ? /* @__PURE__ */ createVNode(GroupTabs, {
 					total: collections.length,
 					groups: countGroups(groups, collections.map((collection) => collection.group)),
 					value: groupTab,
@@ -34627,20 +36687,20 @@ function CollectionsPage() {
 					locked: selecting
 				}) : null]
 			}),
-			visible.length === 0 ? /* @__PURE__ */ a(EmptyState, {
+			visible.length === 0 ? /* @__PURE__ */ createVNode(EmptyState, {
 				title: emptyCopy.title,
 				...emptyCopy.description.length > 0 ? { description: emptyCopy.description } : {},
-				...collections.length > 0 && nameQuery.trim().length > 0 ? { action: /* @__PURE__ */ a(Button, {
+				...collections.length > 0 && nameQuery.trim().length > 0 ? { action: /* @__PURE__ */ createVNode(Button, {
 					variant: "secondary",
 					onClick: () => {
 						setNameQuery("");
 					},
 					children: CLEAR_FILTER_LABEL
 				}) } : {}
-			}) : /* @__PURE__ */ a("div", {
+			}) : /* @__PURE__ */ createVNode("div", {
 				className: view === "list" ? `${GRID_CLASS} ${GRID_LIST_CLASS}` : GRID_CLASS,
 				"aria-label": GRID_LABEL,
-				children: visible.map((collection) => /* @__PURE__ */ a("div", {
+				children: visible.map((collection) => /* @__PURE__ */ createVNode("div", {
 					className: CELL_CLASS,
 					...dragId === collection.id ? { "data-dragged": "" } : {},
 					draggable: !selecting,
@@ -34651,7 +36711,7 @@ function CollectionsPage() {
 					onDragEnd: () => {
 						setDragId(null);
 					},
-					children: [/* @__PURE__ */ a(CollectionCard, {
+					children: [/* @__PURE__ */ createVNode(CollectionCard, {
 						collection,
 						group: collection.group === groupTab ? "" : collection.group ?? "",
 						select: selecting ? {
@@ -34660,9 +36720,9 @@ function CollectionsPage() {
 								toggleSelected(collection.id);
 							}
 						} : null
-					}), selecting ? null : /* @__PURE__ */ a("div", {
+					}), selecting ? null : /* @__PURE__ */ createVNode("div", {
 						className: CELL_ACTIONS_CLASS,
-						children: [/* @__PURE__ */ a(MoveToGroupMenu, {
+						children: [/* @__PURE__ */ createVNode(MoveToGroupMenu, {
 							groups,
 							current: collection.group ?? "",
 							iconLabel: `${MOVE_ONE_PREFIX}${collection.name}`,
@@ -34675,17 +36735,17 @@ function CollectionsPage() {
 									targets: [collection.id]
 								});
 							}
-						}), /* @__PURE__ */ a(IconButton, {
+						}), /* @__PURE__ */ createVNode(IconButton, {
 							label: `${DELETE_ONE_PREFIX}${collection.name}`,
 							onClick: () => {
 								setDeleteOne(collection);
 							},
-							children: /* @__PURE__ */ a(IconX, { size: ICON_PX })
+							children: /* @__PURE__ */ createVNode(IconX, { size: ICON_PX })
 						})]
 					})]
 				}, collection.id))
 			}),
-			/* @__PURE__ */ a(Dialog, {
+			/* @__PURE__ */ createVNode(Dialog, {
 				variant: "confirm",
 				open: confirmOpen,
 				title: DELETE_DIALOG_TITLE,
@@ -34698,7 +36758,7 @@ function CollectionsPage() {
 					setConfirmOpen(false);
 				}
 			}),
-			/* @__PURE__ */ a(Dialog, {
+			/* @__PURE__ */ createVNode(Dialog, {
 				variant: "confirm",
 				open: deleteOne !== null,
 				title: DELETE_ONE_DIALOG_TITLE,
@@ -34717,7 +36777,7 @@ function CollectionsPage() {
 					setDeleteOne(null);
 				}
 			}),
-			/* @__PURE__ */ a(GroupDialogs, {
+			/* @__PURE__ */ createVNode(GroupDialogs, {
 				request: groupRequest,
 				groups,
 				countLabel: collectionsCountLabel,
@@ -34743,7 +36803,7 @@ function CollectionsPage() {
 					setGroupRequest(null);
 				}
 			}),
-			/* @__PURE__ */ a(NewCollectionDialog, {
+			/* @__PURE__ */ createVNode(NewCollectionDialog, {
 				open: dialogOpen,
 				kind: newKind,
 				name: nameDraft,
@@ -34770,7 +36830,7 @@ function CollectionsPage() {
 		]
 	});
 }})}}));
-System.register("./following-page-Bfglt0zt-VwFMxRWT.js", ['./___monkey.entry.js','./app-BAhFOWQS-Bb4GaPqX.js','./filter-terms-BiuAY8Ot-DM43JHtI.js'],(function(exports){'use strict';var reloadFromStorage,getSeenPostId,listFollowGroups,followKindOf,FOLLOW_KIND_ARTIST,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,FOLLOW_KIND_CHARACTER,FOLLOW_KIND_COPYRIGHT,UI_TEXT,deleteFollowGroup,renameFollowGroup,setFollowGroup,createFollowGroup,removeArtist,load,STICKY_TOP,RDW_THEME_ATTR,APPEARANCE_THEME_CUSTOM,buildSearchUrl,TAG_TYPE_INCLUDE,removeArtists,rememberArtistSnapshot,log,addArtists,d,T,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST,A,useEscape,a,EmptyState,$$1,Button,SelectionBar,Segmented,SearchField,Select,AiPostsToggle,AI_SCOPE_FOLLOWING,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,ProgressBar,Dialog,completeLastQueryToken,readLastQueryToken,PAGE_CENTRE_PADDING,IconPlus,IconCheck,IconButton,IconX,alignSiteAiFilter,fetchArtistSnapshot,AutocompleteField,FOLLOWING_VIEW_STATE_ID,readViewMode,filterTerms,MoveToGroupMenu,GroupTabs,countGroups,GroupDialogs,matchesAnyTerm,inGroupTab,ARTIST_TERM_SEPARATOR;return{setters:[function(module){reloadFromStorage=module.bv;getSeenPostId=module.aK;listFollowGroups=module.dw;followKindOf=module.ci;FOLLOW_KIND_ARTIST=module.aF;ARTISTS_EMPTY_HINT=module.dx;ARTISTS_EMPTY_TITLE=module.dy;SEARCH_PATH=module.V;SEARCH_PARAM_PAGE=module.Q;SEARCH_PAGE=module.cy;SEARCH_SECTION=module.co;ARTIST_FILTER_LABEL=module.dz;ARTIST_FILTER_ID=module.dA;FOLLOW_KIND_CHARACTER=module.aG;FOLLOW_KIND_COPYRIGHT=module.aH;UI_TEXT=module.bo;deleteFollowGroup=module.dB;renameFollowGroup=module.dC;setFollowGroup=module.dD;createFollowGroup=module.dE;removeArtist=module.dF;load=module.j;STICKY_TOP=module.aS;RDW_THEME_ATTR=module.R;APPEARANCE_THEME_CUSTOM=module.cS;buildSearchUrl=module.bR;TAG_TYPE_INCLUDE=module.cp;removeArtists=module.dG;rememberArtistSnapshot=module.bc;log=module.l;addArtists=module.dH;},function(module){d=module.d;T=module.T;createAutocompleteQuerier=module.H;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.aD;A=module.A;useEscape=module.an;a=module.c;EmptyState=module.E;$$1=module.$;Button=module.B;SelectionBar=module.ao;Segmented=module.r;SearchField=module.e;Select=module.q;AiPostsToggle=module.ap;AI_SCOPE_FOLLOWING=module.aE;VIEW_OPTIONS=module.ar;VIEW_LABEL=module.as;isViewMode=module.at;writeViewMode=module.au;ProgressBar=module.x;Dialog=module.D;completeLastQueryToken=module.aF;readLastQueryToken=module.aG;PAGE_CENTRE_PADDING=module.av;IconPlus=module.G;IconCheck=module.aA;IconButton=module.I;IconX=module.z;alignSiteAiFilter=module.aw;fetchArtistSnapshot=module.aH;AutocompleteField=module.O;FOLLOWING_VIEW_STATE_ID=module.aI;readViewMode=module.aC;},function(module){filterTerms=module.f;MoveToGroupMenu=module.M;GroupTabs=module.G;countGroups=module.c;GroupDialogs=module.a;matchesAnyTerm=module.m;inGroupTab=module.i;ARTIST_TERM_SEPARATOR=module.A;}],execute:(function(){exports("FollowingPage",FollowingPage);var EVENT_PAGESHOW = "pageshow";
+System.register("./following-page-CN1OwAXG-DOoWyTey.js", ['./___monkey.entry.js','./app-CKeztBau-BuKlS5Dy.js','./filter-terms-BWre_1_y-Bbz1ZpzH.js'],(function(exports){'use strict';var reloadFromStorage,getSeenPostId,listFollowGroups,followKindOf,FOLLOW_KIND_ARTIST,ARTISTS_EMPTY_HINT,ARTISTS_EMPTY_TITLE,SEARCH_PATH,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION,ARTIST_FILTER_LABEL,ARTIST_FILTER_ID,FOLLOW_KIND_CHARACTER,FOLLOW_KIND_COPYRIGHT,UI_TEXT,deleteFollowGroup,renameFollowGroup,setFollowGroup,createFollowGroup,removeArtist,load,STICKY_TOP,RDW_THEME_ATTR,APPEARANCE_THEME_CUSTOM,buildSearchUrl,TAG_TYPE_INCLUDE,removeArtists,rememberArtistSnapshot,log,addArtists,useState,useRef,createAutocompleteQuerier,AUTOCOMPLETE_TAG_TYPE_ARTIST,useEffect,useEscape,createVNode,EmptyState,Fragment,Button,SelectionBar,Segmented,SearchField,Select,AiPostsToggle,AI_SCOPE_FOLLOWING,VIEW_OPTIONS,VIEW_LABEL,isViewMode,writeViewMode,ProgressBar,Dialog,completeLastQueryToken,readLastQueryToken,PAGE_CENTRE_PADDING,IconPlus,IconCheck,IconButton,IconX,alignSiteAiFilter,fetchArtistSnapshot,AutocompleteField,FOLLOWING_VIEW_STATE_ID,readViewMode,filterTerms,MoveToGroupMenu,GroupTabs,countGroups,GroupDialogs,matchesAnyTerm,inGroupTab,ARTIST_TERM_SEPARATOR;return{setters:[function(module){reloadFromStorage=module.bv;getSeenPostId=module.aK;listFollowGroups=module.dw;followKindOf=module.ci;FOLLOW_KIND_ARTIST=module.aF;ARTISTS_EMPTY_HINT=module.dx;ARTISTS_EMPTY_TITLE=module.dy;SEARCH_PATH=module.V;SEARCH_PARAM_PAGE=module.Q;SEARCH_PAGE=module.cy;SEARCH_SECTION=module.co;ARTIST_FILTER_LABEL=module.dz;ARTIST_FILTER_ID=module.dA;FOLLOW_KIND_CHARACTER=module.aG;FOLLOW_KIND_COPYRIGHT=module.aH;UI_TEXT=module.bo;deleteFollowGroup=module.dB;renameFollowGroup=module.dC;setFollowGroup=module.dD;createFollowGroup=module.dE;removeArtist=module.dF;load=module.j;STICKY_TOP=module.aS;RDW_THEME_ATTR=module.R;APPEARANCE_THEME_CUSTOM=module.cS;buildSearchUrl=module.bR;TAG_TYPE_INCLUDE=module.cp;removeArtists=module.dG;rememberArtistSnapshot=module.bc;log=module.l;addArtists=module.dH;},function(module){useState=module.u;useRef=module.a;createAutocompleteQuerier=module.J;AUTOCOMPLETE_TAG_TYPE_ARTIST=module.aD;useEffect=module.b;useEscape=module.an;createVNode=module.f;EmptyState=module.E;Fragment=module.p;Button=module.B;SelectionBar=module.ao;Segmented=module.w;SearchField=module.g;Select=module.v;AiPostsToggle=module.ap;AI_SCOPE_FOLLOWING=module.aE;VIEW_OPTIONS=module.ar;VIEW_LABEL=module.as;isViewMode=module.at;writeViewMode=module.au;ProgressBar=module.P;Dialog=module.D;completeLastQueryToken=module.aF;readLastQueryToken=module.aG;PAGE_CENTRE_PADDING=module.av;IconPlus=module.H;IconCheck=module.aA;IconButton=module.I;IconX=module.G;alignSiteAiFilter=module.aw;fetchArtistSnapshot=module.aH;AutocompleteField=module.R;FOLLOWING_VIEW_STATE_ID=module.aI;readViewMode=module.aC;},function(module){filterTerms=module.f;MoveToGroupMenu=module.M;GroupTabs=module.G;countGroups=module.c;GroupDialogs=module.a;matchesAnyTerm=module.m;inGroupTab=module.i;ARTIST_TERM_SEPARATOR=module.A;}],execute:(function(){exports("FollowingPage",FollowingPage);var EVENT_PAGESHOW = "pageshow";
 var PAGE_CLASS = "rdw-following-page";
 var STICKY_CLASS = "rdw-following-sticky";
 var TOOLBAR_CLASS = "rdw-following-toolbar";
@@ -35266,9 +37326,9 @@ function sleep(ms) {
 	});
 }
 function CoverThumb(props) {
-	const [failedUrl, setFailedUrl] = d(null);
+	const [failedUrl, setFailedUrl] = useState(null);
 	if (failedUrl === props.url) return null;
-	return /* @__PURE__ */ a("img", {
+	return /* @__PURE__ */ createVNode("img", {
 		className: COVER_IMAGE_CLASS,
 		src: props.url,
 		alt: "",
@@ -35283,12 +37343,12 @@ function ArtistCover(props) {
 	const cells = [];
 	for (let index = 0; index < 4; index += 1) {
 		const url = cover[index];
-		cells.push(/* @__PURE__ */ a("span", {
+		cells.push(/* @__PURE__ */ createVNode("span", {
 			className: COVER_CELL_CLASS,
-			children: url === void 0 ? null : /* @__PURE__ */ a(CoverThumb, { url })
+			children: url === void 0 ? null : /* @__PURE__ */ createVNode(CoverThumb, { url })
 		}, index));
 	}
-	return /* @__PURE__ */ a("span", {
+	return /* @__PURE__ */ createVNode("span", {
 		className: COVER_CLASS,
 		children: cells
 	});
@@ -35297,28 +37357,28 @@ function ArtistCard(props) {
 	const { artist, select } = props;
 	const caption = followCaption(artist, props.openTab);
 	const quiet = quietSince(artist, props.now);
-	const body = /* @__PURE__ */ a($$1, { children: [
-		/* @__PURE__ */ a(ArtistCover, { artist }),
-		/* @__PURE__ */ a("span", {
+	const body = /* @__PURE__ */ createVNode(Fragment, { children: [
+		/* @__PURE__ */ createVNode(ArtistCover, { artist }),
+		/* @__PURE__ */ createVNode("span", {
 			className: NAME_ROW_CLASS,
-			children: [/* @__PURE__ */ a("span", {
+			children: [/* @__PURE__ */ createVNode("span", {
 				className: NAME_CLASS,
 				title: artist.tag,
 				children: displayArtistName(artist.tag)
-			}), props.hasNew ? /* @__PURE__ */ a("span", {
+			}), props.hasNew ? /* @__PURE__ */ createVNode("span", {
 				className: NEW_BADGE_CLASS,
 				children: NEW_BADGE
 			}) : null]
 		}),
-		/* @__PURE__ */ a("span", {
+		/* @__PURE__ */ createVNode("span", {
 			className: CAPTION_CLASS,
 			children: postsCaption(artist)
 		}),
-		caption.length > 0 ? /* @__PURE__ */ a("span", {
+		caption.length > 0 ? /* @__PURE__ */ createVNode("span", {
 			className: CAPTION_CLASS,
 			children: caption
 		}) : null,
-		quiet === null ? null : /* @__PURE__ */ a("span", {
+		quiet === null ? null : /* @__PURE__ */ createVNode("span", {
 			className: CAPTION_CLASS,
 			children: `${QUIET_PREFIX}${formatDay(quiet)}`
 		})
@@ -35327,10 +37387,10 @@ function ArtistCard(props) {
 		tag: artist.tag,
 		type: TAG_TYPE_INCLUDE
 	}]);
-	if (select !== null) return /* @__PURE__ */ a("div", {
+	if (select !== null) return /* @__PURE__ */ createVNode("div", {
 		className: select.selected ? `${CARD_CLASS} ${CARD_SELECTED_CLASS}` : CARD_CLASS,
 		"data-tag": artist.tag,
-		children: [/* @__PURE__ */ a("a", {
+		children: [/* @__PURE__ */ createVNode("a", {
 			className: CARD_LINK_CLASS,
 			href,
 			role: ROLE_CHECKBOX,
@@ -35341,13 +37401,13 @@ function ArtistCard(props) {
 				select.onToggle();
 			},
 			children: body
-		}), /* @__PURE__ */ a("span", {
+		}), /* @__PURE__ */ createVNode("span", {
 			className: CARD_MARK_CLASS,
 			"aria-hidden": "true",
-			children: select.selected ? /* @__PURE__ */ a(IconCheck, { size: ICON_PX }) : null
+			children: select.selected ? /* @__PURE__ */ createVNode(IconCheck, { size: ICON_PX }) : null
 		})]
 	});
-	return /* @__PURE__ */ a("div", {
+	return /* @__PURE__ */ createVNode("div", {
 		className: CARD_CLASS,
 		"data-tag": artist.tag,
 		...props.dragged ? { "data-dragged": "" } : {},
@@ -35357,23 +37417,23 @@ function ArtistCard(props) {
 			props.onDragStart();
 		},
 		onDragEnd: props.onDragEnd,
-		children: [/* @__PURE__ */ a("a", {
+		children: [/* @__PURE__ */ createVNode("a", {
 			className: CARD_LINK_CLASS,
 			href,
 			draggable: false,
 			children: body
-		}), /* @__PURE__ */ a("div", {
+		}), /* @__PURE__ */ createVNode("div", {
 			className: CARD_ACTIONS_CLASS,
-			children: [/* @__PURE__ */ a(MoveToGroupMenu, {
+			children: [/* @__PURE__ */ createVNode(MoveToGroupMenu, {
 				groups: props.groups,
 				current: artist.group ?? "",
 				iconLabel: `${MOVE_ONE_PREFIX}${artist.tag}`,
 				onMove: props.onMove,
 				onNew: props.onNewGroup
-			}), /* @__PURE__ */ a(IconButton, {
+			}), /* @__PURE__ */ createVNode(IconButton, {
 				label: `Unfollow ${artist.tag}`,
 				onClick: props.onUnfollow,
-				children: /* @__PURE__ */ a(IconX, { size: ICON_PX })
+				children: /* @__PURE__ */ createVNode(IconX, { size: ICON_PX })
 			})]
 		})]
 	});
@@ -35383,19 +37443,19 @@ function ArtistCard(props) {
 * every tag was added; when some were skipped it stays and says which.
 */
 function AddArtistDialog(props) {
-	return /* @__PURE__ */ a(Dialog, {
+	return /* @__PURE__ */ createVNode(Dialog, {
 		variant: "content",
 		open: props.open,
 		onClose: props.onClose,
 		title: ADD_DIALOG_TITLE,
-		children: /* @__PURE__ */ a("form", {
+		children: /* @__PURE__ */ createVNode("form", {
 			className: "rdw-dialog__fields",
 			onSubmit: (event) => {
 				event.preventDefault();
 				props.onSubmit();
 			},
 			children: [
-				/* @__PURE__ */ a(AutocompleteField, {
+				/* @__PURE__ */ createVNode(AutocompleteField, {
 					id: ADD_INPUT_ID,
 					label: ADD_FIELD_LABEL,
 					value: props.draft,
@@ -35406,20 +37466,20 @@ function AddArtistDialog(props) {
 						props.onSuggestionSelect(option.value);
 					}
 				}),
-				props.error.length > 0 ? /* @__PURE__ */ a("p", {
+				props.error.length > 0 ? /* @__PURE__ */ createVNode("p", {
 					className: "rdw-error",
 					role: "alert",
 					children: props.error
 				}) : null,
-				/* @__PURE__ */ a("div", {
+				/* @__PURE__ */ createVNode("div", {
 					className: "rdw-dialog__actions",
-					children: [/* @__PURE__ */ a(Button, {
+					children: [/* @__PURE__ */ createVNode(Button, {
 						type: "button",
 						variant: "secondary",
 						size: "s",
 						onClick: props.onClose,
 						children: UI_TEXT.cancel
-					}), /* @__PURE__ */ a(Button, {
+					}), /* @__PURE__ */ createVNode(Button, {
 						type: "submit",
 						variant: "primary",
 						size: "s",
@@ -35431,28 +37491,28 @@ function AddArtistDialog(props) {
 	});
 }
 function FollowingPage() {
-	const [artists, setArtists] = d(() => readArtists());
-	const [filter, setFilter] = d("");
-	const [show, setShow] = d(SHOW_ALL);
-	const [sort, setSort] = d(SORT_NAME);
-	const [view, setView] = d(() => readViewMode(FOLLOWING_VIEW_STATE_ID));
-	const [draft, setDraft] = d("");
-	const [addError, setAddError] = d("");
-	const [adding, setAdding] = d(false);
-	const [suggestions, setSuggestions] = d([]);
-	const [selecting, setSelecting] = d(false);
-	const [kindFilter, setKindFilter] = d(KIND_ALL);
-	const [groupFilter, setGroupFilter] = d("");
-	const [groupRequest, setGroupRequest] = d(null);
-	const [dragTag, setDragTag] = d(null);
-	const [selectedTags, setSelectedTags] = d([]);
-	const [confirmUnfollow, setConfirmUnfollow] = d(false);
-	const [unfollowTag, setUnfollowTag] = d(null);
-	const [confirmRefresh, setConfirmRefresh] = d(false);
-	const [refresh, setRefresh] = d(null);
-	const cancelRefreshRef = T(false);
-	const querierRef = T(createAutocompleteQuerier({ preferType: AUTOCOMPLETE_TAG_TYPE_ARTIST }));
-	A(() => {
+	const [artists, setArtists] = useState(() => readArtists());
+	const [filter, setFilter] = useState("");
+	const [show, setShow] = useState(SHOW_ALL);
+	const [sort, setSort] = useState(SORT_NAME);
+	const [view, setView] = useState(() => readViewMode(FOLLOWING_VIEW_STATE_ID));
+	const [draft, setDraft] = useState("");
+	const [addError, setAddError] = useState("");
+	const [adding, setAdding] = useState(false);
+	const [suggestions, setSuggestions] = useState([]);
+	const [selecting, setSelecting] = useState(false);
+	const [kindFilter, setKindFilter] = useState(KIND_ALL);
+	const [groupFilter, setGroupFilter] = useState("");
+	const [groupRequest, setGroupRequest] = useState(null);
+	const [dragTag, setDragTag] = useState(null);
+	const [selectedTags, setSelectedTags] = useState([]);
+	const [confirmUnfollow, setConfirmUnfollow] = useState(false);
+	const [unfollowTag, setUnfollowTag] = useState(null);
+	const [confirmRefresh, setConfirmRefresh] = useState(false);
+	const [refresh, setRefresh] = useState(null);
+	const cancelRefreshRef = useRef(false);
+	const querierRef = useRef(createAutocompleteQuerier({ preferType: AUTOCOMPLETE_TAG_TYPE_ARTIST }));
+	useEffect(() => {
 		const querier = querierRef.current;
 		const onPageShow = () => {
 			reloadFromStorage();
@@ -35466,7 +37526,7 @@ function FollowingPage() {
 		};
 	}, []);
 	const refreshSucceeded = refresh?.succeeded === true;
-	A(() => {
+	useEffect(() => {
 		if (!refreshSucceeded) return;
 		const timer = window.setTimeout(() => {
 			setRefresh(null);
@@ -35577,14 +37637,14 @@ function FollowingPage() {
 		setSuggestions([]);
 		querierRef.current.cancel();
 	};
-	const addButton = /* @__PURE__ */ a(Button, {
+	const addButton = /* @__PURE__ */ createVNode(Button, {
 		variant: "primary",
 		onClick: () => {
 			setAdding(true);
 		},
-		children: [/* @__PURE__ */ a(IconPlus, { size: ICON_PX }), ADD_BUTTON_LABEL]
+		children: [/* @__PURE__ */ createVNode(IconPlus, { size: ICON_PX }), ADD_BUTTON_LABEL]
 	});
-	const addDialog = /* @__PURE__ */ a(AddArtistDialog, {
+	const addDialog = /* @__PURE__ */ createVNode(AddArtistDialog, {
 		open: adding,
 		onClose: closeAdding,
 		draft,
@@ -35608,24 +37668,24 @@ function FollowingPage() {
 		},
 		onSubmit: onAdd
 	});
-	return /* @__PURE__ */ a("div", {
+	return /* @__PURE__ */ createVNode("div", {
 		className: PAGE_CLASS,
 		children: [
-			/* @__PURE__ */ a("style", { children: FOLLOWING_PAGE_CSS }),
-			empty ? /* @__PURE__ */ a(EmptyState, {
+			/* @__PURE__ */ createVNode("style", { children: FOLLOWING_PAGE_CSS }),
+			empty ? /* @__PURE__ */ createVNode(EmptyState, {
 				title: ARTISTS_EMPTY_TITLE,
 				description: ARTISTS_EMPTY_HINT,
-				action: /* @__PURE__ */ a($$1, { children: [addButton, /* @__PURE__ */ a(Button, {
+				action: /* @__PURE__ */ createVNode(Fragment, { children: [addButton, /* @__PURE__ */ createVNode(Button, {
 					variant: "secondary",
 					onClick: () => {
 						window.location.assign(OPEN_POSTS_HREF);
 					},
 					children: OPEN_POSTS_LABEL
 				})] })
-			}) : /* @__PURE__ */ a($$1, { children: [
-				/* @__PURE__ */ a("div", {
+			}) : /* @__PURE__ */ createVNode(Fragment, { children: [
+				/* @__PURE__ */ createVNode("div", {
 					className: STICKY_CLASS,
-					children: [selecting ? /* @__PURE__ */ a(SelectionBar, {
+					children: [selecting ? /* @__PURE__ */ createVNode(SelectionBar, {
 						count: selectedVisible.length,
 						onSelectAll: () => {
 							setSelectedTags(visible.map((artist) => artist.tag));
@@ -35634,7 +37694,7 @@ function FollowingPage() {
 							setSelectedTags([]);
 						},
 						onCancel: stopSelecting,
-						danger: /* @__PURE__ */ a(Button, {
+						danger: /* @__PURE__ */ createVNode(Button, {
 							variant: "danger-quiet",
 							disabled: selectedVisible.length === 0,
 							onClick: () => {
@@ -35642,7 +37702,7 @@ function FollowingPage() {
 							},
 							children: UNFOLLOW_SELECTED_LABEL
 						}),
-						children: /* @__PURE__ */ a(MoveToGroupMenu, {
+						children: /* @__PURE__ */ createVNode(MoveToGroupMenu, {
 							groups,
 							disabled: selectedVisible.length === 0,
 							onMove: (name) => {
@@ -35655,10 +37715,10 @@ function FollowingPage() {
 								});
 							}
 						})
-					}) : /* @__PURE__ */ a("div", {
+					}) : /* @__PURE__ */ createVNode("div", {
 						className: TOOLBAR_CLASS,
 						children: [
-							/* @__PURE__ */ a(Segmented, {
+							/* @__PURE__ */ createVNode(Segmented, {
 								label: SHOW_LABEL,
 								options: SHOW_OPTIONS,
 								value: show,
@@ -35666,7 +37726,7 @@ function FollowingPage() {
 									if (isShowMode(value)) setShow(value);
 								}
 							}),
-							/* @__PURE__ */ a(SearchField, {
+							/* @__PURE__ */ createVNode(SearchField, {
 								id: ARTIST_FILTER_ID,
 								className: FILTER_CLASS,
 								value: filter,
@@ -35674,7 +37734,7 @@ function FollowingPage() {
 								"aria-label": ARTIST_FILTER_LABEL,
 								onChange: setFilter
 							}),
-							/* @__PURE__ */ a(Select, {
+							/* @__PURE__ */ createVNode(Select, {
 								label: SORT_LABEL,
 								options: SORT_OPTIONS,
 								value: sort,
@@ -35682,14 +37742,14 @@ function FollowingPage() {
 									if (isSortMode(value)) setSort(value);
 								}
 							}),
-							hasOtherKinds ? /* @__PURE__ */ a(Select, {
+							hasOtherKinds ? /* @__PURE__ */ createVNode(Select, {
 								label: KIND_LABEL,
 								options: KIND_OPTIONS,
 								value: kindFilter,
 								onChange: setKindFilter
 							}) : null,
-							/* @__PURE__ */ a(AiPostsToggle, { scope: AI_SCOPE_FOLLOWING }),
-							/* @__PURE__ */ a(Segmented, {
+							/* @__PURE__ */ createVNode(AiPostsToggle, { scope: AI_SCOPE_FOLLOWING }),
+							/* @__PURE__ */ createVNode(Segmented, {
 								label: VIEW_LABEL,
 								options: VIEW_OPTIONS,
 								value: view,
@@ -35700,16 +37760,16 @@ function FollowingPage() {
 									}
 								}
 							}),
-							/* @__PURE__ */ a("span", {
+							/* @__PURE__ */ createVNode("span", {
 								className: `${META_CLASS} ${TOOLBAR_COUNT_CLASS}`,
 								children: `${artistsCountLabel(visible.length, count)} · ${seen > 0 ? `${UI_TEXT.seenUpTo}${String(seen)}` : UI_TEXT.seenNothing}`
 							}),
-							/* @__PURE__ */ a("span", {
+							/* @__PURE__ */ createVNode("span", {
 								className: TOOLBAR_SPACER_CLASS,
 								"aria-hidden": "true"
 							}),
-							/* @__PURE__ */ a($$1, { children: [
-								/* @__PURE__ */ a(Button, {
+							/* @__PURE__ */ createVNode(Fragment, { children: [
+								/* @__PURE__ */ createVNode(Button, {
 									variant: "secondary",
 									disabled: busy,
 									onClick: () => {
@@ -35717,7 +37777,7 @@ function FollowingPage() {
 									},
 									children: SELECT_LABEL
 								}),
-								/* @__PURE__ */ a(Button, {
+								/* @__PURE__ */ createVNode(Button, {
 									variant: "secondary",
 									title: REFRESH_TITLE,
 									disabled: busy || visible.length === 0,
@@ -35729,7 +37789,7 @@ function FollowingPage() {
 								addButton
 							] })
 						]
-					}), /* @__PURE__ */ a(GroupTabs, {
+					}), /* @__PURE__ */ createVNode(GroupTabs, {
 						total: count,
 						groups: countGroups(groups, artists.map((artist) => artist.group)),
 						value: groupFilter,
@@ -35761,20 +37821,20 @@ function FollowingPage() {
 						locked: selecting
 					})]
 				}),
-				refresh === null ? null : /* @__PURE__ */ a("div", {
+				refresh === null ? null : /* @__PURE__ */ createVNode("div", {
 					className: PROGRESS_CLASS,
 					role: "status",
-					children: [/* @__PURE__ */ a(ProgressBar, {
+					children: [/* @__PURE__ */ createVNode(ProgressBar, {
 						value: refresh.total === 0 ? 0 : refresh.done / refresh.total,
 						label: refresh.running ? `${REFRESH_LABEL}: ${String(refresh.done)} of ${String(refresh.total)}` : refresh.message
-					}), refresh.running ? /* @__PURE__ */ a(Button, {
+					}), refresh.running ? /* @__PURE__ */ createVNode(Button, {
 						variant: "secondary",
 						size: "s",
 						onClick: () => {
 							cancelRefreshRef.current = true;
 						},
 						children: UI_TEXT.cancel
-					}) : /* @__PURE__ */ a(Button, {
+					}) : /* @__PURE__ */ createVNode(Button, {
 						variant: "secondary",
 						size: "s",
 						onClick: () => {
@@ -35783,21 +37843,21 @@ function FollowingPage() {
 						children: CLOSE_LABEL
 					})]
 				}),
-				visible.length === 0 ? filter.trim().length > 0 ? /* @__PURE__ */ a(EmptyState, {
+				visible.length === 0 ? filter.trim().length > 0 ? /* @__PURE__ */ createVNode(EmptyState, {
 					title: noArtistsMatch(filter),
-					action: /* @__PURE__ */ a(Button, {
+					action: /* @__PURE__ */ createVNode(Button, {
 						variant: "secondary",
 						onClick: () => {
 							setFilter("");
 						},
 						children: CLEAR_FILTER_LABEL
 					})
-				}) : /* @__PURE__ */ a(EmptyState, {
+				}) : /* @__PURE__ */ createVNode(EmptyState, {
 					title: NO_MATCH_TITLE,
 					description: NO_MATCH_DESCRIPTION
-				}) : /* @__PURE__ */ a("div", {
+				}) : /* @__PURE__ */ createVNode("div", {
 					className: view === "list" ? `${GRID_CLASS} ${GRID_LIST_CLASS}` : GRID_CLASS,
-					children: visible.map((artist) => /* @__PURE__ */ a(ArtistCard, {
+					children: visible.map((artist) => /* @__PURE__ */ createVNode(ArtistCard, {
 						artist,
 						hasNew: artistHasNew(artist, seen),
 						now,
@@ -35832,7 +37892,7 @@ function FollowingPage() {
 				})
 			] }),
 			addDialog,
-			/* @__PURE__ */ a(GroupDialogs, {
+			/* @__PURE__ */ createVNode(GroupDialogs, {
 				request: groupRequest,
 				groups,
 				countLabel: (number) => artistsCountLabel(number, number),
@@ -35858,7 +37918,7 @@ function FollowingPage() {
 					setGroupRequest(null);
 				}
 			}),
-			/* @__PURE__ */ a(Dialog, {
+			/* @__PURE__ */ createVNode(Dialog, {
 				variant: "confirm",
 				open: confirmUnfollow,
 				title: UNFOLLOW_DIALOG_TITLE,
@@ -35871,7 +37931,7 @@ function FollowingPage() {
 					setConfirmUnfollow(false);
 				}
 			}),
-			/* @__PURE__ */ a(Dialog, {
+			/* @__PURE__ */ createVNode(Dialog, {
 				variant: "confirm",
 				open: unfollowTag !== null,
 				title: UNFOLLOW_LABEL,
@@ -35890,7 +37950,7 @@ function FollowingPage() {
 					setUnfollowTag(null);
 				}
 			}),
-			/* @__PURE__ */ a(Dialog, {
+			/* @__PURE__ */ createVNode(Dialog, {
 				variant: "confirm",
 				open: confirmRefresh,
 				title: REFRESH_DIALOG_TITLE,
@@ -35908,7 +37968,7 @@ function FollowingPage() {
 		]
 	});
 }})}}));
-System.register("./filter-terms-BiuAY8Ot-DM43JHtI.js", ['./app-BAhFOWQS-Bb4GaPqX.js'],(function(exports){'use strict';var d,j,OverlayInPlace,T,a,Button,IconChevronDown,IconButton,Popover,IconCheck,A,F,IconDots,IconPlus,Dialog,TextField,$$1;return{setters:[function(module){d=module.d;j=module.aJ;OverlayInPlace=module.aK;T=module.T;a=module.c;Button=module.B;IconChevronDown=module.aL;IconButton=module.I;Popover=module.aM;IconCheck=module.aA;A=module.A;F=module.F;IconDots=module.aN;IconPlus=module.G;Dialog=module.D;TextField=module.t;$$1=module.$;}],execute:(function(){exports({G:GroupTabs,M:MoveToGroupMenu,a:GroupDialogs,c:countGroups,f:filterTerms,i:inGroupTab,m:matchesAnyTerm});var GROUP_NONE = "\0none";
+System.register("./filter-terms-BWre_1_y-Bbz1ZpzH.js", ['./app-CKeztBau-BuKlS5Dy.js'],(function(exports){'use strict';var useState,useContext,OverlayInPlace,useRef,createVNode,Button,IconChevronDown,IconButton,Popover,IconCheck,useEffect,useLayoutEffect,IconDots,IconPlus,Dialog,TextField,Fragment;return{setters:[function(module){useState=module.u;useContext=module.aJ;OverlayInPlace=module.aK;useRef=module.a;createVNode=module.f;Button=module.B;IconChevronDown=module.aL;IconButton=module.I;Popover=module.aM;IconCheck=module.aA;useEffect=module.b;useLayoutEffect=module.c;IconDots=module.aN;IconPlus=module.H;Dialog=module.D;TextField=module.T;Fragment=module.p;}],execute:(function(){exports({G:GroupTabs,M:MoveToGroupMenu,a:GroupDialogs,c:countGroups,f:filterTerms,i:inGroupTab,m:matchesAnyTerm});var GROUP_NONE = "\0none";
 var GROUPS_LABEL = "Groups";
 var GROUP_NONE_LABEL = "No group";
 var GROUP_NEW_LABEL = "New group";
@@ -36275,11 +38335,11 @@ function fitGroupTabs(widths, selected, room, moreWidth, gap) {
 * the items, Enter in the field picks the first found.
 */
 function GroupMenuList(props) {
-	const [query, setQuery] = d("");
-	const boxRef = T(null);
-	const inputRef = T(null);
+	const [query, setQuery] = useState("");
+	const boxRef = useRef(null);
+	const inputRef = useRef(null);
 	const { searchable } = props;
-	A(() => {
+	useEffect(() => {
 		if (searchable) {
 			inputRef.current?.focus();
 			return;
@@ -36310,39 +38370,39 @@ function GroupMenuList(props) {
 			next.focus();
 		}
 	};
-	return /* @__PURE__ */ a("div", {
+	return /* @__PURE__ */ createVNode("div", {
 		className: MENU_LIST_BOX_CLASS,
 		ref: boxRef,
 		onKeyDown,
 		children: [
-			searchable ? /* @__PURE__ */ a(TextField, {
+			searchable ? /* @__PURE__ */ createVNode(TextField, {
 				value: query,
 				placeholder: GROUP_FIND_LABEL,
 				"aria-label": GROUP_FIND_LABEL,
 				inputRef,
 				onChange: setQuery
 			}) : null,
-			/* @__PURE__ */ a("div", {
+			/* @__PURE__ */ createVNode("div", {
 				className: MENU_LIST_CLASS,
-				children: [found.map((entry) => /* @__PURE__ */ a("button", {
+				children: [found.map((entry) => /* @__PURE__ */ createVNode("button", {
 					type: "button",
 					role: "menuitem",
 					className: `${MENU_ITEM_CLASS} rdw-kit-focusable`,
 					disabled: entry.current === true,
 					onClick: entry.onPick,
 					children: [
-						/* @__PURE__ */ a("span", { children: entry.label }),
-						entry.count === void 0 ? null : /* @__PURE__ */ a("span", {
+						/* @__PURE__ */ createVNode("span", { children: entry.label }),
+						entry.count === void 0 ? null : /* @__PURE__ */ createVNode("span", {
 							className: MENU_COUNT_CLASS,
 							children: String(entry.count)
 						}),
-						entry.current === true ? /* @__PURE__ */ a("span", {
+						entry.current === true ? /* @__PURE__ */ createVNode("span", {
 							className: MENU_TICK_CLASS,
 							"aria-hidden": "true",
-							children: /* @__PURE__ */ a(IconCheck, { size: ICON_PX })
+							children: /* @__PURE__ */ createVNode(IconCheck, { size: ICON_PX })
 						}) : null
 					]
-				}, entry.key)), found.length === 0 && needle.length > 0 ? /* @__PURE__ */ a("p", {
+				}, entry.key)), found.length === 0 && needle.length > 0 ? /* @__PURE__ */ createVNode("p", {
 					className: MENU_EMPTY_CLASS,
 					children: GROUP_NOT_FOUND
 				}) : null]
@@ -36352,25 +38412,25 @@ function GroupMenuList(props) {
 	});
 }
 function GroupTabs(props) {
-	const [over, setOver] = d(null);
-	const [menu, setMenu] = d(null);
-	const [landed, setLanded] = d(null);
-	const [fitting, setFitting] = d(null);
-	const [moreOpen, setMoreOpen] = d(false);
-	const rowRef = T(null);
-	const measureRef = T(null);
-	const moreRef = T(null);
-	const inPlace = j(OverlayInPlace);
-	const anchorRef = T(null);
+	const [over, setOver] = useState(null);
+	const [menu, setMenu] = useState(null);
+	const [landed, setLanded] = useState(null);
+	const [fitting, setFitting] = useState(null);
+	const [moreOpen, setMoreOpen] = useState(false);
+	const rowRef = useRef(null);
+	const measureRef = useRef(null);
+	const moreRef = useRef(null);
+	const inPlace = useContext(OverlayInPlace);
+	const anchorRef = useRef(null);
 	anchorRef.current = menu?.anchor ?? null;
 	const dragging = props.dragging === true;
-	A(() => {
+	useEffect(() => {
 		if (!dragging) setOver(null);
 	}, [dragging]);
 	const inGroups = props.groups.reduce((sum, group) => sum + group.count, 0);
 	const groupsKey = props.groups.map((group) => `${group.name}\u0000${String(group.count)}`).join("");
 	const { value, total } = props;
-	F(() => {
+	useLayoutEffect(() => {
 		const row = rowRef.current;
 		const measure = measureRef.current;
 		if (row === null || measure === null) return;
@@ -36416,7 +38476,7 @@ function GroupTabs(props) {
 			props.onDropTo?.(target);
 		}
 	} : {};
-	const tab = (key, label, count) => /* @__PURE__ */ a("button", {
+	const tab = (key, label, count) => /* @__PURE__ */ createVNode("button", {
 		type: "button",
 		role: "tab",
 		className: `${TAB_CLASS} rdw-kit-focusable`,
@@ -36425,7 +38485,7 @@ function GroupTabs(props) {
 		onClick: () => {
 			props.onChange(key);
 		},
-		children: [shortGroupName(label), /* @__PURE__ */ a("span", {
+		children: [shortGroupName(label), /* @__PURE__ */ createVNode("span", {
 			className: TAB_COUNT_CLASS,
 			children: String(count)
 		})]
@@ -36453,7 +38513,7 @@ function GroupTabs(props) {
 			next.click();
 		}
 	};
-	const tabMenu = (name) => /* @__PURE__ */ a(Popover, {
+	const tabMenu = (name) => /* @__PURE__ */ createVNode(Popover, {
 		open: true,
 		onClose: () => {
 			setMenu(null);
@@ -36464,8 +38524,8 @@ function GroupTabs(props) {
 		"aria-label": `${GROUP_ACTIONS_PREFIX}${name}`,
 		className: inPlace ? `${MENU_CLASS} ${MENU_IN_PLACE_CLASS}` : MENU_CLASS,
 		children: [
-			/* @__PURE__ */ a("style", { children: MENU_CSS }),
-			/* @__PURE__ */ a("button", {
+			/* @__PURE__ */ createVNode("style", { children: MENU_CSS }),
+			/* @__PURE__ */ createVNode("button", {
 				type: "button",
 				role: "menuitem",
 				className: `${MENU_ITEM_CLASS} rdw-kit-focusable`,
@@ -36473,9 +38533,9 @@ function GroupTabs(props) {
 					setMenu(null);
 					props.onRename(name);
 				},
-				children: /* @__PURE__ */ a("span", { children: GROUP_RENAME_LABEL })
+				children: /* @__PURE__ */ createVNode("span", { children: GROUP_RENAME_LABEL })
 			}),
-			/* @__PURE__ */ a("button", {
+			/* @__PURE__ */ createVNode("button", {
 				type: "button",
 				role: "menuitem",
 				className: `${MENU_ITEM_CLASS} rdw-kit-focusable`,
@@ -36484,11 +38544,11 @@ function GroupTabs(props) {
 					setMenu(null);
 					props.onDelete(name);
 				},
-				children: /* @__PURE__ */ a("span", { children: GROUP_DELETE_ITEM_LABEL })
+				children: /* @__PURE__ */ createVNode("span", { children: GROUP_DELETE_ITEM_LABEL })
 			})
 		]
 	});
-	return /* @__PURE__ */ a("div", {
+	return /* @__PURE__ */ createVNode("div", {
 		className: dragging ? `${TABS_CLASS} ${TABS_DRAGGING_CLASS}` : TABS_CLASS,
 		ref: rowRef,
 		role: "tablist",
@@ -36496,31 +38556,31 @@ function GroupTabs(props) {
 		onKeyDown: stepTabs,
 		...props.locked === true ? { inert: true } : {},
 		children: [
-			/* @__PURE__ */ a("style", { children: GROUPS_CSS }),
-			/* @__PURE__ */ a("span", {
+			/* @__PURE__ */ createVNode("style", { children: GROUPS_CSS }),
+			/* @__PURE__ */ createVNode("span", {
 				className: TAB_MEASURE_CLASS,
 				ref: measureRef,
 				"aria-hidden": "true",
-				children: [props.groups.map((group) => /* @__PURE__ */ a("span", {
+				children: [props.groups.map((group) => /* @__PURE__ */ createVNode("span", {
 					className: TAB_CLASS,
 					"data-measure": "",
-					children: [shortGroupName(group.name), /* @__PURE__ */ a("span", {
+					children: [shortGroupName(group.name), /* @__PURE__ */ createVNode("span", {
 						className: TAB_COUNT_CLASS,
 						children: String(group.count)
 					})]
-				}, group.name)), /* @__PURE__ */ a("span", {
+				}, group.name)), /* @__PURE__ */ createVNode("span", {
 					className: TAB_CLASS,
 					"data-measure-more": "",
-					children: [`${GROUP_MORE_LABEL} (${String(props.groups.length)})`, /* @__PURE__ */ a(IconChevronDown, { size: ICON_PX })]
+					children: [`${GROUP_MORE_LABEL} (${String(props.groups.length)})`, /* @__PURE__ */ createVNode(IconChevronDown, { size: ICON_PX })]
 				})]
 			}),
-			/* @__PURE__ */ a("span", {
+			/* @__PURE__ */ createVNode("span", {
 				className: TAB_WRAP_CLASS,
 				"data-selected": String(props.value === ""),
 				"data-fixed": "",
 				children: tab("", "All", props.total)
 			}),
-			tabbed.map((group) => /* @__PURE__ */ a("span", {
+			tabbed.map((group) => /* @__PURE__ */ createVNode("span", {
 				className: wrapClass(group.name),
 				"data-selected": String(props.value === group.name),
 				"data-group": group.name,
@@ -36536,7 +38596,7 @@ function GroupTabs(props) {
 				...landProps(group.name),
 				children: [
 					tab(group.name, group.name, group.count),
-					props.value === group.name ? /* @__PURE__ */ a(IconButton, {
+					props.value === group.name ? /* @__PURE__ */ createVNode(IconButton, {
 						className: TAB_MORE_CLASS,
 						label: GROUP_OPTIONS_LABEL,
 						menuOpen: menu?.name === group.name,
@@ -36547,16 +38607,16 @@ function GroupTabs(props) {
 								anchor
 							});
 						},
-						children: /* @__PURE__ */ a(IconDots, { size: ICON_PX })
+						children: /* @__PURE__ */ createVNode(IconDots, { size: ICON_PX })
 					}) : null,
 					menu?.name === group.name ? tabMenu(group.name) : null
 				]
 			}, group.name)),
-			inMenu.length > 0 ? /* @__PURE__ */ a("span", {
+			inMenu.length > 0 ? /* @__PURE__ */ createVNode("span", {
 				className: TAB_WRAP_CLASS,
 				"data-selected": "false",
 				"data-more": "",
-				children: [/* @__PURE__ */ a("button", {
+				children: [/* @__PURE__ */ createVNode("button", {
 					type: "button",
 					className: `${TAB_CLASS} rdw-kit-focusable`,
 					"aria-haspopup": "menu",
@@ -36565,8 +38625,8 @@ function GroupTabs(props) {
 					onClick: () => {
 						setMoreOpen((open) => !open);
 					},
-					children: [`${GROUP_MORE_LABEL} (${String(inMenu.length)})`, /* @__PURE__ */ a(IconChevronDown, { size: ICON_PX })]
-				}), moreOpen ? /* @__PURE__ */ a(Popover, {
+					children: [`${GROUP_MORE_LABEL} (${String(inMenu.length)})`, /* @__PURE__ */ createVNode(IconChevronDown, { size: ICON_PX })]
+				}), moreOpen ? /* @__PURE__ */ createVNode(Popover, {
 					open: true,
 					onClose: () => {
 						setMoreOpen(false);
@@ -36576,7 +38636,7 @@ function GroupTabs(props) {
 					role: "menu",
 					"aria-label": GROUPS_LABEL,
 					className: inPlace ? `${MENU_CLASS} ${MENU_IN_PLACE_CLASS}` : MENU_CLASS,
-					children: [/* @__PURE__ */ a("style", { children: MENU_CSS }), /* @__PURE__ */ a(GroupMenuList, {
+					children: [/* @__PURE__ */ createVNode("style", { children: MENU_CSS }), /* @__PURE__ */ createVNode(GroupMenuList, {
 						searchable: props.groups.length > 10,
 						entries: inMenu.map((group) => ({
 							key: group.name,
@@ -36590,7 +38650,7 @@ function GroupTabs(props) {
 					})]
 				}) : null]
 			}) : null,
-			props.groups.length > 0 ? /* @__PURE__ */ a("span", {
+			props.groups.length > 0 ? /* @__PURE__ */ createVNode("span", {
 				className: wrapClass(GROUP_NONE),
 				"data-selected": String(props.value === GROUP_NONE),
 				"data-fixed": "",
@@ -36599,13 +38659,13 @@ function GroupTabs(props) {
 				...landProps(GROUP_NONE),
 				children: tab(GROUP_NONE, GROUP_NONE_LABEL, props.total - inGroups)
 			}) : null,
-			/* @__PURE__ */ a("span", {
+			/* @__PURE__ */ createVNode("span", {
 				className: TAB_NEW_CLASS,
 				"data-fixed": "",
-				children: /* @__PURE__ */ a(Button, {
+				children: /* @__PURE__ */ createVNode(Button, {
 					variant: "ghost",
 					onClick: props.onNew,
-					children: [/* @__PURE__ */ a(IconPlus, { size: ICON_PX }), GROUP_NEW_LABEL]
+					children: [/* @__PURE__ */ createVNode(IconPlus, { size: ICON_PX }), GROUP_NEW_LABEL]
 				})
 			})
 		]
@@ -36613,9 +38673,9 @@ function GroupTabs(props) {
 }
 /** "Move to group": the groups there are, "No group", and "New group…". */
 function MoveToGroupMenu(props) {
-	const [open, setOpen] = d(false);
-	const inPlace = j(OverlayInPlace);
-	const anchorRef = T(null);
+	const [open, setOpen] = useState(false);
+	const inPlace = useContext(OverlayInPlace);
+	const anchorRef = useRef(null);
 	const current = props.current ?? "";
 	const pick = (run) => {
 		setOpen(false);
@@ -36624,22 +38684,22 @@ function MoveToGroupMenu(props) {
 	const toggle = () => {
 		setOpen((value) => !value);
 	};
-	return /* @__PURE__ */ a("span", {
+	return /* @__PURE__ */ createVNode("span", {
 		className: MOVE_TRIGGER_CLASS,
-		children: [props.iconLabel === void 0 ? /* @__PURE__ */ a(Button, {
+		children: [props.iconLabel === void 0 ? /* @__PURE__ */ createVNode(Button, {
 			variant: "secondary",
 			disabled: props.disabled === true,
 			buttonRef: anchorRef,
 			onClick: toggle,
-			children: [GROUP_MOVE_LABEL, /* @__PURE__ */ a(IconChevronDown, { size: ICON_PX })]
-		}) : /* @__PURE__ */ a(IconButton, {
+			children: [GROUP_MOVE_LABEL, /* @__PURE__ */ createVNode(IconChevronDown, { size: ICON_PX })]
+		}) : /* @__PURE__ */ createVNode(IconButton, {
 			label: props.iconLabel,
 			menuOpen: open,
 			disabled: props.disabled === true,
 			buttonRef: anchorRef,
 			onClick: toggle,
-			children: /* @__PURE__ */ a(IconFolderMove, {})
-		}), /* @__PURE__ */ a(Popover, {
+			children: /* @__PURE__ */ createVNode(IconFolderMove, {})
+		}), /* @__PURE__ */ createVNode(Popover, {
 			open,
 			onClose: () => {
 				setOpen(false);
@@ -36652,7 +38712,7 @@ function MoveToGroupMenu(props) {
 			role: "menu",
 			"aria-label": GROUP_MOVE_LABEL,
 			className: inPlace ? `${MENU_CLASS} ${MENU_IN_PLACE_CLASS} ${MENU_END_CLASS}` : MENU_CLASS,
-			children: [/* @__PURE__ */ a("style", { children: MENU_CSS }), /* @__PURE__ */ a(GroupMenuList, {
+			children: [/* @__PURE__ */ createVNode("style", { children: MENU_CSS }), /* @__PURE__ */ createVNode(GroupMenuList, {
 				searchable: props.groups.length > 10,
 				entries: props.groups.map((name) => ({
 					key: name,
@@ -36665,11 +38725,11 @@ function MoveToGroupMenu(props) {
 					}
 				})),
 				children: [
-					props.groups.length > 0 ? /* @__PURE__ */ a("div", {
+					props.groups.length > 0 ? /* @__PURE__ */ createVNode("div", {
 						className: MENU_RULE_CLASS,
 						"aria-hidden": "true"
 					}) : null,
-					props.groups.length > 0 ? /* @__PURE__ */ a("button", {
+					props.groups.length > 0 ? /* @__PURE__ */ createVNode("button", {
 						type: "button",
 						role: "menuitem",
 						className: `${MENU_ITEM_CLASS} rdw-kit-focusable`,
@@ -36679,20 +38739,20 @@ function MoveToGroupMenu(props) {
 								props.onMove(null);
 							});
 						},
-						children: [/* @__PURE__ */ a("span", { children: GROUP_NONE_LABEL }), props.current !== void 0 && current.length === 0 ? /* @__PURE__ */ a("span", {
+						children: [/* @__PURE__ */ createVNode("span", { children: GROUP_NONE_LABEL }), props.current !== void 0 && current.length === 0 ? /* @__PURE__ */ createVNode("span", {
 							className: MENU_TICK_CLASS,
 							"aria-hidden": "true",
-							children: /* @__PURE__ */ a(IconCheck, { size: ICON_PX })
+							children: /* @__PURE__ */ createVNode(IconCheck, { size: ICON_PX })
 						}) : null]
 					}) : null,
-					/* @__PURE__ */ a("button", {
+					/* @__PURE__ */ createVNode("button", {
 						type: "button",
 						role: "menuitem",
 						className: `${MENU_ITEM_CLASS} rdw-kit-focusable`,
 						onClick: () => {
 							pick(props.onNew);
 						},
-						children: /* @__PURE__ */ a("span", { children: GROUP_NEW_ITEM_LABEL })
+						children: /* @__PURE__ */ createVNode("span", { children: GROUP_NEW_ITEM_LABEL })
 					})
 				]
 			}, String(open))]
@@ -36701,7 +38761,7 @@ function MoveToGroupMenu(props) {
 }
 /** A folder with an arrow: "move to a group". Drawn here, it is used nowhere else. */
 function IconFolderMove() {
-	return /* @__PURE__ */ a("svg", {
+	return /* @__PURE__ */ createVNode("svg", {
 		width: ICON_PX,
 		height: ICON_PX,
 		viewBox: "0 0 24 24",
@@ -36712,9 +38772,9 @@ function IconFolderMove() {
 		"stroke-linejoin": "round",
 		"aria-hidden": "true",
 		children: [
-			/* @__PURE__ */ a("path", { d: "M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" }),
-			/* @__PURE__ */ a("path", { d: "M10 13h6" }),
-			/* @__PURE__ */ a("path", { d: "M13.5 10.5 16 13l-2.5 2.5" })
+			/* @__PURE__ */ createVNode("path", { d: "M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" }),
+			/* @__PURE__ */ createVNode("path", { d: "M10 13h6" }),
+			/* @__PURE__ */ createVNode("path", { d: "M13.5 10.5 16 13l-2.5 2.5" })
 		]
 	});
 }
@@ -36726,10 +38786,10 @@ function deleteGroupMessage(name, countText, count) {
 }
 function GroupDialogs(props) {
 	const { request } = props;
-	const [draft, setDraft] = d("");
+	const [draft, setDraft] = useState("");
 	const naming = request !== null && request.kind !== "delete";
 	const initial = request !== null && request.kind === "rename" ? request.name : "";
-	A(() => {
+	useEffect(() => {
 		if (naming) setDraft(initial);
 	}, [naming, initial]);
 	const name = draft.trim();
@@ -36740,18 +38800,18 @@ function GroupDialogs(props) {
 		if (request.kind === "new") props.onCreate(name, request.targets);
 		else if (request.kind === "rename") props.onRename(request.name, name);
 	};
-	return /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a(Dialog, {
+	return /* @__PURE__ */ createVNode(Fragment, { children: [/* @__PURE__ */ createVNode(Dialog, {
 		open: naming,
 		title: request !== null && request.kind === "rename" ? GROUP_RENAME_TITLE : GROUP_NEW_LABEL,
 		onClose: props.onClose,
-		children: [/* @__PURE__ */ a("style", { children: NAME_CSS }), /* @__PURE__ */ a("form", {
+		children: [/* @__PURE__ */ createVNode("style", { children: NAME_CSS }), /* @__PURE__ */ createVNode("form", {
 			className: NAME_FORM_CLASS,
 			onSubmit: (event) => {
 				event.preventDefault();
 				submit();
 			},
 			children: [
-				/* @__PURE__ */ a(TextField, {
+				/* @__PURE__ */ createVNode(TextField, {
 					value: draft,
 					placeholder: GROUP_NAME_LABEL,
 					"aria-label": GROUP_NAME_LABEL,
@@ -36760,24 +38820,24 @@ function GroupDialogs(props) {
 						setDraft(next.slice(0, 40));
 					}
 				}),
-				/* @__PURE__ */ a("p", {
+				/* @__PURE__ */ createVNode("p", {
 					className: NAME_COUNT_CLASS,
 					children: `${String(draft.length)} / ${String(40)}`
 				}),
-				taken ? /* @__PURE__ */ a("p", {
+				taken ? /* @__PURE__ */ createVNode("p", {
 					className: NAME_ERROR_CLASS,
 					role: "alert",
 					children: NAME_TAKEN
 				}) : null,
-				/* @__PURE__ */ a("div", {
+				/* @__PURE__ */ createVNode("div", {
 					className: NAME_ACTIONS_CLASS,
-					children: [/* @__PURE__ */ a(Button, {
+					children: [/* @__PURE__ */ createVNode(Button, {
 						type: "button",
 						variant: "secondary",
 						size: "s",
 						onClick: props.onClose,
 						children: CANCEL_LABEL
-					}), /* @__PURE__ */ a(Button, {
+					}), /* @__PURE__ */ createVNode(Button, {
 						type: "submit",
 						variant: "primary",
 						size: "s",
@@ -36787,7 +38847,7 @@ function GroupDialogs(props) {
 				})
 			]
 		})]
-	}), /* @__PURE__ */ a(Dialog, {
+	}), /* @__PURE__ */ createVNode(Dialog, {
 		variant: "confirm",
 		open: request !== null && request.kind === "delete",
 		title: GROUP_DELETE_TITLE,
@@ -36819,7 +38879,7 @@ function matchesAnyTerm(texts, terms) {
 	const lowered = texts.map((text) => text.toLowerCase());
 	return terms.some((term) => lowered.some((text) => text.includes(term)));
 }})}}));
-System.register("./stats-section-17quqR8j-8daMwjSQ.js", ['./app-BAhFOWQS-Bb4GaPqX.js','./___monkey.entry.js','./format-date-BzlgeVEi-Bc3e-WAe.js'],(function(exports){'use strict';var a,Card,d,A,Button,readFavoriteIndex,topFavoriteTags,PANEL_UI_CLASS,loadFavSet,load,resolveCollectionKind,getFeatureState,object,number,optional,string,setFeatureState,int,FETCH_CREDENTIALS,SEARCH_PATH,SEARCH_PARAM_PAGE,formatDayTime,formatMonth;return{setters:[function(module){a=module.c;Card=module.C;d=module.d;A=module.A;Button=module.B;readFavoriteIndex=module.aO;topFavoriteTags=module.aP;},function(module){PANEL_UI_CLASS=module.c2;loadFavSet=module.m;load=module.j;resolveCollectionKind=module.ds;getFeatureState=module.t;object=module.o;number=module.n;optional=module.g;string=module.s;setFeatureState=module.k;int=module.i;FETCH_CREDENTIALS=module.Z;SEARCH_PATH=module.V;SEARCH_PARAM_PAGE=module.Q;},function(module){formatDayTime=module.f;formatMonth=module.a;}],execute:(function(){exports("StatsPage",StatsPage);/**
+System.register("./stats-section-DnJYZdec-CrWDMK7h.js", ['./app-CKeztBau-BuKlS5Dy.js','./___monkey.entry.js','./format-date-BzlgeVEi-Bc3e-WAe.js'],(function(exports){'use strict';var createVNode,Card,useState,useEffect,Button,readFavoriteIndex,topFavoriteTags,PANEL_UI_CLASS,loadFavSet,load,resolveCollectionKind,getFeatureState,object,number,optional,string,setFeatureState,int,FETCH_CREDENTIALS,SEARCH_PATH,SEARCH_PARAM_PAGE,formatDayTime,formatMonth;return{setters:[function(module){createVNode=module.f;Card=module.C;useState=module.u;useEffect=module.b;Button=module.B;readFavoriteIndex=module.aO;topFavoriteTags=module.aP;},function(module){PANEL_UI_CLASS=module.c2;loadFavSet=module.m;load=module.j;resolveCollectionKind=module.ds;getFeatureState=module.t;object=module.o;number=module.n;optional=module.g;string=module.s;setFeatureState=module.k;int=module.i;FETCH_CREDENTIALS=module.Z;SEARCH_PATH=module.V;SEARCH_PARAM_PAGE=module.Q;},function(module){formatDayTime=module.f;formatMonth=module.a;}],execute:(function(){exports("StatsPage",StatsPage);/**
 * The numbers of the user's own profile page on the site, for Statistics.
 *
 * Read only when the user presses "Refresh profile": two requests with a
@@ -37236,18 +39296,18 @@ function formatNumber(value) {
 * a dot (the designer, 17.11.2026).
 */
 function CollectionList(props) {
-	if (props.collections.length === 0) return /* @__PURE__ */ a("p", {
+	if (props.collections.length === 0) return /* @__PURE__ */ createVNode("p", {
 		className: HINT_CLASS,
 		children: TOP_EMPTY
 	});
-	return /* @__PURE__ */ a("ol", {
+	return /* @__PURE__ */ createVNode("ol", {
 		className: `${TOP_CLASS} ${TOP_PLAIN_CLASS}`,
-		children: props.collections.map((collection) => /* @__PURE__ */ a("li", {
+		children: props.collections.map((collection) => /* @__PURE__ */ createVNode("li", {
 			className: TOP_ROW_CLASS,
-			children: [/* @__PURE__ */ a("span", {
+			children: [/* @__PURE__ */ createVNode("span", {
 				title: collection.name,
 				children: collection.name
-			}), /* @__PURE__ */ a("span", { children: formatNumber(collection.posts) })]
+			}), /* @__PURE__ */ createVNode("span", { children: formatNumber(collection.posts) })]
 		}, collection.id))
 	});
 }
@@ -37294,11 +39354,11 @@ function profileTiles(profile, now) {
 }
 /** Grey rows in place of the tags while they are counted, as many as the list is long. */
 function TagsSkeleton() {
-	return /* @__PURE__ */ a("div", {
+	return /* @__PURE__ */ createVNode("div", {
 		className: `${TOP_CLASS} ${SKELETON_CLASS}`,
 		role: "status",
 		"aria-label": TOP_TAGS_BUSY_LABEL,
-		children: Array.from({ length: TOP_TAGS_LIMIT }, (_, index) => /* @__PURE__ */ a("div", { children: /* @__PURE__ */ a("span", { className: SKELETON_BAR_CLASS }) }, index))
+		children: Array.from({ length: TOP_TAGS_LIMIT }, (_, index) => /* @__PURE__ */ createVNode("div", { children: /* @__PURE__ */ createVNode("span", { className: SKELETON_BAR_CLASS }) }, index))
 	});
 }
 /**
@@ -37307,8 +39367,8 @@ function TagsSkeleton() {
 * drawn only once the tags were counted, it moved the page under the eyes.
 */
 function FavoriteTagsBlock() {
-	const [tags, setTags] = d(null);
-	A(() => {
+	const [tags, setTags] = useState(null);
+	useEffect(() => {
 		let alive = true;
 		readFavoriteIndex().then((entries) => {
 			const counted = topFavoriteTags(entries, loadFavSet(), TOP_TAGS_LIMIT);
@@ -37321,41 +39381,41 @@ function FavoriteTagsBlock() {
 		};
 	}, []);
 	const largest = tags?.[0]?.count ?? 0;
-	return /* @__PURE__ */ a("div", {
+	return /* @__PURE__ */ createVNode("div", {
 		className: CHART_CLASS,
-		children: [/* @__PURE__ */ a("p", {
+		children: [/* @__PURE__ */ createVNode("p", {
 			className: HEADING_CLASS,
 			children: TOP_TAGS_HEADING
-		}), tags === null ? /* @__PURE__ */ a(TagsSkeleton, {}) : largest === 0 ? /* @__PURE__ */ a("p", {
+		}), tags === null ? /* @__PURE__ */ createVNode(TagsSkeleton, {}) : largest === 0 ? /* @__PURE__ */ createVNode("p", {
 			className: HINT_CLASS,
 			children: TOP_TAGS_EMPTY
-		}) : /* @__PURE__ */ a("ol", {
+		}) : /* @__PURE__ */ createVNode("ol", {
 			className: TOP_CLASS,
-			children: tags.map((entry) => /* @__PURE__ */ a("li", {
+			children: tags.map((entry) => /* @__PURE__ */ createVNode("li", {
 				className: TOP_ROW_CLASS,
 				children: [
-					/* @__PURE__ */ a("span", {
+					/* @__PURE__ */ createVNode("span", {
 						title: entry.tag,
 						children: entry.tag.replaceAll("_", " ")
 					}),
-					/* @__PURE__ */ a("span", {
+					/* @__PURE__ */ createVNode("span", {
 						className: TOP_BAR_CLASS,
 						"aria-hidden": "true",
-						children: /* @__PURE__ */ a("span", {
+						children: /* @__PURE__ */ createVNode("span", {
 							className: TOP_FILL_CLASS,
 							style: { width: `${String(Math.max(MIN_BAR_PERCENT, Math.round(entry.count / largest * PERCENT)))}%` }
 						})
 					}),
-					/* @__PURE__ */ a("span", { children: formatNumber(entry.count) })
+					/* @__PURE__ */ createVNode("span", { children: formatNumber(entry.count) })
 				]
 			}, entry.tag))
 		})]
 	});
 }
 function ProfileBlock() {
-	const [profile, setProfile] = d(() => readStoredProfileStats());
-	const [busy, setBusy] = d(false);
-	const [error, setError] = d("");
+	const [profile, setProfile] = useState(() => readStoredProfileStats());
+	const [busy, setBusy] = useState(false);
+	const [error, setError] = useState("");
 	const refresh = () => {
 		setBusy(true);
 		setError("");
@@ -37367,23 +39427,23 @@ function ProfileBlock() {
 			setBusy(false);
 		});
 	};
-	A(() => {
+	useEffect(() => {
 		if (profileIsStale(readStoredProfileStats(), Date.now())) refresh();
 	}, []);
-	return /* @__PURE__ */ a("div", {
+	return /* @__PURE__ */ createVNode("div", {
 		className: `${CHART_CLASS} ${PROFILE_CLASS}`,
 		children: [
-			/* @__PURE__ */ a("div", {
+			/* @__PURE__ */ createVNode("div", {
 				className: PROFILE_HEAD_CLASS,
-				children: [/* @__PURE__ */ a("p", {
+				children: [/* @__PURE__ */ createVNode("p", {
 					className: HEADING_CLASS,
 					children: PROFILE_HEADING
-				}), /* @__PURE__ */ a("div", {
+				}), /* @__PURE__ */ createVNode("div", {
 					className: PROFILE_SIDE_CLASS,
-					children: [profile === null ? null : /* @__PURE__ */ a("span", {
+					children: [profile === null ? null : /* @__PURE__ */ createVNode("span", {
 						className: HINT_CLASS,
 						children: `${PROFILE_READ_PREFIX}${formatDayTime(profile.readAt)}`
-					}), /* @__PURE__ */ a(Button, {
+					}), /* @__PURE__ */ createVNode(Button, {
 						variant: "secondary",
 						size: "s",
 						title: PROFILE_REFRESH_TITLE,
@@ -37393,22 +39453,22 @@ function ProfileBlock() {
 					})]
 				})]
 			}),
-			error.length > 0 ? /* @__PURE__ */ a("p", {
+			error.length > 0 ? /* @__PURE__ */ createVNode("p", {
 				className: HINT_CLASS,
 				role: "status",
 				children: `${PROFILE_FAILED_PREFIX}${error}`
 			}) : null,
-			profile === null ? /* @__PURE__ */ a("p", {
+			profile === null ? /* @__PURE__ */ createVNode("p", {
 				className: HINT_CLASS,
 				children: PROFILE_EMPTY
-			}) : /* @__PURE__ */ a("div", {
+			}) : /* @__PURE__ */ createVNode("div", {
 				className: TILES_CLASS,
-				children: profileTiles(profile, Date.now()).map((tile) => /* @__PURE__ */ a("div", {
+				children: profileTiles(profile, Date.now()).map((tile) => /* @__PURE__ */ createVNode("div", {
 					className: TILE_CLASS,
-					children: [/* @__PURE__ */ a("span", {
+					children: [/* @__PURE__ */ createVNode("span", {
 						className: TILE_VALUE_CLASS,
 						children: tile.text
-					}), /* @__PURE__ */ a("span", {
+					}), /* @__PURE__ */ createVNode("span", {
 						className: TILE_LABEL_CLASS,
 						children: tile.label
 					})]
@@ -37419,48 +39479,48 @@ function ProfileBlock() {
 }
 function StatsSection() {
 	const stats = computeStats(load(), loadFavSet().size);
-	return /* @__PURE__ */ a("section", {
+	return /* @__PURE__ */ createVNode("section", {
 		className: `rdw-section ${SECTION_CLASS}`,
 		children: [
-			/* @__PURE__ */ a("style", { children: STATS_SECTION_CSS }),
-			/* @__PURE__ */ a("div", {
+			/* @__PURE__ */ createVNode("style", { children: STATS_SECTION_CSS }),
+			/* @__PURE__ */ createVNode("div", {
 				className: COLUMN_CLASS,
 				children: [
-					/* @__PURE__ */ a("div", {
+					/* @__PURE__ */ createVNode("div", {
 						className: TILES_CLASS,
-						children: stats.tiles.map((tile) => /* @__PURE__ */ a("div", {
+						children: stats.tiles.map((tile) => /* @__PURE__ */ createVNode("div", {
 							className: TILE_CLASS,
 							children: [
-								/* @__PURE__ */ a("span", {
+								/* @__PURE__ */ createVNode("span", {
 									className: TILE_VALUE_CLASS,
 									children: tile.unit === void 0 ? formatNumber(tile.value) : `${formatNumber(tile.value)} ${tile.unit}`
 								}),
-								/* @__PURE__ */ a("span", {
+								/* @__PURE__ */ createVNode("span", {
 									className: TILE_LABEL_CLASS,
 									children: tile.label
 								}),
-								tile.detail === void 0 ? null : /* @__PURE__ */ a("span", {
+								tile.detail === void 0 ? null : /* @__PURE__ */ createVNode("span", {
 									className: TILE_LABEL_CLASS,
 									children: tile.detail
 								})
 							]
 						}, tile.label))
 					}),
-					/* @__PURE__ */ a("div", {
+					/* @__PURE__ */ createVNode("div", {
 						className: CHART_CLASS,
-						children: [/* @__PURE__ */ a("p", {
+						children: [/* @__PURE__ */ createVNode("p", {
 							className: HEADING_CLASS,
 							children: TOP_HEADING
-						}), /* @__PURE__ */ a(CollectionList, { collections: stats.topCollections })]
+						}), /* @__PURE__ */ createVNode(CollectionList, { collections: stats.topCollections })]
 					}),
-					/* @__PURE__ */ a(ProfileBlock, {})
+					/* @__PURE__ */ createVNode(ProfileBlock, {})
 				]
 			}),
-			/* @__PURE__ */ a("div", {
+			/* @__PURE__ */ createVNode("div", {
 				className: COLUMN_CLASS,
-				children: /* @__PURE__ */ a(FavoriteTagsBlock, {})
+				children: /* @__PURE__ */ createVNode(FavoriteTagsBlock, {})
 			}),
-			/* @__PURE__ */ a("p", {
+			/* @__PURE__ */ createVNode("p", {
 				className: `${HINT_CLASS} ${FOOT_CLASS}`,
 				children: HINT
 			})
@@ -37469,9 +39529,9 @@ function StatsSection() {
 }
 /** The Statistics page of the site menu. */
 function StatsPage() {
-	return /* @__PURE__ */ a(Card, {
+	return /* @__PURE__ */ createVNode(Card, {
 		className: PANEL_UI_CLASS.pageCard,
-		children: /* @__PURE__ */ a(StatsSection, {})
+		children: /* @__PURE__ */ createVNode(StatsSection, {})
 	});
 }})}}));
 System.register("./format-date-BzlgeVEi-Bc3e-WAe.js", [],(function(exports){'use strict';return{execute:(function(){exports({a:formatMonth,f:formatDayTime});/**
@@ -37504,7 +39564,7 @@ function formatMonth(time) {
 		year: "numeric"
 	});
 }})}}));
-System.register("./collection-detail-page-DDOOECBF-DdktMp2m.js", ['./app-BAhFOWQS-Bb4GaPqX.js','./___monkey.entry.js'],(function(exports){'use strict';var d,useEscape,T,w$1,b,downloadsAvailable,a,$$1,SelectionBar,Button,EmptyState,Dialog,TextField,Toast,isDownloadBusy,startDownload,navigateToRdwRoute,shuffleCollection,resetCollectionOrder,UI_TEXT,getCollectionOrder,listPlaylists,RDW_HASH_COLLECTIONS,removePostsFromCollection,movePostInCollection,renameCollection,deleteCollection,RDW_ROUTE_COLLECTIONS,restorePosts,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION_VIEW,SEARCH_PATH,collectionQueueHash;return{setters:[function(module){d=module.d;useEscape=module.an;T=module.T;w$1=module.aQ;b=module.L;downloadsAvailable=module.aR;a=module.c;$$1=module.$;SelectionBar=module.ao;Button=module.B;EmptyState=module.E;Dialog=module.D;TextField=module.t;Toast=module.aS;isDownloadBusy=module.aT;startDownload=module.aU;navigateToRdwRoute=module.aV;},function(module){shuffleCollection=module.dI;resetCollectionOrder=module.dJ;UI_TEXT=module.bo;getCollectionOrder=module.cm;listPlaylists=module.bi;RDW_HASH_COLLECTIONS=module.x;removePostsFromCollection=module.dK;movePostInCollection=module.dL;renameCollection=module.bL;deleteCollection=module.bK;RDW_ROUTE_COLLECTIONS=module.dM;restorePosts=module.dN;SEARCH_PARAM_PAGE=module.Q;SEARCH_PAGE=module.cy;SEARCH_SECTION_VIEW=module.cz;SEARCH_PATH=module.V;collectionQueueHash=module.dO;}],execute:(function(){exports("CollectionDetailPage",CollectionDetailPage);var CELL_SIZE_PX = 200;
+System.register("./collection-detail-page-qa-2qVPe-oD72uaud.js", ['./app-CKeztBau-BuKlS5Dy.js','./___monkey.entry.js'],(function(exports){'use strict';var useState,useEscape,useRef,useMemo,useCallback,downloadsAvailable,createVNode,Fragment,SelectionBar,Button,EmptyState,Dialog,TextField,Toast,isDownloadBusy,startDownload,navigateToRdwRoute,shuffleCollection,resetCollectionOrder,UI_TEXT,getCollectionOrder,listPlaylists,RDW_HASH_COLLECTIONS,removePostsFromCollection,movePostInCollection,renameCollection,deleteCollection,RDW_ROUTE_COLLECTIONS,restorePosts,SEARCH_PARAM_PAGE,SEARCH_PAGE,SEARCH_SECTION_VIEW,SEARCH_PATH,collectionQueueHash;return{setters:[function(module){useState=module.u;useEscape=module.an;useRef=module.a;useMemo=module.aQ;useCallback=module.M;downloadsAvailable=module.aR;createVNode=module.f;Fragment=module.p;SelectionBar=module.ao;Button=module.B;EmptyState=module.E;Dialog=module.D;TextField=module.T;Toast=module.aS;isDownloadBusy=module.aT;startDownload=module.aU;navigateToRdwRoute=module.aV;},function(module){shuffleCollection=module.dI;resetCollectionOrder=module.dJ;UI_TEXT=module.bo;getCollectionOrder=module.cm;listPlaylists=module.bi;RDW_HASH_COLLECTIONS=module.x;removePostsFromCollection=module.dK;movePostInCollection=module.dL;renameCollection=module.bL;deleteCollection=module.bK;RDW_ROUTE_COLLECTIONS=module.dM;restorePosts=module.dN;SEARCH_PARAM_PAGE=module.Q;SEARCH_PAGE=module.cy;SEARCH_SECTION_VIEW=module.cz;SEARCH_PATH=module.V;collectionQueueHash=module.dO;}],execute:(function(){exports("CollectionDetailPage",CollectionDetailPage);var CELL_SIZE_PX = 200;
 var GRID_GAP_PX = 4;
 var SECTION_GAP_PX = 12;
 var ACTIONS_GAP_PX = 8;
@@ -37717,15 +39777,15 @@ function isModifiedClick(event) {
 	return event.button !== MOUSE_BUTTON_PRIMARY || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
 }
 function PostCell(props) {
-	const [failedUrl, setFailedUrl] = d(null);
+	const [failedUrl, setFailedUrl] = useState(null);
 	const thumbUrl = props.thumbUrl;
 	const failed = thumbUrl !== null && failedUrl === thumbUrl;
-	const thumbUrlRef = T(thumbUrl);
+	const thumbUrlRef = useRef(thumbUrl);
 	thumbUrlRef.current = thumbUrl;
-	const markFailed = b(() => {
+	const markFailed = useCallback(() => {
 		setFailedUrl(thumbUrlRef.current);
 	}, []);
-	const imageRef = b((node) => {
+	const imageRef = useCallback((node) => {
 		if (node === null) return;
 		node.addEventListener("error", markFailed);
 	}, [markFailed]);
@@ -37737,7 +39797,7 @@ function PostCell(props) {
 		drag?.draggingId === props.postId ? CLASS_DRAGGING : "",
 		drag !== null && drag.overId === props.postId && drag.draggingId !== props.postId ? CLASS_DROP_TARGET : ""
 	].filter((part) => part.length > 0).join(" ");
-	return /* @__PURE__ */ a("a", {
+	return /* @__PURE__ */ createVNode("a", {
 		className,
 		href: collectionPostHref(props.collectionId, props.postId),
 		"aria-label": `${POST_LINK_LABEL_PREFIX}${String(props.postId)}`,
@@ -37766,15 +39826,15 @@ function PostCell(props) {
 			event.preventDefault();
 			props.onToggle(props.postId);
 		},
-		children: [showImage ? /* @__PURE__ */ a("img", {
+		children: [showImage ? /* @__PURE__ */ createVNode("img", {
 			src: thumbUrl,
 			alt: "",
 			loading: IMG_LOADING_LAZY,
 			ref: imageRef
-		}) : /* @__PURE__ */ a("span", {
+		}) : /* @__PURE__ */ createVNode("span", {
 			className: CLASS_FALLBACK,
 			children: fallbackLabel(props.postId)
-		}), props.selected ? /* @__PURE__ */ a("span", {
+		}), props.selected ? /* @__PURE__ */ createVNode("span", {
 			className: CLASS_MARK_CHECK,
 			"aria-hidden": "true",
 			children: MARK_CHECK_GLYPH
@@ -37782,34 +39842,34 @@ function PostCell(props) {
 	});
 }
 function BackToCollections() {
-	return /* @__PURE__ */ a("a", {
+	return /* @__PURE__ */ createVNode("a", {
 		className: CLASS_BACK,
 		href: RDW_HASH_COLLECTIONS,
 		children: LABEL_BACK
 	});
 }
 function CollectionDetailPage(props) {
-	const [revision, setRevision] = d(0);
-	const [selecting, setSelecting] = d(false);
+	const [revision, setRevision] = useState(0);
+	const [selecting, setSelecting] = useState(false);
 	useEscape(selecting, leaveSelectMode);
-	const [selected, setSelected] = d(() => /* @__PURE__ */ new Set());
-	const [renameOpen, setRenameOpen] = d(false);
-	const [nameDraft, setNameDraft] = d("");
-	const [deleteOpen, setDeleteOpen] = d(false);
-	const [toast, setToast] = d(null);
-	const toastRef = T(null);
-	const toastIdRef = T(0);
-	const [draggingId, setDraggingId] = d(null);
-	const [overId, setOverId] = d(null);
-	const detail = w$1(() => readCollectionDetail(props.collectionId), [props.collectionId, revision]);
-	const refresh = b(() => {
+	const [selected, setSelected] = useState(() => /* @__PURE__ */ new Set());
+	const [renameOpen, setRenameOpen] = useState(false);
+	const [nameDraft, setNameDraft] = useState("");
+	const [deleteOpen, setDeleteOpen] = useState(false);
+	const [toast, setToast] = useState(null);
+	const toastRef = useRef(null);
+	const toastIdRef = useRef(0);
+	const [draggingId, setDraggingId] = useState(null);
+	const [overId, setOverId] = useState(null);
+	const detail = useMemo(() => readCollectionDetail(props.collectionId), [props.collectionId, revision]);
+	const refresh = useCallback(() => {
 		setRevision((value) => value + 1);
 	}, []);
-	const onToastClose = b(() => {
+	const onToastClose = useCallback(() => {
 		toastRef.current = null;
 		setToast(null);
 	}, []);
-	const onUndo = b(() => {
+	const onUndo = useCallback(() => {
 		const current = toastRef.current;
 		if (current === null) return;
 		restorePosts(current.snapshot);
@@ -37896,27 +39956,27 @@ function CollectionDetailPage(props) {
 		label: LABEL_UNDO,
 		onClick: onUndo
 	};
-	return /* @__PURE__ */ a("div", {
+	return /* @__PURE__ */ createVNode("div", {
 		className: CLASS_ROOT,
 		"data-collection-id": props.collectionId,
 		children: [
-			/* @__PURE__ */ a("style", { children: COLLECTION_DETAIL_CSS }),
-			detail === null ? /* @__PURE__ */ a($$1, { children: [/* @__PURE__ */ a("p", {
+			/* @__PURE__ */ createVNode("style", { children: COLLECTION_DETAIL_CSS }),
+			detail === null ? /* @__PURE__ */ createVNode(Fragment, { children: [/* @__PURE__ */ createVNode("p", {
 				className: CLASS_MISSING,
 				children: UNKNOWN_COLLECTION_MESSAGE
-			}), /* @__PURE__ */ a(BackToCollections, {})] }) : /* @__PURE__ */ a($$1, { children: [
-				/* @__PURE__ */ a(BackToCollections, {}),
-				/* @__PURE__ */ a("div", {
+			}), /* @__PURE__ */ createVNode(BackToCollections, {})] }) : /* @__PURE__ */ createVNode(Fragment, { children: [
+				/* @__PURE__ */ createVNode(BackToCollections, {}),
+				/* @__PURE__ */ createVNode("div", {
 					className: CLASS_HEADING,
-					children: [/* @__PURE__ */ a("h1", {
+					children: [/* @__PURE__ */ createVNode("h1", {
 						className: CLASS_NAME,
 						children: detail.name
-					}), /* @__PURE__ */ a("p", {
+					}), /* @__PURE__ */ createVNode("p", {
 						className: CLASS_COUNT,
 						children: postsCountLabel(detail.order.length)
 					})]
 				}),
-				selecting ? /* @__PURE__ */ a(SelectionBar, {
+				selecting ? /* @__PURE__ */ createVNode(SelectionBar, {
 					count: selected.size,
 					onSelectAll: () => {
 						setSelected(new Set(detail.order));
@@ -37925,13 +39985,13 @@ function CollectionDetailPage(props) {
 						setSelected(/* @__PURE__ */ new Set());
 					},
 					onCancel: leaveSelectMode,
-					danger: /* @__PURE__ */ a(Button, {
+					danger: /* @__PURE__ */ createVNode(Button, {
 						variant: "danger-quiet",
 						disabled: selected.size === 0,
 						onClick: removeSelected,
 						children: LABEL_REMOVE_SELECTED
 					}),
-					children: downloadAvailable ? /* @__PURE__ */ a(Button, {
+					children: downloadAvailable ? /* @__PURE__ */ createVNode(Button, {
 						variant: "secondary",
 						disabled: selected.size === 0,
 						onClick: () => {
@@ -37940,10 +40000,10 @@ function CollectionDetailPage(props) {
 						},
 						children: LABEL_DOWNLOAD_SELECTED
 					}) : null
-				}) : /* @__PURE__ */ a("div", {
+				}) : /* @__PURE__ */ createVNode("div", {
 					className: CLASS_ACTIONS,
-					children: /* @__PURE__ */ a($$1, { children: [
-						detail.order.length > 0 ? /* @__PURE__ */ a(Button, {
+					children: /* @__PURE__ */ createVNode(Fragment, { children: [
+						detail.order.length > 0 ? /* @__PURE__ */ createVNode(Button, {
 							variant: "secondary",
 							size: "s",
 							onClick: () => {
@@ -37952,7 +40012,7 @@ function CollectionDetailPage(props) {
 							},
 							children: LABEL_SHUFFLE
 						}) : null,
-						detail.shuffled ? /* @__PURE__ */ a(Button, {
+						detail.shuffled ? /* @__PURE__ */ createVNode(Button, {
 							variant: "secondary",
 							size: "s",
 							onClick: () => {
@@ -37961,7 +40021,7 @@ function CollectionDetailPage(props) {
 							},
 							children: LABEL_ORIGINAL_ORDER
 						}) : null,
-						detail.order.length > 0 ? /* @__PURE__ */ a(Button, {
+						detail.order.length > 0 ? /* @__PURE__ */ createVNode(Button, {
 							variant: "secondary",
 							size: "s",
 							onClick: () => {
@@ -37970,7 +40030,7 @@ function CollectionDetailPage(props) {
 							},
 							children: LABEL_SELECT
 						}) : null,
-						downloadAvailable && detail.order.length > 0 ? /* @__PURE__ */ a(Button, {
+						downloadAvailable && detail.order.length > 0 ? /* @__PURE__ */ createVNode(Button, {
 							variant: "secondary",
 							size: "s",
 							onClick: () => {
@@ -37978,13 +40038,13 @@ function CollectionDetailPage(props) {
 							},
 							children: LABEL_DOWNLOAD_ALL
 						}) : null,
-						/* @__PURE__ */ a(Button, {
+						/* @__PURE__ */ createVNode(Button, {
 							variant: "secondary",
 							size: "s",
 							onClick: openRename,
 							children: UI_TEXT.rename
 						}),
-						/* @__PURE__ */ a(Button, {
+						/* @__PURE__ */ createVNode(Button, {
 							variant: "danger-quiet",
 							size: "s",
 							onClick: () => {
@@ -37994,17 +40054,17 @@ function CollectionDetailPage(props) {
 						})
 					] })
 				}),
-				!selecting && detail.order.length > POST_COUNT_SINGULAR ? /* @__PURE__ */ a("p", {
+				!selecting && detail.order.length > POST_COUNT_SINGULAR ? /* @__PURE__ */ createVNode("p", {
 					className: CLASS_HINT,
 					children: DRAG_HINT
 				}) : null,
-				detail.order.length === 0 ? /* @__PURE__ */ a(EmptyState, {
+				detail.order.length === 0 ? /* @__PURE__ */ createVNode(EmptyState, {
 					title: EMPTY_COLLECTION_TITLE,
 					description: EMPTY_COLLECTION_HINT
-				}) : /* @__PURE__ */ a("div", {
+				}) : /* @__PURE__ */ createVNode("div", {
 					className: CLASS_GRID,
 					"aria-label": GRID_LABEL,
-					children: detail.order.map((postId) => /* @__PURE__ */ a(PostCell, {
+					children: detail.order.map((postId) => /* @__PURE__ */ createVNode(PostCell, {
 						postId,
 						collectionId: props.collectionId,
 						thumbUrl: thumbUrlFor(detail.thumbs, postId),
@@ -38014,24 +40074,24 @@ function CollectionDetailPage(props) {
 						drag: selecting ? null : drag
 					}, postId))
 				}),
-				/* @__PURE__ */ a(Dialog, {
+				/* @__PURE__ */ createVNode(Dialog, {
 					open: renameOpen,
 					onClose: () => {
 						setRenameOpen(false);
 					},
 					title: UI_TEXT.rename,
 					"aria-label": RENAME_DIALOG_LABEL,
-					children: /* @__PURE__ */ a("form", {
+					children: /* @__PURE__ */ createVNode("form", {
 						className: CLASS_DIALOG_FORM,
 						onSubmit: submitRename,
-						children: [/* @__PURE__ */ a(TextField, {
+						children: [/* @__PURE__ */ createVNode(TextField, {
 							id: RENAME_INPUT_ID,
 							label: UI_TEXT.nameLabel,
 							value: nameDraft,
 							onChange: setNameDraft
-						}), /* @__PURE__ */ a("div", {
+						}), /* @__PURE__ */ createVNode("div", {
 							className: CLASS_DIALOG_ACTIONS,
-							children: [/* @__PURE__ */ a(Button, {
+							children: [/* @__PURE__ */ createVNode(Button, {
 								type: "button",
 								variant: "secondary",
 								size: "s",
@@ -38039,7 +40099,7 @@ function CollectionDetailPage(props) {
 									setRenameOpen(false);
 								},
 								children: UI_TEXT.cancel
-							}), /* @__PURE__ */ a(Button, {
+							}), /* @__PURE__ */ createVNode(Button, {
 								type: "submit",
 								variant: "primary",
 								size: "s",
@@ -38048,7 +40108,7 @@ function CollectionDetailPage(props) {
 						})]
 					})
 				}),
-				/* @__PURE__ */ a(Dialog, {
+				/* @__PURE__ */ createVNode(Dialog, {
 					variant: "confirm",
 					open: deleteOpen,
 					onClose: () => {
@@ -38063,7 +40123,7 @@ function CollectionDetailPage(props) {
 					onConfirm: confirmDelete
 				})
 			] }),
-			/* @__PURE__ */ a(Toast, {
+			/* @__PURE__ */ createVNode(Toast, {
 				open: toast !== null,
 				message: toast === null ? "" : toast.message,
 				onClose: onToastClose,
@@ -38077,6 +40137,8 @@ System.import("./___monkey.entry.js", "./");
 /*! Third-party notices: RuleDesk Web includes the following packages.
 
 preact 11.2.0 (MIT)
+Source: https://github.com/preactjs/preact (npm package preact@11.2.0)
+In this file: built from the sources in the package (src, hooks/src, compat/src, jsx-runtime/src)
 
 The MIT License (MIT)
 
@@ -38101,6 +40163,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 zod 4.6.7 (MIT)
+Source: https://github.com/colinhacks/zod (npm package zod@4.6.7)
+In this file: the modules of the package, as published
 
 MIT License
 
@@ -38123,4 +40187,19 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+systemjs 6.15.1 (MIT)
+Source: https://github.com/systemjs/systemjs (npm package systemjs@6.15.1)
+In this file: dist/system.js and dist/extras/named-register.js of the package, as published
+
+MIT License
+-----------
+
+Copyright (C) 2013-2022 Guy Bedford
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
