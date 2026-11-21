@@ -2,6 +2,12 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.75.0
+
+- The built file is no longer minified: it keeps the names and the spaces of the source and can be read. It is twice as large (1.29 MB); measured, the first paint comes about 4 ms later on a mock page and about 12 ms later on the site
+- The header no longer names an address for updates (`@updateURL`, `@downloadURL`). A script manager checks the address the script was installed from
+- The packages inside the file are readable as well: Preact is built from its sources, SystemJS is put in in its readable build. Nothing is fetched from elsewhere when the script is installed; the name, the version and the source of each package are at the end of the file
+
 ## 0.74.3
 
 - Bugs are reported in one place, Issues on GitHub: a form there asks for the version, the browser, the script manager, the theme, the page and the steps. README and FAQ say so

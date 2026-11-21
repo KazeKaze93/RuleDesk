@@ -1,7 +1,8 @@
 /**
  * The built userscript carries the code of other people's packages, and their
  * licences (MIT) ask that their copyright notice and the licence text go with
- * every copy. The minifier drops the comments that held them, so they are put
+ * every copy. The bundler drops the comments that held them, minified or not
+ * (seen on 0.74.3 built without minification), so they are put
  * back here, after the build:
  *
  * - into THIRD_PARTY_LICENSES.md at the root of the repository;
@@ -17,14 +18,31 @@ import { fileURLToPath } from "node:url";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 /**
- * What is inside the built file. preact and zod are imported by src/; SystemJS
- * is put in by vite-plugin-monkey (`systemjs: "inline"` in vite.config.ts) to
- * load the parts of the script. A package added to the bundle is added here.
+ * What is inside the built file, and where each comes from. preact and zod are
+ * imported by src/; preact is built from the sources the package carries
+ * (vite.config.ts, resolve.alias). SystemJS loads the parts of the script: the
+ * plugin puts it in and scripts/readable-systemjs.mjs swaps in its readable
+ * build. A package added to the bundle is added here.
  */
 const BUNDLED = [
-  { name: "preact", why: "the interface of the script" },
-  { name: "zod", why: "checking of stored and imported data" },
-  { name: "systemjs", why: "the loader of the parts of the script, put in by vite-plugin-monkey" },
+  {
+    name: "preact",
+    why: "the interface of the script",
+    form: "built from the sources in the package (src, hooks/src, compat/src, jsx-runtime/src)",
+    source: "https://github.com/preactjs/preact",
+  },
+  {
+    name: "zod",
+    why: "checking of stored and imported data",
+    form: "the modules of the package, as published",
+    source: "https://github.com/colinhacks/zod",
+  },
+  {
+    name: "systemjs",
+    why: "the loader of the parts of the script",
+    form: "dist/system.js and dist/extras/named-register.js of the package, as published",
+    source: "https://github.com/systemjs/systemjs",
+  },
 ];
 
 const DIST_FILE = resolve(root, "dist", "ruledesk-web.user.js");
@@ -60,6 +78,8 @@ const markdown = [
     "",
     `Licence: ${entry.license}. Used for: ${entry.why}.`,
     "",
+    `Source: ${entry.source} (npm package \`${entry.name}@${entry.version}\`). In the built file: ${entry.form}.`,
+    "",
     "```",
     entry.text,
     "```",
@@ -73,6 +93,8 @@ const block = [
   ...packages.flatMap((entry) => [
     "",
     `${entry.name} ${entry.version} (${entry.license})`,
+    `Source: ${entry.source} (npm package ${entry.name}@${entry.version})`,
+    `In this file: ${entry.form}`,
     "",
     entry.text,
   ]),

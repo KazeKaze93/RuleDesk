@@ -10,6 +10,8 @@ This file is written by `scripts/third-party-notices.mjs` on every build; do not
 
 Licence: MIT. Used for: the interface of the script.
 
+Source: https://github.com/preactjs/preact (npm package `preact@11.2.0`). In the built file: built from the sources in the package (src, hooks/src, compat/src, jsx-runtime/src).
+
 ```
 The MIT License (MIT)
 
@@ -38,6 +40,8 @@ SOFTWARE.
 
 Licence: MIT. Used for: checking of stored and imported data.
 
+Source: https://github.com/colinhacks/zod (npm package `zod@4.6.7`). In the built file: the modules of the package, as published.
+
 ```
 MIT License
 
@@ -64,7 +68,9 @@ SOFTWARE.
 
 ## systemjs 6.15.1
 
-Licence: MIT. Used for: the loader of the parts of the script, put in by vite-plugin-monkey.
+Licence: MIT. Used for: the loader of the parts of the script.
+
+Source: https://github.com/systemjs/systemjs (npm package `systemjs@6.15.1`). In the built file: dist/system.js and dist/extras/named-register.js of the package, as published.
 
 ```
 MIT License
