@@ -1,13 +1,13 @@
 {
   "name": "ruledesk-web",
-  "version": "0.75.1",
+  "version": "0.75.2",
   "private": true,
   "license": "GPL-3.0-or-later",
   "type": "module",
   "description": "Userscript for rule34.xxx: collections, playlists, favorites, artist updates, page tweaks",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build && node scripts/readable-systemjs.mjs && node scripts/third-party-notices.mjs && node scripts/check-built-file.mjs",
+    "build": "tsc --noEmit && vite build && node scripts/readable-systemjs.mjs && node scripts/split-long-lines.mjs && node scripts/third-party-notices.mjs && node scripts/check-built-file.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

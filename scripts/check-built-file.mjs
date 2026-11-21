@@ -14,10 +14,20 @@
  *   also tells that there is one Preact in the file, the one built from the
  *   sources (vite.config.ts, resolve.alias), and not a second copy beside it.
  * - Under the catalogue's limit of 2 MB.
+ * - No line the catalogue takes for minified code. Its rule, word for word in
+ *   what it checks: a line longer than 5000 characters that has "function" in
+ *   it (greasyfork-org/greasyfork, app/models/script_version.rb,
+ *   `code_appears_minified`: `(s.length > 5000) && s.include?('function')`;
+ *   read 21.11.2026). Every line is checked, comments and the header too.
+ *   scripts/split-long-lines.mjs breaks the lines that would be caught.
+ * - The file compiles: the steps after the bundler change its text.
  */
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { Script } from "node:vm";
+
+import { CATALOGUE_MAX_LENGTH, CATALOGUE_WORD, linesTakenForMinified } from "./split-long-lines.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const DIST_FILE = resolve(root, "dist", "ruledesk-web.user.js");
@@ -61,7 +71,21 @@ if (bytes.length >= MAX_BYTES) {
   problems.push(`the file is ${String(bytes.length)} bytes, over the limit of ${String(MAX_BYTES)}`);
 }
 
+const minified = linesTakenForMinified(built);
+if (minified.length > 0) {
+  problems.push(
+    `line ${minified.join(", ")}: over ${String(CATALOGUE_MAX_LENGTH)} characters with "${CATALOGUE_WORD}" in it, the catalogue takes that for minified code`,
+  );
+}
+
+try {
+  // Compiled, not run.
+  new Script(built, { filename: "ruledesk-web.user.js" });
+} catch (error) {
+  problems.push(`the file does not compile: ${error instanceof Error ? error.message : String(error)}`);
+}
+
 if (problems.length > 0) {
   throw new Error(`check-built-file:\n- ${problems.join("\n- ")}`);
 }
-process.stdout.write(`built file checked: ${String(bytes.length)} bytes, no @require, nothing minified\n`);
+process.stdout.write(`built file checked: ${String(bytes.length)} bytes, no @require, nothing minified, no line over ${String(CATALOGUE_MAX_LENGTH)} with "${CATALOGUE_WORD}"\n`);

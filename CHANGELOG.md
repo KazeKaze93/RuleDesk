@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.75.2
+
+- The built file: the long first line of each part of the script (the lists of names the bundler writes there) is broken into lines. A catalogue of userscripts took a line of several thousand characters for minified code. Nothing changes in how the script works
+
 ## 0.75.1
 
 - Header: the menu no longer moves a moment after a page opens. The number beside "Feed" and, on pages where the site has no "My Favorites" link of its own (Comments), the item "Favorites" came in after the first paint and pushed the items after them to the right; both are there from the start now
