@@ -11,7 +11,7 @@ It is made and checked on one setup: desktop Chrome with Tampermonkey. Violentmo
 In Tampermonkey open Dashboard → Settings → Security → Content Script API and choose **UserScripts API Dynamic**. With the plain "UserScripts API" the flash was there on every load, and pages opened slower.
 
 **How do I get a new version?**
-Tampermonkey checks for updates on its own schedule, once a day by default. To check now: Tampermonkey icon → Utilities → "Check for userscript updates". The interval is in Tampermonkey's settings, under "Userscript Update".
+New versions come from [the script's page on Sleazy Fork](https://sleazyfork.org/scripts/606528-ruledesk-web). Tampermonkey checks for updates on its own schedule, once a day by default. To check now: Tampermonkey icon → Utilities → "Check for userscript updates". The interval is in Tampermonkey's settings, under "Userscript Update".
 
 **I updated, but nothing changed.**
 Reload the site's page: an open page keeps running the old version. Right after a release GitHub may serve the previous file for a few minutes; check again a little later.

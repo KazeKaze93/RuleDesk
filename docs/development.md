@@ -12,7 +12,7 @@
 
 ## Release
 
-The repository is `KazeKaze93/RuleDesk` (called `ruledesk-web` until 0.24.0). Users install and update from the built file in `main`, so the build is committed, and what is in `main` is what every user gets at the next update.
+The repository is `KazeKaze93/RuleDesk` (called `ruledesk-web` until 0.24.0). Users install and update from the script's page on Sleazy Fork, https://sleazyfork.org/scripts/606528-ruledesk-web. The catalogue takes the built file from `main` of this repository, so the build is committed, and what is in `main` is what every user gets at the next update.
 
 Since 20.11.2026 nothing is pushed to `main` directly: the branch is protected, for the owner too. Work is done on a branch (`dev/<what-it-is>`), pushed, and brought in by a pull request. Only the owner of the repository can merge; nobody else has write access.
 
@@ -22,7 +22,9 @@ Since 20.11.2026 nothing is pushed to `main` directly: the branch is protected, 
 4. On the branch, commit as `Release X.Y.Z: <summary>` with `dist/ruledesk-web.user.js` added by `git add -f` (the `dist` folder is ignored otherwise). Push the branch and open a pull request into `main`.
 5. Merge the pull request. For a minor version, tag the merge commit `vX.Y.0` and make the GitHub release from the changelog entry.
 
-Since 0.75.0 the header has no `@updateURL` and no `@downloadURL`: a catalogue of userscripts does not take a script whose header sends updates past it. A script manager then checks the address the script was installed from. Every change a user should receive needs a version bump; without it the manager does not update.
+Since 0.75.0 the header has no `@updateURL` and no `@downloadURL`: a catalogue of userscripts does not take a script whose header sends updates past it. A script manager then checks the address the script was installed from: Sleazy Fork for an install from its page, the raw address of the file in `main` for an install made from this repository before. Every change a user should receive needs a version bump; without it the manager does not update.
+
+The webhook GitHub → Sleazy Fork was set up on 21.11.2026 (push events, `application/json`). Its first real delivery comes with the nearest pull request that changes `dist/ruledesk-web.user.js`: in Recent Deliveries → Response there should be `updated_scripts` with this script.
 
 A change counts as done when its pull request is merged, the types and tests pass, the build is committed, and the behaviour was checked on the live site. A branch can be tried before the merge: the raw address of the built file at the branch's commit installs that build.
 
