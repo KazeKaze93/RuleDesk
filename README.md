@@ -84,7 +84,7 @@ Forum: marks for new and updated topics, "New for me", "Mark all as read". Artis
 
 Updates arrive through the script manager from Sleazy Fork: a version merged in this repository gets there by itself. After an update reload the site's page: an open page keeps running the old version.
 
-Installed from this repository before the script was on Sleazy Fork? Install it from Sleazy Fork over the old one. Tampermonkey takes it for the same script: your collections, follows and settings stay.
+A script installed from this repository before it was on Sleazy Fork goes on updating from here. Sleazy Fork is the recommended source: install from it over the old one, and your collections, follows and settings stay.
 
 ## Settings
 
