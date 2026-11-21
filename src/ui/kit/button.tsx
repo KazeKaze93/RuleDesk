@@ -91,6 +91,11 @@ ${KIT_FOCUS_CSS}
 .rdw-btn:disabled,
 .rdw-btn[aria-busy="true"] {
   opacity: 0.55;
+}
+/* The "not allowed" cursor is for a button that cannot be pressed. A button
+   that is doing what it was pressed for keeps the pointer: the cursor changing
+   for a moment under the hand read as a refusal (Kaze, 21.11.2026). */
+.rdw-btn:disabled:not([aria-busy="true"]) {
   cursor: not-allowed;
 }
 /* A main button that cannot be pressed is grey: dimmed blue read as pressed. */

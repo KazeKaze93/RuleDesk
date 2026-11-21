@@ -63,10 +63,7 @@ export const CARD_CSS = `
   color: #a12828;
 }
 
-.${CSS_CLASS.cardFav}.${CSS_CLASS.cardFavPending},
-.${CSS_CLASS.cardFav}:disabled {
-  cursor: wait;
-}
+/* While the star's request is on its way the cursor stays the pointer (see kit/button.tsx). */
 
 .${CSS_CLASS.thumb}:has(> a[style*="display: none"]) .${CSS_CLASS.cardFav},
 .${CSS_CLASS.thumb}:has(> a[style*="display:none"]) .${CSS_CLASS.cardFav} {

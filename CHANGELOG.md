@@ -5,6 +5,7 @@ What changed for the user in each version, newest first. Versions before 0.12.0 
 ## 0.75.1
 
 - Header: the menu no longer moves a moment after a page opens. The number beside "Feed" and, on pages where the site has no "My Favorites" link of its own (Comments), the item "Favorites" came in after the first paint and pushed the items after them to the right; both are there from the start now
+- The cursor no longer changes for a moment when Favorite, Vote, the download button or the star on a thumbnail is pressed: a button that is at work keeps the pointer. The "not allowed" cursor is left for a button that cannot be pressed
 
 ## 0.75.0
 
