@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RuleDesk Web
 // @namespace    https://github.com/kazekaze93/ruledesk-web
-// @version      0.75.2
+// @version      0.75.3
 // @description  Collections, playlists, favorites, artist updates, and page tweaks for rule34.xxx
 // @license      GPL-3.0-or-later
 // @match        https://rule34.xxx/*
