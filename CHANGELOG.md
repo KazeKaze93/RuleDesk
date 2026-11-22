@@ -2,6 +2,10 @@
 
 What changed for the user in each version, newest first. Versions before 0.12.0 are not listed.
 
+## 0.75.3
+
+- Upload: the list of recent uploads the site now shows under the form stands to the right of the form, in a card of its own, and goes under it only when the window is too narrow. With nothing in it, the list is not shown
+
 ## 0.75.2
 
 - The built file: the long first line of each part of the script (the lists of names the bundler writes there) is broken into lines. A catalogue of userscripts took a line of several thousand characters for minified code. Nothing changes in how the script works

@@ -28,6 +28,12 @@ describe("site skin: forms, tables and text columns", () => {
     expect(SITE_SKIN_CSS).toContain("table.form tr:nth-child(odd)");
   });
 
+  it("puts the recent uploads beside the upload form and hides an empty list", () => {
+    expect(ruleFor(":has(#fileUpload):has(#tags) {\n  display: flex")).toContain("flex-wrap: wrap");
+    expect(ruleFor("> div#bup-recent:not(:has(tr)) {")).toContain("display: none");
+    expect(ruleFor("#bup-recent-rows {")).toContain("border: 1px solid var(--rdw-border)");
+  });
+
   it("frames every data table the same way", () => {
     const rule = ruleFor("table.highlightable {");
     expect(rule).toContain("border: 1px solid var(--rdw-border)");

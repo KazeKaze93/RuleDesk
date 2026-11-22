@@ -1307,8 +1307,71 @@ ${ROOT} input[type="file"]${WHERE_NOT_OUR_CONTROL}::file-selector-button:hover {
  * placed by a grid, each found by the field it holds, so a form with other
  * fields (the video upload) is left as it is.
  */
+/* The form and the list of recent uploads side by side; the list goes under
+   the form when the window is too narrow for both. */
+${UPLOAD} {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 20px;
+}
+
 ${UPLOAD} > form {
+  flex: 1 1 720px;
+  min-width: 0;
   max-width: 1200px;
+}
+
+/*
+ * The site's list of recent uploads (from Kaze, 22.11.2026):
+ * div#bup-recent > [h4 "Your recent uploads", table#bup-recent-rows > tbody >
+ * tr > td ×3 (time, kind, a status or a link to the post)], after the form.
+ * Its heading stands level with the form's, its rows in a card level with the
+ * form's card; with no rows there is nothing to show.
+ */
+${UPLOAD} > div#bup-recent {
+  flex: 1 1 360px;
+  min-width: 0;
+  max-width: 560px;
+}
+
+${UPLOAD} > div#bup-recent:not(:has(tr)) {
+  display: none;
+}
+
+${UPLOAD} > div#bup-recent > h4 {
+  margin: 0 0 10px;
+  font-size: 18px;
+}
+
+${UPLOAD} #bup-recent-rows {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 8px 16px;
+  background: ${v.surface};
+  border: 1px solid ${v.border};
+  border-radius: ${v.radiusL};
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+${UPLOAD} #bup-recent-rows td {
+  padding: 6px 8px;
+  border: 0;
+  border-bottom: 1px solid ${v.border};
+  color: ${v.muted};
+  font-size: 12px;
+  line-height: 1.5;
+  vertical-align: top;
+}
+
+${UPLOAD} #bup-recent-rows tr:last-child > td {
+  border-bottom: 0;
+}
+
+${UPLOAD} #bup-recent-rows td:first-child {
+  white-space: nowrap;
+  color: ${v.text};
 }
 
 ${UPLOAD} > form > h2 {

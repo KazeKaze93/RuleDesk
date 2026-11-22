@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RuleDesk Web
 // @namespace    https://github.com/kazekaze93/ruledesk-web
-// @version      0.75.2
+// @version      0.75.3
 // @description  Collections, playlists, favorites, artist updates, and page tweaks for rule34.xxx
 // @license      GPL-3.0-or-later
 // @match        https://rule34.xxx/*
@@ -7232,8 +7232,71 @@ ${ROOT} input[type="file"]${WHERE_NOT_OUR_CONTROL}::file-selector-button:hover {
  * placed by a grid, each found by the field it holds, so a form with other
  * fields (the video upload) is left as it is.
  */
+/* The form and the list of recent uploads side by side; the list goes under
+   the form when the window is too narrow for both. */
+${UPLOAD} {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 20px;
+}
+
 ${UPLOAD} > form {
+  flex: 1 1 720px;
+  min-width: 0;
   max-width: 1200px;
+}
+
+/*
+ * The site's list of recent uploads (from Kaze, 22.11.2026):
+ * div#bup-recent > [h4 "Your recent uploads", table#bup-recent-rows > tbody >
+ * tr > td ×3 (time, kind, a status or a link to the post)], after the form.
+ * Its heading stands level with the form's, its rows in a card level with the
+ * form's card; with no rows there is nothing to show.
+ */
+${UPLOAD} > div#bup-recent {
+  flex: 1 1 360px;
+  min-width: 0;
+  max-width: 560px;
+}
+
+${UPLOAD} > div#bup-recent:not(:has(tr)) {
+  display: none;
+}
+
+${UPLOAD} > div#bup-recent > h4 {
+  margin: 0 0 10px;
+  font-size: 18px;
+}
+
+${UPLOAD} #bup-recent-rows {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 8px 16px;
+  background: ${v.surface};
+  border: 1px solid ${v.border};
+  border-radius: ${v.radiusL};
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+${UPLOAD} #bup-recent-rows td {
+  padding: 6px 8px;
+  border: 0;
+  border-bottom: 1px solid ${v.border};
+  color: ${v.muted};
+  font-size: 12px;
+  line-height: 1.5;
+  vertical-align: top;
+}
+
+${UPLOAD} #bup-recent-rows tr:last-child > td {
+  border-bottom: 0;
+}
+
+${UPLOAD} #bup-recent-rows td:first-child {
+  white-space: nowrap;
+  color: ${v.text};
 }
 
 ${UPLOAD} > form > h2 {
@@ -10821,12 +10884,12 @@ startEarlyLayout();
 whenDomReady(() => {
 	applyLayoutBeforePaint();
 	scheduleAfterFirstPaint(() => {
-		module.import('./app-Iw-wfvf0-DP94g3y7.js').then(function(n){return n.aW}).then(({ startApp }) => startApp()).catch((error) => {
+		module.import('./app-B-IpqdvW-Q6ZkLSaq.js').then(function(n){return n.aW}).then(({ startApp }) => startApp()).catch((error) => {
 			log.error("start failed", error);
 		});
 	});
 });})}}));
-System.register("./app-Iw-wfvf0-DP94g3y7.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var resolveSwitchThumbOn,
+System.register("./app-B-IpqdvW-Q6ZkLSaq.js", ['./___monkey.entry.js'],(function(exports,module){'use strict';var resolveSwitchThumbOn,
 RDW_THEME_ATTR,
 APPEARANCE_THEME_SITE,
 SITE_DEFAULT_SWITCH_ON,
@@ -31786,35 +31849,35 @@ var followingFactory = null;
 var statsFactory = null;
 function getSettingsFactory() {
 	if (settingsFactory === null) settingsFactory = async () => {
-		const mod = await module.import('./settings-page-ChmN3gkR-B04xr6J0.js');
+		const mod = await module.import('./settings-page-B9bCUwDs-D6ES-8cH.js');
 		return /* @__PURE__ */ createVNode(mod.SettingsPage, {});
 	};
 	return settingsFactory;
 }
 function getCollectionsFactory() {
 	if (collectionsFactory === null) collectionsFactory = async () => {
-		const mod = await module.import('./collections-page-98Mbho24-D9--nfpk.js');
+		const mod = await module.import('./collections-page-Cl4CGTVk-BDASayAT.js');
 		return /* @__PURE__ */ createVNode(mod.CollectionsPage, {});
 	};
 	return collectionsFactory;
 }
 function getFollowingFactory() {
 	if (followingFactory === null) followingFactory = async () => {
-		const mod = await module.import('./following-page-BN0_h_7p-BmfHKlY8.js');
+		const mod = await module.import('./following-page-C8ry6CJU-BkMKvr3A.js');
 		return /* @__PURE__ */ createVNode(mod.FollowingPage, {});
 	};
 	return followingFactory;
 }
 function getStatsFactory() {
 	if (statsFactory === null) statsFactory = async () => {
-		const mod = await module.import('./stats-section-AdT7RY4T-ClOf6chL.js');
+		const mod = await module.import('./stats-section-CmsBhOhH-CJPiUCUG.js');
 		return /* @__PURE__ */ createVNode(mod.StatsPage, {});
 	};
 	return statsFactory;
 }
 function collectionDetailFactory(collectionId) {
 	return async () => {
-		const mod = await module.import('./collection-detail-page-CDbgamk4--QmjiSGX.js');
+		const mod = await module.import('./collection-detail-page-DQH57RzQ-Cz8C046q.js');
 		return /* @__PURE__ */ createVNode(mod.CollectionDetailPage, { collectionId }, collectionId);
 	};
 }
@@ -33465,8 +33528,8 @@ async function startApp() {
 	await yieldToMain();
 	step("favorites sync resume", maybeResumeFavoritesSync);
 	step("stats point", recordStatsPoint);
-}var appIwWfvf0=/*#__PURE__*/Object.freeze({__proto__:null,A:useEscape,C:FEATURES,D:fetchNextPage,E:featureSettingsGroup,F:readSiteBlacklist,I:writeSiteBlacklist,M:useTagKindLookup,N:chipKindOfTag,O:fetchArtistSnapshot,P:TAG_KIND_LOOKUP_SETTING_ID,S:isFeatureEnabled,T:SETTINGS_GROUPS,_:readViewMode,a:SETTINGS_SECTION_UPLOAD,b:applyCssOnlyFeatureEnabled,c:writeTagSets,d:FOLLOWING_VIEW_STATE_ID,f:PAGE_CENTRE_PADDING,g:isViewMode,h:VIEW_OPTIONS,i:saveBackground,j:topFavoriteTags,k:setGridFavButtonsVisible,l:navigateToRdwRoute,m:VIEW_LIST,n:clearBackground,o:TAG_SET_TAGS_MAX,p:VIEW_LABEL,r:loadBackground,s:readTagSets,startApp:startApp,t:backgroundTooLarge,u:COLLECTIONS_VIEW_STATE_ID,v:writeViewMode,w:SETTINGS_GROUP,x:getFeatureChoice,y:applyCssOnlyFeatureChoice});exports("aW",appIwWfvf0);})}}));
-System.register("./settings-page-ChmN3gkR-B04xr6J0.js", ['./app-Iw-wfvf0-DP94g3y7.js','./___monkey.entry.js','./format-date-BzlgeVEi-Bc3e-WAe.js'],(function(exports){'use strict';var useState,
+}var appBIpqdvW=/*#__PURE__*/Object.freeze({__proto__:null,A:useEscape,C:FEATURES,D:fetchNextPage,E:featureSettingsGroup,F:readSiteBlacklist,I:writeSiteBlacklist,M:useTagKindLookup,N:chipKindOfTag,O:fetchArtistSnapshot,P:TAG_KIND_LOOKUP_SETTING_ID,S:isFeatureEnabled,T:SETTINGS_GROUPS,_:readViewMode,a:SETTINGS_SECTION_UPLOAD,b:applyCssOnlyFeatureEnabled,c:writeTagSets,d:FOLLOWING_VIEW_STATE_ID,f:PAGE_CENTRE_PADDING,g:isViewMode,h:VIEW_OPTIONS,i:saveBackground,j:topFavoriteTags,k:setGridFavButtonsVisible,l:navigateToRdwRoute,m:VIEW_LIST,n:clearBackground,o:TAG_SET_TAGS_MAX,p:VIEW_LABEL,r:loadBackground,s:readTagSets,startApp:startApp,t:backgroundTooLarge,u:COLLECTIONS_VIEW_STATE_ID,v:writeViewMode,w:SETTINGS_GROUP,x:getFeatureChoice,y:applyCssOnlyFeatureChoice});exports("aW",appBIpqdvW);})}}));
+System.register("./settings-page-B9bCUwDs-D6ES-8cH.js", ['./app-B-IpqdvW-Q6ZkLSaq.js','./___monkey.entry.js','./format-date-BzlgeVEi-Bc3e-WAe.js'],(function(exports){'use strict';var useState,
 useRef,
 useEffect,
 settingsSectionFromHash,
@@ -36491,7 +36554,7 @@ function SettingsPage() {
 		]
 	});
 }})}}));
-System.register("./collections-page-98Mbho24-D9--nfpk.js", ['./___monkey.entry.js','./app-Iw-wfvf0-DP94g3y7.js','./filter-terms-CT7fH-RQ-DpJJ51ju.js'],(function(exports){'use strict';var reloadFromStorage,
+System.register("./collections-page-Cl4CGTVk-BDASayAT.js", ['./___monkey.entry.js','./app-B-IpqdvW-Q6ZkLSaq.js','./filter-terms-CT7fH-RQ-DUQLXBFU.js'],(function(exports){'use strict';var reloadFromStorage,
 load,
 listCollectionGroups,
 UI_TEXT,
@@ -37991,7 +38054,7 @@ function CollectionsPage() {
 		]
 	});
 }})}}));
-System.register("./following-page-BN0_h_7p-BmfHKlY8.js", ['./___monkey.entry.js','./app-Iw-wfvf0-DP94g3y7.js','./filter-terms-CT7fH-RQ-DpJJ51ju.js'],(function(exports){'use strict';var reloadFromStorage,
+System.register("./following-page-C8ry6CJU-BkMKvr3A.js", ['./___monkey.entry.js','./app-B-IpqdvW-Q6ZkLSaq.js','./filter-terms-CT7fH-RQ-DUQLXBFU.js'],(function(exports){'use strict';var reloadFromStorage,
 getSeenPostId,
 listFollowGroups,
 followKindOf,
@@ -39277,7 +39340,7 @@ function FollowingPage() {
 		]
 	});
 }})}}));
-System.register("./filter-terms-CT7fH-RQ-DpJJ51ju.js", ['./app-Iw-wfvf0-DP94g3y7.js'],(function(exports){'use strict';var useState,
+System.register("./filter-terms-CT7fH-RQ-DUQLXBFU.js", ['./app-B-IpqdvW-Q6ZkLSaq.js'],(function(exports){'use strict';var useState,
 useContext,
 OverlayInPlace,
 useRef,
@@ -40230,7 +40293,7 @@ function matchesAnyTerm(texts, terms) {
 	const lowered = texts.map((text) => text.toLowerCase());
 	return terms.some((term) => lowered.some((text) => text.includes(term)));
 }})}}));
-System.register("./stats-section-AdT7RY4T-ClOf6chL.js", ['./app-Iw-wfvf0-DP94g3y7.js','./___monkey.entry.js','./format-date-BzlgeVEi-Bc3e-WAe.js'],(function(exports){'use strict';var createVNode,
+System.register("./stats-section-CmsBhOhH-CJPiUCUG.js", ['./app-B-IpqdvW-Q6ZkLSaq.js','./___monkey.entry.js','./format-date-BzlgeVEi-Bc3e-WAe.js'],(function(exports){'use strict';var createVNode,
 Card,
 useState,
 useEffect,
@@ -40963,7 +41026,7 @@ function formatMonth(time) {
 		year: "numeric"
 	});
 }})}}));
-System.register("./collection-detail-page-CDbgamk4--QmjiSGX.js", ['./app-Iw-wfvf0-DP94g3y7.js','./___monkey.entry.js'],(function(exports){'use strict';var useState,
+System.register("./collection-detail-page-DQH57RzQ-Cz8C046q.js", ['./app-B-IpqdvW-Q6ZkLSaq.js','./___monkey.entry.js'],(function(exports){'use strict';var useState,
 useEscape,
 useRef,
 useMemo,
